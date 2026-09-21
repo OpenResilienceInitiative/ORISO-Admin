@@ -119,15 +119,14 @@ const defaultHandlers = [
 /**
  * The whole invite bar (#1026) as the redesign shows it: E-Mail · Vorname ·
  * Name · Rolle · Träger · Beratungsstelle · Themen selbst · Vorlage · Senden.
- * Rolle and "Themen selbst" are live here (`placeholdersEnabled`); the app
- * shows them disabled until the backend takes them.
+ * Rolle, "Berät auch" and "Themen & Fachbereiche" are live — the backend
+ * takes them since #1026 slices 3 and 6.
  */
 const InviteBar = (props: Partial<InviteComposerProps>) => (
     <div style={{ padding: 24 }}>
         <InviteComposer
             includeAgencyField
             persistKey="INVITE_BAR_1026"
-            placeholdersEnabled
             requireNames
             agencyIdAllocation={stubbedAgencyIdAllocation}
             searchAgencies={searchAgencies}
@@ -241,6 +240,7 @@ const PILL = {
     agency: either('Beratungsstelle bearbeiten', 'Edit Agency'),
     role: either('Rolle bearbeiten', 'Edit Role'),
     topics: either('Themen & Fachbereiche bearbeiten', 'Edit Topics & departments'),
+    alsoCounsellor: either('Berät auch bearbeiten', 'Edit Also counsels'),
     template: either('Vorlage bearbeiten', 'Edit Template'),
 };
 const FIELD = {
@@ -406,15 +406,22 @@ export const AllValid: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         // All eight fields, Rolle, Themen & Fachbereiche and Vorlage included, are pills.
-        await Promise.all(Object.values(PILL).map((pill) => canvas.findByRole('button', { name: pill })));
+        // („Berät auch" belongs to the BST-Admin role only.)
+        await Promise.all(
+            Object.entries(PILL)
+                .filter(([key]) => key !== 'alsoCounsellor')
+                .map(([, pill]) => canvas.findByRole('button', { name: pill })),
+        );
         await expect(canvas.getByRole('button', { name: SEND.invite })).toBeEnabled();
     },
 };
 
 /**
  * Invalid input never collapses: a malformed address keeps its field open with
- * the existing error text, and a number reserved by an open invite blocks the
- * Beratungsstelle with its own message. Validation rules are unchanged.
+ * the existing error text, and a number that already belongs to an agency blocks
+ * the Beratungsstelle with its own message. (A number reserved by an open ADMIN
+ * invite is not an error any more since #1026 slice 5 — see
+ * CounsellorJoinsPendingAgency.)
  */
 export const ErrorState: Story = {
     play: async ({ canvasElement }) => {
@@ -426,8 +433,8 @@ export const ErrorState: Story = {
 
         const agency = canvas.getByRole('combobox', { name: FIELD.agency });
         await userEvent.click(agency);
-        await userEvent.type(agency, '150');
-        await canvas.findByText(/durch eine offene Einladung reserviert|reserved by an open invite/);
+        await userEvent.type(agency, '140');
+        await canvas.findByText(/bereits vergeben|already taken/);
         await userEvent.keyboard('{Escape}');
         await userEvent.tab();
         await expect(canvas.queryByRole('button', { name: PILL.agency })).not.toBeInTheDocument();
@@ -488,8 +495,10 @@ export const TypeAheadOpen: Story = {
 
 /**
  * A NEW Beratungsstelle: the ⌄/^ split steps through free numbers only (1–140
- * exist, so ^ lands on 141) and hard-overwrites the value — the send button
- * says „Anlegen & einladen".
+ * exist, so ^ lands on 141) and hard-overwrites the value. Since #1026 slice 5
+ * only a BST-Admin founds a Beratungsstelle: with „Berater:in" the bar explains
+ * that and offers the switch; one click and „Anlegen & einladen" is live, with
+ * „Berät auch" preset.
  */
 export const NewAgencyNumber: Story = {
     args: {
@@ -507,7 +516,101 @@ export const NewAgencyNumber: Story = {
         const agencyUp = canvas.getAllByRole('button', { name: /Wert erhöhen|Increase value/ }).at(-1) as HTMLElement;
         await userEvent.click(agencyUp);
         await waitFor(() => expect(agency).toHaveValue('141'));
-        await expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled();
+        await expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
+        await canvas.findByText(/Eine neue Beratungsstelle legt nur eine BST-Admin an|Only an agency admin creates/);
+
+        await userEvent.click(
+            canvas.getByRole('button', { name: /Stattdessen als BST-Admin einladen|Invite as agency admin instead/ }),
+        );
+        await expect(await canvas.findByRole('button', { name: PILL.role })).toHaveTextContent(
+            /BST-Admin|Agency admin/,
+        );
+        await expect(canvas.getByRole('button', { name: PILL.alsoCounsellor })).toHaveTextContent(
+            /Berät auch|Also counsels/,
+        );
+        await waitFor(() => expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled());
+    },
+};
+
+/**
+ * A counsellor for a NEW Beratungsstelle whose BST-Admin invite is already open:
+ * number 150 is reserved by that invite, so the counsellor joins it and waits —
+ * the field says so instead of flagging a collision, and sending is allowed.
+ */
+export const CounsellorJoinsPendingAgency: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+        onSubmit: fn(() => true),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, '150');
+        await canvas.findByText(
+            /wird mit einer offenen Admin-Einladung angelegt|being created by an open admin invite/,
+        );
+        await userEvent.keyboard('{Escape}');
+        const send = canvas.getByRole('button', { name: SEND.createAndInvite });
+        await waitFor(() => expect(send).toBeEnabled());
+        await userEvent.click(send);
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    role: 'COUNSELLOR',
+                    agencyId: 150,
+                    agencyIdAllocationMode: 'MANUAL',
+                    tenantIdAllocationMode: 'EXISTING',
+                    tenantId: TENANTS[0].id,
+                    topicPermission: 'NONE',
+                }),
+            ),
+        );
+    },
+};
+
+/**
+ * „BST-Admin" adds „Berät auch" (default on, backend `alsoCounsellor`); turning
+ * it to „Nur Verwaltung" is what the submit carries.
+ */
+export const AgencyAdminAlsoCounsellor: Story = {
+    args: { initialValues: { ...PREFILLED, role: 'AGENCY_ADMIN' }, onSubmit: fn(() => true) },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const pill = await canvas.findByRole('button', { name: PILL.alsoCounsellor });
+        await expect(pill).toHaveTextContent(/Berät auch|Also counsels/);
+        await expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument();
+        await userEvent.click(pill);
+        await userEvent.click(await body.findByTitle(/Nur Verwaltung|Administration only/));
+        await userEvent.click(canvas.getByRole('button', { name: SEND.invite }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    role: 'AGENCY_ADMIN',
+                    alsoCounsellor: false,
+                    agencyId: 101,
+                    agencyIdAllocationMode: 'EXISTING',
+                }),
+            ),
+        );
+    },
+};
+
+/** „Mich selbst eintragen" sits in the send menu and hands over the Beratungsstelle chosen in the bar. */
+export const SelfAssignMenuEntry: Story = {
+    args: { initialValues: PREFILLED, onSelfAssign: fn() },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByText(/Mich selbst eintragen|Add myself/));
+        await expect(args.onSelfAssign).toHaveBeenCalledWith(expect.objectContaining({ id: 101 }));
     },
 };
 
@@ -556,13 +659,14 @@ export const RoleHidesFields: Story = {
     },
 };
 
-/** In the app (not a story prop): Rolle and „Themen & Fachbereiche" are disabled pills with a tooltip. */
-export const PlaceholdersAsInApp: Story = {
-    args: { placeholdersEnabled: false },
+/** The Träger tab only founds NEW Träger: „Rolle" is fixed on „Träger-Admin" there. */
+export const TraegerTabRoleFixed: Story = {
+    args: { allowedRoles: ['TENANT_ADMIN'], defaultRole: 'TENANT_ADMIN', includeAgencyField: false },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('button', { name: PILL.topics })).toBeDisabled();
-        await expect(canvas.getByRole('button', { name: PILL.role })).toBeDisabled();
+        const role = await canvas.findByRole('button', { name: PILL.role });
+        await expect(role).toHaveTextContent(/Träger-Admin|Tenant admin/);
+        await expect(role).toBeDisabled();
     },
 };
 

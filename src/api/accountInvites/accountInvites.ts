@@ -8,7 +8,29 @@ export type AccountInviteTargetRole =
     | 'COUNSELLOR'
     | 'PLATFORM_ADMIN'
     | 'ADVICE_SEEKER';
-export type AccountInviteStatus = 'DRAFT' | 'EMAIL_SENT' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED';
+/**
+ * `WAITING_FOR_UNIT` (#1026 slice 5, UserService#1216): the invite points at a
+ * Beratungsstelle / Träger that does not exist yet. It is stored, NOT sent — no
+ * link, no mail, no expiry — and goes out automatically once the unit's first
+ * admin has finished onboarding.
+ */
+export type AccountInviteStatus =
+    | 'WAITING_FOR_UNIT'
+    | 'DRAFT'
+    | 'EMAIL_SENT'
+    | 'ACCEPTED'
+    | 'EXPIRED'
+    | 'REVOKED'
+    | 'SUPERSEDED';
+/** Which unit a waiting invite waits for. */
+export type InviteWaitingForUnit = 'AGENCY' | 'TENANT';
+/** Derived on read: the waiting invite has no pending admin invite that would create its unit. */
+export type InviteQueueProblem = 'NO_UNIT_ADMIN';
+/**
+ * Per-counsellor topic permission (#1026 slice 6, UserService#1213). The CSV
+ * import may also send `true` (= CREATE) / `false` (= NONE).
+ */
+export type InviteTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 export type EmailVerificationStatus = 'NOT_REQUIRED' | 'PENDING' | 'VERIFIED' | 'FAILED';
 export type TwoFactorGateStatus = 'NOT_REQUIRED' | 'PENDING_SETUP' | 'ACTIVE' | 'WAIVED' | 'DISABLED_BY_POLICY';
 export type AccessGateStatus = 'BLOCKED_INVITE' | 'BLOCKED_EMAIL' | 'BLOCKED_TWO_FACTOR' | 'READY';
@@ -50,6 +72,17 @@ export interface AccountInviteDTO {
      */
     dpaForwardedAt?: string | null;
     dpaSignedAt?: string | null;
+    /** #1026: how the Träger / Beratungsstelle was addressed (null on invites created before). */
+    tenantIdAllocationMode?: AllocationMode | null;
+    agencyIdAllocationMode?: AllocationMode | null;
+    /** #1026: agency-admin invites only — the person also counsels. */
+    alsoCounsellor?: boolean | null;
+    /** #1026: set while `inviteStatus === 'WAITING_FOR_UNIT'`. */
+    waitingForUnit?: InviteWaitingForUnit | null;
+    queueProblem?: InviteQueueProblem | null;
+    importBatchId?: string | null;
+    /** #1026: counsellor topic permission; absent on an older backend. */
+    topicPermission?: InviteTopicPermission | null;
     rawToken?: string;
     acceptUrl?: string;
 }
@@ -82,6 +115,12 @@ export interface CreateAccountInviteRequest {
     expiresInDays?: number;
     templateId?: number;
     acceptBaseUrl?: string;
+    /** #1026 slice 3: AGENCY_ADMIN only; the backend defaults to `true`. */
+    alsoCounsellor?: boolean;
+    /** #1026 slice 5: one id per CSV file, so the rows of a file may arrive in any order. */
+    importBatchId?: string;
+    /** #1026 slice 6: omitted = the agency default. */
+    topicPermission?: InviteTopicPermission | boolean;
 }
 
 export interface SendAccountInviteRequest {
@@ -167,7 +206,8 @@ export const counsellorOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${
  */
 export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string => {
     if (targetRole === 'TENANT_ADMIN') return tenantAdminOnboardingAcceptBaseUrl;
-    if (targetRole === 'COUNSELLOR') return counsellorOnboardingAcceptBaseUrl;
+    // #1026 slice 3 (UserService#1215): agency admins use the counsellor wizard too.
+    if (targetRole === 'COUNSELLOR' || targetRole === 'AGENCY_ADMIN') return counsellorOnboardingAcceptBaseUrl;
     return accountInviteAcceptBaseUrl;
 };
 export { accountInvitesEndpoint };
@@ -223,19 +263,24 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
+        // JSON.stringify drops undefined keys, so an unset field is simply not sent
+        // (an omitted topicPermission means "the agency default", #1026 slice 6).
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,
             agencyIdAllocationMode: body.agencyIdAllocationMode,
+            alsoCounsellor: body.alsoCounsellor,
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
             firstName: body.firstName,
+            importBatchId: body.importBatchId,
             lastName: body.lastName,
             recipientEmail: body.recipientEmail,
             targetRole: body.targetRole,
             templateId: body.templateId,
             tenantId,
             tenantIdAllocationMode: body.tenantIdAllocationMode,
+            topicPermission: body.topicPermission,
         }),
     });
     return response.json();
@@ -262,8 +307,11 @@ export const sendAccountInvite = async (
         // BAD_GATEWAY_WITH_RESPONSE: same for a 502 SMTP failure (UserService#1160).
         // The invite stays DRAFT — the backend writes EMAIL_SENT only after SMTP
         // confirms the handover — so the admin can retry once mail is configured.
+        // CONFLICT_WITH_RESPONSE: a waiting invite answers 409 `UNIT_NOT_CREATED`
+        // until its unit exists (#1026 slice 5) — the caller explains that.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
@@ -284,8 +332,11 @@ export const resendAccountInvite = async (
         method: FETCH_METHODS.POST,
         skipAuth: false,
         // Same 403 (UserService#1006) and 502 (UserService#1160) surfacing as send.
+        // CONFLICT_WITH_RESPONSE: a waiting invite answers 409 `UNIT_NOT_CREATED`
+        // until its unit exists (#1026 slice 5) — the caller explains that.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
@@ -303,6 +354,29 @@ export const revokeAccountInvite = async (inviteId: number): Promise<AccountInvi
         method: FETCH_METHODS.POST,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
+    });
+    return response.json();
+};
+
+/**
+ * Changes the topic permission of one invite (#1026 slice 6, UserService#1213).
+ * When the account already exists, the counsellor's permission follows.
+ * 400/403 reach the caller as the raw Response so the table can explain them.
+ */
+export const updateAccountInviteTopicPermission = async (
+    inviteId: number,
+    topicPermission: InviteTopicPermission,
+): Promise<AccountInviteDTO> => {
+    const response = await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}/topic-permission`,
+        method: FETCH_METHODS.PUT,
+        skipAuth: false,
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+        ],
+        bodyData: JSON.stringify({ topicPermission }),
     });
     return response.json();
 };

@@ -272,7 +272,16 @@ describe('InviteCsvImportModal', () => {
         renderModal(
             parseResultOf({
                 rows: [
-                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    // #1026: only a BST-Admin founds a new Beratungsstelle, so the
+                    // "next free number" row is an agency-admin row.
+                    {
+                        line: 1,
+                        email: 'a@example.org',
+                        firstName: 'A',
+                        lastName: 'One',
+                        role: 'AGENCY_ADMIN',
+                        missingName: false,
+                    },
                     { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', id: 42, missingName: false },
                 ],
             }),
@@ -366,11 +375,13 @@ describe('InviteCsvImportModal', () => {
                 updateDate: null,
             },
         ];
+        // Default: a new Beratungsstelle with its number (a counsellor row must name it, #1026 slice 5).
         const row = (line: number, email: string, extra: Record<string, unknown> = {}) => ({
             line,
             email,
             firstName: 'A',
             lastName: 'B',
+            id: 900,
             missingName: false,
             ...extra,
         });
@@ -423,8 +434,12 @@ describe('InviteCsvImportModal', () => {
                 'Die Vorlage „Gibtsnicht“ gibt es hier nicht. Aktive Vorlagen: Standard (Zeile 2).',
             ],
             [
-                { role: 'AGENCY_ADMIN' },
-                'Die Rolle „BST-Admin“ kann hier erst eingeladen werden, wenn das Rollen-Backend (#1026 Schritt 3) da ist (Zeile 2).',
+                { id: undefined },
+                'Berater:innen für eine neue Beratungsstelle brauchen deren Nummer — dieselbe wie in der Zeile der BST-Admin (Zeile 2).',
+            ],
+            [
+                { role: 'COUNSELLOR', alsoCounsellor: false },
+                '„Berät auch“ gilt nur für BST-Admins — bitte leer lassen (Zeile 2).',
             ],
         ])('holds back a row with a context problem and says why in German (%o)', (extra, reason) => {
             renderAgency([row(2, 'anna@x.de', extra), row(3, 'bernd@x.de')]);
@@ -449,10 +464,54 @@ describe('InviteCsvImportModal', () => {
             ).toBeInTheDocument();
         });
 
-        it('holds back "bestehend" on the Träger tab until slice 4', () => {
+        it('sends "bestehend" on the Träger tab as an existing Träger (#1026 slice 4)', async () => {
             renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { id: 9, target: 'EXISTING' })] as never }));
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({ id: 9, target: 'EXISTING', role: 'TENANT_ADMIN' });
+        });
+
+        it('sends the founding BST-Admin row with "Berät auch" and every role the viewer may hand out', async () => {
+            renderAgency([
+                row(2, 'bernd@x.de', { role: 'AGENCY_ADMIN', alsoCounsellor: false }),
+                row(3, 'carla@x.de', { topicPermission: 'SELECT_EXISTING' }),
+            ]);
+            await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(2));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({
+                id: 900,
+                role: 'AGENCY_ADMIN',
+                alsoCounsellor: false,
+                topicPermission: undefined,
+            });
+            expect(createInvite.mock.calls[1][0]).toMatchObject({
+                id: 900,
+                role: 'COUNSELLOR',
+                alsoCounsellor: undefined,
+                topicPermission: 'SELECT_EXISTING',
+            });
+        });
+
+        it('marks a row the backend stored as waiting for its new Beratungsstelle', async () => {
+            createInvite.mockResolvedValueOnce({ waiting: true, noUnitAdmin: true });
+            renderAgency([row(2, 'carla@x.de')]);
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            expect(await rowCells('carla@x.de').findByText('Vorgemerkt')).toBeInTheDocument();
             expect(
-                rowCells('anna@x.de').getByText(/bestehenden Träger einladen geht erst mit #1026 Schritt 4/),
+                rowCells('carla@x.de').getByText(
+                    'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('sends other roles to the Berater tab when the Träger tab only founds Träger', () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }), {
+                tabRoles: ['TENANT_ADMIN'],
+            });
+            expect(
+                rowCells('anna@x.de').getByText(
+                    'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
+                ),
             ).toBeInTheDocument();
         });
 

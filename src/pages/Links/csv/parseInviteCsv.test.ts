@@ -232,3 +232,23 @@ describe('assignBatchTenantIds', () => {
         expect(assigned.get(2)).toBe(1);
     });
 });
+
+describe('parseInviteCsv — "Berät auch" (#1026 slice 3)', () => {
+    it('reads ja/nein and true/false by header', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Rolle;Beratungsstellen-ID;Berät auch\r\na@x.de;BST-Admin;900;ja\r\nb@x.de;BST-Admin;901;false\r\nc@x.de;BST-Admin;902;\r\n',
+        );
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.map((row) => row.alsoCounsellor)).toEqual([true, false, undefined]);
+    });
+
+    it('rejects an unknown "Berät auch" value with its own reason', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Berät auch\r\na@x.de;BST-Admin;vielleicht\r\n');
+        expect(result.rejected[0].reason).toBe('invalidAlsoCounsellor');
+    });
+
+    it('reads the ninth column of a header-less file as "Berät auch"', () => {
+        const result = parseInviteCsv('a@x.de,Anna,A,900,neu,BST-Admin,,,nein\n');
+        expect(result.rows[0].alsoCounsellor).toBe(false);
+    });
+});

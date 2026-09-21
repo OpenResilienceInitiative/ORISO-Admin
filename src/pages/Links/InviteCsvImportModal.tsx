@@ -16,6 +16,7 @@ import {
 } from './csv/parseInviteCsv';
 import {
     DEFAULT_TOPIC_PERMISSION,
+    inviteConflictReasonKey,
     ROLE_LABEL_KEYS,
     rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
@@ -37,12 +38,22 @@ export interface InviteCsvCreateRow {
     id?: number;
     /** #1026 "Ziel": EXISTING = invite into the unit with that id (agency space: UserService#1212). */
     target: InviteCsvTarget;
-    /** #1026 "Rolle" — always the tab's role today (other roles are held back until backend slice 3). */
+    /** #1026 "Rolle" (backend `targetRole`); an empty cell = the tab's role. */
     role: InviteRole;
     /** #1026 "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
     templateId?: number;
-    /** #1026 "Themen & Fachbereiche" (counsellors only) — sent once backend slice 6 lands. */
+    /** #1026 "Themen & Fachbereiche" (counsellors only); `undefined` = the agency default. */
     topicPermission?: TopicPermission;
+    /** #1026 "Berät auch" (agency admins only); `undefined` = the backend default (yes). */
+    alsoCounsellor?: boolean;
+}
+
+/** What the backend did with one row, as far as the preview shows it. */
+export interface InviteCsvCreateOutcome {
+    /** Stored, not sent: the row waits for its new Beratungsstelle / Träger (#1026 slice 5). */
+    waiting?: boolean;
+    /** Waiting, and no admin row for that unit has arrived (yet). */
+    noUnitAdmin?: boolean;
 }
 
 /**
@@ -67,8 +78,14 @@ interface ImportRow {
     /** "Vorlage" as written in the file. */
     template?: string;
     topicPermission?: TopicPermission;
+    alsoCounsellor?: boolean;
     rejectedReason?: InviteCsvRejectionReason;
     state: RowState;
+    /** `created` flavour: stored and waiting for its unit (#1026 slice 5). */
+    waiting?: boolean;
+    noUnitAdmin?: boolean;
+    /** `failed` flavour: the backend's 409 `X-Reason`, when it named one this preview explains. */
+    conflictReason?: string;
     /** `failed` flavour: the backend rejected the id with 409. */
     conflict?: boolean;
     /**
@@ -98,7 +115,17 @@ export interface InviteCsvImportModalProps {
     /** #1026: active templates of this tab, for the "Vorlage" column (by name or number). */
     templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
-    createInvite: (row: InviteCsvCreateRow) => Promise<void>;
+    createInvite: (row: InviteCsvCreateRow) => Promise<InviteCsvCreateOutcome | void>;
+    /**
+     * Roles this tab may import on top of the viewer rule. The Träger tab only
+     * founds NEW Träger (Träger admins); other roles belong to the Berater tab.
+     */
+    tabRoles?: InviteRole[];
+    /**
+     * Whether a Träger-admin row can name its Träger here: the counsellor tab
+     * invites into the viewer's OWN Träger, which a platform admin does not have.
+     */
+    ownTenantKnown?: boolean;
     /**
      * Role-aware explanation shown when a row fails with a 403 that carries no
      * usable backend message (UserService#1006). Provided by the tab, which
@@ -129,6 +156,8 @@ export const InviteCsvImportModal = ({
     viewerScope = 'platform',
     templates = [],
     createInvite,
+    tabRoles,
+    ownTenantKnown = true,
     forbiddenFallback,
     onClose,
     onCreated,
@@ -146,6 +175,7 @@ export const InviteCsvImportModal = ({
                 role: row.role,
                 template: row.template,
                 topicPermission: row.topicPermission,
+                alsoCounsellor: row.alsoCounsellor,
                 state: 'pending',
             })),
             ...parseResult.rejected.map<ImportRow>((row) => ({
@@ -165,7 +195,7 @@ export const InviteCsvImportModal = ({
         ? t('links.accountInvites.tenantId', 'Träger-ID')
         : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
     const roleLabel = (role: InviteRole) => t(...ROLE_LABEL_KEYS[role]);
-    const allowedRoles = rolesForViewer(viewerScope);
+    const allowedRoles = rolesForViewer(viewerScope).filter((role) => tabRoles == null || tabRoles.includes(role));
 
     const findTemplate = (raw: string) => {
         const wanted = raw.trim().toLowerCase();
@@ -182,7 +212,7 @@ export const InviteCsvImportModal = ({
     const rowIssue = (row: ImportRow): string | undefined => {
         const role = row.role ?? tabRole;
         const line = { line: row.line };
-        if (!allowedRoles.includes(role)) {
+        if (!rolesForViewer(viewerScope).includes(role)) {
             return t(
                 'links.csvImport.issue.roleNotAllowed',
                 'Die Rolle „{{role}}“ dürfen Sie nicht vergeben (Zeile {{line}}).',
@@ -192,10 +222,10 @@ export const InviteCsvImportModal = ({
                 },
             );
         }
-        if (role !== tabRole) {
+        if (!allowedRoles.includes(role)) {
             return t(
-                'links.csvImport.issue.rolePending',
-                'Die Rolle „{{role}}“ kann hier erst eingeladen werden, wenn das Rollen-Backend (#1026 Schritt 3) da ist (Zeile {{line}}).',
+                'links.csvImport.issue.roleOtherTab',
+                'Die Rolle „{{role}}“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile {{line}}).',
                 { role: roleLabel(role), ...line },
             );
         }
@@ -206,10 +236,27 @@ export const InviteCsvImportModal = ({
                 line,
             );
         }
-        if (row.target === 'EXISTING' && isTenantId) {
+        if (row.alsoCounsellor != null && role !== 'AGENCY_ADMIN') {
             return t(
-                'links.csvImport.issue.existingTenantPending',
-                'In einen bestehenden Träger einladen geht erst mit #1026 Schritt 4 — bitte „neu“ eintragen (Zeile {{line}}).',
+                'links.csvImport.issue.alsoCounsellorOnlyAgencyAdmin',
+                '„Berät auch“ gilt nur für BST-Admins — bitte leer lassen (Zeile {{line}}).',
+                line,
+            );
+        }
+        if (!isTenantId && role === 'TENANT_ADMIN' && !ownTenantKnown) {
+            return t(
+                'links.csvImport.issue.tenantAdminNeedsTenantTab',
+                'Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Invites“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).',
+                line,
+            );
+        }
+        // #1026 slice 5: a counsellor never founds a Beratungsstelle. A NEW one
+        // needs its number, so the row can wait for the BST-Admin row with the
+        // same number — "Neu" without a number could never be matched.
+        if (!isTenantId && role === 'COUNSELLOR' && row.target !== 'EXISTING' && row.explicitId == null) {
+            return t(
+                'links.csvImport.issue.counsellorNeedsAgencyNumber',
+                'Berater:innen für eine neue Beratungsstelle brauchen deren Nummer — dieselbe wie in der Zeile der BST-Admin (Zeile {{line}}).',
                 line,
             );
         }
@@ -281,23 +328,36 @@ export const InviteCsvImportModal = ({
         for (let i = 0; i < pendingRows.length; i += 1) {
             const row = pendingRows[i];
             const id = assigned.get(row.line);
-            patchRow(row.line, { state: 'creating', conflict: false, emailTaken: false, forbidden: false });
+            patchRow(row.line, {
+                state: 'creating',
+                conflict: false,
+                emailTaken: false,
+                forbidden: false,
+                conflictReason: undefined,
+            });
             try {
                 const role = row.role ?? tabRole;
-                // eslint-disable-next-line no-await-in-loop
-                await createInvite({
-                    recipientEmail: row.email,
-                    firstName: row.firstName.trim() || undefined,
-                    lastName: row.lastName.trim() || undefined,
-                    id,
-                    target: row.target ?? 'NEW',
-                    role,
-                    templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
-                    topicPermission:
-                        role === 'COUNSELLOR' ? row.topicPermission ?? DEFAULT_TOPIC_PERMISSION : undefined,
-                });
+                const outcome: InviteCsvCreateOutcome =
+                    // eslint-disable-next-line no-await-in-loop -- sequential on purpose (see above)
+                    ((await createInvite({
+                        recipientEmail: row.email,
+                        firstName: row.firstName.trim() || undefined,
+                        lastName: row.lastName.trim() || undefined,
+                        id,
+                        target: row.target ?? 'NEW',
+                        role,
+                        templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
+                        topicPermission:
+                            role === 'COUNSELLOR' ? row.topicPermission ?? DEFAULT_TOPIC_PERMISSION : undefined,
+                        alsoCounsellor: role === 'AGENCY_ADMIN' ? row.alsoCounsellor : undefined,
+                    })) as InviteCsvCreateOutcome | undefined) ?? {};
                 created += 1;
-                patchRow(row.line, { state: 'created', explicitId: id });
+                patchRow(row.line, {
+                    state: 'created',
+                    explicitId: id,
+                    waiting: outcome.waiting ?? false,
+                    noUnitAdmin: outcome.noUnitAdmin ?? false,
+                });
             } catch (error) {
                 failed += 1;
                 const conflict = error instanceof Response && error.status === 409;
@@ -305,13 +365,13 @@ export const InviteCsvImportModal = ({
                 if (forbidden && firstForbidden == null) {
                     firstForbidden = error as Response;
                 }
+                const reason = conflict ? (error as Response).headers.get(FETCH_ERRORS.X_REASON) : null;
                 patchRow(row.line, {
                     state: 'failed',
                     conflict,
                     forbidden,
-                    emailTaken:
-                        conflict &&
-                        (error as Response).headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE,
+                    emailTaken: reason === X_REASON.EMAIL_NOT_AVAILABLE,
+                    conflictReason: reason && inviteConflictReasonKey(reason) ? reason : undefined,
                 });
                 if (forbidden) {
                     // A role-level 403 applies to EVERY row — the remaining requests
@@ -364,6 +424,9 @@ export const InviteCsvImportModal = ({
         if (row.emailTaken) {
             return t('links.csvImport.status.emailTaken', 'E-Mail-Adresse bereits vorhanden');
         }
+        if (row.conflictReason === 'NO_PENDING_UNIT_ADMIN') {
+            return t('links.csvImport.status.noPendingUnitAdmin', 'Keine BST-Admin für diese neue Beratungsstelle');
+        }
         if (row.conflict) {
             return t('links.csvImport.status.idTaken', '{{idLabel}} vergeben', { idLabel });
         }
@@ -398,6 +461,12 @@ export const InviteCsvImportModal = ({
                     'Unbekannte Rolle — erlaubt sind Berater:in, BST-Admin oder Träger-Admin (Zeile {{line}})',
                     line,
                 );
+            case 'invalidAlsoCounsellor':
+                return t(
+                    'links.csvImport.reason.invalidAlsoCounsellor',
+                    'Unbekannter Wert bei „Berät auch“ — erlaubt sind ja, nein, true oder false (Zeile {{line}})',
+                    line,
+                );
             case 'invalidTopicPermission':
                 return t(
                     'links.csvImport.reason.invalidTopicPermission',
@@ -425,6 +494,27 @@ export const InviteCsvImportModal = ({
             case 'creating':
                 return <Tag color="gold">{t('links.csvImport.status.creating', 'Wird angelegt …')}</Tag>;
             case 'created':
+                if (row.waiting) {
+                    // #1026 slice 5: stored, not sent — explained in place, like a rejection.
+                    return (
+                        <span className={styles.rejection}>
+                            <Tag color={row.noUnitAdmin ? 'red' : 'blue'}>
+                                {t('links.csvImport.status.waiting', 'Vorgemerkt')}
+                            </Tag>
+                            <span className={styles.rejectionReason}>
+                                {row.noUnitAdmin
+                                    ? t(
+                                          'links.csvImport.status.waitingNoAdmin',
+                                          'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                                      )
+                                    : t(
+                                          'links.csvImport.status.waitingHint',
+                                          'Geht raus, sobald die Beratungsstelle angelegt ist.',
+                                      )}
+                            </span>
+                        </span>
+                    );
+                }
                 return <Tag color="green">{t('links.csvImport.status.created', 'Angelegt')}</Tag>;
             case 'failed':
                 return <Tag color="red">{failedRowLabel(row)}</Tag>;
@@ -550,6 +640,17 @@ export const InviteCsvImportModal = ({
             },
         },
         {
+            title: t('links.composer.alsoCounsellor.label', 'Berät auch'),
+            key: 'alsoCounsellor',
+            width: 110,
+            render: (_: unknown, row: ImportRow) => {
+                if (row.rejectedReason || (row.role ?? tabRole) !== 'AGENCY_ADMIN') return '—';
+                return row.alsoCounsellor === false
+                    ? t('links.composer.alsoCounsellor.no', 'Nur Verwaltung')
+                    : t('links.composer.alsoCounsellor.yes', 'Berät auch');
+            },
+        },
+        {
             title: '',
             key: 'remove',
             width: 48,
@@ -593,12 +694,12 @@ export const InviteCsvImportModal = ({
             <p className={styles.columnsHint}>
                 {isTenantId
                     ? t(
-                          'links.csvImport.columnsHintV2',
-                          'Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu), Rolle, Vorlage — nur E-Mail ist Pflicht. Leere Träger-IDs werden automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.',
+                          'links.csvImport.columnsHintV3',
+                          'Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu/bestehend), Rolle, Vorlage — nur E-Mail ist Pflicht. „bestehend“ lädt eine weitere Träger-Admin in den Träger mit dieser Nummer ein; leere Träger-IDs werden für neue Träger automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.',
                       )
                     : t(
-                          'links.csvImport.columnsHintAgencyV2',
-                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein; bei „neu“ muss eine angegebene Nummer frei sein, leere werden beim Anlegen vergeben.',
+                          'links.csvImport.columnsHintAgencyV3',
+                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false), Berät auch (ja/nein) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein. Eine neue Beratungsstelle legt ihre BST-Admin-Zeile an; Berater:innen-Zeilen mit derselben Nummer warten darauf — die Reihenfolge der Zeilen ist egal.',
                       )}
             </p>
             <ListingTable<ImportRow>

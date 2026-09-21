@@ -57,3 +57,52 @@ export const TOPIC_PERMISSION_LABEL_KEYS: Record<
         description: ['links.composer.topics.createHint', 'Darf neue Themen anlegen (Plus-Knopf).'],
     },
 };
+
+/**
+ * "Berät auch" for an agency-admin invite (#1026 slice 3, backend field
+ * `alsoCounsellor`, default `true`). The invitee can still change it while
+ * onboarding.
+ */
+export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
+    'yes' | 'no',
+    { title: [key: string, fallback: string]; description: [key: string, fallback: string] }
+> = {
+    yes: {
+        title: ['links.composer.alsoCounsellor.yes', 'Berät auch'],
+        description: [
+            'links.composer.alsoCounsellor.yesHint',
+            'Verwaltet die Beratungsstelle und berät selbst (Berater:in-Konto).',
+        ],
+    },
+    no: {
+        title: ['links.composer.alsoCounsellor.no', 'Nur Verwaltung'],
+        description: ['links.composer.alsoCounsellor.noHint', 'Verwaltet die Beratungsstelle, berät nicht selbst.'],
+    },
+};
+
+/**
+ * German explanations for the 409 reasons of the invite and self-assignment
+ * endpoints (#1026 slices 3 and 5). Keyed by the backend's `X-Reason` header.
+ */
+export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback: string]> = {
+    NO_PENDING_UNIT_ADMIN: [
+        'links.accountInvites.conflict.noPendingUnitAdmin',
+        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ (mit „Berät auch“) und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
+    ],
+    UNIT_NOT_CREATED: [
+        'links.accountInvites.conflict.unitNotCreated',
+        'Diese Einladung kann noch nicht versendet werden: Die Beratungsstelle bzw. der Träger ist noch nicht angelegt. Sie geht automatisch raus, sobald die Admin-Person ihr Onboarding abgeschlossen hat.',
+    ],
+    SELF_ASSIGNMENT_ALREADY_EXISTS: [
+        'links.selfAssign.conflict.alreadyExists',
+        'Sie sind in dieser Beratungsstelle bereits in dieser Rolle eingetragen.',
+    ],
+    CONSULTANT_IDENTITY_ALREADY_GRANTED: [
+        'links.selfAssign.conflict.alreadyExists',
+        'Sie sind in dieser Beratungsstelle bereits in dieser Rolle eingetragen.',
+    ],
+};
+
+/** The explanation for a 409 `X-Reason`, or `undefined` for a reason this module does not know. */
+export const inviteConflictReasonKey = (reason: string | null | undefined) =>
+    reason ? INVITE_CONFLICT_REASON_KEYS[reason] : undefined;

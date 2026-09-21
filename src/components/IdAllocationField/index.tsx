@@ -30,6 +30,13 @@ export interface IdAllocationFieldProps {
      * a typed number means "the unit with that number").
      */
     allowCreate?: boolean;
+    /**
+     * #1026 slice 5: a number reserved by an open ADMIN invite is not a
+     * collision for this invite — it joins that unit (a counsellor waits for
+     * it, a second admin shares the reservation). The field then explains
+     * instead of showing an error. Default `false` (reserved = taken).
+     */
+    reservedJoinsPendingUnit?: boolean;
     /** Called when focus leaves the field (the invite bar collapses a valid field then). */
     onBlur?: () => void;
     inputRef?: Ref<HTMLInputElement>;
@@ -68,6 +75,7 @@ export const IdAllocationField = ({
     locked = false,
     searchUnits,
     allowCreate = true,
+    reservedJoinsPendingUnit = false,
     onBlur,
     inputRef,
     className,
@@ -85,7 +93,7 @@ export const IdAllocationField = ({
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; minWidth: number }>();
 
     const inactive = disabled || locked;
-    const isError = BLOCKING_STATES.includes(validation);
+    const isError = BLOCKING_STATES.includes(validation) && !(reservedJoinsPendingUnit && validation === 'reserved');
 
     const newLabel = t('idAllocationField.new', 'Neu');
     const unitText = (option: IdUnitOption) =>
@@ -269,7 +277,13 @@ export const IdAllocationField = ({
             : t('idAllocationField.emptyHintExisting', 'Suchen oder Nummer eingeben.'),
         checking: t('idAllocationField.checking', 'Verfügbarkeit wird geprüft …'),
         available: undefined,
-        reserved: t('idAllocationField.reserved', 'Diese ID ist durch eine offene Einladung reserviert.'),
+        reserved: reservedJoinsPendingUnit
+            ? t(
+                  'idAllocationField.reservedJoinsPending',
+                  'Nr. {{id}} wird mit einer offenen Admin-Einladung angelegt — diese Einladung schließt sich an.',
+                  { id: value },
+              )
+            : t('idAllocationField.reserved', 'Diese ID ist durch eine offene Einladung reserviert.'),
         assigned: t('idAllocationField.assigned', 'Diese ID ist bereits vergeben.'),
         error: t('idAllocationField.serviceError', 'Verfügbarkeit konnte nicht geprüft werden.'),
         existing: undefined,

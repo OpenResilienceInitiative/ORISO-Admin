@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import type { TopicPermission } from '../inviteModel';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import { InviteProgressBoard } from './InviteProgressBoard';
 
@@ -248,4 +251,147 @@ export const Empty: Story = {
 export const Mobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
+};
+
+/*
+ * #1026: a new Beratungsstelle with a queue. Oskar's BST-Admin invite founds
+ * agency 900; Lena and Tom wait for it ("Beratungsstelle noch nicht angelegt").
+ * Rita waits for agency 901, whose admin invite was revoked — the problem badge
+ * "Kein BST-Admin" says so. Anke is an accepted counsellor whose topic
+ * permission is changed right in the table.
+ */
+const queueInvite = (overrides: Partial<AccountInviteDTO>): AccountInviteDTO =>
+    tenantInvite({ targetRole: 'COUNSELLOR', tenantId: 40, expiresAt: null, ...overrides });
+
+const QUEUE_INVITES: AccountInviteDTO[] = [
+    queueInvite({
+        targetRole: 'AGENCY_ADMIN',
+        firstName: 'Oskar',
+        lastName: 'Brandt',
+        recipientEmail: 'oskar.brandt@example.org',
+        agencyId: 900,
+        agencyIdAllocationMode: 'MANUAL',
+        alsoCounsellor: true,
+        expiresAt: '2026-10-01T10:00:00Z',
+    }),
+    queueInvite({
+        firstName: 'Lena',
+        lastName: 'Vogt',
+        recipientEmail: 'lena.vogt@example.org',
+        agencyId: 900,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    }),
+    queueInvite({
+        firstName: 'Tom',
+        lastName: 'Keller',
+        recipientEmail: 'tom.keller@example.org',
+        agencyId: 900,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'SELECT_EXISTING',
+    }),
+    queueInvite({
+        firstName: 'Rita',
+        lastName: 'Sommer',
+        recipientEmail: 'rita.sommer@example.org',
+        agencyId: 901,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        queueProblem: 'NO_UNIT_ADMIN',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    }),
+    queueInvite({
+        firstName: 'Anke',
+        lastName: 'Roth',
+        recipientEmail: 'anke.roth@example.org',
+        agencyId: 12,
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-09-20T10:00:00Z',
+        topicPermission: 'NONE',
+    }),
+];
+
+const QueueBoard = ({
+    onTopicPermissionChange,
+}: {
+    onTopicPermissionChange?: (invite: AccountInviteDTO, value: TopicPermission) => void;
+}) => {
+    const [invites, setInvites] = useState(QUEUE_INVITES);
+    return (
+        <InviteProgressBoard
+            invites={invites}
+            loading={false}
+            targetRole="COUNSELLOR"
+            selectedIds={[]}
+            onSelectionChange={() => {}}
+            isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
+            onResend={() => {}}
+            onCopyLink={() => {}}
+            onRevoke={() => {}}
+            onTopicPermissionChange={(invite, value) => {
+                onTopicPermissionChange?.(invite, value);
+                setInvites((current) =>
+                    current.map((row) => (row.id === invite.id ? { ...row, topicPermission: value } : row)),
+                );
+            }}
+        />
+    );
+};
+
+const rowOf = (canvasElement: HTMLElement, email: string) =>
+    within(within(canvasElement).getByText(email).closest('tr') as HTMLElement);
+
+/**
+ * Waiting invites get a NEW first step, „Beratungsstelle noch nicht angelegt";
+ * manual resend is disabled (with a tooltip, not hidden), revoke stays possible.
+ */
+export const QueueWaitingStep: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const lena = rowOf(canvasElement, 'lena.vogt@example.org');
+        await expect(
+            lena.getAllByText(/Beratungsstelle noch nicht angelegt|Beratungsstelle not created yet/).length,
+        ).toBeGreaterThan(0);
+        await expect(lena.getByRole('button', { name: /Erinnerung erneut senden|resend/i })).toBeDisabled();
+        await expect(lena.getByRole('button', { name: /Einladung widerrufen|revoke/i })).toBeEnabled();
+    },
+};
+
+/** A waiting invite whose unit has no admin invite any more: problem badge „Kein BST-Admin". */
+export const QueueProblemBadge: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const rita = rowOf(canvasElement, 'rita.sommer@example.org');
+        await expect(rita.getByText(/Kein BST-Admin|No agency admin/)).toBeInTheDocument();
+        await expect(
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/Kein BST-Admin|No agency admin/),
+        ).toBeNull();
+    },
+};
+
+/** „Themen & Fachbereiche" per row — also for an accepted counsellor (the account follows). */
+export const TopicPermissionInTable: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ args, canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const anke = rowOf(canvasElement, 'anke.roth@example.org');
+        await userEvent.click(anke.getByRole('combobox', { name: /Themen für Anke Roth|Topics for Anke Roth/ }));
+        await userEvent.click(await body.findByTitle(/Darf weitere Themen anlegen|may create/i));
+        await waitFor(() => expect(args.onTopicPermissionChange).toHaveBeenCalledWith(expect.anything(), 'CREATE'));
+    },
+};
+
+/** The same queue on a phone (412 px): the topic select and the problem badge stack into the card. */
+export const QueueMobile: Story = {
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
 };

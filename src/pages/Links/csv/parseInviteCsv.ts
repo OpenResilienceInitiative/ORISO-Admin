@@ -3,7 +3,7 @@
  * "Import CSV File"; extended for #1026 — the CSV is the main invite path).
  *
  * Columns, in this order when the file has no header row:
- *   E-Mail · Vorname · Name · ID · Ziel · Rolle · Vorlage · Themen & Fachbereiche
+ *   E-Mail · Vorname · Name · ID · Ziel · Rolle · Vorlage · Themen & Fachbereiche · Berät auch
  * Only E-Mail is required; old four-column files keep working unchanged. With a
  * recognised header row, columns are matched by their HEADER instead, so an
  * admin may leave columns out or reorder them.
@@ -47,12 +47,23 @@ export type InviteCsvRejectionReason =
     /** "bestehend" names a unit by its number — without one there is nothing to invite into. */
     | 'existingWithoutId'
     | 'invalidRole'
-    | 'invalidTopicPermission';
+    | 'invalidTopicPermission'
+    /** "Berät auch" is neither yes nor no. */
+    | 'invalidAlsoCounsellor';
 
 /** "Ziel": a NEW unit (created with the invite) or an EXISTING one. */
 export type InviteCsvTarget = 'NEW' | 'EXISTING';
 
-type ColumnKey = 'email' | 'firstName' | 'lastName' | 'id' | 'target' | 'role' | 'template' | 'topicPermission';
+type ColumnKey =
+    | 'email'
+    | 'firstName'
+    | 'lastName'
+    | 'id'
+    | 'target'
+    | 'role'
+    | 'template'
+    | 'topicPermission'
+    | 'alsoCounsellor';
 
 /** Column order of a header-less file (and of the downloadable example). */
 export const INVITE_CSV_COLUMN_ORDER: ColumnKey[] = [
@@ -64,6 +75,7 @@ export const INVITE_CSV_COLUMN_ORDER: ColumnKey[] = [
     'role',
     'template',
     'topicPermission',
+    'alsoCounsellor',
 ];
 
 /** Recognised header labels per column (lower-cased, trimmed). */
@@ -99,6 +111,16 @@ const HEADER_LABELS: Record<Exclude<ColumnKey, 'email'>, string[]> = {
         'topicpermission',
         'topic permission',
         'topic_permission',
+    ],
+    alsoCounsellor: [
+        'berät auch',
+        'beraet auch',
+        'auch berater:in',
+        'auch beraterin',
+        'also counsellor',
+        'also counselor',
+        'alsocounsellor',
+        'also_counsellor',
     ],
 };
 
@@ -150,6 +172,19 @@ const TOPIC_PERMISSION_VALUES: Record<string, TopicPermission> = {
     '0': 'NONE',
 };
 
+/** "Berät auch" (agency admins, backend `alsoCounsellor`): the yes/no words a spreadsheet user types. */
+const YES_NO_VALUES: Record<string, boolean> = {
+    ja: true,
+    nein: false,
+    true: true,
+    false: false,
+    yes: true,
+    no: false,
+    '1': true,
+    '0': false,
+    x: true,
+};
+
 export interface ParsedInviteRow {
     /** 1-based physical line number of the record's first line in the file. */
     line: number;
@@ -166,6 +201,8 @@ export interface ParsedInviteRow {
     template?: string;
     /** "Themen & Fachbereiche"; `undefined` = the default (NONE). */
     topicPermission?: TopicPermission;
+    /** "Berät auch" (agency admins); `undefined` = the backend default (yes). */
+    alsoCounsellor?: boolean;
     /** First and/or last name empty — still importable (owner decision), just flagged. */
     missingName: boolean;
 }
@@ -342,6 +379,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         const roleRaw = normalize(cell('role'));
         const template = cell('template');
         const topicRaw = normalize(cell('topicPermission'));
+        const alsoCounsellorRaw = normalize(cell('alsoCounsellor'));
 
         if (!EMAIL_PATTERN.test(email)) {
             reject('invalidEmail');
@@ -374,6 +412,12 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             return;
         }
 
+        const alsoCounsellor = alsoCounsellorRaw === '' ? undefined : YES_NO_VALUES[alsoCounsellorRaw];
+        if (alsoCounsellorRaw !== '' && alsoCounsellor == null) {
+            reject('invalidAlsoCounsellor');
+            return;
+        }
+
         rows.push({
             line: record.line,
             email,
@@ -384,6 +428,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             role,
             template: template || undefined,
             topicPermission,
+            alsoCounsellor,
             missingName: firstName === '' || lastName === '',
         });
     });

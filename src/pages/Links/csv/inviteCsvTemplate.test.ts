@@ -41,17 +41,24 @@ describe('buildInviteCsvTemplate — #1026 columns', () => {
         role: 'Rolle',
         template: 'Vorlage',
         topicPermission: 'Themen & Fachbereiche',
+        alsoCounsellor: 'Berät auch',
     };
 
-    it('the agency example imports cleanly with every new column', () => {
+    it('the agency example imports cleanly with every new column, founding admin row included', () => {
         const csv = buildInviteCsvTemplate(FULL, { role: 'Berater:in', idKind: 'agency' });
-        expect(csv).toContain('E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche');
+        expect(csv).toContain(
+            'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch',
+        );
         const result = parseInviteCsv(csv);
         expect(result.rejected).toHaveLength(0);
-        expect(result.rows.map((row) => [row.target, row.role, row.topicPermission])).toEqual([
-            ['EXISTING', 'COUNSELLOR', 'NONE'],
-            ['NEW', 'COUNSELLOR', 'SELECT_EXISTING'],
-            ['EXISTING', 'COUNSELLOR', 'CREATE'],
+        expect(
+            result.rows.map((row) => [row.id, row.target, row.role, row.topicPermission, row.alsoCounsellor]),
+        ).toEqual([
+            [42, 'EXISTING', 'COUNSELLOR', 'NONE', undefined],
+            // A new Beratungsstelle: its BST-Admin row founds it, the counsellor row waits for it.
+            [900, 'NEW', 'AGENCY_ADMIN', undefined, true],
+            [900, 'NEW', 'COUNSELLOR', 'SELECT_EXISTING', undefined],
+            [42, 'EXISTING', 'COUNSELLOR', 'CREATE', undefined],
         ]);
     });
 

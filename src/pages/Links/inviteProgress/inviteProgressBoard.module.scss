@@ -90,11 +90,42 @@
     color: var(--m3-error, #b1005e);
 }
 
+/* #1026 slice 5: a waiting invite without unit admin — same magenta role as a
+   dead invite, because the admin has to act. Sits under the status chip. */
+
+.problemChip {
+    display: flex;
+    width: fit-content;
+    align-items: center;
+    margin-top: 4px;
+    padding: 2px 10px;
+    border: 1px solid color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+    border-radius: 30px;
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
+    color: var(--m3-error, #b1005e);
+    font: 500 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+/* #1026 slice 6: per-row topic permission. */
+.topicSelect {
+    min-width: 220px;
+}
+
+.topicNone {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 .actions {
     display: inline-flex;
     gap: 2px;
     white-space: nowrap;
+}
+
+.disabledActionSlot {
+    display: inline-flex;
 }
 
 .revokeAction:not(:disabled) {
@@ -172,6 +203,18 @@
         color: var(--m3-on-surface-variant, #444748);
         font: 500 11px/16px var(--m3-body-font-family);
         letter-spacing: 0.5px;
+    }
+
+    .topicCell {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .topicSelect {
+        min-width: 0;
+        flex: 1 1 200px;
     }
 
     .actionsCell {

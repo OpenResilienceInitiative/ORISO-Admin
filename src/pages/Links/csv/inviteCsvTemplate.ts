@@ -18,6 +18,7 @@ export interface InviteCsvTemplateLabels {
     role?: string;
     template?: string;
     topicPermission?: string;
+    alsoCounsellor?: string;
 }
 
 /** Sample cell values for the #1026 columns; they depend on the importing tab. */
@@ -45,17 +46,26 @@ export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?
             ['bernd.muster@traeger.de', 'Bernd', 'Muster', ''],
         ];
     } else {
-        header.push(labels.target ?? '', labels.role ?? '', labels.template ?? '', labels.topicPermission ?? '');
+        header.push(
+            labels.target ?? '',
+            labels.role ?? '',
+            labels.template ?? '',
+            labels.topicPermission ?? '',
+            labels.alsoCounsellor ?? '',
+        );
+        // #1026 slice 5: a NEW Beratungsstelle is founded by its BST-Admin row;
+        // counsellor rows name the same number and wait for it (any row order).
         rows =
             samples.idKind === 'agency'
                 ? [
-                      ['anna.beispiel@traeger.de', 'Anna', 'Beispiel', '42', 'bestehend', samples.role, '', 'NONE'],
-                      ['bernd.muster@traeger.de', 'Bernd', 'Muster', '', 'neu', samples.role, '', 'SELECT_EXISTING'],
-                      ['carla.test@traeger.de', 'Carla', 'Test', '42', 'bestehend', samples.role, '', 'true'],
+                      ['anna.beispiel@traeger.de', 'Anna', 'Beispiel', '42', 'bestehend', samples.role, '', 'NONE', ''],
+                      ['bernd.muster@traeger.de', 'Bernd', 'Muster', '900', 'neu', 'BST-Admin', '', '', 'ja'],
+                      ['carla.test@traeger.de', 'Carla', 'Test', '900', 'neu', samples.role, '', 'SELECT_EXISTING', ''],
+                      ['dora.probe@traeger.de', 'Dora', 'Probe', '42', 'bestehend', samples.role, '', 'true', ''],
                   ]
                 : [
-                      ['anna.beispiel@traeger.de', 'Anna', 'Beispiel', '42', 'neu', samples.role, '', ''],
-                      ['bernd.muster@traeger.de', 'Bernd', 'Muster', '', 'neu', samples.role, '', ''],
+                      ['anna.beispiel@traeger.de', 'Anna', 'Beispiel', '42', 'neu', samples.role, '', '', ''],
+                      ['bernd.muster@traeger.de', 'Bernd', 'Muster', '', 'neu', samples.role, '', '', ''],
                   ];
     }
     return `\ufeff${[header, ...rows].map((cells) => cells.join(';')).join('\r\n')}\r\n`;

@@ -1,0 +1,20 @@
+/* "Mich selbst eintragen" (#1026 slice 3): role, Beratungsstelle, topics stacked. */
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.current {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}

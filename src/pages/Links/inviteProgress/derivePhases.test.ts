@@ -446,3 +446,43 @@ describe('matchesInviteQuery (A4)', () => {
         expect(matchesInviteQuery(invite(), '')).toBe(true);
     });
 });
+
+describe('derivePhases — waiting for a new unit (#1026 slice 5)', () => {
+    const waiting = (overrides: Partial<AccountInviteDTO> = {}) =>
+        invite({
+            targetRole: 'COUNSELLOR',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'AGENCY',
+            emailDeliveryStatus: null,
+            expiresAt: null,
+            ...overrides,
+        });
+
+    it('puts "Beratungsstelle noch nicht angelegt" in front as the current step', () => {
+        expect(states(waiting())).toEqual([
+            'agencyUnitCreated:current',
+            'invited:pending',
+            'accountCreated:pending',
+            'completed:pending',
+        ]);
+    });
+
+    it('waits for the Träger when the unit is a new Träger', () => {
+        expect(states(waiting({ targetRole: 'AGENCY_ADMIN', waitingForUnit: 'TENANT' }))[0]).toBe(
+            'tenantUnitCreated:current',
+        );
+    });
+
+    it('turns the first step into a warning while no unit admin is pending', () => {
+        expect(states(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))[0]).toBe('agencyUnitCreated:warning');
+    });
+
+    it('files a waiting invite under "Eingeladen", and one without unit admin under "Problem"', () => {
+        expect(deriveInviteBucket(waiting())).toBe('invited');
+        expect(deriveInviteBucket(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))).toBe('problem');
+    });
+
+    it('drops the extra step once the invite has been released', () => {
+        expect(states(invite({ targetRole: 'COUNSELLOR', waitingForUnit: null }))[0]).toBe('invited:done');
+    });
+});

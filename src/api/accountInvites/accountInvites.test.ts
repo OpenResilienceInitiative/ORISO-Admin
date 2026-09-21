@@ -160,12 +160,9 @@ describe('acceptBaseUrlForRole', () => {
         expect(counsellorOnboardingAcceptBaseUrl.endsWith('/admin/counsellor-onboarding')).toBe(true);
     });
 
-    it.each(['AGENCY_ADMIN', 'PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)(
-        'keeps %s invites on the app-layer accept route',
-        (role) => {
-            expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);
-        },
-    );
+    it.each(['PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)('keeps %s invites on the app-layer accept route', (role) => {
+        expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);
+    });
 });
 
 describe('invite email template API', () => {

@@ -5,6 +5,7 @@ import type { DefaultOptionType } from 'antd/es/select';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     agencyIdAllocationClient,
@@ -22,7 +23,7 @@ import {
     type IdUnitSearch,
     type UseIdAllocationResult,
 } from '../../components/IdAllocationField';
-import { M3Tooltip } from '../../components/M3Tooltip';
+import { M3Button } from '../../components/M3Button';
 import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
@@ -32,6 +33,7 @@ import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_2
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import {
+    ALSO_COUNSELLOR_LABEL_KEYS,
     DEFAULT_TOPIC_PERMISSION,
     ROLE_LABEL_KEYS,
     rolesForViewer,
@@ -80,12 +82,11 @@ export interface InviteComposerValues {
     /** Only set in `direct` mode — `createOnly` posts without a template. */
     templateId?: number;
     sendMode: InviteSendMode;
-    /** #1026: role of the invited person (placeholder until the backend takes it). */
+    /** #1026: role of the invited person (backend `targetRole`). */
     role?: InviteRole;
-    /**
-     * #1026: counsellors only — "Themen & Fachbereiche" (backend field
-     * `topicPermission`, sent once backend slice 6 lands).
-     */
+    /** #1026: agency admins only — "Berät auch" (backend `alsoCounsellor`, default true). */
+    alsoCounsellor?: boolean;
+    /** #1026: counsellors only — "Themen & Fachbereiche" (backend field `topicPermission`). */
     topicPermission?: TopicPermission;
     /** #1026: whether the Träger / Beratungsstelle already exists or is created by this invite. */
     tenantTarget?: InviteUnitTarget;
@@ -181,11 +182,17 @@ export interface InviteComposerProps {
     /** Role preselected in the "Rolle" field (the tab's target role in the app). */
     defaultRole?: InviteRole;
     /**
-     * "Rolle" and "Themen selbst" are placeholders until the backend exists
-     * (#1026): in the app they render disabled with an explanatory tooltip.
-     * Stories set this to show them working.
+     * Narrows the roles this bar offers on top of the viewer rule — the Träger
+     * tab only invites Träger admins of NEW Träger. Default: every role the
+     * viewer may hand out.
      */
-    placeholdersEnabled?: boolean;
+    allowedRoles?: InviteRole[];
+    /**
+     * #1026 slice 3: "Mich selbst eintragen" in the send menu. Called with the
+     * Beratungsstelle currently chosen in the bar (if it is an existing one).
+     * Omit to hide the entry.
+     */
+    onSelfAssign?: (agency?: IdUnitOption) => void;
     /** Type-ahead sources for the ID fields (#1026). Omit and the menu offers only "Neu" + typed numbers. */
     searchTenants?: IdUnitSearch;
     /** Agency search; receives the currently chosen Träger so results can be scoped to it. */
@@ -197,18 +204,30 @@ export interface InviteComposerProps {
     tenantAllowCreate?: boolean;
     /** Prefill (stories, later: resend/edit). Valid prefilled fields start collapsed. */
     initialValues?: Partial<
-        Pick<InviteComposerValues, 'recipientEmail' | 'firstName' | 'lastName' | 'role' | 'topicPermission'>
+        Pick<
+            InviteComposerValues,
+            'recipientEmail' | 'firstName' | 'lastName' | 'role' | 'topicPermission' | 'alsoCounsellor'
+        >
     > & { tenant?: IdUnitOption; agency?: IdUnitOption };
     className?: string;
 }
 
-type CollapsibleKey = 'email' | 'firstName' | 'lastName' | 'role' | 'tenant' | 'agency' | 'topics' | 'template';
+type CollapsibleKey =
+    | 'email'
+    | 'firstName'
+    | 'lastName'
+    | 'role'
+    | 'tenant'
+    | 'agency'
+    | 'alsoCounsellor'
+    | 'topics'
+    | 'template';
 
 /**
  * Select-type fields (#1026): they have no typing phase, so they collapse as
  * soon as a value is chosen and whenever focus moves on to another field.
  */
-const SELECT_KEYS: CollapsibleKey[] = ['role', 'topics', 'template'];
+const SELECT_KEYS: CollapsibleKey[] = ['role', 'alsoCounsellor', 'topics', 'template'];
 
 /** Select option with a one-line explanation under its title (`description` rides along in the option data). */
 const renderOptionWithHint = (option: { label?: ReactNode; data: DefaultOptionType }): ReactNode => {
@@ -294,7 +313,8 @@ export const InviteComposer = ({
     ownTenant,
     ownAgency,
     defaultRole,
-    placeholdersEnabled = false,
+    allowedRoles,
+    onSelfAssign,
     searchTenants,
     searchAgencies,
     tenantAllowCreate = requireTenantId,
@@ -325,7 +345,9 @@ export const InviteComposer = ({
     const initialTenantUnit = tenantAllowCreate && !tenantLocked ? initialValues?.tenant : fixedTenant;
     const initialAgencyUnit = lockedAgency ?? initialValues?.agency;
 
-    const roleOptions = rolesForViewer(viewerScope);
+    const roleOptions = rolesForViewer(viewerScope).filter(
+        (option) => allowedRoles == null || allowedRoles.includes(option),
+    );
     const [role, setRole] = useState<InviteRole>(() => {
         const wanted = initialValues?.role ?? defaultRole ?? roleOptions[0];
         return roleOptions.includes(wanted) ? wanted : roleOptions[0];
@@ -335,6 +357,7 @@ export const InviteComposer = ({
     const [topicPermission, setTopicPermission] = useState<TopicPermission>(
         initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
     );
+    const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
     // default, deliberate manual mode with authoritative availability states.
@@ -364,6 +387,7 @@ export const InviteComposer = ({
     const tenantId = tenantAllocation.value;
     const showAgencyField = includeAgencyField && role !== 'TENANT_ADMIN';
     const showTopicsToggle = showAgencyField && role === 'COUNSELLOR';
+    const showAlsoCounsellor = showAgencyField && role === 'AGENCY_ADMIN';
 
     const searchAgenciesInTenant = useCallback(
         (query: string) => (searchAgencies ? searchAgencies(query, { tenantId }) : []),
@@ -392,13 +416,44 @@ export const InviteComposer = ({
     // Auto ("Neu anlegen") is always sendable; a manual id only once the check
     // confirmed it free; an existing unit always. Outside the Träger tab the
     // field stays optional, as before.
-    const tenantIdValid = !requireTenantId || tenantAllocation.canSubmit;
-    const agencyIdValid = !showAgencyField || agencyAllocation.canSubmit;
+    // A manual Beratungsstellen-Nr. that an open admin invite reserved is not a
+    // collision any more (#1026 slice 5): the invite joins that new unit — a
+    // counsellor waits for it, a second admin shares the reservation.
+    const agencyJoinsPendingUnit =
+        showAgencyField && agencyAllocation.mode === 'manual' && agencyAllocation.validation === 'reserved';
+    const agencyIsNew = showAgencyField && isNewUnit(agencyAllocation);
+    // Outside the Träger tab the Träger field names an EXISTING Träger. It is
+    // required where the backend cannot infer it: a Träger-admin invite, and a
+    // new Beratungsstelle (an existing one brings its own Träger).
+    const tenantRequired = requireTenantId || role === 'TENANT_ADMIN' || agencyIsNew;
+    const tenantMayBeNew = tenantAllowCreate && !tenantLocked;
+    const tenantIdValid =
+        !tenantRequired || (tenantMayBeNew ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing');
+    const agencyIdValid = !showAgencyField || agencyAllocation.canSubmit || agencyJoinsPendingUnit;
+    /*
+     * #1026 slice 5 (breaking): a counsellor invite no longer creates a new
+     * Beratungsstelle. It may only WAIT for one whose admin invite is open —
+     * which the reservation of a manual number proves. "Neu" (next free number)
+     * or a free number has no admin, and the backend refuses it with 409
+     * NO_PENDING_UNIT_ADMIN. The bar says so up front and offers the fix.
+     */
+    const counsellorNeedsUnitAdmin =
+        role === 'COUNSELLOR' &&
+        agencyIsNew &&
+        !agencyJoinsPendingUnit &&
+        (agencyAllocation.mode === 'auto' || agencyAllocation.validation === 'available');
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     // Counsellor invites provision a person (#384): without names the invite
     // cannot create a usable counsellor account, so the send button stays off.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
-    const isValid = emailValid && !emailTaken && tenantIdValid && agencyIdValid && templateValid && namesValid;
+    const isValid =
+        emailValid &&
+        !emailTaken &&
+        tenantIdValid &&
+        agencyIdValid &&
+        !counsellorNeedsUnitAdmin &&
+        templateValid &&
+        namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     // #1026 collapse: a field shrinks to "✓ Label" once it loses focus with a
@@ -409,8 +464,9 @@ export const InviteComposer = ({
         firstName: firstName.trim().length > 0,
         lastName: lastName.trim().length > 0,
         tenant: tenantAllowCreate ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
-        agency: agencyAllocation.canSubmit,
+        agency: agencyAllocation.canSubmit || agencyJoinsPendingUnit,
         role: true,
+        alsoCounsellor: true,
         topics: true,
         template: selectedTemplate != null,
     };
@@ -467,7 +523,6 @@ export const InviteComposer = ({
             if (key !== focusedKey && !collapsedKeys.has(key)) collapse(key);
         });
     };
-    const placeholderTooltip = placeholdersEnabled ? '' : t('links.composer.comingWith1026', 'Kommt mit #1026');
 
     // Bulk mode (#316): while rows are checked, sending acts on the selection
     // (resend per row) instead of creating a new invite. Resending always mails,
@@ -503,15 +558,23 @@ export const InviteComposer = ({
             return t('links.composer.blocked.names', 'Bitte Vorname und Name eingeben.');
         }
         if (!tenantIdValid) {
-            return t(
-                'links.composer.blocked.tenant',
-                'Bitte einen Träger wählen: bestehend, freie Nummer oder „Neu anlegen“.',
-            );
+            return requireTenantId
+                ? t(
+                      'links.composer.blocked.tenant',
+                      'Bitte einen Träger wählen: bestehend, freie Nummer oder „Neu anlegen“.',
+                  )
+                : t('links.composer.blocked.tenantExisting', 'Bitte einen bestehenden Träger wählen.');
         }
         if (!agencyIdValid) {
             return t(
                 'links.composer.blocked.agency',
                 'Bitte eine Beratungsstelle wählen: bestehend, freie Nummer oder „Neu anlegen“.',
+            );
+        }
+        if (counsellorNeedsUnitAdmin) {
+            return t(
+                'links.composer.blocked.counsellorNeedsUnitAdmin',
+                'Eine neue Beratungsstelle legt nur eine BST-Admin an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.',
             );
         }
         if (!templateValid) {
@@ -520,6 +583,16 @@ export const InviteComposer = ({
         return undefined;
     })();
     const sendHintId = `invite-composer-send-hint-${persistKey}`;
+    // Offered only while THE reason shown is the founding rule, never in bulk mode.
+    const offerAgencyAdminSwitch =
+        !bulkMode &&
+        counsellorNeedsUnitAdmin &&
+        roleOptions.includes('AGENCY_ADMIN') &&
+        emailValid &&
+        !emailTaken &&
+        namesValid &&
+        tenantIdValid &&
+        agencyIdValid;
 
     const changeSendMode = (mode: InviteSendMode) => {
         setSendMode(mode);
@@ -543,12 +616,18 @@ export const InviteComposer = ({
             lastName: lastName.trim() || undefined,
             // AUTO pins no id in the browser — the backend assigns the smallest free one.
             tenantId,
-            tenantIdAllocationMode: tenantAllowCreate && !tenantLocked ? allocationModeOf(tenantAllocation) : undefined,
+            // #1026 slice 4: a picked (or locked) Träger is sent as EXISTING; the
+            // Träger tab keeps AUTO/MANUAL for a NEW Träger.
+            tenantIdAllocationMode:
+                (tenantAllowCreate && !tenantLocked) || tenantAllocation.mode === 'existing'
+                    ? allocationModeOf(tenantAllocation)
+                    : undefined,
             agencyId: showAgencyField ? agencyAllocation.value : undefined,
             agencyIdAllocationMode: showAgencyField ? allocationModeOf(agencyAllocation) : undefined,
             templateId: sendMode === 'direct' ? templateId : undefined,
             sendMode,
             role,
+            alsoCounsellor: showAlsoCounsellor ? alsoCounsellor : undefined,
             topicPermission: showTopicsToggle ? topicPermission : undefined,
             tenantTarget: isNewUnit(tenantAllocation) && tenantAllowCreate ? 'new' : 'existing',
             agencyTarget: showAgencyField ? agencyTarget : undefined,
@@ -734,10 +813,27 @@ export const InviteComposer = ({
                 icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
+            // #1026 slice 3: the admin's own account instead of an e-mail invite.
+            ...(onSelfAssign
+                ? [
+                      { type: 'divider' as const },
+                      {
+                          key: 'selfAssign',
+                          icon: <PersonAddAltOutlinedIcon aria-hidden className={styles.menuIcon} />,
+                          label: t('links.selfAssign.menuEntry', 'Mich selbst eintragen …'),
+                      },
+                  ]
+                : []),
         ],
         selectable: true,
         selectedKeys: [sendMode],
-        onClick: ({ key }) => changeSendMode(key as InviteSendMode),
+        onClick: ({ key }) => {
+            if (key === 'selfAssign') {
+                onSelfAssign?.(agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined);
+                return;
+            }
+            changeSendMode(key as InviteSendMode);
+        },
     };
 
     // "⋮" control before the search pill (Figma "Invite Link Options"): opens the
@@ -821,13 +917,7 @@ export const InviteComposer = ({
                 />
             </CollapsibleField>
         );
-        return disabled ? (
-            <M3Tooltip key={key} portal placement="bottom" text={placeholderTooltip}>
-                <span className={styles.placeholderSlot} tabIndex={placeholdersEnabled ? undefined : 0}>
-                    {field}
-                </span>
-            </M3Tooltip>
-        ) : (
+        return (
             <span key={key} className={styles.placeholderSlot}>
                 {field}
             </span>
@@ -910,16 +1000,15 @@ export const InviteComposer = ({
                         onChange={(event) => setLastName(event.target.value)}
                     />
                 </CollapsibleField>
-                {/* Placeholder until the backend takes a role (#1026, slice 3): disabled
-                    with an explanation in the app, live in the stories. Collapses like
-                    every other field; the pill shows the chosen role. */}
+                {/* #1026 slice 3: the role is sent as `targetRole`. Only the roles the
+                    viewer may hand out are offered; a single one renders locked. */}
                 {renderSelectField<InviteRole>({
                     key: 'role',
                     label: t('links.composer.role', 'Rolle'),
                     value: role,
                     valueLabel: roleLabel(role),
                     options: roleOptions.map((option) => ({ value: option, label: roleLabel(option) })),
-                    disabled: !placeholdersEnabled || roleOptions.length < 2,
+                    disabled: roleOptions.length < 2,
                     className: styles.roleField,
                     onChange: setRole,
                 })}
@@ -949,6 +1038,7 @@ export const InviteComposer = ({
                             allocation={agencyAllocation}
                             label={agencyLabel}
                             locked={agencyLocked}
+                            reservedJoinsPendingUnit
                             searchUnits={searchAgencies ? searchAgenciesInTenant : undefined}
                             onBlur={() => collapseIfValid('agency', fieldValid.agency)}
                         />
@@ -965,9 +1055,24 @@ export const InviteComposer = ({
                             label: topicTitle(option),
                             description: topicDescription(option),
                         })),
-                        disabled: !placeholdersEnabled,
+                        disabled: false,
                         className: styles.topicsField,
                         onChange: setTopicPermission,
+                    })}
+                {showAlsoCounsellor &&
+                    renderSelectField<'yes' | 'no'>({
+                        key: 'alsoCounsellor',
+                        label: t('links.composer.alsoCounsellor.label', 'Berät auch'),
+                        value: alsoCounsellor ? 'yes' : 'no',
+                        valueLabel: t(...ALSO_COUNSELLOR_LABEL_KEYS[alsoCounsellor ? 'yes' : 'no'].title),
+                        options: (['yes', 'no'] as const).map((option) => ({
+                            value: option,
+                            label: t(...ALSO_COUNSELLOR_LABEL_KEYS[option].title),
+                            description: t(...ALSO_COUNSELLOR_LABEL_KEYS[option].description),
+                        })),
+                        disabled: false,
+                        className: styles.topicsField,
+                        onChange: (next) => setAlsoCounsellor(next === 'yes'),
                     })}
                 {/* #746: the module's template split button — main segment opens the
                     manage/pick dialog (as before), the chevron menu now switches the
@@ -1034,9 +1139,24 @@ export const InviteComposer = ({
                 />
             </GlobalSearchBar>
             {sendBlockedReason && (
-                <p className={styles.sendHint} id={sendHintId} role="status">
-                    {sendBlockedReason}
-                </p>
+                <div className={styles.sendHintRow}>
+                    <p className={styles.sendHint} id={sendHintId} role="status">
+                        {sendBlockedReason}
+                    </p>
+                    {/* The one-click fix for the one reason that has one (#1026 slice 5). */}
+                    {offerAgencyAdminSwitch && (
+                        <M3Button
+                            className={styles.sendHintAction}
+                            variant="text"
+                            onClick={() => {
+                                setRole('AGENCY_ADMIN');
+                                setAlsoCounsellor(true);
+                            }}
+                        >
+                            {t('links.composer.switchToAgencyAdmin', 'Stattdessen als BST-Admin einladen')}
+                        </M3Button>
+                    )}
+                </div>
             )}
         </div>
     );

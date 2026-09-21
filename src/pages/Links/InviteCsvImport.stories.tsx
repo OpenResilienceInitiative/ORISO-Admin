@@ -179,10 +179,11 @@ export const PreviewModalAgencyIds: Story = {
 
 /**
  * #1026 — the CSV is the main invite path, so every new field has a column:
- * Ziel (neu/bestehend), Rolle, Vorlage and Themen & Fachbereiche (enum or
- * plain true/false). The preview shows them per row; rows the backend cannot
- * take yet, or that name an unknown template, stay visible with the reason in
- * plain German and are left out of the batch.
+ * Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (enum or
+ * plain true/false) and Berät auch. The preview shows them per row; rows that
+ * cannot work (a counsellor for a new Beratungsstelle without its number, an
+ * unknown template) stay visible with the reason in plain German and are left
+ * out of the batch. A counsellor the backend stores as waiting reads „Vorgemerkt".
  */
 const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
     {
@@ -199,14 +200,17 @@ const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
 ];
 
 const ALL_COLUMNS_CSV = [
-    'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche',
-    'anna.beispiel@traeger.de;Anna;Beispiel;42;bestehend;Berater:in;;NONE',
-    'bernd.muster@traeger.de;Bernd;Muster;;neu;Berater:in;Berater:innen-Willkommen;SELECT_EXISTING',
-    'carla.test@traeger.de;Carla;Test;42;bestehend;Berater:in;;true',
-    'dora.admin@traeger.de;Dora;Admin;42;bestehend;BST-Admin;;',
-    'emil.vorlage@traeger.de;Emil;Vorlage;;neu;Berater:in;Sommerfest;false',
-    'fritz.fehler@traeger.de;Fritz;Fehler;;bestehend;Berater:in;;',
-    'gabi.wert@traeger.de;Gabi;Wert;;neu;Berater:in;;vielleicht',
+    'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch',
+    'anna.beispiel@traeger.de;Anna;Beispiel;42;bestehend;Berater:in;;NONE;',
+    // #1026 slice 5: the BST-Admin row founds Beratungsstelle 900 ...
+    'bernd.muster@traeger.de;Bernd;Muster;900;neu;BST-Admin;;;ja',
+    // ... and the counsellor row with the same number waits for it (any row order).
+    'carla.test@traeger.de;Carla;Test;900;neu;Berater:in;Berater:innen-Willkommen;SELECT_EXISTING;',
+    'dora.probe@traeger.de;Dora;Probe;42;bestehend;Berater:in;;true;',
+    'emil.vorlage@traeger.de;Emil;Vorlage;42;bestehend;Berater:in;Sommerfest;false;',
+    'fritz.fehler@traeger.de;Fritz;Fehler;;bestehend;Berater:in;;;',
+    'gabi.wert@traeger.de;Gabi;Wert;42;bestehend;Berater:in;;vielleicht;',
+    'hanna.ohne@traeger.de;Hanna;Ohne;;neu;Berater:in;;;',
 ].join('\r\n');
 
 export const PreviewModalAllColumns: Story = {
@@ -217,10 +221,12 @@ export const PreviewModalAllColumns: Story = {
             tabRole="COUNSELLOR"
             templates={COUNSELLOR_TEMPLATES}
             viewerScope="tenant"
-            createInvite={async () => {
+            createInvite={async (row) => {
                 await new Promise((resolve) => {
                     setTimeout(resolve, 400);
                 });
+                // The backend stores Carla as waiting for Beratungsstelle 900.
+                return { waiting: row.role === 'COUNSELLOR' && row.target === 'NEW', noUnitAdmin: false };
             }}
             parseResult={parseInviteCsv(ALL_COLUMNS_CSV)}
             onClose={() => {}}
@@ -232,9 +238,13 @@ export const PreviewModalAllColumns: Story = {
         await body.findByText('anna.beispiel@traeger.de');
         await expect(body.getAllByText('Bestehend').length).toBeGreaterThan(0);
         await expect(body.getByText('Darf weitere Themen anlegen')).toBeInTheDocument();
+        await expect(body.getAllByText('Berät auch').length).toBeGreaterThan(1);
         await expect(body.getByText(/Die Vorlage „Sommerfest“ gibt es hier nicht/)).toBeInTheDocument();
         await expect(body.getByText(/„bestehend“ braucht eine/)).toBeInTheDocument();
-        // Three good rows go into the batch; four are held back with their reason.
-        await expect(body.getByRole('button', { name: /3 Empfänger anlegen|3 recipients/ })).toBeInTheDocument();
+        await expect(body.getByText(/brauchen deren Nummer/)).toBeInTheDocument();
+        // Four good rows go into the batch; four are held back with their reason.
+        const confirm = body.getByRole('button', { name: /4 Empfänger anlegen|4 recipients/ });
+        await userEvent.click(confirm);
+        await body.findByText('Vorgemerkt', undefined, { timeout: 5000 });
     },
 };
