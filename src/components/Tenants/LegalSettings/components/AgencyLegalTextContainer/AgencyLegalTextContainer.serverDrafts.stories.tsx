@@ -169,3 +169,66 @@ export const ConflictRefresh: Story = {
         await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
     },
 };
+
+const publishedWide: unknown[] = [];
+
+/**
+ * The agency draft store is not deployed (dev on 21.09.2026: GET and PUT answer 404).
+ * Publishing saves first, so nothing goes live — and the admin is told exactly that,
+ * in a message that stays until closed. The agency-wide text carries no "Entwurf" tag.
+ */
+export const PublishWithoutDraftStoreExplains: Story = {
+    args: {
+        onSaveAgencyWide: async () => {
+            publishedWide.push('published');
+        },
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                ...commonHandlers,
+                http.get(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+                http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        publishedWide.length = 0;
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await expect(canvas.queryByText('Entwurf', { selector: '.ant-tag' })).not.toBeInTheDocument();
+        // The card re-keys once the user id has loaded; re-query instead of holding references.
+        await waitFor(
+            () => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull(),
+            {
+                timeout: 8000,
+            },
+        );
+        await userEvent.click(canvasElement.querySelector('.ProseMirror[contenteditable="true"]') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
+        await userEvent.click(canvas.getByRole('button', { name: 'Veröffentlichen' }));
+        const translate = await page.findByRole('dialog');
+        await userEvent.click(within(translate).getByRole('button', { name: /Ohne Übersetzung veröffentlichen/ }));
+        // The notice fades in; wait for the end of the animation, not just its first frame.
+        await waitFor(() => expect(page.getByText(/Nicht veröffentlicht/)).toBeVisible(), { timeout: 8000 });
+        await expect(publishedWide).toHaveLength(0);
+    },
+};
+
+/** A restricted agency admin may only read: the card says the Träger maintains the text. */
+export const RestrictedAgencyAdminReadsOnly: Story = {
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin], TENANT_ID);
+            return <Story />;
+        },
+    ],
+    parameters: { msw: { handlers: persistedHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Diesen Text pflegt Ihr Träger/, {}, { timeout: 8000 })).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+        await expect(canvas.queryByText(/Als Entwurf speichern/)).not.toBeInTheDocument();
+    },
+};

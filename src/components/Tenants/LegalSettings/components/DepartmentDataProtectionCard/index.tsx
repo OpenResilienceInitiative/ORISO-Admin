@@ -112,6 +112,8 @@ interface DepartmentDataProtectionCardProps {
      * stays visible which document the Fachbereich has.
      */
     readOnly?: boolean;
+    /** Replaces the description when the card is read-only, saying who maintains the text instead. */
+    readOnlyReason?: string;
 }
 
 /**
@@ -141,6 +143,7 @@ export const DepartmentDataProtectionCard = ({
     consentInheritedFrom,
     ownConsentByLanguage,
     readOnly = false,
+    readOnlyReason,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
@@ -342,14 +345,20 @@ export const DepartmentDataProtectionCard = ({
                     <>
                         <div className={styles.header}>
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            <Tag color={published ? 'green' : 'default'}>
-                                {published
-                                    ? t('tenants.legal.departmentDataProtection.status.published')
-                                    : t('tenants.legal.departmentDataProtection.status.draft')}
-                            </Tag>
+                            {/* Only a Fachbereich text has a publication status; the agency-wide
+                                text is live when saved, so an "Entwurf" tag there was false. */}
+                            {documentScope === 'department' && (
+                                <Tag color={published ? 'green' : 'default'}>
+                                    {published
+                                        ? t('tenants.legal.departmentDataProtection.status.published')
+                                        : t('tenants.legal.departmentDataProtection.status.draft')}
+                                </Tag>
+                            )}
                         </div>
                         <p className={styles.description}>
-                            {t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
+                            {readOnly && readOnlyReason
+                                ? readOnlyReason
+                                : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
                         </p>
                     </>
                 }

@@ -362,7 +362,12 @@ export const AgencyLegalTextContainer = ({
             saved = await saveCurrentAgencyDraft(content, operationIdentity);
         } catch {
             if (editorIdentityRef.current === operationIdentity) {
-                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                // Publishing saves first; when that fails nothing goes live, and the admin has to
+                // learn that — a vanishing "draft not saved" toast read as "nothing happened".
+                notification.error({
+                    message: t(publish ? 'legal.serverDraft.publishSaveError' : 'legal.serverDraft.saveError'),
+                    duration: publish ? 0 : 8,
+                });
                 setActionPending(false);
             }
             return;
@@ -465,6 +470,7 @@ export const AgencyLegalTextContainer = ({
             versions={versions}
             versionsUnavailable={versionsUnavailable}
             readOnly={agencyDraftBlocked}
+            readOnlyReason={canEditLegalText ? undefined : t('tenants.legal.readOnly.managedByTraeger')}
             onSave={onSave}
             saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}

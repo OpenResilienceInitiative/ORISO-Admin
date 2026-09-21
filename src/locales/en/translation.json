@@ -1640,6 +1640,8 @@
     "legal.draft.notice.stale": "Careful: a newer version was published after this draft was saved. Publishing this draft overwrites that newer version.",
     "legal.serverDraft.saved": "Draft saved on the server.",
     "legal.serverDraft.saveError": "The draft could not be saved. Your changes remain in the editor.",
+    "legal.serverDraft.publishSaveError": "Not published: the draft could not be saved first. The previous version stays live, and your changes remain in the editor.",
+    "tenants.legal.readOnly.managedByTraeger": "Your provider maintains this text. You can read it but not change it. Contact your provider for changes.",
     "legal.serverDraft.publishError": "The draft was saved but not published. You can try publishing it again.",
     "legal.serverDraft.discardError": "The draft could not be discarded. Your changes remain available.",
     "legal.serverDraft.cleanupError": "The text was published, but a newer draft was kept.",
