@@ -58,6 +58,13 @@ export const TOPIC_PERMISSION_LABEL_KEYS: Record<
     },
 };
 
+/** Short labels for tight places (the invite table); the menu keeps the full titles. */
+export const TOPIC_PERMISSION_SHORT_LABEL_KEYS: Record<TopicPermission, [key: string, fallback: string]> = {
+    NONE: ['links.composer.topics.noneShort', 'Themen: keine weiteren'],
+    SELECT_EXISTING: ['links.composer.topics.selectExistingShort', 'Themen: aus der BST'],
+    CREATE: ['links.composer.topics.createShort', 'Themen: neue anlegen'],
+};
+
 /**
  * "Berät auch" for an agency-admin invite (#1026 slice 3, backend field
  * `alsoCounsellor`, default `true`). The invitee can still change it while

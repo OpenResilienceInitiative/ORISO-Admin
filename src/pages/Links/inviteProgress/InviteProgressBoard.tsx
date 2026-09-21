@@ -27,7 +27,12 @@ import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
 import { FloatingLabelSelect } from '../../../components/FloatingLabelSelect';
-import { TOPIC_PERMISSION_LABEL_KEYS, TOPIC_PERMISSIONS, type TopicPermission } from '../inviteModel';
+import {
+    TOPIC_PERMISSION_LABEL_KEYS,
+    TOPIC_PERMISSION_SHORT_LABEL_KEYS,
+    TOPIC_PERMISSIONS,
+    type TopicPermission,
+} from '../inviteModel';
 import {
     countInviteBuckets,
     deriveInviteBucket,
@@ -277,8 +282,11 @@ export const InviteProgressBoard = ({
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
-    const showTopicColumn = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
+    // #1026 slice 6: the per-person topic permission sits in the recipient cell —
+    // a column of its own pushed the actions out of a 1440px table.
+    const showTopicPermission = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
     const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
+    const topicShort = (value: TopicPermission) => t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
 
     const columns = useMemo(
         () => [
@@ -288,16 +296,13 @@ export const InviteProgressBoard = ({
             { key: 'invitedAt', label: t('links.inviteProgress.col.invitedAt', 'Eingeladen am'), sortable: true },
             { key: 'lastActivity', label: t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität') },
             { key: 'status', label: t('links.inviteProgress.col.status', 'Status') },
-            ...(showTopicColumn
-                ? [{ key: 'topics', label: t('links.inviteProgress.col.topics', 'Themen & Fachbereiche') }]
-                : []),
             {
                 key: 'actions',
                 label: t('links.inviteProgress.col.actions', 'Aktionen'),
                 align: 'right' as const,
             },
         ],
-        [t, showTopicColumn],
+        [t],
     );
 
     const toggleSelection = (invite: AccountInviteDTO, next: boolean) => {
@@ -452,6 +457,29 @@ export const InviteProgressBoard = ({
                                             </span>
                                         )}
                                     </span>
+                                    {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                        <FloatingLabelSelect<TopicPermission>
+                                            className={styles.topicSelect}
+                                            disabled={topicPermissionSavingIds.includes(invite.id)}
+                                            label={t('links.inviteProgress.topicsFor', 'Themen für {{name}}', {
+                                                name: displayName,
+                                            })}
+                                            // The closed select shows the short label; the menu the full one.
+                                            labelRender={({ value }) => topicShort(value as TopicPermission)}
+                                            options={TOPIC_PERMISSIONS.map((option) => ({
+                                                value: option,
+                                                label: topicTitle(option),
+                                            }))}
+                                            popupMatchSelectWidth={false}
+                                            // Invites created before #1026 carry no value: they behave as CREATE.
+                                            value={invite.topicPermission ?? 'CREATE'}
+                                            onChange={(next) => {
+                                                if (next !== (invite.topicPermission ?? 'CREATE')) {
+                                                    onTopicPermissionChange?.(invite, next);
+                                                }
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             </DataTableCell>
                             <DataTableCell className={styles.progressCell}>
@@ -523,36 +551,6 @@ export const InviteProgressBoard = ({
                                     </M3Tooltip>
                                 )}
                             </DataTableCell>
-                            {showTopicColumn && (
-                                <DataTableCell className={styles.topicCell}>
-                                    <span className={styles.cellLabel}>
-                                        {t('links.inviteProgress.col.topics', 'Themen & Fachbereiche')}
-                                    </span>
-                                    {hasEditableTopicPermission(invite) ? (
-                                        <FloatingLabelSelect<TopicPermission>
-                                            className={styles.topicSelect}
-                                            disabled={topicPermissionSavingIds.includes(invite.id)}
-                                            label={t('links.inviteProgress.topicsFor', 'Themen für {{name}}', {
-                                                name: displayName,
-                                            })}
-                                            options={TOPIC_PERMISSIONS.map((option) => ({
-                                                value: option,
-                                                label: topicTitle(option),
-                                            }))}
-                                            popupMatchSelectWidth={false}
-                                            // Invites created before #1026 carry no value: they behave as CREATE.
-                                            value={invite.topicPermission ?? 'CREATE'}
-                                            onChange={(next) => {
-                                                if (next !== (invite.topicPermission ?? 'CREATE')) {
-                                                    onTopicPermissionChange?.(invite, next);
-                                                }
-                                            }}
-                                        />
-                                    ) : (
-                                        <span className={styles.topicNone}>—</span>
-                                    )}
-                                </DataTableCell>
-                            )}
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
                                     {isWaitingForUnit(invite) ? (

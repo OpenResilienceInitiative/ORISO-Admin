@@ -110,11 +110,9 @@
 
 /* #1026 slice 6: per-row topic permission. */
 .topicSelect {
-    min-width: 220px;
-}
-
-.topicNone {
-    color: var(--m3-on-surface-variant, #444748);
+    width: 100%;
+    max-width: 220px;
+    margin-top: 8px;
 }
 
 /* ── Actions ─────────────────────────────────────────────────────────────── */
@@ -203,18 +201,6 @@
         color: var(--m3-on-surface-variant, #444748);
         font: 500 11px/16px var(--m3-body-font-family);
         letter-spacing: 0.5px;
-    }
-
-    .topicCell {
-        display: flex !important;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .topicSelect {
-        min-width: 0;
-        flex: 1 1 200px;
     }
 
     .actionsCell {
