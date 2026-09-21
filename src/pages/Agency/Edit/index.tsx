@@ -41,6 +41,7 @@ import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettin
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -228,6 +229,26 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             });
         },
         [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+    );
+
+    /**
+     * antd stops at its own validation and never reaches `onSubmit`, so the
+     * tenant notification above cannot fire for an empty required field. The
+     * agency form is taller than the viewport and its required fields sit in
+     * three different cards: submitting from the top looked like the Save
+     * button did nothing at all. Say what is missing and scroll to it.
+     */
+    const onValidationFailed = useCallback(
+        ({ errorFields }: { errorFields?: ValidationErrorField[] }) => {
+            const fields = describeAgencyValidationErrors(errorFields, t);
+
+            notification.error({
+                message: t('agency.edit.form.validationFailed'),
+                description: fields || t('form.errors.required'),
+                duration: 8,
+            });
+        },
+        [t],
     );
 
     const onSubmit = useCallback(
@@ -421,6 +442,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     size="large"
                     disabled={isReadOnly}
                     onFinish={onSubmit}
+                    onFinishFailed={onValidationFailed}
+                    scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
                 >
                     <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     {/* #620: the create flow shares the row width responsively (CardGrid)
@@ -455,6 +478,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             size="large"
             disabled={isReadOnly}
             onFinish={onSubmit}
+            onFinishFailed={onValidationFailed}
+            scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
         >
             <h3 className={pageStyles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —

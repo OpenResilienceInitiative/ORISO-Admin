@@ -1335,6 +1335,7 @@
     "agency.edit.general.more_settings.online": "Online",
     "agency.edit.general.more_settings.save": "Save",
     "agency.edit.general.more_settings.tenant.title": "Tenant assignment",
+    "agency.edit.form.validationFailed": "The counselling centre was not saved. Please complete the highlighted required fields:",
     "agency.edit.initialMeeting.modal_edit_consultation_type.duration.placeholder": "Duration",
     "agency.edit.initialMeeting.modal_edit_consultation_type.url": "URL",
     "agency.edit.initialMeeting.modal_edit_consultation_type.url.placeholder": "URL",
