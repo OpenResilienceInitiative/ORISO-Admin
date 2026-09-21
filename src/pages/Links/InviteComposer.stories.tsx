@@ -693,6 +693,52 @@ export const SendAndNext: Story = {
     },
 };
 
+/**
+ * #1026 (Pre-Dev E2E): the platform admin picks an EXISTING Beratungsstelle
+ * before any Träger. The hit names its Träger, so the Träger field takes it over
+ * as a ✓ pill — and „Senden & nächste" keeps it for the next person.
+ */
+export const AgencyPickFillsTraeger: Story = {
+    args: {
+        tenantAllowCreate: false,
+        initialValues: { recipientEmail: PREFILLED.recipientEmail, firstName: 'Maria', lastName: 'Huber' },
+        searchAgencies: async (query: string) =>
+            AGENCIES.filter((agency) => matches(agency, query)).map((agency) => ({
+                ...agency,
+                tenantName: TENANTS.find((tenant) => tenant.id === agency.tenantId)?.name,
+            })),
+        onSubmit: fn(() => true),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await canvas.findByRole('combobox', { name: FIELD.tenant })).toHaveValue('');
+        const agency = canvas.getByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, 'sucht');
+        await userEvent.click(await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ }));
+        await expect(await canvas.findByRole('button', { name: PILL.tenant })).toHaveAttribute(
+            'title',
+            'Caritas Südbaden (7)',
+        );
+
+        await userEvent.click(canvas.getByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /Senden & nächste|Send & next/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: SEND.sendAndNext }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({ tenantId: 7, tenantIdAllocationMode: 'EXISTING', agencyId: 101 }),
+            ),
+        );
+        await waitFor(() => expect(canvas.getByRole('textbox', { name: FIELD.email })).toHaveValue(''));
+        await expect(canvas.getByRole('button', { name: PILL.tenant })).toHaveAttribute(
+            'title',
+            'Caritas Südbaden (7)',
+        );
+        await expect(canvas.getByRole('button', { name: PILL.agency })).toBeInTheDocument();
+    },
+};
+
 /** Tenant admin: the Träger is pinned to their own (visible, disabled); roles stay open. */
 export const TenantAdminLocked: Story = {
     args: { viewerScope: 'tenant', ownTenant: TENANTS[0] },

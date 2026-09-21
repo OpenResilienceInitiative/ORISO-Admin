@@ -440,7 +440,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const searchAgenciesForPicker = useCallback(
         async (query: string, { tenantId }: { tenantId?: number }) =>
-            (await searchInviteAgencies(query, tenantId)).map(({ id, name, topics }) => ({ id, name, topics })),
+            (await searchInviteAgencies(query, tenantId)).map(
+                ({ id, name, topics, tenantId: agencyTenantId, tenantName }) => ({
+                    id,
+                    name,
+                    topics,
+                    tenantId: agencyTenantId,
+                    tenantName,
+                }),
+            ),
         [],
     );
 

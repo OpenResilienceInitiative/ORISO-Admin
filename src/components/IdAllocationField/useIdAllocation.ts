@@ -15,6 +15,9 @@ export interface IdUnitOption {
     name?: string;
     /** Agencies only: topics the unit counsels on — searched and shown as a secondary line. */
     topics?: string[];
+    /** Agencies only (#1026): the Träger the unit belongs to — lets the bar fill an empty Träger field. */
+    tenantId?: number;
+    tenantName?: string;
 }
 
 /**

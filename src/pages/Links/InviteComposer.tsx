@@ -527,6 +527,24 @@ export const InviteComposer = ({
             return next;
         });
 
+    /*
+     * #1026 (Pre-Dev E2E): an EXISTING Beratungsstelle picked while the Träger
+     * field is still empty brings its own Träger — the field takes it over as an
+     * existing unit, folded into its ✓ pill, so "Senden & nächste" keeps it too.
+     * A Träger the admin already chose (an existing one or a pinned new number)
+     * is never overwritten.
+     */
+    const pickedAgencyUnit = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
+    useEffect(() => {
+        if (tenantLocked || pickedAgencyUnit?.tenantId == null) return;
+        const tenantChosen =
+            tenantAllocation.mode === 'existing' ||
+            (tenantAllocation.mode === 'manual' && tenantAllocation.value !== undefined);
+        if (tenantChosen) return;
+        tenantAllocation.selectExisting({ id: pickedAgencyUnit.tenantId, name: pickedAgencyUnit.tenantName });
+        setCollapsedKeys((keys) => new Set(keys).add('tenant'));
+    }, [pickedAgencyUnit?.id, pickedAgencyUnit?.tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // "Einladen" = into a unit that exists; "Anlegen & einladen" = the invite
     // also creates the Träger / Beratungsstelle (Auto or a free number).
     const createsUnit = agencyIsNew || (tenantAllowCreate && !tenantLocked && isNewUnit(tenantAllocation));

@@ -318,3 +318,76 @@ describe.each([
         expect(mocks.nextFreeAgencyId).not.toHaveBeenCalled();
     });
 });
+
+/*
+ * #1026 (Pre-Dev E2E): the platform admin picks an EXISTING Beratungsstelle
+ * without choosing a Träger first. The hit names its Träger, so the Träger
+ * field takes it over (as an existing unit, folded into its ✓ pill) — and
+ * "Senden & nächste" keeps it for the next person like every other unit field.
+ */
+describe('CounsellorInvitesTab — platform admin picks an existing agency first (#1026)', () => {
+    const FOREIGN_AGENCY = {
+        id: 14,
+        name: 'Mail v2 Einzeltest',
+        tenantId: 7,
+        tenantName: 'Caritas Südbaden',
+        topics: ['Sucht'],
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.useUserRoles.mockReturnValue({
+            ...agencyAdminRoles(UserRole.TenantAdmin, UserRole.AgencyAdmin),
+            isSuperAdmin: true,
+            tenantId: 0,
+        });
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://app.example/account-invite');
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        mocks.createAccountInvite.mockResolvedValue({ ...invite(99, 7, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' });
+        mocks.searchInviteAgencies.mockResolvedValue([FOREIGN_AGENCY]);
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    it('fills the empty Träger from the picked agency and keeps both after "Senden & nächste"', async () => {
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('');
+
+        const agency = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(agency);
+        await user.click(await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW));
+
+        // The Träger follows the agency, as an existing unit, folded into its pill.
+        const tenantPill = await screen.findByRole('button', { name: /^Träger bearbeiten/ }, SLOW);
+        expect(tenantPill).toHaveAttribute('title', 'Caritas Südbaden (7)');
+
+        await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
+        const send = await screen.findByRole('button', { name: 'Senden & nächste' });
+        await waitFor(() => expect(send).toBeEnabled(), SLOW);
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            agencyId: 14,
+            agencyIdAllocationMode: 'EXISTING',
+            tenantId: 7,
+            tenantIdAllocationMode: 'EXISTING',
+        });
+        await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+        expect(screen.getByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
+            'title',
+            'Caritas Südbaden (7)',
+        );
+        expect(screen.getByRole('button', { name: /^Beratungsstelle bearbeiten/ })).toHaveAttribute(
+            'title',
+            'Mail v2 Einzeltest (14)',
+        );
+    });
+});
