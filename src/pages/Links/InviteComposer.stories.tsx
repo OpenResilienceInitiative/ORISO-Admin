@@ -301,8 +301,15 @@ export const PartiallyCollapsed: Story = {
         await userEvent.click(canvas.getByRole('textbox', { name: FIELD.firstName }));
         await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
         await userEvent.tab();
-        await canvas.findByRole('button', { name: PILL.email });
+        const collapsedEmail = await canvas.findByRole('button', { name: PILL.email });
         await canvas.findByRole('button', { name: PILL.firstName });
+        // Re-collapsing mid-animation must not leave the slot frozen at the field's width.
+        const slot = collapsedEmail.parentElement as HTMLElement;
+        await waitFor(() =>
+            expect(slot.getBoundingClientRect().width).toBeLessThanOrEqual(
+                collapsedEmail.getBoundingClientRect().width + 1,
+            ),
+        );
     },
 };
 

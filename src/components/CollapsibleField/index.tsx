@@ -53,6 +53,13 @@ export const CollapsibleField = ({
     useLayoutEffect(() => {
         const slot = slotRef.current;
         if (!slot) return undefined;
+        const clearInline = () => {
+            slot.style.width = '';
+            slot.style.overflow = '';
+            slot.style.transition = '';
+        };
+        // A toggle during a running animation: measure the NATURAL width, not the frozen inline one.
+        clearInline();
         const to = slot.getBoundingClientRect().width;
         const from = lastWidth.current;
         const toggled = lastCollapsed.current !== collapsed;
@@ -82,16 +89,12 @@ export const CollapsibleField = ({
         slot.getBoundingClientRect();
         slot.style.transition = WIDTH_TRANSITION;
         slot.style.width = `${to}px`;
-        const done = () => {
-            slot.style.width = '';
-            slot.style.overflow = '';
-            slot.style.transition = '';
-        };
-        slot.addEventListener('transitionend', done, { once: true });
-        const fallback = window.setTimeout(done, 320);
+        slot.addEventListener('transitionend', clearInline, { once: true });
+        const fallback = window.setTimeout(clearInline, 320);
         return () => {
             window.clearTimeout(fallback);
-            slot.removeEventListener('transitionend', done);
+            slot.removeEventListener('transitionend', clearInline);
+            clearInline();
         };
     }, [collapsed]);
 
