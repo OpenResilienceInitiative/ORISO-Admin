@@ -832,7 +832,8 @@ describe('LegalText — tenant server draft', () => {
         await user.click(screen.getByRole('button', { name: 'legal.serverDraft.collision.server' }));
 
         expect(screen.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'legal.serverDraft.discard' })).toBeInTheDocument();
+        // Discarding stays available — in the draft snackbar, where #1025 moved it.
+        expect(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' })).toBeInTheDocument();
     });
 
     it('offers no consent input when the deployed backend does not store the wording', () => {

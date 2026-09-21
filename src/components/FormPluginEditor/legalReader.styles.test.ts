@@ -33,13 +33,15 @@ const globalStyles = readFileSync(resolve(__dirname, './FormPluginEditor.styles.
  * PR that introduced it first.
  */
 describe('read-mode legal reader — text inset (before-state H1/H2, 2026-08-18)', () => {
-    it('gives the reading text an 8px side inset inside the read-mode card', () => {
+    // Owner call 2026-09-21: 8px left the text 9px from the card edge; it now matches the header (24px, 16px on phones).
+    it("gives the reading text the header's 24px side inset inside the read-mode card", () => {
         // The inset lives on `.editorContentScroll` (the text viewport), NOT on
         // `.editor`: the chapter bar is a sibling inside `.editor` and must
         // keep spanning the full surface so its opaque sticky background masks
         // the text scrolling underneath it.
         const readMode = moduleStyles.match(/\.readMode\s*{[\s\S]*?\n}/)?.[0] ?? '';
-        expect(readMode).toMatch(/\.editorContentScroll\s*{[^}]*padding-inline:\s*8px;/);
+        expect(readMode).toMatch(/\.editorContentScroll\s*{[^}]*padding-inline:\s*24px;/);
+        expect(readMode).toMatch(/@media \(max-width: 600px\)\s*{\s*padding-inline:\s*16px;/);
     });
 
     it('keeps the 8px vertical padding of the read-mode text surface', () => {

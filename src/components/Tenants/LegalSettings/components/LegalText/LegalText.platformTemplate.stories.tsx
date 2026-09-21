@@ -402,7 +402,13 @@ export const ConsentWithoutTokenBlocksTemplate: Story = {
             handlers: [
                 ...baseHandlers,
                 templateHistory([]),
-                http.get('*/service/tenantadmin/:id', () => HttpResponse.json(mainTenant)),
+                // A stored consent sentence switches the consent field on (dev since #1006).
+                http.get('*/service/tenantadmin/:id', () =>
+                    HttpResponse.json({
+                        ...mainTenant,
+                        content: { ...mainTenant.content, privacyConsent: { de: 'Einwilligung {{legal_links}}' } },
+                    }),
+                ),
                 http.get('*/service/tenantadmin/0/legal-drafts/PRIVACY', () =>
                     HttpResponse.json({
                         ...savedPlatformDraft,

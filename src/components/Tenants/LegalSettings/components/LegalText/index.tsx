@@ -532,13 +532,18 @@ export const LegalText = ({
     const hasUnsavedChanges = savedServerDraft ? hasUnsavedTemplateChanges : differsFromPublished;
     const latestTemplate = templateHistory.versions[0];
     const hasAnyContent = Object.values(contentByLanguage).some((html) => !isEmptyLegalContent(html));
-    const templateIsNew = latestTemplate
-        ? !isSameDraftContent(
-              { content: contentByLanguage, consent: consentByLanguage },
-              { content: latestTemplate.content, consent: latestTemplate.privacyConsent },
-              { compareConsent: consentEnabled },
-          )
-        : hasAnyContent;
+    // Until the sent versions are known, "new" cannot be judged; offering the action
+    // meanwhile made it flash up and vanish once the list arrived.
+    const templateIsNew =
+        templateHistory.state === 'loading'
+            ? false
+            : latestTemplate
+            ? !isSameDraftContent(
+                  { content: contentByLanguage, consent: consentByLanguage },
+                  { content: latestTemplate.content, consent: latestTemplate.privacyConsent },
+                  { compareConsent: consentEnabled },
+              )
+            : hasAnyContent;
     const canPublishTemplate =
         canEditLegalText &&
         !!legalType &&
@@ -636,7 +641,9 @@ export const LegalText = ({
         isDraftInfoState({
             savedAt: serverBase.draft?.updatedAt,
             localSavedAt: savedAt,
-            collision: draftCollision,
+            // Same rule as the notice: once a source is chosen the collision is answered,
+            // and the snackbar (with "Verwerfen") takes over again.
+            collision: draftCollision && !sourceChosen,
             unavailable: serverDraft.isError,
             conflict: serverDraft.hasConflict,
         });
