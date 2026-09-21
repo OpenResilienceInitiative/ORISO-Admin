@@ -318,8 +318,11 @@ const QUEUE_INVITES: AccountInviteDTO[] = [
 
 const QueueBoard = ({
     onTopicPermissionChange,
+    locked = false,
 }: {
     onTopicPermissionChange?: (invite: AccountInviteDTO, value: TopicPermission) => void;
+    /** The viewer may not change topic permissions: the board gets no change handler. */
+    locked?: boolean;
 }) => {
     const [invites, setInvites] = useState(QUEUE_INVITES);
     return (
@@ -333,12 +336,16 @@ const QueueBoard = ({
             onResend={() => {}}
             onCopyLink={() => {}}
             onRevoke={() => {}}
-            onTopicPermissionChange={(invite, value) => {
-                onTopicPermissionChange?.(invite, value);
-                setInvites((current) =>
-                    current.map((row) => (row.id === invite.id ? { ...row, topicPermission: value } : row)),
-                );
-            }}
+            onTopicPermissionChange={
+                locked
+                    ? undefined
+                    : (invite, value) => {
+                          onTopicPermissionChange?.(invite, value);
+                          setInvites((current) =>
+                              current.map((row) => (row.id === invite.id ? { ...row, topicPermission: value } : row)),
+                          );
+                      }
+            }
         />
     );
 };
@@ -376,60 +383,89 @@ export const QueueProblemBadge: Story = {
     },
 };
 
-/** „Themen & Fachbereiche" per row — also for an accepted counsellor (the account follows). */
+/**
+ * „Themen & Fachbereiche" per row — also for an accepted counsellor (the
+ * account follows). Frank's redesign: a chip beside the role chip; it opens an
+ * M3 menu (title + one-line description, check on the current level) and the
+ * chip label follows the pick.
+ */
 export const TopicPermissionInTable: Story = {
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ args, canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const anke = rowOf(canvasElement, 'anke.roth@example.org');
-        await userEvent.click(anke.getByRole('combobox', { name: /Themen für Anke Roth|Topics for Anke Roth/ }));
-        await userEvent.click(await body.findByTitle(/Darf weitere Themen anlegen|may create/i));
+        const chip = anke.getByRole('button', { name: /Themen für Anke Roth|Topics for Anke Roth/ });
+        await expect(chip).toHaveTextContent(/^(Themen: Keine weiteren|Topics: No more)$/);
+        await userEvent.click(chip);
+        const menu = await body.findByRole('menu');
+        // All three levels, each with its description; the current one carries the check.
+        await expect(within(menu).getAllByRole('menuitem')).toHaveLength(3);
+        // The menu opens with a slide-in that starts at opacity 0: wait for it.
+        await waitFor(() =>
+            expect(within(menu).getByText(/Nur die vorausgewählten Fachbereiche|preselected/)).toBeVisible(),
+        );
+        await userEvent.click(within(menu).getByText(/Darf weitere Themen anlegen|may create/i));
         await waitFor(() => expect(args.onTopicPermissionChange).toHaveBeenCalledWith(expect.anything(), 'CREATE'));
+        await waitFor(() => expect(chip).toHaveTextContent(/^(Themen: Anlegen|Topics: Create)$/));
+    },
+};
+
+/** Without the right to change it, the chip stays visible but disabled, and the tooltip says why. */
+export const TopicPermissionLocked: Story = {
+    render: () => <QueueBoard locked />,
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const anke = rowOf(canvasElement, 'anke.roth@example.org');
+        const chip = anke.getByRole('button', { name: /Themen für Anke Roth|Topics for Anke Roth/ });
+        await expect(chip).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(chip);
+        await expect(body.queryByRole('menu')).toBeNull();
+        await userEvent.hover(chip);
+        await expect(await body.findByRole('tooltip')).toHaveTextContent(/keine Berechtigung|not allowed/);
     },
 };
 
 /**
- * #1026 (Frank): the topic cell shows only the short label ("Keine weiteren",
- * "Auswählen", "Anlegen") under the one-word label "Themen" — nothing may be
- * clipped. The full title and description are in the tooltip and the menu.
+ * #1026 (Frank): the chip sits in the role chip's line with the role chip's
+ * height, so a counsellor row is no taller than a row without it (1440 px:
+ * 86 px instead of 152 px with the old outlined select), and the label is
+ * never clipped.
  */
-const expectTopicCellsUnclipped = async (canvasElement: HTMLElement) => {
+const expectTopicChipsInline = async (canvasElement: HTMLElement) => {
     const canvas = within(canvasElement);
-    const selects = await canvas.findAllByRole('combobox', { name: /Themen für|Topics for/ });
-    await expect(selects.length).toBeGreaterThan(0);
-    selects.forEach((select) => {
-        const field = select.closest('.ant-select') as HTMLElement;
-        const shown = field.querySelector<HTMLElement>('.ant-select-selection-item');
-        expect(shown).not.toBeNull();
-        expect((shown as HTMLElement).textContent).toMatch(
-            /^(Keine weiteren|Auswählen|Anlegen|No more|Select|Create)$/,
-        );
-        // Fully rendered: nothing clipped (scrollWidth fits the box).
-        expect((shown as HTMLElement).scrollWidth).toBeLessThanOrEqual((shown as HTMLElement).clientWidth + 1);
-        const label = select.closest('[class*="field"]')?.querySelector<HTMLElement>('label');
-        expect(label).not.toBeNull();
-        expect((label as HTMLElement).scrollWidth).toBeLessThanOrEqual((label as HTMLElement).clientWidth + 1);
-        // One line: the floating label must not wrap into the value.
-        expect((label as HTMLElement).getClientRects().length).toBe(1);
+    const chips = await canvas.findAllByRole('button', { name: /Themen für|Topics for/ });
+    await expect(chips.length).toBeGreaterThan(0);
+    chips.forEach((chip) => {
+        const row = chip.closest('tr') as HTMLElement;
+        const role = row.querySelector<HTMLElement>('[class*="roleChip"]') as HTMLElement;
+        const chipBox = chip.getBoundingClientRect();
+        const roleBox = role.getBoundingClientRect();
+        expect(Math.round(chipBox.height)).toBe(Math.round(roleBox.height));
+        expect(chip.textContent).toMatch(/^(Themen|Topics): (Keine weiteren|Auswählen|Anlegen|No more|Select|Create)$/);
+        expect(chip.scrollWidth).toBeLessThanOrEqual(chip.clientWidth + 1);
+    });
+    // Same line as the role chip: the chip adds no height to the row.
+    chips.forEach((chip) => {
+        const role = (chip.closest('tr') as HTMLElement).querySelector<HTMLElement>(
+            '[class*="roleChip"]',
+        ) as HTMLElement;
+        expect(Math.abs(chip.getBoundingClientRect().top - role.getBoundingClientRect().top)).toBeLessThanOrEqual(1);
     });
 };
 
-/** The same queue at 1440 px: the topic cell is readable in full. */
+/** The same queue at 1440 px: the chip stays in the role chip's line. */
 export const QueueDesktop: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
-    play: async ({ canvasElement }) => expectTopicCellsUnclipped(canvasElement),
+    play: async ({ canvasElement }) => expectTopicChipsInline(canvasElement),
 };
 
-/**
- * The same queue on a phone (390 px, narrower than the issue's 412 px): the topic
- * select and the problem badge stack into the card; the short label is readable in full.
- */
+/** The same queue on a phone (390 px, narrower than the issue's 412 px): same chip, same line. */
 export const QueueMobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
-    play: async ({ canvasElement }) => expectTopicCellsUnclipped(canvasElement),
+    play: async ({ canvasElement }) => expectTopicChipsInline(canvasElement),
 };

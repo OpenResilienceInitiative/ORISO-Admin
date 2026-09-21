@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import CheckIcon from '@mui/icons-material/Check';
+import { Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
 import classNames from 'classnames';
 import type {
     AccountInviteDTO,
@@ -26,7 +30,6 @@ import { IconButton } from '../../../components/IconButton';
 import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
-import { FloatingLabelSelect } from '../../../components/FloatingLabelSelect';
 import {
     TOPIC_PERMISSION_LABEL_KEYS,
     TOPIC_PERMISSION_SHORT_LABEL_KEYS,
@@ -163,73 +166,106 @@ export interface InviteProgressBoardProps {
     onInviteCta?: () => void;
     /**
      * #1026 slice 6: change a counsellor invite's topic permission in place —
-     * also after the account exists. Omit to hide the column.
+     * also after the account exists. Without it the viewer may not change the
+     * level: the chip stays visible but disabled, with a tooltip saying why.
      */
     onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
-    /** Invite ids whose topic permission is being saved right now (the select is disabled meanwhile). */
+    /** Invite ids whose topic permission is being saved right now (the chip is disabled meanwhile). */
     topicPermissionSavingIds?: number[];
 }
 
-/** The open select lists each level with its full title and description. */
-function renderTopicOption(
-    title: (option: TopicPermission) => string,
-    description: (option: TopicPermission) => string,
-) {
-    return function TopicOption(option: { value?: unknown }) {
-        return (
-            <span className={styles.topicOption}>
-                <span className={styles.topicOptionTitle}>{title(option.value as TopicPermission)}</span>
-                <span className={styles.topicOptionDescription}>{description(option.value as TopicPermission)}</span>
-            </span>
-        );
-    };
-}
-
 /**
- * Per-row topic permission (#1026 slice 6). Frank's decision: the cell shows
- * only the short label ("Keine weiteren", "Auswählen", "Anlegen") under the
- * one-word label "Themen"; the full title and description are in the tooltip
- * and in the open select. The accessible name keeps the person's name.
+ * Per-row topic permission (#1026 slice 6, redesigned after Frank's review):
+ * a compact chip in the same line as the role chip — "Themen: Anlegen ▾" —
+ * instead of an outlined select, so a counsellor row is no taller than any
+ * other row. The chip opens an M3 menu with the three levels (title plus
+ * one-line description, a check on the current one); picking one saves at
+ * once. Without the right to change it the chip stays visible but disabled,
+ * and the tooltip says why (disable, don't hide).
  */
-const TopicPermissionCell = ({
+const TopicPermissionChip = ({
     value,
     displayName,
     disabled,
+    disabledReason,
     onChange,
 }: {
     value: TopicPermission;
     displayName: string;
     disabled: boolean;
+    /** Tooltip text while disabled; the level's title and description otherwise. */
+    disabledReason?: string;
     onChange: (next: TopicPermission) => void;
 }) => {
     const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
     const title = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].title);
     const description = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].description);
-    return (
-        <M3Tooltip className={styles.topicTooltip} portal text={`${title(value)} – ${description(value)}`}>
-            <span className={styles.topicSelectAnchor}>
-                <FloatingLabelSelect<TopicPermission>
-                    aria-label={t('links.inviteProgress.topicsFor', 'Themen für {{name}}', { name: displayName })}
-                    className={styles.topicSelect}
-                    disabled={disabled}
-                    label={t('links.inviteProgress.topicsShortLabel', 'Themen')}
-                    labelRender={({ value: shown }) =>
-                        t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[shown as TopicPermission])
-                    }
-                    optionRender={renderTopicOption(title, description)}
-                    options={TOPIC_PERMISSIONS.map((option) => ({
-                        value: option,
-                        label: title(option),
-                        title: title(option),
-                    }))}
-                    popupMatchSelectWidth={false}
-                    value={value}
-                    onChange={(next) => {
-                        if (next !== value) onChange(next);
-                    }}
-                />
+    const short = t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
+    const label = t('links.inviteProgress.topicsChip', 'Themen: {{value}}', { value: short });
+
+    const items: MenuProps['items'] = TOPIC_PERMISSIONS.map((option) => ({
+        key: option,
+        label: (
+            <span className={styles.topicOption}>
+                <span className={styles.topicOptionCheck} aria-hidden>
+                    {option === value && <CheckIcon fontSize="inherit" />}
+                </span>
+                <span className={styles.topicOptionText}>
+                    <span className={styles.topicOptionTitle}>{title(option)}</span>
+                    <span className={styles.topicOptionDescription}>{description(option)}</span>
+                </span>
             </span>
-        </M3Tooltip>
+        ),
+    }));
+
+    const chip = (
+        <button
+            type="button"
+            className={classNames(styles.topicChip, { [styles.topicChipOpen]: open })}
+            // aria-disabled instead of disabled: a disabled button swallows the
+            // hover and focus the tooltip needs to explain why it is locked.
+            aria-disabled={disabled || undefined}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label={`${t('links.inviteProgress.topicsFor', 'Themen für {{name}}', {
+                name: displayName,
+            })}: ${short}`}
+        >
+            <span>{label}</span>
+            <ArrowDropDownIcon className={styles.topicChipIcon} aria-hidden />
+        </button>
+    );
+
+    // Dropdown clones its child with the click handler and the anchor ref, and
+    // M3Tooltip clones its child with aria-describedby — so the Dropdown gets a
+    // plain span (a click on the chip bubbles to it) and the tooltip gets the
+    // button itself.
+    return (
+        <Dropdown
+            open={open && !disabled}
+            onOpenChange={(next) => setOpen(disabled ? false : next)}
+            trigger={['click']}
+            placement="bottomLeft"
+            overlayClassName={styles.topicMenu}
+            menu={{
+                items,
+                selectedKeys: [value],
+                onClick: ({ key }) => {
+                    setOpen(false);
+                    if (key !== value) onChange(key as TopicPermission);
+                },
+            }}
+        >
+            <span className={styles.topicChipAnchor}>
+                <M3Tooltip
+                    portal
+                    text={disabled && disabledReason ? disabledReason : `${title(value)} – ${description(value)}`}
+                >
+                    {chip}
+                </M3Tooltip>
+            </span>
+        </Dropdown>
     );
 };
 
@@ -346,9 +382,14 @@ export const InviteProgressBoard = ({
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
-    // #1026 slice 6: the per-person topic permission sits in the recipient cell —
-    // a column of its own pushed the actions out of a 1440px table.
-    const showTopicPermission = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
+    // #1026 slice 6: the per-person topic permission is a chip beside the role
+    // chip — a column of its own pushed the actions out of a 1440px table, and
+    // an outlined select made counsellor rows taller than every other row.
+    const showTopicPermission = targetRole !== 'TENANT_ADMIN';
+    const topicPermissionLockedReason = t(
+        'links.inviteProgress.topicsLocked',
+        'Sie haben keine Berechtigung, die Themen-Berechtigung dieser Person zu ändern.',
+    );
 
     const columns = useMemo(
         () => [
@@ -539,16 +580,22 @@ export const InviteProgressBoard = ({
                                                 })}
                                             </span>
                                         )}
+                                        {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                            <TopicPermissionChip
+                                                disabled={
+                                                    !onTopicPermissionChange ||
+                                                    topicPermissionSavingIds.includes(invite.id)
+                                                }
+                                                disabledReason={
+                                                    onTopicPermissionChange ? undefined : topicPermissionLockedReason
+                                                }
+                                                displayName={displayName}
+                                                // Invites created before #1026 carry no value: they behave as CREATE.
+                                                value={invite.topicPermission ?? 'CREATE'}
+                                                onChange={(next) => onTopicPermissionChange?.(invite, next)}
+                                            />
+                                        )}
                                     </span>
-                                    {showTopicPermission && hasEditableTopicPermission(invite) && (
-                                        <TopicPermissionCell
-                                            disabled={topicPermissionSavingIds.includes(invite.id)}
-                                            displayName={displayName}
-                                            // Invites created before #1026 carry no value: they behave as CREATE.
-                                            value={invite.topicPermission ?? 'CREATE'}
-                                            onChange={(next) => onTopicPermissionChange?.(invite, next)}
-                                        />
-                                    )}
                                 </div>
                             </DataTableCell>
                             <DataTableCell className={styles.progressCell}>

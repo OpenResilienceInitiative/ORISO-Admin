@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
@@ -786,11 +786,39 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
-        await user.click(await screen.findByRole('combobox', { name: /Themen für/ }));
-        await user.click(await screen.findByTitle('Darf weitere Themen anlegen'));
+        await user.click(await screen.findByRole('button', { name: /Themen für/ }));
+        await user.click(within(await screen.findByRole('menu')).getByText('Darf weitere Themen anlegen'));
 
         await waitFor(() => expect(mocks.updateAccountInviteTopicPermission).toHaveBeenCalledWith(1, 'CREATE'));
         expect(await screen.findByText('Themen-Berechtigung gespeichert')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Themen für/ })).toHaveTextContent('Themen: Anlegen');
+    });
+
+    it('shows the new topic level at once and puts the old one back when the save fails', async () => {
+        const counsellorRow = {
+            ...invite(1, 79, 'ACCEPTED'),
+            targetRole: 'COUNSELLOR',
+            acceptedAt: '2026-08-02T10:00:00Z',
+            topicPermission: 'NONE',
+        };
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow]));
+        let reject: (reason: unknown) => void = () => {};
+        mocks.updateAccountInviteTopicPermission.mockReturnValue(
+            new Promise((_, rejectSave) => {
+                reject = rejectSave;
+            }),
+        );
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        const chip = await screen.findByRole('button', { name: /Themen für/ });
+        await user.click(chip);
+        await user.click(within(await screen.findByRole('menu')).getByText('Darf weitere Themen anlegen'));
+
+        await waitFor(() => expect(chip).toHaveTextContent('Themen: Anlegen'));
+        reject(new Error('network'));
+        await waitFor(() => expect(chip).toHaveTextContent('Themen: Keine weiteren'));
+        expect(await screen.findByText('Die Themen-Berechtigung konnte nicht geändert werden.')).toBeInTheDocument();
     });
 });
 

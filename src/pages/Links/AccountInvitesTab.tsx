@@ -632,16 +632,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     );
 
     // #1026 slice 6: the table changes a counsellor's topic permission in place.
+    // Optimistic: the chip shows the new level at once, and a failed save puts
+    // the previous one back.
     const onTopicPermissionChange = useCallback(
         async (invite: AccountInviteDTO, topicPermission: TopicPermission) => {
+            const previous = invite.topicPermission;
+            const setRowPermission = (value: AccountInviteDTO['topicPermission'], patch?: AccountInviteDTO) =>
+                setInvites((current) =>
+                    current.map((row) => (row.id === invite.id ? { ...row, ...patch, topicPermission: value } : row)),
+                );
+            setRowPermission(topicPermission);
             setTopicSavingIds((ids) => [...ids, invite.id]);
             try {
                 const updated = await updateAccountInviteTopicPermission(invite.id, topicPermission);
-                setInvites((current) =>
-                    current.map((row) => (row.id === invite.id ? { ...row, ...updated, topicPermission } : row)),
-                );
-                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'));
+                setRowPermission(topicPermission, updated);
+                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'), 2);
             } catch (error) {
+                setRowPermission(previous);
                 const backend = error instanceof Response ? await extractApiErrorMessageOrNull(error) : null;
                 message.error(
                     backend ??

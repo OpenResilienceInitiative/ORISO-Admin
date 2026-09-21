@@ -479,32 +479,43 @@ describe('InviteProgressBoard — #1026 queue and topic permission', () => {
         expect(progress).toHaveTextContent('Kein BST-Admin – Einladung wartet');
     });
 
-    it('changes the topic permission of an accepted counsellor in the table', async () => {
+    const topicChip = () => screen.getByRole('button', { name: /Themen für/ });
+
+    it('changes the topic permission of an accepted counsellor from the chip menu', async () => {
         const onTopicPermissionChange = vi.fn();
         render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
 
-        const select = screen.getByRole('combobox', { name: /Themen für/ });
-        await userEvent.click(select);
-        await userEvent.click(await screen.findByTitle('Darf weitere Themen anlegen'));
+        await userEvent.click(topicChip());
+        const menu = await screen.findByRole('menu');
+        await userEvent.click(within(menu).getByText('Darf weitere Themen anlegen'));
 
         expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
     });
 
+    it('does not save when the current level is picked again', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        await userEvent.click(topicChip());
+        await userEvent.click(within(await screen.findByRole('menu')).getByText('Darf weitere Fachbereiche auswählen'));
+
+        expect(onTopicPermissionChange).not.toHaveBeenCalled();
+    });
+
     /*
-     * Frank's decision (#1026): the cell shows the SHORT label only; the full
-     * title and its description live in a tooltip and in the open select.
+     * Frank's redesign (#1026): a chip "Themen: <short label>" in the role
+     * chip's line; the full title and its description live in the tooltip and
+     * in the menu.
      */
-    it('shows the short topic label in the cell, the full title and description in a tooltip', async () => {
+    it('shows the short topic label in the chip, the full title and description in a tooltip', async () => {
         render(
             <InviteProgressBoard
                 {...counsellorProps([{ ...accepted, topicPermission: 'NONE' }], { onTopicPermissionChange: vi.fn() })}
             />,
         );
 
-        const select = screen.getByRole('combobox', { name: /Themen für/ });
-        const field = select.closest('.ant-select') as HTMLElement;
-        expect(field.querySelector('.ant-select-selection-item')).toHaveTextContent(/^Keine weiteren$/);
-        await userEvent.hover(field);
+        expect(topicChip()).toHaveTextContent(/^Themen: Keine weiteren$/);
+        await userEvent.hover(topicChip());
         const tooltip = await screen.findByRole('tooltip');
         expect(tooltip).toHaveTextContent('Keine weiteren Fachbereiche');
         expect(tooltip).toHaveTextContent('Nur die vorausgewählten Fachbereiche.');
@@ -513,25 +524,46 @@ describe('InviteProgressBoard — #1026 queue and topic permission', () => {
     it.each([
         ['SELECT_EXISTING', 'Auswählen'],
         ['CREATE', 'Anlegen'],
-    ] as const)('labels %s as "%s" in the cell', (topicPermission, short) => {
+    ] as const)('labels %s as "Themen: %s" in the chip', (topicPermission, short) => {
         render(
             <InviteProgressBoard
                 {...counsellorProps([{ ...accepted, topicPermission }], { onTopicPermissionChange: vi.fn() })}
             />,
         );
 
-        const field = screen.getByRole('combobox', { name: /Themen für/ }).closest('.ant-select') as HTMLElement;
-        expect(field.querySelector('.ant-select-selection-item')).toHaveTextContent(new RegExp(`^${short}$`));
+        expect(topicChip()).toHaveTextContent(new RegExp(`^Themen: ${short}$`));
     });
 
-    it('lists every option with its full title and description in the open select', async () => {
+    it('lists every level with its title and description, the current one checked', async () => {
         render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn() })} />);
 
-        await userEvent.click(screen.getByRole('combobox', { name: /Themen für/ }));
-        const option = (await screen.findAllByTitle('Darf weitere Fachbereiche auswählen')).find((element) =>
-            element.classList.contains('ant-select-item-option'),
+        await userEvent.click(topicChip());
+        const items = within(await screen.findByRole('menu')).getAllByRole('menuitem');
+        expect(items).toHaveLength(3);
+        const current = items.find((item) => item.textContent?.includes('Darf weitere Fachbereiche auswählen'));
+        expect(current).toHaveTextContent('Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.');
+        expect(current?.querySelector('svg')).not.toBeNull();
+        expect(items.filter((item) => item.querySelector('svg'))).toHaveLength(1);
+    });
+
+    it('keeps the chip visible but disabled, with the reason, when the viewer may not change it', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted])} />);
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(topicChip());
+        expect(screen.queryByRole('menu')).toBeNull();
+        await userEvent.hover(topicChip());
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('keine Berechtigung');
+    });
+
+    it('disables the chip while its row is saving', () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn(), topicPermissionSavingIds: [12] })}
+            />,
         );
-        expect(option).toHaveTextContent('Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.');
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('offers no topic column without a change handler and on the Träger tab', () => {

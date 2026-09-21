@@ -108,41 +108,111 @@
     white-space: nowrap;
 }
 
-/* #1026 slice 6: per-row topic permission. The cell shows only the short
-   label under the one-word label "Themen" (Frank's decision), so the field
-   is narrow by content and never clips; title + description sit in the
-   tooltip and in the open select. */
+/* #1026 slice 6 (redesign): the topic permission is a chip in the role chip's
+   line — same height (20px), border, radius and type as `.roleChip`, so a
+   counsellor row is exactly as tall as any other row. It is a button: a
+   trailing drop-down arrow, a state layer on hover/open, and the M3 menu below. */
 
-.topicTooltip {
-    display: block;
-    width: fit-content;
-    margin-top: 8px;
+.topicChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 2px 1px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 30px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 11px/16px var(--m3-body-font-family);
+    gap: 0;
+    letter-spacing: 0.5px;
+    transition: background-color 150ms ease;
+    white-space: nowrap;
+
+    &:hover,
+    &.topicChipOpen {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #b90013);
+        outline-offset: 2px;
+    }
+
+    &[aria-disabled='true'] {
+        background: transparent;
+        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
+        border-color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+        cursor: not-allowed;
+    }
 }
 
-.topicSelectAnchor {
-    display: block;
+.topicChipAnchor {
+    display: inline-flex;
 }
 
-.topicSelect {
-    /* Fits the longest short label ("Keine weiteren") plus the arrow;
-       narrower than the recipient's e-mail line, so the column keeps its width. */
-    width: 200px;
+.topicChipIcon {
+    /* The glyph is 16px inside the 16px line box: the chip keeps its height. */
+    width: 16px !important;
+    height: 16px !important;
+    flex: none;
 }
 
-/* Inline so the menu's leading checkmark (FloatingLabelSelect) sits beside the
-   title of the selected option, not on a line of its own. */
+.topicChipOpen .topicChipIcon {
+    transform: rotate(180deg);
+}
+
+/* The M3 menu (surface-container, 12px radius): one option per level with a
+   leading check column, the title and a one-line description. */
+
+.topicMenu {
+    :global(.ant-dropdown-menu) {
+        width: min(340px, calc(100vw - 32px));
+        padding: 8px 0;
+        border-radius: 12px;
+        background: var(--m3-surface-container, #f0eded);
+    }
+
+    :global(.ant-dropdown-menu-item) {
+        padding: 8px 16px 8px 12px;
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    /* Doubled class against antd's runtime-injected selected/hover rules (see
+       footerLanguageMenu.module.scss): the check carries "current", the row stays neutral. */
+    &#{&} :global(.ant-dropdown-menu-item-selected) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &#{&} :global(.ant-dropdown-menu-item:hover),
+    &#{&} :global(.ant-dropdown-menu-item-active) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    }
+}
 
 .topicOption {
-    display: inline-flex;
-    max-width: min(320px, calc(100% - 26px));
-    flex-direction: column;
-    gap: 2px;
-    vertical-align: top;
-    white-space: normal;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
 }
 
-:global(.ant-select-item-option-selected) .topicOptionDescription {
-    color: inherit;
+.topicOptionCheck {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 18px;
+}
+
+.topicOptionText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    white-space: normal;
 }
 
 .topicOptionTitle {
@@ -227,9 +297,6 @@
     .identityCell {
         padding-right: 56px !important;
     }
-
-    /* The short topic label is the select's only information; the card has the
-       room, so the desktop cap would only cut it off with an ellipsis. */
 
     .metaCell {
         display: flex !important;
