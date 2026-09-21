@@ -412,9 +412,30 @@ export const InviteProgressBoard = ({
                     const hasName = displayName !== invite.recipientEmail;
                     const lastActivity = inviteLastActivity(invite);
                     const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
+                    // A waiting invite without a unit admin was never mailed: its
+                    // warning bead is the queue problem, not a delivery problem.
+                    const queueProblem = hasQueueProblem(invite);
                     const phases = derivePhases(invite).map((phase) => ({
                         key: phase.key,
                         state: phase.state,
+                        ...(queueProblem && phase.state === 'warning'
+                            ? {
+                                  stateLabel:
+                                      invite.waitingForUnit === 'TENANT'
+                                          ? t(
+                                                'links.inviteProgress.queueProblemTenantState',
+                                                'Kein Träger-Admin – Einladung wartet',
+                                            )
+                                          : t(
+                                                'links.inviteProgress.queueProblemState',
+                                                'Kein BST-Admin – Einladung wartet',
+                                            ),
+                                  stateHint: t(
+                                      'links.inviteProgress.queueProblemStateHint',
+                                      'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
+                                  ),
+                              }
+                            : {}),
                         // A CURRENT phase is awaited, not reached: its label says
                         // what the row waits FOR ("Wartet auf Registrierung")
                         // instead of printing the reached-state word.

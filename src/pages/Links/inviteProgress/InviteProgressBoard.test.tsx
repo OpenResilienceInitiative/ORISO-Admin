@@ -469,6 +469,16 @@ describe('InviteProgressBoard — #1026 queue and topic permission', () => {
         expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
     });
 
+    it('names the queue problem for screen readers instead of calling it a delivery problem', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        const row = screen.getByText('person11@example.org').closest('tr') as HTMLElement;
+        const progress = within(row).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        // Nothing was mailed yet, so "Zustellproblem" was simply wrong.
+        expect(progress).not.toHaveTextContent('Zustellproblem');
+        expect(progress).toHaveTextContent('Kein BST-Admin – Einladung wartet');
+    });
+
     it('changes the topic permission of an accepted counsellor in the table', async () => {
         const onTopicPermissionChange = vi.fn();
         render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);

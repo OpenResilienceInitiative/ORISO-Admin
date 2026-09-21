@@ -9,6 +9,14 @@ export interface PhaseStepperPhase {
     key: string;
     label: string;
     state: PhaseStepperState;
+    /**
+     * Overrides the generic state word screen readers hear after the label
+     * (e.g. „Zustellproblem" for `warning`) when this phase's state means
+     * something more specific.
+     */
+    stateLabel?: string;
+    /** Overrides the generic tooltip sentence for this phase's state. */
+    stateHint?: string;
 }
 
 export interface PhaseStepperProps {
@@ -86,10 +94,10 @@ export const PhaseStepper = ({
                 {phases.map((phase) => (
                     <li key={phase.key} className={classNames(styles.phase, styles[phase.state])}>
                         <M3Tooltip
-                            text={`${phase.label}: ${t(
-                                `dataTable.phase.stateHint.${phase.state}`,
-                                STATE_HINT_FALLBACKS[phase.state],
-                            )}`}
+                            text={`${phase.label}: ${
+                                phase.stateHint ??
+                                t(`dataTable.phase.stateHint.${phase.state}`, STATE_HINT_FALLBACKS[phase.state])
+                            }`}
                         >
                             {/* The bead is the hover target AND the focus target:
                                 the explanation is the only place the colour code
@@ -105,7 +113,8 @@ export const PhaseStepper = ({
                                 <span className={styles.srOnly}>
                                     {phase.label}
                                     {' – '}
-                                    {t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                    {phase.stateLabel ??
+                                        t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
                                 </span>
                             </span>
                         </M3Tooltip>

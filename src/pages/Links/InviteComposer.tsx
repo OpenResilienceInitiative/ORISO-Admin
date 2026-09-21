@@ -366,6 +366,10 @@ export const InviteComposer = ({
         initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
     );
     const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
+    // "Stattdessen als BST-Admin einladen" switches the role for ONE founding
+    // invite; the role it replaced comes back once that invite went out, so the
+    // next person typed into the bar is not silently a second BST-Admin.
+    const [roleBeforeGuidedSwitch, setRoleBeforeGuidedSwitch] = useState<InviteRole | null>(null);
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
     // default, deliberate manual mode with authoritative availability states.
@@ -666,6 +670,10 @@ export const InviteComposer = ({
             setFirstName('');
             setLastName('');
             setCollapsedKeys(new Set(SELECT_KEYS));
+            if (roleBeforeGuidedSwitch) {
+                setRole(roleBeforeGuidedSwitch);
+                setRoleBeforeGuidedSwitch(null);
+            }
             // The next invite starts with no deliberate number choice again —
             // except where the field is pinned (lock / existing-only Träger).
             if (fixedTenant && !(tenantAllowCreate && !tenantLocked)) tenantAllocation.selectExisting(fixedTenant);
@@ -1029,7 +1037,11 @@ export const InviteComposer = ({
                     options: roleOptions.map((option) => ({ value: option, label: roleLabel(option) })),
                     disabled: roleOptions.length < 2,
                     className: styles.roleField,
-                    onChange: setRole,
+                    onChange: (next) => {
+                        // A deliberate pick replaces the guided switch: keep it after sending.
+                        setRoleBeforeGuidedSwitch(null);
+                        setRole(next);
+                    },
                 })}
                 <CollapsibleField
                     collapsed={!tenantLocked && isCollapsed('tenant')}
@@ -1176,6 +1188,7 @@ export const InviteComposer = ({
                             className={styles.sendHintAction}
                             variant="text"
                             onClick={() => {
+                                setRoleBeforeGuidedSwitch(role);
                                 setRole('AGENCY_ADMIN');
                                 setAlsoCounsellor(true);
                             }}

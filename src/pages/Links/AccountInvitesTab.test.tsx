@@ -553,6 +553,22 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(mocks.getAgencyDataById).not.toHaveBeenCalled();
     });
 
+    it('resets Rolle to Berater:in after the guided BST-Admin invite went out', async () => {
+        const user = await fill();
+        await user.click(
+            await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+        );
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+
+        // The next person typed into the fresh bar is a counsellor again, not a second BST-Admin.
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
+        );
+        expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
+    });
+
     it('lets a counsellor wait for a new agency whose admin invite is open, and says so', async () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.createAccountInvite.mockResolvedValue({

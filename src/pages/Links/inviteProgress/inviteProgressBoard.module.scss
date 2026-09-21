@@ -191,6 +191,13 @@
         padding-right: 56px !important;
     }
 
+    /* The short topic label is the select's only information; the card has the
+       room, so the desktop cap would only cut it off with an ellipsis. */
+
+    .topicSelect {
+        max-width: none;
+    }
+
     .metaCell {
         display: flex !important;
         align-items: baseline;

@@ -369,9 +369,9 @@ export const QueueProblemBadge: Story = {
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ canvasElement }) => {
         const rita = rowOf(canvasElement, 'rita.sommer@example.org');
-        await expect(rita.getByText(/Kein BST-Admin|No agency admin/)).toBeInTheDocument();
+        await expect(rita.getByText(/^(Kein BST-Admin|No agency admin)$/)).toBeInTheDocument();
         await expect(
-            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/Kein BST-Admin|No agency admin/),
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Kein BST-Admin|No agency admin)$/),
         ).toBeNull();
     },
 };
@@ -389,9 +389,27 @@ export const TopicPermissionInTable: Story = {
     },
 };
 
-/** The same queue on a phone (412 px): the topic select and the problem badge stack into the card. */
+/**
+ * The same queue on a phone (390 px, narrower than the issue's 412 px): the topic
+ * select and the problem badge stack into the card, and the topic select's short
+ * label is its only information, so it must be readable in full — no ellipsis.
+ */
 export const QueueMobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const selects = await canvas.findAllByRole('combobox', { name: /Themen für|Topics for/ });
+        await expect(selects.length).toBeGreaterThan(0);
+        selects.forEach((select) => {
+            const field = select.closest('.ant-select') as HTMLElement;
+            const label = field.querySelector<HTMLElement>('.ant-select-selection-item');
+            expect(label).not.toBeNull();
+            const shown = label as HTMLElement;
+            // Fully rendered: nothing clipped (scrollWidth fits) and the text is not cut short.
+            expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth + 1);
+            expect(shown.textContent).toMatch(/^(Themen|Topics): /);
+        });
+    },
 };
