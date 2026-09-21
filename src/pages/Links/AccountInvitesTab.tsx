@@ -123,7 +123,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // derived from.
     const [searchQuery, setSearchQuery] = useState('');
 
-    const currentTenantId = parseUserAuthInfo().tenantId || undefined;
+    // The JWT carries `tenantId` as a STRING — "0" for the platform admin is
+    // truthy, so a bare `|| undefined` pinned the platform admin to "Träger 0".
+    // Only a real Träger (> 0) is the viewer's own one.
+    const jwtTenantId = Number(parseUserAuthInfo().tenantId);
+    const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
     const { isSuperAdmin } = useUserRoles();
 
     // Client-side taken-id knowledge (existing tenants + still-active

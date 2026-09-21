@@ -617,6 +617,14 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
     });
 
+    it('does not pin the platform admin to "Träger 0" (the JWT carries tenantId as the string "0")', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        render(<CounsellorInvitesTab />);
+
+        const tenant = await screen.findByRole('combobox', { name: 'Träger' });
+        expect(tenant).toHaveValue('');
+    });
+
     it('lists every invite that joins a unit, but not the Träger founders', async () => {
         const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
         const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
