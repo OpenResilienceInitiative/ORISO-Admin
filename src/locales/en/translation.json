@@ -1194,7 +1194,7 @@
     "tenantAdmins.card.personalDataTitle": "Tenant admin personal data",
     "tenantAdmins.card.tenantTitle": "Tenant assignment",
     "tenantAdmins.hint.username": "Leave blank to auto-generate from email",
-    "tenantAdmins.hint.password": "Leave blank to let the admin set their own password via email reset",
+    "tenantAdmins.hint.password": "Used for the first sign-in only. Leave blank and the person sets their own password via e-mail reset.",
     "tenants.add.form.allowedConsultantsLicense.placeholder": "Number of consultants*",
     "tenants.add.form.name.placeholder": "Tenant name*",
     "tenants.add.form.subdomain.placeholder": "Subdomain",
