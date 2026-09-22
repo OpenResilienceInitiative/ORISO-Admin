@@ -3,9 +3,9 @@
 `src/components/EmailPreview/fixtures/*.html` are **verbatim backend output**, not markup written
 in this repository. ORISO-UserService#914 makes the backend the single owner of the mail layout;
 since `feat/invite-mail-oriso-frame` that layout is the ORISO e-mail frame (`InviteFrameMailRenderer`
-
--   template `src/main/resources/emails/<tone>/einladung-freitext.*`, synced from the ORISO-Frontend
-    e-mail kit). The Admin renders the result and nothing else. Hand-editing a fixture would recreate exactly the drift that issue removes.
+with template `src/main/resources/emails/<tone>/einladung-freitext.*`, synced from the ORISO-Frontend
+e-mail kit). The Admin renders the result and nothing else. Hand-editing a fixture would recreate
+exactly the drift that issue removes.
 
 Each fixture has a `.html` (the `html` field of a preview response) and a `.txt` (the `plainText`
 alternative sent alongside it). `MANIFEST.txt` lists what each one is.
