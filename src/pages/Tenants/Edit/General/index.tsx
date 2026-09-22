@@ -15,6 +15,7 @@ import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hoo
 import { useAddOrUpdateTenantAdmin } from '../../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
+import { passwordFormRules } from '../../../../utils/consultantCredentialRules';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { createTenantSaveErrorHandler } from '../../../../utils/tenantSaveErrorHandler';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
@@ -300,40 +301,9 @@ export const GeneralTenantSettings = () => {
                                 name="tenantAdminPassword"
                                 label={t('tenantAdmins.form.password')}
                                 placeholder={t('placeholder.password')}
+                                helpText={t('tenantAdmins.form.password.hint')}
                                 required
-                                rules={[
-                                    requiredRule,
-                                    {
-                                        min: 8,
-                                        message: t('message.error.password.minLength'),
-                                    },
-                                    {
-                                        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                        message: t('message.error.password.policy'),
-                                    },
-                                ]}
-                            />
-                        </div>
-                        <div className={styles.fieldGroup}>
-                            <MuiPasswordFormField
-                                name="tenantAdminPasswordConfirmation"
-                                label={t('tenantAdmins.form.passwordConfirmation')}
-                                placeholder={t('placeholder.password')}
-                                required
-                                dependencies={['tenantAdminPassword']}
-                                rules={[
-                                    requiredRule,
-                                    ({ getFieldValue }) => ({
-                                        validator(_, value) {
-                                            if (!value || getFieldValue('tenantAdminPassword') === value) {
-                                                return Promise.resolve();
-                                            }
-                                            return Promise.reject(
-                                                new Error(t('profile.passwordChange.error.passwordsNotMatch')),
-                                            );
-                                        },
-                                    }),
-                                ]}
+                                rules={[requiredRule, ...passwordFormRules(t)]}
                             />
                         </div>
                         <div className={styles.fieldGroup}>
