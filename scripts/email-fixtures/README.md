@@ -2,7 +2,7 @@
 
 `src/components/EmailPreview/fixtures/*.html` are **verbatim backend output**, not markup written
 in this repository. ORISO-UserService#914 makes the backend the single owner of the mail layout;
-since `feat/invite-mail-oriso-frame` that layout is the ORISO e-mail frame (`InviteFrameMailRenderer`
+since ORISO-UserService#1228 that layout is the ORISO e-mail frame (`InviteFrameMailRenderer`
 with template `src/main/resources/emails/<tone>/einladung-freitext.*`, synced from the ORISO-Frontend
 e-mail kit). The Admin renders the result and nothing else. Hand-editing a fixture would recreate
 exactly the drift that issue removes.
@@ -71,6 +71,11 @@ an action, so the endpoint cannot render the button-less variant today. Regenera
 offline generator below, or ask the UserService side for a flag on the endpoint and then curl it
 like the rest.
 
+Its security line and footer note still speak of "diesen Link" and "Ihrer Einladung": that text is
+fixed in the `einladung-freitext` template, so every mail sent without an action (for example the
+DPA-signed notice) carries it. The fixture shows the backend output as it is; it changes once the
+template is fixed upstream and the fixture is regenerated.
+
 ## Offline generator (how the fixtures in this branch were made)
 
 The preview endpoint was not deployed anywhere when these fixtures were first created, so they were
@@ -79,7 +84,8 @@ outer boundaries stubbed (template repository, TenantService branding lookup, SM
 `InviteFrameFixtureGenerator.java` in this directory is that generator, kept here as the record of
 how the files were produced. It builds the renderer through the UserService test helper
 `InviteFrameMailRendererFixture`, so it needs a UserService checkout that has the ORISO frame
-(`feat/invite-mail-oriso-frame` or later).
+(`dev` since ORISO-UserService#1228). `MANIFEST.txt` records the UserService commit the run
+used, read from that checkout at run time.
 
 ```bash
 US=<path to an ORISO-UserService checkout with InviteFrameMailRenderer>
