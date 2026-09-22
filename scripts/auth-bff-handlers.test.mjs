@@ -216,6 +216,18 @@ describe('auth BFF login endpoint configuration', () => {
         expect(() => createAuthBffHandler()).toThrow(/VITE_API_URL/);
     });
 
+    it('ignores a whitespace-only Keycloak URL and uses the API host', () => {
+        process.env.VITE_API_URL = 'https://admin.example.org';
+        process.env.VITE_KEYCLOAK_URL = '   ';
+        expect(getAuthBffConfig().loginEndpoint).toMatch(/^https:\/\/admin\.example\.org\/auth\/realms\//);
+    });
+
+    it('treats whitespace-only values as missing', () => {
+        process.env.VITE_API_URL = '  ';
+        process.env.VITE_KEYCLOAK_URL = ' ';
+        expect(() => getAuthBffConfig()).toThrow(/VITE_API_URL/);
+    });
+
     it('treats an empty value as missing', () => {
         process.env.VITE_API_URL = '';
         expect(() => getAuthBffConfig()).toThrow(/VITE_API_URL/);
@@ -229,6 +241,7 @@ describe('auth BFF login endpoint configuration', () => {
     });
 
     it('prefers the dedicated Keycloak host when set', () => {
+        process.env.VITE_API_URL = 'https://admin.example.org';
         process.env.VITE_KEYCLOAK_URL = 'https://auth.example.org';
         expect(getAuthBffConfig().loginEndpoint).toMatch(/^https:\/\/auth\.example\.org\/realms\//);
     });

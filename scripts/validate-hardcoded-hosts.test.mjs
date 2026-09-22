@@ -28,10 +28,26 @@ describe('validate-hardcoded-hosts.sh', () => {
         'https://admin.oriso-dev.site/admin',
         'https://matrix.oriso.site',
         'http://localhost',
+        'http://localhost:3000',
+        'http://localhost/api',
+        'http://localhost?x=1',
+        'https://localhost:8443/auth',
     ])('fails the build when the bundle contains %s', (host) => {
         const result = runGuardOn(`const u = "${host}";`);
         expect(result.status, result.stderr).toBe(1);
         expect(result.stderr).toContain('Hardcoded deployment value');
+    });
+
+    it('allows the two third-party defaults found in the real bundle', () => {
+        const otel = 'function Y(e,t){return{headers:async()=>e,url:`http://localhost:4318/`+t}}';
+        const router = 'let r=`http://localhost`;e&&(r=e.location.origin===`null`?e.location.href:e.location.origin)';
+        expect(runGuardOn(otel).status).toBe(0);
+        expect(runGuardOn(router).status).toBe(0);
+    });
+
+    it('does not flag names that merely start with localhost', () => {
+        const result = runGuardOn('const u = "http://localhost.example.org";');
+        expect(result.status, result.stderr).toBe(0);
     });
 
     it('passes a bundle that only uses example hosts', () => {

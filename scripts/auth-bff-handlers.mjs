@@ -9,8 +9,9 @@ const LEGACY_AUTH_COOKIES = ['keycloak', 'refreshToken'];
 
 const readEnv = (...keys) => {
     for (const key of keys) {
-        const value = process.env[key];
-        if (value !== undefined && value !== '') {
+        // Trimmed, so a whitespace-only value counts as unset instead of winning precedence.
+        const value = process.env[key]?.trim();
+        if (value) {
             return value;
         }
     }
