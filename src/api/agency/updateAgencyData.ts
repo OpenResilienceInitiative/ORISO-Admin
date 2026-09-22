@@ -14,7 +14,12 @@ import { assignAgencyToConsultants } from './assignAgencyToConsultants';
  * @param formInput - input data from form
  * @return data
  */
-export const updateAgencyData = async (agencyModel: AgencyData, formInput: AgencyData) => {
+export const updateAgencyData = async (
+    agencyModel: AgencyData,
+    formInput: AgencyData,
+    /** Called once the main PUT is accepted, before follow-up requests that may still fail. */
+    onMainWritten?: () => void,
+) => {
     const agencyId = agencyModel.id;
     if (agencyId == null) {
         throw Error('agency id must be set');
@@ -75,6 +80,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
+        onMainWritten?.();
         // Card-based agency edits submit narrow patches. The regular agency GET
         // does not contain postcode ranges, so treating an absent `postCodes`
         // field as an empty selection silently replaces the stored range with

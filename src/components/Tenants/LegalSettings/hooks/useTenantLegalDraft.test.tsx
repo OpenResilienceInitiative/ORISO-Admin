@@ -26,6 +26,43 @@ describe('useTenantLegalDraft', () => {
         vi.mocked(putTenantLegalDraft).mockReset();
     });
 
+    it('does not let an A-to-B-to-A late save overwrite the new A generation', async () => {
+        const draft = (revision: string, de: string): TenantLegalDraft => ({
+            kind: 'IMPRINT',
+            content: { de },
+            revision,
+            updatedAt: '2026-09-21T09:00:00Z',
+        });
+        let finishOldA: (value: TenantLegalDraft) => void = () => undefined;
+        const oldASave = new Promise<TenantLegalDraft>((resolve) => {
+            finishOldA = resolve;
+        });
+        const oldA = draft('a:0', 'A');
+        const tenantB = draft('b:0', 'B');
+        const newA = draft('a:2', 'Neues A');
+        vi.mocked(getTenantLegalDraft)
+            .mockResolvedValueOnce(oldA)
+            .mockResolvedValueOnce(tenantB)
+            .mockResolvedValueOnce(newA);
+        vi.mocked(putTenantLegalDraft).mockImplementationOnce(() => oldASave);
+        const { result, rerender } = renderHook(({ tenantId }) => useTenantLegalDraft(tenantId, 'IMPRINT', true), {
+            initialProps: { tenantId: 10 },
+            wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.draft).toEqual(oldA));
+        const pendingOldSave = result.current.save({ content: { de: 'Altes A' }, revision: oldA.revision });
+
+        rerender({ tenantId: 11 });
+        await waitFor(() => expect(result.current.draft).toEqual(tenantB));
+        rerender({ tenantId: 10 });
+        await waitFor(() => expect(result.current.draft).toEqual(newA));
+
+        finishOldA(draft('a:1', 'Verspätetes A'));
+        await act(async () => pendingOldSave);
+
+        expect(result.current.draft).toEqual(newA);
+    });
+
     it('loads an absent draft without treating the 404 mapping as a failure', async () => {
         vi.mocked(getTenantLegalDraft).mockResolvedValue(null);
         const { result } = renderHook(() => useTenantLegalDraft(0, 'PRIVACY', true), {

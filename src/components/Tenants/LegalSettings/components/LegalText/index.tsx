@@ -241,8 +241,13 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
+        // A saved server draft is a complete snapshot: a language it no longer has stays gone.
+        // A device-local draft may hold only the languages that were edited, so it still layers.
+        if (sourceChosen && selectedDraft && draftSource !== 'local' && serverBase.draft === selectedDraft) {
+            return { ...selectedDraft.content, ...edits };
+        }
         return { ...base, ...(sourceChosen ? selectedDraft?.content ?? {} : {}), ...edits };
-    }, [canEditLegalText, storedContent, sourceChosen, selectedDraft, edits, languages]);
+    }, [canEditLegalText, storedContent, sourceChosen, selectedDraft, draftSource, serverBase.draft, edits, languages]);
 
     /**
      * The consent sentence that belongs to the Träger privacy policy (ADR-021
@@ -264,12 +269,20 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
+        if (
+            sourceChosen &&
+            selectedDraft?.privacyConsent &&
+            draftSource !== 'local' &&
+            serverBase.draft === selectedDraft
+        ) {
+            return { ...selectedDraft.privacyConsent, ...consentEdits };
+        }
         return {
             ...base,
             ...(sourceChosen ? selectedDraft?.privacyConsent ?? {} : {}),
             ...consentEdits,
         };
-    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, consentEdits]);
+    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, draftSource, serverBase.draft, consentEdits]);
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
@@ -301,9 +314,13 @@ export const LegalText = ({
         setDraftActionPending(true);
         try {
             if (serverBase.draft) await serverDraft.discard(serverBase.revision ?? serverBase.draft.revision);
+            // The server draft is gone once the delete succeeded, whatever happens locally next;
+            // keeping it would advertise a deleted draft and send its dead revision on the next save.
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
+            }
             const localDiscarded = discardDraft();
             if (editorIdentityRef.current === operationIdentity && localDiscarded) {
-                setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
                 setDraftSource(undefined);
                 setEdits({});
                 setConsentEdits({});
@@ -412,8 +429,9 @@ export const LegalText = ({
         // Publish exactly the normalized payload returned by the revision-checked
         // draft write. This keeps the live text and the saved revision identical.
         const formData = set({}, fieldName, { ...saved.content });
-        if (consentEnabled && saved.privacyConsent) {
-            set(formData, ['content', 'privacyConsent'], { ...saved.privacyConsent });
+        if (consentEnabled) {
+            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
+            set(formData, ['content', 'privacyConsent'], { ...(saved.privacyConsent ?? consentByLanguage) });
         }
         try {
             if (showConfirmationModal) {
@@ -470,7 +488,7 @@ export const LegalText = ({
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
                     savedAt={serverBase.draft?.updatedAt}
-                    localSavedAt={savedAt}
+                    localSavedAt={draftSource === 'server' ? undefined : savedAt}
                     collision={draftCollision && !sourceChosen}
                     loadServer={() => {
                         setDraftSource('server');
@@ -508,6 +526,7 @@ export const LegalText = ({
                         serverDraft.clearConflict();
                     }}
                     onDiscard={discardDraftAndEdits}
+                    pending={draftActionPending}
                 />
             ) : (
                 canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
