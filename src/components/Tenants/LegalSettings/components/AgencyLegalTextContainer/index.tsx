@@ -511,6 +511,7 @@ export const AgencyLegalTextContainer = ({
             consentUnavailableReason={consentUnavailableReason}
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
+            hasOwnConsent={isDepartment && hasOwnConsent}
             languages={languages}
             publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
             versions={versions}

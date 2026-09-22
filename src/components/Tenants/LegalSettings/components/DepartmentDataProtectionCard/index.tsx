@@ -91,6 +91,12 @@ interface DepartmentDataProtectionCardProps {
     /** The consent sentences authored at THIS level; a language absent here is inherited. */
     ownConsentByLanguage?: Record<string, string>;
     /**
+     * Whether this level owns its consent sentence at all — blank included. Only
+     * a level that owns none may be offered the platform default to start from
+     * (#929); a stored blank is a decision and stays as it is.
+     */
+    hasOwnConsent?: boolean;
+    /**
      * Machine-translation call (wired by the container). When present, publishing offers
      * the translate-on-publish modal and non-source languages get a per-field
      * "translate from the original" button. Draft saves never translate.
@@ -142,6 +148,7 @@ export const DepartmentDataProtectionCard = ({
     consentUnavailableReason,
     consentInheritedFrom,
     ownConsentByLanguage,
+    hasOwnConsent = false,
     readOnly = false,
     readOnlyReason,
 }: DepartmentDataProtectionCardProps) => {
@@ -317,6 +324,7 @@ export const DepartmentDataProtectionCard = ({
                                 <LegalConsentField
                                     hideTemplateChooser
                                     hideTrigger
+                                    hasOwnSentence={hasOwnConsent}
                                     inheritedFrom={
                                         // The notice describes the CURRENT state. While an archived version is on
                                         // screen it would answer a question nobody asked about the version being

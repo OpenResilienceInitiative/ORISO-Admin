@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
+    notifySuccess: vi.fn(),
+    notifyError: vi.fn(),
     card: vi.fn(),
     publishDpp: vi.fn(),
     tenant: vi.fn(),
@@ -27,6 +29,14 @@ vi.mock('../../hooks/useAgencyLegalDraft', () => ({
         clearConflict: vi.fn(),
     }),
 }));
+vi.mock('antd', async () => {
+    const antd = await vi.importActual<typeof import('antd')>('antd');
+
+    return {
+        ...antd,
+        notification: { ...antd.notification, success: h.notifySuccess, error: h.notifyError },
+    };
+});
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -73,15 +83,8 @@ const agencyData: any = {
     content: { privacy: { de: '<p>agency wide</p>' } },
 };
 
-const renderContainer = (props: Record<string, unknown> = {}) =>
-    render(
-        <AgencyLegalTextContainer
-            agencyData={agencyData}
-            field="privacy"
-            onSaveAgencyWide={vi.fn()}
-            {...(props as any)}
-        />,
-    );
+const renderContainer = () =>
+    render(<AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={vi.fn()} />);
 
 const selectDepartment = async (name: string) => {
     await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
@@ -90,93 +93,66 @@ const selectDepartment = async (name: string) => {
 
 const cardProps = () => h.card.mock.calls.at(-1)?.[0];
 
-/** A Fachbereich whose policy BODY is empty — the state the QA run hit. */
-const departmentWithoutBody = (extra: Record<string, unknown> = {}) =>
-    h.useDepartmentDpp.mockReturnValue({
-        data: { content: '{}', publicationStatus: 'DRAFT', ...extra },
-        isLoading: false,
-        isError: false,
-        isSuccess: true,
-    });
+/** The mutation options the container handed to `mutate` on the last call. */
+const mutationCallbacks = () => h.publishDpp.mock.calls.at(-1)?.[1];
 
 /**
- * A consent sentence is a FIELD of the policy, and a blank policy body means the
- * level above still governs the document text (ADR-021 decision 1). The two are
- * therefore independent: judging whether a Fachbereich has its own SENTENCE by
- * whether it has its own BODY threw away every sentence saved against an empty
- * policy — which is exactly how an admin authors the first one (#929).
+ * A Fachbereich save used to be fire-and-forget: no success and no failure
+ * message, so a rejected save was indistinguishable from a stored one. That is
+ * why a sentence which never reached the server was only noticed on the next
+ * reload (#929). Asserting that a second argument merely EXISTS would not catch
+ * a no-op or a wrong key, so these drive the callbacks the container passes.
  */
-describe('AgencyLegalTextContainer — a sentence of its own, with no body of its own', () => {
+describe('AgencyLegalTextContainer — the Fachbereich save says what happened', () => {
     beforeEach(() => {
-        h.useDepartmentDpp.mockReset();
+        h.useDepartmentDpp.mockReset().mockReturnValue({
+            data: { content: '{"de":"<p>own</p>"}', publicationStatus: 'PUBLISHED' },
+            isLoading: false,
+            isError: false,
+            isSuccess: true,
+        });
         h.card.mockReset();
         h.publishDpp.mockReset();
-        h.tenant.mockReset().mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
+        h.tenant.mockReset().mockReturnValue({ data: undefined });
         h.saveAgencyDraft.mockReset();
         h.discardAgencyDraft.mockReset().mockResolvedValue(undefined);
+        h.notifySuccess.mockReset();
+        h.notifyError.mockReset();
     });
 
-    it('shows the stored sentence, not the inherited one', async () => {
-        departmentWithoutBody({ consentText: '{"de":"Fachbereich-Satz"}' });
-
+    it('confirms a publish', async () => {
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'neu {{legal_links}}' });
 
-        expect(cardProps().consentByLanguage).toEqual({ de: 'Fachbereich-Satz' });
-        expect(cardProps().consentInheritedFrom).toBeUndefined();
+        mutationCallbacks().onSuccess();
+
+        expect(h.notifySuccess).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'legal.department.published' }),
+        );
+        expect(h.notifyError).not.toHaveBeenCalled();
     });
 
-    it('keeps a deliberately blank sentence blank', async () => {
-        // Blank is a decision, not an absence: at runtime it means the level
-        // above governs. Re-seeding it would silently re-author a legal
-        // sentence nobody wrote.
-        departmentWithoutBody({ consentText: '{"de":""}' });
-
+    it('confirms a draft save, and does not call it a publication', async () => {
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, false, { de: 'neu {{legal_links}}' });
 
-        expect(cardProps().consentByLanguage).toEqual({ de: '' });
+        mutationCallbacks().onSuccess();
+
+        expect(h.notifySuccess).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'legal.department.draftSaved' }),
+        );
     });
 
-    it('still inherits when the Fachbereich has no sentence at all', async () => {
-        departmentWithoutBody();
-
+    it('says so when the save is rejected', async () => {
         renderContainer();
         await selectDepartment('U25 Suizidprävention');
+        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'neu {{legal_links}}' });
 
-        expect(cardProps().consentByLanguage).toEqual({ de: 'Träger-Satz' });
-        expect(cardProps().consentInheritedFrom).toBe('legal.consent.level.agency');
-    });
+        mutationCallbacks().onError();
 
-    it('tells the card the sentence is this level’s own, so it is not re-seeded', async () => {
-        // The card passes this straight to the consent editor: a level that owns
-        // its sentence keeps it as it stands, and the platform default is only
-        // offered where nothing has been authored yet (#929).
-        departmentWithoutBody({ consentText: '{"de":"Fachbereich-Satz"}' });
-
-        renderContainer();
-        await selectDepartment('U25 Suizidprävention');
-
-        expect(cardProps().hasOwnConsent).toBe(true);
-    });
-
-    it('lets a Fachbereich that has authored nothing be offered the default', async () => {
-        departmentWithoutBody();
-
-        renderContainer();
-        await selectDepartment('U25 Suizidprävention');
-
-        expect(cardProps().hasOwnConsent).toBe(false);
-    });
-
-    it('keeps the body inheriting while the sentence is the Fachbereich’s own', async () => {
-        departmentWithoutBody({ consentText: '{"de":"Fachbereich-Satz"}' });
-
-        renderContainer();
-        await selectDepartment('U25 Suizidprävention');
-
-        // An empty own body still edits a copy of the agency-wide text — that
-        // seeding rule is unrelated to the sentence and must not change.
-        expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+        expect(h.notifyError).toHaveBeenCalledWith(expect.objectContaining({ message: 'legal.department.saveError' }));
+        expect(h.notifySuccess).not.toHaveBeenCalled();
     });
 });

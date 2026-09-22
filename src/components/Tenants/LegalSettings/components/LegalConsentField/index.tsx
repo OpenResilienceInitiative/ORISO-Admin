@@ -36,6 +36,17 @@ export interface LegalConsentFieldProps {
      * taken away; only its location moves.
      */
     hideTemplateChooser?: boolean;
+    /**
+     * Whether THIS level already owns a consent sentence — blank included.
+     *
+     * Blankness alone cannot answer that: a level that has never authored one
+     * and a level that deliberately cleared its own both read as blank here.
+     * Only the first may be offered the platform default; seeding the second
+     * would let one press of the confirm button re-author a sentence somebody
+     * deliberately removed. The owner of that distinction is the container, so
+     * it is passed in rather than guessed.
+     */
+    hasOwnSentence?: boolean;
     /** Lets a surrounding split button own the visible dialog trigger. */
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -56,6 +67,7 @@ export const LegalConsentField = ({
     onChange,
     readOnly,
     inheritedFrom,
+    hasOwnSentence = false,
     hideTemplateChooser,
     open: openProp,
     onOpenChange,
@@ -76,15 +88,18 @@ export const LegalConsentField = ({
      * to adjust instead — it already carries `{{legal_links}}`, so what the
      * admin starts from can never be published invalid.
      *
-     * Read-only surfaces are exempt: they report what is stored, and showing
+     * Two surfaces are exempt. Read-only ones report what is stored, and showing
      * someone who cannot save a sentence this level does not have would be a
-     * claim about the document rather than a starting point for editing.
+     * claim about the document rather than a starting point for editing. And a
+     * level that already owns its sentence keeps it as it stands, blank
+     * included — see `hasOwnSentence`.
      */
     const platformDefault = useMemo(
         () => templates.find((entry) => entry.id === PLATFORM_CONSENT_TEMPLATE_ID)?.values.text ?? '',
         [templates],
     );
-    const seedsPlatformDefault = !readOnly && isBlankConsentText(value) && !isBlankConsentText(platformDefault);
+    const seedsPlatformDefault =
+        !readOnly && !hasOwnSentence && isBlankConsentText(value) && !isBlankConsentText(platformDefault);
     const startingDraft = seedsPlatformDefault ? platformDefault : value;
     const dialogOpen = openProp ?? open;
     const setDialogOpen = (next: boolean) => {
