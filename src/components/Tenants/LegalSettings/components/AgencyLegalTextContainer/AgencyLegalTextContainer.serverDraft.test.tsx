@@ -264,11 +264,14 @@ describe('AgencyLegalTextContainer server drafts', () => {
         await userEvent.click(screen.getByRole('button', { name: 'load-server' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>server</p>' });
         expect(noticeProps().collision).toBe(false);
+        // The editor holds the server copy now; the browser copy's time must not be shown as its origin.
+        expect(noticeProps().localSavedAt).toBeUndefined();
         expect(h.localDiscard).not.toHaveBeenCalled();
 
         await userEvent.click(screen.getByRole('button', { name: 'keep-local' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>local</p>' });
         expect(noticeProps().collision).toBe(false);
+        expect(noticeProps().localSavedAt).toBe('2026-09-17T13:00:00Z');
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 

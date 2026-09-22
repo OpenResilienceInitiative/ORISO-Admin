@@ -50,10 +50,13 @@ export const useAgencyUpdate = (id: string) => {
         },
         // A write can fail after the main PUT went through (e.g. the postcode-range request). Reload
         // the agency so the next card save merges into what the server accepted, not an old snapshot.
-        onError: () => {
-            queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });
-            queryClient.invalidateQueries({ queryKey: ['AGENCY_POST_CODES', id] });
-        },
+        // Returned so the mutation settles only after the refetch: a queued save must not merge into
+        // the old snapshot in between.
+        onError: () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['AGENCY', id] }),
+                queryClient.invalidateQueries({ queryKey: ['AGENCY_POST_CODES', id] }),
+            ]),
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });
             queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });

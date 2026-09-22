@@ -515,7 +515,9 @@ export const AgencyLegalTextContainer = ({
         <>
             <TenantLegalDraftNotice
                 savedAt={serverBase.draft?.savedAt}
-                localSavedAt={localDraftSavedAt}
+                // After choosing the server copy the editor holds it; naming the browser copy's time
+                // would give the text the wrong provenance.
+                localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
                 collision={draftCollision && !sourceChosen}
                 loadServer={() => {
                     if (draftActionPendingRef.current) return;

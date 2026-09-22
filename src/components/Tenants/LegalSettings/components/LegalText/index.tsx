@@ -488,7 +488,7 @@ export const LegalText = ({
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
                     savedAt={serverBase.draft?.updatedAt}
-                    localSavedAt={savedAt}
+                    localSavedAt={draftSource === 'server' ? undefined : savedAt}
                     collision={draftCollision && !sourceChosen}
                     loadServer={() => {
                         setDraftSource('server');

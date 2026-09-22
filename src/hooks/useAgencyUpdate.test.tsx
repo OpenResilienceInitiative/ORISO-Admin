@@ -109,6 +109,33 @@ describe('useAgencyUpdate sequential card saves', () => {
         await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '282'] }));
     });
 
+    it('settles a failed update only after the agency refetch, so a queued save sees fresh data', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        let releaseRefetch: () => void = () => undefined;
+        const refetch = new Promise<void>((resolve) => {
+            releaseRefetch = resolve;
+        });
+        vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => refetch);
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        let settled = false;
+        const failing = result.current.mutateAsync({ description: 'x' } as never).catch(() => {
+            settled = true;
+        });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 20);
+        });
+        expect(settled).toBe(false);
+        releaseRefetch();
+        await failing;
+        expect(settled).toBe(true);
+    });
+
     it('does not let a failed legal publication leak into a later unrelated card save', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], {
