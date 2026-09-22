@@ -8,6 +8,7 @@ import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
+import { useAgencyData } from '../../../../../hooks/useAgencyData';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
@@ -17,7 +18,7 @@ import { CreateConsultantModal } from '../../../../../components/CreateConsultan
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
-import { isConsultantSectionVisible } from './consultantSection';
+import { isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -44,20 +45,38 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         hasTenant: true,
     });
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
+    // Already in the query cache — the page reads the same key, so this adds no request.
+    const { data: agency } = useAgencyData({ id });
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
         pageSize: 1000,
         enabled: showConsultantAssignment,
     });
-    const consultantOptions = useMemo(() => {
-        const activeConsultants = (consultants?.data || []).filter(isActiveRecord);
-
-        return convertToOptions(activeConsultants, ['firstname', 'lastname', 'email'], 'id');
-    }, [consultants?.data]);
-    const needsConsultantAssignment = id === 'add' ? !hasSelectedConsultants : !hasConsultants;
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
+    const consultantOptions = useMemo(() => {
+        // A platform admin's consultant search spans tenants and the backend stores a
+        // cross-tenant agency assignment without rejecting it, so scope the list to the
+        // agency's tenant. An unknown tenant leaves it unfiltered rather than emptying
+        // the picker — same rule as the supervisor picker in users/Edit.
+        const assignable = (consultants?.data || []).filter(
+            (consultant) =>
+                isActiveRecord(consultant) &&
+                (consultantTenantId === undefined || String(consultant.tenantId) === String(consultantTenantId)),
+        );
+
+        return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
+    }, [consultants?.data, consultantTenantId]);
+    // One rule for both screens. A selection counts because saving assigns it, which is what
+    // the hint on this card promises; the backend count covers counsellors attached earlier.
+    const mayGoOnline = mayBeVisibleInRegistration({
+        hasAssignedConsultants: hasConsultants,
+        hasSelectedConsultants,
+        // The stored state, not the form value the admin may have just toggled.
+        isAlreadyVisible: Boolean(agency?.id) && !agency?.offline,
+    });
+    const needsConsultantAssignment = !mayGoOnline;
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];
@@ -75,6 +94,25 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
             form.setFieldValue('online', false);
         }
     }, [form, hasSelectedConsultants, id]);
+
+    // Narrowing the options does not narrow the selection: MuiSelectField keeps a value it
+    // cannot resolve, so a counsellor picked before the tenant was known would still be
+    // submitted and assigned. Drop what the tenant no longer allows — but only once the
+    // search has answered, or a pending query would read as an empty list and wipe a valid pick.
+    useEffect(() => {
+        if (isLoadingConsultants || !consultants?.data) {
+            return;
+        }
+        const allowed = new Set(consultantOptions.map(({ value }) => String(value)));
+        const current = form.getFieldValue('consultantIds') || [];
+        const kept = current.filter((entry) =>
+            allowed.has(String(entry !== null && typeof entry === 'object' ? entry?.value : entry)),
+        );
+
+        if (kept.length !== current.length) {
+            form.setFieldValue('consultantIds', kept);
+        }
+    }, [consultantOptions, consultants?.data, form, isLoadingConsultants]);
 
     const fields = (
         <>
@@ -117,10 +155,18 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                     </div>
                 </>
             )}
+            {/* Not disabled: the switch reacts and names the missing counsellor on submit. */}
             <MuiSwitchField
                 label={t('agency.form.registrationSettings.onlineDescription')}
                 name="online"
-                disabled={needsConsultantAssignment}
+                rules={[
+                    {
+                        validator: (_rule, value) =>
+                            value && needsConsultantAssignment
+                                ? Promise.reject(new Error(t('agency.form.registrationSettings.onlineNeedsConsultant')))
+                                : Promise.resolve(),
+                    },
+                ]}
             />
             <Divider />
 
