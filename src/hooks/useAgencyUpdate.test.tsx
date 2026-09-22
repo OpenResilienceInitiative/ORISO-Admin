@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useAgencyUpdate } from './useAgencyUpdate';
 
 const mocks = vi.hoisted(() => ({
-    updateAgencyData: vi.fn(async (_stored, update) => update),
+    updateAgencyData: vi.fn(async (...args: unknown[]) => args[1]),
     agency: {
         id: 282,
         name: 'E2E Agency',
@@ -90,6 +90,75 @@ describe('useAgencyUpdate sequential card saves', () => {
             confirmPrivacy: true,
         });
         expect(update.description).toBe('Keep this description');
+    });
+
+    it('reloads the agency after a failed update so a partial server write is not undone later', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(result.current.mutateAsync({ description: 'x' } as never)).rejects.toThrow(
+            'postcode range rejected',
+        );
+
+        await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '282'] }));
+    });
+
+    it('settles a failed update only after the agency refetch, so a queued save sees fresh data', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        let releaseRefetch: () => void = () => undefined;
+        const refetch = new Promise<void>((resolve) => {
+            releaseRefetch = resolve;
+        });
+        vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => refetch);
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        let settled = false;
+        const failing = result.current.mutateAsync({ description: 'x' } as never).catch(() => {
+            settled = true;
+        });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 20);
+        });
+        expect(settled).toBe(false);
+        releaseRefetch();
+        await failing;
+        expect(settled).toBe(true);
+    });
+
+    it('keeps the accepted main write as the base when a follow-up request and the refetch both fail', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], { ...mocks.agency, description: 'Old' });
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        mocks.updateAgencyData
+            .mockImplementationOnce(async (_stored, _update, onMainWritten?: () => void) => {
+                onMainWritten?.();
+                throw new Error('postcode range rejected');
+            })
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(result.current.mutateAsync({ description: 'Accepted' } as never)).rejects.toThrow(
+            'postcode range rejected',
+        );
+        await result.current.mutateAsync({ name: 'Queued' } as never);
+
+        const queued = mocks.updateAgencyData.mock.calls[1][1];
+        expect(queued.description).toBe('Accepted');
+        expect(queued.name).toBe('Queued');
     });
 
     it('does not let a failed legal publication leak into a later unrelated card save', async () => {

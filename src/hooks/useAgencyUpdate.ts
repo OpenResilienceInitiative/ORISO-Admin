@@ -41,13 +41,26 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData);
+            // Cache the accepted main write at once: if a follow-up request (postcode ranges) fails and
+            // the recovery refetch fails too, a queued save still merges into what the server holds.
+            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
+                queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
+            );
 
             // Cache only a confirmed write. A rejected legal publication must not enter the base
             // of a later unrelated card update and get published by that second request.
             queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
             return response;
         },
+        // A write can fail after the main PUT went through (e.g. the postcode-range request). Reload
+        // the agency so the next card save merges into what the server accepted, not an old snapshot.
+        // Returned so the mutation settles only after the refetch: a queued save must not merge into
+        // the old snapshot in between.
+        onError: () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['AGENCY', id] }),
+                queryClient.invalidateQueries({ queryKey: ['AGENCY_POST_CODES', id] }),
+            ]),
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['AGENCY', id] });
             queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });

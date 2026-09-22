@@ -361,9 +361,13 @@ export const LegalText = ({
         setDraftActionPending(true);
         try {
             if (serverBase.draft) await serverDraft.discard(serverBase.revision ?? serverBase.draft.revision);
+            // The server draft is gone once the delete succeeded, whatever happens locally next;
+            // keeping it would advertise a deleted draft and send its dead revision on the next save.
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
+            }
             const localDiscarded = discardDraft();
             if (editorIdentityRef.current === operationIdentity && localDiscarded) {
-                setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
                 setDraftSource(undefined);
                 setEdits({});
                 setConsentEdits({});
@@ -666,7 +670,7 @@ export const LegalText = ({
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
                     savedAt={serverBase.draft?.updatedAt}
-                    localSavedAt={savedAt}
+                    localSavedAt={draftSource === 'server' ? undefined : savedAt}
                     collision={draftCollision && !sourceChosen}
                     loadServer={() => {
                         setDraftSource('server');
@@ -705,6 +709,7 @@ export const LegalText = ({
                     }}
                     onDiscard={discardDraftAndEdits}
                     showInfo={false}
+                    pending={draftActionPending}
                 />
             ) : (
                 canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />

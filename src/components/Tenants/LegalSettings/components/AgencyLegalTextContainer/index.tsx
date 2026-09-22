@@ -160,6 +160,12 @@ export const AgencyLegalTextContainer = ({
         canEditLegalText && !isDepartment && agencyData !== undefined && Number.isFinite(agencyId);
     const serverDraft = useAgencyLegalDraft(agencyId, VERSION_KIND[field], agencyDraftEnabled);
     const draftContextIdentity = `${agencyId}:${field}:${userData?.id ?? ''}`;
+    // One object per agency × document × user session: an A→B→A switch restores the same string but
+    // is a new session, while switching Fachbereich stays in the same one (same agency draft).
+    const draftSessionRef = useRef({ key: draftContextIdentity });
+    if (draftSessionRef.current.key !== draftContextIdentity) {
+        draftSessionRef.current = { key: draftContextIdentity };
+    }
     const editorContextKey = `${draftContextIdentity}:${String(selected)}`;
     const editorIdentityRef = useRef({ key: editorContextKey });
     if (editorIdentityRef.current.key !== editorContextKey) {
@@ -330,14 +336,26 @@ export const AgencyLegalTextContainer = ({
     );
 
     const saveCurrentAgencyDraft = async (content: Record<string, string>, operationIdentity: { key: string }) => {
+        const draftContextAtStart = draftContextIdentity;
+        const draftSessionAtStart = draftSessionRef.current;
         const saved = await serverDraft.save({
             content: { ...content },
             ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
             ...(serverBase.revision ? { revision: serverBase.revision } : {}),
         });
+        // Pin the saved revision even if the admin switched to a Fachbereich meanwhile, so the next
+        // agency-wide save builds on it instead of running into a 409 against a stale base.
+        if (draftSessionRef.current === draftSessionAtStart) {
+            setServerBaseState((current) =>
+                current.identity === draftContextAtStart
+                    ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
+                    : current,
+            );
+        }
+        // No remount for a session that began after the request: it may already hold new typing,
+        // which then saves on top of this revision instead of being replaced.
         if (editorIdentityRef.current !== operationIdentity) return saved;
         const localDiscarded = discardAgencyDraft();
-        setServerBaseState({ identity: draftContextIdentity, draft: saved, revision: saved.revision });
         setDraftSource(localDiscarded ? 'server' : undefined);
         setAgencyEditorGeneration((current) => current + 1);
         notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
@@ -366,7 +384,12 @@ export const AgencyLegalTextContainer = ({
             saved = await saveCurrentAgencyDraft(content, operationIdentity);
         } catch {
             if (editorIdentityRef.current === operationIdentity) {
-                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                // Publishing saves first; when that fails nothing goes live, and the admin has to
+                // learn that — a vanishing "draft not saved" toast read as "nothing happened".
+                notification.error({
+                    message: t(publish ? 'legal.serverDraft.publishSaveError' : 'legal.serverDraft.saveError'),
+                    duration: publish ? 0 : 8,
+                });
                 setActionPending(false);
             }
             return;
@@ -377,10 +400,9 @@ export const AgencyLegalTextContainer = ({
         }
         try {
             await onSaveAgencyWide({
-                content: {
-                    [agencyContentKey]: { ...saved.content },
-                    ...(field === 'privacy' ? { privacyConsent: { ...saved.consentText } } : {}),
-                },
+                // #862: "Alle Fachbereiche" stays consent-free, so the Träger sentence keeps
+                // inheriting; stamping one here would override it for good.
+                content: { [agencyContentKey]: { ...saved.content } },
             });
         } catch {
             notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
@@ -483,7 +505,8 @@ export const AgencyLegalTextContainer = ({
         isDraftInfoState({
             savedAt: serverBase.draft?.savedAt,
             localSavedAt: localDraftSavedAt,
-            collision: draftCollision,
+            // Answered once a source is chosen; the snackbar and its discard take over again.
+            collision: draftCollision && !sourceChosen,
             unavailable: serverDraft.isError,
             conflict: serverDraft.hasConflict,
         });
@@ -508,10 +531,20 @@ export const AgencyLegalTextContainer = ({
             versions={versions}
             versionsUnavailable={versionsUnavailable}
             readOnly={agencyDraftBlocked}
+            readOnlyReason={canEditLegalText ? undefined : t('tenants.legal.readOnly.managedByTraeger')}
             onSave={onSave}
             saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}
-            departmentSlot={<DepartmentSelect departments={departments} value={selected} onChange={setSelected} />}
+            departmentSlot={
+                <DepartmentSelect
+                    departments={departments}
+                    value={selected}
+                    onChange={setSelected}
+                    // Switching mid-save left a publish unfinished without a word, or locked the
+                    // next editor in a draft collision; the switch waits for the action instead.
+                    disabled={draftActionPending || departmentPublish.isPending}
+                />
+            }
             snackbarSlot={
                 showDraftSnackbar && (
                     <EditorSnackbarQueue
@@ -521,7 +554,7 @@ export const AgencyLegalTextContainer = ({
                                 node: (
                                     <DraftStatusSnackbar
                                         savedAt={serverBase.draft?.savedAt}
-                                        localSavedAt={localDraftSavedAt}
+                                        localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
                                         onDiscard={discardAgencyWideDraft}
                                         onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
                                         pending={draftActionPending}
@@ -546,8 +579,10 @@ export const AgencyLegalTextContainer = ({
         <>
             <TenantLegalDraftNotice
                 savedAt={serverBase.draft?.savedAt}
-                localSavedAt={localDraftSavedAt}
-                collision={draftCollision}
+                // After choosing the server copy the editor holds it; naming the browser copy's time
+                // would give the text the wrong provenance.
+                localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
+                collision={draftCollision && !sourceChosen}
                 loadServer={() => {
                     if (draftActionPendingRef.current) return;
                     setDraftSource('server');
@@ -578,10 +613,14 @@ export const AgencyLegalTextContainer = ({
                 }}
                 keepEditing={() => {
                     if (draftActionPendingRef.current) return;
-                    setServerBaseState((current) => ({
-                        ...current,
-                        revision: serverDraft.conflict?.revision,
-                    }));
+                    // A refresh that found no draft means it is gone: keep editing from "no draft" rather than
+                    // a revision the server no longer has (which would 409 again, or skip a needed DELETE).
+                    const remote = serverDraft.conflict;
+                    setServerBaseState((current) =>
+                        remote === null
+                            ? { ...current, draft: null, revision: undefined }
+                            : { ...current, revision: remote?.revision ?? current.revision },
+                    );
                     serverDraft.clearConflict();
                 }}
                 onDiscard={discardAgencyWideDraft}

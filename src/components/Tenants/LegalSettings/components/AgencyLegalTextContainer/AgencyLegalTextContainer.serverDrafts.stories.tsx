@@ -74,8 +74,10 @@ const persistedHandlers = () => {
     ];
 };
 
+// Module-level so the story's beforeEach can reset it: the handlers are built once, and a rerun
+// would otherwise start with a nonzero count and get the newer draft on its very first read.
+let conflictReads = 0;
 const conflictHandlers = () => {
-    let reads = 0;
     const newer = {
         ...persistedDraft,
         content: { de: '<h2>Neuere Server-Fassung</h2><p>Von einer anderen Administration.</p>' },
@@ -86,9 +88,9 @@ const conflictHandlers = () => {
     return [
         ...commonHandlers,
         http.get(DRAFT_ENDPOINT, async () => {
-            reads += 1;
-            if (reads > 1) await delay(600);
-            return HttpResponse.json(reads > 1 ? newer : persistedDraft);
+            conflictReads += 1;
+            if (conflictReads > 1) await delay(600);
+            return HttpResponse.json(conflictReads > 1 ? newer : persistedDraft);
         }),
         http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 409 })),
     ];
@@ -159,6 +161,9 @@ export const LocalAndServerCollision: Story = {
 };
 
 export const ConflictRefresh: Story = {
+    beforeEach: () => {
+        conflictReads = 0;
+    },
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -169,5 +174,68 @@ export const ConflictRefresh: Story = {
             timeout: 3000,
         });
         await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
+    },
+};
+
+const publishedWide: unknown[] = [];
+
+/**
+ * The agency draft store is not deployed (dev on 21.09.2026: GET and PUT answer 404).
+ * Publishing saves first, so nothing goes live — and the admin is told exactly that,
+ * in a message that stays until closed. The agency-wide text carries no "Entwurf" tag.
+ */
+export const PublishWithoutDraftStoreExplains: Story = {
+    args: {
+        onSaveAgencyWide: async () => {
+            publishedWide.push('published');
+        },
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                ...commonHandlers,
+                http.get(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+                http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        publishedWide.length = 0;
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await expect(canvas.queryByText('Entwurf', { selector: '.ant-tag' })).not.toBeInTheDocument();
+        // The card re-keys once the user id has loaded; re-query instead of holding references.
+        await waitFor(
+            () => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull(),
+            {
+                timeout: 8000,
+            },
+        );
+        await userEvent.click(canvasElement.querySelector('.ProseMirror[contenteditable="true"]') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
+        await userEvent.click(canvas.getByRole('button', { name: 'Veröffentlichen' }));
+        const translate = await page.findByRole('dialog');
+        await userEvent.click(within(translate).getByRole('button', { name: /Ohne Übersetzung veröffentlichen/ }));
+        // The notice fades in; wait for the end of the animation, not just its first frame.
+        await waitFor(() => expect(page.getByText(/Nicht veröffentlicht/)).toBeVisible(), { timeout: 8000 });
+        await expect(publishedWide).toHaveLength(0);
+    },
+};
+
+/** A restricted agency admin may only read: the card says the Träger maintains the text. */
+export const RestrictedAgencyAdminReadsOnly: Story = {
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin], TENANT_ID);
+            return <Story />;
+        },
+    ],
+    parameters: { msw: { handlers: persistedHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Diesen Text pflegt Ihr Träger/, {}, { timeout: 8000 })).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+        await expect(canvas.queryByText(/Als Entwurf speichern/)).not.toBeInTheDocument();
     },
 };

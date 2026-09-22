@@ -318,9 +318,21 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
     });
 
-    it('shows the draft status tag by default', () => {
+    it('shows no status tag without a known status', () => {
         render(<DepartmentDataProtectionCard onSave={() => undefined} />);
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.draft')).not.toBeInTheDocument();
+    });
+
+    it('shows the draft status tag for a Fachbereich in DRAFT', () => {
+        render(<DepartmentDataProtectionCard publicationStatus="DRAFT" onSave={() => undefined} />);
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.draft')).toBeInTheDocument();
+    });
+
+    it('shows no status tag on the agency-wide text, which is live when saved', () => {
+        render(
+            <DepartmentDataProtectionCard documentScope="agency" publicationStatus="DRAFT" onSave={() => undefined} />,
+        );
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.draft')).not.toBeInTheDocument();
     });
 
     it('renders the department name when provided', () => {

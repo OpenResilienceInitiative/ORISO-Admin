@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
+    cardMounts: 0,
     card: vi.fn(),
     notice: vi.fn(),
     canEdit: vi.fn(() => true),
@@ -93,12 +94,19 @@ vi.mock('../TenantLegalDraftNotice', () => ({
         );
     },
 }));
-vi.mock('../DepartmentDataProtectionCard', () => ({
-    DepartmentDataProtectionCard: (props: any) => {
-        h.card(props);
-        return <div data-testid="legal-editor">{props.departmentSlot}</div>;
-    },
-}));
+vi.mock('../DepartmentDataProtectionCard', async () => {
+    const { useEffect } = await import('react');
+    return {
+        DepartmentDataProtectionCard: (props: any) => {
+            h.card(props);
+            // Counts mounts: a remount would replace the uncontrolled editor and its typing.
+            useEffect(() => {
+                h.cardMounts += 1;
+            }, []);
+            return <div data-testid="legal-editor">{props.departmentSlot}</div>;
+        },
+    };
+});
 
 import { AgencyLegalTextContainer } from '.';
 
@@ -255,10 +263,15 @@ describe('AgencyLegalTextContainer server drafts', () => {
 
         await userEvent.click(screen.getByRole('button', { name: 'load-server' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>server</p>' });
+        expect(noticeProps().collision).toBe(false);
+        // The editor holds the server copy now; the browser copy's time must not be shown as its origin.
+        expect(noticeProps().localSavedAt).toBeUndefined();
         expect(h.localDiscard).not.toHaveBeenCalled();
 
         await userEvent.click(screen.getByRole('button', { name: 'keep-local' }));
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>local</p>' });
+        expect(noticeProps().collision).toBe(false);
+        expect(noticeProps().localSavedAt).toBe('2026-09-17T13:00:00Z');
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 
@@ -286,12 +299,8 @@ describe('AgencyLegalTextContainer server drafts', () => {
         await act(async () => cardProps().onSave({ de: '<script>x</script><p>raw</p>' }, true));
 
         expect(order).toEqual(['save', 'publish', 'delete']);
-        expect(h.onSaveAgencyWide).toHaveBeenCalledWith({
-            content: {
-                privacy: saved.content,
-                privacyConsent: saved.consentText,
-            },
-        });
+        // #862: the agency-wide publish carries the body only; consent keeps inheriting.
+        expect(h.onSaveAgencyWide).toHaveBeenCalledWith({ content: { privacy: saved.content } });
         expect(h.serverDiscard).toHaveBeenCalledWith('draft-id:4');
     });
 
@@ -378,7 +387,35 @@ describe('AgencyLegalTextContainer server drafts', () => {
         });
     });
 
-    it('does not let an A-to-department-to-A late save change the new A generation', async () => {
+    it('locks the Fachbereich switcher while an agency save or publish is in flight', async () => {
+        // Switching mid-save left a publish unfinished without a word, or locked the next editor in
+        // a draft collision. The switcher now waits for the action to finish.
+        let finishSave: (draft: any) => void = () => undefined;
+        h.serverSave.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
+        const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
+        expect(switcher()).toBeEnabled();
+
+        const pendingSave = cardProps().onSave({ de: '<p>A</p>' }, true);
+        await waitFor(() => expect(switcher()).toBeDisabled());
+
+        finishSave({
+            kind: 'DPP',
+            content: { de: '<p>A</p>' },
+            consentText: {},
+            revision: 'draft-id:8',
+            savedAt: '2026-09-22T09:00:00',
+        });
+        await act(async () => pendingSave);
+        await waitFor(() => expect(switcher()).toBeEnabled());
+    });
+
+    it('does not let a late save from an earlier visit replace the base of a new visit (agency A→B→A)', async () => {
         let finishOldSave: (draft: any) => void = () => undefined;
         h.serverSave.mockImplementation(
             () =>
@@ -386,39 +423,31 @@ describe('AgencyLegalTextContainer server drafts', () => {
                     finishOldSave = resolve;
                 }),
         );
-        h.departmentDpp = {
-            data: { content: '{}', publicationStatus: 'DRAFT', consentText: '{}' },
-            isLoading: false,
-            isError: false,
-            isSuccess: true,
-        };
-        renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
-        const oldSave = cardProps().onSave({ de: '<p>old A edit</p>' }, false);
-        await waitFor(() => expect(cardProps().saving).toBe(true));
+        const view = renderContainer();
+        const oldSave = cardProps().onSave({ de: '<p>old A</p>' }, false);
 
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('Debt advice'));
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('agency.legal.department.all'));
-        await waitFor(() => expect(cardProps().saving).toBe(false));
+        const otherAgency = { ...agencyData, id: agencyData.id + 1 };
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={otherAgency} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        const baseOfNewVisit = cardProps().initialContentByLanguage;
 
         finishOldSave({
             kind: 'DPP',
             content: { de: '<p>late old A</p>' },
             consentText: {},
             revision: 'draft-id:8',
-            savedAt: '2026-09-17T15:00:00',
+            savedAt: '2026-09-22T09:00:00',
         });
         await act(async () => oldSave);
 
-        expect(cardProps().initialContentByLanguage).toEqual({
-            de: '<p>agency de</p>',
-            en: '<p>tenant en</p>',
-        });
-        expect(h.localDiscard).not.toHaveBeenCalled();
+        expect(cardProps().initialContentByLanguage).toEqual(baseOfNewVisit);
     });
 
-    it('does not clear local work when a late discard finishes in another context', async () => {
+    it('locks the Fachbereich switcher while a discard is in flight', async () => {
         let finishDiscard: () => void = () => undefined;
         h.server.draft = {
             kind: 'DPP',
@@ -433,21 +462,14 @@ describe('AgencyLegalTextContainer server drafts', () => {
                     finishDiscard = resolve;
                 }),
         );
-        h.departmentDpp = {
-            data: { content: '{}', publicationStatus: 'DRAFT', consentText: '{}' },
-            isLoading: false,
-            isError: false,
-            isSuccess: true,
-        };
         renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
-        const oldDiscard = noticeProps().onDiscard();
+        const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
 
-        await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
-        await userEvent.click(await screen.findByText('Debt advice'));
+        const pendingDiscard = noticeProps().onDiscard();
+        await waitFor(() => expect(switcher()).toBeDisabled());
         finishDiscard();
-        await act(async () => oldDiscard);
-
-        expect(h.localDiscard).not.toHaveBeenCalled();
+        await act(async () => pendingDiscard);
+        await waitFor(() => expect(switcher()).toBeEnabled());
     });
 
     it('blocks notice actions while a draft operation is pending', async () => {
