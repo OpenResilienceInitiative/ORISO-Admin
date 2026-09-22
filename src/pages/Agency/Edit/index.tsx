@@ -309,11 +309,20 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         });
                     }
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     notification.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
+                    // A card save can assign counsellors too, so the same warning
+                    // persistAgency shows belongs here. Without it the card reports
+                    // success while the counsellor silently stayed unassigned.
+                    if (response?.consultantAssignmentFailed) {
+                        notification.warning({
+                            message: t('message.agency.consultantAssignmentFailed'),
+                            duration: 8,
+                        });
+                    }
                 },
             });
         },
