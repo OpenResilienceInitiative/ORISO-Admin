@@ -107,4 +107,29 @@ describe('useTenantAdminDataMutation', () => {
 
         await waitFor(() => expect(getSingleTenantDataMock).not.toHaveBeenCalled(), { timeout: 100 });
     });
+
+    it('prefetches platform tenant 0 and preserves its existing fields in a partial update', async () => {
+        const platform = { ...seedTenantAdminData, id: 0, name: 'Platform', isSuperAdmin: true };
+        getSingleTenantDataMock.mockResolvedValue(platform);
+        vi.mocked(fetchData).mockResolvedValue(platform);
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useTenantAdminDataMutation({ id: 0 }), {
+            wrapper,
+        });
+        await waitFor(() => expect(getSingleTenantDataMock).toHaveBeenCalledWith(0));
+        await waitFor(() => expect(client.getQueryData([TENANT_QUERY_KEY, 0])).toEqual(platform));
+
+        await result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>' } } });
+
+        const request = vi.mocked(fetchData).mock.calls[0][0];
+        const body = JSON.parse(request.bodyData as string);
+        expect(request.url).toMatch(/tenantadmin\/0$/);
+        expect(body.name).toBe('Platform');
+        expect(body.theming).toEqual(platform.theming);
+        expect(body.content.impressum).toEqual({ de: '<p>Neu</p>' });
+        expect(body.content.privacy).toEqual(platform.content.privacy);
+    });
 });
