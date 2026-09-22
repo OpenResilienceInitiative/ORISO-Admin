@@ -87,7 +87,19 @@
     line-height: 16px;
 }
 
+/*
+ * Read-only is exactly where the avatar has to be READABLE: the consultant form
+ * opens read-only (`isReadOnly` starts at `isEditing`), so this is the state an
+ * admin sees when they just want to know which motif a counsellor picked.
+ * Dimming the whole grid dimmed the selection ring with it — owner, 2026-09-19:
+ * "man sieht nicht, wen man auswählt". Only the tiles that were NOT chosen
+ * recede now; the chosen one and its ring stay at full contrast.
+ */
+
 .disabled {
     pointer-events: none;
+}
+
+.disabled > :not([aria-checked='true']) {
     opacity: 0.5;
 }
