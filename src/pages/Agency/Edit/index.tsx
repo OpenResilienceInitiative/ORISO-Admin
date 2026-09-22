@@ -41,6 +41,7 @@ import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettin
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
@@ -99,7 +100,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         refetch: refetchDpaGate,
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
+    const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
     const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
@@ -309,11 +310,20 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         });
                     }
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     notification.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
+                    // A card save can assign counsellors too, so the same warning
+                    // persistAgency shows belongs here. Without it the card reports
+                    // success while the counsellor silently stayed unassigned.
+                    if (response?.consultantAssignmentFailed) {
+                        notification.warning({
+                            message: t('message.agency.consultantAssignmentFailed'),
+                            duration: 8,
+                        });
+                    }
                 },
             });
         },
@@ -362,6 +372,31 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             persistCard(formData, options);
         },
         [initialValues.online, initialValues.topicIds, persistCard, tenantTopics?.length],
+    );
+
+    // The agency legal-draft flow must know whether publication really completed before
+    // deleting the exact saved revision. Mutation callbacks are intentionally unsuitable
+    // for that transaction: they can be skipped after an unmount, while mutateAsync gives
+    // the caller one settled promise for the backend write.
+    const onSaveAgencyWide = useCallback(
+        async <T,>(formData: T) => {
+            try {
+                await mutateAsync(formData as Partial<AgencyData>);
+                notification.success({
+                    message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
+                    duration: 3,
+                });
+            } catch (error) {
+                if (error instanceof Response && error.status === 400) {
+                    notification.error({
+                        message: t('message.error.default'),
+                        duration: 8,
+                    });
+                }
+                throw error;
+            }
+        },
+        [isEditing, mutateAsync, t],
     );
 
     const onCancel = useCallback(() => {
@@ -518,7 +553,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <AgencyLegalTextContainer
                         agencyData={agencyData}
                         field="imprint"
-                        onSaveAgencyWide={onSaveCard}
+                        onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
                 </CardDeck.Item>
@@ -526,7 +561,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <AgencyLegalTextContainer
                         agencyData={agencyData}
                         field="privacy"
-                        onSaveAgencyWide={onSaveCard}
+                        onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
                 </CardDeck.Item>

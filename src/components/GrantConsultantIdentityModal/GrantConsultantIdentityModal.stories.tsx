@@ -2,17 +2,36 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse, delay } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { within, userEvent, screen } from 'storybook/test';
+import { within, userEvent, screen, expect } from 'storybook/test';
 import { GrantConsultantIdentityModal } from './index';
 
 // The modal loads its agency options from GET .../service/agencyadmin/agencies on mount.
 // A leading `*` matches any origin so the handler works regardless of the configured host.
 const AGENCY_ENDPOINT = '*/service/agencyadmin/agencies';
 
+const topic = (id: number, name: string) => ({ id, name, description: '', internalIdentifier: null, status: 'ACTIVE' });
+
+// Nord offers one topic (auto-assigned), Mitte several (must choose), West none (grant blocked).
 const AGENCIES = [
-    { id: 1, name: 'Beratungsstelle Nord', city: 'Hamburg', postcode: '20095', deleteDate: null, tenantId: 1 },
-    { id: 2, name: 'Jugendberatung Mitte', city: 'Berlin', postcode: '10115', deleteDate: null, tenantId: 1 },
-    { id: 3, name: 'Familienhilfe West', city: 'Köln', postcode: '50667', deleteDate: null, tenantId: 1 },
+    {
+        id: 1,
+        name: 'Beratungsstelle Nord',
+        city: 'Hamburg',
+        postcode: '20095',
+        deleteDate: null,
+        tenantId: 1,
+        topics: [topic(10, 'Suchtberatung')],
+    },
+    {
+        id: 2,
+        name: 'Jugendberatung Mitte',
+        city: 'Berlin',
+        postcode: '10115',
+        deleteDate: null,
+        tenantId: 1,
+        topics: [topic(11, 'Schuldnerberatung'), topic(12, 'Familienberatung')],
+    },
+    { id: 3, name: 'Familienhilfe West', city: 'Köln', postcode: '50667', deleteDate: null, tenantId: 1, topics: [] },
 ];
 
 // getAgencyData() expects a HAL-style body: `{ total, _embedded: [...] }` (see removeEmbedded).
@@ -25,6 +44,15 @@ const openModal = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     // antd Modal renders through a portal on document.body, so query the whole screen.
     await screen.findByRole('dialog');
 };
+
+/** Opens the modal and picks one Beratungsstelle, so the topic step for it becomes visible. */
+const pickAgency =
+    (agencyName: string) =>
+    async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+        await openModal({ canvasElement });
+        await userEvent.click(screen.getAllByRole('combobox')[0]);
+        await userEvent.click(await screen.findByRole('option', { name: new RegExp(agencyName) }));
+    };
 
 const meta = {
     title: 'Organisms/GrantConsultantIdentityModal',
@@ -88,4 +116,37 @@ export const Error: Story = {
         msw: { handlers: [http.get(AGENCY_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
     },
     play: openModal,
+};
+
+/** One topic at the Beratungsstelle: it is assigned automatically and the field is locked. */
+export const SingleTopicAssigned: Story = {
+    parameters: {
+        msw: { handlers: [http.get(AGENCY_ENDPOINT, () => agenciesResponse(AGENCIES))] },
+    },
+    play: async (context) => {
+        await pickAgency('Beratungsstelle Nord')(context);
+        await expect(await screen.findByText(/nur ein Thema|only one topic/)).toBeInTheDocument();
+    },
+};
+
+/** Several topics: the admin picks the ones they counsel in; "Anlegen" validates at least one. */
+export const SeveralTopicsToChoose: Story = {
+    parameters: {
+        msw: { handlers: [http.get(AGENCY_ENDPOINT, () => agenciesResponse(AGENCIES))] },
+    },
+    play: async (context) => {
+        await pickAgency('Jugendberatung Mitte')(context);
+        await expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    },
+};
+
+/** No topic at the Beratungsstelle: the dialog explains it and the grant is blocked. */
+export const NoTopicAtAgency: Story = {
+    parameters: {
+        msw: { handlers: [http.get(AGENCY_ENDPOINT, () => agenciesResponse(AGENCIES))] },
+    },
+    play: async (context) => {
+        await pickAgency('Familienhilfe West')(context);
+        await expect(await screen.findByRole('alert')).toBeInTheDocument();
+    },
 };

@@ -1,6 +1,6 @@
 import set from 'lodash.set';
-import { Alert, Spin } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, notification, Spin } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
@@ -11,6 +11,8 @@ import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
+import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -21,6 +23,7 @@ import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
+import type { TenantLegalDraft } from '../../../../../api/tenant/legalDrafts';
 
 // Hint snackbar dismissal: "Nicht mehr anzeigen" persists; X is session-only.
 const hintDismissedKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${type}.hint.dismissed`;
@@ -63,6 +66,11 @@ const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string)
 
 interface LegalTextProps {
     tenantId: string | number;
+    /**
+     * Owner of the server-side draft. Defaults to `tenantId`; differs only for the platform, whose
+     * draft TenantService keeps under tenant 0 while the published text lives on the main tenant.
+     */
+    draftTenantId?: string | number;
     fieldName: string[];
     titleKey: string;
     /**
@@ -89,6 +97,7 @@ interface LegalTextProps {
  */
 export const LegalText = ({
     tenantId,
+    draftTenantId,
     fieldName,
     titleKey,
     legalType,
@@ -102,18 +111,21 @@ export const LegalText = ({
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
-    const { data, isLoading, mutate: updateTenant, isPending } = useTenantAppearanceFormData(`${tenantId}`);
+    const { data, isLoading, mutateAsync: updateTenantAsync, isPending } = useTenantAppearanceFormData(`${tenantId}`);
     const { data: userData, isLoading: isUserLoading } = useUserData();
     // Persist dismissal only once the opaque user id is known (same pattern as DPA).
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
+    const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
     const [hintHidden, setHintHidden] = useState(() =>
         legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
     );
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
+    const [draftSource, setDraftSource] = useState<'local' | 'server'>();
+    const [draftActionPending, setDraftActionPending] = useState(false);
 
     // Version look-back for the Träger-level text (ADR-021 decision 3). TenantService
     // has not shipped this collection yet: that must not be phrased as "never
@@ -140,11 +152,16 @@ export const LegalText = ({
     // The signed-in account is part of the editor identity: a user change must drop
     // this session's edits, never hand them to the next account.
     const editorIdentity = `${tenantId}:${fieldName.join('.')}:${dismissalScope ?? ''}`;
+    const editorIdentityRef = useRef(editorIdentity);
+    editorIdentityRef.current = editorIdentity;
     useEffect(() => {
         setEdits({});
         setConsentEdits({});
         setPendingFormData(undefined);
+        setPendingDraftRevision(undefined);
         setModalVisible(false);
+        setDraftSource(undefined);
+        setDraftActionPending(false);
         setActiveLanguage('de');
         resetViewedVersion();
     }, [editorIdentity, resetViewedVersion]);
@@ -164,13 +181,47 @@ export const LegalText = ({
         [data, fieldName],
     );
 
-    // Writing here publishes straight to the live text, so the admin needs somewhere to
-    // park unfinished wording. Until the backend has draft state this is device-local —
-    // LegalDraftNotice says so. Without a legalType (no card identity) there is no draft.
-    const { draft, savedAt, saveDraft, discardDraft } = useLegalDraft(
+    // Keep reading the former device-local format so existing work can be imported
+    // deliberately into tenant server drafts. Agency and DPA editors continue to use
+    // this shared local hook unchanged.
+    const { draft, savedAt, discardDraft } = useLegalDraft(
         legalType ?? 'privacy',
         legalType ? dismissalScope : undefined,
     );
+    const serverDraft = useTenantLegalDraft(
+        draftTenantId ?? tenantId,
+        legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY',
+        canEditLegalText && !!legalType,
+    );
+    const [serverBaseState, setServerBaseState] = useState<{
+        identity: string;
+        draft: TenantLegalDraft | null | undefined;
+        revision: string | undefined;
+    }>(() => ({ identity: editorIdentity, draft: undefined, revision: undefined }));
+    let serverBase = serverBaseState;
+    if (serverBase.identity !== editorIdentity) {
+        serverBase = { identity: editorIdentity, draft: undefined, revision: undefined };
+        setServerBaseState(serverBase);
+    }
+    // Pin both content and revision when editing starts. A background React Query
+    // refresh may discover a newer draft, but it must not silently move the base
+    // revision underneath already-authored edits and bypass a 409.
+    if (serverBase.draft === undefined && !serverDraft.isLoading && !serverDraft.isError) {
+        serverBase = {
+            identity: editorIdentity,
+            draft: serverDraft.draft ?? null,
+            revision: serverDraft.draft?.revision ?? 'new',
+        };
+        setServerBaseState(serverBase);
+    }
+    const hasLocalDraft = !!draft;
+    const hasServerDraft = !!serverBase.draft;
+    const draftCollision = hasLocalDraft && hasServerDraft;
+    const sourceChosen = !draftCollision || draftSource !== undefined;
+    let selectedDraft: Pick<TenantLegalDraft, 'content' | 'privacyConsent'> | null | undefined = serverBase.draft;
+    if (draftSource !== 'server' && hasLocalDraft && (!hasServerDraft || draftSource === 'local')) {
+        selectedDraft = { content: draft.content, privacyConsent: draft.consent };
+    }
 
     // The complete language map: stored languages (unknown keys included), then the
     // saved draft, then this session's edits on top. Legacy plain-string content has no
@@ -190,8 +241,13 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
-        return { ...base, ...(draft?.content ?? {}), ...edits };
-    }, [canEditLegalText, storedContent, draft, edits, languages]);
+        // A saved server draft is a complete snapshot: a language it no longer has stays gone.
+        // A device-local draft may hold only the languages that were edited, so it still layers.
+        if (sourceChosen && selectedDraft && draftSource !== 'local' && serverBase.draft === selectedDraft) {
+            return { ...selectedDraft.content, ...edits };
+        }
+        return { ...base, ...(sourceChosen ? selectedDraft?.content ?? {} : {}), ...edits };
+    }, [canEditLegalText, storedContent, sourceChosen, selectedDraft, draftSource, serverBase.draft, edits, languages]);
 
     /**
      * The consent sentence that belongs to the Träger privacy policy (ADR-021
@@ -213,8 +269,20 @@ export const LegalText = ({
         if (!canEditLegalText) {
             return base;
         }
-        return { ...base, ...(draft?.consent ?? {}), ...consentEdits };
-    }, [canEditLegalText, storedConsent, draft, consentEdits]);
+        if (
+            sourceChosen &&
+            selectedDraft?.privacyConsent &&
+            draftSource !== 'local' &&
+            serverBase.draft === selectedDraft
+        ) {
+            return { ...selectedDraft.privacyConsent, ...consentEdits };
+        }
+        return {
+            ...base,
+            ...(sourceChosen ? selectedDraft?.privacyConsent ?? {} : {}),
+            ...consentEdits,
+        };
+    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, draftSource, serverBase.draft, consentEdits]);
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
@@ -241,14 +309,30 @@ export const LegalText = ({
     // editor would still show the text the admin just asked to throw away. If the draft
     // could NOT be removed, the edits stay: the error says the draft is still there, so
     // silently wiping the work typed since the last save would be the worse lie.
-    const discardDraftAndEdits = useCallback(() => {
-        if (discardDraft()) {
-            setEdits({});
-            // The consent sentence is part of the same draft — leaving the in-memory
-            // edit behind would keep showing exactly the wording just discarded.
-            setConsentEdits({});
+    const discardDraftAndEdits = useCallback(async () => {
+        const operationIdentity = editorIdentity;
+        setDraftActionPending(true);
+        try {
+            if (serverBase.draft) await serverDraft.discard(serverBase.revision ?? serverBase.draft.revision);
+            // The server draft is gone once the delete succeeded, whatever happens locally next;
+            // keeping it would advertise a deleted draft and send its dead revision on the next save.
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
+            }
+            const localDiscarded = discardDraft();
+            if (editorIdentityRef.current === operationIdentity && localDiscarded) {
+                setDraftSource(undefined);
+                setEdits({});
+                setConsentEdits({});
+            }
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
+            }
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setDraftActionPending(false);
         }
-    }, [discardDraft]);
+    }, [discardDraft, editorIdentity, serverBase, serverDraft, t]);
 
     const help = useLegalHelp(legalType ?? 'privacy', {
         empty: isEmptyLegalContent(storedContent),
@@ -261,61 +345,137 @@ export const LegalText = ({
 
     const showHintSnackbar = !!legalType && !hintHidden;
 
-    // A published text supersedes the draft it came from — keeping it would offer the
-    // admin a "restore" of what is already live.
-    const publishedOptions = useMemo(() => ({ onSuccess: () => discardDraft() }), [discardDraft]);
+    const publishSavedDraft = useCallback(
+        async (formData: Record<string, unknown>, revision: string, operationIdentity: string) => {
+            await updateTenantAsync(formData);
+            try {
+                await serverDraft.discard(revision);
+                discardDraft();
+                if (editorIdentityRef.current === operationIdentity) {
+                    setServerBaseState({ identity: operationIdentity, draft: null, revision: 'new' });
+                    setEdits({});
+                    setConsentEdits({});
+                }
+            } catch {
+                // Publication succeeded. Keep any concurrently-created newer draft and
+                // let the conflict notice offer the explicit reload/keep-editing choice.
+                notification.warning({ message: t('legal.serverDraft.cleanupError'), duration: 8 });
+            }
+        },
+        [discardDraft, serverDraft, t, updateTenantAsync],
+    );
 
-    const onConfirm = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, false), publishedOptions);
-        setModalVisible(false);
-    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
+    const finishConfirmedPublish = useCallback(
+        async (confirmPrivacy: boolean) => {
+            if (!pendingFormData || !pendingDraftRevision || !showConfirmationModal) return;
+            const formData = set({ ...pendingFormData }, showConfirmationModal.field, confirmPrivacy);
+            setModalVisible(false);
+            setDraftActionPending(true);
+            try {
+                await publishSavedDraft(formData, pendingDraftRevision, editorIdentity);
+            } catch {
+                notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
+            } finally {
+                setDraftActionPending(false);
+            }
+        },
+        [pendingDraftRevision, pendingFormData, publishSavedDraft, showConfirmationModal, t],
+    );
 
-    const onCancel = useCallback(() => {
-        updateTenant(set(pendingFormData, showConfirmationModal.field, true), publishedOptions);
-        setModalVisible(false);
-    }, [pendingFormData, publishedOptions, showConfirmationModal, updateTenant]);
+    const onConfirm = useCallback(() => finishConfirmedPublish(false), [finishConfirmedPublish]);
+    const onCancel = useCallback(() => finishConfirmedPublish(true), [finishConfirmedPublish]);
 
-    const onPublish = useCallback(() => {
+    const saveCurrentDraft = useCallback(async () => {
+        const saved = await serverDraft.save({
+            content: { ...contentByLanguage },
+            ...(consentEnabled ? { privacyConsent: { ...consentByLanguage } } : {}),
+            revision: serverBase.revision ?? 'new',
+        });
+        discardDraft();
+        if (editorIdentityRef.current === editorIdentity) {
+            setServerBaseState({ identity: editorIdentity, draft: saved, revision: saved.revision });
+            setDraftSource('server');
+            notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
+        }
+        return saved;
+    }, [
+        consentByLanguage,
+        consentEnabled,
+        contentByLanguage,
+        discardDraft,
+        editorIdentity,
+        serverBase.revision,
+        serverDraft,
+        t,
+    ]);
+
+    const onPublish = useCallback(async () => {
         // Refuse before the request: an authored consent sentence without
         // `{{legal_links}}` is rejected server-side (ADR-021 decision 2), and the
         // admin should learn that from the editor, not from a failed publish.
         if (blockedLanguages.length > 0) {
             return;
         }
-        // The COMPLETE map goes out — languages the admin did not touch survive.
-        const formData = set({}, fieldName, { ...contentByLanguage });
-        if (consentEnabled) {
-            set(formData, ['content', 'privacyConsent'], { ...consentByLanguage });
+        setDraftActionPending(true);
+        let saved;
+        try {
+            saved = await saveCurrentDraft();
+        } catch {
+            notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+            setDraftActionPending(false);
+            return;
         }
-        if (showConfirmationModal) {
-            setPendingFormData(formData);
-            setModalVisible(true);
-        } else {
-            updateTenant(formData, publishedOptions);
+        if (editorIdentityRef.current !== editorIdentity) return;
+        // Publish exactly the normalized payload returned by the revision-checked
+        // draft write. This keeps the live text and the saved revision identical.
+        const formData = set({}, fieldName, { ...saved.content });
+        if (consentEnabled) {
+            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
+            set(formData, ['content', 'privacyConsent'], { ...(saved.privacyConsent ?? consentByLanguage) });
+        }
+        try {
+            if (showConfirmationModal) {
+                setPendingFormData(formData);
+                setPendingDraftRevision(saved.revision);
+                setModalVisible(true);
+                setDraftActionPending(false);
+            } else {
+                await publishSavedDraft(formData, saved.revision, editorIdentity);
+            }
+        } catch {
+            notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
+        } finally {
+            if (!showConfirmationModal) setDraftActionPending(false);
         }
     }, [
         blockedLanguages,
         consentByLanguage,
         consentEnabled,
-        contentByLanguage,
         fieldName,
-        publishedOptions,
+        publishSavedDraft,
+        saveCurrentDraft,
         showConfirmationModal,
-        updateTenant,
+        t,
     ]);
 
     // The consent map travels with the draft: storing only the body while reporting
     // a successful save would silently drop the consent wording on the next reload.
-    const onSaveDraft = useCallback(
-        () => saveDraft({ ...contentByLanguage }, consentEnabled ? { ...consentByLanguage } : undefined),
-        [consentByLanguage, consentEnabled, contentByLanguage, saveDraft],
-    );
+    const onSaveDraft = useCallback(async () => {
+        setDraftActionPending(true);
+        await saveCurrentDraft()
+            .catch(() => {
+                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+            })
+            .finally(() => {
+                if (editorIdentityRef.current === editorIdentity) setDraftActionPending(false);
+            });
+    }, [editorIdentity, saveCurrentDraft, t]);
 
     // Wait for the opaque user id too, but only where a draft is possible: mounting the
     // editor first and letting the draft arrive later would remount it mid-edit and offer
     // a save action that silently does nothing. A viewer without edit permission has no
     // draft, so the published text must not wait on that query.
-    if (isLoading || (isUserLoading && canEditLegalText)) {
+    if (isLoading || serverDraft.isLoading || (isUserLoading && canEditLegalText)) {
         return (
             <div className={styles.card}>
                 <Spin />
@@ -325,12 +485,57 @@ export const LegalText = ({
 
     return (
         <div className={styles.card}>
-            {canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />}
+            {canEditLegalText && legalType ? (
+                <TenantLegalDraftNotice
+                    savedAt={serverBase.draft?.updatedAt}
+                    localSavedAt={draftSource === 'server' ? undefined : savedAt}
+                    collision={draftCollision && !sourceChosen}
+                    loadServer={() => {
+                        setDraftSource('server');
+                        setEdits({});
+                        setConsentEdits({});
+                    }}
+                    keepLocal={() => {
+                        setDraftSource('local');
+                        setEdits({});
+                        setConsentEdits({});
+                    }}
+                    unavailable={serverDraft.isError}
+                    retry={() => serverDraft.retry()}
+                    conflict={serverDraft.hasConflict}
+                    conflictRefreshFailed={serverDraft.conflictRefreshFailed}
+                    conflictRefreshing={serverDraft.conflictRefreshing}
+                    retryConflict={() => serverDraft.retryConflict()}
+                    reloadConflict={() => {
+                        const remote = serverDraft.conflict;
+                        setServerBaseState({
+                            identity: editorIdentity,
+                            draft: remote ?? null,
+                            revision: remote?.revision ?? 'new',
+                        });
+                        setDraftSource('server');
+                        setEdits({});
+                        setConsentEdits({});
+                        serverDraft.clearConflict();
+                    }}
+                    keepEditing={() => {
+                        setServerBaseState((current) => ({
+                            ...current,
+                            revision: serverDraft.conflict?.revision ?? 'new',
+                        }));
+                        serverDraft.clearConflict();
+                    }}
+                    onDiscard={discardDraftAndEdits}
+                    pending={draftActionPending}
+                />
+            ) : (
+                canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
+            )}
             <M3RichTextEditor
                 title={t(titleKey)}
                 icon={icon}
                 readOnly={!canEditLegalText}
-                publishing={isPending}
+                publishing={isPending || draftActionPending}
                 versionLabel={t('legal.m3Editor.versionLabel')}
                 versions={editorVersions}
                 versionHistoryState={historyState}
@@ -378,8 +583,16 @@ export const LegalText = ({
                         ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
                         : undefined
                 }
-                onPublish={canEditLegalText ? onPublish : undefined}
-                onSaveDraft={canEditLegalText && legalType && dismissalScope ? onSaveDraft : undefined}
+                onPublish={
+                    canEditLegalText && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen
+                        ? onPublish
+                        : undefined
+                }
+                onSaveDraft={
+                    canEditLegalText && legalType && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen
+                        ? onSaveDraft
+                        : undefined
+                }
                 actionsLeading={
                     consentEnabled ? (
                         <LegalConsentField
