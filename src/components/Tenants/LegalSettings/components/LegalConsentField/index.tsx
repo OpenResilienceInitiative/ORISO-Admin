@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,7 @@ import {
     LegalConsentTemplateEditor,
     PlaceholderTemplateDialog,
 } from '../../../../PlaceholderTemplate';
-import { useConsentTemplates } from '../../hooks/useConsentTemplates';
+import { PLATFORM_CONSENT_TEMPLATE_ID, useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
     isBlankConsentText,
@@ -66,6 +66,26 @@ export const LegalConsentField = ({
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
     const templates = useConsentTemplates(language);
+    /**
+     * What the editor starts from when this level has no sentence of its own.
+     *
+     * An empty box is not a neutral starting point: it asks an administrator to
+     * author a legal sentence from nothing, and it hides the wording that is
+     * actually in force meanwhile. In the great majority of cases the required
+     * sentence is not in doubt, so the platform's standard wording is offered
+     * to adjust instead — it already carries `{{legal_links}}`, so what the
+     * admin starts from can never be published invalid.
+     *
+     * Read-only surfaces are exempt: they report what is stored, and showing
+     * someone who cannot save a sentence this level does not have would be a
+     * claim about the document rather than a starting point for editing.
+     */
+    const platformDefault = useMemo(
+        () => templates.find((entry) => entry.id === PLATFORM_CONSENT_TEMPLATE_ID)?.values.text ?? '',
+        [templates],
+    );
+    const seedsPlatformDefault = !readOnly && isBlankConsentText(value) && !isBlankConsentText(platformDefault);
+    const startingDraft = seedsPlatformDefault ? platformDefault : value;
     const dialogOpen = openProp ?? open;
     const setDialogOpen = (next: boolean) => {
         if (openProp === undefined) setOpen(next);
@@ -74,23 +94,23 @@ export const LegalConsentField = ({
 
     useEffect(() => {
         if (dialogOpen) {
-            setDraft(value);
+            setDraft(startingDraft);
             setActiveTemplateId(undefined);
         }
-    }, [dialogOpen, value]);
+    }, [dialogOpen, startingDraft]);
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
 
     const openDialog = () => {
-        setDraft(value);
+        setDraft(startingDraft);
         setActiveTemplateId(undefined);
         setDialogOpen(true);
     };
 
     const closeDialog = () => {
         setDialogOpen(false);
-        setDraft(value);
+        setDraft(startingDraft);
         setActiveTemplateId(undefined);
     };
 
@@ -137,6 +157,13 @@ export const LegalConsentField = ({
                     onSave={saveDialog}
                     onClose={closeDialog}
                     saveDisabled={readOnly}
+                    /* This dialog hands the sentence back to the editor; the
+                       policy — body and sentence together — is stored by the
+                       editor's own Publish / Save-draft action. A button
+                       labelled "Speichern" promised a save that had not
+                       happened, so the sentence looked stored and was gone
+                       after a reload (#929). */
+                    okLabelKey="legal.consent.apply"
                 >
                     <div className={styles.dialogBody}>
                         {(inheritedFrom || isBlankConsentText(value)) && (
@@ -146,8 +173,11 @@ export const LegalConsentField = ({
                                 showIcon
                                 data-testid="consent-inherited-notice"
                                 message={
+                                    // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
                                     inheritedFrom
                                         ? t('legal.consent.inherited', { level: inheritedFrom })
+                                        : seedsPlatformDefault
+                                        ? t('legal.consent.seededFromPlatform')
                                         : t('legal.consent.emptyMeansInherited')
                                 }
                             />

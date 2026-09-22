@@ -18,13 +18,20 @@ const commitConsentText = async (text: string) => {
     await userEvent.click(input);
     (input as HTMLTextAreaElement).focus();
     await userEvent.paste(text);
-    await userEvent.click(screen.getByRole('button', { name: 'save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 };
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         i18n: { language: 'de' },
         t: (key: string, options?: unknown) => {
+            // The platform's standard sentence is the one string whose CONTENT the
+            // component reacts to — it seeds an empty editor and must carry the
+            // mandatory token, so echoing the key here would test a sentence the
+            // product never ships.
+            if (key === 'legal.consent.template.platform.text') {
+                return 'Standardsatz {{legal_links}}.';
+            }
             if (typeof options === 'string') {
                 return options;
             }
@@ -447,7 +454,10 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         expect(screen.getByTestId('consent-edit-trigger')).not.toHaveAttribute('data-missing-token');
         await openConsent();
         expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
-        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.emptyMeansInherited');
+        // The editor now opens on the platform's standard sentence rather than on
+        // nothing (#929), so the notice names what is in the box. Blank remains
+        // inheritance either way, which is what this test is about.
+        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.seededFromPlatform');
     });
 
     it('clears the mark as soon as the token is typed back in', async () => {
