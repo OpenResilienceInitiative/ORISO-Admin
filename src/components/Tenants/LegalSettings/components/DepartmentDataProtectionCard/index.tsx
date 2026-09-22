@@ -98,6 +98,8 @@ interface DepartmentDataProtectionCardProps {
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
     /** Selects the legal document presentation while retaining the shared publication workflow. */
     documentType?: 'privacy' | 'imprint';
+    /** Selects whether the document belongs to the whole agency or one concrete department. */
+    documentScope?: 'agency' | 'department';
     /**
      * Fachbereich switcher for the editor's lower function bar, between language and version
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
@@ -110,6 +112,8 @@ interface DepartmentDataProtectionCardProps {
      * stays visible which document the Fachbereich has.
      */
     readOnly?: boolean;
+    /** Replaces the description when the card is read-only, saying who maintains the text instead. */
+    readOnlyReason?: string;
 }
 
 /**
@@ -125,11 +129,12 @@ export const DepartmentDataProtectionCard = ({
     initialContentByLanguage = {},
     languages = ['de'],
     defaultLanguage,
-    publicationStatus = 'DRAFT',
+    publicationStatus,
     onSave,
     saving,
     onTranslate,
     documentType = 'privacy',
+    documentScope = 'department',
     departmentSlot,
     versions = [],
     versionsUnavailable = false,
@@ -138,10 +143,13 @@ export const DepartmentDataProtectionCard = ({
     consentInheritedFrom,
     ownConsentByLanguage,
     readOnly = false,
+    readOnlyReason,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const published = publicationStatus === 'PUBLISHED';
+    const documentKeyPrefix = documentScope === 'agency' ? 'tenants.legal.agency' : 'tenants.legal.department';
+    const documentKeySuffix = documentType === 'imprint' ? 'Imprint' : 'DataProtection';
     // The consent sentence belongs to the policy, never to the imprint (ADR-021
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
@@ -272,11 +280,7 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
-                title={t(
-                    documentType === 'imprint'
-                        ? 'tenants.legal.departmentImprint.title'
-                        : 'tenants.legal.departmentDataProtection.title',
-                )}
+                title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
                 readOnly={readOnly}
@@ -341,18 +345,20 @@ export const DepartmentDataProtectionCard = ({
                     <>
                         <div className={styles.header}>
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            <Tag color={published ? 'green' : 'default'}>
-                                {published
-                                    ? t('tenants.legal.departmentDataProtection.status.published')
-                                    : t('tenants.legal.departmentDataProtection.status.draft')}
-                            </Tag>
+                            {/* Only a Fachbereich text has a publication status; the agency-wide
+                                text is live when saved, so an "Entwurf" tag there was false. */}
+                            {documentScope === 'department' && publicationStatus && (
+                                <Tag color={published ? 'green' : 'default'}>
+                                    {published
+                                        ? t('tenants.legal.departmentDataProtection.status.published')
+                                        : t('tenants.legal.departmentDataProtection.status.draft')}
+                                </Tag>
+                            )}
                         </div>
                         <p className={styles.description}>
-                            {t(
-                                documentType === 'imprint'
-                                    ? 'tenants.legal.departmentImprint.description'
-                                    : 'tenants.legal.departmentDataProtection.description',
-                            )}
+                            {readOnly && readOnlyReason
+                                ? readOnlyReason
+                                : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
                         </p>
                     </>
                 }

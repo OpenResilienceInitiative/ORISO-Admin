@@ -19,6 +19,22 @@ const STRINGS: Record<string, string> = {
     'legal.consent.template.platform.text': 'Ich habe die {{legal_links}} zur Kenntnis genommen.',
 };
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: vi.fn(),
+        discard: vi.fn(),
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         i18n: { language: 'de' },
