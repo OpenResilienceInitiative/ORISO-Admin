@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ fetchData: vi.fn(), updateAgencyPostCodeRange: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+    fetchData: vi.fn(),
+    updateAgencyPostCodeRange: vi.fn(),
+    assignAgencyToConsultants: vi.fn(),
+}));
 
 vi.mock('../fetchData', async () => {
     const actual = await vi.importActual<typeof import('../fetchData')>('../fetchData');
@@ -9,6 +13,7 @@ vi.mock('../fetchData', async () => {
 vi.mock('./updateAgencyType', () => ({ default: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('./updateAgencyPostCodeRange', () => ({ default: mocks.updateAgencyPostCodeRange }));
 vi.mock('../consultingtype/getConsultingType4Tenant', () => ({ default: vi.fn().mockResolvedValue('1') }));
+vi.mock('./assignAgencyToConsultants', () => ({ assignAgencyToConsultants: mocks.assignAgencyToConsultants }));
 
 import { updateAgencyData } from './updateAgencyData';
 import { FETCH_ERRORS, FETCH_SUCCESS } from '../fetchData';
@@ -23,6 +28,8 @@ describe('updateAgencyData — ADR-014 multi-topic departments', () => {
         mocks.fetchData.mockResolvedValue({ _embedded: {} });
         mocks.updateAgencyPostCodeRange.mockReset();
         mocks.updateAgencyPostCodeRange.mockResolvedValue(undefined);
+        mocks.assignAgencyToConsultants.mockReset();
+        mocks.assignAgencyToConsultants.mockResolvedValue(undefined);
     });
 
     it('sends every selected topic, not just the first', async () => {
@@ -163,5 +170,50 @@ describe('updateAgencyData — agency settings (feature toggles)', () => {
     it('omits settings from the PUT body when absent, so the backend keeps the stored value', async () => {
         await updateAgencyData(agencyModel, { ...agencyModel } as any);
         expect('settings' in sentBody()).toBe(false);
+    });
+});
+
+describe('updateAgencyData — counsellor assignment on the edit path', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+        mocks.fetchData.mockResolvedValue({ _embedded: { id: '55' } });
+        mocks.updateAgencyPostCodeRange.mockReset();
+        mocks.updateAgencyPostCodeRange.mockResolvedValue(undefined);
+        mocks.assignAgencyToConsultants.mockReset();
+        mocks.assignAgencyToConsultants.mockResolvedValue(undefined);
+    });
+
+    it('assigns the picked counsellors, so the selection is not silently dropped', async () => {
+        // The reported defect: only addAgencyData assigned counsellors. Editing an existing
+        // agency discarded the selection without a word, the backend kept reporting zero
+        // counsellors, and the registration switch therefore stayed dead however often the
+        // admin picked somebody and pressed save.
+        await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            consultantIds: [{ value: '7' }, { value: '9' }],
+        } as any);
+
+        expect(mocks.assignAgencyToConsultants).toHaveBeenCalledWith('55', [{ value: '7' }, { value: '9' }]);
+    });
+
+    it('leaves assignments alone when the patch carries no counsellor field', async () => {
+        // Same absent-vs-empty rule the rest of this module follows: publishing a department's
+        // legal document sends a narrow card patch with no consultantIds.
+        await updateAgencyData(agencyModel, { ...agencyModel } as any);
+
+        expect(mocks.assignAgencyToConsultants).not.toHaveBeenCalled();
+    });
+
+    it('keeps the saved agency and reports the failure when assigning does not work', async () => {
+        // Losing the agency edit because one counsellor could not be attached would be worse
+        // than the partial result. The caller shows a warning on this flag.
+        mocks.assignAgencyToConsultants.mockRejectedValue(new Error('consultant service down'));
+
+        const result = await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            consultantIds: [{ value: '7' }],
+        } as any);
+
+        expect(result).toMatchObject({ id: '55', consultantAssignmentFailed: true });
     });
 });
