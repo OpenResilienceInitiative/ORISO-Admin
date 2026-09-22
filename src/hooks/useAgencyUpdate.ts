@@ -41,7 +41,11 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData);
+            // Cache the accepted main write at once: if a follow-up request (postcode ranges) fails and
+            // the recovery refetch fails too, a queued save still merges into what the server holds.
+            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
+                queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
+            );
 
             // Cache only a confirmed write. A rejected legal publication must not enter the base
             // of a later unrelated card update and get published by that second request.
