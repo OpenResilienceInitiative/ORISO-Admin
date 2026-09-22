@@ -6,6 +6,7 @@ import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import { normalizeTopicIds } from './normalizeTopicIds';
 import { stripAgencyAdminControls } from './stripAgencyAdminControls';
+import { assignAgencyToConsultants } from './assignAgencyToConsultants';
 
 /**
  * update agency
@@ -82,6 +83,20 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
             await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
         }
         // eslint-disable-next-line no-underscore-dangle
-        return response?._embedded;
+        const updatedAgency = response?._embedded;
+
+        // Assign picked counsellors, as the create path does. Absent-vs-empty applies: a
+        // narrow card patch carries no `consultantIds` and must leave assignments alone.
+        // Additive — the picker is not pre-filled, so empty means "nothing picked here".
+        if (formInput.consultantIds?.length > 0) {
+            try {
+                await assignAgencyToConsultants(agencyId, formInput.consultantIds);
+            } catch {
+                // The agency is saved either way; the caller warns on this flag.
+                return { ...updatedAgency, consultantAssignmentFailed: true };
+            }
+        }
+
+        return updatedAgency;
     });
 };
