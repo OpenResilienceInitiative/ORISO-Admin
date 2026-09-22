@@ -19,7 +19,10 @@ const tokenFor = (subject: string) => `header.${btoa(JSON.stringify({ sub: subje
 let listeners: EventListener[] = [];
 
 /** Let the report promise and its finally-handler settle before the next gesture. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+const settle = () =>
+    new Promise((resolve) => {
+        setTimeout(resolve, 0);
+    });
 
 const gesture = () => listeners[0]?.({ isTrusted: true } as Event);
 
@@ -100,7 +103,7 @@ describe('useAccountInactivityActivity — a best-effort ping never fires per ge
     });
 
     it('never reports twice while the first report is still in flight', async () => {
-        mocks.report.mockReturnValue(new Promise(() => undefined));
+        mocks.report.mockReturnValue(new Promise(() => {}));
         renderHook(() => useAccountInactivityActivity());
 
         gesture();
