@@ -49,7 +49,6 @@ const translations: Record<string, string> = {
     email: 'E-Mail',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
-    'counselor.passwordConfirmation': 'Passwort wiederholen',
     'counselor.displayName': 'Öffentlicher Anzeigename',
     'counselor.internalDisplayName': 'Interner Anzeigename',
     'counselor.salutation': 'Anrede',
@@ -226,7 +225,6 @@ const fillMandatoryFields = async () => {
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
     setField('Passwort', 'Str0ng!Pass');
-    setField('Passwort wiederholen', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
