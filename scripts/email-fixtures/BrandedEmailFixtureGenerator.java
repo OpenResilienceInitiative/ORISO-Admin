@@ -84,7 +84,7 @@ class BrandedEmailFixtureGenerator {
     InviteEmailPreviewService previewService =
         new InviteEmailPreviewService(
             templateRepository,
-            new InviteAcceptUrlBuilder("https://app.oriso.org", "https://admin.oriso.org"),
+            new InviteAcceptUrlBuilder("https://app.example.org", "https://admin.example.org"),
             dispatchService);
 
     List<String> written = new ArrayList<>();
@@ -190,7 +190,7 @@ class BrandedEmailFixtureGenerator {
         applicationSettingsService,
         inviteMailTransport,
         new EmailBrandingResolver(
-            tenantService, tenantTemplateSupplier, "ORISO", "", "https://app.oriso.org"),
+            tenantService, tenantTemplateSupplier, "ORISO", "", "https://app.example.org"),
         new BrandedEmailLayoutRenderer(new EmailContentSanitizer()),
         "http://consultingtypeservice:8080/service",
         "smtp-user",

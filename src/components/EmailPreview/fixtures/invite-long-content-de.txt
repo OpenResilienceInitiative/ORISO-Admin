@@ -45,10 +45,10 @@ automatisch erzeugt.
 Wir freuen uns auf die Zusammenarbeit.
 
 Einladung annehmen:
-https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN
+https://app.example.org/account-invite/SAMPLE-PREVIEW-TOKEN
 
 --------------------------------------------------------------
 ORISO
-Impressum: https://app.oriso.org/impressum
-Datenschutz: https://app.oriso.org/datenschutz
+Impressum: https://app.example.org/impressum
+Datenschutz: https://app.example.org/datenschutz
 Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.

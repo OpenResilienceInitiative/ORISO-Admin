@@ -1,6 +1,6 @@
 /**
- * The Admin runs on the same origin as the counselling app (dev.oriso.org/admin next to
- * dev.oriso.org/app), so both write into one localStorage. `localStorage.clear()` on an Admin
+ * The Admin runs on the same origin as the counselling app (<domain>/admin next to
+ * <domain>/app), so both write into one localStorage. `localStorage.clear()` on an Admin
  * logout therefore ended the app session and dropped its Matrix device id. Keys the app owns stay;
  * everything else goes, so no Admin data survives a logout on a shared computer.
  */

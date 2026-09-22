@@ -35,11 +35,11 @@ describe('branded e-mail story preview — the house footer survives verbatim', 
      * The sample call-to-action of a DPA_FORWARD render points at the APP host,
      * not the admin console: `targetRoleFor` sends every kind except
      * TENANT_INVITE down the counsellor/app branch. A frame whose CTA suddenly
-     * reads `admin.oriso.org` is the wrong fixture.
+     * reads `admin.example.org` is the wrong fixture.
      */
     it('keeps the app-host call-to-action shape a DPA_FORWARD preview renders with', () => {
-        expect(html).toContain('https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN');
-        expect(html).not.toContain('admin.oriso.org');
+        expect(html).toContain('https://app.example.org/account-invite/SAMPLE-PREVIEW-TOKEN');
+        expect(html).not.toContain('admin.example.org');
     });
 });
 

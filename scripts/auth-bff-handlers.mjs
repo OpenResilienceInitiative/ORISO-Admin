@@ -1,5 +1,5 @@
-// The Admin shares its host with the counselling app (dev.oriso.org/admin next to
-// dev.oriso.org/app). The app keeps its session in `keycloak` / `refreshToken` on Path=/, and the
+// The Admin shares its host with the counselling app (<domain>/admin next to
+// <domain>/app). The app keeps its session in `keycloak` / `refreshToken` on Path=/, and the
 // browser sends those cookies to /admin too — so the Admin needs names of its own, and it must
 // never write to Path=/. The old names are only expired on the Admin path, where they were the
 // Admin's own before.
@@ -47,7 +47,14 @@ const getAuthBffConfig = () => {
     const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
     const keycloakRealm = readEnv('VITE_KEYCLOAK_REALM', 'REACT_APP_KEYCLOAK_REALM') || 'online-beratung';
     const keycloakClientId = readEnv('VITE_KEYCLOAK_CLIENT_ID', 'REACT_APP_KEYCLOAK_CLIENT_ID') || 'app';
-    const apiBaseUrl = apiHost ? toAbsoluteUrl(apiHost, useHttps) : 'http://localhost';
+    // ORISO-Helm#368: no invented login host. Missing config stops the BFF, and the container
+    // entrypoint aborts when the BFF dies before listening.
+    if (!apiHost && !keycloakBaseUrl) {
+        throw new Error(
+            '[auth-bff] Neither VITE_API_URL nor VITE_KEYCLOAK_URL (or REACT_APP_API_URL / REACT_APP_KEYCLOAK_URL) is set; cannot build the Keycloak login endpoint.',
+        );
+    }
+    const apiBaseUrl = apiHost ? toAbsoluteUrl(apiHost, useHttps) : '';
     const realmBaseUrl = keycloakBaseUrl ? `${keycloakBaseUrl}/realms` : `${apiBaseUrl}/auth/realms`;
     const loginEndpoint = `${realmBaseUrl}/${keycloakRealm}/protocol/openid-connect/token`;
 
@@ -281,8 +288,10 @@ const AUTH_BFF_ROUTE_PATTERN = /\/auth\/(set-token|clear-token|session|refresh-t
 const matchesAuthRoute = (pathname, route) =>
     pathname.endsWith(`/admin/auth/${route}`) || pathname.endsWith(`/auth/${route}`);
 
+// A caller that passes its own loginEndpoint (tests) supplies the whole config; everyone else reads
+// it from the environment, which throws when the login host is missing.
 const createAuthBffHandler = (configOverride = {}) => {
-    const config = { ...getAuthBffConfig(), ...configOverride };
+    const config = 'loginEndpoint' in configOverride ? configOverride : { ...getAuthBffConfig(), ...configOverride };
 
     return async (request, response) => {
         const url = new URL(request.url, 'http://localhost');
