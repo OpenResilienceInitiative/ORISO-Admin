@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -8,6 +8,11 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaFormSection } from './DpaFormSection';
 import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { LONG_DPA_HTML, PHONE_390 } from './dpaStoryText';
+
+/** The desktop reading column every story renders the section in. */
+const ReadingColumn = ({ children }: { children: ReactNode }) => (
+    <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>{children}</div>
+);
 
 const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: boolean }) => {
     const [accepted, setAccepted] = useState(false);
@@ -57,18 +62,18 @@ type Story = StoryObj;
 /** Desktop reading column: chapter chips, signer fields, consent block. */
 export const Desktop: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <InteractiveSection />
-        </div>
+        </ReadingColumn>
     ),
 };
 
 /** The signed state: consent given — the block switches to the primary tone. */
 export const ConsentGiven: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <InteractiveSection />
-        </div>
+        </ReadingColumn>
     ),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -80,9 +85,9 @@ export const ConsentGiven: Story = {
 /** Submit was pressed without the confirmation: the block is marked. */
 export const ConsentMissing: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <InteractiveSection initiallyTouched />
-        </div>
+        </ReadingColumn>
     ),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -119,9 +124,9 @@ const UnavailableSection = ({ reason }: { reason?: DpaUnavailableReason }) => {
 /** The backend's own read of the published text failed — a platform defect. */
 export const UnavailableUpstreamError: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <UnavailableSection reason="UPSTREAM_ERROR" />
-        </div>
+        </ReadingColumn>
     ),
     play: async ({ canvas }) => {
         const alert = await canvas.findByTestId('dpa-content-unavailable');
@@ -135,9 +140,9 @@ export const UnavailableUpstreamError: Story = {
 /** Nothing published yet — the operator owes a contract text, not a fix. */
 export const UnavailableNotPublished: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <UnavailableSection reason="NOT_PUBLISHED" />
-        </div>
+        </ReadingColumn>
     ),
     play: async ({ canvas }) => {
         const alert = await canvas.findByTestId('dpa-content-unavailable');
@@ -149,9 +154,9 @@ export const UnavailableNotPublished: Story = {
 /** No reason from the backend (older deployment): the generic wording stands. */
 export const UnavailableWithoutReason: Story = {
     render: () => (
-        <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>
+        <ReadingColumn>
             <UnavailableSection />
-        </div>
+        </ReadingColumn>
     ),
     play: async ({ canvas }) => {
         const alert = await canvas.findByTestId('dpa-content-unavailable');
