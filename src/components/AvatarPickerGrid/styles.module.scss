@@ -65,12 +65,15 @@ $tile-size: 52px;
     outline-offset: 2px;
 }
 
-/* The ring has to stay readable ON the saturated red without going black
-   (owner, 2026-09-17): the SECONDARY slate reads as a deliberate selection
-   colour, and the light surface halo lifts it off both the red tile and its
-   neighbours. Two rings, so it never relies on colour alone. */
+/* Owner, 2026-09-19: the SECONDARY slate ring was invisible on the saturated
+   red — with 61 tiles nobody could tell which one was picked. The ring is now
+   the near-black `on-surface` — the strongest contrast this scheme has against
+   the saturated red — and the light surface halo outside it separates the ring
+   from the neighbouring tiles. The geometry is unchanged (2px border + 2px
+   halo), so the 8px grid gap still clears it. Still tokens: a dark tenant
+   scheme flips `on-surface` to light and the ring keeps its contrast. */
 
 .selected {
-    border-color: var(--m3-secondary, #4c555f);
+    border-color: var(--m3-on-surface, #1b1b1c);
     box-shadow: 0 0 0 2px var(--m3-surface, #fcf9f9);
 }
