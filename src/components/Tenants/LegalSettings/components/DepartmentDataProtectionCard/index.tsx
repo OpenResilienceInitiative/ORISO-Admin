@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
+import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -218,6 +219,16 @@ export const DepartmentDataProtectionCard = ({
         setConsentTemplateId(undefined);
     }, [activeLanguage, departmentName]);
 
+    const legalTextTokens = useMemo(
+        () =>
+            LEGAL_TEXT_TOKENS.map((token) => ({
+                key: token.key,
+                label: t(token.labelKey, token.labelFallback),
+                sample: token.sample,
+            })),
+        [t],
+    );
+
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
         [versions, activeLanguage, locale, t],
@@ -389,6 +400,7 @@ export const DepartmentDataProtectionCard = ({
                         </div>
                     )
                 }
+                textTokens={legalTextTokens}
                 onPublish={readOnly ? undefined : handlePublish}
                 onSaveDraft={
                     readOnly

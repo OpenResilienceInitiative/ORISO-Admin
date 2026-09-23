@@ -229,6 +229,12 @@ export type M3RichTextEditorProps = {
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
     /**
+     * `{{key}}` tokens the backend fills per Beratungsstelle. Shown above the text as chips with a
+     * sample value; a click inserts the token at the cursor (owner call: sample values at the top
+     * of the editor, like the other template editors).
+     */
+    textTokens?: { key: string; label: string; sample: string }[];
+    /**
      * Replaces the built-in toolbar + editor entirely (e.g. Form-bound TiptapEditors that
      * bring their own toolbar, placeholder plugin and anchor navigation). With an editorSlot
      * the onPublish/onSaveDraft callbacks receive an empty string — the consumer owns the content.
@@ -733,6 +739,7 @@ export const M3RichTextEditor = ({
     helpSlot,
     snackbarSlot,
     aboveEditorSlot,
+    textTokens,
     editorSlot,
     belowSlot,
     actionsLeading,
@@ -1094,6 +1101,24 @@ export const M3RichTextEditor = ({
             )}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
+
+            {editorEditable && !editorSlot && textTokens && textTokens.length > 0 && (
+                <div className={`${styles.contentInset} ${styles.tokenRow}`} data-testid="m3-editor-token-row">
+                    <span className={styles.tokenRowLabel}>{t('legal.m3Editor.tokens.label')}</span>
+                    {textTokens.map((token) => (
+                        <button
+                            key={token.key}
+                            type="button"
+                            className={styles.tokenChip}
+                            title={t('legal.m3Editor.tokens.insert', { token: `{{${token.key}}}` })}
+                            onClick={() => editor.chain().focus().insertContent(`{{${token.key}}}`).run()}
+                        >
+                            <span className={styles.tokenChipName}>{token.label}</span>
+                            <span className={styles.tokenChipSample}>{token.sample}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className={`${styles.editorRegion} ${anchorsEnabled && anchors.length > 0 ? styles.hasAnchors : ''}`}>
                 {editorSlot ? (

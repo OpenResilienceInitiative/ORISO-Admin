@@ -3,6 +3,7 @@ import { Alert, notification, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
+import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
@@ -347,6 +348,16 @@ export const LegalText = ({
         : undefined;
     const consentDisplay = viewedTemplate ? viewedTemplate.privacyConsent ?? {} : viewedConsent ?? consentByLanguage;
     const consentReadOnly = !canEditLegalText || isViewingVersion || !!viewedTemplate;
+
+    const legalTextTokens = useMemo(
+        () =>
+            LEGAL_TEXT_TOKENS.map((token) => ({
+                key: token.key,
+                label: t(token.labelKey, token.labelFallback),
+                sample: token.sample,
+            })),
+        [t],
+    );
 
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
@@ -812,6 +823,7 @@ export const LegalText = ({
                 aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
                 placeholders={placeholders}
+                textTokens={legalTextTokens}
                 value={contentByLanguage[activeLanguage] ?? ''}
                 onChange={
                     canEditLegalText
