@@ -44,7 +44,6 @@ const SHARED_FIELD_NAMES = [
     'email',
     'username',
     'password',
-    'passwordConfirmation',
     'formalLanguage',
     'isSupervisor',
     'isGroupchatConsultant',

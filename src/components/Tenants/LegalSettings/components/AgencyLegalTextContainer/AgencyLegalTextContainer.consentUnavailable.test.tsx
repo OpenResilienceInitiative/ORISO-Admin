@@ -5,8 +5,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
     card: vi.fn(),
+    useAgencyLegalDraft: vi.fn(),
 }));
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: (...args: unknown[]) => {
+        h.useAgencyLegalDraft(...args);
+        return {
+            draft: null,
+            isLoading: false,
+            isError: false,
+            retry: vi.fn(),
+            save: vi.fn(),
+            discard: vi.fn(),
+            hasConflict: false,
+            conflict: undefined,
+            conflictRefreshFailed: false,
+            conflictRefreshing: false,
+            retryConflict: vi.fn(),
+            clearConflict: vi.fn(),
+        };
+    },
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -75,6 +95,7 @@ const cardProps = () => h.card.mock.calls.at(-1)?.[0];
 describe('AgencyLegalTextContainer — why consent is unavailable', () => {
     beforeEach(() => {
         h.card.mockReset();
+        h.useAgencyLegalDraft.mockReset();
         h.useDepartmentDpp.mockReset().mockReturnValue({
             data: { content: '{"de":"<p>own</p>"}', publicationStatus: 'PUBLISHED' },
             isLoading: false,
@@ -129,7 +150,9 @@ describe('AgencyLegalTextContainer — why consent is unavailable', () => {
     it('says nothing until the agency record is actually there', () => {
         renderContainer({ agencyData: undefined });
 
-        expect(cardProps().consentUnavailableReason).toBeUndefined();
+        expect(screen.queryByTestId('legal-editor')).not.toBeInTheDocument();
+        expect(h.card).not.toHaveBeenCalled();
+        expect(h.useAgencyLegalDraft).toHaveBeenCalledWith(Number.NaN, 'DPP', false);
     });
 
     // ADR-021 decision 7 — the imprint has no consent gate, so it gets no explanation either.

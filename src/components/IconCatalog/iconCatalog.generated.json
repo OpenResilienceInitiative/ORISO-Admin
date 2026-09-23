@@ -2067,6 +2067,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:template:base",
+        "family": "template",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "template_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/template_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:topic:400",
         "family": "topic",
         "state": "400",
@@ -2901,6 +2914,7 @@
             "src/components/AdminEmpty/index.tsx",
             "src/components/cards/CaseTakeoverCard/index.tsx",
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/CustomIcons/EditorIcons.tsx",
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
