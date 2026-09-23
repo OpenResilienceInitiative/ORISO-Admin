@@ -38,11 +38,20 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(result.stderr).toContain('Hardcoded deployment value');
     });
 
+    it('still fails when a forbidden localhost URL shares the line with an approved literal', () => {
+        const otelMixed = 'const u=`http://localhost:4318/`+t;const bad="http://localhost:3000/service";';
+        const routerMixed =
+            'let r=`http://localhost`;e&&(r=e.location.origin);const bad="http://localhost:9000/admin";';
+        expect(runGuardOn(otelMixed).status, 'otel line').toBe(1);
+        expect(runGuardOn(routerMixed, 'vendor-ui-test.js').status, 'router line').toBe(1);
+    });
+
     it('allows the two third-party defaults found in the real bundle', () => {
         const otel = 'function Y(e,t){return{headers:async()=>e,url:`http://localhost:4318/`+t}}';
         const router = 'let r=`http://localhost`;e&&(r=e.location.origin===`null`?e.location.href:e.location.origin)';
-        expect(runGuardOn(otel).status).toBe(0);
-        expect(runGuardOn(router).status).toBe(0);
+        expect(runGuardOn(otel).status, otel).toBe(0);
+        // react-router's parse base only ever appears in a vendor chunk.
+        expect(runGuardOn(router, 'vendor-ui-test.js').status, router).toBe(0);
     });
 
     it('does not flag names that merely start with localhost', () => {

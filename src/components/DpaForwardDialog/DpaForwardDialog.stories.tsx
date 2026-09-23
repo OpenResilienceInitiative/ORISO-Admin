@@ -127,7 +127,9 @@ export const NamedRecipient: Story = {
         const name = await body.findByLabelText(/Name der Person|Name of the person/);
         await userEvent.type(name, 'Dr. Ruth Recht');
         await expect(name).toHaveValue('Dr. Ruth Recht');
-        await expect(await body.findByTestId('dpa-forward-canonical-preview')).toBeVisible();
+        // waitFor, not a bare assertion: the antd modal is still running its open
+        // animation on a slow CI runner, so the section exists before it is visible.
+        await waitFor(async () => expect(await body.findByTestId('dpa-forward-canonical-preview')).toBeVisible());
     },
 };
 
