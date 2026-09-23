@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fn, userEvent, waitFor } from 'storybook/test';
 import { TraegerSenderFields } from './index';
 import { M3Button } from '../../M3Button';

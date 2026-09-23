@@ -479,9 +479,11 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
         const user = userEvent.setup();
         renderFlow(client);
         await screen.findByLabelText('tenantOnboarding.organisation.name');
-        for (const [label, value] of Object.entries(fill)) {
-            await user.type(screen.getByLabelText(label), value);
-        }
+        // Sequential on purpose: user.type calls must not interleave.
+        await Object.entries(fill).reduce<Promise<void>>(
+            (typed, [label, value]) => typed.then(() => user.type(screen.getByLabelText(label), value)),
+            Promise.resolve(),
+        );
         await completeOrganisationStep(user);
         expect(await screen.findByText('admin@tenant.example')).toBeInTheDocument();
         await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');

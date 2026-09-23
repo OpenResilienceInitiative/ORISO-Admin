@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,13 @@ import {
 } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { TraegerSenderFields } from '../../../../components/Tenants/TraegerSenderFields';
+
+// Module level, so React does not see a new component type on every render.
+const wrapInFieldGroup = (field: ReactNode, name: string) => (
+    <div key={name} className={styles.fieldGroup}>
+        {field}
+    </div>
+);
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -190,13 +198,7 @@ export const GeneralTenantSettings = () => {
                                     placeholder={t('tenants.add.form.address.placeholder')}
                                 />
                             </div>
-                            <TraegerSenderFields
-                                wrapField={(field, name) => (
-                                    <div key={name} className={styles.fieldGroup}>
-                                        {field}
-                                    </div>
-                                )}
-                            />
+                            <TraegerSenderFields wrapField={wrapInFieldGroup} />
                             <div className={styles.fieldGroup}>
                                 <MuiMultilineFormField
                                     name="description"
@@ -258,13 +260,7 @@ export const GeneralTenantSettings = () => {
                                 placeholder={t('tenants.add.form.address.placeholder')}
                             />
                         </div>
-                        <TraegerSenderFields
-                            wrapField={(field, name) => (
-                                <div key={name} className={styles.fieldGroup}>
-                                    {field}
-                                </div>
-                            )}
-                        />
+                        <TraegerSenderFields wrapField={wrapInFieldGroup} />
                         <div className={styles.fieldGroup}>
                             <MuiMultilineFormField
                                 name="description"
