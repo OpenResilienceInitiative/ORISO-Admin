@@ -498,9 +498,11 @@ export const AgencyLegalTextContainer = ({
             // The consent sentence is part of what the card holds, so it belongs in the identity
             // too: keyed on the body alone, a refetch that changed only the sentence left the
             // card's staged edits in place and kept showing them as if they had been stored.
+            // It is the sentence the card SHOWS that counts: an unforked Fachbereich shows the
+            // level above's, which its own record does not carry.
             key={`${agencyId}-${field}-${String(selected)}-${
                 isDepartment
-                    ? `${departmentQuery.data?.content ?? ''}|${departmentQuery.data?.consentText ?? ''}`
+                    ? JSON.stringify([departmentQuery.data?.content ?? '', consentByLanguage ?? {}])
                     : agencyEditorGeneration
             }`}
             documentType={field}

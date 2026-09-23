@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
     card: vi.fn(),
+    cardMounts: vi.fn(),
     publishDpp: vi.fn(),
     tenant: vi.fn(),
     saveAgencyDraft: vi.fn(),
@@ -57,12 +58,20 @@ vi.mock('../../../../../hooks/useUserData.hook', () => ({
 vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
     useLegalTextVersions: () => ({ data: [], isError: false }),
 }));
-vi.mock('../DepartmentDataProtectionCard', () => ({
-    DepartmentDataProtectionCard: (props: any) => {
-        h.card(props);
-        return <div data-testid="legal-editor">{props.departmentSlot}</div>;
-    },
-}));
+vi.mock('../DepartmentDataProtectionCard', async () => {
+    const { useEffect } = await import('react');
+    return {
+        DepartmentDataProtectionCard: (props: any) => {
+            h.card(props);
+            // Counts mounts, so a test can tell a remount (staged edits discarded)
+            // from a re-render (staged edits kept).
+            useEffect(() => {
+                h.cardMounts();
+            }, []);
+            return <div data-testid="legal-editor">{props.departmentSlot}</div>;
+        },
+    };
+});
 
 import { AgencyLegalTextContainer } from '.';
 
@@ -110,6 +119,7 @@ describe('AgencyLegalTextContainer — a sentence of its own, with no body of it
     beforeEach(() => {
         h.useDepartmentDpp.mockReset();
         h.card.mockReset();
+        h.cardMounts.mockReset();
         h.publishDpp.mockReset();
         h.tenant.mockReset().mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
         h.saveAgencyDraft.mockReset();
@@ -178,5 +188,23 @@ describe('AgencyLegalTextContainer — a sentence of its own, with no body of it
         // An empty own body still edits a copy of the agency-wide text — that
         // seeding rule is unrelated to the sentence and must not change.
         expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+    });
+
+    it('resets the card when the inherited sentence it shows changes', async () => {
+        // An unforked Fachbereich shows the level above's sentence, and publishing
+        // forks it with whatever the card holds. Keyed on the Fachbereich's own
+        // record alone, a refetch of the inherited sentence kept the card mounted
+        // with the staged edits laid over the new text, and publish shipped them.
+        departmentWithoutBody();
+
+        const view = renderContainer();
+        await selectDepartment('U25 Suizidprävention');
+        const mountsBefore = h.cardMounts.mock.calls.length;
+
+        h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Neuer Träger-Satz' } } } });
+        view.rerender(<AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={vi.fn()} />);
+
+        expect(cardProps().consentByLanguage).toEqual({ de: 'Neuer Träger-Satz' });
+        expect(h.cardMounts.mock.calls.length).toBe(mountsBefore + 1);
     });
 });
