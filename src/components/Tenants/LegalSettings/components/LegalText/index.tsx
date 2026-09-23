@@ -134,6 +134,7 @@ export const LegalText = ({
     const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
     // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
     const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
+    const [consentBlockedClosed, setConsentBlockedClosed] = useState<string | undefined>();
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
@@ -754,9 +755,27 @@ export const LegalText = ({
                 // Only hand over a slot when a message is actually showing: the editor reserves
                 // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                 snackbarSlot={
-                    (showDraftSnackbar || showHintSnackbar) && (
+                    ((blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
+                        showDraftSnackbar ||
+                        showHintSnackbar) && (
                         <EditorSnackbarQueue
                             items={[
+                                // A blocking error outranks the draft notice and the help hint.
+                                blockedLanguages.length > 0 &&
+                                    consentBlockedClosed !== blockedLanguageNames && {
+                                        key: `consent-blocked:${blockedLanguageNames}`,
+                                        node: (
+                                            <span data-testid="consent-publish-blocked">
+                                                <EditorHintSnackbar
+                                                    tone="error"
+                                                    text={t('legal.consent.publishBlocked.description', {
+                                                        languages: blockedLanguageNames,
+                                                    })}
+                                                    onClose={() => setConsentBlockedClosed(blockedLanguageNames)}
+                                                />
+                                            </span>
+                                        ),
+                                    },
                                 showDraftSnackbar && {
                                     key: draftSnackbarKey,
                                     node: (
@@ -849,21 +868,6 @@ export const LegalText = ({
                 publish attempt: the rule arrived after texts were live, so a stored
                 sentence can be blocking on open — possibly in a language other than
                 the one on screen. */}
-            {blockedLanguages.length > 0 && (
-                <Alert
-                    type="error"
-                    showIcon
-                    data-testid="consent-publish-blocked"
-                    message={t('legal.consent.publishBlocked.title')}
-                    description={
-                        <>
-                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
-                            {/* Composed in JSX, never interpolated — i18next would eat it. */}
-                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                        </>
-                    }
-                />
-            )}
         </div>
     );
 };

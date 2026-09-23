@@ -2,7 +2,7 @@ import { Check, Close } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import styles from './M3RichTextEditor.module.scss';
 
-export type EditorHintSnackbarTone = 'blocker' | 'success';
+export type EditorHintSnackbarTone = 'blocker' | 'success' | 'error';
 
 export type EditorHintSnackbarProps = {
     text: React.ReactNode;
@@ -10,6 +10,8 @@ export type EditorHintSnackbarProps = {
      * `blocker` (default) is the dark inverse snackbar for "you cannot do X yet".
      * `success` is the blue secondary-container variant for "X happened" — same
      * shell, confirming rather than blocking (Figma Admin.ORISO 1261-51137).
+     * `error` is the M3 error-container variant for "this did not work" (owner
+     * call 2026-09-23: errors read better as a snackbar than as an alert box).
      */
     tone?: EditorHintSnackbarTone;
     /** Hide for this session (the X / check affordance). */
@@ -43,8 +45,11 @@ export const EditorHintSnackbar = ({
 }: EditorHintSnackbarProps) => {
     const { t } = useTranslation();
     const isSuccess = tone === 'success';
+    const toneClass = `${isSuccess ? styles.hintSnackbarSuccess : ''} ${
+        tone === 'error' ? styles.hintSnackbarError : ''
+    }`;
     return (
-        <div className={`${styles.hintSnackbar} ${isSuccess ? styles.hintSnackbarSuccess : ''}`}>
+        <div className={`${styles.hintSnackbar} ${toneClass}`}>
             <span className={styles.hintSnackbarText} role="status">
                 {text}
             </span>

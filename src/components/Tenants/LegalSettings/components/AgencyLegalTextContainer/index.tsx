@@ -469,6 +469,10 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
+    // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
+    const agencyWideStatus = Object.values(agencyWideContent).some((html) => html && html.trim() !== '')
+        ? ('PUBLISHED' as const)
+        : undefined;
     const agencyDraftBlocked =
         !canEditLegalText || (!isDepartment && (serverDraft.isError || serverDraft.hasConflict || !sourceChosen));
     const discardAgencyWideDraft = async () => {
@@ -527,7 +531,8 @@ export const AgencyLegalTextContainer = ({
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
-            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
+            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : agencyWideStatus}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
             readOnly={agencyDraftBlocked}
