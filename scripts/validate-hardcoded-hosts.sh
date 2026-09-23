@@ -28,10 +28,10 @@ for pattern in "${PATTERNS[@]}"; do
 	fi
 done
 
-# A quoted localhost URL: either followed by port/path/query up to the closing quote, or closed
-# right after the host. Both alternatives need a host boundary, so `localhost.example.org` and
+# A quoted localhost URL: either followed by port, path, query or fragment up to the closing
+# quote, or closed right after the host. Both alternatives need a host boundary, so `localhost.example.org` and
 # similar names never match.
-URL_PATTERN='["'"'"'`]https?://localhost([:/?][^"'"'"'`[:space:]]*["'"'"'`]?|["'"'"'`])'
+URL_PATTERN='["'"'"'`]https?://localhost([:/?#][^"'"'"'`[:space:]]*["'"'"'`]?|["'"'"'`])'
 
 # Two third-party defaults that never become an ORISO request: the OpenTelemetry OTLP exporter's
 # built-in default (the app always passes an explicit metrics URL) and react-router's base for

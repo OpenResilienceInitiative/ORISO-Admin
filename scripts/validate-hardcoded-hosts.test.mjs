@@ -31,6 +31,7 @@ describe('validate-hardcoded-hosts.sh', () => {
         'http://localhost:3000',
         'http://localhost/api',
         'http://localhost?x=1',
+        'http://localhost#preview',
         'https://localhost:8443/auth',
     ])('fails the build when the bundle contains %s', (host) => {
         const result = runGuardOn(`const u = "${host}";`);
