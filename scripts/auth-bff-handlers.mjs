@@ -1,5 +1,11 @@
-const AUTH_ACCESS_TOKEN_COOKIE = 'keycloak';
-const AUTH_REFRESH_TOKEN_COOKIE = 'refreshToken';
+// The Admin shares its host with the counselling app (dev.oriso.org/admin next to
+// dev.oriso.org/app). The app keeps its session in `keycloak` / `refreshToken` on Path=/, and the
+// browser sends those cookies to /admin too — so the Admin needs names of its own, and it must
+// never write to Path=/. The old names are only expired on the Admin path, where they were the
+// Admin's own before.
+const AUTH_ACCESS_TOKEN_COOKIE = 'oriso_admin_access_token';
+const AUTH_REFRESH_TOKEN_COOKIE = 'oriso_admin_refresh_token';
+const LEGACY_AUTH_COOKIES = ['keycloak', 'refreshToken'];
 
 const readEnv = (...keys) => {
     for (const key of keys) {
@@ -74,23 +80,33 @@ const getRequestAuthBffConfig = (config, request) => {
     return config;
 };
 
+// "/" would hand the Admin tokens to every route of the counselling app on this host.
+const resolveCookiePath = (config) => (config.cookiePath && config.cookiePath !== '/' ? config.cookiePath : '/admin');
+
 const buildAuthCookieAttributes = (config, { httpOnly = true, maxAge } = {}) => {
     const secure = config.cookieSecure ? '; Secure' : '';
     const domain = config.cookieDomain ? `; Domain=${config.cookieDomain}` : '';
     const httpOnlyFlag = httpOnly ? '; HttpOnly' : '';
     const maxAgeFlag = typeof maxAge === 'number' && maxAge > 0 ? `; Max-Age=${Math.floor(maxAge)}` : '';
-    const path = config.cookiePath || '/admin';
+    const path = resolveCookiePath(config);
 
     return `; Path=${path}; SameSite=Strict${secure}${domain}${httpOnlyFlag}${maxAgeFlag}`;
 };
 
+// Browsers list the cookie with the most specific path first, so the first occurrence wins.
+// A value that is not valid URI encoding belongs to someone else on this host; skipping it keeps
+// one bad cookie from turning every session request into a 500.
 const parseCookies = (cookieHeader = '') =>
     cookieHeader.split(';').reduce((cookies, entry) => {
         const [rawName, ...rawValueParts] = entry.trim().split('=');
-        if (!rawName) {
+        if (!rawName || rawName in cookies) {
             return cookies;
         }
-        cookies[rawName] = decodeURIComponent(rawValueParts.join('='));
+        try {
+            cookies[rawName] = decodeURIComponent(rawValueParts.join('='));
+        } catch {
+            // not ours, not readable
+        }
         return cookies;
     }, {});
 
@@ -105,7 +121,7 @@ const appendSetCookie = (response, cookieValue) => {
 };
 
 const buildAuthTokenCookies = (config, payload) => {
-    const cookies = buildRootPathAuthTokenClearCookies(config);
+    const cookies = buildLegacyAuthCookieClearCookies(config);
 
     if (payload.access_token) {
         cookies.push(
@@ -141,25 +157,15 @@ const buildClearAuthTokenCookies = (config) => {
     return [
         `${AUTH_ACCESS_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
         `${AUTH_REFRESH_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
-        ...buildRootPathAuthTokenClearCookies(config),
+        ...buildLegacyAuthCookieClearCookies(config),
     ];
 };
 
-const buildRootPathAuthTokenClearCookies = (config) => {
-    if (!config.cookiePath || config.cookiePath === '/') {
-        return [];
-    }
+// Only ever on the Admin path: on Path=/ these names are the counselling app's live session.
+const buildLegacyAuthCookieClearCookies = (config) => {
+    const clearAttributes = buildAuthCookieAttributes(config, { httpOnly: true });
 
-    const rootPathConfig = { ...config, cookiePath: '/' };
-    const clearAttributes = buildAuthCookieAttributes(rootPathConfig, { httpOnly: true }).replace(
-        /; Max-Age=\d+/,
-        '; Max-Age=0',
-    );
-
-    return [
-        `${AUTH_ACCESS_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
-        `${AUTH_REFRESH_TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`,
-    ];
+    return LEGACY_AUTH_COOKIES.map((name) => `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${clearAttributes}`);
 };
 
 const readJsonBody = async (request) => {

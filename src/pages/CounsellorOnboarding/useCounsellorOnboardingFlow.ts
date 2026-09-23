@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -45,14 +46,20 @@ export interface CounsellorWizardData {
     account: { username: string; password: string };
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
+    /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
+    avatar: CounsellorAvatarValue;
     topicIds: number[];
+    /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
+    agency: { name: string };
 }
 
 const EMPTY_DATA: CounsellorWizardData = {
     account: { username: '', password: '' },
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
+    avatar: {},
     topicIds: [],
+    agency: { name: '' },
 };
 
 /** Single source: the shared consultant credential policy (also used by the admin form). */
@@ -77,6 +84,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
     dataRef.current = data;
+    const inviteRef = useRef(invite);
+    inviteRef.current = invite;
 
     useEffect(() => {
         let cancelled = false;
@@ -101,11 +110,12 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     });
                     return;
                 }
-                // A single covered topic is preselected — it is the routed
-                // department and the only possible choice.
-                if (loaded.topics.length === 1) {
-                    setData((current) => ({ ...current, topicIds: [loaded.topics[0].id] }));
-                }
+                // Every resolve starts from a clean sheet: a token switch must not
+                // carry a previous invite's topics or agency name into this one.
+                // The invite's coverage arrives preselected (owner decision
+                // 2026-09-17): the invitee removes chips or adds further tenant
+                // topics instead of starting from an empty selection.
+                setData({ ...EMPTY_DATA, topicIds: loaded.topics.map((topic) => topic.id) });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
@@ -144,6 +154,19 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
+        setData((current) => ({ ...current, avatar }));
+    }, []);
+
+    const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
+        setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
+    }, []);
+
+    /** Replaces the whole selection — the multi-select reports its full value on every change. */
+    const setTopics = useCallback((topicIds: number[]) => {
+        setData((current) => ({ ...current, topicIds }));
+    }, []);
+
     const toggleTopic = useCallback((topicId: number) => {
         setData((current) => ({
             ...current,
@@ -169,7 +192,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setBusy(true);
         setSubmitError(null);
         try {
-            const { account, person, names, topicIds } = dataRef.current;
+            const { account, person, names, avatar, topicIds, agency } = dataRef.current;
+            // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
+            const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
+            const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
                 person: {
@@ -181,7 +207,11 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     publicName: names.publicName.trim() || undefined,
                     internalDisplayName: names.internalName.trim() || undefined,
                 },
+                ...(avatarKind ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } } : {}),
                 topicIds,
+                // Present only for a reserved (not yet existing) agency — the
+                // backend rejects the field for an existing one.
+                ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
             if (result.phase === 'COMPLETED') {
@@ -236,6 +266,9 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updateAccount,
         updatePerson,
         updateNames,
+        updateAvatar,
+        updateAgency,
+        setTopics,
         toggleTopic,
         submitRegistration,
         submitTwoFactorCode,

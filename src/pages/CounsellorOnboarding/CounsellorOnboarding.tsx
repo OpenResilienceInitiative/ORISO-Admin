@@ -14,7 +14,8 @@ import {
 import { M3Button } from '../../components/M3Button';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
-import { FilterChip } from '../../components/FilterChip';
+import { InputChipPicker } from '../../components/InputChipPicker';
+import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
 import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
@@ -84,7 +85,9 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAccount,
         updatePerson,
         updateNames,
-        toggleTopic,
+        updateAvatar,
+        updateAgency,
+        setTopics,
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
@@ -169,6 +172,20 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
     const { topics } = invite;
     const topicFallback = t('counsellorOnboarding.topics.fallbackLabel');
+    // A reserved Beratungsstellen-ID (composer AUTO/free id): the agency does not
+    // exist yet — the invitee names it and becomes its owner on registration.
+    const createsAgency = invite.agencyExists === false;
+    // Selectable = the invite's coverage (preselected) plus every active tenant
+    // topic: the invitee drops preselected chips by their x and adds further
+    // platform-defined topics via "+" (owner decision 2026-09-17).
+    const hasCoverage = topics.length > 0;
+    const selectableTopics = [...topics, ...(invite.availableTopics ?? [])].filter(
+        (topic, index, all) => all.findIndex((other) => other.id === topic.id) === index,
+    );
+    const topicOptions = selectableTopics.map((topic) => ({
+        value: topic.id,
+        label: topicLabel(topic, topicFallback),
+    }));
 
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
@@ -176,7 +193,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
     const topicsValid = data.topicIds.length > 0;
-    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && !busy;
+    const agencyValid = !createsAgency || data.agency.name.trim().length > 0;
+    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && agencyValid && !busy;
     // Field-specific inline errors appear while the field HAS content but
     // violates the policy; empty required fields are carried by the submit
     // hint instead of shouting at an untouched form.
@@ -274,8 +292,19 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
             </Section>
 
-            {/* Names only (#997): the avatar grid and picture upload return with #995. */}
-            <Section titleKey="cards.avatarName.titleNamesOnly" hintKey="cards.avatarName.subtitle">
+            {/*
+              #1047: the avatar step is ON. Still one plain single-column section —
+              the picker sits above the two names, exactly where the Figma card puts
+              it. The own-picture upload is the only part still missing (#1049).
+            */}
+            <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
+                <CounsellorAvatarField
+                    value={data.avatar}
+                    onChange={updateAvatar}
+                    displayName={data.names.publicName}
+                    firstname={invite.firstName}
+                    lastname={invite.lastName}
+                />
                 <FloatingLabelInput
                     label={t('cards.avatarName.publicName')}
                     supportingText={t('cards.avatarName.publicNameHint')}
@@ -290,17 +319,47 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
             </Section>
 
-            <Section titleKey="cards.focusTopics.title" hintKey="cards.focusTopics.subtitle">
-                <div className={styles.chips}>
-                    {topics.map((topic) => (
-                        <FilterChip
-                            key={topic.id}
-                            label={topicLabel(topic, topicFallback)}
-                            selected={data.topicIds.includes(topic.id)}
-                            onChange={() => toggleTopic(topic.id)}
-                        />
-                    ))}
-                </div>
+            {createsAgency && (
+                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                    <FloatingLabelInput
+                        label={t('counsellorOnboarding.agency.name')}
+                        supportingText={t('counsellorOnboarding.agency.nameHint')}
+                        value={data.agency.name}
+                        maxLength={100}
+                        autoComplete="organization"
+                        onChange={(e) => updateAgency({ name: e.target.value })}
+                    />
+                </Section>
+            )}
+
+            <Section
+                titleKey="cards.focusTopics.title"
+                // No hint over an empty row — the alert below carries the explanation.
+                hintKey={
+                    // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
+                    selectableTopics.length === 0
+                        ? undefined
+                        : hasCoverage
+                        ? 'counsellorOnboarding.topics.addHint'
+                        : 'counsellorOnboarding.topics.chooseHint'
+                }
+            >
+                {selectableTopics.length === 0 ? (
+                    // Neither coverage nor tenant topics: say so instead of leaving a
+                    // submit that can never be enabled (the dead end of #1 on dev).
+                    <Typography role="alert" variant="body2" color="text.secondary" data-testid="wizard-topics-none">
+                        {t('counsellorOnboarding.topics.none')}
+                    </Typography>
+                ) : (
+                    <InputChipPicker
+                        options={topicOptions}
+                        value={data.topicIds}
+                        onChange={setTopics}
+                        addLabel={t('counsellorOnboarding.topics.add')}
+                        removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
+                        ariaLabel={t('cards.focusTopics.title')}
+                    />
+                )}
             </Section>
 
             <div className={styles.submitRow}>
@@ -311,7 +370,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
-                        {t('counsellorOnboarding.submitHint', { minLength: MIN_PASSWORD_LENGTH })}
+                        {t(
+                            createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint',
+                            {
+                                minLength: MIN_PASSWORD_LENGTH,
+                            },
+                        )}
                     </Typography>
                 )}
                 <M3Button type="submit" variant="filled" disabled={!canSubmit} loading={busy}>

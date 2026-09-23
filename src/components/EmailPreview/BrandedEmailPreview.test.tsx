@@ -77,11 +77,20 @@ describe('BrandedEmailPreview', () => {
         expect(frame).toHaveAttribute('srcdoc', PREVIEW.html);
     });
 
-    it('explains the wordmark fallback when the tenant logo cannot be used in e-mail', async () => {
-        mocks.useSingleTenantData.mockReturnValue({ data: { theming: { logo: 'data:image/png;base64,AAA' } } });
+    it('explains when a configured logo cannot be resolved to a first-party asset', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: { theming: { logo: 'https://external.example/logo.png' } } });
         renderPreview(7);
 
         expect(await screen.findByText('tenants.appSettings.emailPreview.branding.logoNotRemote')).toBeInTheDocument();
+    });
+
+    it('does not warn about an uploaded logo with an effective tenant id', async () => {
+        mocks.useSingleTenantData.mockReturnValue({
+            data: { id: 1, theming: { logo: 'data:image/png;base64,iVBORw0KGgo=' } },
+        });
+        renderPreview(0);
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
     });
 
     it('stays silent about branding while the tenant is still loading', async () => {

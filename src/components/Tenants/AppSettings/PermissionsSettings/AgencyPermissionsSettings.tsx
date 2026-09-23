@@ -7,8 +7,8 @@ import { stripAgencyAdminControls } from '../../../../api/agency/stripAgencyAdmi
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyPermissionConstraintsToSettings,
-    DEFAULT_PERMISSION_SETTINGS,
     getRestrictedFields,
+    platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
@@ -40,7 +40,8 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     const initialValues = useMemo(
         () => ({
             settings: {
-                ...DEFAULT_PERMISSION_SETTINGS,
+                // Unset field → platform/Träger preset, not a blanket "on" (ORISO-Admin#989).
+                ...platformPresetValues({ allowedPermissionToggles }),
                 ...applyPermissionConstraintsToSettings(
                     stripAgencyAdminControls(agencyData?.settings ?? {}),
                     allowedPermissionToggles,

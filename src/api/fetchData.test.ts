@@ -242,6 +242,40 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(logout).not.toHaveBeenCalled();
     });
 
+    // UserService#1160: a 502 means the request was accepted but the MAIL could not
+    // be handed to SMTP. Without BAD_GATEWAY_WITH_RESPONSE the call fell into
+    // CATCH_ALL — a generic toast that hid a platform misconfiguration.
+    it('rejects with the raw response on 502 when BAD_GATEWAY_WITH_RESPONSE is requested, with no generic toast', async () => {
+        const badGateway = response(502, { reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badGateway));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/useradmin/account-invites',
+                method: FETCH_METHODS.POST,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE],
+                bodyData: JSON.stringify({ recipientEmail: 'neu@example.org' }),
+            }),
+        ).rejects.toBe(badGateway);
+
+        // The caller renders the specific cause; a CATCH_ALL toast on top would
+        // bury it under "something went wrong".
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    // Opt-in only: every existing caller keeps the behaviour it had.
+    it('keeps the CATCH_ALL toast on 502 when BAD_GATEWAY_WITH_RESPONSE is not requested', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(response(502, { reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' })),
+        );
+
+        await expect(createAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenCalledTimes(1);
+    });
+
     // Dead-session UX: when the refresh fails and we fall back to logout, the
     // admin must be TOLD the session expired instead of watching a spinner or a
     // silent redirect.

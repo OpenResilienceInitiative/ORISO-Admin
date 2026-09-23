@@ -59,6 +59,10 @@ export const PermissionPolicyControl = ({
     const option = (value: boolean, mode: PermissionPolicyMode): M3FabMenuItem => ({
         key: policyKey({ value, mode }),
         label: t(actionLabelKey(value, mode)),
+        // Tone follows the action, not the current value (#992): every
+        // "activate" pill is primary, every "deactivate" pill is neutral,
+        // identical on platform, Träger and agency level.
+        tone: value ? 'primary' : 'neutral',
         icon:
             mode === 'ENFORCED' ? (
                 <LockIcon />
@@ -75,7 +79,12 @@ export const PermissionPolicyControl = ({
                   option(true, 'SUGGESTED'),
                   option(false, 'SUGGESTED'),
               ];
-    items.push({ key: 'info', label: t('tenants.permissions.policy.moreInformation'), icon: <InfoIcon /> });
+    items.push({
+        key: 'info',
+        label: t('tenants.permissions.policy.moreInformation'),
+        icon: <InfoIcon />,
+        tone: 'neutral',
+    });
 
     const select = (key: string) => {
         if (key === 'info') {
