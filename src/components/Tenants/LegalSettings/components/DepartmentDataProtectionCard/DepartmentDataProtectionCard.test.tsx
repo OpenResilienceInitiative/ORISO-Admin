@@ -328,11 +328,15 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.draft')).toBeInTheDocument();
     });
 
-    it('shows no status tag on the agency-wide text, which is live when saved', () => {
+    it('tags the agency-wide text as published, since it is live when saved (owner call 2026-09-23)', () => {
         render(
-            <DepartmentDataProtectionCard documentScope="agency" publicationStatus="DRAFT" onSave={() => undefined} />,
+            <DepartmentDataProtectionCard
+                documentScope="agency"
+                publicationStatus="PUBLISHED"
+                onSave={() => undefined}
+            />,
         );
-        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.draft')).not.toBeInTheDocument();
+        expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
     });
 
     it('renders the department name when provided', () => {

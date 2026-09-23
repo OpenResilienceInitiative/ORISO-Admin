@@ -2,7 +2,7 @@ import { Alert, Button, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
 
-interface Props {
+export interface TenantLegalDraftNoticeProps {
     savedAt?: string;
     localSavedAt?: string;
     collision: boolean;
@@ -18,6 +18,12 @@ interface Props {
     keepEditing: () => void;
     onDiscard?: () => void;
     pending?: boolean;
+    /**
+     * The plain "a draft is saved, nothing published yet" state. Cards that show it as the
+     * editor snackbar (DraftStatusSnackbar) switch it off here, so this box only ever asks
+     * for a decision: a load failure, a conflict, or two drafts to choose between.
+     */
+    showInfo?: boolean;
 }
 
 export const TenantLegalDraftNotice = ({
@@ -36,7 +42,8 @@ export const TenantLegalDraftNotice = ({
     keepEditing,
     onDiscard,
     pending = false,
-}: Props) => {
+    showInfo = true,
+}: TenantLegalDraftNoticeProps) => {
     const { t, i18n } = useTranslation();
     const rawSavedAt = localSavedAt ?? savedAt;
     const parsedSavedAt = rawSavedAt ? new Date(rawSavedAt) : undefined;
@@ -116,7 +123,7 @@ export const TenantLegalDraftNotice = ({
             />
         );
     }
-    if (!savedAt && !localSavedAt) return null;
+    if (!showInfo || (!savedAt && !localSavedAt)) return null;
     return (
         <Alert
             className={`${styles.notice} ${styles.info}`}
