@@ -99,7 +99,8 @@ describe('AgencyLegalTextContainer', () => {
         expect(h.card.mock.calls[0][0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
         expect(h.card.mock.calls[0][0].documentScope).toBe('agency');
         // No department chosen — the card must not claim a publication status of its own.
-        expect(h.card.mock.calls[0][0].publicationStatus).toBeUndefined();
+        // Saved agency-wide text is live, so the card tags it as published (owner call 2026-09-23).
+        expect(h.card.mock.calls[0][0].publicationStatus).toBe('PUBLISHED');
     });
 
     it('lets the admin leave a department that is still loading', async () => {
