@@ -128,31 +128,33 @@ try {
         const payload = JSON.parse(Buffer.from(requests[1].headers.authorization.split('.')[1], 'base64').toString());
         assert.equal(payload.sub, 'person-b');
     });
-    for (const failureStatus of [401, 500, 200]) {
+    for (const failureStatus of [401, 403, 500, 200]) {
         await scenario(
-            `HTTP ${failureStatus} does not throttle the next gesture or navigate`,
+            `HTTP ${failureStatus} never navigates away or raises an alert`,
             async ({ page, requests, setStatus }) => {
                 const originalUrl = page.url();
                 setStatus(failureStatus);
                 await expectReport(page, () => page.getByRole('textbox').click());
-                setStatus(204);
-                await expectReport(page, () => page.keyboard.press('a'));
-                assert.equal(requests.length, 2);
+                assert.equal(requests.length, 1);
                 assert.equal(page.url(), originalUrl);
                 assert.equal(await page.getByRole('alert').count(), 0);
             },
         );
     }
-    for (const unavailableStatus of [404, 405, 501]) {
+    // Every answered status throttles: reporting is best-effort, so no answer the server can give
+    // may cost one request per gesture. 403 is what staging returns today (the endpoint lives on
+    // an unmerged UserService branch), 404/405/501 mean it is not deployed at all, and a 5xx is
+    // simply not worth retrying on the next click either.
+    for (const answeredStatus of [204, 401, 403, 404, 405, 500, 501]) {
         await scenario(
-            `HTTP ${unavailableStatus} (endpoint not deployed) throttles like a success`,
+            `HTTP ${answeredStatus} throttles the next gesture for the full interval`,
             async ({ page, requests, setStatus }) => {
-                setStatus(unavailableStatus);
+                setStatus(answeredStatus);
                 await expectReport(page, () => page.getByRole('textbox').click());
                 await page.keyboard.press('a');
                 await page.getByRole('textbox').click();
                 await page.waitForTimeout(500);
-                assert.equal(requests.length, 1, 'A missing endpoint must not be hit on every gesture');
+                assert.equal(requests.length, 1, 'An unusable endpoint must not be hit on every gesture');
             },
         );
     }

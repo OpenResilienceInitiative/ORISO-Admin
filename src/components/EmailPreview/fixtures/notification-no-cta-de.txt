@@ -1,7 +1,5 @@
-ORISO
-==============================================================
-
 Ihr Konto wurde aktiviert
+================================================================
 
 Hallo Erika Musterfrau,
 
@@ -10,8 +8,13 @@ gewohnt anmelden.
 
 Diese Nachricht dient nur zu Ihrer Information und enthält keine Aktion.
 
---------------------------------------------------------------
 ORISO
-Impressum: https://app.oriso.org/impressum
+Musterstraße 1, 12345 Musterstadt
+kontakt@example.org
+
+ORISO ist ein Angebot von ORISO.
+
 Datenschutz: https://app.oriso.org/datenschutz
+Impressum: https://app.oriso.org/impressum
+
 Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.
