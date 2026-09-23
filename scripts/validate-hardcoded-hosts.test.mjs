@@ -33,6 +33,11 @@ describe('validate-hardcoded-hosts.sh', () => {
         'http://localhost?x=1',
         'http://localhost#preview',
         'https://localhost:8443/auth',
+        // Host names are case-insensitive.
+        'https://APP.ORISO.ORG',
+        'https://Admin.Oriso-Dev.Site/admin',
+        'HTTP://LOCALHOST:3000',
+        'http://LocalHost/api',
     ])('fails the build when the bundle contains %s', (host) => {
         const result = runGuardOn(`const u = "${host}";`);
         expect(result.status, result.stderr).toBe(1);
@@ -51,8 +56,18 @@ describe('validate-hardcoded-hosts.sh', () => {
         const otel = 'function Y(e,t){return{headers:async()=>e,url:`http://localhost:4318/`+t}}';
         const router = 'let r=`http://localhost`;e&&(r=e.location.origin===`null`?e.location.href:e.location.origin)';
         expect(runGuardOn(otel).status, otel).toBe(0);
-        // react-router's parse base only ever appears in a vendor chunk.
         expect(runGuardOn(router, 'vendor-ui-test.js').status, router).toBe(0);
+        // The exception follows the code, not the chunk name.
+        expect(runGuardOn(router).status, router).toBe(0);
+    });
+
+    it('allows the defaults only in their own code, not the bare literals elsewhere', () => {
+        // Same literals, but not the OTLP exporter's `url:` default nor react-router's parse base.
+        const otelElsewhere = 'const metrics=`http://localhost:4318/`;fetch(metrics);';
+        const routerElsewhere = 'const api=`http://localhost`;fetch(api+`/service`);';
+        expect(runGuardOn(otelElsewhere).status, 'otel literal in a regular chunk').toBe(1);
+        expect(runGuardOn(routerElsewhere, 'vendor-other-test.js').status, 'bare localhost in a vendor chunk').toBe(1);
+        expect(runGuardOn(routerElsewhere).status, 'bare localhost in a regular chunk').toBe(1);
     });
 
     it('does not flag names that merely start with localhost', () => {
