@@ -25,13 +25,6 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         i18n: { language: 'de' },
         t: (key: string, options?: unknown) => {
-            // The platform's standard sentence is the one string whose CONTENT the
-            // component reacts to — it seeds an empty editor and must carry the
-            // mandatory token, so echoing the key here would test a sentence the
-            // product never ships.
-            if (key === 'legal.consent.template.platform.text') {
-                return 'Standardsatz {{legal_links}}.';
-            }
             if (typeof options === 'string') {
                 return options;
             }
@@ -55,6 +48,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         consentSlot,
         topicSlot,
         belowSlot,
+        snackbarSlot,
     }: {
         value?: string;
         versions?: { id: string; label: string; content: string; restorable?: boolean }[];
@@ -64,8 +58,10 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         consentSlot?: React.ReactNode;
         topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value}>
+            {snackbarSlot}
             <ul data-testid="versions">
                 {(versions ?? []).map((version) => (
                     <li key={version.id} data-restorable={String(version.restorable)}>
@@ -224,7 +220,7 @@ describe('DepartmentDataProtectionCard — consent field', () => {
             />,
         );
         expect(screen.getByTestId('consent-edit-trigger')).toHaveAccessibleDescription(
-            /legal\.consent\.publishBlocked\.title/,
+            /legal\.consent\.publishBlocked\.description/,
         );
     });
 });
@@ -402,7 +398,20 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
         expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
     });
 
-    it('stays silent while every authored sentence is valid — blank is not a violation', () => {
+    it('stays silent while every sentence carries the token', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: 'I read {{legal_links}}.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+    });
+
+    it('reports a blank language as missing (owner call 2026-09-23)', () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: '' }}
@@ -412,7 +421,9 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
             />,
         );
 
-        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
+            'legal.consent.publishBlocked.description:EN',
+        );
     });
 });
 
@@ -441,7 +452,9 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         expect(screen.getByTestId('consent-missing-token-error')).toHaveTextContent('{{legal_links}}');
     });
 
-    it('reads a blank sentence as inheritance, never as an error', async () => {
+    it('blocks a blank sentence and opens it with the platform template written in', async () => {
+        // Owner call 2026-09-23: no "empty means inherited" notice — the template is in the field,
+        // and an empty sentence is an error that blocks publishing.
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: '   ' }}
@@ -451,13 +464,10 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
             />,
         );
 
-        expect(screen.getByTestId('consent-edit-trigger')).not.toHaveAttribute('data-missing-token');
+        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
         await openConsent();
-        expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
-        // The editor now opens on the platform's standard sentence rather than on
-        // nothing (#929), so the notice names what is in the box. Blank remains
-        // inheritance either way, which is what this test is about.
-        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.seededFromPlatform');
+        expect(screen.queryByTestId('consent-inherited-notice')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-empty-error')).not.toBeInTheDocument();
     });
 
     it('clears the mark as soon as the token is typed back in', async () => {

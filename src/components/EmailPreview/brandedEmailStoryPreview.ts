@@ -1,11 +1,12 @@
 import type { InviteEmailPreviewDTO } from '../../api/accountInvites/accountInvites';
 
 // Verbatim backend output (see scripts/email-fixtures/README.md). This particular
-// fixture is the one whose sample accept URL has the APP-host shape
-// (`https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN`), which is exactly
-// the shape `DPA_FORWARD` renders with: `InviteEmailPreviewService.targetRoleFor`
-// maps TENANT_INVITE to the admin console and *everything else* — COUNSELLOR_INVITE
-// and DPA_FORWARD alike — to the app host.
+// fixture is the one whose sample accept URL has the counsellor shape
+// (`https://admin.oriso.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN`), which
+// is exactly the shape `DPA_FORWARD` renders with: `InviteEmailPreviewService.targetRoleFor`
+// maps TENANT_INVITE to tenant onboarding and *everything else* — COUNSELLOR_INVITE and
+// DPA_FORWARD alike — to the COUNSELLOR role, whose link is the Admin counsellor
+// onboarding route (`InviteAcceptUrlBuilder`).
 import brandedFrameDe from './fixtures/invite-long-content-de.html?raw';
 
 /**
@@ -18,13 +19,13 @@ import brandedFrameDe from './fixtures/invite-long-content-de.html?raw';
  * instead.
  *
  * The rule from `scripts/email-fixtures/README.md` still holds: the mail frame is
- * owned by ORISO-UserService (`BrandedEmailLayoutRenderer` + `email/layout/*`) and is
- * never authored in this repository. This helper therefore does not build a frame —
+ * owned by ORISO-UserService (`InviteFrameMailRenderer` + the `einladung-freitext`
+ * template, the ORISO e-mail frame) and is never authored in this repository. This helper therefore does not build a frame —
  * it takes a checked-in verbatim response and substitutes only the three cells the
  * backend itself substitutes per mail: preheader, subject and content. Header,
  * call-to-action, link hint and **footer** come through untouched, which is what makes
- * the footer in these stories the real house footer (brand name, Impressum ·
- * Datenschutz, "Diese E-Mail wurde automatisch versendet …") rather than a drawing of
+ * the footer in these stories the real house footer (brand name, Datenschutz ·
+ * Impressum, "Diese E-Mail gehört zu Ihrer Einladung …") rather than a drawing of
  * one.
  *
  * It is not a second renderer and must not grow into one: if a story needs a frame
@@ -39,9 +40,9 @@ import brandedFrameDe from './fixtures/invite-long-content-de.html?raw';
  * head behind would keep the fixture's sample subject in the document title.
  */
 const DOCUMENT_TITLE = /(<title>)[\s\S]*?(<\/title>)/;
-const PREHEADER = /(mso-hide:all;">)[\s\S]*?(<\/div>)/;
-const SUBJECT_CELL = /(font-size:22px;line-height:30px;font-weight:bold;">)[\s\S]*?(<\/td>)/;
-const CONTENT_CELL = /(font-size:16px;line-height:24px;">)[\s\S]*?(<\/td>)/;
+const PREHEADER = /(mso-hide:all;[^>]*>)[\s\S]*?(<\/span>)/;
+const SUBJECT_CELL = /(<h1 class="h1"[^>]*>)[\s\S]*?(<\/h1>)/;
+const CONTENT_CELL = /(padding:0px 40px 12px 40px;[^>]*>)[\s\S]*?(<\/td>)/;
 
 const escapeHtml = (value: string): string =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -62,10 +63,10 @@ const bodyToHtml = (body: string): string =>
         .map((paragraph) => `<p>${linkify(escapeHtml(paragraph)).replace(/\n/g, '<br>')}</p>`)
         .join('');
 
-/** First ~120 characters of the body, the way the backend fills the hidden preheader. */
+/** First 120 characters of the body, the way the backend fills the hidden preheader. */
 const preheader = (body: string): string => {
     const flat = body.replace(/\s+/g, ' ').trim();
-    return escapeHtml(flat.length > 120 ? `${flat.slice(0, 120)} …` : flat);
+    return escapeHtml(flat.length > 120 ? `${flat.slice(0, 120)}…` : flat);
 };
 
 /**
@@ -84,7 +85,7 @@ export const renderBrandedEmailStoryPreview = (subject: string, body: string): I
         .replace(SUBJECT_CELL, (_match, open: string, close: string) => `${open}${escapeHtml(subject)}${close}`)
         .replace(CONTENT_CELL, (_match, open: string, close: string) => `${open}${bodyToHtml(body)}${close}`),
     plainText: `${subject}\n\n${body}`,
-    sampleAcceptUrl: 'https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.oriso.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN',
 });
 
 /** The endpoint a story has to intercept to use the renderer above. */

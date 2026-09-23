@@ -22,6 +22,8 @@ import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
 import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import styles from './styles.module.scss';
@@ -72,6 +74,8 @@ export const AgencyLegalTextContainer = ({
     const [draftActionPending, setDraftActionPending] = useState(false);
     const draftActionPendingRef = useRef(false);
     const [agencyEditorGeneration, setAgencyEditorGeneration] = useState(0);
+    // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
+    const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
 
     const agencyId = Number(agencyData?.id);
     const isDepartment = selected !== ALL_DEPARTMENTS;
@@ -489,8 +493,52 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
+    // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
+    const agencyWideStatus = Object.values(agencyWideContent).some((html) => html && html.trim() !== '')
+        ? ('PUBLISHED' as const)
+        : undefined;
     const agencyDraftBlocked =
         !canEditLegalText || (!isDepartment && (serverDraft.isError || serverDraft.hasConflict || !sourceChosen));
+    const discardAgencyWideDraft = async () => {
+        if (draftActionPendingRef.current) return;
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        try {
+            if (serverBase.draft && serverBase.revision) await serverDraft.discard(serverBase.revision);
+            if (editorIdentityRef.current !== operationIdentity) return;
+            const localDiscarded = discardAgencyDraft();
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({
+                    identity: draftContextIdentity,
+                    draft: null,
+                    revision: undefined,
+                });
+                setDraftSource(localDiscarded ? undefined : 'local');
+                setAgencyEditorGeneration((current) => current + 1);
+            }
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
+            }
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
+    };
+
+    const draftSnackbarKey = `draft:${serverBase.draft?.savedAt ?? ''}:${localDraftSavedAt ?? ''}`;
+    const showDraftSnackbar =
+        !isDepartment &&
+        canEditLegalText &&
+        closedDraftSnackbar !== draftSnackbarKey &&
+        isDraftInfoState({
+            savedAt: serverBase.draft?.savedAt,
+            localSavedAt: localDraftSavedAt,
+            // Answered once a source is chosen; the snackbar and its discard take over again.
+            collision: draftCollision && !sourceChosen,
+            unavailable: serverDraft.isError,
+            conflict: serverDraft.hasConflict,
+        });
+
     const card = (
         <DepartmentDataProtectionCard
             // Remount when the source changes, so the editor resets to it instead of keeping the
@@ -513,9 +561,9 @@ export const AgencyLegalTextContainer = ({
             consentUnavailableReason={consentUnavailableReason}
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
-            hasOwnConsent={isDepartment && hasOwnConsent}
             languages={languages}
-            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
+            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : agencyWideStatus}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
             readOnly={agencyDraftBlocked}
@@ -532,6 +580,26 @@ export const AgencyLegalTextContainer = ({
                     // next editor in a draft collision; the switch waits for the action instead.
                     disabled={draftActionPending || departmentPublish.isPending}
                 />
+            }
+            snackbarSlot={
+                showDraftSnackbar && (
+                    <EditorSnackbarQueue
+                        items={[
+                            {
+                                key: draftSnackbarKey,
+                                node: (
+                                    <DraftStatusSnackbar
+                                        savedAt={serverBase.draft?.savedAt}
+                                        localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
+                                        onDiscard={discardAgencyWideDraft}
+                                        onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
+                                        pending={draftActionPending}
+                                    />
+                                ),
+                            },
+                        ]}
+                    />
+                )
             }
         />
     );
@@ -591,32 +659,9 @@ export const AgencyLegalTextContainer = ({
                     );
                     serverDraft.clearConflict();
                 }}
-                onDiscard={async () => {
-                    if (draftActionPendingRef.current) return;
-                    const operationIdentity = editorIdentity;
-                    setActionPending(true);
-                    try {
-                        if (serverBase.draft && serverBase.revision) await serverDraft.discard(serverBase.revision);
-                        if (editorIdentityRef.current !== operationIdentity) return;
-                        const localDiscarded = discardAgencyDraft();
-                        if (editorIdentityRef.current === operationIdentity) {
-                            setServerBaseState({
-                                identity: draftContextIdentity,
-                                draft: null,
-                                revision: undefined,
-                            });
-                            setDraftSource(localDiscarded ? undefined : 'local');
-                            setAgencyEditorGeneration((current) => current + 1);
-                        }
-                    } catch {
-                        if (editorIdentityRef.current === operationIdentity) {
-                            notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
-                        }
-                    } finally {
-                        if (editorIdentityRef.current === operationIdentity) setActionPending(false);
-                    }
-                }}
+                onDiscard={discardAgencyWideDraft}
                 pending={draftActionPending}
+                showInfo={false}
             />
             {card}
         </>

@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
+import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -9,8 +10,9 @@ import { LegalConsentField } from '../LegalConsentField';
 import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
+import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
-import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import { consentPublicationBlockers } from '../../utils/consentTextValidation';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useConsentTemplates } from '../../hooks/useConsentTemplates';
@@ -91,12 +93,6 @@ interface DepartmentDataProtectionCardProps {
     /** The consent sentences authored at THIS level; a language absent here is inherited. */
     ownConsentByLanguage?: Record<string, string>;
     /**
-     * Whether this level owns its consent sentence at all — blank included. Only
-     * a level that owns none may be offered the platform default to start from
-     * (#929); a stored blank is a decision and stays as it is.
-     */
-    hasOwnConsent?: boolean;
-    /**
      * Machine-translation call (wired by the container). When present, publishing offers
      * the translate-on-publish modal and non-source languages get a per-field
      * "translate from the original" button. Draft saves never translate.
@@ -111,6 +107,8 @@ interface DepartmentDataProtectionCardProps {
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
      */
     departmentSlot?: React.ReactNode;
+    /** The editor snackbar place (e.g. the draft status), passed through to the editor. */
+    snackbarSlot?: React.ReactNode;
     /**
      * The signed-in admin may not change legal content (#609). The card then reads —
      * editor, publish, draft-save and the consent sentence all inert — instead of
@@ -142,13 +140,11 @@ export const DepartmentDataProtectionCard = ({
     documentType = 'privacy',
     documentScope = 'department',
     departmentSlot,
+    snackbarSlot,
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
     consentUnavailableReason,
-    consentInheritedFrom,
-    ownConsentByLanguage,
-    hasOwnConsent = false,
     readOnly = false,
     readOnlyReason,
 }: DepartmentDataProtectionCardProps) => {
@@ -223,6 +219,16 @@ export const DepartmentDataProtectionCard = ({
         setConsentTemplateId(undefined);
     }, [activeLanguage, departmentName]);
 
+    const legalTextTokens = useMemo(
+        () =>
+            LEGAL_TEXT_TOKENS.map((token) => ({
+                key: token.key,
+                label: t(token.labelKey, token.labelFallback),
+                sample: token.sample,
+            })),
+        [t],
+    );
+
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
         [versions, activeLanguage, locale, t],
@@ -239,6 +245,20 @@ export const DepartmentDataProtectionCard = ({
      * the same check here means the admin is told which languages are affected
      * instead of losing the round trip to a generic 400.
      */
+    // Owner call 2026-09-23: blocking errors read better as an error-coloured snackbar in the
+    // editor than as an alert box below the card.
+    const [consentBlockedClosed, setConsentBlockedClosed] = useState(false);
+    const consentBlockedSnackbar =
+        blockedLanguages.length > 0 && !consentBlockedClosed ? (
+            <span id={consentBlockedId} data-testid="consent-publish-blocked">
+                <EditorHintSnackbar
+                    tone="error"
+                    text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                    onClose={() => setConsentBlockedClosed(true)}
+                />
+            </span>
+        ) : undefined;
+
     const handlePublish = () => {
         if (blockedLanguages.length > 0) {
             return;
@@ -287,6 +307,7 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
+                snackbarSlot={consentBlockedSnackbar ?? snackbarSlot}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
@@ -324,17 +345,6 @@ export const DepartmentDataProtectionCard = ({
                                 <LegalConsentField
                                     hideTemplateChooser
                                     hideTrigger
-                                    hasOwnSentence={hasOwnConsent}
-                                    inheritedFrom={
-                                        // The notice describes the CURRENT state. While an archived version is on
-                                        // screen it would answer a question nobody asked about the version being
-                                        // read, so it goes away for the duration.
-                                        consentInheritedFrom &&
-                                        !isViewingVersion &&
-                                        ownConsentByLanguage?.[activeLanguage] === undefined
-                                            ? consentInheritedFrom
-                                            : undefined
-                                    }
                                     language={activeLanguage}
                                     open={consentDialogOpen}
                                     onOpenChange={setConsentDialogOpen}
@@ -353,9 +363,10 @@ export const DepartmentDataProtectionCard = ({
                     <>
                         <div className={styles.header}>
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            {/* Only a Fachbereich text has a publication status; the agency-wide
-                                text is live when saved, so an "Entwurf" tag there was false. */}
-                            {documentScope === 'department' && publicationStatus && (
+                            {/* Owner call 2026-09-23: the agency-wide text is live as soon as it is
+                                saved, so it carries "Veröffentlicht" too. Without a tag there, a
+                                published text read as a bug next to a tagged Fachbereich. */}
+                            {publicationStatus && (
                                 <Tag color={published ? 'green' : 'default'}>
                                     {published
                                         ? t('tenants.legal.departmentDataProtection.status.published')
@@ -389,6 +400,7 @@ export const DepartmentDataProtectionCard = ({
                         </div>
                     )
                 }
+                textTokens={legalTextTokens}
                 onPublish={readOnly ? undefined : handlePublish}
                 onSaveDraft={
                     readOnly
@@ -434,23 +446,6 @@ export const DepartmentDataProtectionCard = ({
                 failed publish attempt: the rule arrived after texts were live, so a
                 stored sentence can be blocking on open, in a language that is not the
                 one on screen. Waiting for the Publish click would hide that. */}
-            {blockedLanguages.length > 0 && (
-                <Alert
-                    type="error"
-                    showIcon
-                    id={consentBlockedId}
-                    data-testid="consent-publish-blocked"
-                    message={t('legal.consent.publishBlocked.title')}
-                    description={
-                        <>
-                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
-                            {/* The token is composed in JSX, never interpolated — i18next
-                                treats `{{…}}` in a translation as its own syntax. */}
-                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                        </>
-                    }
-                />
-            )}
         </div>
     );
 };

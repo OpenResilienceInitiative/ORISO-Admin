@@ -158,27 +158,6 @@ describe('AgencyLegalTextContainer — a sentence of its own, with no body of it
         expect(cardProps().consentInheritedFrom).toBe('legal.consent.level.agency');
     });
 
-    it('tells the card the sentence is this level’s own, so it is not re-seeded', async () => {
-        // The card passes this straight to the consent editor: a level that owns
-        // its sentence keeps it as it stands, and the platform default is only
-        // offered where nothing has been authored yet (#929).
-        departmentWithoutBody({ consentText: '{"de":"Fachbereich-Satz"}' });
-
-        renderContainer();
-        await selectDepartment('U25 Suizidprävention');
-
-        expect(cardProps().hasOwnConsent).toBe(true);
-    });
-
-    it('lets a Fachbereich that has authored nothing be offered the default', async () => {
-        departmentWithoutBody();
-
-        renderContainer();
-        await selectDepartment('U25 Suizidprävention');
-
-        expect(cardProps().hasOwnConsent).toBe(false);
-    });
-
     it('keeps the body inheriting while the sentence is the Fachbereich’s own', async () => {
         departmentWithoutBody({ consentText: '{"de":"Fachbereich-Satz"}' });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,7 @@ import {
     LegalConsentTemplateEditor,
     PlaceholderTemplateDialog,
 } from '../../../../PlaceholderTemplate';
-import { PLATFORM_CONSENT_TEMPLATE_ID, useConsentTemplates } from '../../hooks/useConsentTemplates';
+import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import {
     hasMandatoryConsentToken,
     isBlankConsentText,
@@ -24,29 +24,12 @@ export interface LegalConsentFieldProps {
     /** Viewers (no legal-text edit permission) and version look-back render read-only. */
     readOnly?: boolean;
     /**
-     * The sentence is inherited from a higher level of the ladder and has not been
-     * overridden here (ADR-021 decision 1 — a document without its level is not a
-     * valid statement, so the card says which one it is showing).
-     */
-    inheritedFrom?: string;
-    /**
      * The HOST already offers the template chooser — the department card lifts it
      * into the editor's function bar (agency level, owner decision 2026-08-19), so
      * this module must not draw a second, identical one. The choice itself is not
      * taken away; only its location moves.
      */
     hideTemplateChooser?: boolean;
-    /**
-     * Whether THIS level already owns a consent sentence — blank included.
-     *
-     * Blankness alone cannot answer that: a level that has never authored one
-     * and a level that deliberately cleared its own both read as blank here.
-     * Only the first may be offered the platform default; seeding the second
-     * would let one press of the confirm button re-author a sentence somebody
-     * deliberately removed. The owner of that distinction is the container, so
-     * it is passed in rather than guessed.
-     */
-    hasOwnSentence?: boolean;
     /** Lets a surrounding split button own the visible dialog trigger. */
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -66,8 +49,6 @@ export const LegalConsentField = ({
     language,
     onChange,
     readOnly,
-    inheritedFrom,
-    hasOwnSentence = false,
     hideTemplateChooser,
     open: openProp,
     onOpenChange,
@@ -78,54 +59,40 @@ export const LegalConsentField = ({
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
     const templates = useConsentTemplates(language);
-    /**
-     * What the editor starts from when this level has no sentence of its own.
-     *
-     * An empty box is not a neutral starting point: it asks an administrator to
-     * author a legal sentence from nothing, and it hides the wording that is
-     * actually in force meanwhile. In the great majority of cases the required
-     * sentence is not in doubt, so the platform's standard wording is offered
-     * to adjust instead — it already carries `{{legal_links}}`, so what the
-     * admin starts from can never be published invalid.
-     *
-     * Two surfaces are exempt. Read-only ones report what is stored, and showing
-     * someone who cannot save a sentence this level does not have would be a
-     * claim about the document rather than a starting point for editing. And a
-     * level that already owns its sentence keeps it as it stands, blank
-     * included — see `hasOwnSentence`.
-     */
-    const platformDefault = useMemo(
-        () => templates.find((entry) => entry.id === PLATFORM_CONSENT_TEMPLATE_ID)?.values.text ?? '',
-        [templates],
-    );
-    const seedsPlatformDefault =
-        !readOnly && !hasOwnSentence && isBlankConsentText(value) && !isBlankConsentText(platformDefault);
-    const startingDraft = seedsPlatformDefault ? platformDefault : value;
     const dialogOpen = openProp ?? open;
     const setDialogOpen = (next: boolean) => {
         if (openProp === undefined) setOpen(next);
         onOpenChange?.(next);
     };
 
+    // Owner call 2026-09-23: an empty field opens with the platform template written in, instead of
+    // a notice explaining what applies while it is empty. Clearing it is then a deliberate act, and
+    // the empty state is reported as the error it is.
+    const templateText = templates[0]?.values?.text ?? '';
+    const seed = (current: string) => (isBlankConsentText(current) ? templateText : current);
+
     useEffect(() => {
         if (dialogOpen) {
-            setDraft(startingDraft);
+            setDraft(seed(value));
             setActiveTemplateId(undefined);
         }
-    }, [dialogOpen, startingDraft]);
+        // `seed` is derived from the template of the current language; adding it would re-seed on
+        // every render of the parent.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dialogOpen, value, templateText]);
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
 
     const openDialog = () => {
-        setDraft(startingDraft);
+        setDraft(seed(value));
         setActiveTemplateId(undefined);
         setDialogOpen(true);
     };
 
     const closeDialog = () => {
         setDialogOpen(false);
-        setDraft(startingDraft);
+        setDraft(seed(value));
         setActiveTemplateId(undefined);
     };
 
@@ -181,20 +148,14 @@ export const LegalConsentField = ({
                     okLabelKey="legal.consent.apply"
                 >
                     <div className={styles.dialogBody}>
-                        {(inheritedFrom || isBlankConsentText(value)) && (
+                        {isBlankConsentText(draft) && (
                             <Alert
                                 className={styles.notice}
-                                type="info"
+                                type="error"
                                 showIcon
-                                data-testid="consent-inherited-notice"
-                                message={
-                                    // eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down
-                                    inheritedFrom
-                                        ? t('legal.consent.inherited', { level: inheritedFrom })
-                                        : seedsPlatformDefault
-                                        ? t('legal.consent.seededFromPlatform')
-                                        : t('legal.consent.emptyMeansInherited')
-                                }
+                                data-testid="consent-empty-error"
+                                message={t('legal.consent.error.empty.title')}
+                                description={t('legal.consent.error.empty.description')}
                             />
                         )}
                         {draftMissingMandatoryToken && (
