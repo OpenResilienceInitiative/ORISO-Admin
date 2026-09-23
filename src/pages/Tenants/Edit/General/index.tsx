@@ -28,6 +28,7 @@ import {
     MuiMultilineFormField,
 } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
+import { TraegerSenderFields } from '../../../../components/Tenants/TraegerSenderFields';
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -189,6 +190,13 @@ export const GeneralTenantSettings = () => {
                                     placeholder={t('tenants.add.form.address.placeholder')}
                                 />
                             </div>
+                            <TraegerSenderFields
+                                wrapField={(field, name) => (
+                                    <div key={name} className={styles.fieldGroup}>
+                                        {field}
+                                    </div>
+                                )}
+                            />
                             <div className={styles.fieldGroup}>
                                 <MuiMultilineFormField
                                     name="description"
@@ -250,6 +258,13 @@ export const GeneralTenantSettings = () => {
                                 placeholder={t('tenants.add.form.address.placeholder')}
                             />
                         </div>
+                        <TraegerSenderFields
+                            wrapField={(field, name) => (
+                                <div key={name} className={styles.fieldGroup}>
+                                    {field}
+                                </div>
+                            )}
+                        />
                         <div className={styles.fieldGroup}>
                             <MuiMultilineFormField
                                 name="description"
