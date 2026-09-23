@@ -6,6 +6,13 @@ import { LegalConsentField } from './index';
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         t: (key: string, options?: unknown) => {
+            // The platform's standard sentence is the one string whose CONTENT the
+            // component reacts to — it seeds an empty editor and must carry the
+            // mandatory token, so echoing the key here would test a sentence the
+            // product never ships.
+            if (key === 'legal.consent.template.platform.text') {
+                return 'Standardsatz {{legal_links}}.';
+            }
             if (typeof options === 'string') {
                 return options;
             }
@@ -61,7 +68,7 @@ describe('LegalConsentField — dialog (#862)', () => {
         await userEvent.click(input);
         (input as HTMLTextAreaElement).focus();
         await userEvent.paste('Neu {{legal_links}}.');
-        await userEvent.click(screen.getByRole('button', { name: 'save' }));
+        await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 
         expect(onChange).toHaveBeenCalledWith('Neu {{legal_links}}.');
         expect(screen.queryByText('placeholderTemplate.dialog.legalTitle')).not.toBeInTheDocument();
@@ -90,7 +97,7 @@ describe('LegalConsentField — dialog (#862)', () => {
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
 
         expect(screen.getByRole('textbox')).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'legal.consent.apply' })).toBeDisabled();
         expect(onChange).not.toHaveBeenCalled();
     });
 

@@ -228,11 +228,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'neu {{legal_links}}' });
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: { de: 'neu {{legal_links}}' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: { de: 'neu {{legal_links}}' },
+            },
+            expect.anything(),
+        );
     });
 
     /**
@@ -249,11 +252,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, true, {});
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: {},
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: {},
+            },
+            expect.anything(),
+        );
     });
 
     it('keeps a cleared sentence distinguishable from an untouched empty one', async () => {
@@ -264,11 +270,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: '' });
 
         // A language key with empty content is the ONLY way a client can delete the sentence.
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: { de: '' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: { de: '' },
+            },
+            expect.anything(),
+        );
     });
 
     it('omits consentText entirely when the card hands none over', async () => {
@@ -281,7 +290,7 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         // The card passes the third argument only while it owns the consent field. Without it the
         // property is left off the request rather than sent empty, so nothing is claimed about a
         // sentence this surface never edited.
-        expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false });
+        expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false }, expect.anything());
     });
 });
 
@@ -329,11 +338,14 @@ describe('AgencyLegalTextContainer — the fork copies policy AND sentence', () 
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>agency wide</p>' }, true, cardProps().consentByLanguage);
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>agency wide</p>' },
-            publish: true,
-            consentText: { de: 'Traeger-Satz {{legal_links}}' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>agency wide</p>' },
+                publish: true,
+                consentText: { de: 'Traeger-Satz {{legal_links}}' },
+            },
+            expect.anything(),
+        );
     });
 
     it('leaves a Fachbereich that has already forked with its own sentence, blank included', async () => {
