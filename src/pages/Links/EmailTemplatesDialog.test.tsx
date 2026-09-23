@@ -727,6 +727,8 @@ describe('EmailTemplatesDialog', () => {
 describe('EmailTemplatesDialog — a tenant admin', () => {
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();
+        mocks.createInviteEmailTemplate.mockReset();
+        mocks.updateInviteEmailTemplate.mockReset();
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
         mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
         mocks.previewInviteEmailTemplateContent.mockResolvedValue({
@@ -787,6 +789,32 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
             .map((option) => option.getAttribute('value'))
             .filter(Boolean);
         expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('cannot reach a shared template’s edit form through the editor’s template menu', async () => {
+        // "Vorlage wählen" in the editor switches the form to editing that
+        // template, and save then PUTs it — the same change the hidden Edit
+        // button withholds. For a tenant admin the pick starts a new template
+        // from it instead, so the shared one is never written.
+        const user = userEvent.setup();
+        mocks.createInviteEmailTemplate.mockResolvedValue({ ...counsellorTemplate, id: 9, name: 'Eigene' });
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Default counsellor template$/ }));
+
+        // A copy, not the stored template: its content, but no name of its own yet.
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Welcome');
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Eigene');
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+
+        await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
     });
 });
 

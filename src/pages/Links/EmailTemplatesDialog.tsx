@@ -654,7 +654,10 @@ export const EmailTemplatesDialog = ({
                         onSelectTemplate={(id) => {
                             const template = kindTemplates.find((entry) => entry.id === id);
                             if (template) {
-                                guardDraft(() => openEditForm(template));
+                                // Picking a template opens it for editing, and save writes it back.
+                                // Without the right to edit shared templates, the pick starts a new
+                                // template from it instead, as "Neu aus …" does.
+                                guardDraft(() => (canEdit ? openEditForm(template) : openCreateFromTemplate(template)));
                             }
                         }}
                     />
