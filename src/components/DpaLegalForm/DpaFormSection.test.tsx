@@ -4,6 +4,7 @@ import { Form } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DpaFormSection } from './DpaFormSection';
+import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -32,7 +33,15 @@ beforeAll(() => {
 
 const HTML = '<h2>§ 1 Gegenstand</h2><p>Text</p><h2>§ 2 Pflichten</h2><p>Text</p>';
 
-const Host = ({ acceptTouched = false, dpaHtml = HTML }: { acceptTouched?: boolean; dpaHtml?: string }) => {
+const Host = ({
+    acceptTouched = false,
+    dpaHtml = HTML,
+    unavailableReason,
+}: {
+    acceptTouched?: boolean;
+    dpaHtml?: string;
+    unavailableReason?: DpaUnavailableReason | null;
+}) => {
     const [accepted, setAccepted] = useState(false);
     const [touched, setTouched] = useState(acceptTouched);
     return (
@@ -42,6 +51,7 @@ const Host = ({ acceptTouched = false, dpaHtml = HTML }: { acceptTouched?: boole
         >
             <DpaFormSection
                 dpaHtml={dpaHtml}
+                unavailableReason={unavailableReason}
                 textLabel="AVV"
                 accepted={accepted}
                 acceptTouched={touched}
@@ -149,4 +159,59 @@ describe('DpaFormSection — no text, no consent (#596 review)', () => {
             'tenantOnboarding.dpa.unavailable',
         );
     });
+});
+
+/**
+ * "Nothing published" and "our own read of it failed" look identical on this
+ * page and need opposite remedies — wait for the operator vs. tell the
+ * operator their server is misconfigured. The old single sentence asked for a
+ * reload, which helps in neither case and hid a staging misconfiguration for
+ * hours because the page read as "nothing published yet".
+ */
+describe('DpaFormSection — the unavailable state names its cause', () => {
+    it('blames the platform configuration, not the reader, on an upstream error', async () => {
+        render(<Host dpaHtml="" unavailableReason="UPSTREAM_ERROR" />);
+
+        const alert = await screen.findByTestId('dpa-content-unavailable');
+        expect(alert).toHaveTextContent('tenantOnboarding.dpa.unavailableUpstream');
+        expect(alert).not.toHaveTextContent('tenantOnboarding.dpa.unavailableNotPublished');
+    });
+
+    it('says the operator has not published anything yet when that is the reason', async () => {
+        render(<Host dpaHtml="" unavailableReason="NOT_PUBLISHED" />);
+
+        const alert = await screen.findByTestId('dpa-content-unavailable');
+        expect(alert).toHaveTextContent('tenantOnboarding.dpa.unavailableNotPublished');
+        expect(alert).not.toHaveTextContent('tenantOnboarding.dpa.unavailableUpstream');
+    });
+
+    it('keeps the generic message when the backend does not send a reason (older deployments)', async () => {
+        render(<Host dpaHtml="" unavailableReason={undefined} />);
+
+        // Anchored: the reason-specific keys START with the generic one, so a
+        // plain substring assertion here would pass on either of them.
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            /^tenantOnboarding\.dpa\.unavailable$/,
+        );
+    });
+
+    it('keeps the generic message for an explicit null (content present, or a reason the UI does not know)', async () => {
+        render(<Host dpaHtml="" unavailableReason={null} />);
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            /^tenantOnboarding\.dpa\.unavailable$/,
+        );
+    });
+
+    it.each<DpaUnavailableReason>(['UPSTREAM_ERROR', 'NOT_PUBLISHED'])(
+        'withholds the signing block on %s — a named cause is still no contract',
+        async (reason) => {
+            render(<Host dpaHtml="" unavailableReason={reason} />);
+
+            await screen.findByTestId('dpa-content-unavailable');
+            expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-consent')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('tenantOnboarding.dpa.signerName')).not.toBeInTheDocument();
+        },
+    );
 });

@@ -6,10 +6,10 @@ import { getVisibleColumns } from './userTableConfigs';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { CounselorData } from '../../../types/counselor';
 
-// The agency cell renders three chips per agency inside a fixed-width column. Long agency
+// The agency cell renders one unit per agency ("postcode city" above the name) inside a fixed-width column. Long agency
 // names used to be sliced mid-word because `text-overflow: ellipsis` does not apply to the
-// anonymous flex item of an `inline-flex` chip — the label needs its own truncating element
-// and every chip needs an accessible full value (ORISO-Admin#99).
+// anonymous flex item of an `inline-flex` chip — each line needs its own truncating element
+// and the unit needs an accessible full value (ORISO-Admin#99).
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -49,25 +49,57 @@ const renderAgencyCell = (row: Partial<CounselorData>) => {
 };
 
 describe('agency column', () => {
-    it('truncates every chip label in its own element instead of clipping the text', () => {
+    it('truncates every line of the centre unit in its own element instead of clipping the text', () => {
         const cell = renderAgencyCell({ agencies: [LONG_AGENCY] as any });
 
-        const labels = cell.querySelectorAll('.counselorList__agencyChipLabel');
-        expect(labels).toHaveLength(3);
-        expect([...labels].map((label) => label.textContent)).toEqual([
-            LONG_AGENCY.postcode,
+        const lines = cell.querySelectorAll('.counselorList__agencyChipLine');
+        expect(lines).toHaveLength(2);
+        expect([...lines].map((line) => line.textContent)).toEqual([
+            `${LONG_AGENCY.postcode} ${LONG_AGENCY.city}`,
             LONG_AGENCY.name,
-            LONG_AGENCY.city,
         ]);
     });
 
-    it('exposes the full value of every chip via title, not only the agency name', () => {
+    it('exposes the full postcode, city and name of the centre via title', () => {
         const cell = renderAgencyCell({ agencies: [LONG_AGENCY] as any });
 
-        const titles = [...cell.querySelectorAll('.counselorList__agencyChip')].map((chip) =>
-            chip.getAttribute('title'),
-        );
-        expect(titles).toEqual([LONG_AGENCY.postcode, LONG_AGENCY.name, LONG_AGENCY.city]);
+        const unit = cell.querySelector('.counselorList__agencyChip');
+        expect(unit?.getAttribute('title')).toBe(`${LONG_AGENCY.postcode} ${LONG_AGENCY.city}, ${LONG_AGENCY.name}`);
+    });
+
+    it('shows each centre as one unit: "postcode city" on the first line, the name below', () => {
+        const cell = renderAgencyCell({
+            agencies: [{ id: 'a-2', name: 'Beratungsstelle Sep21', postcode: '44444', city: 'Kassel' }] as any,
+        });
+
+        const units = cell.querySelectorAll('.counselorList__agencyChip');
+        expect(units).toHaveLength(1);
+        const lines = [...units[0].querySelectorAll('.counselorList__agencyChipLine')].map((line) => line.textContent);
+        expect(lines).toEqual(['44444 Kassel', 'Beratungsstelle Sep21']);
+    });
+
+    const linesOf = (agency: Record<string, unknown>) =>
+        [
+            ...renderAgencyCell({ agencies: [{ id: 'a-3', ...agency }] as any }).querySelectorAll(
+                '.counselorList__agencyChipLine',
+            ),
+        ].map((line) => line.textContent);
+
+    it('shows only the city on the first line when the postcode is missing', () => {
+        expect(linesOf({ name: 'Beratungsstelle Sep21', city: 'Kassel' })).toEqual(['Kassel', 'Beratungsstelle Sep21']);
+    });
+
+    it('shows only the postcode on the first line when the city is missing', () => {
+        expect(linesOf({ name: 'Beratungsstelle Sep21', postcode: '44444' })).toEqual([
+            '44444',
+            'Beratungsstelle Sep21',
+        ]);
+    });
+
+    it('shows only the name when both postcode and city are missing', () => {
+        expect(linesOf({ name: 'Beratungsstelle Sep21', postcode: '', city: undefined })).toEqual([
+            'Beratungsstelle Sep21',
+        ]);
     });
 
     it('keeps the identity columns within a 1440px content width', () => {

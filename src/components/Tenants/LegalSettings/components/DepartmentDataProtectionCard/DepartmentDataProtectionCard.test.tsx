@@ -23,6 +23,7 @@ vi.mock('react-i18next', () => ({
 // onChange handler is wired, and exposes the publish/draft actions.
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({
+        title,
         value,
         onChange,
         publishing,
@@ -33,6 +34,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         aboveEditorSlot,
         belowSlot,
     }: {
+        title?: string;
         value?: string;
         onChange?: (html: string) => void;
         publishing?: boolean;
@@ -44,6 +46,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         belowSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value} data-has-language-slot={languageSlot ? 'true' : 'false'}>
+            <span data-testid="editor-title">{title}</span>
             {languageSlot}
             {helpSlot}
             {aboveEditorSlot}
@@ -315,14 +318,56 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
     });
 
-    it('shows the draft status tag by default', () => {
+    it('shows no status tag without a known status', () => {
         render(<DepartmentDataProtectionCard onSave={() => undefined} />);
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.draft')).not.toBeInTheDocument();
+    });
+
+    it('shows the draft status tag for a Fachbereich in DRAFT', () => {
+        render(<DepartmentDataProtectionCard publicationStatus="DRAFT" onSave={() => undefined} />);
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.draft')).toBeInTheDocument();
+    });
+
+    it('shows no status tag on the agency-wide text, which is live when saved', () => {
+        render(
+            <DepartmentDataProtectionCard documentScope="agency" publicationStatus="DRAFT" onSave={() => undefined} />,
+        );
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.draft')).not.toBeInTheDocument();
     });
 
     it('renders the department name when provided', () => {
         render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();
+    });
+
+    it.each([
+        ['privacy', 'tenants.legal.agencyDataProtection.title', 'tenants.legal.agencyDataProtection.description'],
+        ['imprint', 'tenants.legal.agencyImprint.title', 'tenants.legal.agencyImprint.description'],
+    ] as const)('labels an agency-wide %s document as agency-owned', (documentType, title, description) => {
+        render(
+            <DepartmentDataProtectionCard
+                documentType={documentType}
+                documentScope="agency"
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.getByTestId('editor-title')).toHaveTextContent(title);
+        expect(screen.getByText(description)).toBeInTheDocument();
+    });
+
+    it.each([
+        [
+            'privacy',
+            'tenants.legal.departmentDataProtection.title',
+            'tenants.legal.departmentDataProtection.description',
+        ],
+        ['imprint', 'tenants.legal.departmentImprint.title', 'tenants.legal.departmentImprint.description'],
+    ] as const)('keeps the existing department %s labels by default', (documentType, title, description) => {
+        render(<DepartmentDataProtectionCard documentType={documentType} onSave={() => undefined} />);
+
+        expect(screen.getByTestId('editor-title')).toHaveTextContent(title);
+        expect(screen.getByText(description)).toBeInTheDocument();
     });
 });
 
