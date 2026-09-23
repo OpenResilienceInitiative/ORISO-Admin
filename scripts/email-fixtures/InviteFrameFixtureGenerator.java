@@ -58,6 +58,9 @@ import org.springframework.web.client.RestTemplate;
 class InviteFrameFixtureGenerator {
 
   private static final String OUT_DIR_PROPERTY = "oriso.email.fixtures.out";
+  private static final String GENERATOR_SOURCE =
+      "src/test/java/de/caritas/cob/userservice/api/service/accountinvite/mail/"
+          + "InviteFrameFixtureGenerator.java";
   private static final long BRANDED_TENANT_ID = 7L;
   private static final long LONG_TEMPLATE_ID = 5L;
   private static final long SHORT_TEMPLATE_ID = 6L;
@@ -185,7 +188,17 @@ class InviteFrameFixtureGenerator {
       if (commit.isEmpty()) {
         return "unknown revision";
       }
-      boolean dirty = !git("status", "--porcelain", "--untracked-files=no").isEmpty();
+      // Untracked files count: Maven compiles untracked sources and loads untracked resources.
+      // Only this generator, copied in for the run, is left out.
+      boolean dirty =
+          !git(
+                  "status",
+                  "--porcelain",
+                  "--untracked-files=all",
+                  "--",
+                  ".",
+                  ":(exclude)" + GENERATOR_SOURCE)
+              .isEmpty();
       return "UserService @ " + commit + (dirty ? " + uncommitted changes" : "");
     } catch (IOException e) {
       return "unknown revision";
