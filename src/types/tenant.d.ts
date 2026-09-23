@@ -110,6 +110,15 @@ export interface BasicTenantData {
     address?: string;
     /** Optional free-text description of the tenant (NEW shared API field). */
     description?: string;
+    /**
+     * Mail-footer sender block of the Träger (TenantService, Frank 2026-09-23), all optional.
+     * Full legal name, e.g. "Caritasverband für die Erzdiözese Musterstadt e.V." (max 255).
+     */
+    legalName?: string | null;
+    /** Contact e-mail address (max 255). */
+    contactEmail?: string | null;
+    /** Contact phone number (max 64). */
+    contactPhone?: string | null;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate
     updateDate?: string;
