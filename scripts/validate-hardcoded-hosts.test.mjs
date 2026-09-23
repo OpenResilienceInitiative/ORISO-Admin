@@ -70,6 +70,13 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(runGuardOn(routerElsewhere).status, 'bare localhost in a regular chunk').toBe(1);
     });
 
+    it('does not let the router exception reach across a statement boundary', () => {
+        const crossStatement = 'const api="http://localhost";window.location.origin;fetch(api)';
+        const laterStatement = 'let r=`http://localhost`;x();e&&(r=e.location.origin)';
+        expect(runGuardOn(crossStatement).status, crossStatement).toBe(1);
+        expect(runGuardOn(laterStatement).status, laterStatement).toBe(1);
+    });
+
     it('does not flag names that merely start with localhost', () => {
         const result = runGuardOn('const u = "http://localhost.example.org";');
         expect(result.status, result.stderr).toBe(0);

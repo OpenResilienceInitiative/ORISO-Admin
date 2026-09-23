@@ -37,13 +37,15 @@ URL_PATTERN='["'"'"'`]https?://localhost([:/?#][^"'"'"'`[:space:]]*["'"'"'`]?|["
 # Two third-party defaults that never become an ORISO request, allowed only in their own code:
 # the OpenTelemetry OTLP exporter's built-in default, which appends the signal path
 # (`url:"http://localhost:4318/"+path`; the app always passes an explicit metrics URL), and
-# react-router's base for parsing relative paths, immediately replaced by `window.location.origin`.
+# react-router's base for parsing relative paths, reassigned right away from the window's origin
+# (`r="http://localhost";w&&(r=w.location.origin`; same variable, one statement).
 # They are cut out of each file before the scan, so the same literal anywhere else still fails,
 # whatever the chunk is called.
 Q='["'"'"'`]'
 OTLP_DEFAULT="url:${Q}http://localhost:4318/${Q}[+]"
-NOT_Q='[^"'"'"'`]'
-ROUTER_BASE="${Q}http://localhost${Q}${NOT_Q}{0,40}[.]location[.]origin"
+ID='[A-Za-z_$][A-Za-z0-9_$]*'
+# Fixed shape without back-references (BSD sed -E has none), so it cannot span two statements.
+ROUTER_BASE="${ID}=${Q}http://localhost${Q};${ID}&&[(]${ID}=${ID}[.]location[.]origin"
 
 matches=$(find "$DIST" -type f ! -name '*.map' -print0 |
 	while IFS= read -r -d '' file; do
