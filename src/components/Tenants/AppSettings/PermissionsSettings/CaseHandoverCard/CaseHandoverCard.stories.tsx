@@ -15,10 +15,11 @@ const adviceNotificationTemplates = {
     ti: 'ንግዜኡ ዝተወሰነ ምርኣይ ተሰማሚዕኩም። {{newAdvisor}} ነዚ ክፍለ ግዜ ን{{duration}} ከንብቦ ይኽእል። እቲ ሕጂ ዘሎ ኣማኻሪኹም ብሓላፍነት ይቕጽል።',
 };
 
+// The four neutral codes UserService serves since US#1245.
 const policies: CaseHandoverReasonPolicy[] = [
     {
-        code: 'COUNSELLOR_ASKED_FOR_ADVICE',
-        label: 'Counsellor asked for advice',
+        code: 'ADVICE_REQUESTED',
+        label: 'Advice requested',
         clientConsentRequired: true,
         clientConsent: { value: 'OPT_IN', mode: 'SUGGESTED' },
         accessAllowed: true,
@@ -29,8 +30,8 @@ const policies: CaseHandoverReasonPolicy[] = [
         clientNotificationTemplates: adviceNotificationTemplates,
     },
     {
-        code: 'COUNSELLOR_ON_HOLIDAY',
-        label: 'Counsellor is on holiday',
+        code: 'PLANNED_ABSENCE',
+        label: 'Planned absence',
         clientConsentRequired: false,
         clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
         accessAllowed: true,
@@ -39,8 +40,8 @@ const policies: CaseHandoverReasonPolicy[] = [
         policyAuthority: 'platform-admin-default-case-handover-policy',
     },
     {
-        code: 'COUNSELLOR_IS_ILL',
-        label: 'Counsellor is ill',
+        code: 'UNPLANNED_ABSENCE',
+        label: 'Unplanned absence',
         clientConsentRequired: false,
         clientConsent: { value: 'OPT_OUT', mode: 'SUGGESTED' },
         accessAllowed: true,
@@ -48,13 +49,13 @@ const policies: CaseHandoverReasonPolicy[] = [
         displayOrder: 40,
         policyAuthority: 'platform-admin-default-case-handover-policy',
         clientNotificationTemplates: {
-            de: 'Deine bisherige Berater:in ist leider erkrankt. Damit du nicht warten musst, hat {{newAdvisor}} deinen Fall übernommen.',
-            en: "Your previous counsellor is unfortunately ill. So you don't have to wait, {{newAdvisor}} has taken over your case.",
+            de: 'Deine bisherige Berater:in ist gerade nicht erreichbar. Damit du nicht warten musst, hat {{newAdvisor}} deinen Fall übernommen.',
+            en: "Your previous counsellor is currently unavailable. So you don't have to wait, {{newAdvisor}} has taken over your case.",
         },
     },
     {
-        code: 'COUNSELLOR_LEFT',
-        label: 'Counsellor does not work here anymore',
+        code: 'ASSIGNMENT_ENDED',
+        label: 'Assignment ended',
         clientConsentRequired: false,
         clientConsent: { value: 'OPT_OUT', mode: 'ENFORCED' },
         accessAllowed: true,
@@ -63,6 +64,15 @@ const policies: CaseHandoverReasonPolicy[] = [
         policyAuthority: 'platform-admin-default-case-handover-policy',
     },
 ];
+
+// TenantService still stores its policies under the retired codes; same rows, old keys.
+const RETIRED_CODES: Record<string, string> = {
+    ADVICE_REQUESTED: 'COUNSELLOR_ASKED_FOR_ADVICE',
+    PLANNED_ABSENCE: 'COUNSELLOR_ON_HOLIDAY',
+    UNPLANNED_ABSENCE: 'COUNSELLOR_IS_ILL',
+    ASSIGNMENT_ENDED: 'COUNSELLOR_LEFT',
+};
+const retiredCodePolicies = policies.map((policy) => ({ ...policy, code: RETIRED_CODES[policy.code] }));
 
 const meta = {
     title: 'Organisms/Permissions/CaseHandoverCard',
@@ -131,7 +141,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
     args: {
         policies: [
             {
-                code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                code: 'ADVICE_REQUESTED',
                 label: 'Rat benötigt',
                 clientConsent: 'OPT_OUT' as unknown as CaseHandoverReasonPolicy['clientConsent'],
                 clientConsentMode: 'ENFORCED',
@@ -144,7 +154,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
                 clientNotificationTemplates: adviceNotificationTemplates,
             },
             {
-                code: 'COUNSELLOR_ON_HOLIDAY',
+                code: 'PLANNED_ABSENCE',
                 label: 'Geplant verhindert',
                 clientConsent: 'OPT_IN' as unknown as CaseHandoverReasonPolicy['clientConsent'],
                 clientConsentMode: 'SUGGESTED',
@@ -174,6 +184,37 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
                 name: /(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))/i,
             }),
         ).toBeVisible();
+    },
+};
+
+/** Policies keyed by the retired codes (TenantService) render exactly like the neutral ones:
+ *  same labels, the advice time limit and the implicit counsellor consent stay visible. */
+export const RetiredCodesFromTenantService: Story = {
+    args: {
+        policies: retiredCodePolicies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const reasonTabs = within(
+            canvas.getByRole('tablist', { name: /Übergabegründe|Handover reasons/i }),
+        ).getAllByRole('tab');
+        await expect(reasonTabs.map((tab) => tab.textContent)).toEqual(
+            expect.arrayContaining([
+                expect.stringMatching(/Rat benötigt|Advice needed/),
+                expect.stringMatching(/Ungeplant verhindert|Unplanned unavailability/),
+            ]),
+        );
+        await expect(canvas.getByDisplayValue(/3 h/)).toBeVisible();
+        await expect(
+            canvas
+                .getByRole('button', {
+                    name: /(Beratende Person|advising person).*(Weitere Informationen|More information)/i,
+                })
+                .querySelector('[data-icon="switch-on"]'),
+        ).not.toBeNull();
     },
 };
 
@@ -230,7 +271,7 @@ export const AdviceSeekerConsentMenuOpen: Story = {
         isLoading: false,
         canEdit: true,
         moduleEnabled: true,
-        openPolicyMenu: 'clientConsent:COUNSELLOR_ASKED_FOR_ADVICE',
+        openPolicyMenu: 'clientConsent:ADVICE_REQUESTED',
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
