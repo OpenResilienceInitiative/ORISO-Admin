@@ -133,11 +133,11 @@ export const EnglishFrame: Story = {
  * action, which is the shape used by informational mails
  * (`InviteMailDispatchService#send` without an action URL, e.g. the DPA-signed notice).
  *
- * **Known backend defect, shown on purpose.** The frame's security line ("Geben Sie diesen Link an
- * niemanden weiter") and its footer note ("Diese E-Mail gehört zu Ihrer Einladung …") are fixed
- * text in the `einladung-freitext` template, so a mail without an action still mentions a link and
- * an invitation. The fix belongs in the e-mail kit / UserService template, not in this fixture;
- * regenerate once it lands.
+ * Without an action the frame also drops the security line ("Geben Sie diesen Link an niemanden
+ * weiter") together with its divider, and the footer note says "Diese E-Mail wurde automatisch
+ * versendet" instead of "Diese E-Mail gehört zu Ihrer Einladung". That is ORISO-UserService#1233
+ * (`fix/freitext-mail-neutral-without-action`); this fixture was regenerated from that branch
+ * before it merged, so Dev keeps the old wording until #1233 is on `dev`.
  *
  * The preview endpoint always carries an invite link, so this state cannot be curl'ed today — the
  * fixture was produced through the same renderer via the dispatcher's no-action path (see

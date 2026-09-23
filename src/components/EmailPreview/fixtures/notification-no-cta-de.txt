@@ -8,9 +8,6 @@ gewohnt anmelden.
 
 Diese Nachricht dient nur zu Ihrer Information und enthält keine Aktion.
 
-----------------------------------------------------------------
-Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.
-
 ORISO
 Musterstraße 1, 12345 Musterstadt
 kontakt@example.org
@@ -20,4 +17,4 @@ ORISO ist ein Angebot von ORISO.
 Datenschutz: https://app.oriso.org/datenschutz
 Impressum: https://app.oriso.org/impressum
 
-Diese E-Mail gehört zu Ihrer Einladung und lässt sich nicht abbestellen. Bitte antworten Sie nicht darauf.
+Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.
