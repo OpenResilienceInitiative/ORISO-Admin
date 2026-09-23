@@ -114,6 +114,13 @@ export interface OrganisationData {
     name: string;
     subdomain: string;
     address: string;
+    /**
+     * Optional sender block for the mail footer (Frank, 2026-09-23). Sent only when entered;
+     * UserService forwards it to TenantService's MultilingualTenantDTO on creation.
+     */
+    legalName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
 }
 
 /** Mirrors the existing DpaSignature signer fields (src/types/dpa.ts). */
