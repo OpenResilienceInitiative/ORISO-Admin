@@ -39,19 +39,19 @@ describe('isBlankConsentText', () => {
 });
 
 describe('consentPublicationBlockers', () => {
-    it('is empty when nothing was authored', () => {
-        expect(consentPublicationBlockers({ de: '', en: '  ' })).toEqual([]);
+    it('reports blank languages too — the editor fills in the template, so blank is a gap', () => {
+        expect(consentPublicationBlockers({ de: '', en: '  ' })).toEqual(['de', 'en']);
         expect(consentPublicationBlockers(undefined)).toEqual([]);
     });
 
-    it('lists every authored language that lacks the mandatory token', () => {
+    it('lists every language that is blank or lacks the mandatory token', () => {
         expect(
             consentPublicationBlockers({
                 de: 'Ich habe {{legal_links}} zur Kenntnis genommen.',
                 en: 'I agree.',
                 fr: '',
             }),
-        ).toEqual(['en']);
+        ).toEqual(['en', 'fr']);
     });
 
     it('blocks publication as soon as one language is affected', () => {
