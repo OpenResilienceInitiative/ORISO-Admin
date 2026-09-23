@@ -139,6 +139,13 @@ export const LegalConsentField = ({
                     onSave={saveDialog}
                     onClose={closeDialog}
                     saveDisabled={readOnly}
+                    /* This dialog hands the sentence back to the editor; the
+                       policy — body and sentence together — is stored by the
+                       editor's own Publish / Save-draft action. A button
+                       labelled "Speichern" promised a save that had not
+                       happened, so the sentence looked stored and was gone
+                       after a reload (#929). */
+                    okLabelKey="legal.consent.apply"
                 >
                     <div className={styles.dialogBody}>
                         {isBlankConsentText(draft) && (
