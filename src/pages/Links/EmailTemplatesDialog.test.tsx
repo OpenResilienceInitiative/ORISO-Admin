@@ -5,6 +5,8 @@ import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
+import { UserRole } from '../../enums/UserRole';
 
 const t = (key: string, fallback?: unknown) => (typeof fallback === 'string' ? fallback : key);
 
@@ -134,8 +136,7 @@ const counsellorTemplate = {
 };
 
 /** `hasRole` of a tenant admin: tenant- and agency-admin, never the platform operator. */
-const asTenantAdmin = (role: string | string[]) =>
-    (Array.isArray(role) ? role : [role]).some((entry) => entry === 'tenant-admin' || entry === 'agency-admin');
+const asTenantAdmin = hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin);
 
 /** The srcDoc of the email-kit preview frame inside the currently open dialog. */
 const previewSrcDoc = () =>
