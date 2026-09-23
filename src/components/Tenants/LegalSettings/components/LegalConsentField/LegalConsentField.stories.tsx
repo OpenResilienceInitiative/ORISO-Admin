@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
+import { expect, userEvent, within } from 'storybook/test';
 import { LegalConsentField } from './index';
 
 /**
@@ -34,11 +36,18 @@ export const MissingMandatoryToken: Story = {
     },
 };
 
-/** Nothing authored on this level yet — the level above still applies. */
-export const InheritedFromTraeger: Story = {
-    args: {
-        value: 'Ich habe die {{legal_links}} zur Kenntnis genommen.',
-        inheritedFrom: 'Träger',
+/**
+ * Nothing authored yet: the dialog opens with the platform template written in, instead of a
+ * notice about what applies while the field is empty (owner call 2026-09-23).
+ */
+export const EmptyOpensWithTemplate: Story = {
+    args: { value: '' },
+    play: async ({ canvasElement }) => {
+        const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await page.findByTestId('consent-edit-trigger'));
+        const dialog = await page.findByRole('dialog');
+        await expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain('{{legal_links}}');
+        await expect(within(dialog).queryByTestId('consent-inherited-notice')).toBeNull();
     },
 };
 

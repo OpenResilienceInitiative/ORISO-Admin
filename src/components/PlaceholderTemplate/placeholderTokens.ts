@@ -120,3 +120,24 @@ export const LEGAL_CONSENT_TOKENS: PlaceholderTokenDef[] = [
         sample: 'Datenschutzerklärung und Nutzungsbedingungen',
     },
 ];
+
+/**
+ * Tokens a legal text (Impressum, Datenschutzerklärung) may carry. AgencyService fills them per
+ * Beratungsstelle when a help-seeker reads the text, so a Träger or platform template can name each
+ * Beratungsstelle's own name and address. Samples show the admin what will appear.
+ */
+export const LEGAL_TEXT_TOKENS: PlaceholderTokenDef[] = [
+    {
+        key: 'Beratungsstelle',
+        labelKey: 'placeholderTemplate.token.beratungsstelle',
+        labelFallback: 'Beratungsstelle',
+        sample: 'Musterberatungsstelle',
+    },
+    {
+        key: 'Adresse',
+        labelKey: 'placeholderTemplate.token.adresse',
+        labelFallback: 'Adresse',
+        sample: 'Musterstraße 1, 12345 Musterstadt',
+    },
+    { key: 'Thema', labelKey: 'placeholderTemplate.token.thema', labelFallback: 'Thema', sample: 'Suchtberatung' },
+];

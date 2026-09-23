@@ -3,7 +3,8 @@ import { Alert, notification, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
-import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
@@ -12,7 +13,13 @@ import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.
 import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
+import { useLegalTemplateHistory } from '../../hooks/useLegalTemplateHistory';
+import { SendLegalTemplateDialog, TemplateRecipientLevel } from '../SendLegalTemplateDialog';
+import { isSameDraftContent } from '../../utils/draftComparison';
+import { parseUtcTimestamp } from '../../utils/utcTimestamp';
 import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -71,6 +78,13 @@ interface LegalTextProps {
      * draft TenantService keeps under tenant 0 while the published text lives on the main tenant.
      */
     draftTenantId?: string | number;
+    /**
+     * Lets a Träger offer its saved draft to its own Beratungsstellen as a template — the
+     * rung below the platform's. Off until the AgencyService side exists
+     * (OpenResilienceInitiative/ORISO-AgencyService#303); the stories switch it on so the
+     * UX can be agreed first.
+     */
+    offerTemplatesToAgencies?: boolean;
     fieldName: string[];
     titleKey: string;
     /**
@@ -98,6 +112,7 @@ interface LegalTextProps {
 export const LegalText = ({
     tenantId,
     draftTenantId,
+    offerTemplatesToAgencies = false,
     fieldName,
     titleKey,
     legalType,
@@ -117,6 +132,10 @@ export const LegalText = ({
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
     const [activeLanguage, setActiveLanguage] = useState('de');
     const [edits, setEdits] = useState<Record<string, string>>({});
+    const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+    // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
+    const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
+    const [consentBlockedClosed, setConsentBlockedClosed] = useState<string | undefined>();
     const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
     const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
@@ -126,6 +145,13 @@ export const LegalText = ({
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [draftSource, setDraftSource] = useState<'local' | 'server'>();
     const [draftActionPending, setDraftActionPending] = useState(false);
+    // What the admin is preparing: a template for the level below, the live text, or —
+    // until they say so in the version menu — either. Decides which publish action the
+    // footer offers.
+    const [publishIntentState, setPublishIntentState] = useState<{
+        identity: string;
+        intent: 'template' | 'live';
+    }>();
 
     // Version look-back for the Träger-level text (ADR-021 decision 3). TenantService
     // has not shipped this collection yet: that must not be phrased as "never
@@ -163,6 +189,7 @@ export const LegalText = ({
         setDraftSource(undefined);
         setDraftActionPending(false);
         setActiveLanguage('de');
+        setPublishIntentState(undefined);
         resetViewedVersion();
     }, [editorIdentity, resetViewedVersion]);
 
@@ -228,13 +255,13 @@ export const LegalText = ({
     // language split — keep it under the first configured language so it is shown and
     // preserved on publish (otherwise an untouched card would overwrite the stored
     // string with {}).
+    const publishedByLanguage = useMemo<Record<string, string>>(() => {
+        if (storedContent && typeof storedContent === 'object') return storedContent as Record<string, string>;
+        if (typeof storedContent === 'string' && storedContent !== '') return { [languages[0]]: storedContent };
+        return {};
+    }, [storedContent, languages]);
     const contentByLanguage = useMemo<Record<string, string>>(() => {
-        let base: Record<string, string> = {};
-        if (storedContent && typeof storedContent === 'object') {
-            base = storedContent as Record<string, string>;
-        } else if (typeof storedContent === 'string' && storedContent !== '') {
-            base = { [languages[0]]: storedContent };
-        }
+        const base = publishedByLanguage;
         // A viewer who may not edit must never see unpublished local content: the
         // draft notice and its discard action are hidden for them, so they could
         // neither recognise nor remove it. Show the published text only.
@@ -247,7 +274,7 @@ export const LegalText = ({
             return { ...selectedDraft.content, ...edits };
         }
         return { ...base, ...(sourceChosen ? selectedDraft?.content ?? {} : {}), ...edits };
-    }, [canEditLegalText, storedContent, sourceChosen, selectedDraft, draftSource, serverBase.draft, edits, languages]);
+    }, [canEditLegalText, publishedByLanguage, sourceChosen, selectedDraft, draftSource, serverBase.draft, edits]);
 
     /**
      * The consent sentence that belongs to the Träger privacy policy (ADR-021
@@ -297,8 +324,40 @@ export const LegalText = ({
     // Looking back means looking back at the WHOLE document: the consent sentence
     // archived with that policy version, not today's. Read-only, because the
     // published chain is append-only — editing happens on the current draft.
-    const consentDisplay = viewedConsent ?? consentByLanguage;
-    const consentReadOnly = !canEditLegalText || isViewingVersion;
+
+    // Platform → Träger templates (ORISO-TenantService#262), Träger → Beratungsstellen one rung
+    // down. Only the SAVED revision is ever sent: the dialog names that version, so sending what
+    // is merely typed would put a different text in front of every recipient than the one named.
+    const isPlatformDraft = String(draftTenantId ?? tenantId) === '0';
+    let templateLevel: TemplateRecipientLevel | undefined;
+    if (isPlatformDraft) templateLevel = 'traeger';
+    else if (offerTemplatesToAgencies) templateLevel = 'agencies';
+    const templateHistory = useLegalTemplateHistory(
+        canEditLegalText && legalType ? templateLevel : undefined,
+        legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY',
+    );
+    const publishIntent = publishIntentState?.identity === editorIdentity ? publishIntentState.intent : undefined;
+    const setPublishIntent = useCallback(
+        (intent: 'template' | 'live') => setPublishIntentState({ identity: editorIdentity, intent }),
+        [editorIdentity],
+    );
+
+    const [viewedTemplateId, setViewedTemplateId] = useState<string | null>(null);
+    const viewedTemplate = viewedTemplateId
+        ? templateHistory.versions.find((version) => `template:${version.distributionId}` === viewedTemplateId)
+        : undefined;
+    const consentDisplay = viewedTemplate ? viewedTemplate.privacyConsent ?? {} : viewedConsent ?? consentByLanguage;
+    const consentReadOnly = !canEditLegalText || isViewingVersion || !!viewedTemplate;
+
+    const legalTextTokens = useMemo(
+        () =>
+            LEGAL_TEXT_TOKENS.map((token) => ({
+                key: token.key,
+                label: t(token.labelKey, token.labelFallback),
+                sample: token.sample,
+            })),
+        [t],
+    );
 
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
@@ -483,6 +542,141 @@ export const LegalText = ({
         );
     }
 
+    const savedServerDraft = serverBase.draft ?? null;
+    const hasUnsavedTemplateChanges =
+        !!savedServerDraft &&
+        !isSameDraftContent(
+            { content: contentByLanguage, consent: consentByLanguage },
+            { content: savedServerDraft.content, consent: savedServerDraft.privacyConsent },
+            { compareConsent: consentEnabled },
+        );
+    const publishedConsent =
+        storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
+    // "Something new" is measured against what is live and what was last sent — the
+    // footer only offers an action that would change something (owner decision 2026-09-21).
+    const differsFromPublished = !isSameDraftContent(
+        { content: contentByLanguage, consent: consentByLanguage },
+        { content: publishedByLanguage, consent: publishedConsent },
+        { compareConsent: consentEnabled },
+    );
+    const hasUnsavedChanges = savedServerDraft ? hasUnsavedTemplateChanges : differsFromPublished;
+    const latestTemplate = templateHistory.versions[0];
+    const hasAnyContent = Object.values(contentByLanguage).some((html) => !isEmptyLegalContent(html));
+    // Until the sent versions are known, "new" cannot be judged; offering the action
+    // meanwhile made it flash up and vanish once the list arrived.
+    let templateIsNew = hasAnyContent;
+    if (templateHistory.state === 'loading') templateIsNew = false;
+    else if (latestTemplate) {
+        templateIsNew = !isSameDraftContent(
+            { content: contentByLanguage, consent: consentByLanguage },
+            { content: latestTemplate.content, consent: latestTemplate.privacyConsent },
+            { compareConsent: consentEnabled },
+        );
+    }
+    const canPublishTemplate =
+        canEditLegalText &&
+        !!legalType &&
+        !!templateLevel &&
+        !serverDraft.isError &&
+        !serverDraft.hasConflict &&
+        sourceChosen;
+    const canPublishLive = canEditLegalText && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen;
+    const showTemplateAction = canPublishTemplate && publishIntent !== 'live' && templateIsNew;
+    const templateBlockedReason =
+        blockedLanguages.length > 0
+            ? t('legal.template.disabled.consentToken', { token: `{{${MANDATORY_CONSENT_TOKEN}}}` })
+            : undefined;
+    const showLiveAction = canPublishLive && publishIntent !== 'template' && differsFromPublished;
+
+    // Offering a template sends the SAVED revision, so unsaved work is saved first —
+    // the same way "Veröffentlichen" saves before it publishes.
+    const onPublishTemplate = async () => {
+        // Same gate as publishing: a consent sentence without {{legal_links}} would reach
+        // every recipient as a text none of them can publish.
+        if (blockedLanguages.length > 0) return;
+        if (hasUnsavedChanges || !savedServerDraft) {
+            setDraftActionPending(true);
+            try {
+                await saveCurrentDraft();
+            } catch {
+                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                return;
+            } finally {
+                setDraftActionPending(false);
+            }
+        }
+        setTemplateDialogOpen(true);
+    };
+
+    const documentKey = legalType ?? 'privacy';
+    const liveLevelKey = isPlatformDraft ? 'platform' : 'traeger';
+    const formatSentAt = (iso: string) => {
+        const date = parseUtcTimestamp(iso);
+        return Number.isNaN(date.getTime())
+            ? iso
+            : new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(date);
+    };
+    const templateSectionTitle = t(`legal.versionMenu.templates.${documentKey}`);
+    const liveSectionTitle = t(`legal.versionMenu.live.${liveLevelKey}.${documentKey}`);
+    let templateEmptyKey = 'legal.versionMenu.templatesUnavailable';
+    if (templateHistory.state === 'available') templateEmptyKey = 'legal.versionMenu.templatesEmpty';
+    else if (templateHistory.state === 'loading') templateEmptyKey = 'legal.versions.loading';
+    const versionSections: EditorVersionSection[] | undefined =
+        templateLevel && legalType
+            ? [
+                  {
+                      key: 'templates',
+                      title: templateSectionTitle,
+                      versions: templateHistory.versions.map((version, index, list) => ({
+                          id: `template:${version.distributionId}`,
+                          label: formatSentAt(version.createdAt),
+                          name: t('legal.versionMenu.templateVersion', { n: list.length - index }),
+                          detail: t(`legal.versionMenu.templateSent.${templateLevel}`, {
+                              date: formatSentAt(version.createdAt),
+                              count: version.recipientCount,
+                          }),
+                          content: version.content?.[activeLanguage] ?? '',
+                          restorable: version.content?.[activeLanguage] !== undefined,
+                      })),
+                      emptyLabel: t(templateEmptyKey),
+                      createLabel: t('legal.versionMenu.newTemplate'),
+                      onCreate: () => setPublishIntent('template'),
+                  },
+                  {
+                      key: 'live',
+                      title: liveSectionTitle,
+                      versions: editorVersions,
+                      emptyLabel:
+                          historyState === 'available'
+                              ? t('legal.m3Editor.versionEmpty')
+                              : t(VERSION_HISTORY_STATUS_KEYS[historyState]),
+                      createLabel: t(`legal.versionMenu.newLive.${liveLevelKey}.${documentKey}`),
+                      onCreate: () => setPublishIntent('live'),
+                  },
+              ]
+            : undefined;
+    let draftVersionLabel = t('legal.m3Editor.versionLabel');
+    if (versionSections && publishIntent === 'template') {
+        draftVersionLabel = t('legal.versionMenu.draftFor', { target: templateSectionTitle });
+    } else if (versionSections && publishIntent === 'live') {
+        draftVersionLabel = t('legal.versionMenu.draftFor', { target: liveSectionTitle });
+    }
+
+    const draftSnackbarKey = `draft:${serverBase.draft?.updatedAt ?? ''}:${savedAt ?? ''}`;
+    const showDraftSnackbar =
+        canEditLegalText &&
+        !!legalType &&
+        closedDraftSnackbar !== draftSnackbarKey &&
+        isDraftInfoState({
+            savedAt: serverBase.draft?.updatedAt,
+            localSavedAt: savedAt,
+            // Same rule as the notice: once a source is chosen the collision is answered,
+            // and the snackbar (with "Verwerfen") takes over again.
+            collision: draftCollision && !sourceChosen,
+            unavailable: serverDraft.isError,
+            conflict: serverDraft.hasConflict,
+        });
+
     return (
         <div className={styles.card}>
             {canEditLegalText && legalType ? (
@@ -526,6 +720,7 @@ export const LegalText = ({
                         serverDraft.clearConflict();
                     }}
                     onDiscard={discardDraftAndEdits}
+                    showInfo={false}
                     pending={draftActionPending}
                 />
             ) : (
@@ -536,8 +731,9 @@ export const LegalText = ({
                 icon={icon}
                 readOnly={!canEditLegalText}
                 publishing={isPending || draftActionPending}
-                versionLabel={t('legal.m3Editor.versionLabel')}
+                versionLabel={draftVersionLabel}
                 versions={editorVersions}
+                versionSections={versionSections}
                 versionHistoryState={historyState}
                 versionHistoryStatusLabel={
                     historyState === 'available' ? undefined : t(VERSION_HISTORY_STATUS_KEYS[historyState])
@@ -546,10 +742,18 @@ export const LegalText = ({
                 // chain stays append-only.
                 onRestoreVersion={
                     canEditLegalText
-                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                        ? (html) => {
+                              setEdits((current) => ({ ...current, [activeLanguage]: html }));
+                              // Restoring from a section also says what the draft is for.
+                              if (versionSections) setPublishIntent(viewedTemplateId ? 'template' : 'live');
+                          }
                         : undefined
                 }
-                onViewVersionChange={onViewVersionChange}
+                onViewVersionChange={(versionId) => {
+                    const isTemplate = !!versionId && versionId.startsWith('template:');
+                    setViewedTemplateId(isTemplate ? versionId : null);
+                    onViewVersionChange(isTemplate ? null : versionId);
+                }}
                 languages={languages.map((language) => ({
                     value: language,
                     label: t(`language.${language}`),
@@ -559,40 +763,83 @@ export const LegalText = ({
                 helpSlot={
                     legalType && <EditorHelpText text={help.text} hint={showHintSnackbar ? undefined : help.hint} />
                 }
+                // Only hand over a slot when a message is actually showing: the editor reserves
+                // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                 snackbarSlot={
-                    showHintSnackbar && (
-                        <EditorHintSnackbar
-                            text={help.hint}
-                            onClose={() => {
-                                if (legalType && dismissalScope) persistHintClosedForSession(legalType, dismissalScope);
-                                setHintHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (legalType && dismissalScope) persistHintDismissed(legalType, dismissalScope);
-                                setHintHidden(true);
-                            }}
+                    ((blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
+                        showDraftSnackbar ||
+                        showHintSnackbar) && (
+                        <EditorSnackbarQueue
+                            items={[
+                                // A blocking error outranks the draft notice and the help hint.
+                                blockedLanguages.length > 0 &&
+                                    consentBlockedClosed !== blockedLanguageNames && {
+                                        key: `consent-blocked:${blockedLanguageNames}`,
+                                        node: (
+                                            <span data-testid="consent-publish-blocked">
+                                                <EditorHintSnackbar
+                                                    tone="error"
+                                                    text={t('legal.consent.publishBlocked.description', {
+                                                        languages: blockedLanguageNames,
+                                                    })}
+                                                    onClose={() => setConsentBlockedClosed(blockedLanguageNames)}
+                                                />
+                                            </span>
+                                        ),
+                                    },
+                                showDraftSnackbar && {
+                                    key: draftSnackbarKey,
+                                    node: (
+                                        <DraftStatusSnackbar
+                                            savedAt={serverBase.draft?.updatedAt}
+                                            localSavedAt={savedAt}
+                                            onDiscard={discardDraftAndEdits}
+                                            onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
+                                        />
+                                    ),
+                                },
+                                showHintSnackbar && {
+                                    key: 'help-hint',
+                                    node: (
+                                        <EditorHintSnackbar
+                                            text={help.hint}
+                                            onClose={() => {
+                                                if (legalType && dismissalScope)
+                                                    persistHintClosedForSession(legalType, dismissalScope);
+                                                setHintHidden(true);
+                                            }}
+                                            onDismiss={() => {
+                                                if (legalType && dismissalScope)
+                                                    persistHintDismissed(legalType, dismissalScope);
+                                                setHintHidden(true);
+                                            }}
+                                        />
+                                    ),
+                                },
+                            ]}
                         />
                     )
                 }
                 aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
                 placeholders={placeholders}
+                textTokens={legalTextTokens}
                 value={contentByLanguage[activeLanguage] ?? ''}
                 onChange={
                     canEditLegalText
                         ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
                         : undefined
                 }
-                onPublish={
-                    canEditLegalText && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen
-                        ? onPublish
-                        : undefined
-                }
+                onPublish={showLiveAction ? onPublish : undefined}
+                publishLabel={versionSections ? t(`legal.publishAction.${liveLevelKey}.${documentKey}`) : undefined}
+                dirty={hasUnsavedChanges}
                 onSaveDraft={
                     canEditLegalText && legalType && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen
                         ? onSaveDraft
                         : undefined
                 }
+                onPublishTemplate={showTemplateAction ? onPublishTemplate : undefined}
+                publishTemplateDisabledReason={showTemplateAction ? templateBlockedReason : undefined}
                 actionsLeading={
                     consentEnabled ? (
                         <LegalConsentField
@@ -608,6 +855,15 @@ export const LegalText = ({
                     modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
                 }
             />
+            {templateDialogOpen && savedServerDraft && legalType && templateLevel && (
+                <SendLegalTemplateDialog
+                    level={templateLevel}
+                    kind={legalType === 'imprint' ? 'IMPRINT' : 'PRIVACY'}
+                    draftRevision={savedServerDraft.revision}
+                    draftSavedAt={savedServerDraft.updatedAt}
+                    onClose={() => setTemplateDialogOpen(false)}
+                />
+            )}
             {/* A history that failed to load is not an empty history. Saying "no
                 version published yet" for a 403 or a 500 would be a false answer to
                 the exact question the look-back exists for. Editing stays possible. */}
@@ -624,21 +880,6 @@ export const LegalText = ({
                 publish attempt: the rule arrived after texts were live, so a stored
                 sentence can be blocking on open — possibly in a language other than
                 the one on screen. */}
-            {blockedLanguages.length > 0 && (
-                <Alert
-                    type="error"
-                    showIcon
-                    data-testid="consent-publish-blocked"
-                    message={t('legal.consent.publishBlocked.title')}
-                    description={
-                        <>
-                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
-                            {/* Composed in JSX, never interpolated — i18next would eat it. */}
-                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                        </>
-                    }
-                />
-            )}
         </div>
     );
 };
