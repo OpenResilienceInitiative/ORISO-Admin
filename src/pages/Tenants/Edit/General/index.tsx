@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hoo
 import { useAddOrUpdateTenantAdmin } from '../../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import routePathNames from '../../../../appConfig';
 import styles from './styles.module.scss';
+import { passwordFormRules } from '../../../../utils/consultantCredentialRules';
 import { TenantAdminData } from '../../../../types/TenantAdminData';
 import { createTenantSaveErrorHandler } from '../../../../utils/tenantSaveErrorHandler';
 import { extractApiErrorMessage } from '../../../../utils/extractApiErrorMessage';
@@ -27,6 +29,14 @@ import {
     MuiMultilineFormField,
 } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
+import { TraegerSenderFields } from '../../../../components/Tenants/TraegerSenderFields';
+
+// Module level, so React does not see a new component type on every render.
+const wrapInFieldGroup = (field: ReactNode, name: string) => (
+    <div key={name} className={styles.fieldGroup}>
+        {field}
+    </div>
+);
 
 export const GeneralTenantSettings = () => {
     const { id } = useParams<{ id: string }>();
@@ -188,6 +198,7 @@ export const GeneralTenantSettings = () => {
                                     placeholder={t('tenants.add.form.address.placeholder')}
                                 />
                             </div>
+                            <TraegerSenderFields wrapField={wrapInFieldGroup} />
                             <div className={styles.fieldGroup}>
                                 <MuiMultilineFormField
                                     name="description"
@@ -249,6 +260,7 @@ export const GeneralTenantSettings = () => {
                                 placeholder={t('tenants.add.form.address.placeholder')}
                             />
                         </div>
+                        <TraegerSenderFields wrapField={wrapInFieldGroup} />
                         <div className={styles.fieldGroup}>
                             <MuiMultilineFormField
                                 name="description"
@@ -300,40 +312,9 @@ export const GeneralTenantSettings = () => {
                                 name="tenantAdminPassword"
                                 label={t('tenantAdmins.form.password')}
                                 placeholder={t('placeholder.password')}
+                                helpText={t('tenantAdmins.form.password.hint')}
                                 required
-                                rules={[
-                                    requiredRule,
-                                    {
-                                        min: 8,
-                                        message: t('message.error.password.minLength'),
-                                    },
-                                    {
-                                        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/,
-                                        message: t('message.error.password.policy'),
-                                    },
-                                ]}
-                            />
-                        </div>
-                        <div className={styles.fieldGroup}>
-                            <MuiPasswordFormField
-                                name="tenantAdminPasswordConfirmation"
-                                label={t('tenantAdmins.form.passwordConfirmation')}
-                                placeholder={t('placeholder.password')}
-                                required
-                                dependencies={['tenantAdminPassword']}
-                                rules={[
-                                    requiredRule,
-                                    ({ getFieldValue }) => ({
-                                        validator(_, value) {
-                                            if (!value || getFieldValue('tenantAdminPassword') === value) {
-                                                return Promise.resolve();
-                                            }
-                                            return Promise.reject(
-                                                new Error(t('profile.passwordChange.error.passwordsNotMatch')),
-                                            );
-                                        },
-                                    }),
-                                ]}
+                                rules={[requiredRule, ...passwordFormRules(t)]}
                             />
                         </div>
                         <div className={styles.fieldGroup}>

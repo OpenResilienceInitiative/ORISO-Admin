@@ -17,6 +17,7 @@ interface Props {
     reloadConflict: () => void;
     keepEditing: () => void;
     onDiscard?: () => void;
+    pending?: boolean;
 }
 
 export const TenantLegalDraftNotice = ({
@@ -34,6 +35,7 @@ export const TenantLegalDraftNotice = ({
     reloadConflict,
     keepEditing,
     onDiscard,
+    pending = false,
 }: Props) => {
     const { t, i18n } = useTranslation();
     const rawSavedAt = localSavedAt ?? savedAt;
@@ -51,7 +53,11 @@ export const TenantLegalDraftNotice = ({
                 data-testid="tenant-draft-unavailable"
                 message={t('legal.serverDraft.unavailable.title')}
                 description={t('legal.serverDraft.unavailable.description')}
-                action={<Button onClick={retry}>{t('legal.serverDraft.retry')}</Button>}
+                action={
+                    <Button disabled={pending} onClick={retry}>
+                        {t('legal.serverDraft.retry')}
+                    </Button>
+                }
             />
         );
     }
@@ -59,12 +65,18 @@ export const TenantLegalDraftNotice = ({
         const conflictAction = () => {
             if (conflictRefreshing) return undefined;
             if (conflictRefreshFailed) {
-                return <Button onClick={retryConflict}>{t('legal.serverDraft.retry')}</Button>;
+                return (
+                    <Button disabled={pending} onClick={retryConflict}>
+                        {t('legal.serverDraft.retry')}
+                    </Button>
+                );
             }
             return (
                 <Space wrap>
-                    <Button onClick={reloadConflict}>{t('legal.serverDraft.conflict.reload')}</Button>
-                    <Button type="primary" onClick={keepEditing}>
+                    <Button disabled={pending} onClick={reloadConflict}>
+                        {t('legal.serverDraft.conflict.reload')}
+                    </Button>
+                    <Button type="primary" disabled={pending} onClick={keepEditing}>
                         {t('legal.serverDraft.conflict.keepEditing')}
                     </Button>
                 </Space>
@@ -93,8 +105,12 @@ export const TenantLegalDraftNotice = ({
                 description={t('legal.serverDraft.collision.description')}
                 action={
                     <Space wrap>
-                        <Button onClick={loadServer}>{t('legal.serverDraft.collision.server')}</Button>
-                        <Button onClick={keepLocal}>{t('legal.serverDraft.collision.local')}</Button>
+                        <Button disabled={pending} onClick={loadServer}>
+                            {t('legal.serverDraft.collision.server')}
+                        </Button>
+                        <Button disabled={pending} onClick={keepLocal}>
+                            {t('legal.serverDraft.collision.local')}
+                        </Button>
                     </Space>
                 }
             />
@@ -113,7 +129,13 @@ export const TenantLegalDraftNotice = ({
                 localSavedAt ? 'legal.serverDraft.local.description' : 'legal.serverDraft.saved.description',
                 { savedAt: savedAtLabel },
             )}
-            action={onDiscard ? <Button onClick={onDiscard}>{t('legal.serverDraft.discard')}</Button> : undefined}
+            action={
+                onDiscard ? (
+                    <Button disabled={pending} onClick={onDiscard}>
+                        {t('legal.serverDraft.discard')}
+                    </Button>
+                ) : undefined
+            }
         />
     );
 };
