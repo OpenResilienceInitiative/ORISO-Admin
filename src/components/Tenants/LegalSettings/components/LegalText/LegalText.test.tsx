@@ -77,6 +77,10 @@ vi.mock('../../../../../hooks/useUserData.hook', () => ({
     }),
 }));
 
+vi.mock('../../hooks/useLegalTemplateHistory', () => ({
+    useLegalTemplateHistory: () => ({ versions: [], state: 'unsupported' }),
+}));
+
 vi.mock('../../hooks/useTenantLegalDraft', () => ({
     useTenantLegalDraft: (_tenantId: string | number, kind: TenantLegalDraftKind) => ({
         draft: mocks.serverDrafts[kind] ?? null,
@@ -400,7 +404,9 @@ describe('LegalText (M3 editor)', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+        // Publishing is only offered once there is something new to publish.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(await screen.findByRole('button', { name: 'legal.m3Editor.publish' }));
 
         // No save yet — the modal must decide first.
         await screen.findByText('privacy.confirmation.content');
@@ -413,7 +419,7 @@ describe('LegalText (M3 editor)', () => {
             content: {
                 confirmPrivacy: false,
                 // fr (stored but not even offered) must survive the modal save path too.
-                imprint: { de: '<p>Impressum DE</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
+                imprint: { de: '<p>edited</p>', en: '<p>Imprint EN</p>', fr: '<p>Imprint FR</p>' },
             },
         });
     });
@@ -455,12 +461,17 @@ describe('LegalText (M3 editor)', () => {
         // The legacy string is shown under the first configured language, not empty.
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Legacy Impressum</p>');
 
-        // Publishing without touching it keeps the content instead of overwriting with {}.
-        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+        // Untouched, the legacy string counts as the live text — nothing new to publish,
+        // so no action could overwrite it with {}.
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.publish' })).toBeNull();
+
+        // An edit publishes as a language map under the same language.
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(await screen.findByRole('button', { name: 'legal.m3Editor.publish' }));
 
         expect(mocks.updateTenant).toHaveBeenCalledTimes(1);
         expect(mocks.updateTenant.mock.calls[0][0]).toEqual({
-            content: { imprint: { de: '<p>Legacy Impressum</p>' } },
+            content: { imprint: { de: '<p>edited</p>' } },
         });
     });
 
@@ -649,7 +660,7 @@ describe('LegalText — tenant server draft', () => {
 
         renderImprint();
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
-        expect(screen.getByText('legal.serverDraft.saved.title')).toBeInTheDocument();
+        expect(screen.getByText('legal.draftSnackbar.saved')).toBeInTheDocument();
     });
 
     it('discarding restores the published text and removes the notice', async () => {
@@ -660,10 +671,10 @@ describe('LegalText — tenant server draft', () => {
         first.unmount();
 
         renderImprint();
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
     });
 
     it('keeps the imprint and privacy drafts apart', async () => {
@@ -682,7 +693,7 @@ describe('LegalText — tenant server draft', () => {
                 placeHolderKey="settings.privacy.placeholder"
             />,
         );
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
     });
 
     it('publishes the draft text and drops the draft once the tenant write succeeds', async () => {
@@ -700,7 +711,7 @@ describe('LegalText — tenant server draft', () => {
         });
 
         renderImprint();
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
         mocks.updateTenant.mockReset();
     });
 
@@ -726,7 +737,7 @@ describe('LegalText — tenant server draft', () => {
         vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
             throw new Error('denied');
         });
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
         vi.restoreAllMocks();
@@ -782,7 +793,7 @@ describe('LegalText — tenant server draft', () => {
         await waitFor(() =>
             expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
         );
-        expect(screen.getByText('legal.serverDraft.saved.title')).toBeInTheDocument();
+        expect(screen.getByText('legal.draftSnackbar.saved')).toBeInTheDocument();
     });
 
     it('never shows a stored draft to a viewer who may not edit', async () => {
@@ -798,8 +809,8 @@ describe('LegalText — tenant server draft', () => {
         renderImprint();
 
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
-        expect(screen.queryByText('legal.serverDraft.saved.title')).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'legal.serverDraft.discard' })).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.draftSnackbar.saved')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.draftSnackbar.discard' })).not.toBeInTheDocument();
     });
 
     it('requires an explicit choice when a browser draft and server draft both exist', async () => {
@@ -850,7 +861,8 @@ describe('LegalText — tenant server draft', () => {
         await user.click(screen.getByRole('button', { name: 'legal.serverDraft.collision.server' }));
 
         expect(screen.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'legal.serverDraft.discard' })).toBeInTheDocument();
+        // Discarding stays available — in the draft snackbar, where #1025 moved it.
+        expect(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' })).toBeInTheDocument();
     });
 
     it('offers no consent input when the deployed backend does not store the wording', () => {
@@ -1068,7 +1080,7 @@ describe('LegalText — tenant server draft', () => {
             updatedAt: '2026-09-17T09:00:00Z',
         };
         const view = renderImprint();
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.discard' }));
+        await user.click(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' }));
 
         mocks.userId = 'user-2';
         view.rerender(

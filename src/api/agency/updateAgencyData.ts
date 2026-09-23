@@ -25,6 +25,9 @@ export const updateAgencyData = async (
         throw Error('agency id must be set');
     }
 
+    // Same absent-vs-empty rule as `topicIds` and `online` below: `updateAgencyType` itself skips
+    // the `/changetype` call for a patch that carries no `teamAgency` field, and normalises both
+    // sides before comparing so an unchanged type cannot produce a 409.
     await updateAgencyType(agencyModel, formInput);
 
     const consultingTypeId =
