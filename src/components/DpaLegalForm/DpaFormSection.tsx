@@ -5,8 +5,21 @@ import FormHelperText from '@mui/material/FormHelperText';
 import { useTranslation } from 'react-i18next';
 import { M3Checkbox } from '../M3Checkbox';
 import { MuiFormField } from '../mui/MuiFormField';
+import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { DpaLegalReader } from './DpaLegalReader';
 import styles from './styles.module.scss';
+
+/**
+ * What to tell the user when there is no agreement to show. The reasons have
+ * opposite remedies — waiting for the operator to publish vs. telling the
+ * operator their server is broken — so they must not share one sentence. The
+ * generic fallback stays for everything the backend does not explain
+ * (undefined from an older backend, or content that the sanitiser emptied).
+ */
+const UNAVAILABLE_MESSAGE_KEY: Record<DpaUnavailableReason, string> = {
+    NOT_PUBLISHED: 'tenantOnboarding.dpa.unavailableNotPublished',
+    UPSTREAM_ERROR: 'tenantOnboarding.dpa.unavailableUpstream',
+};
 
 /** Wrapper id of the consent control — hosts jump here on an incomplete submit. */
 export const DPA_CONSENT_ANCHOR_ID = 'dpa-consent';
@@ -29,6 +42,13 @@ export interface DpaFormSectionProps {
      * consent control — so nothing can be confirmed that was never shown.
      */
     dpaHtml: string;
+    /**
+     * Backend's explanation for the empty `dpaHtml` (resolve response field
+     * `dpaUnavailableReason`). Drives WHICH unavailable message is shown;
+     * `null`/absent keeps the generic one. Ignored while an agreement is
+     * rendered — the block only ever speaks about content it does not have.
+     */
+    unavailableReason?: DpaUnavailableReason | null;
     /** Accessible name / card title of the legal-text reader. */
     textLabel: string;
     /** Optional intro line shown in the reader's help-text block. */
@@ -74,6 +94,7 @@ export interface DpaFormSectionProps {
  */
 export const DpaFormSection = ({
     dpaHtml,
+    unavailableReason,
     textLabel,
     textDescription,
     hideTextHeader,
@@ -99,10 +120,21 @@ export const DpaFormSection = ({
     // blocker); this is the structural half of the guard, so the rule holds
     // for every surface that reuses the block.
     if (!dpaHtml) {
+        // Say WHICH of the two failures happened. "Please reload the page"
+        // is advice only for a transient glitch; for a server-side read
+        // failure it is a lie that cost a staging afternoon, and for an
+        // unpublished contract it points at the wrong person entirely.
+        const messageKey = (unavailableReason && UNAVAILABLE_MESSAGE_KEY[unavailableReason]) ?? null;
         return (
             <>
-                <Alert severity="error" role="alert" data-testid="dpa-content-unavailable" sx={{ mb: 2 }}>
-                    {t('tenantOnboarding.dpa.unavailable')}
+                <Alert
+                    severity="error"
+                    role="alert"
+                    data-testid="dpa-content-unavailable"
+                    data-unavailable-reason={unavailableReason ?? undefined}
+                    sx={{ mb: 2 }}
+                >
+                    {t(messageKey ?? 'tenantOnboarding.dpa.unavailable')}
                 </Alert>
                 {/* The host's own block is NOT part of the signature — it must
                     survive the withdrawn signing block, or the wizard would

@@ -468,3 +468,58 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
     });
 });
+
+/**
+ * Frank, 2026-09-23: the Träger's sender block for mail footers can be entered where the address
+ * is — optional, so the invitee is never blocked by it.
+ */
+describe('TenantAdminOnboarding — Träger sender block (legal name and contact)', () => {
+    const registerWithSenderBlock = async (fill: Record<string, string>) => {
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        // Sequential on purpose: user.type calls must not interleave.
+        await Object.entries(fill).reduce<Promise<void>>(
+            (typed, [label, value]) => typed.then(() => user.type(screen.getByLabelText(label), value)),
+            Promise.resolve(),
+        );
+        await completeOrganisationStep(user);
+        expect(await screen.findByText('admin@tenant.example')).toBeInTheDocument();
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+        await waitFor(() => expect(client.registerTenantAdmin).toHaveBeenCalled());
+        return (client.registerTenantAdmin as ReturnType<typeof vi.fn>).mock.calls[0][1].organisation;
+    };
+
+    it('registers the legal name and contact the invitee entered, trimmed', async () => {
+        const organisation = await registerWithSenderBlock({
+            'tenants.form.sender.legalName': '  Beispiel Verband e.V.  ',
+            'tenants.form.sender.contactEmail': 'kontakt@beispiel.example',
+            'tenants.form.sender.contactPhone': '+49 30 123456',
+        });
+
+        expect(organisation).toEqual({
+            name: 'Beispiel e.V.',
+            subdomain: 'beispiel',
+            address: 'Musterstraße 1',
+            legalName: 'Beispiel Verband e.V.',
+            contactEmail: 'kontakt@beispiel.example',
+            contactPhone: '+49 30 123456',
+        });
+    });
+
+    it('leaves out what the invitee did not enter', async () => {
+        const organisation = await registerWithSenderBlock({
+            'tenants.form.sender.contactPhone': '+49 30 123456',
+        });
+
+        expect(organisation).toEqual({
+            name: 'Beispiel e.V.',
+            subdomain: 'beispiel',
+            address: 'Musterstraße 1',
+            contactPhone: '+49 30 123456',
+        });
+    });
+});
