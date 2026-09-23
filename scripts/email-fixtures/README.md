@@ -54,9 +54,19 @@ fetch invite-short-content-de "?templateId=6"
 # notification-no-cta-de has no endpoint equivalent (see below); carry the checked-in pair and its
 # manifest line over unchanged so the manifest still describes the full directory.
 cp "$OUT/notification-no-cta-de.html" "$OUT/notification-no-cta-de.txt" "$TMP/"
-grep '^notification-no-cta-de ' "$OUT/MANIFEST.txt" >> "$TMP/manifest-body"
+grep '^notification-no-cta-de — ' "$OUT/MANIFEST.txt" >> "$TMP/manifest-body"
 
-{ head -2 "$OUT/MANIFEST.txt"; echo; cat "$TMP/manifest-body"; } > "$TMP/MANIFEST.txt"
+# The header names this refresh, not the run that produced the previous files. The one carried-over
+# pair keeps its own origin: the generator run that made it, however many refreshes ago.
+CARRIED='notification-no-cta-de carried over from: '
+ORIGIN=$(grep -m1 "^$CARRIED" "$OUT/MANIFEST.txt" || head -1 "$OUT/MANIFEST.txt")
+{
+  printf 'Refreshed from the preview endpoint at %s on %s.\n' "$USERSERVICE" "$(date +%F)"
+  echo 'Do not edit by hand — see scripts/email-fixtures/README.md to refresh.'
+  echo "$CARRIED${ORIGIN#"$CARRIED"}"
+  echo
+  cat "$TMP/manifest-body"
+} > "$TMP/MANIFEST.txt"
 
 # Nothing above touched $OUT — everything is replaced together or not at all.
 mv "$TMP"/*.html "$TMP"/*.txt "$TMP/MANIFEST.txt" "$OUT/"
@@ -71,10 +81,11 @@ an action, so the endpoint cannot render the button-less variant today. Regenera
 offline generator below, or ask the UserService side for a flag on the endpoint and then curl it
 like the rest.
 
-Its security line and footer note still speak of "diesen Link" and "Ihrer Einladung": that text is
-fixed in the `einladung-freitext` template, so every mail sent without an action (for example the
-DPA-signed notice) carries it. The fixture shows the backend output as it is; it changes once the
-template is fixed upstream and the fixture is regenerated.
+Without an action the frame drops the "diesen Link" security line with its divider and uses the
+neutral "automatisch versendet" footer note instead of the invitation note (ORISO-UserService#1233,
+`fix/freitext-mail-neutral-without-action`). The checked-in pair was regenerated from that branch
+before it merged; `src/components/EmailPreview/notificationNoCtaFixture.test.ts` fails if a
+regeneration brings the invitation wording back.
 
 ## Offline generator (how the fixtures in this branch were made)
 
