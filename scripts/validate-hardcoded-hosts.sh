@@ -37,19 +37,24 @@ URL_PATTERN='["'"'"'`]https?://localhost([:/?#][^"'"'"'`[:space:]]*["'"'"'`]?|["
 # Two third-party defaults that never become an ORISO request, allowed only in their own code:
 # the OpenTelemetry OTLP exporter's built-in default, which appends the signal path
 # (`url:"http://localhost:4318/"+path`; the app always passes an explicit metrics URL), and
-# react-router's base for parsing relative paths, reassigned right away from the window's origin
-# (`r="http://localhost";w&&(r=w.location.origin`; same variable, one statement).
-# They are cut out of each file before the scan, so the same literal anywhere else still fails,
-# whatever the chunk is called.
-Q='["'"'"'`]'
-OTLP_DEFAULT="url:${Q}http://localhost:4318/${Q}[+]"
-ID='[A-Za-z_$][A-Za-z0-9_$]*'
-# Fixed shape without back-references (BSD sed -E has none), so it cannot span two statements.
-ROUTER_BASE="${ID}=${Q}http://localhost${Q};${ID}&&[(]${ID}=${ID}[.]location[.]origin"
+# react-router's base for parsing relative paths, which it reassigns right away from the window
+# (`r="http://localhost";w&&(r=w.location.origin`, same variable). They are cut out of each file
+# before the scan, so the same literal anywhere else still fails, whatever the chunk is called.
+# Node does the cut because the router shape needs back-references, which BSD sed -E lacks; it is
+# always present here, since this runs as npm `postbuild`.
+STRIP_ALLOWED_DEFAULTS='
+const source = require("fs").readFileSync(process.argv[1], "utf8");
+const id = "[A-Za-z_$][\\w$]*";
+process.stdout.write(
+	source
+		.replace(/url:(["\x27`])http:\/\/localhost:4318\/\1\+/g, "")
+		.replace(new RegExp(`(${id})=(["\x27\x60])http://localhost\\2;(${id})&&\\(\\1=\\3\\.location\\.origin`, "g"), ""),
+);
+'
 
 matches=$(find "$DIST" -type f ! -name '*.map' -print0 |
 	while IFS= read -r -d '' file; do
-		sed -E -e "s#${OTLP_DEFAULT}##g" -e "s#${ROUTER_BASE}##g" "$file" |
+		node -e "$STRIP_ALLOWED_DEFAULTS" "$file" |
 			grep -n -i -o -E "$URL_PATTERN" | sed "s#^#${file}:#" || true
 	done)
 if [[ -n "$matches" ]]; then

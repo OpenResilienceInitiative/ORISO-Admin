@@ -77,6 +77,15 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(runGuardOn(laterStatement).status, laterStatement).toBe(1);
     });
 
+    it('allows the router base only when the router reassigns that same variable', () => {
+        const otherVariable = 'const api="http://localhost";e&&(r=e.location.origin);fetch(api)';
+        const otherWindow = 'let r=`http://localhost`;e&&(r=w.location.origin)';
+        const mixedQuotes = 'let r=`http://localhost";e&&(r=e.location.origin)';
+        expect(runGuardOn(otherVariable).status, otherVariable).toBe(1);
+        expect(runGuardOn(otherWindow).status, otherWindow).toBe(1);
+        expect(runGuardOn(mixedQuotes).status, mixedQuotes).toBe(1);
+    });
+
     it('does not flag names that merely start with localhost', () => {
         const result = runGuardOn('const u = "http://localhost.example.org";');
         expect(result.status, result.stderr).toBe(0);
