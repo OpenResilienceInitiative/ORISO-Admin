@@ -60,8 +60,8 @@ vi.mock('../../../../DpaForwardDialog/DpaForwardDialog', () => ({
             <button
                 type="button"
                 onClick={async () => {
-                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@oriso.org' });
-                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@oriso.org', mailFailed });
+                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@example.org' });
+                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@example.org', mailFailed });
                 }}
             >
                 complete forward
@@ -285,7 +285,7 @@ describe('DataProcessingAgreementContainer', () => {
         expect(createInviteApi).toHaveBeenCalledWith(84);
         expect(sendInviteEmailApi).toHaveBeenCalledWith({
             tenantId: 84,
-            recipientEmail: 'bart.simpson@oriso.org',
+            recipientEmail: 'bart.simpson@example.org',
             signLink: 'https://app.example/dpa-sign/secret',
             expiresAt: '2026-07-20T12:00:00Z',
         });
@@ -329,7 +329,7 @@ describe('DataProcessingAgreementContainer', () => {
                     status: 'SIGNED',
                     signerName: 'Erika E2E Mustermann',
                     signerPosition: 'Geschäftsführung',
-                    signerEmail: 'erika.e2e.mustermann@oriso.org',
+                    signerEmail: 'erika.e2e.mustermann@example.org',
                     signerOrganisation: 'E2E Full Gate 202607191747',
                     signedAt: '2026-07-19T18:49:00Z',
                 },
@@ -344,7 +344,7 @@ describe('DataProcessingAgreementContainer', () => {
         expect(footer).toHaveTextContent('Erika E2E Mustermann');
         expect(footer).toHaveTextContent(/19\.07\.2026/);
         expect(screen.queryByText('Geschäftsführung')).not.toBeInTheDocument();
-        expect(screen.queryByText('erika.e2e.mustermann@oriso.org')).not.toBeInTheDocument();
+        expect(screen.queryByText('erika.e2e.mustermann@example.org')).not.toBeInTheDocument();
         expect(screen.queryByText('E2E Full Gate 202607191747')).not.toBeInTheDocument();
     });
 });

@@ -47,7 +47,7 @@ describe('branded e-mail story preview — the house footer survives verbatim', 
     it('keeps the counsellor call-to-action shape a DPA_FORWARD preview renders with', () => {
         expect(html).toContain('>Einladung annehmen</a>');
         expect(html).toContain('Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:');
-        expect(html).toContain('https://admin.oriso.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN');
+        expect(html).toContain('https://admin.example.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN');
         expect(html).not.toContain('/admin/tenant-onboarding/');
         expect(html).not.toContain('/account-invite/');
     });
