@@ -21,7 +21,7 @@ describe('sendDpaInviteEmail', () => {
     it('posts the recipient and opaque signing invitation through the authenticated UserService endpoint', async () => {
         const payload = {
             tenantId: 84,
-            recipientEmail: 'bart.simpson@oriso.org',
+            recipientEmail: 'bart.simpson@example.org',
             signLink: 'https://app.oriso-dev.site/dpa-sign/single-use-token',
             expiresAt: '2026-07-21T12:00:00+02:00',
         };

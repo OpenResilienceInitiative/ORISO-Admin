@@ -16,12 +16,12 @@ afterEach(() => {
 
 describe('getLocationVariables', () => {
     it('extracts the first label as subdomain for a 3-part host', () => {
-        setLocation('tenant1.oriso.org');
-        expect(getLocationVariables()).toMatchObject({ subdomain: 'tenant1', host: 'tenant1.oriso.org' });
+        setLocation('tenant1.example.org');
+        expect(getLocationVariables()).toMatchObject({ subdomain: 'tenant1', host: 'tenant1.example.org' });
     });
 
     it('returns an empty subdomain for a 2-part host', () => {
-        setLocation('oriso.org');
+        setLocation('example.org');
         expect(getLocationVariables().subdomain).toBe('');
     });
 
@@ -36,10 +36,10 @@ describe('getLocationVariables', () => {
     });
 
     it('passes through protocol and origin', () => {
-        setLocation('tenant1.oriso.org', 'https:');
+        setLocation('tenant1.example.org', 'https:');
         expect(getLocationVariables()).toMatchObject({
             protocol: 'https:',
-            origin: 'https://tenant1.oriso.org',
+            origin: 'https://tenant1.example.org',
         });
     });
 });

@@ -137,7 +137,7 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
      * The owner reported the maximize control "abgeschnitten … in der oberen
      * rechten Ecke" on the public onboarding reader.
      *
-     * Measured live on predev.oriso.org (tenant-onboarding wizard, 1440x900,
+     * Measured live on predev.example.org (tenant-onboarding wizard, 1440x900,
      * getComputedStyle) BEFORE the fix:
      *
      *   .maximizeToolBtn   28x28, border-radius 50%, rect top 235 / right 1328
