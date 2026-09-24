@@ -80,11 +80,6 @@ const stubbedAllocation = (taken: Set<number>, reserved: (id: number) => boolean
 const stubbedTenantIdAllocation = stubbedAllocation(TAKEN_TENANT_IDS, (id) => id >= 30 && id <= 35);
 const stubbedAgencyIdAllocation = stubbedAllocation(TAKEN_AGENCY_IDS, (id) => id >= 150 && id <= 152);
 
-/*
- * Type-ahead fixtures (#1026). The real search endpoints come with the
- * "existing agency" backend (built in parallel); the composer only sees the
- * `searchTenants` / `searchAgencies` props, so wiring them later is a swap.
- */
 const TENANTS: IdUnitOption[] = [
     { id: 7, name: 'Caritas Südbaden' },
     { id: 12, name: 'Diakonie Ortenau' },
@@ -116,12 +111,7 @@ const defaultHandlers = [
     ),
 ];
 
-/**
- * The whole invite bar (#1026) as the redesign shows it: E-Mail · Vorname ·
- * Name · Rolle · Träger · Beratungsstelle · Themen selbst · Vorlage · Senden.
- * Rolle and "Themen selbst" are live here (`placeholdersEnabled`); the app
- * shows them disabled until the backend takes them.
- */
+// Rolle and "Themen selbst" are live here; the app shows them disabled until the backend takes them.
 const InviteBar = (props: Partial<InviteComposerProps>) => (
     <div style={{ padding: 24 }}>
         <InviteComposer
@@ -264,12 +254,7 @@ const PREFILLED = {
     agency: { id: 101, name: 'Caritas Suchtberatung Freiburg', topics: ['Sucht', 'Glücksspiel'] },
 };
 
-/**
- * Nothing filled yet, platform admin: every field editable, Träger and
- * Beratungsstelle rest on "Neu" (a new unit with the next free number), so the
- * send button would read „Anlegen & einladen" — outlined and off until the
- * e-mail and names are there. The hint under the row names what is missing.
- */
+/** Nothing filled: Träger and Beratungsstelle rest on "Neu"; sending stays off until e-mail and names are there. */
 export const Empty: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -284,13 +269,7 @@ export const Empty: Story = {
     },
 };
 
-/**
- * Frank's P0 from the Pre-Dev review, as a test: fill E-Mail, Vorname and Name,
- * leave the field, open „Rolle" and pick another role — every value survives,
- * and the bar is the SAME DOM (no remount). The row also gives back horizontal
- * scroll it no longer needs, so the filled pills stay in view on the left
- * instead of sliding out and looking deleted.
- */
+/** Picking a role after filling the names keeps every value and the same DOM (no remount). */
 export const RoleSelectKeepsValues: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -315,11 +294,7 @@ export const RoleSelectKeepsValues: Story = {
     },
 };
 
-/**
- * The scroll half of the P0: on a narrow screen the row is scrolled to the
- * right while Name is being typed. Leaving the field collapses E-Mail, Vorname
- * and Name — the row must give back the scroll so their pills stay visible.
- */
+/** A row scrolled right gives the scroll back when fields collapse, so their pills stay visible. */
 export const RowScrollSettlesAfterCollapse: Story = {
     decorators: [
         (Story) => (
@@ -334,7 +309,7 @@ export const RowScrollSettlesAfterCollapse: Story = {
         await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
         await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), PREFILLED.lastName);
         const scroller = canvasElement.querySelector<HTMLElement>('[class*="scroller"]') as HTMLElement;
-        // Frank's state: the row sits scrolled to the right while the focus is still in Name.
+        // The row sits scrolled to the right while focus is still in Name.
         scroller.scrollLeft = 400;
         await expect(scroller.scrollLeft).toBeGreaterThan(0);
         await userEvent.click(canvas.getByRole('combobox', { name: FIELD.tenant }));
@@ -349,10 +324,7 @@ export const RowScrollSettlesAfterCollapse: Story = {
     },
 };
 
-/**
- * „Themen & Fachbereiche" open: three options, each with its one-line
- * explanation. The default for a new invite is „Keine weiteren Fachbereiche".
- */
+/** „Themen & Fachbereiche" open; a new invite defaults to „Keine weiteren Fachbereiche". */
 export const TopicSelectOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -363,11 +335,7 @@ export const TopicSelectOpen: Story = {
     },
 };
 
-/**
- * The core interaction as a test: type → blur → "✓ E-Mail" pill → click →
- * the full field is back with the caret at the end → blur again collapses.
- * Ends with E-Mail and Vorname collapsed, the rest still open.
- */
+/** Type → blur → "✓ E-Mail" pill → click → field back, caret at the end → blur collapses again. */
 export const PartiallyCollapsed: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -411,11 +379,7 @@ export const AllValid: Story = {
     },
 };
 
-/**
- * Invalid input never collapses: a malformed address keeps its field open with
- * the existing error text, and a number reserved by an open invite blocks the
- * Beratungsstelle with its own message. Validation rules are unchanged.
- */
+/** Invalid input never collapses: a malformed address or a reserved number keeps its field open. */
 export const ErrorState: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -434,10 +398,7 @@ export const ErrorState: Story = {
     },
 };
 
-/**
- * Type-ahead into an EXISTING Beratungsstelle: searching "sucht" finds the
- * agency by its topic; picking it turns the main label into „Einladen".
- */
+/** "sucht" finds an EXISTING Beratungsstelle by topic; picking it makes the label „Einladen". */
 export const ExistingAgencySelected: Story = {
     args: {
         initialValues: {
@@ -461,11 +422,7 @@ export const ExistingAgencySelected: Story = {
     },
 };
 
-/**
- * The open type-ahead: a click into the Beratungsstelle lists „＋ Neu anlegen
- * (nächste freie Nummer: 141)" first, then the Träger's existing agencies with
- * number and topics. Typing narrows by name OR topic; a typed number is offered too.
- */
+/** „＋ Neu anlegen" comes first, then the Träger's agencies; typing narrows by name or topic. */
 export const TypeAheadOpen: Story = {
     args: {
         initialValues: {
@@ -486,11 +443,7 @@ export const TypeAheadOpen: Story = {
     },
 };
 
-/**
- * A NEW Beratungsstelle: the ⌄/^ split steps through free numbers only (1–140
- * exist, so ^ lands on 141) and hard-overwrites the value — the send button
- * says „Anlegen & einladen".
- */
+/** A NEW Beratungsstelle: ^ steps to the next free number (141); the label reads „Anlegen & einladen". */
 export const NewAgencyNumber: Story = {
     args: {
         initialValues: {
@@ -648,8 +601,6 @@ export const SubmitsComposedValues: Story = {
         );
     },
 };
-
-/* ---- The Träger tab as wired today (AccountInvitesTab harness) ---------- */
 
 /** Träger tab as the app wires it: a valid e-mail completes the form — „Anlegen & einladen". */
 export const TenantTabValidDirect: Story = {

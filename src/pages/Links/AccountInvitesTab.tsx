@@ -347,9 +347,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // exist yet, so there is no topic to route to and provisioning
                 // assigns routing when the agency is created on accept.
                 let departmentId: number | undefined;
-                // #1026 slice 2: an EXISTING agency is checked by the backend itself
-                // (UserService#1212) — it adopts the agency's only topic, and refuses
-                // what the caller may not invite into. No client-side guessing then.
+                // The backend checks an EXISTING agency itself and adopts its only topic.
                 if (
                     targetRole === 'COUNSELLOR' &&
                     values.agencyId != null &&
@@ -489,13 +487,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 lastName: row.lastName,
                 recipientEmail: row.recipientEmail,
                 targetRole,
-                // #1026: a row may name its own template ("Vorlage"); empty = the bar's.
+                // A row may name its own template; empty means the bar's.
                 templateId:
                     csvImport.sendMode === 'direct'
                         ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
                         : undefined,
-                // Not sent yet: `row.role` (always this tab's role until backend slice 3)
-                // and `row.topicPermission` (backend slice 6) — parsed and validated only.
+                // `row.role` and `row.topicPermission` are validated but not sent: the backend lacks them.
                 // The file's id column addresses the id space of this tab. On the Träger
                 // tab it IS the tenant id (batch-assigned in the preview). Every other tab
                 // invites into the admin's own tenant, and its id column addresses the
@@ -508,8 +505,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     : {
                           tenantId: currentTenantId,
                           agencyId: row.id,
-                          // #1026 slice 2 (UserService#1212): "bestehend" invites into the
-                          // agency with that id — checked, not reserved.
+                          // "bestehend" invites into the agency with that id: checked, not reserved.
                           agencyIdAllocationMode: csvAgencyAllocationMode(row),
                       }),
             });
@@ -728,13 +724,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     return (
         <div ref={composerRef}>
             <InviteComposer
-                // #1026: the Träger tab is platform-admin only; on the counsellor
-                // tab a tenant admin is pinned to their own Träger. "Rolle" shows
-                // the tab's role (disabled placeholder until the backend takes it).
+                // The Träger tab is platform-admin only; elsewhere a tenant admin is pinned to their Träger.
                 defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
-                // #1026 slice 2: the Beratungsstelle type-ahead finds existing agencies
-                // (AgencyService#307). The Träger type-ahead stays unwired until slice 4
-                // (inviting into an existing Träger).
+                // No Träger search: inviting into an existing Träger is not supported yet.
                 searchAgencies={includeAgencyField ? searchAgenciesForPicker : undefined}
                 includeAgencyField={includeAgencyField}
                 ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}

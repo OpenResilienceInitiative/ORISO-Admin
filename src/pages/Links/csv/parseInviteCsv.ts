@@ -1,18 +1,5 @@
-/*
- * Dependency-free CSV parser for the invite import (#315, Figma 1165:17005
- * "Import CSV File"; extended for #1026 — the CSV is the main invite path).
- *
- * Columns, in this order when the file has no header row:
- *   E-Mail · Vorname · Name · ID · Ziel · Rolle · Vorlage · Themen & Fachbereiche
- * Only E-Mail is required; old four-column files keep working unchanged. With a
- * recognised header row, columns are matched by their HEADER instead, so an
- * admin may leave columns out or reorder them.
- *
- * The ID column addresses whichever id space the importing tab owns — the
- * Träger-ID on the Träger tab, the Beratungsstellen-ID everywhere else — so it
- * is parsed as a bare `id` here and interpreted by the caller, as are the
- * template name and the role (the caller knows the tab's templates and roles).
- */
+// A recognised header row matches columns by name, so an admin may reorder or leave them out.
+// Id, role and template stay raw here: only the caller knows the tab's id space and templates.
 
 import type { InviteRole, TopicPermission } from '../inviteModel';
 
@@ -132,10 +119,7 @@ const ROLE_VALUES: Record<string, InviteRole> = {
     'tenant admin': 'TENANT_ADMIN',
 };
 
-/**
- * Accepts the backend enum AND Frank's simple true/false (true = may create
- * topics, false = none), plus the German yes/no words a spreadsheet user types.
- */
+/** The backend enum, plain true/false and the German yes/no words a spreadsheet user types. */
 const TOPIC_PERMISSION_VALUES: Record<string, TopicPermission> = {
     none: 'NONE',
     select_existing: 'SELECT_EXISTING',
@@ -158,7 +142,7 @@ export interface ParsedInviteRow {
     lastName: string;
     /** Explicit id from the ID column; `undefined` = allocated later. */
     id?: number;
-    /** "Ziel"; `undefined` = not given (a NEW unit, as before #1026). */
+    /** "Ziel"; `undefined` = not given, i.e. a NEW unit. */
     target?: InviteCsvTarget;
     /** "Rolle"; `undefined` = the importing tab's role. */
     role?: InviteRole;
@@ -300,9 +284,8 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
     if (records.length > 0 && RECOGNISED_HEADER_FIRST_CELLS.has(normalize(records[0].cells[0] ?? ''))) {
         headerSkipped = true;
         dataRecords = records.slice(1);
-        // Match columns by header; an unrecognised header cell falls back to its
-        // position in the fixed order, so an old header row with a custom ID label
-        // ("Träger-Nummer") still reads its 4th column as the ID.
+        // An unrecognised header cell keeps its fixed position, so an old custom ID
+        // label ("Träger-Nummer") still reads its 4th column as the ID.
         columnIndex = { email: 0 };
         records[0].cells.forEach((cell, index) => {
             if (index === 0) return;

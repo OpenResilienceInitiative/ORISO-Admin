@@ -1,11 +1,4 @@
-/*
- * IdAllocationField (#570, hybrid type-ahead since #1026). The field itself is
- * the canonical M3NumberField; this file styles only its type-ahead menu —
- * the GlobalSearchMenu look (12px radius, 6px padding, elevation 2) with the
- * FloatingLabelSelect "selected = tonal pill + leading check" treatment.
- * Colours come from the M3/OrisoScheme CSS variables only.
- */
-
+/* Only the type-ahead menu lives here; the field itself is M3NumberField. */
 .anchor {
     display: inline-flex;
     min-width: 0;

@@ -579,10 +579,8 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         ).toHaveLength(2);
         expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
         // Nothing the admin typed is lost — only the address needs correcting.
-        // dev #1048 moved the sample address off a real domain; #1026 collapsed the
-        // valid name field and renamed the send button. Both apply.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
-        // #1026: the valid name field rests collapsed, its value kept and read out on the pill.
+        // The valid name field rests collapsed; the pill reads its value out.
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
         await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeDisabled());
     });

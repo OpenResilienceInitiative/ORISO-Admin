@@ -32,13 +32,12 @@ const allocationState = (overrides: Partial<UseIdAllocationResult> = {}): UseIdA
 });
 
 describe('IdAllocationField', () => {
-    it('starts visibly on "Neu" (the former Auto) and NO supporting text', () => {
+    it('starts visibly on "Neu" with no supporting text', () => {
         render(<IdAllocationField label="Träger-ID" allocation={allocationState()} />);
 
         expect(screen.getByRole('combobox', { name: 'Träger-ID' })).toHaveValue('Neu');
         // Owner call: the supporting line states a problem, never an expectation.
         expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
-        // The Auto chip is gone — "＋ Neu anlegen" lives in the type-ahead now (#1026).
         expect(screen.queryByRole('button', { name: 'Automatische ID-Vergabe' })).not.toBeInTheDocument();
     });
 
@@ -173,7 +172,7 @@ describe('IdAllocationField', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
-    it('finds existing units by name or topic and picks one (#1026)', async () => {
+    it('finds existing units by name or topic and picks one', async () => {
         const allocation = allocationState();
         const searchUnits = vi.fn((query: string) =>
             [

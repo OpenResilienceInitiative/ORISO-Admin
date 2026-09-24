@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 
-/**
- * `auto` = create a NEW unit with the next free id (the "＋ Neu anlegen" entry) ·
- * `manual` = create a NEW unit with a pinned id · `existing` = invite into a
- * unit that already exists (#1026, picked from the type-ahead or locked).
- */
+/** `auto` / `manual` create a NEW unit (next free or pinned id); `existing` invites into one. */
 export type IdFieldMode = 'auto' | 'manual' | 'existing';
 
-/** An existing Träger / Beratungsstelle as the type-ahead lists it (#1026). */
 export interface IdUnitOption {
     id: number;
     /** Display name; absent when the unit is only known by its number (e.g. a typed Nr. or the viewer's own id). */
@@ -38,7 +33,7 @@ export interface UseIdAllocationOptions {
     client: IdAllocationClient;
     /** Typing pause before the availability check fires. */
     debounceMs?: number;
-    /** Start on an existing unit (prefill / locked viewer scope, #1026) instead of Auto. */
+    /** Start on an existing unit (prefill or locked viewer scope) instead of Auto. */
     initialUnit?: IdUnitOption;
 }
 
@@ -57,9 +52,9 @@ export interface UseIdAllocationResult {
     setManualValue: (value: number | undefined) => void;
     /** Arrow click/key: from Auto adopt the smallest free id, else next free id in that direction. */
     step: (direction: 1 | -1) => void;
-    /** "＋ Neu anlegen" (formerly the Auto toggle): back to no deliberate number choice. */
+    /** "＋ Neu anlegen": back to no deliberate number choice. */
     resetToAuto: () => void;
-    /** Type-ahead pick of an existing unit (#1026): always submittable, no availability check. */
+    /** Always submittable: an existing unit needs no availability check. */
     selectExisting: (unit: IdUnitOption) => void;
     /** Read-only preview of the id Auto would assign right now (for the "Neu anlegen" entry). */
     peekNextFree: () => Promise<number | null>;

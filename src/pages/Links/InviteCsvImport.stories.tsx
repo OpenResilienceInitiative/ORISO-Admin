@@ -177,13 +177,7 @@ export const PreviewModalAgencyIds: Story = {
     ),
 };
 
-/**
- * #1026 — the CSV is the main invite path, so every new field has a column:
- * Ziel (neu/bestehend), Rolle, Vorlage and Themen & Fachbereiche (enum or
- * plain true/false). The preview shows them per row; rows the backend cannot
- * take yet, or that name an unknown template, stay visible with the reason in
- * plain German and are left out of the batch.
- */
+// The CSV is the main invite path, so every invite-bar field has a column.
 const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
     {
         id: 11,

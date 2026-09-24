@@ -6,10 +6,7 @@ import styles from './styles.module.scss';
 export interface CollapsibleFieldProps {
     /** Field label shown in the collapsed pill ("✓ E-Mail") and used in its accessible name. */
     label: string;
-    /**
-     * Text in the collapsed pill instead of `label` — select-type fields show
-     * their chosen VALUE ("✓ Berater:in"), since the label alone would hide it.
-     */
+    /** Replaces `label` in the pill; select fields show their value, which the label alone would hide. */
     pillText?: string;
     /** The pill cannot expand (a disabled placeholder field). */
     disabled?: boolean;
@@ -44,13 +41,8 @@ const horizontalScroller = (element: HTMLElement): HTMLElement | null => {
     return null;
 };
 
-/**
- * After a width change, give back horizontal scroll the row no longer needs
- * (#1026, Frank's "values cleared" report): a row scrolled to the right keeps
- * its `scrollLeft` while fields to the left shrink into pills, so the filled
- * pills slide out of view on the left and look deleted. Scroll back as far as
- * the focused control stays fully visible.
- */
+// Shrinking pills keep the row's `scrollLeft`, so filled pills slide out on the left
+// and look deleted. Give the scroll back as far as the focused control stays visible.
 const settleRowScroll = (slot: HTMLElement) => {
     const scroller = horizontalScroller(slot);
     if (!scroller || scroller.scrollLeft === 0) return;
@@ -71,13 +63,8 @@ const CheckGlyph = () => (
     </svg>
 );
 
-/**
- * Invite-bar field slot (#1026): a filled, valid field collapses to a compact
- * "✓ Label" pill once it loses focus, so a full row fits a phone. Clicking the
- * pill expands the field again and puts the caret at the end of its value.
- * The field itself stays mounted underneath. The width change animates (measured FLIP, since `auto` widths cannot be
- * transitioned) and is instant under `prefers-reduced-motion`.
- */
+// A valid, blurred field collapses to a "✓ Label" pill so a full row fits a phone.
+// The width animates via measured FLIP, since `auto` widths cannot be transitioned.
 export const CollapsibleField = ({
     label,
     collapsed,
@@ -178,9 +165,7 @@ export const CollapsibleField = ({
                     <span className={styles.label}>{pillText ?? label}</span>
                 </button>
             )}
-            {/* The field stays MOUNTED while collapsed (only hidden): its element,
-                caret state and any open request survive, and whoever holds a
-                reference to the input keeps a live one. */}
+            {/* Hidden, not unmounted: input refs, caret and open requests must survive. */}
             <div style={{ display: collapsed ? 'none' : 'contents' }}>{children}</div>
         </div>
     );

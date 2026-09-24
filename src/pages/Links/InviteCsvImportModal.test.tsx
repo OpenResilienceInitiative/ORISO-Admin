@@ -352,7 +352,7 @@ describe('InviteCsvImportModal', () => {
         expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
     });
 
-    describe('#1026 columns (Ziel, Rolle, Vorlage, Themen & Fachbereiche)', () => {
+    describe('Ziel, Rolle, Vorlage and Themen & Fachbereiche columns', () => {
         const TEMPLATES = [
             {
                 id: 11,
@@ -449,7 +449,7 @@ describe('InviteCsvImportModal', () => {
             ).toBeInTheDocument();
         });
 
-        it('holds back "bestehend" on the Träger tab until slice 4', () => {
+        it('holds back "bestehend" on the Träger tab', () => {
             renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { id: 9, target: 'EXISTING' })] as never }));
             expect(
                 rowCells('anna@x.de').getByText(/bestehenden Träger einladen geht erst mit #1026 Schritt 4/),

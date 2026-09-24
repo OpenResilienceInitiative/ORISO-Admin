@@ -292,7 +292,7 @@ describe('useIdAllocation', () => {
         expect(result.current.canSubmit).toBe(true);
     });
 
-    describe('existing units (#1026)', () => {
+    describe('existing units', () => {
         const unit = { id: 7, name: 'Caritas Südbaden' };
 
         it('can start on an existing unit (prefill / viewer lock) without any availability check', () => {

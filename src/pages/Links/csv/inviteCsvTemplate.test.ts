@@ -31,7 +31,7 @@ describe('buildInviteCsvTemplate', () => {
     });
 });
 
-describe('buildInviteCsvTemplate — #1026 columns', () => {
+describe('buildInviteCsvTemplate — extended columns', () => {
     const FULL = {
         email: 'E-Mail',
         firstName: 'Vorname',

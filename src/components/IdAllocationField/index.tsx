@@ -9,7 +9,6 @@ import styles from './styles.module.scss';
 export { useIdAllocation } from './useIdAllocation';
 export type { IdFieldMode, IdUnitOption, IdValidationState, UseIdAllocationResult } from './useIdAllocation';
 
-/** Type-ahead data source (#1026). Wired to the real Träger/agency search later; stories inject fixtures. */
 export type IdUnitSearch = (query: string) => Promise<IdUnitOption[]> | IdUnitOption[];
 
 export interface IdAllocationFieldProps {
@@ -18,17 +17,11 @@ export interface IdAllocationFieldProps {
     /** State machine from {@link useIdAllocation} — owned by the parent so it can gate submits. */
     allocation: UseIdAllocationResult;
     disabled?: boolean;
-    /**
-     * Viewer scope lock (#1026): the value stays visible but cannot change —
-     * a tenant admin's own Träger, an agency admin's own Beratungsstelle.
-     */
+    /** Viewer scope lock: the admin's own Träger or Beratungsstelle stays visible but fixed. */
     locked?: boolean;
     /** Searches existing units by name (and topic, for agencies). Omit and the menu offers only "Neu" + typed numbers. */
     searchUnits?: IdUnitSearch;
-    /**
-     * `false` = this field can only point at an EXISTING unit (no "Neu anlegen";
-     * a typed number means "the unit with that number").
-     */
+    /** `false`: existing units only, so a typed number means the unit with that number. */
     allowCreate?: boolean;
     /** Looks a number up; `null` = no such unit. Without it, typed numbers are never taken as existing. */
     resolveUnit?: (id: number) => Promise<IdUnitOption | null>;
@@ -53,16 +46,7 @@ const CheckMark = () => (
     </svg>
 );
 
-/**
- * Invite-bar ID field (ORISO-Admin#570, reworked for #1026): one control for
- * "invite into an EXISTING unit" and "create a NEW one".
- *
- * - Focus opens a type-ahead: existing units by name or topic, "＋ Neu anlegen
- *   (nächste freie Nummer)" (the former Auto toggle), and a typed number.
- * - The ⌄/^ split steps through FREE numbers only and hard-overwrites the value.
- * - The field is only as wide as what it shows.
- * The data layer stays behind {@link useIdAllocation} and `searchUnits`.
- */
+/** One control for inviting into an EXISTING unit or creating a NEW one. */
 export const IdAllocationField = ({
     label,
     allocation,
@@ -104,7 +88,6 @@ export const IdAllocationField = ({
         return value === undefined ? '' : String(value);
     })();
 
-    // --- search -----------------------------------------------------------
     useEffect(() => {
         if (!open || !searchUnits) return undefined;
         let cancelled = false;
@@ -173,7 +156,6 @@ export const IdAllocationField = ({
     }, [allowCreate, assignedId, resolveUnit]);
     const assignedUnit = assignedId !== undefined && resolved?.id === assignedId ? resolved.unit : null;
 
-    // --- menu entries -------------------------------------------------------
     const trimmed = query.trim();
     const entries: MenuEntry[] = [];
     if (allowCreate) {
@@ -218,7 +200,7 @@ export const IdAllocationField = ({
         return mode !== 'auto' && value === entry.id;
     };
 
-    // --- positioning (portal: the invite row scrolls and would clip a menu) --
+    // Portal: the invite row scrolls and would clip an in-place menu.
     const place = useCallback(() => {
         const rect = anchorRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -239,7 +221,6 @@ export const IdAllocationField = ({
         };
     }, [open, place]);
 
-    // --- interaction ----------------------------------------------------------
     const openMenu = () => {
         if (inactive || open) return;
         setQuery(mode === 'manual' && value !== undefined ? String(value) : '');
@@ -384,9 +365,7 @@ export const IdAllocationField = ({
                         {entries.map((entry, index) => {
                             const selected = isSelected(entry);
                             return (
-                                // Combobox pattern: the keyboard stays in the input (arrows + Enter
-                                // above); options are pointer targets announced via activedescendant.
-                                // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+                                // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- combobox: keys stay in the input
                                 <li
                                     aria-selected={selected}
                                     className={classNames(styles.option, {
