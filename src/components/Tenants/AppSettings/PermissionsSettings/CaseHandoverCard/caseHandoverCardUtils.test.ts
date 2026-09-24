@@ -275,5 +275,20 @@ describe('caseHandoverCardUtils', () => {
                 ['UNPLANNED_ABSENCE', true],
             ]);
         });
+
+        it('module off also disables an enabled superseded retired row', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'COUNSELLOR_IS_ILL', enabled: true }),
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: true }),
+                ],
+                false,
+            );
+            expect(next.map((p) => [p.code, p.enabled])).toEqual([
+                ['COUNSELLOR_IS_ILL', false],
+                ['UNPLANNED_ABSENCE', false],
+            ]);
+            expect(isHandoverModuleEnabled(next)).toBe(false);
+        });
     });
 });

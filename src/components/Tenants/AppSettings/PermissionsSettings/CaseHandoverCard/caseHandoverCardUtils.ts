@@ -86,9 +86,10 @@ export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): Displ
 export const isHandoverModuleEnabled = (policies: CaseHandoverReasonPolicy[]) =>
     policies.some((policy) => policy.enabled);
 
-/** Master toggle writes `enabled` on every reason — module off = no handover possible. */
+/** Master toggle writes `enabled` on every reason — module off = no handover possible.
+ *  Superseded rows are never switched on, but always off, else the hidden row keeps the module on. */
 export const applyModuleEnabled = (policies: CaseHandoverReasonPolicy[], enabled: boolean) =>
-    policies.map((policy) => (isSupersededPolicy(policy, policies) ? policy : { ...policy, enabled }));
+    policies.map((policy) => (isSupersededPolicy(policy, policies) && enabled ? policy : { ...policy, enabled }));
 
 export const applyClientConsent = (
     policies: CaseHandoverReasonPolicy[],
