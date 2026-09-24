@@ -61,7 +61,7 @@ describe('account invite API', () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => responseBody });
 
         const result = await createAccountInvite({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -70,7 +70,7 @@ describe('account invite API', () => {
         });
 
         expect(JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData)).toEqual({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -113,7 +113,7 @@ describe('account invite API', () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 2 }) });
 
         await resendAccountInvite(2, {
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             templateId: 4,
         });
 
@@ -307,7 +307,7 @@ describe('branded invite e-mail preview (UserService#914)', () => {
             subject: 'Ihre Einladung zu ORISO',
             html: '<!doctype html><html lang="de"><body>mail</body></html>',
             plainText: 'ORISO\n=====',
-            sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+            sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
         };
         mocks.fetchData.mockResolvedValueOnce(preview);
 

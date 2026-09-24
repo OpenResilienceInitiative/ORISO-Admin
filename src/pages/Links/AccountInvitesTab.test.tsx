@@ -527,7 +527,7 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), '275');
@@ -552,7 +552,7 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
                     departmentId: 2,
                     firstName: 'Lisa',
                     lastName: 'Simpson',
-                    recipientEmail: 'lisa.simpson@oriso.org',
+                    recipientEmail: 'lisa.simpson@example.org',
                 }),
             ),
         );
@@ -579,7 +579,9 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         ).toHaveLength(2);
         expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
         // Nothing the admin typed is lost — only the address needs correcting.
-        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');
+        // dev #1048 moved the sample address off a real domain; #1026 collapsed the
+        // valid name field and renamed the send button. Both apply.
+        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
         // #1026: the valid name field rests collapsed, its value kept and read out on the pill.
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
         await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeDisabled());

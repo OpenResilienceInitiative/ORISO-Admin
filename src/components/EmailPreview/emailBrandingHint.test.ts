@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveEmailLogoFallbackReason, resolveEmailLogoUrl } from './emailBrandingHint';
 
-const origin = 'https://predev.oriso.org';
+const origin = 'https://predev.example.org';
 const uploaded = 'data:image/png;base64,iVBORw0KGgo=';
 
 describe('email logo eligibility', () => {
@@ -26,13 +26,13 @@ describe('email logo eligibility', () => {
 
     it.each([
         'https://external.example/logo.png',
-        'http://predev.oriso.org/logo.png',
+        'http://predev.example.org/logo.png',
         'https://',
         'https:///logo.png',
-        'https://user:password@predev.oriso.org/logo.png',
-        'https://predev.oriso.org/my logo.png',
-        'https://predev.oriso.org/logo.png?token=secret',
-        'https://predev.oriso.org/logo.png#secret',
+        'https://user:password@predev.example.org/logo.png',
+        'https://predev.example.org/my logo.png',
+        'https://predev.example.org/logo.png?token=secret',
+        'https://predev.example.org/logo.png#secret',
         'data:image/svg+xml;base64,AAAA',
         '/relative/logo.png',
     ])('rejects an unsafe or unsupported candidate %s', (logo) => {

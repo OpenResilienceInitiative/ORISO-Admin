@@ -10,7 +10,7 @@
  *   forms, no popups, no top navigation, no downloads. allow-same-origin
  *   is required because the app talks to its API same-origin (proxied);
  *   an opaque origin would send Origin: null and every call would fail
- *   CORS (verified against app.oriso.org). Admin cookies and Keycloak
+ *   CORS (verified against the production app). Admin cookies and Keycloak
  *   tokens stay unreachable either way: the app is cross-origin to the
  *   admin, so the same-origin policy isolates it regardless of sandbox.
  * - the frame is purely visual: pointer events are blocked.
@@ -131,5 +131,36 @@ describe('PhoneThemePreview iframe', () => {
             />,
         );
         expect(screen.getAllByText('theme.builder.preview.empty').length).toBeGreaterThan(0);
+    });
+});
+
+// ORISO-Helm#368 (AD-03): the mock address bar showed the production host on every environment.
+describe('PhoneThemePreview address bar', () => {
+    const renderModal = (appBaseUrl: string) =>
+        render(
+            <ThemeEditorModal
+                open
+                appBaseUrl={appBaseUrl}
+                initialValues={{ theming: { primaryColor: DRAFT.accentDark } }}
+                storedSeeds={STORED}
+                locks={{ accentDark: false, accentLight: false, signal: false }}
+                onCancel={() => {}}
+                onSubmit={() => {}}
+            />,
+        );
+
+    it('shows the configured app host', () => {
+        renderModal('https://app.example.org/');
+        const bars = screen.getAllByTestId('preview-address');
+        expect(bars).toHaveLength(2);
+        bars.forEach((bar) => expect(bar.textContent).toBe('app.example.org'));
+    });
+
+    it('shows no host when no app URL is configured', () => {
+        renderModal('');
+        screen.getAllByTestId('preview-address').forEach((bar) => {
+            expect(bar.textContent).toBe('');
+        });
+        expect(document.body.textContent).not.toContain('example.org');
     });
 });
