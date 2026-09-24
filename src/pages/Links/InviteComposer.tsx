@@ -184,11 +184,7 @@ export interface InviteComposerProps {
     viewerScope?: InviteViewerScope;
     /** The viewer's own Träger — shown locked for tenant and agency admins. */
     ownTenant?: IdUnitOption;
-    /**
-     * The viewer's own Beratungsstelle — shown locked for an agency admin of ONE
-     * agency. Omit it for an agency admin of several: the field then picks among
-     * the hits of `searchAgencies` (scoped to their agencies), never a new one.
-     */
+    /** Locks the field for an agency admin of one agency; omit it so an admin of several picks among them. */
     ownAgency?: IdUnitOption;
     /** Role preselected in the "Rolle" field (the tab's target role in the app). */
     defaultRole?: InviteRole;
@@ -334,20 +330,14 @@ export const InviteComposer = ({
     const [firstName, setFirstName] = useState(initialValues?.firstName ?? '');
     const [lastName, setLastName] = useState(initialValues?.lastName ?? '');
     const [storedSendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
-    /*
-     * B4 "Senden & nächste": sends like "Direkt Versenden", then keeps the unit,
-     * the template and the topic level for the next person of this session and
-     * clears only the person. Session memory only — React state, never stored.
-     */
+    // Unlike the send mode, "Senden & nächste" lasts for this session only and is never persisted.
     const [sendAndNext, setSendAndNext] = useState(false);
     const sendMode: InviteSendMode = sendAndNext ? 'direct' : storedSendMode;
-    // Set after a "Senden & nächste" send: the E-Mail field takes focus once the cleared bar rendered.
+    // Focus must wait until the cleared bar has rendered.
     const [focusEmailPending, setFocusEmailPending] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
     const tenantLocked = viewerScope !== 'platform';
-    // An agency admin of ONE agency is pinned to it; with several, the field
-    // picks among them (the tab's search is scoped to them) — never a new one.
     const agencyMayBeNew = viewerScope !== 'agency';
     const agencyLocked = viewerScope === 'agency' && ownAgency != null;
     const lockedTenant = tenantLocked ? ownTenant : undefined;
@@ -370,9 +360,8 @@ export const InviteComposer = ({
         initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
     );
     const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
-    // "Stattdessen als BST-Admin einladen" switches the role for ONE founding
-    // invite; the role it replaced comes back once that invite went out, so the
-    // next person typed into the bar is not silently a second BST-Admin.
+    // The guided BST-Admin switch covers one founding invite only, so the next
+    // person is not silently a second BST-Admin.
     const [roleBeforeGuidedSwitch, setRoleBeforeGuidedSwitch] = useState<InviteRole | null>(null);
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
@@ -399,7 +388,6 @@ export const InviteComposer = ({
         if (lockedAgency) selectExistingAgency(lockedAgency);
     }, [lockedAgency?.id, lockedAgency?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // B4: after "Senden & nächste" the cleared E-Mail field takes focus for the next person.
     useEffect(() => {
         if (!focusEmailPending) return;
         setFocusEmailPending(false);
@@ -506,9 +494,7 @@ export const InviteComposer = ({
         if (initialValues?.lastName?.trim()) initial.add('lastName');
         if (initialValues?.tenant && !tenantLocked) initial.add('tenant');
         if (initialValues?.agency && !agencyLocked) initial.add('agency');
-        // A prefilled bar (stories, later resend/edit) shows its chosen values as
-        // pills. A fresh page starts with every field expanded: pills from the
-        // start only exist in the "Senden & nächste" state (B4).
+        // Only a prefilled bar starts as pills; a fresh page starts expanded.
         if (initialValues) SELECT_KEYS.forEach((key) => initial.add(key));
         return initial;
     });
@@ -524,13 +510,8 @@ export const InviteComposer = ({
             return next;
         });
 
-    /*
-     * #1026 (Pre-Dev E2E): an EXISTING Beratungsstelle picked while the Träger
-     * field is still empty brings its own Träger — the field takes it over as an
-     * existing unit, folded into its ✓ pill, so "Senden & nächste" keeps it too.
-     * A Träger the admin already chose (an existing one or a pinned new number)
-     * is never overwritten.
-     */
+    // An existing agency picked while the Träger is empty fills it in; a Träger
+    // the admin already chose is never overwritten.
     const pickedAgencyUnit = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     useEffect(() => {
         if (tenantLocked || pickedAgencyUnit?.tenantId == null) return;
@@ -690,8 +671,6 @@ export const InviteComposer = ({
         }
 
         if (outcome && sendAndNext) {
-            // B4: the next person joins the same unit with the same template and
-            // topic level — keep those as pills, clear only the person.
             setRecipientEmail('');
             setEmailTouched(false);
             setEmailTakenAddress(null);
@@ -908,7 +887,6 @@ export const InviteComposer = ({
                 icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
-            // B4: send, then keep unit, template and topic level for the next person.
             {
                 key: 'sendAndNext',
                 icon: <ForwardToInboxOutlinedIcon aria-hidden className={styles.menuIcon} />,

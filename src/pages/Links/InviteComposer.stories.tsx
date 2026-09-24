@@ -261,8 +261,7 @@ export const Empty: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: FIELD.tenant })).toBeEnabled();
-        // A fresh page starts with every field expanded (B4): pills from the start
-        // only exist after „Senden & nächste".
+        // A fresh page starts expanded; pills only exist after „Senden & nächste".
         await expect(canvas.getByRole('combobox', { name: FIELD.role })).toBeInTheDocument();
         await expect(canvas.getByRole('combobox', { name: FIELD.topics })).toBeInTheDocument();
         await expect(canvas.queryByRole('button', { name: PILL.role })).not.toBeInTheDocument();
@@ -602,12 +601,7 @@ export const SelfAssignMenuEntry: Story = {
     },
 };
 
-/**
- * B4 „Senden & nächste": sends like „Direkt Versenden", then prepares the bar
- * for the next person of the same session — Träger, Beratungsstelle, Vorlage and
- * „Themen & Fachbereiche" stay as ✓ pills, E-Mail, Vorname, Name and Rolle are
- * cleared (Rolle back to the default), and the cursor waits in E-Mail.
- */
+/** „Senden & nächste" keeps unit, template and topics as pills, clears the person and focuses E-Mail. */
 export const SendAndNext: Story = {
     args: { initialValues: { ...PREFILLED, topicPermission: 'SELECT_EXISTING' }, onSubmit: fn(() => true) },
     play: async ({ args, canvasElement }) => {
@@ -642,11 +636,7 @@ export const SendAndNext: Story = {
     },
 };
 
-/**
- * #1026 (Pre-Dev E2E): the platform admin picks an EXISTING Beratungsstelle
- * before any Träger. The hit names its Träger, so the Träger field takes it over
- * as a ✓ pill — and „Senden & nächste" keeps it for the next person.
- */
+/** An existing Beratungsstelle picked before any Träger fills in its Träger; „Senden & nächste" keeps both. */
 export const AgencyPickFillsTraeger: Story = {
     args: {
         tenantAllowCreate: false,

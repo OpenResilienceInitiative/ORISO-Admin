@@ -474,7 +474,6 @@ describe('InviteProgressBoard — #1026 queue and topic permission', () => {
 
         const row = screen.getByText('person11@example.org').closest('tr') as HTMLElement;
         const progress = within(row).getByRole('list', { name: 'Onboarding-Fortschritt' });
-        // Nothing was mailed yet, so "Zustellproblem" was simply wrong.
         expect(progress).not.toHaveTextContent('Zustellproblem');
         expect(progress).toHaveTextContent('Kein BST-Admin – Einladung wartet');
     });

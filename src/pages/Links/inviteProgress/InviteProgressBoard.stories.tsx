@@ -389,11 +389,7 @@ export const TopicPermissionInTable: Story = {
     },
 };
 
-/**
- * The same queue on a phone (390 px, narrower than the issue's 412 px): the topic
- * select and the problem badge stack into the card, and the topic select's short
- * label is its only information, so it must be readable in full — no ellipsis.
- */
+/** On a phone the topic select stacks into the card; its short label is all it says, so it must not be cut off. */
 export const QueueMobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     args: { onTopicPermissionChange: fn() },

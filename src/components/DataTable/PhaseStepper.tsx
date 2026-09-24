@@ -9,11 +9,7 @@ export interface PhaseStepperPhase {
     key: string;
     label: string;
     state: PhaseStepperState;
-    /**
-     * Overrides the generic state word screen readers hear after the label
-     * (e.g. „Zustellproblem" for `warning`) when this phase's state means
-     * something more specific.
-     */
+    /** Overrides the generic state word screen readers hear, e.g. „Zustellproblem" for `warning`. */
     stateLabel?: string;
     /** Overrides the generic tooltip sentence for this phase's state. */
     stateHint?: string;

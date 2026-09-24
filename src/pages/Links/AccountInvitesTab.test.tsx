@@ -604,15 +604,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(screen.queryByRole('button', { name: /^Vorlage bearbeiten/ })).not.toBeInTheDocument();
     });
 
-    /*
-     * B4 "Senden & nächste": send like "Direkt Versenden", then keep the unit,
-     * the template and the topic permission (as pills) for the next person and
-     * clear only the person: E-Mail, Vorname, Name, Rolle. Focus lands on E-Mail.
-     *
-     * Each case types a whole invite into the real composer and sends it twice:
-     * ~5-10 s locally, but past the 30 s default on the parallel CI runner
-     * (#1038 build timed out here). Give these flows headroom instead of flaking.
-     */
+    // Each case types and sends a whole invite twice; the parallel CI runner exceeds the 30 s default.
     describe('"Senden & nächste"', { timeout: 90_000 }, () => {
         const chooseSendAndNext = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));

@@ -25,7 +25,7 @@ describe('linksAccess', () => {
     it.each([
         ['agency admin', [UserRole.AgencyAdmin, UserRole.UserAdmin]],
         ['restricted agency admin', [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]],
-    ])('%s sees only counsellor invites into their own agencies (#1026)', (_label, roles) => {
+    ])('%s sees only counsellor invites', (_label, roles) => {
         const context = { isSuperAdmin: false, hasRole: hasRoleFor(...roles) };
         expect(resolveVisibleLinksTabs(context)).toEqual(['counsellor']);
         expect(canSeeLinksSection(context)).toBe(true);
@@ -89,28 +89,20 @@ describe('linksAccess — invite e-mail templates', () => {
         expect(resolveVisibleTemplateKinds(tenantAdmin)).toEqual(['COUNSELLOR_INVITE']);
     });
 
-    it('shows a Beratungsstellen admin the counsellor invite too (#1026 Q31)', () => {
-        // Deliberate change of the expectation dev shipped with #1052. There it
-        // was right: an agency admin had no Links tab at all, so no kind could
-        // follow from one. This branch gives them the counsellor tab, and Frank
-        // decided on 2026-09-24 (Q31) that everyone who may send invites may
-        // also write templates for them. The derivation is unchanged — only the
-        // tab it derives from is new.
+    it('shows a Beratungsstellen admin the counsellor invite too', () => {
+        // Whoever may send invites may also write templates for them.
         expect(resolveVisibleTemplateKinds(agencyAdmin)).toEqual(['COUNSELLOR_INVITE']);
     });
 
     it('still lets no Links admin see the platform operator’s kinds', () => {
-        // The half of #1052 that must survive the widened access: TENANT_INVITE
-        // and DPA_FORWARD create tenants and forward contracts, which is the
-        // platform operator's work whatever else an admin may do.
+        // Creating tenants and forwarding contracts stay the platform operator's work.
         expect(resolveVisibleTemplateKinds(tenantAdmin)).not.toContain('TENANT_INVITE');
         expect(resolveVisibleTemplateKinds(agencyAdmin)).not.toContain('DPA_FORWARD');
     });
 
     it('lets only the platform admin change a shared template', () => {
         // A template is shared by every tenant, so one tenant admin's edit would
-        // change the mail every other tenant sends. Creating one is open to them
-        // (Q30/Q31) — this is the one restriction that survives.
+        // change the mail every other tenant sends.
         expect(canEditSharedTemplates(platformAdmin)).toBe(true);
         expect(canEditSharedTemplates(tenantAdmin)).toBe(false);
         expect(canEditSharedTemplates(agencyAdmin)).toBe(false);

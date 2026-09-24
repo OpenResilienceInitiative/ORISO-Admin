@@ -141,7 +141,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
-        // A fresh page shows the template split button expanded (B4: pills only after „Senden & nächste").
+        // A fresh page shows the template split button expanded, not as a pill.
         const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
             `.${splitButtonStyles.splitButton}`,
         ) as HTMLElement;

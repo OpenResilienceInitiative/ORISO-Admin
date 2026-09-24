@@ -70,10 +70,7 @@ const foundsTenant = (invite: AccountInviteDTO) =>
     invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
 const belongsToTab = (invite: AccountInviteDTO, tenantTab: boolean) =>
     INVITE_TAB_ROLES.has(invite.targetRole) && foundsTenant(invite) === tenantTab;
-/**
- * An agency admin may only invite counsellors (UserService#1215); the list the
- * backend scopes to their agencies shows exactly those, nothing they cannot act on.
- */
+/** An agency admin may invite counsellors only, so other invites in their agencies stay hidden. */
 const visibleForViewer = (invite: AccountInviteDTO, viewerScope: InviteViewerScope) =>
     viewerScope !== 'agency' || invite.targetRole === 'COUNSELLOR';
 
@@ -148,16 +145,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
     const { isSuperAdmin, hasRole } = useUserRoles();
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
-    // #1026: platform admin, Träger admin (own Träger) or Beratungsstellen-Admin
-    // (own Träger and own agencies, counsellors only). The Träger tab is platform-only.
+    // The Träger tab is platform-only.
     const viewerScope: InviteViewerScope = isTenantInvite
         ? 'platform'
         : resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
 
-    // #1026: an agency admin's own agencies. The agency search is scoped per role
-    // by the backend (AgencyService#307), so an empty query returns exactly them.
-    // One agency locks the field; several make it a pick among them.
+    // The backend scopes the agency search per role, so an empty query returns
+    // exactly the agency admin's own agencies.
     const [ownAgencies, setOwnAgencies] = useState<InviteAgencyHit[]>([]);
     useEffect(() => {
         if (!isAgencyViewer) return undefined;
