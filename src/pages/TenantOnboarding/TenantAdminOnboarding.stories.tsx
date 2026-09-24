@@ -189,11 +189,6 @@ export const OrganisationDpaForwardedOnHoldMobile: Story = {
 };
 
 /** A consumed link: distinct terminal state, no form, nothing resubmittable. */
-/*
- * #1026: a Träger-admin invite into a Träger that already exists (or a second
- * admin of a new Träger created meanwhile). No organisation step, no Träger
- * creation, no DPA/AVV step — only the password, then 2FA.
- */
 const JOIN_EXISTING = {
     joinsExistingTenant: true,
     tenantId: 40,

@@ -314,10 +314,6 @@ export const TopicPermissionSelectExistingMobile: Story = {
     args: TopicPermissionSelectExisting.args,
 };
 
-/*
- * #1026 slice 3: an AGENCY_ADMIN invite runs this wizard. The inviter's
- * "Berät auch" proposal arrives as a switch the invitee may change.
- */
 const AGENCY_ADMIN = { targetRole: 'AGENCY_ADMIN' as const, topicPermission: 'CREATE' as const };
 const alsoCounsellorSwitch = (canvasElement: HTMLElement) =>
     within(canvasElement).findByRole('switch', { name: /Berät auch|Also counsels/ });

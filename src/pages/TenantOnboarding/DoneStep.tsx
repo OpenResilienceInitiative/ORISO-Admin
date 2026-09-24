@@ -17,7 +17,7 @@ interface DoneStepProps {
      * the completion additionally says an e-mail will follow once it arrives.
      */
     forwarded?: boolean;
-    /** #1026: the admin joined a Träger that already exists — nothing was created, nothing awaits activation. */
+    /** The admin joined an existing Träger: nothing was created, nothing awaits activation. */
     joinedExisting?: boolean;
 }
 

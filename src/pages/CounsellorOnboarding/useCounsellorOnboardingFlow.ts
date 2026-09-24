@@ -52,7 +52,7 @@ export interface CounsellorWizardData {
     topicIds: number[];
     /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
     agency: { name: string };
-    /** Agency-admin invites only (#1026): "Berät auch", prefilled with the inviter's proposal. */
+    /** Agency-admin invites only: "Berät auch", prefilled with the inviter's proposal. */
     alsoCounsellor: boolean;
 }
 
@@ -234,8 +234,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         try {
             const { account, person, names, avatar, topicIds, agency, alsoCounsellor } = dataRef.current;
             const agencyAdmin = isAgencyAdminInvite(inviteRef.current);
-            // An agency admin who does not counsel gets a login only: no consultant
-            // profile, no topics (#1026 slice 3).
+            // An agency admin who does not counsel gets a login only: no consultant profile, no topics.
             const withProfile = !agencyAdmin || alsoCounsellor;
             // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
             const { avatarKind, avatarId } = normaliseAvatarValue(avatar);

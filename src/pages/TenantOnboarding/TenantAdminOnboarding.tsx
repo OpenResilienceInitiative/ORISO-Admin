@@ -110,7 +110,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         );
     }
 
-    // #1026: joining an existing Träger is two steps — account and 2FA.
+    // Joining an existing Träger is two steps: account and 2FA.
     const step = joins ? JOIN_STEP_ORDER[state.phase as keyof typeof JOIN_STEP_ORDER] : STEP_ORDER[state.phase];
 
     return (

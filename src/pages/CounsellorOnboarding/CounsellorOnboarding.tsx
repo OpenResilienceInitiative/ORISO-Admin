@@ -220,7 +220,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
-    // #1026 slice 3: an agency admin who does not counsel needs no topic and no counsellor profile.
+    // An agency admin who does not counsel needs no topic and no counsellor profile.
     const agencyAdmin = isAgencyAdminInvite(invite);
     const counselling = counsels(invite, data);
     const topicsValid = !counselling || data.topicIds.length > 0;
@@ -402,7 +402,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {selectableTopics.length === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
-                        // submit that can never be enabled (the dead end of #1 on dev).
+                        // submit that can never be enabled.
                         <Typography
                             role="alert"
                             variant="body2"

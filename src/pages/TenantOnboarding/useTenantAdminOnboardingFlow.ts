@@ -76,7 +76,7 @@ const FORWARDED_DPA: DpaAcceptanceData = {
     signerOrganisation: '',
 };
 
-/** The Träger the invite is about: the joined one (#1026) or the reserved new one. */
+/** The Träger the invite is about: the joined one or the reserved new one. */
 const invitedTenantId = (invite: TenantAdminOnboardingInviteDTO): number =>
     (invite.joinsExistingTenant ? invite.tenantId : invite.reservedTenantId) ?? invite.tenantId ?? 0;
 
@@ -125,7 +125,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     });
                     return;
                 }
-                // #1026: joining an existing Träger skips organisation and DPA.
+                // Joining an existing Träger skips organisation and DPA.
                 setState({ phase: loaded.joinsExistingTenant ? 'account' : 'organisation' });
             })
             .catch((error: unknown) => {
@@ -218,14 +218,12 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 const result = await client.registerTenantAdmin(
                     inviteToken,
                     joins
-                        ? // #1026: the Träger, its organisation data and its DPA exist already.
+                        ? // The Träger, its organisation data and its DPA exist already.
                           { account: { password } }
                         : {
                               organisation: organisation as OrganisationData,
-                              // Unchanged request shape (#723 contract): the forwarded
-                              // case simply sends `accepted: false` with no signer
-                              // identity — the server authorises that against its own
-                              // record of the forward.
+                              // The forwarded case sends `accepted: false` without a signer; the
+                              // server authorises that against its own record of the forward.
                               dpa: dpa ?? FORWARDED_DPA,
                               account: { password },
                               reservedTenantId: invite.reservedTenantId as number,

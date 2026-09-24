@@ -69,10 +69,7 @@ export interface TenantAdminOnboardingInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
-    /**
-     * The tenant ID the invite reserved (TenantIdReservationDTO.tenantId).
-     * Absent when the invite joins an existing Träger (`joinsExistingTenant`).
-     */
+    /** TenantIdReservationDTO.tenantId; absent when the invite joins an existing Träger. */
     reservedTenantId?: number;
     /**
      * TenantIdReservationDTO.token — proves ownership of the reservation and is
@@ -81,13 +78,7 @@ export interface TenantAdminOnboardingInviteDTO {
      * happen atomically.
      */
     tenantIdReservationToken?: string;
-    /**
-     * #1026 slices 4/5: the invite joins a Träger that already exists (an
-     * invite into an existing Träger, or a further admin of a new Träger its
-     * first admin has meanwhile created). The wizard then skips the
-     * organisation and DPA steps and registers with `account.password` alone;
-     * no reservation pair is issued.
-     */
+    /** Joins an existing Träger (also a later admin of a just-created one): no reservation, password only. */
     joinsExistingTenant?: boolean;
     /** The joined Träger — set together with `joinsExistingTenant`. */
     tenantId?: number | null;
@@ -145,10 +136,7 @@ export interface DpaAcceptanceData {
     signerOrganisation: string;
 }
 
-/**
- * Registration body. A NEW Träger sends organisation, DPA and the reservation
- * pair; an invite that joins an existing Träger (#1026) sends only `account`.
- */
+/** A new Träger sends organisation, DPA and the reservation pair; joining an existing one sends only `account`. */
 export type TenantAdminRegistrationRequest =
     | TenantAdminNewTenantRegistrationRequest
     | TenantAdminJoinRegistrationRequest;
@@ -464,7 +452,7 @@ export const createStubTenantAdminOnboardingClient = (
                 throw new InviteLinkError('CONSUMED');
             }
             if (invite.joinsExistingTenant) {
-                // #1026: joining an existing Träger needs the password alone.
+                // Joining an existing Träger needs the password alone.
                 if ('organisation' in request) {
                     throw new Error('JOIN_TAKES_ACCOUNT_ONLY');
                 }

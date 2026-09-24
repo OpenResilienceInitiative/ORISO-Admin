@@ -442,14 +442,7 @@ describe('CounsellorOnboarding', () => {
     });
 });
 
-/*
- * #1026 slice 3: AGENCY_ADMIN invites run this wizard too. The resolve answers
- * `targetRole: AGENCY_ADMIN` plus the inviter's `alsoCounsellor` proposal; the
- * wizard shows it as a switch the invitee may change and sends the choice on
- * register. Off = an agency-admin login only: no topic step, no counsellor
- * profile. On = topics required like a counsellor.
- */
-describe('CounsellorOnboarding — agency admin, "Berät auch" (#1026)', () => {
+describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
     const AGENCY_ADMIN_INVITE: CounsellorOnboardingInviteDTO = {
         ...INVITE,
         targetRole: 'AGENCY_ADMIN',
