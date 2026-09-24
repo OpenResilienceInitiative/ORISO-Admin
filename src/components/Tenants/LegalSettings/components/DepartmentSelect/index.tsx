@@ -23,6 +23,8 @@ interface DepartmentSelectProps {
     /** `ALL_DEPARTMENTS` or a topic id. */
     value: number | typeof ALL_DEPARTMENTS;
     onChange: (value: number | typeof ALL_DEPARTMENTS) => void;
+    /** Blocks switching while a save or publish of the current text is in flight. */
+    disabled?: boolean;
 }
 
 /**
@@ -45,7 +47,7 @@ interface DepartmentSelectProps {
  * the admin never opened. Where the backend does not report it, entries carry no marker rather
  * than a wrong one.
  */
-export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSelectProps) => {
+export const DepartmentSelect = ({ departments, value, onChange, disabled = false }: DepartmentSelectProps) => {
     const { t } = useTranslation();
 
     // With no departments there is only the agency-wide text — a one-entry switcher is noise.
@@ -62,6 +64,7 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
 
     return (
         <SplitDropdown
+            disabled={disabled}
             // The house Fachbereich/topic glyph (Icons Master File `topic_400_24px`),
             // not MUI's `Groups`: this control picks a THEME, not a group of people, and
             // the legal editors draw from the ORISO set (LegalIcons) rather than MUI.

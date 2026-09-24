@@ -156,9 +156,7 @@ const meta = {
         // The real page has the tab row above the composer — same headroom here.
         (Story) => <div style={{ paddingTop: 96 }}>{Story()}</div>,
         (Story) => {
-            // Tenant invites are the platform admin's job (tenant 0) — the only role
-            // that may also create templates ("Neu aus …", ORISO-Admin#1026).
-            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
+            setStoryAuth([UserRole.TenantAdmin]);
             return <Story />;
         },
     ],

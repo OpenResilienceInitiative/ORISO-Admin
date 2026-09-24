@@ -64,7 +64,6 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
     parseUserAuthInfo: vi.fn(),
-    useUserRoles: vi.fn(),
     tenantIdAllocationClient: {
         checkIdAvailability: vi.fn(),
         nextFreeId: vi.fn(),
@@ -98,8 +97,6 @@ vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
 }));
 
-vi.mock('../../hooks/useUserRoles.hook', () => ({ useUserRoles: mocks.useUserRoles }));
-
 import { sendModeStorageKey } from './InviteComposer';
 
 const TEMPLATE = {
@@ -131,8 +128,6 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});
-        // Tenant invites are sent by the platform admin (tenant 0).
-        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, tenantId: 0, hasRole: () => true });
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
         mocks.listAccountInvites.mockResolvedValue(emptyInvitesPage);
@@ -568,21 +563,5 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
         // The dialog opens straight in create mode with template 7 as the source.
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
-    });
-
-    // ORISO-Admin#1026: invite templates are global — only the platform admin may create one.
-    it('keeps "Neu aus" visible but disabled, with the reason, for a non-platform admin', async () => {
-        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: () => true });
-        renderTenantTab();
-        const user = userEvent.setup();
-
-        await screen.findByRole('button', { name: /Standard/ });
-        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        const entry = await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ });
-        expect(entry).toHaveAttribute('aria-disabled', 'true');
-        expect(entry.querySelector('[title="Nur Plattform-Admins können Vorlagen ändern"]')).not.toBeNull();
-        await user.click(entry);
-
-        expect(screen.queryByTestId('templates-dialog')).not.toBeInTheDocument();
     });
 });

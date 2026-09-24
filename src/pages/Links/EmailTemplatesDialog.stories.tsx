@@ -2,11 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { http, HttpResponse, delay } from 'msw';
-// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
-import { UserRole } from '../../enums/UserRole';
-import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -131,14 +127,6 @@ const meta = {
         templateKind: 'TENANT_INVITE',
         onClose: () => {},
     },
-    decorators: [
-        // Invite templates are global; only the platform admin (tenant 0) may create or
-        // change them (ORISO-Admin#1026). Every story shows that view unless it says otherwise.
-        (Story) => {
-            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
-            return <Story />;
-        },
-    ],
 } satisfies Meta<typeof DialogHarness>;
 
 export default meta;
@@ -195,29 +183,5 @@ export const Loading: Story = {
 export const Error: Story = {
     parameters: {
         msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
-    },
-};
-
-/**
- * ORISO-Admin#1026 — a Träger admin (tenant 1) opens the manager. Templates are global,
- * so only the platform admin may change them: "Neue Vorlage" and every "Bearbeiten" stay
- * visible but disabled, with the reason as tooltip. Picking a template for sending still
- * works (see Picker).
- */
-export const TraegerAdminReadOnly: Story = {
-    decorators: [
-        (Story) => {
-            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
-            return <Story />;
-        },
-    ],
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
-        const body = within(canvasElement.ownerDocument.body);
-        const editButtons = await body.findAllByRole('button', { name: /Bearbeiten|Edit/ });
-        editButtons.forEach((button) => expect(button).toBeDisabled());
-        await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeDisabled();
     },
 };

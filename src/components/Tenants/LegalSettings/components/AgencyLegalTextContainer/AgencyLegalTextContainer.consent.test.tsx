@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,8 +7,26 @@ const h = vi.hoisted(() => ({
     card: vi.fn(),
     publishDpp: vi.fn(),
     tenant: vi.fn(),
+    saveAgencyDraft: vi.fn(),
+    discardAgencyDraft: vi.fn(),
 }));
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: h.saveAgencyDraft,
+        discard: h.discardAgencyDraft,
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -92,6 +110,8 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         h.card.mockReset();
         h.publishDpp.mockReset();
         h.tenant.mockReset().mockReturnValue({ data: undefined });
+        h.saveAgencyDraft.mockReset();
+        h.discardAgencyDraft.mockReset().mockResolvedValue(undefined);
     });
 
     it('is offered empty to a Fachbereich whose read carried no sentence (#929)', async () => {
@@ -177,17 +197,28 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         expect(cardProps().consentInheritedFrom).toBeUndefined();
     });
 
-    it('never stamps privacyConsent when saving Alle Fachbereiche (#862)', () => {
+    it('never stamps privacyConsent when publishing Alle Fachbereiche (#862)', async () => {
         storedDepartment();
         h.tenant.mockReturnValue({ data: { content: { privacyConsent: { de: 'Träger-Satz' } } } });
-        const onSaveAgencyWide = vi.fn();
+        h.saveAgencyDraft.mockResolvedValue({
+            kind: 'DPP',
+            content: { de: '<p>normalisiert</p>' },
+            consentText: { de: 'Gespeicherter Satz' },
+            revision: '41:0',
+            savedAt: '2026-09-17T12:00:00Z',
+        });
+        const onSaveAgencyWide = vi.fn().mockResolvedValue(undefined);
 
         renderContainer({ onSaveAgencyWide });
-        cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'Neuer Satz {{legal_links}}' });
-
-        expect(onSaveAgencyWide).toHaveBeenCalledWith({
-            content: { privacy: { de: '<p>neu</p>' } },
+        await act(async () => {
+            await cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'Nicht editierbar {{legal_links}}' });
         });
+
+        expect(h.saveAgencyDraft).toHaveBeenCalledWith({
+            content: { de: '<p>neu</p>' },
+            consentText: { de: 'Träger-Satz' },
+        });
+        expect(onSaveAgencyWide).toHaveBeenCalledWith({ content: { privacy: { de: '<p>normalisiert</p>' } } });
     });
 
     it('publishes a Fachbereich sentence as consentText', async () => {
@@ -197,11 +228,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'neu {{legal_links}}' });
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: { de: 'neu {{legal_links}}' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: { de: 'neu {{legal_links}}' },
+            },
+            expect.anything(),
+        );
     });
 
     /**
@@ -218,11 +252,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, true, {});
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: {},
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: {},
+            },
+            expect.anything(),
+        );
     });
 
     it('keeps a cleared sentence distinguishable from an untouched empty one', async () => {
@@ -233,11 +270,14 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: '' });
 
         // A language key with empty content is the ONLY way a client can delete the sentence.
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>neu</p>' },
-            publish: true,
-            consentText: { de: '' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>neu</p>' },
+                publish: true,
+                consentText: { de: '' },
+            },
+            expect.anything(),
+        );
     });
 
     it('omits consentText entirely when the card hands none over', async () => {
@@ -250,7 +290,7 @@ describe('AgencyLegalTextContainer — consent sentence', () => {
         // The card passes the third argument only while it owns the consent field. Without it the
         // property is left off the request rather than sent empty, so nothing is claimed about a
         // sentence this surface never edited.
-        expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false });
+        expect(h.publishDpp).toHaveBeenCalledWith({ content: { de: '<p>neu</p>' }, publish: false }, expect.anything());
     });
 });
 
@@ -298,11 +338,14 @@ describe('AgencyLegalTextContainer — the fork copies policy AND sentence', () 
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>agency wide</p>' }, true, cardProps().consentByLanguage);
 
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>agency wide</p>' },
-            publish: true,
-            consentText: { de: 'Traeger-Satz {{legal_links}}' },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>agency wide</p>' },
+                publish: true,
+                consentText: { de: 'Traeger-Satz {{legal_links}}' },
+            },
+            expect.anything(),
+        );
     });
 
     it('leaves a Fachbereich that has already forked with its own sentence, blank included', async () => {

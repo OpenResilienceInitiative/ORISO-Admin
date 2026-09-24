@@ -81,33 +81,6 @@ describe('TemplateSplitButton', () => {
         expect(onCreateFromTemplate).toHaveBeenCalledWith(2);
     });
 
-    /*
-     * ORISO-Admin#1026: invite templates are global, so only the platform admin
-     * may create one. Everyone else keeps the entries visible but disabled —
-     * disable, don't hide — with the reason on them.
-     */
-    it('shows the create-from entries disabled, with the reason, when creating is not allowed', async () => {
-        const user = userEvent.setup();
-        const onCreateFromTemplate = vi.fn();
-        render(
-            <TemplateSplitButton
-                activeTemplateId={1}
-                templates={templates}
-                onSelectTemplate={() => {}}
-                onCreateFromTemplate={onCreateFromTemplate}
-                createDisabledReason="Nur Plattform-Admins können Vorlagen ändern"
-            />,
-        );
-        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        const entry = await screen.findByRole('menuitem', { name: /Neu aus „Kurzfassung“/ });
-        expect(entry).toHaveAttribute('aria-disabled', 'true');
-        expect(entry.querySelector('[title="Nur Plattform-Admins können Vorlagen ändern"]')).not.toBeNull();
-        await user.click(entry);
-        expect(onCreateFromTemplate).not.toHaveBeenCalled();
-        // Picking a template stays possible.
-        expect(screen.getByRole('menuitem', { name: /^Kurzfassung$/ })).not.toHaveAttribute('aria-disabled', 'true');
-    });
-
     it('hides the create-from entries without the callback', async () => {
         const user = userEvent.setup();
         render(<TemplateSplitButton activeTemplateId={1} templates={templates} onSelectTemplate={() => {}} />);

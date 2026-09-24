@@ -101,12 +101,6 @@ export interface InviteComposerProps {
      */
     onCreateFromTemplate?: (templateId: number) => void;
     /**
-     * Keeps the "Neu aus …" entries visible but disabled with this reason —
-     * invite templates are global and only the platform admin may create them
-     * (ORISO-Admin#1026).
-     */
-    templateCreateDisabledReason?: string;
-    /**
      * Enables the "⋮" more-menu with the "CSV-Datei importieren" entry (#315).
      * Called with the client-side parse result and the send mode captured at
      * import time — the file itself is never uploaded anywhere.
@@ -196,7 +190,6 @@ export const InviteComposer = ({
     onManageTemplates,
     onSelectTemplate,
     onCreateFromTemplate,
-    templateCreateDisabledReason,
     onCsvParsed,
     selectionCount = 0,
     onBulkSend,
@@ -588,7 +581,6 @@ export const InviteComposer = ({
                     onCreateFromTemplate={
                         onCreateFromTemplate && ((id) => onCreateFromTemplate(typeof id === 'number' ? id : Number(id)))
                     }
-                    createDisabledReason={templateCreateDisabledReason}
                     onMainClick={() => onManageTemplates('list')}
                     onSelectTemplate={(id) => onSelectTemplate?.(typeof id === 'number' ? id : Number(id))}
                     // The composer row is built from default-size (56px) SplitButtons — the

@@ -6,6 +6,7 @@ import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import { normalizeTopicIds } from './normalizeTopicIds';
 import { stripAgencyAdminControls } from './stripAgencyAdminControls';
+import { assignAgencyToConsultants } from './assignAgencyToConsultants';
 
 /**
  * update agency
@@ -13,12 +14,20 @@ import { stripAgencyAdminControls } from './stripAgencyAdminControls';
  * @param formInput - input data from form
  * @return data
  */
-export const updateAgencyData = async (agencyModel: AgencyData, formInput: AgencyData) => {
+export const updateAgencyData = async (
+    agencyModel: AgencyData,
+    formInput: AgencyData,
+    /** Called once the main PUT is accepted, before follow-up requests that may still fail. */
+    onMainWritten?: () => void,
+) => {
     const agencyId = agencyModel.id;
     if (agencyId == null) {
         throw Error('agency id must be set');
     }
 
+    // Same absent-vs-empty rule as `topicIds` and `online` below: `updateAgencyType` itself skips
+    // the `/changetype` call for a patch that carries no `teamAgency` field, and normalises both
+    // sides before comparing so an unchanged type cannot produce a 409.
     await updateAgencyType(agencyModel, formInput);
 
     const consultingTypeId =
@@ -74,6 +83,7 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
+        onMainWritten?.();
         // Card-based agency edits submit narrow patches. The regular agency GET
         // does not contain postcode ranges, so treating an absent `postCodes`
         // field as an empty selection silently replaces the stored range with
@@ -82,6 +92,20 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
             await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
         }
         // eslint-disable-next-line no-underscore-dangle
-        return response?._embedded;
+        const updatedAgency = response?._embedded;
+
+        // Assign picked counsellors, as the create path does. Absent-vs-empty applies: a
+        // narrow card patch carries no `consultantIds` and must leave assignments alone.
+        // Additive — the picker is not pre-filled, so empty means "nothing picked here".
+        if (formInput.consultantIds?.length > 0) {
+            try {
+                await assignAgencyToConsultants(agencyId, formInput.consultantIds);
+            } catch {
+                // The agency is saved either way; the caller warns on this flag.
+                return { ...updatedAgency, consultantAssignmentFailed: true };
+            }
+        }
+
+        return updatedAgency;
     });
 };

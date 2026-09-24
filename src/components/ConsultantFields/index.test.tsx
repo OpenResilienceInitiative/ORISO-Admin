@@ -42,7 +42,6 @@ const VALID_REQUIRED = {
     email: 'ada@example.org',
     username: 'ada',
     password: 'Str0ng!pass',
-    passwordConfirmation: 'Str0ng!pass',
 };
 
 const Harness = ({
@@ -79,7 +78,6 @@ const LABEL: Record<ConsultantFieldName, string> = {
     email: 'email',
     username: 'counselor.username',
     password: 'counselor.password',
-    passwordConfirmation: 'counselor.passwordConfirmation',
     formalLanguage: 'counselor.formalLanguage.title',
     isSupervisor: 'counselor.isSupervisor',
     isGroupchatConsultant: 'counselor.isGroupChatConsultant',
@@ -127,11 +125,10 @@ describe('the shared consultant field set', () => {
     });
 
     it('drops a field only where the surface declares it excluded', () => {
-        render(<Harness exclude={['adminRemarks', 'password', 'passwordConfirmation']} />);
+        render(<Harness exclude={['adminRemarks', 'password']} />);
 
         expect(isRendered('counselor.adminRemarks')).toBe(false);
         expect(isRendered('counselor.password')).toBe(false);
-        expect(isRendered('counselor.passwordConfirmation')).toBe(false);
         // Everything it did NOT exclude is still there.
         expect(isRendered('counselor.username')).toBe(true);
     });
