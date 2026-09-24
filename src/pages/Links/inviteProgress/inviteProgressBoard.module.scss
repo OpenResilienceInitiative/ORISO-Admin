@@ -90,9 +90,7 @@
     color: var(--m3-error, #b1005e);
 }
 
-/* #1026 slice 5: a waiting invite without unit admin — same magenta role as a
-   dead invite, because the admin has to act. Sits under the status chip. */
-
+/* Same magenta as a dead invite: the admin has to act. */
 .problemChip {
     display: flex;
     width: fit-content;
@@ -108,7 +106,6 @@
     white-space: nowrap;
 }
 
-/* #1026 slice 6: per-row topic permission. */
 .topicSelect {
     width: 100%;
 

@@ -49,7 +49,7 @@ describe('searchInviteAgencies', () => {
         ]);
     });
 
-    it('keeps agencies whose deleteDate is the literal string "null" (as AgencyService serializes it)', async () => {
+    it('keeps agencies whose deleteDate is the string "null"', async () => {
         fetchData.mockResolvedValue({ total: 1, _embedded: [hit(12, { tenantId: 40, deleteDate: 'null' })] });
         await expect(searchInviteAgencies('Sucht')).resolves.toEqual([
             { id: 12, name: 'Agency 12', tenantId: 40, tenantName: undefined, topics: [] },

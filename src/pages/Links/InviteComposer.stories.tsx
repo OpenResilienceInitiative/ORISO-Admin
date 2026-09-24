@@ -481,11 +481,7 @@ export const NewAgencyNumber: Story = {
     },
 };
 
-/**
- * A counsellor for a NEW Beratungsstelle whose BST-Admin invite is already open:
- * number 150 is reserved by that invite, so the counsellor joins it and waits —
- * the field says so instead of flagging a collision, and sending is allowed.
- */
+/** Number 150 is reserved by an open BST-Admin invite: the counsellor joins it and waits, no collision. */
 export const CounsellorJoinsPendingAgency: Story = {
     args: {
         initialValues: {
@@ -526,10 +522,7 @@ export const CounsellorJoinsPendingAgency: Story = {
     },
 };
 
-/**
- * „BST-Admin" adds „Berät auch" (default on, backend `alsoCounsellor`); turning
- * it to „Nur Verwaltung" is what the submit carries.
- */
+/** „BST-Admin" adds „Berät auch" (default on); „Nur Verwaltung" is what the submit then carries. */
 export const AgencyAdminAlsoCounsellor: Story = {
     args: { initialValues: { ...PREFILLED, role: 'AGENCY_ADMIN' }, onSubmit: fn(() => true) },
     play: async ({ args, canvasElement }) => {
@@ -554,12 +547,7 @@ export const AgencyAdminAlsoCounsellor: Story = {
     },
 };
 
-/**
- * Found on Pre-Dev: pressing „Einladen" right after picking a Beratungsstelle
- * did nothing. The mousedown blurred the still-open field, it collapsed to its
- * pill, the row gave back its scroll and the button slid away before mouseup —
- * the click landed on the row. Pressing the send button must not move focus.
- */
+/** Pressing „Einladen" right after picking a Beratungsstelle sends: the press must not move focus. */
 export const SendRightAfterPickingAgency: Story = {
     args: {
         initialValues: {

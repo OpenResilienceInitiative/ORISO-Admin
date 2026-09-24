@@ -271,8 +271,7 @@ describe('InviteCsvImportModal', () => {
         renderModal(
             parseResultOf({
                 rows: [
-                    // #1026: only a BST-Admin founds a new Beratungsstelle, so the
-                    // "next free number" row is an agency-admin row.
+                    // Only a BST-Admin founds a new Beratungsstelle, so this row is an agency-admin row.
                     {
                         line: 1,
                         email: 'a@example.org',
@@ -374,7 +373,7 @@ describe('InviteCsvImportModal', () => {
                 updateDate: null,
             },
         ];
-        // Default: a new Beratungsstelle with its number (a counsellor row must name it, #1026 slice 5).
+        // Default: a new Beratungsstelle with its number (a counsellor row must name it).
         const row = (line: number, email: string, extra: Record<string, unknown> = {}) => ({
             line,
             email,

@@ -605,8 +605,7 @@ export const InviteComposer = ({
             lastName: lastName.trim() || undefined,
             // AUTO pins no id in the browser — the backend assigns the smallest free one.
             tenantId,
-            // #1026 slice 4: a picked (or locked) Träger is sent as EXISTING; the
-            // Träger tab keeps AUTO/MANUAL for a NEW Träger.
+            // A picked or locked Träger goes out as EXISTING; a NEW Träger keeps AUTO/MANUAL.
             tenantIdAllocationMode:
                 (tenantAllowCreate && !tenantLocked) || tenantAllocation.mode === 'existing'
                     ? allocationModeOf(tenantAllocation)
@@ -630,9 +629,7 @@ export const InviteComposer = ({
         }
 
         if (outcome) {
-            // The send press keeps focus in the field being edited (see the send
-            // slot below). Starting over, that field must let go — otherwise its
-            // type-ahead reopens over the fresh bar.
+            // The send press kept focus in the edited field; let go, or its type-ahead reopens over the fresh bar.
             const active = document.activeElement;
             if (active instanceof HTMLElement && rootRef.current?.contains(active)) active.blur();
             setRecipientEmail('');
@@ -805,7 +802,7 @@ export const InviteComposer = ({
                 icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
-            // #1026 slice 3: the admin's own account instead of an e-mail invite.
+            // The admin's own account instead of an e-mail invite.
             ...(onSelfAssign
                 ? [
                       { type: 'divider' as const },
@@ -1090,32 +1087,19 @@ export const InviteComposer = ({
                 other resting state is tonal M3 secondary (owner call). The icon
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
-                {/* Pressing send must not move focus: a blur would collapse the field
-                    still being edited, the row would give back its scroll, and the
-                    button would slide away between mousedown and mouseup — the click
-                    then landed on the row (found on Pre-Dev). Keyboard focus is unaffected. */}
+                {/* A blur on mousedown would collapse the edited field and slide the button away before mouseup. */}
                 <span className={styles.sendSlot} onMouseDownCapture={(event) => event.preventDefault()}>
                     <SplitButton
                         icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
                         label={bulkMode ? String(selectionCount) : singleSendLabel}
                         mainDisabled={!sendReady || submitting}
                         mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                        // The send-mode menu switches "Direkt Versenden" vs "Empfänger
-                        // nur anlegen", which only ever applies to the single-create
-                        // flow (see handleSend). In bulk mode it changed nothing and
-                        // only put a second, inert chevron next to the collapse one.
+                        // The send-mode menu only applies to single create; in bulk it was an inert extra chevron.
                         menu={bulkMode ? undefined : sendMenu}
                         menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                         title={bulkMode ? bulkSendLabel : undefined}
-                        // Filled primary is the single-send CTA; the selection counter
-                        // stays tonal secondary even when ready (Figma 1165:16407
-                        // selection variant) — a state display with actions hanging off
-                        // it, not the page's call to action. What BOTH share: a filled
-                        // shape is a promise that pressing does something. The tonal
-                        // disabled rule keeps `opacity: 1`, so a dead tonal counter was
-                        // pixel-identical to a live one ("Number counter Button
-                        // funktioniert hier nicht"). Not-ready therefore rests
-                        // `outlined` — colour arrives with the ability to fire.
+                        // The selection counter is a state display, not the page CTA, so it stays secondary.
+                        // Tonal disabled keeps full opacity, so not-ready rests outlined or it would look live.
                         variant={(() => {
                             if (!sendReady) return 'outlined';
                             return bulkMode ? 'secondary' : 'primary';
@@ -1131,7 +1115,7 @@ export const InviteComposer = ({
                     <p className={styles.sendHint} id={sendHintId} role="status">
                         {sendBlockedReason}
                     </p>
-                    {/* The one-click fix for the one reason that has one (#1026 slice 5). */}
+                    {/* The one-click fix for the one reason that has one. */}
                     {offerAgencyAdminSwitch && (
                         <M3Button
                             className={styles.sendHintAction}

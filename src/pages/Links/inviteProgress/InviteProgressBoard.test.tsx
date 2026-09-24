@@ -420,7 +420,7 @@ describe('InviteProgressBoard', () => {
     });
 });
 
-describe('InviteProgressBoard — #1026 queue and topic permission', () => {
+describe('InviteProgressBoard — queue and topic permission', () => {
     beforeEach(() => vi.clearAllMocks());
 
     const waiting = invite(10, {

@@ -517,14 +517,8 @@ describe('overlapping invite loads', () => {
     });
 });
 
-/*
- * #1026 wiring on the counsellor tab (tenant admin of Träger 79): the role is
- * the invite's target role, the own Träger goes out as EXISTING, and a NEW
- * Beratungsstelle is founded by a BST-Admin invite — a counsellor may only
- * wait for one whose admin invite is open (the reserved number proves it).
- * Department routing is the backend's job now: no client-side agency lookup.
- */
-describe('CounsellorInvitesTab — #1026 wiring', () => {
+/* Viewer: tenant admin of Träger 79. Department routing is the backend's job, so no client-side agency lookup. */
+describe('CounsellorInvitesTab — invite wiring', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.localStorage.clear();
@@ -542,7 +536,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
     const fill = async (agencyNumber = '275') => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        // dev #1048: sample addresses use example.org, never a domain we really own.
+        // Sample addresses use example.org, never a domain we really own.
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
@@ -701,11 +695,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
-    /*
-     * P3: the counsellor invite is guarded like the tenant invite — inline on the
-     * e-mail field, with the rest of the row preserved.
-     */
-    it('shows the duplicate-address error inline for a counsellor invite (P3)', async () => {
+    it('shows the duplicate-address error inline for a counsellor invite', async () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.createAccountInvite.mockRejectedValue(
             new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } }),
@@ -724,7 +714,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
     });
 
-    it('does not pin the platform admin to "Träger 0" (the JWT carries tenantId as the string "0")', async () => {
+    it('does not pin the platform admin to "Träger 0"', async () => {
         mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
         render(<CounsellorInvitesTab />);
 
@@ -821,7 +811,7 @@ describe('CSV import payload per tab', () => {
         const user = userEvent.setup();
 
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
-        // Counsellor first, its founding BST-Admin second: the order must not matter (#1026 slice 5).
+        // Counsellor first, its founding BST-Admin second: the order must not matter.
         await importCsv(
             user,
             'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch\r\n' +

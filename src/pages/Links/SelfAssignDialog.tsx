@@ -36,25 +36,18 @@ export interface SelfAssignDialogProps {
     searchAgencies?: IdUnitSearch;
     /** Topics of an agency; a counsellor joining an agency with several topics must pick at least one. */
     loadAgencyTopics: (agencyId: number) => Promise<SelfAssignTopic[]>;
-    /** Injectable for stories/tests; default = the real UserService endpoints (#1215). */
+    /** Injectable for stories and tests; defaults to the real endpoints. */
     assign?: (request: SelfAssignmentRequest) => Promise<SelfAssignmentResult>;
     loadAssignments?: () => Promise<SelfAssignments>;
     agencyIdAllocation?: IdAllocationClient;
     onClose: () => void;
-    /** Called after a successful assignment (e.g. to refresh lists). */
     onAssigned?: (result: SelfAssignmentResult) => void;
 }
 
 // The server takes only the counsellor role: an agency-admin row was never read.
 const SELF_ASSIGN_ROLES: SelfAssignmentRole[] = ['COUNSELLOR'];
 
-/**
- * "Mich selbst eintragen" (#1026 slice 3, UserService#1215): the signed-in
- * admin takes a role in a Beratungsstelle with their EXISTING account — no
- * e-mail invite. Träger admins may become counsellor or BST-Admin in their own
- * Träger, agency admins counsellor of their own agencies. The dialog also
- * lists where the admin is already entered, so a second click is not a guess.
- */
+/** "Mich selbst eintragen": the admin joins a Beratungsstelle with their existing account, no e-mail invite. */
 export const SelfAssignDialog = ({
     initialAgency,
     searchAgencies,
