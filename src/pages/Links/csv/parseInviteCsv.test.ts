@@ -131,7 +131,7 @@ describe('parseInviteCsv', () => {
     });
 });
 
-describe('parseInviteCsv — #1026 columns (Ziel, Rolle, Vorlage, Themen & Fachbereiche)', () => {
+describe('parseInviteCsv — Ziel, Rolle, Vorlage and Themen & Fachbereiche', () => {
     const HEADER = 'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche';
 
     it('reads all eight columns of the example file', () => {

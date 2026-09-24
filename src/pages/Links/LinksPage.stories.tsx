@@ -58,10 +58,7 @@ export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
 };
 
-/**
- * Träger admin (tenantId > 0): only "Berater-Invites". Tenant invites would create whole
- * tenants and external inbounds are platform-wide, so both tabs are not rendered at all.
- */
+/** Träger admin: "Berater-Invites"; the platform-only tabs are shown disabled. */
 export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
 };
@@ -110,7 +107,14 @@ export const AgencyAdmin: Story = {
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
         // One role on offer: „Rolle" is fixed on „Berater:in".
         await expect(canvas.getByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
+        // Platform-only tabs stay visible, disabled, and say why.
         await expect(canvas.queryByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeNull();
+        const tenantTab = canvas.getByText(/Träger-Invites|Tenant invites/).closest('[aria-disabled="true"]');
+        await expect(tenantTab).not.toBeNull();
+        (tenantTab as HTMLElement).focus();
+        await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
+            /Nur Plattform-Admins|Platform admins only/,
+        );
     },
 };
 

@@ -1,10 +1,4 @@
-/*
- * CollapsibleField (#1026) — the collapsed "✓ Label" pill of the invite bar.
- * Same 56px band as every other control in the row, full pill radius, and the
- * secondary-container tonal the ID field already uses for a confirmed value
- * (M3NumberField `filled`). Colours come from the M3 CSS variables only.
- */
-
+/* Same tonal as M3NumberField `filled`, so every confirmed value in the row looks alike. */
 .slot {
     display: flex;
     min-width: 0;

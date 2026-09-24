@@ -15,10 +15,10 @@ const hit = (id: number, extra: Record<string, unknown> = {}) => ({
     _embedded: { id, name: `Agency ${id}`, ...extra },
 });
 
-describe('searchInviteAgencies (#1026 slice 2)', () => {
+describe('searchInviteAgencies', () => {
     beforeEach(() => fetchData.mockReset());
 
-    it('calls the picker contract of AgencyService#307', async () => {
+    it('calls the agency list with the picker query', async () => {
         fetchData.mockResolvedValue({ _embedded: [], total: 0 });
         await searchInviteAgencies(' Sucht ');
         expect(fetchData).toHaveBeenCalledWith(

@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 
-/**
- * `auto` = create a NEW unit with the next free id (the "＋ Neu anlegen" entry) ·
- * `manual` = create a NEW unit with a pinned id · `existing` = invite into a
- * unit that already exists (#1026, picked from the type-ahead or locked).
- */
+/** `auto` / `manual` create a NEW unit (next free or pinned id); `existing` invites into one. */
 export type IdFieldMode = 'auto' | 'manual' | 'existing';
 
-/** An existing Träger / Beratungsstelle as the type-ahead lists it (#1026). */
 export interface IdUnitOption {
     id: number;
     /** Display name; absent when the unit is only known by its number (e.g. a typed Nr. or the viewer's own id). */
@@ -18,6 +13,8 @@ export interface IdUnitOption {
     /** Agencies only (#1026): the Träger the unit belongs to — lets the bar fill an empty Träger field. */
     tenantId?: number;
     tenantName?: string;
+    /** Agencies only: the default topic permission for counsellors invited into it. */
+    topicPermission?: 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 }
 
 /**
@@ -41,7 +38,7 @@ export interface UseIdAllocationOptions {
     client: IdAllocationClient;
     /** Typing pause before the availability check fires. */
     debounceMs?: number;
-    /** Start on an existing unit (prefill / locked viewer scope, #1026) instead of Auto. */
+    /** Start on an existing unit (prefill or locked viewer scope) instead of Auto. */
     initialUnit?: IdUnitOption;
 }
 
@@ -60,9 +57,9 @@ export interface UseIdAllocationResult {
     setManualValue: (value: number | undefined) => void;
     /** Arrow click/key: from Auto adopt the smallest free id, else next free id in that direction. */
     step: (direction: 1 | -1) => void;
-    /** "＋ Neu anlegen" (formerly the Auto toggle): back to no deliberate number choice. */
+    /** "＋ Neu anlegen": back to no deliberate number choice. */
     resetToAuto: () => void;
-    /** Type-ahead pick of an existing unit (#1026): always submittable, no availability check. */
+    /** Always submittable: an existing unit needs no availability check. */
     selectExisting: (unit: IdUnitOption) => void;
     /** Read-only preview of the id Auto would assign right now (for the "Neu anlegen" entry). */
     peekNextFree: () => Promise<number | null>;
@@ -97,7 +94,9 @@ export const useIdAllocation = ({
     // "stale responses discarded" guarantee.
     const requestToken = useRef(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const stepInFlight = useRef(false);
+    // Id of the running step; a reset clears it, so a stale step cannot clear a newer one.
+    const stepInFlight = useRef<number | null>(null);
+    const stepSeq = useRef(0);
 
     const cancelPendingCheck = () => {
         requestToken.current += 1;
@@ -149,8 +148,10 @@ export const useIdAllocation = ({
 
     const step = useCallback(
         (direction: 1 | -1) => {
-            if (stepInFlight.current) return;
-            stepInFlight.current = true;
+            if (stepInFlight.current !== null) return;
+            stepSeq.current += 1;
+            const stepId = stepSeq.current;
+            stepInFlight.current = stepId;
             cancelPendingCheck();
             const token = requestToken.current;
 
@@ -186,7 +187,7 @@ export const useIdAllocation = ({
                     setValidation(fromAuto ? 'auto' : 'error');
                 })
                 .finally(() => {
-                    stepInFlight.current = false;
+                    if (stepInFlight.current === stepId) stepInFlight.current = null;
                 });
         },
         [client, value],
@@ -194,7 +195,7 @@ export const useIdAllocation = ({
 
     const resetToAuto = useCallback(() => {
         cancelPendingCheck();
-        stepInFlight.current = false;
+        stepInFlight.current = null;
         setMode('auto');
         setValue(undefined);
         setUnit(undefined);
@@ -205,7 +206,7 @@ export const useIdAllocation = ({
 
     const selectExisting = useCallback((next: IdUnitOption) => {
         cancelPendingCheck();
-        stepInFlight.current = false;
+        stepInFlight.current = null;
         setMode('existing');
         setUnit(next);
         setValue(next.id);
