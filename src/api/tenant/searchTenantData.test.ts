@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../appConfig', () => ({
-    tenantAdminEndpoint: 'https://api.oriso.org/service/tenantadmin',
+    tenantAdminEndpoint: 'https://api.example.org/service/tenantadmin',
 }));
 
 vi.mock('../fetchData', () => ({
@@ -28,7 +28,7 @@ describe('searchTenantData', () => {
         await searchTenantData({ search: '' });
 
         expect(mocks.fetchData).toHaveBeenCalledWith({
-            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
+            url: 'https://api.example.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
             method: FETCH_METHODS.GET,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL],
@@ -41,7 +41,7 @@ describe('searchTenantData', () => {
         await searchTenantData({ search: '   ' });
 
         expect(mocks.fetchData).toHaveBeenCalledWith({
-            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
+            url: 'https://api.example.org/service/tenantadmin/search?page=1&perPage=10&query=*&field=NAME&order=ASC',
             method: FETCH_METHODS.GET,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL],
@@ -54,7 +54,7 @@ describe('searchTenantData', () => {
         await searchTenantData({ search: 'caritas berlin' });
 
         expect(mocks.fetchData).toHaveBeenCalledWith({
-            url: 'https://api.oriso.org/service/tenantadmin/search?page=1&perPage=10&query=caritas%20berlin&field=NAME&order=ASC',
+            url: 'https://api.example.org/service/tenantadmin/search?page=1&perPage=10&query=caritas%20berlin&field=NAME&order=ASC',
             method: FETCH_METHODS.GET,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL],
