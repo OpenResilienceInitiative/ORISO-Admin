@@ -66,7 +66,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     alsoCounsellor: true,
 };
 
-/** #1026 slice 3: an agency-admin invite runs this wizard with the "Berät auch" switch. */
+/** An agency-admin invite runs this wizard with the "Berät auch" switch. */
 export const isAgencyAdminInvite = (invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole'> | null | undefined) =>
     invite?.targetRole === 'AGENCY_ADMIN';
 
@@ -76,21 +76,12 @@ export const counsels = (
     data: Pick<CounsellorWizardData, 'alsoCounsellor'>,
 ) => !isAgencyAdminInvite(invite) || data.alsoCounsellor;
 
-/**
- * The topic level the wizard applies. An agency-admin invite always has CREATE
- * (UserService: its invitee administers — or founds — the agency and brings its
- * topics), whatever the invite row carries; absent = CREATE (older invites).
- */
+/** An agency admin always gets CREATE: they administer or found the agency and bring its topics. */
 export const effectiveTopicPermission = (
     invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole' | 'topicPermission'>,
 ): CounsellorTopicPermission => (invite.targetRole === 'AGENCY_ADMIN' ? 'CREATE' : invite.topicPermission ?? 'CREATE');
 
-/**
- * Which topics arrive selected (ORISO-Admin#1026, slice 6). With `CREATE` the
- * whole coverage is preselected, as before. With `SELECT_EXISTING`/`NONE` a
- * single agency topic is preselected (and fixed in the UI), otherwise the
- * assigned department; without one the invitee chooses.
- */
+/** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
 export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
     const coverage = invite.topics.map((topic) => topic.id);
     if (effectiveTopicPermission(invite) === 'CREATE') {

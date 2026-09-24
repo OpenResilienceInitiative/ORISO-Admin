@@ -214,14 +214,7 @@ export const SingleTopicCoverage: Story = {
     },
 };
 
-/*
- * ORISO-Admin#1026, slice 6 — the topic permission of the invited person.
- * CREATE = the "+" adds further topics of the Träger (today's behaviour);
- * SELECT_EXISTING = only the agency's topics, as toggles, at least one;
- * NONE = the assigned department is fixed (without one: exactly one agency topic).
- */
-
-/** Permission CREATE: the "+" is there, as before. */
+/** Permission CREATE: the "+" is there. */
 export const TopicPermissionCreate: Story = {
     name: 'Topic permission: CREATE ("+")',
     args: {

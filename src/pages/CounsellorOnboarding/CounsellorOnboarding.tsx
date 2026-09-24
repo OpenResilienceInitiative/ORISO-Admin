@@ -196,9 +196,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         value: topic.id,
         label: topicLabel(topic, topicFallback),
     }));
-    // ORISO-Admin#1026, slice 6: without CREATE there is no "+" — the invitee
-    // chooses among the agency's own topics (SELECT_EXISTING) or keeps the
-    // assigned one (NONE; without an assigned one: exactly one agency topic).
+    // Without CREATE there is no "+": the invitee only picks among the agency's own topics.
     const topicPermission = effectiveTopicPermission(invite);
     const agencyTopicsOnly = topicPermission !== 'CREATE';
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
