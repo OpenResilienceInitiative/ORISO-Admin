@@ -251,11 +251,12 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
         // Found by name, not by row order — the list sorts by kind and date, which is
         // not what this story is about.
         await body.findByText('Unsere eigene Berater-Einladung');
-        const editButtonInRowOf = (name: string) => {
-            const row = body.getByText(name).closest('tr');
-            if (!row) throw new Error(`no template row named ${name}`);
-            return within(row as HTMLElement).getByRole('button', { name: /Bearbeiten|Edit/ });
-        };
+        // No `new Error(...)` here: this file exports a story called `Error`, which
+        // shadows the global one and makes the Storybook typecheck fail.
+        const editButtonInRowOf = (name: string) =>
+            within(body.getByText(name).closest('tr') as HTMLElement).getByRole('button', {
+                name: /Bearbeiten|Edit/,
+            });
         await expect(editButtonInRowOf('Unsere eigene Berater-Einladung')).toBeEnabled();
         await expect(editButtonInRowOf('Berater-Willkommen (Plattform)')).toBeDisabled();
         await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
