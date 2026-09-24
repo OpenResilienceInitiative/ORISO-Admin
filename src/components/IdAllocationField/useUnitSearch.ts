@@ -33,10 +33,7 @@ interface UseUnitSearchOptions {
     onTypedUnit: (unit: IdUnitOption) => void;
 }
 
-/**
- * Type-ahead data of the ID field: paged search, number lookups and their stale-reply guards.
- * `typedUnit` / `assignedUnit`: `undefined` = not looked up yet, `null` = no such unit.
- */
+// The ID field's paged search and number lookups; `typedUnit`/`assignedUnit`: undefined = not looked up, null = none.
 export const useUnitSearch = ({
     searchUnits,
     resolveUnit,

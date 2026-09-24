@@ -5,10 +5,7 @@ import { listAccountInvites, type AccountInviteDTO } from '../../api/accountInvi
 import type { InviteViewerScope } from './inviteModel';
 import { listedOnTab, type InviteTab } from './inviteRules';
 
-/**
- * The tab's complete invite list: the board counts and filters client-side, and the endpoint has
- * no bucket aggregation. Only the newest load writes, since each load walks several pages.
- */
+// The complete list, because the board counts client-side; only the newest load writes, as loads walk several pages.
 export const useInviteList = (tab: InviteTab, viewer: InviteViewerScope) => {
     const { t } = useTranslation();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);

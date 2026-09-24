@@ -37,10 +37,7 @@ export const allocationModeOf = (mode: IdFieldMode): AllocationMode => {
     return mode === 'auto' ? 'AUTO' : 'MANUAL';
 };
 
-/**
- * Only a BST-Admin founds a Beratungsstelle. A counsellor may wait for a new one only when an open
- * admin invite reserved its number; "Neu" or a free number has no admin (409 NO_PENDING_UNIT_ADMIN).
- */
+// A counsellor may only wait for a new agency whose number an open admin invite reserved; the server refuses the rest.
 export const counsellorNeedsUnitAdmin = (
     role: InviteRole,
     agency: { mode: IdFieldMode; validation: IdValidationState },
