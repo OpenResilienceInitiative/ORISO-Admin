@@ -15,6 +15,8 @@ export interface IdUnitOption {
     name?: string;
     /** Agencies only: topics the unit counsels on — searched and shown as a secondary line. */
     topics?: string[];
+    /** Agencies only: the default topic permission for counsellors invited into it. */
+    topicPermission?: 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 }
 
 /**

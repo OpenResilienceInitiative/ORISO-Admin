@@ -80,7 +80,6 @@ export interface AccountInviteDTO {
     /** #1026: set while `inviteStatus === 'WAITING_FOR_UNIT'`. */
     waitingForUnit?: InviteWaitingForUnit | null;
     queueProblem?: InviteQueueProblem | null;
-    importBatchId?: string | null;
     /** #1026: counsellor topic permission; absent on an older backend. */
     topicPermission?: InviteTopicPermission | null;
     rawToken?: string;
@@ -117,8 +116,6 @@ export interface CreateAccountInviteRequest {
     acceptBaseUrl?: string;
     /** #1026 slice 3: AGENCY_ADMIN only; the backend defaults to `true`. */
     alsoCounsellor?: boolean;
-    /** #1026 slice 5: one id per CSV file, so the rows of a file may arrive in any order. */
-    importBatchId?: string;
     /** #1026 slice 6: omitted = the agency default. */
     topicPermission?: InviteTopicPermission | boolean;
 }
@@ -259,6 +256,8 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         // learns that DELIVERY is misconfigured instead of "something went wrong".
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.NO_MATCH,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
@@ -273,7 +272,6 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
             firstName: body.firstName,
-            importBatchId: body.importBatchId,
             lastName: body.lastName,
             recipientEmail: body.recipientEmail,
             targetRole: body.targetRole,

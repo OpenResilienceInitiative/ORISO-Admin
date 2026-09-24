@@ -197,6 +197,8 @@ export interface InviteComposerProps {
     searchTenants?: IdUnitSearch;
     /** Agency search; receives the currently chosen Träger so results can be scoped to it. */
     searchAgencies?: (query: string, context: { tenantId?: number }) => Promise<IdUnitOption[]> | IdUnitOption[];
+    /** The agency's default topic permission, for a picked unit whose search hit did not carry it. */
+    loadAgencyTopicPermission?: (agencyId: number) => Promise<TopicPermission | undefined>;
     /**
      * May the Träger field create a NEW Träger? Defaults to `requireTenantId`
      * (the Träger tab); elsewhere the field points at an existing Träger.
@@ -317,6 +319,7 @@ export const InviteComposer = ({
     onSelfAssign,
     searchTenants,
     searchAgencies,
+    loadAgencyTopicPermission,
     tenantAllowCreate = requireTenantId,
     initialValues,
     className,
@@ -384,6 +387,26 @@ export const InviteComposer = ({
     useEffect(() => {
         if (lockedAgency) selectExistingAgency(lockedAgency);
     }, [lockedAgency?.id, lockedAgency?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // The chosen agency's default prefills the chip; the admin may still change it.
+    const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
+    useEffect(() => {
+        if (!pickedAgency) return undefined;
+        if (pickedAgency.topicPermission) {
+            setTopicPermission(pickedAgency.topicPermission);
+            return undefined;
+        }
+        if (!loadAgencyTopicPermission) return undefined;
+        let cancelled = false;
+        loadAgencyTopicPermission(pickedAgency.id)
+            .then((agencyDefault) => {
+                if (!cancelled && agencyDefault) setTopicPermission(agencyDefault);
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+        };
+    }, [pickedAgency?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const tenantId = tenantAllocation.value;
     const showAgencyField = includeAgencyField && role !== 'TENANT_ADMIN';

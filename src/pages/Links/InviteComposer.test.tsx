@@ -442,7 +442,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                 ),
             ).toHaveLength(2);
             // Inline, not a global toast: the generic create-failed toast must not appear.
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             // The row keeps its values — nothing the admin typed is thrown away.
             expect(screen.getByLabelText('E-Mail')).toHaveValue('taken@example.org');
             // And a second click cannot re-post the same address.
@@ -466,7 +466,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
                 ),
             ).toHaveLength(2);
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBeUndefined();
         });
 
@@ -548,7 +548,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
 
-            expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
+            expect(await screen.findByText('Diese Träger-ID ist bereits vergeben.')).toBeInTheDocument();
             expect(
                 screen.queryAllByText(
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',

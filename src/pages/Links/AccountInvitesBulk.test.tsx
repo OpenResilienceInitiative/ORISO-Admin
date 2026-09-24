@@ -520,7 +520,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         await user.click(await rowResendButton('person22@example.org'));
 
         expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Invite konnte nicht erneut gesendet werden')).not.toBeInTheDocument();
     });
 
     it('falls back to the counsellor wording on a bodyless resend 403', { timeout: 90_000 }, async () => {
@@ -533,7 +533,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         expect(
             await screen.findByText('Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Invite konnte nicht erneut gesendet werden')).not.toBeInTheDocument();
     });
 
     it('keeps the generic resend-failed toast for non-403 failures', { timeout: 90_000 }, async () => {
@@ -543,7 +543,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
 
         await user.click(await rowResendButton('person22@example.org'));
 
-        expect(await screen.findByText('Could not resend invite')).toBeInTheDocument();
+        expect(await screen.findByText('Invite konnte nicht erneut gesendet werden')).toBeInTheDocument();
     });
 
     it(
@@ -670,7 +670,7 @@ describe('SMTP delivery failures on resend and bulk send (UserService#1160)', ()
         await user.click(await rowResendButton('person22@example.org'));
 
         expect(await screen.findByText(CREDENTIALS_MISSING)).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Invite konnte nicht erneut gesendet werden')).not.toBeInTheDocument();
     });
 
     it('stops after the first 502 — one cause toast on top of the count summary', { timeout: 90_000 }, async () => {

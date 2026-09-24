@@ -2,6 +2,7 @@ import { agencyEndpointBase } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
+import type { InviteTopicPermission } from '../accountInvites/accountInvites';
 
 /** One hit of the invite-bar agency picker (#1026 slice 2). */
 export interface InviteAgencyHit {
@@ -11,7 +12,17 @@ export interface InviteAgencyHit {
     tenantName?: string;
     /** Topic (Fachbereich) names — the search matches them too. */
     topics: string[];
+    /** Agency default for invited counsellors, when the server sends settings. */
+    topicPermission?: InviteTopicPermission;
 }
+
+const TOPIC_PERMISSIONS: InviteTopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];
+
+/** The agency's `settings.counsellorTopicPermission`, or `undefined` when absent or unknown. */
+export const agencyTopicPermission = (agency: Record<string, any> | undefined): InviteTopicPermission | undefined => {
+    const value = agency?.settings?.counsellorTopicPermission;
+    return TOPIC_PERMISSIONS.includes(value) ? value : undefined;
+};
 
 const PAGE_SIZE = 10;
 
@@ -44,6 +55,7 @@ export const searchInviteAgencies = async (query: string, tenantId?: number): Pr
                 name: agency.name ?? undefined,
                 tenantId: agency.tenantId != null ? Number(agency.tenantId) : undefined,
                 tenantName: agency.tenantName ?? undefined,
+                topicPermission: agencyTopicPermission(agency),
                 topics: (agency.topics ?? [])
                     .map((topic: { name?: string }) => topic?.name)
                     .filter((name: unknown): name is string => typeof name === 'string' && name !== ''),

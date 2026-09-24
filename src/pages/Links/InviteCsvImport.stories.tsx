@@ -78,7 +78,6 @@ const CsvImportHarness = () => {
             />
             {csvImport && (
                 <InviteCsvImportModal
-                    forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                     idKind="tenant"
                     createInvite={async (row) => {
                         await new Promise((resolve) => {
@@ -132,7 +131,6 @@ export const MoreMenuOpen: Story = {
 export const PreviewModalMixedRows: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
             idKind="tenant"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -159,7 +157,6 @@ export const PreviewModalMixedRows: Story = {
 export const PreviewModalAgencyIds: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
             idKind="agency"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -216,7 +213,6 @@ const ALL_COLUMNS_CSV = [
 export const PreviewModalAllColumns: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
             idKind="agency"
             tabRole="COUNSELLOR"
             templates={COUNSELLOR_TEMPLATES}

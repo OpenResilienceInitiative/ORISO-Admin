@@ -73,7 +73,6 @@ describe('InviteCsvImportModal', () => {
         render(
             <InviteCsvImportModal
                 createInvite={createInvite}
-                forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                 idKind="tenant"
                 parseResult={parseResult}
                 takenTenantIds={new Set([1, 2, 4])}
@@ -390,11 +389,10 @@ describe('InviteCsvImportModal', () => {
                 idKind: 'agency',
                 tabRole: 'COUNSELLOR',
                 templates: TEMPLATES,
-                forbiddenFallback: 'x',
                 ...props,
             });
 
-        it('sends an existing agency, the row template and the topic permission; empty cells use the defaults', async () => {
+        it('sends an existing agency, the row template and the topic permission; an empty topic cell is omitted', async () => {
             const user = userEvent.setup();
             renderAgency([
                 row(2, 'anna@x.de', { id: 42, target: 'EXISTING', template: 'standard', topicPermission: 'CREATE' }),
@@ -415,8 +413,8 @@ describe('InviteCsvImportModal', () => {
                 target: 'NEW',
                 role: 'COUNSELLOR',
                 templateId: undefined,
-                topicPermission: 'NONE',
             });
+            expect(createInvite.mock.calls[1][0]).not.toHaveProperty('topicPermission', expect.anything());
         });
 
         it('shows the new columns with readable values', () => {
@@ -490,6 +488,46 @@ describe('InviteCsvImportModal', () => {
                 alsoCounsellor: undefined,
                 topicPermission: 'SELECT_EXISTING',
             });
+        });
+
+        it('sends founding BST-Admin rows before the rows that wait for them', async () => {
+            renderAgency([
+                row(2, 'carla@x.de'),
+                row(3, 'bernd@x.de', { role: 'AGENCY_ADMIN' }),
+                row(4, 'dora@x.de', { id: 42, target: 'EXISTING' }),
+            ]);
+            await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(3));
+            expect(createInvite.mock.calls.map(([sent]) => sent.recipientEmail)).toEqual([
+                'bernd@x.de',
+                'carla@x.de',
+                'dora@x.de',
+            ]);
+        });
+
+        it('refreshes a waiting row from the invite list once the rows are sent', async () => {
+            createInvite.mockResolvedValueOnce({ inviteId: 7, waiting: true, noUnitAdmin: true });
+            const { rerender } = renderAgency([row(2, 'carla@x.de')]);
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            expect(await rowCells('carla@x.de').findByText(/Kein BST-Admin/)).toBeInTheDocument();
+
+            rerender(
+                <InviteCsvImportModal
+                    createInvite={createInvite}
+                    idKind="agency"
+                    invites={[{ id: 7, inviteStatus: 'WAITING_FOR_UNIT', queueProblem: null } as never]}
+                    parseResult={parseResultOf({ rows: [row(2, 'carla@x.de')] as never })}
+                    tabRole="COUNSELLOR"
+                    templates={TEMPLATES}
+                    onClose={onClose}
+                    onCreated={onCreated}
+                />,
+            );
+
+            expect(rowCells('carla@x.de').queryByText(/Kein BST-Admin/)).not.toBeInTheDocument();
+            expect(
+                rowCells('carla@x.de').getByText('Geht raus, sobald die Beratungsstelle angelegt ist.'),
+            ).toBeInTheDocument();
         });
 
         it('marks a row the backend stored as waiting for its new Beratungsstelle', async () => {
