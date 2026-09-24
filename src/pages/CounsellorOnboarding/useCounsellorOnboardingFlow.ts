@@ -62,12 +62,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     agency: { name: '' },
 };
 
-/**
- * Which topics arrive selected (ORISO-Admin#1026, slice 6). With `CREATE` the
- * whole coverage is preselected, as before. With `SELECT_EXISTING`/`NONE` a
- * single agency topic is preselected (and fixed in the UI), otherwise the
- * assigned department; without one the invitee chooses.
- */
+/** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
 export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
     const coverage = invite.topics.map((topic) => topic.id);
     if ((invite.topicPermission ?? 'CREATE') === 'CREATE') {

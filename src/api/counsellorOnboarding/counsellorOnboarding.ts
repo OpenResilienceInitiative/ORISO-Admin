@@ -34,12 +34,7 @@ export interface CounsellorTopicOption {
     name: string | null;
 }
 
-/**
- * How far the invitee may extend their own topics (ORISO-Admin#1026, slice 6):
- * `CREATE` = the "+" adds further topics of the Träger (today's behaviour);
- * `SELECT_EXISTING` = pick among the agency's topics only; `NONE` = the
- * assigned department is fixed — without one, exactly one agency topic.
- */
+/** CREATE: "+" adds Träger topics. SELECT_EXISTING: agency topics only. NONE: assigned one, else exactly one. */
 export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
@@ -65,7 +60,7 @@ export interface CounsellorOnboardingInviteDTO {
      * coverage is selectable.
      */
     availableTopics?: CounsellorTopicOption[];
-    /** Absent (older backend) = `CREATE`, i.e. today's behaviour. */
+    /** Absent (older backend) means `CREATE`. */
     topicPermission?: CounsellorTopicPermission;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
