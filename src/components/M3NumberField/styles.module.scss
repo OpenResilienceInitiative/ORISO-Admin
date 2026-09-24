@@ -228,12 +228,7 @@
     }
 }
 
-/*
- * `fitContent` (#1026): the input sizes itself via its `size` attribute (the
- * characters it currently shows) instead of filling a 20-character default,
- * so a short value like "Neu" or "12" no longer leaves a wide empty pill.
- */
-
+/* `fitContent`: width comes from the input's `size` attribute, not the 20-character default. */
 .inputFit {
     width: auto;
     max-width: 22ch;

@@ -78,7 +78,6 @@ const CsvImportHarness = () => {
             />
             {csvImport && (
                 <InviteCsvImportModal
-                    forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                     idKind="tenant"
                     createInvite={async (row) => {
                         await new Promise((resolve) => {
@@ -132,7 +131,6 @@ export const MoreMenuOpen: Story = {
 export const PreviewModalMixedRows: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
             idKind="tenant"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -159,7 +157,6 @@ export const PreviewModalMixedRows: Story = {
 export const PreviewModalAgencyIds: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
             idKind="agency"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -177,14 +174,7 @@ export const PreviewModalAgencyIds: Story = {
     ),
 };
 
-/**
- * #1026 — the CSV is the main invite path, so every new field has a column:
- * Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (enum or
- * plain true/false) and Berät auch. The preview shows them per row; rows that
- * cannot work (a counsellor for a new Beratungsstelle without its number, an
- * unknown template) stay visible with the reason in plain German and are left
- * out of the batch. A counsellor the backend stores as waiting reads „Vorgemerkt".
- */
+// The CSV is the main invite path, so every invite-bar field has a column.
 const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
     {
         id: 11,
@@ -216,7 +206,6 @@ const ALL_COLUMNS_CSV = [
 export const PreviewModalAllColumns: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
             idKind="agency"
             tabRole="COUNSELLOR"
             templates={COUNSELLOR_TEMPLATES}

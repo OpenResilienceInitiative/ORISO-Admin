@@ -290,7 +290,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(await screen.findByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
         await waitFor(() => expect(sendButton).toBeDisabled());
 
-        // #1026: "Auto" is now the type-ahead's "＋ Neu anlegen" entry.
+        // "＋ Neu anlegen" resets the field to Auto.
         await user.click(await screen.findByRole('option', { name: /Neu anlegen/ }));
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Neu');
         await waitFor(() => expect(sendButton).toBeEnabled());
@@ -394,7 +394,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
-        // Selection is lifted to the tab and the field folds into a "✓ Zweite Vorlage" pill (#1026)…
+        // Selection is lifted to the tab and the field folds into its pill…
         expect(await screen.findByTitle('Zweite Vorlage')).toBeInTheDocument();
 
         // …and the send call uses exactly that template.
@@ -440,7 +440,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                 ),
             ).toHaveLength(2);
             // Inline, not a global toast: the generic create-failed toast must not appear.
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             // The row keeps its values — nothing the admin typed is thrown away.
             expect(screen.getByLabelText('E-Mail')).toHaveValue('taken@example.org');
             // And a second click cannot re-post the same address.
@@ -464,7 +464,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
                 ),
             ).toHaveLength(2);
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBeUndefined();
         });
 
@@ -546,7 +546,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
 
-            expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
+            expect(await screen.findByText('Diese Träger-ID ist bereits vergeben.')).toBeInTheDocument();
             expect(
                 screen.queryAllByText(
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',

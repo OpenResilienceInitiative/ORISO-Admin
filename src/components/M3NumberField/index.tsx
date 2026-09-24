@@ -56,23 +56,12 @@ interface M3NumberFieldProps {
     supportingText?: ReactNode;
     /** Trailing slot inside the main segment (e.g. an Auto toggle chip). */
     trailing?: ReactNode;
-    /**
-     * Free-text mode (#1026 hybrid ID field): the input shows `displayText`
-     * and reports every keystroke raw — letters included — instead of
-     * filtering to digits. The chevrons keep stepping through `onStep`.
-     */
+    /** Free-text mode: shows `displayText` and reports keystrokes raw instead of filtering to digits. */
     onTextChange?: (raw: string) => void;
-    /**
-     * Extra attributes for the inner input (combobox ARIA, focus/click
-     * handlers). `onKeyDown` runs first; calling `preventDefault()` in it
-     * suppresses the ArrowUp/ArrowDown stepping (e.g. while a menu is open).
-     */
+    /** Extra inner-input attributes; `preventDefault()` in their `onKeyDown` suppresses arrow stepping. */
     inputProps?: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'disabled' | 'readOnly'>;
     inputRef?: Ref<HTMLInputElement>;
-    /**
-     * Size the main segment to its content instead of the input's default
-     * 20-character width (#1026: "the Träger field is too wide").
-     */
+    /** Size the main segment to its content instead of the input's default 20-character width. */
     fitContent?: boolean;
 }
 

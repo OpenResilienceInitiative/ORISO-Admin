@@ -3,11 +3,9 @@ import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
-import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
-import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
 import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
-import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     assignBatchTenantIds,
     type InviteCsvRejectionReason,
@@ -15,8 +13,6 @@ import {
     type ParseInviteCsvResult,
 } from './csv/parseInviteCsv';
 import {
-    DEFAULT_TOPIC_PERMISSION,
-    inviteConflictReasonKey,
     ROLE_LABEL_KEYS,
     rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
@@ -24,6 +20,7 @@ import {
     type InviteViewerScope,
     type TopicPermission,
 } from './inviteModel';
+import { explainInviteError } from './explainInviteError';
 import styles from './inviteCsvImport.module.scss';
 
 /**
@@ -36,13 +33,13 @@ export interface InviteCsvCreateRow {
     lastName?: string;
     /** Resolved ID column: the file's value, or the batch-assigned one on the Träger tab. */
     id?: number;
-    /** #1026 "Ziel": EXISTING = invite into the unit with that id (agency space: UserService#1212). */
+    /** "Ziel": EXISTING invites into the unit with that id. */
     target: InviteCsvTarget;
-    /** #1026 "Rolle" (backend `targetRole`); an empty cell = the tab's role. */
+    /** An empty "Rolle" cell means the tab's role. */
     role: InviteRole;
-    /** #1026 "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
+    /** "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
     templateId?: number;
-    /** #1026 "Themen & Fachbereiche" (counsellors only); `undefined` = the agency default. */
+    /** Counsellors only; `undefined` = omitted, the server decides. */
     topicPermission?: TopicPermission;
     /** #1026 "Berät auch" (agency admins only); `undefined` = the backend default (yes). */
     alsoCounsellor?: boolean;
@@ -50,6 +47,8 @@ export interface InviteCsvCreateRow {
 
 /** What the backend did with one row, as far as the preview shows it. */
 export interface InviteCsvCreateOutcome {
+    /** The created invite, so the preview can follow its status in the invite list. */
+    inviteId?: number;
     /** Stored, not sent: the row waits for its new Beratungsstelle / Träger (#1026 slice 5). */
     waiting?: boolean;
     /** Waiting, and no admin row for that unit has arrived (yet). */
@@ -84,22 +83,9 @@ interface ImportRow {
     /** `created` flavour: stored and waiting for its unit (#1026 slice 5). */
     waiting?: boolean;
     noUnitAdmin?: boolean;
-    /** `failed` flavour: the backend's 409 `X-Reason`, when it named one this preview explains. */
-    conflictReason?: string;
-    /** `failed` flavour: the backend rejected the id with 409. */
-    conflict?: boolean;
-    /**
-     * P3 `failed` flavour: the 409 was about the recipient address already
-     * belonging to a registered user, not about the id. Labelling that as an id
-     * collision would send the admin to fix the wrong column.
-     */
-    emailTaken?: boolean;
-    /**
-     * `failed` flavour: the backend answered 403 — the admin's ROLE cannot create
-     * these invites (UserService#1006). Every retry would fail the same way, so
-     * the row must not look like a fixable data problem.
-     */
-    forbidden?: boolean;
+    inviteId?: number;
+    /** `failed`: short chip label and the full explanation under it. */
+    failure?: { label: string; message?: string };
 }
 
 export interface InviteCsvImportModalProps {
@@ -108,11 +94,11 @@ export interface InviteCsvImportModalProps {
     idKind: InviteCsvIdKind;
     /** `tenant` kind: ids the auto-population must skip (existing tenants + active invites). */
     takenTenantIds?: Set<number>;
-    /** #1026: the role this tab invites — the default for an empty "Rolle" cell. */
+    /** Default for an empty "Rolle" cell. */
     tabRole?: InviteRole;
-    /** #1026: who imports — limits the roles a row may hand out. */
+    /** Limits the roles a row may hand out. */
     viewerScope?: InviteViewerScope;
-    /** #1026: active templates of this tab, for the "Vorlage" column (by name or number). */
+    /** Active templates of this tab, matched by name or number in the "Vorlage" column. */
     templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<InviteCsvCreateOutcome | void>;
@@ -126,12 +112,8 @@ export interface InviteCsvImportModalProps {
      * invites into the viewer's OWN Träger, which a platform admin does not have.
      */
     ownTenantKnown?: boolean;
-    /**
-     * Role-aware explanation shown when a row fails with a 403 that carries no
-     * usable backend message (UserService#1006). Provided by the tab, which
-     * knows whether Träger admins or counsellors are being invited here.
-     */
-    forbiddenFallback: string;
+    /** The tab's invite list; created rows follow their live status in it. */
+    invites?: AccountInviteDTO[];
     onClose: () => void;
     /** Called once per invite run that created at least one invite — refresh the invites table. */
     onCreated: () => void;
@@ -158,7 +140,7 @@ export const InviteCsvImportModal = ({
     createInvite,
     tabRoles,
     ownTenantKnown = true,
-    forbiddenFallback,
+    invites,
     onClose,
     onCreated,
 }: InviteCsvImportModalProps) => {
@@ -204,11 +186,7 @@ export const InviteCsvImportModal = ({
         );
     };
 
-    /*
-     * #1026 checks that need the tab's context (its role, its templates, what
-     * the backend already accepts). A row with an issue stays visible with the
-     * reason in plain German and is left out of the batch.
-     */
+    // A row with an issue stays visible with its reason and is left out of the batch.
     const rowIssue = (row: ImportRow): string | undefined => {
         const role = row.role ?? tabRole;
         const line = { line: row.line };
@@ -314,29 +292,29 @@ export const InviteCsvImportModal = ({
         setRows((current) => current.filter((row) => row.line !== line));
     };
 
+    // Founding admins first: rows that wait for a new unit need its admin invite to exist.
+    const sendOrder = (row: ImportRow) => {
+        const role = row.role ?? tabRole;
+        if (row.target === 'EXISTING') return 2;
+        if (role === 'TENANT_ADMIN') return 0;
+        return role === 'AGENCY_ADMIN' ? 1 : 2;
+    };
+
     const runImport = async () => {
         setRunning(true);
         const assigned = idByLine;
+        const queue = [...pendingRows].sort((a, b) => sendOrder(a) - sendOrder(b));
         let created = 0;
         let failed = 0;
-        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
-        // the first one so the admin gets the cause once, on top of the row states.
-        let firstForbidden: Response | null = null;
+        let firstStop: string | null = null;
 
-        // Sequential on purpose: one POST per invite keeps failures attributable per
-        // row, and the backend's id collision checks stay race-free.
-        for (let i = 0; i < pendingRows.length; i += 1) {
-            const row = pendingRows[i];
+        // Sequential: failures stay attributable per row, and id checks stay race-free.
+        for (let i = 0; i < queue.length; i += 1) {
+            const row = queue[i];
             const id = assigned.get(row.line);
-            patchRow(row.line, {
-                state: 'creating',
-                conflict: false,
-                emailTaken: false,
-                forbidden: false,
-                conflictReason: undefined,
-            });
+            const role = row.role ?? tabRole;
+            patchRow(row.line, { state: 'creating', failure: undefined });
             try {
-                const role = row.role ?? tabRole;
                 const outcome: InviteCsvCreateOutcome =
                     // eslint-disable-next-line no-await-in-loop -- sequential on purpose (see above)
                     ((await createInvite({
@@ -347,57 +325,41 @@ export const InviteCsvImportModal = ({
                         target: row.target ?? 'NEW',
                         role,
                         templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
-                        topicPermission:
-                            role === 'COUNSELLOR' ? row.topicPermission ?? DEFAULT_TOPIC_PERMISSION : undefined,
+                        // An empty cell is omitted: the server applies its own default.
+                        topicPermission: role === 'COUNSELLOR' ? row.topicPermission : undefined,
                         alsoCounsellor: role === 'AGENCY_ADMIN' ? row.alsoCounsellor : undefined,
                     })) as InviteCsvCreateOutcome | undefined) ?? {};
                 created += 1;
                 patchRow(row.line, {
                     state: 'created',
                     explicitId: id,
+                    inviteId: outcome.inviteId,
                     waiting: outcome.waiting ?? false,
                     noUnitAdmin: outcome.noUnitAdmin ?? false,
                 });
             } catch (error) {
                 failed += 1;
-                const conflict = error instanceof Response && error.status === 409;
-                const forbidden = error instanceof Response && error.status === 403;
-                if (forbidden && firstForbidden == null) {
-                    firstForbidden = error as Response;
-                }
-                const reason = conflict ? (error as Response).headers.get(FETCH_ERRORS.X_REASON) : null;
-                patchRow(row.line, {
-                    state: 'failed',
-                    conflict,
-                    forbidden,
-                    emailTaken: reason === X_REASON.EMAIL_NOT_AVAILABLE,
-                    conflictReason: reason && inviteConflictReasonKey(reason) ? reason : undefined,
-                });
-                if (forbidden) {
-                    // A role-level 403 applies to EVERY row — the remaining requests
-                    // would all fail the same way, so mark them forbidden and stop
-                    // instead of hammering the backend once per row.
-                    const remaining = pendingRows.slice(i + 1);
+                // eslint-disable-next-line no-await-in-loop -- reads the failed response body
+                const explained = await explainInviteError(error, { t, action: 'create', role, idKind });
+                // A batch-wide cause is said once in the toast, not under every row.
+                const failure = {
+                    label: explained.label,
+                    message: explained.stopsBatch ? undefined : explained.message,
+                };
+                patchRow(row.line, { state: 'failed', failure });
+                if (explained.stopsBatch) {
+                    // 403 and 502 fail every further row the same way: mark them and stop.
+                    firstStop = explained.message;
+                    const remaining = queue.slice(i + 1);
                     failed += remaining.length;
-                    remaining.forEach((skipped) =>
-                        patchRow(skipped.line, {
-                            state: 'failed',
-                            conflict: false,
-                            emailTaken: false,
-                            forbidden: true,
-                        }),
-                    );
+                    remaining.forEach((skipped) => patchRow(skipped.line, { state: 'failed', failure }));
                     break;
                 }
             }
         }
 
         setRunning(false);
-        if (firstForbidden) {
-            // Surface the role explanation once, distinct from the per-row states —
-            // the backend's own message where it sends one (UserService#1006).
-            message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallback);
-        }
+        if (firstStop) message.error(firstStop);
         if (created > 0) {
             onCreated();
         }
@@ -414,23 +376,14 @@ export const InviteCsvImportModal = ({
         }
     };
 
-    // Four mutually exclusive failure flavours — an if-chain instead of nested
-    // ternaries, and `forbidden` first: a role rejection is not a fixable data
-    // problem, so it must not be mislabelled as an id or address collision.
-    const failedRowLabel = (row: ImportRow) => {
-        if (row.forbidden) {
-            return t('links.csvImport.status.forbidden', 'Nicht berechtigt');
-        }
-        if (row.emailTaken) {
-            return t('links.csvImport.status.emailTaken', 'E-Mail-Adresse bereits vorhanden');
-        }
-        if (row.conflictReason === 'NO_PENDING_UNIT_ADMIN') {
-            return t('links.csvImport.status.noPendingUnitAdmin', 'Keine BST-Admin für diese neue Beratungsstelle');
-        }
-        if (row.conflict) {
-            return t('links.csvImport.status.idTaken', '{{idLabel}} vergeben', { idLabel });
-        }
-        return t('links.csvImport.status.failed', 'Fehlgeschlagen');
+    // A created row follows its invite in the tab's list, so a later admin row clears "Kein BST-Admin".
+    const liveQueueState = (row: ImportRow) => {
+        const live = row.inviteId != null ? invites?.find((invite) => invite.id === row.inviteId) : undefined;
+        if (!live) return { waiting: row.waiting, noUnitAdmin: row.noUnitAdmin };
+        return {
+            waiting: live.inviteStatus === 'WAITING_FOR_UNIT',
+            noUnitAdmin: live.queueProblem === 'NO_UNIT_ADMIN',
+        };
     };
 
     const rejectionText = (row: ImportRow): string | undefined => {
@@ -493,16 +446,17 @@ export const InviteCsvImportModal = ({
         switch (row.state) {
             case 'creating':
                 return <Tag color="gold">{t('links.csvImport.status.creating', 'Wird angelegt …')}</Tag>;
-            case 'created':
-                if (row.waiting) {
+            case 'created': {
+                const { waiting, noUnitAdmin } = liveQueueState(row);
+                if (waiting) {
                     // #1026 slice 5: stored, not sent — explained in place, like a rejection.
                     return (
                         <span className={styles.rejection}>
-                            <Tag color={row.noUnitAdmin ? 'red' : 'blue'}>
+                            <Tag color={noUnitAdmin ? 'red' : 'blue'}>
                                 {t('links.csvImport.status.waiting', 'Vorgemerkt')}
                             </Tag>
                             <span className={styles.rejectionReason}>
-                                {row.noUnitAdmin
+                                {noUnitAdmin
                                     ? t(
                                           'links.csvImport.status.waitingNoAdmin',
                                           'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
@@ -516,8 +470,16 @@ export const InviteCsvImportModal = ({
                     );
                 }
                 return <Tag color="green">{t('links.csvImport.status.created', 'Angelegt')}</Tag>;
+            }
             case 'failed':
-                return <Tag color="red">{failedRowLabel(row)}</Tag>;
+                return (
+                    <span className={styles.rejection}>
+                        <Tag color="red">
+                            {row.failure?.label ?? t('links.csvImport.status.failed', 'Fehlgeschlagen')}
+                        </Tag>
+                        {row.failure?.message && <span className={styles.rejectionReason}>{row.failure.message}</span>}
+                    </span>
+                );
             default:
                 return <Tag color="green">{t('links.csvImport.status.valid', 'Gültig')}</Tag>;
         }
@@ -631,7 +593,20 @@ export const InviteCsvImportModal = ({
             width: 180,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason || (row.role ?? tabRole) !== 'COUNSELLOR') return '—';
-                const value = row.topicPermission ?? DEFAULT_TOPIC_PERMISSION;
+                const value = row.topicPermission;
+                if (value == null) {
+                    // Omitted on purpose: the server gives an empty cell SELECT_EXISTING.
+                    return (
+                        <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS.SELECT_EXISTING.description)}>
+                            <span className={styles.autoId}>
+                                {t(
+                                    'links.csvImport.topicPermissionOmitted',
+                                    'leer = Darf weitere Fachbereiche auswählen',
+                                )}
+                            </span>
+                        </Tooltip>
+                    );
+                }
                 return (
                     <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS[value].description)}>
                         <span>{t(...TOPIC_PERMISSION_LABEL_KEYS[value].title)}</span>
@@ -672,7 +647,7 @@ export const InviteCsvImportModal = ({
         <Modal
             titleKey="links.csvImport.title"
             icon={<UploadFileOutlinedIcon />}
-            // Eight data columns since #1026: wide enough to show them all on a laptop.
+            // Wide enough to show all eight data columns on a laptop.
             width={1440}
             footer={
                 <div className={styles.footer}>
@@ -699,7 +674,7 @@ export const InviteCsvImportModal = ({
                       )
                     : t(
                           'links.csvImport.columnsHintAgencyV3',
-                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false), Berät auch (ja/nein) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein. Eine neue Beratungsstelle legt ihre BST-Admin-Zeile an; Berater:innen-Zeilen mit derselben Nummer warten darauf — die Reihenfolge der Zeilen ist egal.',
+                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false; leer = Darf weitere Fachbereiche auswählen), Berät auch (ja/nein) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein. Eine neue Beratungsstelle legt ihre BST-Admin-Zeile an; Berater:innen-Zeilen mit derselben Nummer warten darauf — die Reihenfolge der Zeilen ist egal.',
                       )}
             </p>
             <ListingTable<ImportRow>

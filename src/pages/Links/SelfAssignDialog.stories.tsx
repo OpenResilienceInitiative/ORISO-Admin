@@ -15,18 +15,12 @@ const TOPICS: Record<number, { id: number; name: string }[]> = {
     14: [{ id: 2, name: 'Sucht' }],
 };
 
-/**
- * „Mich selbst eintragen" (#1026 slice 3): the admin takes a role in a
- * Beratungsstelle with their own account — no invite e-mail. A counsellor
- * joining an agency with several topics picks at least one; the dialog lists
- * where the admin is already entered.
- */
+/** The admin joins a Beratungsstelle as counsellor with their own account, without an invite e-mail. */
 const meta = {
     title: 'Organisms/Pages/Links/SelfAssignDialog',
     component: SelfAssignDialog,
     decorators: [withAdminProviders],
     args: {
-        viewerScope: 'tenant',
         initialAgency: AGENCY,
         searchAgencies: async () => [AGENCY, { id: 14, name: 'Beratungsstelle Shelbyville', topics: ['Sucht'] }],
         loadAgencyTopics: async (agencyId: number) => TOPICS[agencyId] ?? [],
@@ -81,9 +75,11 @@ export const AlreadyAssigned: Story = {
     },
 };
 
-/** BST-Admin as the role: no topics needed; a 409 from the server is explained in German. */
-export const AgencyAdminConflict: Story = {
+/** A double click answers 409; the dialog explains it in German. */
+export const AlreadyAssignedConflict: Story = {
     args: {
+        initialAgency: { id: 14, name: 'Beratungsstelle Shelbyville' },
+        loadAssignments: async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] }),
         assign: fn(
             (request: SelfAssignmentRequest): Promise<SelfAssignmentResult> =>
                 Promise.reject(
@@ -96,18 +92,41 @@ export const AgencyAdminConflict: Story = {
     },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await body.findByRole('combobox', { name: /^(Rolle|Role)$/ }));
-        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
-        const confirm = body.getByRole('button', { name: CONFIRM });
+        const confirm = await body.findByRole('button', { name: CONFIRM });
         await waitFor(() => expect(confirm).toBeEnabled());
         await userEvent.click(confirm);
         await body.findByText(/bereits in dieser Rolle eingetragen|already assigned to this Beratungsstelle/);
     },
 };
 
-/** Agency admins may only take the counsellor role — the role field is fixed. */
-export const AgencyAdminViewer: Story = {
-    args: { viewerScope: 'agency', initialAgency: { id: 14, name: 'Beratungsstelle Shelbyville' } },
+/** An agency without topics answers 400; the server's reason is shown. */
+export const AgencyWithoutTopics: Story = {
+    args: {
+        initialAgency: { id: 16, name: 'Beratungsstelle ohne Themen' },
+        loadAssignments: async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] }),
+        assign: fn(
+            (request: SelfAssignmentRequest): Promise<SelfAssignmentResult> =>
+                Promise.reject(
+                    Object.assign(
+                        new Response(JSON.stringify({ message: 'Die Beratungsstelle hat noch keine Themen.' }), {
+                            status: 400,
+                        }),
+                        { request },
+                    ),
+                ),
+        ),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const confirm = await body.findByRole('button', { name: CONFIRM });
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+        await body.findByText('Die Beratungsstelle hat noch keine Themen.');
+    },
+};
+
+/** Self-assignment is counsellor only, for every viewer: the role field is fixed. */
+export const TenantAdminCounsellorOnly: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
