@@ -41,17 +41,13 @@ interface AccountInvitesTabProps {
     includeAgencyField?: boolean;
 }
 
-/**
- * Bulk actions (#316) only make sense while an invite can still change:
- * DRAFT can be sent, EMAIL_SENT can be resent, and both can be revoked.
- * Terminal states (ACCEPTED/EXPIRED/REVOKED/SUPERSEDED) are not selectable.
- */
 /** Agency allocation mode of one CSV row: an existing agency, a pinned new number, or the next free one. */
 const csvAgencyAllocationMode = (row: InviteCsvCreateRow): AllocationMode => {
     if (row.target === 'EXISTING') return 'EXISTING';
     return row.id != null ? 'MANUAL' : 'AUTO';
 };
 
+// Only a DRAFT or a sent invite can still be sent or revoked.
 const isBulkSelectable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
