@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import { UserRole } from '../../enums/UserRole';
@@ -761,11 +761,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(screen.queryByText('Default tenant template')).not.toBeInTheDocument();
     });
 
-    /* House rule "disable, don't hide" (oriso-design-rule-disable-not-hide): a
-       control a role may not use stays on screen, greyed out, and says why.
-       dev #1052 hid the Edit button instead, which left a tenant admin guessing
-       whether the platform had simply lost it. The rule it enforces is
-       unchanged — a shared template is still the platform admin's to change. */
+    // Disable, don't hide: the role may not change it, but must see it.
     it('shows the edit on a shared template disabled instead of hiding it', async () => {
         renderAsTenantAdmin();
 
@@ -773,21 +769,22 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
     });
 
-    it('says in German why the edit is disabled', async () => {
+    it('explains the disabled edit in one keyboard-reachable tooltip', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         const editButton = screen.getByRole('button', { name: 'Edit' });
-        expect(editButton.closest('[title]')).toHaveAttribute(
-            'title',
-            'Nur Plattform-Admins können geteilte Vorlagen ändern',
-        );
+        expect(editButton.closest('[title]')).toBeNull();
+        const trigger = editButton.closest('[tabindex="0"]') as HTMLElement;
+        expect(trigger).not.toBeNull();
+
+        act(() => trigger.focus());
+
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Nur Plattform-Admins können geteilte Vorlagen ändern');
+        expect(trigger).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id);
     });
 
-    /* ORISO-UserService#1210 gave a template an owning Träger. `editable` on the row is
-       the server's own answer to "may this caller change it?" — own-tenant templates
-       yes, the ownerless platform text no. The Admin must follow that per row, not
-       grey out everything a non-platform admin sees. */
+    // `editable` is the server's per-row answer; the role rule is only the fallback.
     it('lets a Träger admin edit their own Träger’s template', async () => {
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
             Promise.resolve(
@@ -826,10 +823,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(await screen.findByDisplayValue('Welcome')).toBeInTheDocument();
     });
 
-    it('leaves creating a template open — the owner decision of 2026-09-23', async () => {
-        // Q30/Q31, Frank 2026-09-24: everyone who may send invites may also
-        // create templates. Only changing a *stored, shared* one stays with the
-        // platform admin.
+    it('leaves creating a template open to a Träger admin', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));

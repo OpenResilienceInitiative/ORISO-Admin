@@ -132,9 +132,7 @@ const meta = {
         onClose: () => {},
     },
     decorators: [
-        // `setStoryAuth` writes a shared token store, so every story states the role it
-        // renders for instead of inheriting whatever ran before it. Default: the platform
-        // admin (tenant 0), who sees every kind and may change the shared texts.
+        // `setStoryAuth` writes a shared store, so each story sets its own role.
         (Story) => {
             setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
             return <Story />;
@@ -199,18 +197,7 @@ export const Error: Story = {
     },
 };
 
-/**
- * ORISO-Admin#1026 — a Träger admin (tenant 1) opens the manager, with one template of their
- * own and one the platform operator wrote.
- *
- * - Creating is theirs to do (owner decision 2026-09-23, confirmed by Frank 2026-09-24):
- *   "Neue Vorlage" stays enabled.
- * - Their own template is theirs to change: "Bearbeiten" is live.
- * - The platform's text is the mail every other Träger sends, so that row's "Bearbeiten" is
- *   visible but disabled with the reason — house rule "disable, don't hide".
- *
- * `editable` per row comes from the server (ORISO-UserService#1210).
- */
+/** A Träger admin may create templates and edit their own; the platform's stays disabled. */
 export const TraegerAdminOwnAndPlatformTemplates: Story = {
     args: { templateKind: 'COUNSELLOR_INVITE' },
     decorators: [
@@ -248,11 +235,9 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
         const body = within(canvasElement.ownerDocument.body);
-        // Found by name, not by row order — the list sorts by kind and date, which is
-        // not what this story is about.
+        // By name: the list sorts by kind and date.
         await body.findByText('Unsere eigene Berater-Einladung');
-        // No `new Error(...)` here: this file exports a story called `Error`, which
-        // shadows the global one and makes the Storybook typecheck fail.
+        // No `new Error()`: this file's `Error` story shadows the global.
         const editButtonInRowOf = (name: string) =>
             within(body.getByText(name).closest('tr') as HTMLElement).getByRole('button', {
                 name: /Bearbeiten|Edit/,

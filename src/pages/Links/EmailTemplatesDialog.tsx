@@ -25,6 +25,7 @@ import { useTenantsData } from '../../hooks/useTenantsData';
 import { convertToOptions } from '../../utils/convertToOptions';
 import { MuiSwitch } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
+import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
 
@@ -127,11 +128,7 @@ export const EmailTemplatesDialog = ({
         'links.templates.platformAdminOnly',
         'Nur Plattform-Admins können geteilte Vorlagen ändern',
     );
-    /* Whether THIS row is the caller's to change. Since ORISO-UserService#1210 a template
-       carries an owning Träger, and the server answers `editable` per row: a Träger's own
-       template is theirs, the ownerless platform text is the operator's. `canEdit` stays
-       as the fallback for a server that does not send the field yet, so a deployment
-       order cannot silently hand out edit rights. */
+    // The server answers per row; the role rule covers a server without `editable`.
     const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
@@ -463,20 +460,14 @@ export const EmailTemplatesDialog = ({
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
                         ) : (
-                            /* House rule "disable, don't hide": the control stays on
-                               screen, greyed out, and says why. Hiding it left a
-                               Träger admin guessing whether the platform had lost the
-                               button. The rule behind it is unchanged — a shared
-                               template is the platform admin's to change. The native
-                               `title` carries the reason for keyboard and test alike,
-                               the Tooltip renders it in the M3 style on hover. */
-                            <Tooltip title={sharedTemplateLockReason}>
-                                <span title={sharedTemplateLockReason}>
+                            <M3Tooltip text={sharedTemplateLockReason}>
+                                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                                <span tabIndex={0}>
                                     <Button disabled size="small">
                                         {t('links.templates.edit', 'Edit')}
                                     </Button>
                                 </span>
-                            </Tooltip>
+                            </M3Tooltip>
                         )}
                         {/* The backend exposes no DELETE for invite-email-templates yet
                             (AccountInviteController: POST/PUT/GET only), so per #314 the
