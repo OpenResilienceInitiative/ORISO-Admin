@@ -169,15 +169,7 @@ export interface InviteProgressBoardProps {
     topicPermissionSavingIds?: number[];
 }
 
-/**
- * Per-row topic permission (#1026 slice 6, redesigned after Frank's review):
- * a compact chip in the same line as the role chip — "Themen: Anlegen ▾" —
- * instead of an outlined select, so a counsellor row is no taller than any
- * other row. The chip opens an M3 menu with the three levels (title plus
- * one-line description, a check on the current one); picking one saves at
- * once. Without the right to change it the chip stays visible but disabled,
- * and the tooltip says why (disable, don't hide).
- */
+/** Per-row topic permission as a chip in the role chip's line; picking a level saves at once. */
 const TopicPermissionChip = ({
     value,
     displayName,
@@ -232,10 +224,7 @@ const TopicPermissionChip = ({
         </button>
     );
 
-    // Dropdown clones its child with the click handler and the anchor ref, and
-    // M3Tooltip clones its child with aria-describedby — so the Dropdown gets a
-    // plain span (a click on the chip bubbles to it) and the tooltip gets the
-    // button itself.
+    // Dropdown and M3Tooltip both clone their child: the Dropdown gets a span, the tooltip the button.
     return (
         <Dropdown
             open={open && !disabled}
@@ -586,7 +575,7 @@ export const InviteProgressBoard = ({
                                                     onTopicPermissionChange ? undefined : topicPermissionLockedReason
                                                 }
                                                 displayName={displayName}
-                                                // Invites created before #1026 carry no value: they behave as CREATE.
+                                                // Older invites carry no value: they behave as CREATE.
                                                 value={invite.topicPermission ?? 'CREATE'}
                                                 onChange={(next) => onTopicPermissionChange?.(invite, next)}
                                             />

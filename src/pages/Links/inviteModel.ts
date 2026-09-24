@@ -48,11 +48,7 @@ export const TOPIC_PERMISSION_LABEL_KEYS: Record<
     },
 };
 
-/**
- * Short labels for the invite table cell (#1026, Frank's decision): the field's
- * own label already says "Themen", so the value is one or two words. The full
- * title and description live in the tooltip and in the open select.
- */
+/** Short labels for the table chip, which already says "Themen"; the full text is in the tooltip and menu. */
 export const TOPIC_PERMISSION_SHORT_LABEL_KEYS: Record<TopicPermission, [key: string, fallback: string]> = {
     NONE: ['links.composer.topics.noneShort', 'Keine weiteren'],
     SELECT_EXISTING: ['links.composer.topics.selectExistingShort', 'Auswählen'],

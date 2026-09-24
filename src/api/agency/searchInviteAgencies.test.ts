@@ -56,12 +56,7 @@ describe('searchInviteAgencies', () => {
         });
     });
 
-    /*
-     * Pre-Dev finding (#1026): an agency admin with more than 10 agencies only
-     * ever saw the first 10 — the picker asked for page 1 and nothing else. The
-     * backend pages (`total` = full hit count, no perPage cap), so the client
-     * must say whether there is more and fetch the next page on request.
-     */
+    // The server pages with a full `total`, so the client must offer the next page.
     it('reports whether more hits exist beyond this page, counted on the server side', async () => {
         fetchData.mockResolvedValue({
             total: 12,

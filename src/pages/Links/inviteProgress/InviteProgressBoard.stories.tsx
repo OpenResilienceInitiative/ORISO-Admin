@@ -374,12 +374,7 @@ export const QueueProblemBadge: Story = {
     },
 };
 
-/**
- * „Themen & Fachbereiche" per row — also for an accepted counsellor (the
- * account follows). Frank's redesign: a chip beside the role chip; it opens an
- * M3 menu (title + one-line description, check on the current level) and the
- * chip label follows the pick.
- */
+/** „Themen & Fachbereiche" per row, also for an accepted counsellor: a chip that opens the menu of levels. */
 export const TopicPermissionInTable: Story = {
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,

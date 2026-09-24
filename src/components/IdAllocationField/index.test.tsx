@@ -195,11 +195,6 @@ describe('IdAllocationField', () => {
         expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 14, name: 'Diakonie Lahr', topics: ['Schulden'] });
     });
 
-    /*
-     * #1026 Pre-Dev finding: the picker showed the first 10 hits and nothing
-     * else, so an agency admin with 12 agencies could not reach two of them.
-     * A paged search now offers "Weitere anzeigen" until the server says done.
-     */
     it('loads further pages of a paged search on request, keeping the menu open', async () => {
         const allocation = allocationState();
         const units = Array.from({ length: 12 }, (_, index) => ({

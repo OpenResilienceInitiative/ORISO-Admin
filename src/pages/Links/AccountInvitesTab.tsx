@@ -364,8 +364,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         };
     }, []);
 
-    // Paged (#1026): the field asks for the next page on "Weitere anzeigen", so
-    // every agency in the viewer's scope is reachable, not only the first 10.
     const searchAgenciesForPicker = useCallback(
         async (query: string, { tenantId, page = 1 }: { tenantId?: number; page?: number }) => {
             const result = await searchInviteAgencies(query, tenantId, page);

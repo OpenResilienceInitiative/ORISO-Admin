@@ -319,11 +319,6 @@ describe.each([
         expect(mocks.nextFreeAgencyId).not.toHaveBeenCalled();
     });
 
-    /*
-     * Pre-Dev finding (#1026): an agency admin with more than 10 agencies saw
-     * only the first 10 in the Beratungsstelle field — the search asked for
-     * page 1 and stopped. The rest must be reachable.
-     */
     it('with more than 10 own agencies: the 11th and 12th are reachable via "Weitere anzeigen"', async () => {
         const own = Array.from({ length: 12 }, (_, index) => ({
             id: 201 + index,

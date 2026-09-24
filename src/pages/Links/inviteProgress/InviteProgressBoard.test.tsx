@@ -501,11 +501,6 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(onTopicPermissionChange).not.toHaveBeenCalled();
     });
 
-    /*
-     * Frank's redesign (#1026): a chip "Themen: <short label>" in the role
-     * chip's line; the full title and its description live in the tooltip and
-     * in the menu.
-     */
     it('shows the short topic label in the chip, the full title and description in a tooltip', async () => {
         render(
             <InviteProgressBoard
