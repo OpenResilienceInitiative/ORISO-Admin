@@ -18,7 +18,7 @@ const commitConsentText = async (text: string) => {
     await userEvent.click(input);
     (input as HTMLTextAreaElement).focus();
     await userEvent.paste(text);
-    await userEvent.click(screen.getByRole('button', { name: 'save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 };
 
 vi.mock('react-i18next', () => ({

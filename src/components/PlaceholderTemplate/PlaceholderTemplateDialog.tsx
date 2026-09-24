@@ -30,6 +30,12 @@ export interface PlaceholderTemplateDialogProps {
     onDismiss?: () => void;
     /** Disables "Speichern" (e.g. while submitting or invalid). */
     saveDisabled?: boolean;
+    /**
+     * Label of the confirm button. Defaults to "Speichern"/"Save" — override it
+     * where the dialog does not itself persist anything, so the button does not
+     * promise a save the surrounding editor still has to perform.
+     */
+    okLabelKey?: string;
     /** Id of an element explaining the save button (e.g. why it is disabled). */
     saveDescribedBy?: string;
     /**
@@ -60,6 +66,7 @@ export const PlaceholderTemplateDialog = ({
     onDismiss,
     saveDisabled = false,
     saveDescribedBy,
+    okLabelKey = 'save',
     footer,
     width = 1080,
 }: PlaceholderTemplateDialogProps) => (
@@ -67,7 +74,7 @@ export const PlaceholderTemplateDialog = ({
         titleKey={titleKey}
         descriptionKey={descriptionKey}
         footer={footer}
-        okLabelKey="save"
+        okLabelKey={okLabelKey}
         cancelLabelKey="cancel"
         onConfirm={onSave}
         onClose={onClose}
