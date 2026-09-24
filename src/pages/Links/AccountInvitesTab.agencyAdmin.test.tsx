@@ -247,7 +247,7 @@ describe.each([
                 ),
             SLOW,
         );
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         const send = screen.getByRole('button', { name: 'Einladen' });
@@ -259,7 +259,7 @@ describe.each([
             targetRole: 'COUNSELLOR',
             agencyId: 101,
             agencyIdAllocationMode: 'EXISTING',
-            recipientEmail: 'lisa.simpson@oriso.org',
+            recipientEmail: 'lisa.simpson@example.org',
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].alsoCounsellor).toBeUndefined();
     });
@@ -296,7 +296,7 @@ describe.each([
         await waitFor(() => expect(mocks.searchInviteAgencies).toHaveBeenCalled());
         expect(agency).toBeEnabled();
         expect(agency).toHaveValue('');
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         expect(screen.getByRole('button', { name: 'Einladen' })).toBeDisabled();
@@ -402,7 +402,7 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
     it('fills the empty Träger from the picked agency and keeps both after "Senden & nächste"', async () => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('');

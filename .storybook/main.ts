@@ -25,7 +25,7 @@ const config: StorybookConfig = {
         // Drop app-only plugins that are noisy or meaningless inside Storybook
         // (eslint linting, runtime-env middleware, auth BFF dev proxy, bundle
         // visualizer). Keep react / tsconfig-paths / svgr for resolution + JSX.
-        const stripped = ['vite-plugin-eslint', 'runtime-env', 'auth-bff-dev', 'visualizer'];
+        const stripped = ['vite-plugin-eslint', 'runtime-env', 'oriso-admin-auth-bff', 'visualizer'];
         const plugins = (cfg.plugins ?? []).filter((p: any) => {
             const name = p && (Array.isArray(p) ? p[0]?.name : p.name);
             return !stripped.includes(name);

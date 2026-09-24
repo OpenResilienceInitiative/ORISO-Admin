@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearAdminLocalStorage } from './clearAdminWebStorage';
 
-// Keys the counselling app writes on the same origin (dev.oriso.org/app), taken from
+// Keys the counselling app writes on the same origin (dev.example.org/app), taken from
 // ORISO-Frontend. Losing matrix_device_id means a new Matrix device on the next app login.
 const APP_KEYS = [
     'auth.access_token_valid_until',
@@ -9,7 +9,7 @@ const APP_KEYS = [
     'auth.keycloak',
     'matrix_access_token',
     'matrix_device_id',
-    'matrix_device_id:@spider_pig:dev.oriso.org',
+    'matrix_device_id:@spider_pig:dev.example.org',
     'matrix_user_id',
     'loglevel:matrix',
     'locale',
