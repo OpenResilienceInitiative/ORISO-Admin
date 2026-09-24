@@ -284,6 +284,30 @@ describe('IdAllocationField', () => {
         expect(screen.queryByRole('option', { name: /Neu anlegen/ })).not.toBeInTheDocument();
     });
 
+    it('keeps a typed number when focus leaves before the lookup answers', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async (id: number) => ({ id, name: 'Caritas Emmendingen' }));
+        const user = userEvent.setup();
+        render(
+            <>
+                <IdAllocationField
+                    label="Träger"
+                    allowCreate={false}
+                    allocation={allocation}
+                    resolveUnit={resolveUnit}
+                />
+                <button type="button">weiter</button>
+            </>,
+        );
+
+        await user.type(screen.getByRole('combobox', { name: 'Träger' }), '40');
+        await user.tab();
+
+        await waitFor(() =>
+            expect(allocation.selectExisting).toHaveBeenLastCalledWith({ id: 40, name: 'Caritas Emmendingen' }),
+        );
+    });
+
     it('refuses a typed number that belongs to no unit in an existing-only field', async () => {
         const allocation = allocationState();
         const resolveUnit = vi.fn(async () => null);

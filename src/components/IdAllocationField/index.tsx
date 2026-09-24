@@ -121,22 +121,23 @@ export const IdAllocationField = ({
 
     // Existing-only field: a typed number counts only once it resolves to a real unit.
     const typedId = DIGITS.test(query.trim()) ? Number(query.trim()) : undefined;
+    const lookupToken = useRef(0);
+    const lookUpTyped = (id: number) => {
+        if (!resolveUnit) return;
+        lookupToken.current += 1;
+        const token = lookupToken.current;
+        resolveUnit(id)
+            .catch(() => null)
+            .then((found) => {
+                if (token !== lookupToken.current) return;
+                setResolved({ id, unit: found });
+                if (found) allocation.selectExisting(found);
+            });
+    };
     useEffect(() => {
         if (!open || allowCreate || typedId === undefined || !resolveUnit) return undefined;
-        let cancelled = false;
-        const timer = window.setTimeout(() => {
-            resolveUnit(typedId)
-                .catch(() => null)
-                .then((found) => {
-                    if (cancelled) return;
-                    setResolved({ id: typedId, unit: found });
-                    if (found) allocation.selectExisting(found);
-                });
-        }, SEARCH_DEBOUNCE_MS);
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
+        const timer = window.setTimeout(() => lookUpTyped(typedId), SEARCH_DEBOUNCE_MS);
+        return () => window.clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, allowCreate, typedId, resolveUnit]);
 
@@ -233,6 +234,12 @@ export const IdAllocationField = ({
         setQuery('');
     };
 
+    // Leaving the field right after typing a number must not drop the pending lookup.
+    const leaveField = () => {
+        if (!allowCreate && typedId !== undefined && resolved?.id !== typedId) lookUpTyped(typedId);
+        closeMenu();
+    };
+
     const choose = (entry: MenuEntry) => {
         if (entry.kind === 'create') allocation.resetToAuto();
         else if (entry.kind === 'unit') allocation.selectExisting(entry.unit);
@@ -243,6 +250,7 @@ export const IdAllocationField = ({
     const handleTextChange = (raw: string) => {
         setQuery(raw);
         setActiveIndex(0);
+        lookupToken.current += 1;
         if (!open) setOpen(true);
         const typed = raw.trim();
         // A new number is checked while the admin keeps typing; an existing-only field waits for the lookup.
@@ -335,7 +343,7 @@ export const IdAllocationField = ({
                     title: locked ? t('idAllocationField.locked', 'Auf Ihre Einheit festgelegt') : undefined,
                     onClick: openMenu,
                     onFocus: openMenu,
-                    onBlur: closeMenu,
+                    onBlur: leaveField,
                     onKeyDown: handleKeyDown,
                 }}
                 inputRef={inputRef}
