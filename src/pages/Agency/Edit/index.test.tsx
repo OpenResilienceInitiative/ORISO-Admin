@@ -596,9 +596,7 @@ const goLiveWithTopicsAvailable = async (user: ReturnType<typeof userEvent.setup
     await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
 };
 
-// Each case renders the full page and walks AntD selects: ~5 s locally, but
-// 20-30 s on the parallel CI runner, where the 30 s default timed out on
-// several unrelated PRs. Give these flows headroom instead of flaking.
+// The full page with AntD selects takes 20-30 s on the parallel CI runner.
 describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
