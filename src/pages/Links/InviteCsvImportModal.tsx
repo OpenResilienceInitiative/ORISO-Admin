@@ -33,11 +33,11 @@ export interface InviteCsvCreateRow {
     lastName?: string;
     /** Resolved ID column: the file's value, or the batch-assigned one on the Träger tab. */
     id?: number;
-    /** #1026 "Ziel": EXISTING = invite into the unit with that id (agency space: UserService#1212). */
+    /** "Ziel": EXISTING invites into the unit with that id. */
     target: InviteCsvTarget;
-    /** #1026 "Rolle" (backend `targetRole`); an empty cell = the tab's role. */
+    /** An empty "Rolle" cell means the tab's role. */
     role: InviteRole;
-    /** #1026 "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
+    /** "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
     templateId?: number;
     /** Counsellors only; `undefined` = omitted, the server decides. */
     topicPermission?: TopicPermission;
@@ -94,11 +94,11 @@ export interface InviteCsvImportModalProps {
     idKind: InviteCsvIdKind;
     /** `tenant` kind: ids the auto-population must skip (existing tenants + active invites). */
     takenTenantIds?: Set<number>;
-    /** #1026: the role this tab invites — the default for an empty "Rolle" cell. */
+    /** Default for an empty "Rolle" cell. */
     tabRole?: InviteRole;
-    /** #1026: who imports — limits the roles a row may hand out. */
+    /** Limits the roles a row may hand out. */
     viewerScope?: InviteViewerScope;
-    /** #1026: active templates of this tab, for the "Vorlage" column (by name or number). */
+    /** Active templates of this tab, matched by name or number in the "Vorlage" column. */
     templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<InviteCsvCreateOutcome | void>;
@@ -186,11 +186,7 @@ export const InviteCsvImportModal = ({
         );
     };
 
-    /*
-     * #1026 checks that need the tab's context (its role, its templates, what
-     * the backend already accepts). A row with an issue stays visible with the
-     * reason in plain German and is left out of the batch.
-     */
+    // A row with an issue stays visible with its reason and is left out of the batch.
     const rowIssue = (row: ImportRow): string | undefined => {
         const role = row.role ?? tabRole;
         const line = { line: row.line };
@@ -652,7 +648,7 @@ export const InviteCsvImportModal = ({
         <Modal
             titleKey="links.csvImport.title"
             icon={<UploadFileOutlinedIcon />}
-            // Eight data columns since #1026: wide enough to show them all on a laptop.
+            // Wide enough to show all eight data columns on a laptop.
             width={1440}
             footer={
                 <div className={styles.footer}>

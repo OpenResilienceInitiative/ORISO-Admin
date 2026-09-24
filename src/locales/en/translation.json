@@ -2147,6 +2147,8 @@
     "idAllocationField.searchPlaceholderExisting": "Name or no.",
     "idAllocationField.locked": "Fixed to your own unit",
     "idAllocationField.noMatches": "No matches",
+    "idAllocationField.assignedExisting": "No. {{id}} is “{{name}}” – pick it in the menu to invite there.",
+    "idAllocationField.noUnitWithNumber": "No unit with no. {{id}}",
     "links.composer.blocked.tenant": "Pick a tenant first: an existing one, a free number or “Create new”.",
     "links.composer.blocked.agency": "Pick an agency first: an existing one, a free number or “Create new”.",
     "links.composer.newWithNumber": "New, no. {{id}}",

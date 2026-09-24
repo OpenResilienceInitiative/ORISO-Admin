@@ -18,7 +18,9 @@ import {
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import type { AllocationMode } from '../../api/idAllocation/idAllocation';
-import getAgencyDataById from '../../api/agency/getAgencyById';
+import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
+import { findInviteTenant } from '../../api/tenant/findInviteTenant';
+import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { agencyTopicPermission, searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
@@ -69,6 +71,22 @@ const loadAgencyDetail = async (agencyId: number) => {
     const response = await getAgencyDataById(String(agencyId));
     // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as removeEmbedded
     return response?._embedded ?? response;
+};
+
+// A typed agency number counts only if that agency exists and is not deleted.
+const findInviteAgency = async (agencyId: number): Promise<IdUnitOption | null> => {
+    try {
+        const agency = await loadAgencyDetail(agencyId);
+        if (agency?.id == null || !isActiveDeleteDate(agency.deleteDate)) return null;
+        return {
+            id: Number(agency.id),
+            name: agency.name ?? undefined,
+            topicPermission: agencyTopicPermission(agency),
+        };
+    } catch (error) {
+        if (error instanceof AgencyAccessError) return null;
+        throw error;
+    }
 };
 
 const loadAgencyTopicPermission = async (agencyId: number) => agencyTopicPermission(await loadAgencyDetail(agencyId));
@@ -320,12 +338,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             // #1026 slice 3: the bar's "Rolle" is the invite's target role.
             const inviteRole: InviteRole = values.role ?? (isTenantInvite ? 'TENANT_ADMIN' : 'COUNSELLOR');
             try {
-                // Department routing (#384) is the backend's job since #1026: an
-                // EXISTING agency adopts its only topic server-side (UserService#1212),
-                // several topics are picked in onboarding per the topic permission
-                // (#1213), and a NEW agency (a reserved number) has no topic yet —
-                // the invite waits for it (#1216). The old client-side lookup had
-                // nothing left to decide.
+                // The backend routes the department: an existing agency adopts its only topic.
                 const created = await createAccountInvite({
                     // Role-aware target (TEN-INV U6/U8): tenant admins land on the
                     // public Admin onboarding route, everyone else on the app layer.
@@ -420,7 +433,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 targetRole: row.role,
                 alsoCounsellor: row.alsoCounsellor,
                 topicPermission: row.topicPermission,
-                // #1026: a row may name its own template ("Vorlage"); empty = the bar's.
+                // A row may name its own template; empty means the bar's.
                 templateId:
                     csvImport.sendMode === 'direct'
                         ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
@@ -622,17 +635,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     return (
         <div ref={composerRef}>
             <InviteComposer
-                // #1026: the Träger tab is platform-admin only and founds NEW Träger;
-                // on the counsellor tab a tenant admin is pinned to their own Träger
-                // and "Rolle" offers what the viewer may hand out (slice 3).
+                // The Träger tab is platform-admin only and founds new Träger.
                 defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
                 allowedRoles={isTenantInvite ? ['TENANT_ADMIN'] : undefined}
-                // #1026 slice 2: the Beratungsstelle type-ahead finds existing agencies
-                // (AgencyService#307); slice 4: the platform admin's Träger type-ahead
-                // finds existing Träger on the counsellor tab.
                 searchAgencies={includeAgencyField ? searchAgenciesForPicker : undefined}
                 loadAgencyTopicPermission={loadAgencyTopicPermission}
                 searchTenants={!isTenantInvite && isSuperAdmin ? searchTenantsForPicker : undefined}
+                resolveTenant={findInviteTenant}
+                resolveAgency={findInviteAgency}
                 onSelfAssign={isTenantInvite ? undefined : (agency) => setSelfAssign({ agency })}
                 includeAgencyField={includeAgencyField}
                 ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}

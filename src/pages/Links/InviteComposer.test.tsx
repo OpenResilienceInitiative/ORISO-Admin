@@ -141,7 +141,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
-        // #1026: a chosen template rests as a "✓ Standard" pill; expanding it shows the split button.
+        // The chosen template rests as a pill; expanding it shows the split button.
         await userEvent.setup().click(await screen.findByTitle('Standard'));
         const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
             `.${splitButtonStyles.splitButton}`,
@@ -291,7 +291,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(await screen.findByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
         await waitFor(() => expect(sendButton).toBeDisabled());
 
-        // #1026: "Auto" is now the type-ahead's "＋ Neu anlegen" entry.
+        // "＋ Neu anlegen" resets the field to Auto.
         await user.click(await screen.findByRole('option', { name: /Neu anlegen/ }));
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Neu');
         await waitFor(() => expect(sendButton).toBeEnabled());
@@ -371,7 +371,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        // #1026: expand the collapsed "✓ Standard" pill, then the main segment opens the dialog.
+        // Expand the pill first; then the main segment opens the dialog.
         await user.click(await screen.findByTitle('Standard'));
         await user.click(await screen.findByRole('button', { name: /Standard/ }));
 
@@ -396,7 +396,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
-        // Selection is lifted to the tab and the field folds into a "✓ Zweite Vorlage" pill (#1026)…
+        // Selection is lifted to the tab and the field folds into its pill…
         expect(await screen.findByTitle('Zweite Vorlage')).toBeInTheDocument();
 
         // …and the send call uses exactly that template.

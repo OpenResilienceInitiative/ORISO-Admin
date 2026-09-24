@@ -66,6 +66,8 @@ const mocks = vi.hoisted(() => ({
     searchTenantData: vi.fn(),
     getAgencyDataById: vi.fn(),
     searchInviteAgencies: vi.fn(),
+    findInviteTenant: vi.fn(),
+    superAdmin: false,
     parseUserAuthInfo: vi.fn(),
     acceptBaseUrlForRole: vi.fn(),
     checkTenantIdAvailability: vi.fn(),
@@ -103,6 +105,21 @@ vi.mock('../../api/agency/getAgencyById', async (importOriginal) => ({
 vi.mock('../../api/agency/searchInviteAgencies', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/agency/searchInviteAgencies')>()),
     searchInviteAgencies: mocks.searchInviteAgencies,
+}));
+
+// Real role reading, except where a test makes the viewer the platform admin.
+vi.mock('../../hooks/useUserRoles.hook', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../hooks/useUserRoles.hook')>();
+    return {
+        useUserRoles: () =>
+            mocks.superAdmin
+                ? { ...actual.useUserRoles(), isSuperAdmin: true, hasRole: () => true }
+                : actual.useUserRoles(),
+    };
+});
+
+vi.mock('../../api/tenant/findInviteTenant', () => ({
+    findInviteTenant: mocks.findInviteTenant,
 }));
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
@@ -518,6 +535,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(99, 79, 'EMAIL_SENT'));
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'FREE' });
         mocks.searchInviteAgencies.mockResolvedValue([]);
+        mocks.superAdmin = false;
     });
 
     /** Fill E-Mail, names and a manual Beratungsstellen-Nr. */
@@ -559,6 +577,35 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         expect(mocks.createAccountInvite.mock.calls[0][0].topicPermission).toBeUndefined();
         expect(mocks.acceptBaseUrlForRole).toHaveBeenCalledWith('AGENCY_ADMIN');
         expect(mocks.getAgencyDataById).not.toHaveBeenCalled();
+    });
+
+    it('takes a typed Träger number only when that Träger exists', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.findInviteTenant.mockImplementation(async (id: number) =>
+            id === 40 ? { id: 40, name: 'Caritas Springfield' } : null,
+        );
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        const tenant = await screen.findByRole('combobox', { name: 'Träger' });
+
+        await user.type(tenant, '999');
+        expect(await screen.findByText('Keine Einheit mit Nr. 999')).toBeInTheDocument();
+        await user.clear(tenant);
+        await user.type(tenant, '40');
+        await user.tab();
+
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Springfield · 40'));
+    });
+
+    it('offers the existing agency behind a taken number', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        await fill('275');
+
+        expect(
+            await screen.findByText(/Nr\. 275 ist „Diakonie Lahr“/, undefined, { timeout: 10_000 }),
+        ).toBeInTheDocument();
     });
 
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {

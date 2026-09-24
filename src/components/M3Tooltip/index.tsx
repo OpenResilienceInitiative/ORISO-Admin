@@ -29,11 +29,7 @@ export interface M3TooltipProps {
     children: ReactElement;
     /** Side the bubble grows to. `top` is the default M3 plain-tooltip anchor. */
     placement?: 'top' | 'bottom';
-    /**
-     * Render the bubble into `document.body` at a fixed position instead of
-     * inside the wrapper — for triggers inside a clipping container such as a
-     * horizontally scrolling toolbar row (#1026 invite bar).
-     */
+    /** Render into `document.body` so a clipping container (a scrolling row) cannot cut the bubble off. */
     portal?: boolean;
     className?: string;
 }

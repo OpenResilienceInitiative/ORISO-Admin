@@ -1,24 +1,14 @@
-/*
- * Shared invite vocabulary (#1026) for the invite bar and the CSV import, so
- * both speak the same contract the backend slices implement.
- */
+// Shared by the invite bar and the CSV import so both send the same contract.
 
 /** Role the invited person gets ("Rolle"). */
 export type InviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN' | 'TENANT_ADMIN';
 
-/**
- * Who is inviting (#1026 visibility rule): the platform admin edits everything,
- * a tenant admin is locked to their own Träger, an agency admin to their own
- * Träger AND Beratungsstelle and may only invite counsellors.
- */
+// Tenant admins are locked to their own Träger; agency admins also to their own
+// Beratungsstelle, and they may only invite counsellors.
 export type InviteViewerScope = 'platform' | 'tenant' | 'agency';
 
-/**
- * "Themen & Fachbereiche" of an invited counsellor (#1026, backend field
- * `topicPermission`): `NONE` = only the preselected department(s) — the default
- * for new invites; `SELECT_EXISTING` = may pick more of the agency's existing
- * departments; `CREATE` = may create new topics (the + button, old behaviour).
- */
+// `NONE` (default): preselected departments only. `SELECT_EXISTING`: may add the
+// agency's existing departments. `CREATE`: may create new topics.
 export type TopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 export const TOPIC_PERMISSIONS: TopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];

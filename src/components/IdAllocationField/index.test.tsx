@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { IdAllocationField } from './index';
@@ -32,13 +32,12 @@ const allocationState = (overrides: Partial<UseIdAllocationResult> = {}): UseIdA
 });
 
 describe('IdAllocationField', () => {
-    it('starts visibly on "Neu" (the former Auto) and NO supporting text', () => {
+    it('starts visibly on "Neu" with no supporting text', () => {
         render(<IdAllocationField label="Träger-ID" allocation={allocationState()} />);
 
         expect(screen.getByRole('combobox', { name: 'Träger-ID' })).toHaveValue('Neu');
         // Owner call: the supporting line states a problem, never an expectation.
         expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
-        // The Auto chip is gone — "＋ Neu anlegen" lives in the type-ahead now (#1026).
         expect(screen.queryByRole('button', { name: 'Automatische ID-Vergabe' })).not.toBeInTheDocument();
     });
 
@@ -173,7 +172,7 @@ describe('IdAllocationField', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
-    it('finds existing units by name or topic and picks one (#1026)', async () => {
+    it('finds existing units by name or topic and picks one', async () => {
         const allocation = allocationState();
         const searchUnits = vi.fn((query: string) =>
             [
@@ -245,16 +244,70 @@ describe('IdAllocationField', () => {
         expect(screen.getByRole('button', { name: 'Wert verringern' })).toBeDisabled();
     });
 
-    it('treats a typed number as an existing unit when creating is not allowed', async () => {
-        const allocation = allocationState();
+    it('discards a search reply for a query the admin has typed past', async () => {
+        const replies: Record<string, (units: { id: number; name: string }[]) => void> = {};
+        const searchUnits = vi.fn(
+            (query: string) =>
+                new Promise<{ id: number; name: string }[]>((resolve) => {
+                    replies[query] = resolve;
+                }),
+        );
         const user = userEvent.setup();
-        render(<IdAllocationField label="Träger" allowCreate={false} allocation={allocation} />);
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocationState()} searchUnits={searchUnits} />);
 
-        const input = screen.getByRole('combobox', { name: 'Träger' });
-        expect(input).toHaveValue('');
-        await user.type(input, '9');
-        expect(allocation.selectExisting).toHaveBeenLastCalledWith({ id: 9 });
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.type(input, 'ca');
+        await waitFor(() => expect(replies.ca).toBeDefined());
+        await user.type(input, 'r');
+        await waitFor(() => expect(replies.car).toBeDefined());
+        await act(async () => replies.car([{ id: 12, name: 'Caritas Freiburg' }]));
+        await act(async () => replies.ca([{ id: 99, name: 'Caravan Hilfe' }]));
+
+        expect(screen.getByRole('option', { name: /Caritas Freiburg/ })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Caravan Hilfe/ })).not.toBeInTheDocument();
+    });
+
+    it('takes a typed number into an existing-only field once it resolves to a unit', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async (id: number) => ({ id, name: 'Caritas Emmendingen' }));
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField label="Träger" allowCreate={false} allocation={allocation} resolveUnit={resolveUnit} />,
+        );
+
+        await user.type(screen.getByRole('combobox', { name: 'Träger' }), '9');
+
+        await waitFor(() =>
+            expect(allocation.selectExisting).toHaveBeenLastCalledWith({ id: 9, name: 'Caritas Emmendingen' }),
+        );
         expect(allocation.setManualValue).not.toHaveBeenCalled();
         expect(screen.queryByRole('option', { name: /Neu anlegen/ })).not.toBeInTheDocument();
+    });
+
+    it('refuses a typed number that belongs to no unit in an existing-only field', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async () => null);
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField label="Träger" allowCreate={false} allocation={allocation} resolveUnit={resolveUnit} />,
+        );
+
+        await user.type(screen.getByRole('combobox', { name: 'Träger' }), '404');
+
+        expect(await screen.findByText('Keine Einheit mit Nr. 404')).toBeInTheDocument();
+        expect(allocation.selectExisting).not.toHaveBeenCalled();
+    });
+
+    it('offers the existing unit behind an assigned number', async () => {
+        const allocation = allocationState({ mode: 'manual', value: 12, validation: 'assigned', canSubmit: false });
+        const resolveUnit = vi.fn(async (id: number) => ({ id, name: 'Caritas Freiburg' }));
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocation} resolveUnit={resolveUnit} />);
+
+        expect(await screen.findByText(/Nr\. 12 ist „Caritas Freiburg“/)).toBeInTheDocument();
+        await user.click(screen.getByRole('combobox', { name: 'Beratungsstelle' }));
+        await user.click(await screen.findByRole('option', { name: /Caritas Freiburg/ }));
+
+        expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 12, name: 'Caritas Freiburg' });
     });
 });

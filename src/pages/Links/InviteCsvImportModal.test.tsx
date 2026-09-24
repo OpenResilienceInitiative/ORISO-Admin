@@ -360,7 +360,7 @@ describe('InviteCsvImportModal', () => {
         expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
     });
 
-    describe('#1026 columns (Ziel, Rolle, Vorlage, Themen & Fachbereiche)', () => {
+    describe('Ziel, Rolle, Vorlage and Themen & Fachbereiche columns', () => {
         const TEMPLATES = [
             {
                 id: 11,
@@ -462,7 +462,7 @@ describe('InviteCsvImportModal', () => {
             ).toBeInTheDocument();
         });
 
-        it('sends "bestehend" on the Träger tab as an existing Träger (#1026 slice 4)', async () => {
+        it('sends "bestehend" on the Träger tab as an existing Träger', async () => {
             renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { id: 9, target: 'EXISTING' })] as never }));
             await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
             await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
