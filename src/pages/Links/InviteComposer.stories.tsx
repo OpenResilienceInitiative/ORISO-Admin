@@ -14,7 +14,13 @@ import type { IdUnitOption } from '../../components/IdAllocationField';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { InviteComposer, sendModeStorageKey, type InviteComposerProps } from './InviteComposer';
+import {
+    InviteComposer,
+    sendModeStorageKey,
+    type InviteClients,
+    type InviteComposerProps,
+    type InviteViewerScope,
+} from './InviteComposer';
 
 const INVITES_ENDPOINT = '*/service/useradmin/account-invites';
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -112,20 +118,32 @@ const defaultHandlers = [
 ];
 
 // The whole invite bar in field order: E-Mail · Vorname · Name · Rolle · Träger · Beratungsstelle · Themen · Vorlage · Senden.
-const InviteBar = (props: Partial<InviteComposerProps>) => (
+interface InviteBarArgs extends Partial<InviteComposerProps> {
+    viewerScope?: InviteViewerScope;
+    ownTenant?: IdUnitOption;
+    ownAgency?: IdUnitOption;
+    searchAgencies?: InviteClients['searchAgencies'];
+}
+
+const InviteBar = ({
+    viewerScope = 'platform',
+    ownTenant,
+    ownAgency,
+    searchAgencies: agencySearch = searchAgencies,
+    ...props
+}: InviteBarArgs) => (
     <div style={{ padding: 24 }}>
         <InviteComposer
-            includeAgencyField
+            tab="counsellor"
             persistKey="INVITE_BAR_1026"
-            requireNames
-            agencyIdAllocation={stubbedAgencyIdAllocation}
-            searchAgencies={searchAgencies}
-            searchTenants={searchTenants}
-            templateId={11}
-            templates={COUNSELLOR_TEMPLATES}
-            tenantAllowCreate
-            tenantIdAllocation={stubbedTenantIdAllocation}
-            onManageTemplates={() => {}}
+            viewer={{ scope: viewerScope, ownTenant, ownAgency }}
+            clients={{
+                agencyIdAllocation: stubbedAgencyIdAllocation,
+                tenantIdAllocation: stubbedTenantIdAllocation,
+                searchAgencies: agencySearch,
+                searchTenants,
+            }}
+            templates={{ list: COUNSELLOR_TEMPLATES, selectedId: 11, onManage: () => {} }}
             onSubmit={() => true}
             {...props}
         />
@@ -153,27 +171,20 @@ const ComposerHarness = () => {
     return (
         <div style={{ padding: 24 }}>
             <InviteComposer
-                defaultRole="TENANT_ADMIN"
+                tab="tenant"
                 persistKey="TENANT_ADMIN"
-                requireTenantId
+                viewer={{ scope: 'platform' }}
+                clients={{ tenantIdAllocation: stubbedTenantIdAllocation }}
                 submitting={submitting}
-                templateId={templateId}
-                tenantIdAllocation={stubbedTenantIdAllocation}
-                templates={templates}
-                onManageTemplates={(intent) => setDialogView(intent === 'create' ? 'create' : 'list')}
-                onSubmit={async (values) => {
+                templates={{
+                    list: templates,
+                    selectedId: templateId,
+                    onManage: (intent) => setDialogView(intent === 'create' ? 'create' : 'list'),
+                }}
+                onSubmit={async (request) => {
                     setSubmitting(true);
                     try {
-                        await createAccountInvite({
-                            acceptBaseUrl: accountInviteAcceptBaseUrl,
-                            expiresInDays: 30,
-                            firstName: values.firstName,
-                            lastName: values.lastName,
-                            recipientEmail: values.recipientEmail,
-                            targetRole: 'TENANT_ADMIN',
-                            templateId: values.templateId,
-                            tenantId: values.tenantId,
-                        });
+                        await createAccountInvite({ ...request, acceptBaseUrl: accountInviteAcceptBaseUrl });
                         return true;
                     } catch {
                         return false;
@@ -507,7 +518,7 @@ export const CounsellorJoinsPendingAgency: Story = {
         await waitFor(() =>
             expect(args.onSubmit).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    role: 'COUNSELLOR',
+                    targetRole: 'COUNSELLOR',
                     agencyId: 150,
                     agencyIdAllocationMode: 'MANUAL',
                     tenantIdAllocationMode: 'EXISTING',
@@ -537,7 +548,7 @@ export const AgencyAdminAlsoCounsellor: Story = {
         await waitFor(() =>
             expect(args.onSubmit).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    role: 'AGENCY_ADMIN',
+                    targetRole: 'AGENCY_ADMIN',
                     alsoCounsellor: false,
                     agencyId: 101,
                     agencyIdAllocationMode: 'EXISTING',
@@ -602,7 +613,7 @@ export const SendAndNext: Story = {
             expect(args.onSubmit).toHaveBeenCalledWith(
                 expect.objectContaining({
                     recipientEmail: PREFILLED.recipientEmail,
-                    sendMode: 'direct',
+                    templateId: 11,
                     agencyId: 101,
                 }),
             ),
@@ -627,7 +638,6 @@ export const SendAndNext: Story = {
 /** An existing Beratungsstelle picked before any Träger fills in its Träger; „Senden & nächste" keeps both. */
 export const AgencyPickFillsTraeger: Story = {
     args: {
-        tenantAllowCreate: false,
         initialValues: { recipientEmail: PREFILLED.recipientEmail, firstName: 'Maria', lastName: 'Huber' },
         searchAgencies: async (query: string) =>
             AGENCIES.filter((agency) => matches(agency, query)).map((agency) => ({
@@ -714,7 +724,7 @@ export const RoleHidesFields: Story = {
 
 /** The Träger tab only founds NEW Träger: „Rolle" is fixed on „Träger-Admin" there. */
 export const TraegerTabRoleFixed: Story = {
-    args: { allowedRoles: ['TENANT_ADMIN'], defaultRole: 'TENANT_ADMIN', includeAgencyField: false },
+    args: { tab: 'tenant' },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const role = await canvas.findByRole('combobox', { name: FIELD.role });
@@ -793,13 +803,13 @@ export const SubmitsComposedValues: Story = {
             expect(args.onSubmit).toHaveBeenCalledWith(
                 expect.objectContaining({
                     recipientEmail: PREFILLED.recipientEmail,
-                    role: 'COUNSELLOR',
+                    targetRole: 'COUNSELLOR',
                     tenantId: 7,
-                    tenantTarget: 'existing',
+                    tenantIdAllocationMode: 'EXISTING',
                     agencyId: 101,
-                    agencyTarget: 'existing',
+                    agencyIdAllocationMode: 'EXISTING',
                     topicPermission: 'NONE',
-                    sendMode: 'direct',
+                    templateId: 11,
                 }),
             ),
         );

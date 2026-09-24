@@ -68,12 +68,12 @@ const CsvImportHarness = () => {
     return (
         <div style={{ padding: 24 }}>
             <InviteComposer
+                tab="tenant"
                 persistKey="TENANT_ADMIN"
-                requireTenantId
-                templates={[]}
-                tenantIdAllocation={stubbedTenantIdAllocation}
-                onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
-                onManageTemplates={() => {}}
+                viewer={{ scope: 'platform' }}
+                clients={{ tenantIdAllocation: stubbedTenantIdAllocation }}
+                templates={{ list: [], onManage: () => {} }}
+                csv={{ onParsed: (result, sendMode) => setCsvImport({ result, sendMode }) }}
                 onSubmit={() => true}
             />
             {csvImport && (
