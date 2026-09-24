@@ -761,11 +761,37 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(screen.queryByText('Default tenant template')).not.toBeInTheDocument();
     });
 
-    it('offers no edit on a shared template', async () => {
+    /* House rule "disable, don't hide" (oriso-design-rule-disable-not-hide): a
+       control a role may not use stays on screen, greyed out, and says why.
+       dev #1052 hid the Edit button instead, which left a tenant admin guessing
+       whether the platform had simply lost it. The rule it enforces is
+       unchanged — a shared template is still the platform admin's to change. */
+    it('shows the edit on a shared template disabled instead of hiding it', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
-        expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    });
+
+    it('says in German why the edit is disabled', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const editButton = screen.getByRole('button', { name: 'Edit' });
+        expect(editButton.closest('[title]')).toHaveAttribute(
+            'title',
+            'Nur Plattform-Admins können geteilte Vorlagen ändern',
+        );
+    });
+
+    it('leaves creating a template open — the owner decision of 2026-09-23', async () => {
+        // Q30/Q31, Frank 2026-09-24: everyone who may send invites may also
+        // create templates. Only changing a *stored, shared* one stays with the
+        // platform admin.
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'New template' })).toBeEnabled();
     });
 
     it('does not open the edit form on a double-click either', async () => {

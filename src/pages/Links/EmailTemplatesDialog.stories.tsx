@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { http, HttpResponse, delay } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import { UserRole } from '../../enums/UserRole';
+import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -127,6 +131,15 @@ const meta = {
         templateKind: 'TENANT_INVITE',
         onClose: () => {},
     },
+    decorators: [
+        // `setStoryAuth` writes a shared token store, so every story states the role it
+        // renders for instead of inheriting whatever ran before it. Default: the platform
+        // admin (tenant 0), who sees every kind and may change the shared texts.
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
+            return <Story />;
+        },
+    ],
 } satisfies Meta<typeof DialogHarness>;
 
 export default meta;
@@ -183,5 +196,31 @@ export const Loading: Story = {
 export const Error: Story = {
     parameters: {
         msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
+    },
+};
+
+/**
+ * ORISO-Admin#1026 — a Träger admin (tenant 1) opens the manager. Creating a template is
+ * theirs to do (owner decision 2026-09-23, confirmed by Frank 2026-09-24): "Neue Vorlage"
+ * stays enabled. Changing a *stored* one is not — one text is shared by every Träger — so
+ * "Bearbeiten" stays visible but disabled with the reason, per the house rule
+ * "disable, don't hide".
+ */
+export const TraegerAdminSharedTemplateLocked: Story = {
+    args: { templateKind: 'COUNSELLOR_INVITE' },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
+            return <Story />;
+        },
+    ],
+    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const body = within(canvasElement.ownerDocument.body);
+        const editButtons = await body.findAllByRole('button', { name: /Bearbeiten|Edit/ });
+        editButtons.forEach((button) => expect(button).toBeDisabled());
+        await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
     },
 };

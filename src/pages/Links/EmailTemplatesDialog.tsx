@@ -123,6 +123,10 @@ export const EmailTemplatesDialog = ({
         [visibleKindsKey],
     );
     const canEdit = canEditSharedTemplates({ isSuperAdmin, hasRole });
+    const sharedTemplateLockReason = t(
+        'links.templates.platformAdminOnly',
+        'Nur Plattform-Admins können geteilte Vorlagen ändern',
+    );
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
     const {
@@ -448,10 +452,25 @@ export const EmailTemplatesDialog = ({
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
                     <div className={listingTableStyles.actionGroup}>
-                        {canEdit && (
+                        {canEdit ? (
                             <Button size="small" onClick={() => openEditForm(template)}>
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
+                        ) : (
+                            /* House rule "disable, don't hide": the control stays on
+                               screen, greyed out, and says why. Hiding it left a
+                               Träger admin guessing whether the platform had lost the
+                               button. The rule behind it is unchanged — a shared
+                               template is the platform admin's to change. The native
+                               `title` carries the reason for keyboard and test alike,
+                               the Tooltip renders it in the M3 style on hover. */
+                            <Tooltip title={sharedTemplateLockReason}>
+                                <span title={sharedTemplateLockReason}>
+                                    <Button disabled size="small">
+                                        {t('links.templates.edit', 'Edit')}
+                                    </Button>
+                                </span>
+                            </Tooltip>
                         )}
                         {/* The backend exposes no DELETE for invite-email-templates yet
                             (AccountInviteController: POST/PUT/GET only), so per #314 the
@@ -468,7 +487,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [canEdit, isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
+        [canEdit, isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, sharedTemplateLockReason, t],
     );
 
     const listFooter = (
