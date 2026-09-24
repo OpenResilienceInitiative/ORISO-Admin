@@ -517,7 +517,8 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
     const fill = async (agencyNumber = '275') => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        // dev #1048: sample addresses use example.org, never a domain we really own.
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), agencyNumber);
@@ -748,7 +749,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
                 'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
             ),
         ).toHaveLength(2);
-        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');
+        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
     });
 
