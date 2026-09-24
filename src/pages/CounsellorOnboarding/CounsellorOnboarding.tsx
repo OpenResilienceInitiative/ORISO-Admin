@@ -103,7 +103,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitRegistration,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
-    // Frank Q28: switching "Berät auch" off while founding an agency asks first.
+    // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
 
     if (state.phase === 'loading') {
@@ -206,7 +206,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
     const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
     let topicHintKey: string | undefined;
-    // Frank Q28: founding without counselling — the topics are the new agency's, not the person's.
+    // Founding without counselling: the topics are the new agency's, not the person's.
     const foundsWithoutCounselling = createsAgency && !counsels(invite, data);
     if (selectableTopics.length === 0) {
         // No hint over an empty row — the alert below carries the explanation.

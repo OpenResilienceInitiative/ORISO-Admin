@@ -531,11 +531,7 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 
-    /*
-     * Frank Q28 (#1026): a FOUNDING agency admin must give the new agency at
-     * least one topic, even without counselling — otherwise the counsellors
-     * queued for it have nothing to pick.
-     */
+    // A founding admin must give the new agency a topic, or its queued counsellors have nothing to pick.
     describe('founding a new agency', () => {
         const FOUNDING_INVITE: CounsellorOnboardingInviteDTO = {
             ...AGENCY_ADMIN_INVITE,

@@ -239,8 +239,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
             // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
             const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
             const createsAgency = inviteRef.current?.agencyExists === false;
-            // Frank Q28: a founding admin gives the new agency its topics even without
-            // counselling — the counsellors queued for it pick from them.
+            // A founding admin gives the new agency its topics even without counselling:
+            // the counsellors queued for it pick from them.
             const withTopics = withProfile || createsAgency;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },

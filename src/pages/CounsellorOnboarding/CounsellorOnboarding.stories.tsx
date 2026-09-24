@@ -368,11 +368,7 @@ export const AgencyAdminAlsoCounsellorOffMobile: Story = {
     play: AgencyAdminAlsoCounsellorOff.play,
 };
 
-/*
- * Frank Q28 (#1026): a FOUNDING agency admin gives the new agency at least one
- * topic, even without counselling — the counsellors queued for it pick from
- * those. Switching "Berät auch" off while founding asks first.
- */
+// A founding admin gives the new agency a topic even without counselling: its queued counsellors pick from it.
 const FOUNDING_INVITE = {
     ...AGENCY_ADMIN,
     agencyId: 13,
