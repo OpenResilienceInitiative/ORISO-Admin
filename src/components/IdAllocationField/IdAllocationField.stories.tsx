@@ -111,7 +111,7 @@ const StateGallery = () => (
                 unit: { id: 7, name: 'Caritas Südbaden' },
                 validation: 'existing',
             })}
-            label="Bestehend (#1026)"
+            label="Bestehend"
         />
         <IdAllocationField
             allocation={staticAllocation({
@@ -120,7 +120,7 @@ const StateGallery = () => (
                 unit: { id: 7, name: 'Caritas Südbaden' },
                 validation: 'existing',
             })}
-            label="Gesperrt (#1026)"
+            label="Gesperrt"
             locked
         />
     </div>
