@@ -27,8 +27,8 @@
     overflow-y: auto;
     overscroll-behavior: contain;
 
-    /* Room for the selected tile's 6px ring at the viewport edges. */
-    padding: 6px;
+    /* Padding is set from the component (VIEWPORT_PADDING), next to the
+       height it has to be added to. */
 }
 
 .arrow {

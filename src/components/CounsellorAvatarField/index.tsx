@@ -24,13 +24,20 @@ export const INITIALS_TILE_ID = '__initials__';
 const TILE_SIZE = 52;
 const GRID_GAP = 12;
 /** One arrow click travels exactly one row, so the motion is legible. */
-const ROW_STEP = TILE_SIZE + GRID_GAP;
+export const ROW_STEP = TILE_SIZE + GRID_GAP;
+/**
+ * Room around the grid inside the scrolling viewport. The selection ring
+ * reaches 6px beyond a tile and the focus outline around it 10px (2px at an
+ * 8px offset); anything less and an edge tile's indicator is clipped.
+ */
+export const VIEWPORT_PADDING = 10;
 /**
  * The picker shows five rows and scrolls (owner, 2026-09-17): all 61 motifs at
- * once pushed the rest of the form off the screen.
+ * once pushed the rest of the form off the screen. The padding is added on top
+ * so the five rows stay fully visible (the viewport is border-box).
  */
 export const VISIBLE_ROWS = 5;
-export const VIEWPORT_HEIGHT = VISIBLE_ROWS * TILE_SIZE + (VISIBLE_ROWS - 1) * GRID_GAP;
+export const VIEWPORT_HEIGHT = VISIBLE_ROWS * TILE_SIZE + (VISIBLE_ROWS - 1) * GRID_GAP + 2 * VIEWPORT_PADDING;
 
 export interface CounsellorAvatarFieldProps extends CounsellorNameParts {
     value: CounsellorAvatarValue;
@@ -165,7 +172,7 @@ export const CounsellorAvatarField = ({
                 <div
                     ref={viewportRef}
                     className={styles.viewport}
-                    style={{ maxHeight: VIEWPORT_HEIGHT }}
+                    style={{ maxHeight: VIEWPORT_HEIGHT, padding: VIEWPORT_PADDING }}
                     onScroll={syncScrollState}
                 >
                     <AvatarPickerGrid
