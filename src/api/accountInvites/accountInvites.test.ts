@@ -56,6 +56,29 @@ describe('account invite API', () => {
         );
     });
 
+    it('reads the zoneless UTC timestamps of the invite list as UTC', async () => {
+        mocks.fetchData.mockResolvedValueOnce({
+            content: [{ id: 1, createDate: '2026-09-21T17:26:02', expiresAt: null }],
+            totalElements: 1,
+            totalPages: 1,
+            page: 0,
+            size: 20,
+        });
+
+        const page = await listAccountInvites();
+
+        expect(page.content[0].createDate).toBe('2026-09-21T17:26:02Z');
+        expect(page.content[0].expiresAt).toBeNull();
+    });
+
+    it('reads the timestamps of a created invite as UTC', async () => {
+        mocks.fetchData.mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 2, createDate: '2026-09-21T17:26:02' }), { status: 201 }),
+        );
+        const created = await createAccountInvite({ targetRole: 'COUNSELLOR', recipientEmail: 'a@example.org' });
+        expect(created.createDate).toBe('2026-09-21T17:26:02Z');
+    });
+
     it('creates account invites without using external inbound link status', async () => {
         const responseBody = { id: 1, inviteStatus: 'EMAIL_SENT' };
         mocks.fetchData.mockResolvedValueOnce({ json: async () => responseBody });

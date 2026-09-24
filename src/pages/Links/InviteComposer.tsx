@@ -58,7 +58,13 @@ export type InviteSendMode = 'direct' | 'createOnly';
  * contract; `'emailTaken'` is the P3 case that the composer renders inline on
  * the e-mail field rather than as a global toast.
  */
-export type InviteSubmitOutcome = boolean | 'emailTaken';
+export type InviteSubmitOutcome = boolean | 'emailTaken' | InviteCreated;
+
+/** What the bar needs from a created invite: the numbers the server assigned. */
+export interface InviteCreated {
+    agencyId?: number | null;
+    tenantId?: number | null;
+}
 
 export type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 
@@ -83,13 +89,11 @@ export interface InviteComposerValues {
     /** Only set in `direct` mode — `createOnly` posts without a template. */
     templateId?: number;
     sendMode: InviteSendMode;
-    /** #1026: role of the invited person (backend `targetRole`). */
     role?: InviteRole;
-    /** #1026: agency admins only — "Berät auch" (backend `alsoCounsellor`, default true). */
+    /** Agency admins only: "Berät auch" (backend default true). */
     alsoCounsellor?: boolean;
-    /** #1026: counsellors only — "Themen & Fachbereiche" (backend field `topicPermission`). */
+    /** Counsellors only. */
     topicPermission?: TopicPermission;
-    /** #1026: whether the Träger / Beratungsstelle already exists or is created by this invite. */
     tenantTarget?: InviteUnitTarget;
     agencyTarget?: InviteUnitTarget;
 }
@@ -143,6 +147,8 @@ export interface InviteComposerProps {
      * import time — the file itself is never uploaded anywhere.
      */
     onCsvParsed?: (result: ParseInviteCsvResult, sendMode: InviteSendMode) => void;
+    /** Shows the CSV entries disabled with this reason instead of hiding them. */
+    csvImportBlockedReason?: string;
     /**
      * Number of rows currently checked in the invites table (#316). Any value
      * > 0 flips the send split button into bulk mode ("N ausgewählte senden").
@@ -174,7 +180,7 @@ export interface InviteComposerProps {
      */
     searchQuery?: string;
     onSearchQueryChange?: (query: string) => void;
-    /** #1026: who fills the bar — drives the locks and the offered roles. Default `platform`. */
+    /** Drives the locks and the offered roles. Default `platform`. */
     viewerScope?: InviteViewerScope;
     /** The viewer's own Träger — shown locked for tenant and agency admins. */
     ownTenant?: IdUnitOption;
@@ -186,28 +192,22 @@ export interface InviteComposerProps {
     ownAgency?: IdUnitOption;
     /** Role preselected in the "Rolle" field (the tab's target role in the app). */
     defaultRole?: InviteRole;
-    /**
-     * Narrows the roles this bar offers on top of the viewer rule — the Träger
-     * tab only invites Träger admins of NEW Träger. Default: every role the
-     * viewer may hand out.
-     */
+    /** Narrows the offered roles further; the Träger tab only founds new Träger. */
     allowedRoles?: InviteRole[];
-    /**
-     * #1026 slice 3: "Mich selbst eintragen" in the send menu. Called with the
-     * Beratungsstelle currently chosen in the bar (if it is an existing one).
-     * Omit to hide the entry.
-     */
+    /** "Mich selbst eintragen" in the send menu, with the existing agency chosen in the bar. */
     onSelfAssign?: (agency?: IdUnitOption) => void;
-    /** Type-ahead sources for the ID fields (#1026). Omit and the menu offers only "Neu" + typed numbers. */
+    /** Without it, the Träger menu offers only "Neu" and typed numbers. */
     searchTenants?: IdUnitSearch;
     /** Agency search; receives the currently chosen Träger so results can be scoped to it. */
     searchAgencies?: (query: string, context: { tenantId?: number; page?: number }) => ReturnType<IdUnitSearch>;
-    /**
-     * May the Träger field create a NEW Träger? Defaults to `requireTenantId`
-     * (the Träger tab); elsewhere the field points at an existing Träger.
-     */
+    /** Number lookups for the ID fields; `null` = no such unit. */
+    resolveTenant?: (id: number) => Promise<IdUnitOption | null>;
+    resolveAgency?: (id: number) => Promise<IdUnitOption | null>;
+    /** The agency's default topic permission, for a picked unit whose search hit did not carry it. */
+    loadAgencyTopicPermission?: (agencyId: number) => Promise<TopicPermission | undefined>;
+    /** Defaults to `requireTenantId`; otherwise the field points at an existing Träger. */
     tenantAllowCreate?: boolean;
-    /** Prefill (stories, later: resend/edit). Valid prefilled fields start collapsed. */
+    /** Prefill; valid prefilled fields start collapsed. */
     initialValues?: Partial<
         Pick<
             InviteComposerValues,
@@ -228,10 +228,7 @@ type CollapsibleKey =
     | 'topics'
     | 'template';
 
-/**
- * Select-type fields (#1026): they have no typing phase, so they collapse as
- * soon as a value is chosen and whenever focus moves on to another field.
- */
+// Select fields have no typing phase, so they collapse as soon as a value is chosen.
 const SELECT_KEYS: CollapsibleKey[] = ['role', 'alsoCounsellor', 'topics', 'template'];
 
 /** Select option with a one-line explanation under its title (`description` rides along in the option data). */
@@ -251,10 +248,7 @@ const isNewUnit = (allocation: UseIdAllocationResult) => allocation.mode !== 'ex
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * AUTO/MANUAL reserve a NEW id; an existing unit is sent as `EXISTING` with its
- * id (#1026 slice 2, UserService#1212 — agency space; tenant space from slice 4).
- */
+// The tenant id space does not accept `EXISTING` yet; the agency space does.
 const allocationModeOf = (allocation: UseIdAllocationResult): AllocationMode => {
     if (allocation.mode === 'existing') return 'EXISTING';
     return allocation.mode === 'auto' ? 'AUTO' : 'MANUAL';
@@ -307,6 +301,7 @@ export const InviteComposer = ({
     onSelectTemplate,
     onCreateFromTemplate,
     onCsvParsed,
+    csvImportBlockedReason,
     selectionCount = 0,
     onBulkSend,
     onClearSelection,
@@ -322,6 +317,9 @@ export const InviteComposer = ({
     onSelfAssign,
     searchTenants,
     searchAgencies,
+    resolveTenant,
+    resolveAgency,
+    loadAgencyTopicPermission,
     tenantAllowCreate = requireTenantId,
     initialValues,
     className,
@@ -347,8 +345,6 @@ export const InviteComposer = ({
     const [focusEmailPending, setFocusEmailPending] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
-    // #1026 visibility by viewer: tenant and agency admins are pinned to their
-    // own Träger, agency admins also to their own Beratungsstelle.
     const tenantLocked = viewerScope !== 'platform';
     // An agency admin of ONE agency is pinned to it; with several, the field
     // picks among them (the tab's search is scoped to them) — never a new one.
@@ -356,8 +352,7 @@ export const InviteComposer = ({
     const agencyLocked = viewerScope === 'agency' && ownAgency != null;
     const lockedTenant = tenantLocked ? ownTenant : undefined;
     const lockedAgency = agencyLocked ? ownAgency : undefined;
-    // Non-Träger tabs keep today's contract: the Träger field names an EXISTING
-    // Träger, prefilled with the admin's own one.
+    // Outside the Träger tab the field names an EXISTING Träger, prefilled with the admin's own.
     const fixedTenant =
         lockedTenant ?? initialValues?.tenant ?? (initialTenantId != null ? { id: initialTenantId } : undefined);
     const initialTenantUnit = tenantAllowCreate && !tenantLocked ? initialValues?.tenant : fixedTenant;
@@ -383,9 +378,8 @@ export const InviteComposer = ({
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
     // default, deliberate manual mode with authoritative availability states.
     // The counsellor tab's Beratungsstellen-ID follows the same contract in the
-    // agency id space. #1026 adds the third mode: an EXISTING unit from the
-    // type-ahead. Both hooks always run (rules of hooks); an unused one stays
-    // idle and never issues a request.
+    // agency id space. Both hooks always run (rules of hooks); an unused one
+    // stays idle and never issues a request.
     const tenantAllocation = useIdAllocation({
         client: tenantIdAllocation ?? tenantIdAllocationClient,
         initialUnit: initialTenantUnit,
@@ -411,6 +405,25 @@ export const InviteComposer = ({
         setFocusEmailPending(false);
         rootRef.current?.querySelector<HTMLInputElement>('input[name="recipientEmail"]')?.focus();
     }, [focusEmailPending]);
+    // The chosen agency's default prefills the chip; the admin may still change it.
+    const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
+    useEffect(() => {
+        if (!pickedAgency) return undefined;
+        if (pickedAgency.topicPermission) {
+            setTopicPermission(pickedAgency.topicPermission);
+            return undefined;
+        }
+        if (!loadAgencyTopicPermission) return undefined;
+        let cancelled = false;
+        loadAgencyTopicPermission(pickedAgency.id)
+            .then((agencyDefault) => {
+                if (!cancelled && agencyDefault) setTopicPermission(agencyDefault);
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+        };
+    }, [pickedAgency?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const tenantId = tenantAllocation.value;
     const showAgencyField = includeAgencyField && role !== 'TENANT_ADMIN';
@@ -441,18 +454,11 @@ export const InviteComposer = ({
         'links.composer.emailTaken',
         'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
     );
-    // Auto ("Neu anlegen") is always sendable; a manual id only once the check
-    // confirmed it free; an existing unit always. Outside the Träger tab the
-    // field stays optional, as before.
-    // A manual Beratungsstellen-Nr. that an open admin invite reserved is not a
-    // collision any more (#1026 slice 5): the invite joins that new unit — a
-    // counsellor waits for it, a second admin shares the reservation.
+    // A number reserved by an open admin invite is joined: the invite waits for that unit.
     const agencyJoinsPendingUnit =
         showAgencyField && agencyAllocation.mode === 'manual' && agencyAllocation.validation === 'reserved';
     const agencyIsNew = showAgencyField && agencyMayBeNew && isNewUnit(agencyAllocation);
-    // Outside the Träger tab the Träger field names an EXISTING Träger. It is
-    // required where the backend cannot infer it: a Träger-admin invite, and a
-    // new Beratungsstelle (an existing one brings its own Träger).
+    // The backend cannot infer the Träger for a Träger admin or a new Beratungsstelle.
     const tenantRequired = requireTenantId || role === 'TENANT_ADMIN' || agencyIsNew;
     const tenantMayBeNew = tenantAllowCreate && !tenantLocked;
     const tenantIdValid =
@@ -461,13 +467,7 @@ export const InviteComposer = ({
         ? agencyAllocation.canSubmit || agencyJoinsPendingUnit
         : agencyAllocation.mode === 'existing';
     const agencyIdValid = !showAgencyField || agencyPicked;
-    /*
-     * #1026 slice 5 (breaking): a counsellor invite no longer creates a new
-     * Beratungsstelle. It may only WAIT for one whose admin invite is open —
-     * which the reservation of a manual number proves. "Neu" (next free number)
-     * or a free number has no admin, and the backend refuses it with 409
-     * NO_PENDING_UNIT_ADMIN. The bar says so up front and offers the fix.
-     */
+    // Only a BST-Admin founds a Beratungsstelle; a counsellor may only wait for one with an open admin invite.
     const counsellorNeedsUnitAdmin =
         role === 'COUNSELLOR' &&
         agencyIsNew &&
@@ -487,9 +487,6 @@ export const InviteComposer = ({
         namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
-    // #1026 collapse: a field shrinks to "✓ Label" once it loses focus with a
-    // valid, non-empty value; a click expands it again. Validation itself is
-    // unchanged — an invalid or empty field simply never collapses.
     const fieldValid: Record<CollapsibleKey, boolean> = {
         email: emailValid && !emailTaken,
         firstName: firstName.trim().length > 0,
@@ -563,9 +560,8 @@ export const InviteComposer = ({
     const topicDescription = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].description);
     const collapse = (key: CollapsibleKey) => setCollapsedKeys((keys) => new Set(keys).add(key));
 
-    // Select-type fields fold back into their pill as soon as focus moves on to
-    // another control of the bar. Their dropdowns render in a portal outside
-    // the row, so choosing an option never counts as "moving on".
+    // Select dropdowns render in a portal outside the row, so picking an option
+    // never counts as focus moving on to another field.
     const handleRowFocus = (event: FocusEvent<HTMLDivElement>) => {
         const focusedKey = (event.target as HTMLElement).closest<HTMLElement>('[data-field-key]')?.dataset.fieldKey;
         SELECT_KEYS.forEach((key) => {
@@ -705,10 +701,15 @@ export const InviteComposer = ({
             setRoleBeforeGuidedSwitch(null);
             setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
             setCollapsedKeys(new Set<CollapsibleKey>(['tenant', 'agency', 'topics', 'template']));
-            // A number this invite may just have reserved has to be checked again:
-            // for the next counsellor it is now "wird mit einer offenen Admin-Einladung angelegt".
+            // A number this invite just reserved is re-checked: the next counsellor waits for that unit.
+            // "Neu" becomes the number the server assigned, or the next person would need an admin of their own.
+            const created = typeof outcome === 'object' ? outcome : undefined;
             if (tenantAllocation.mode === 'manual') tenantAllocation.setManualValue(tenantAllocation.value);
-            if (agencyAllocation.mode === 'manual') agencyAllocation.setManualValue(agencyAllocation.value);
+            if (agencyAllocation.mode === 'auto' && created?.agencyId != null) {
+                agencyAllocation.setManualValue(created.agencyId);
+            } else if (agencyAllocation.mode === 'manual') {
+                agencyAllocation.setManualValue(agencyAllocation.value);
+            }
             setFocusEmailPending(true);
             return;
         }
@@ -770,38 +771,44 @@ export const InviteComposer = ({
 
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (onCsvParsed) {
+        const csvBlocked = csvImportBlockedReason != null;
+        const csvLabel = (hint: string) => (
+            <span className={styles.csvImportEntry}>
+                <UploadOutlined aria-hidden />
+                <span className={styles.csvImportLabel}>
+                    {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                    <span className={styles.csvImportHint}>{hint}</span>
+                </span>
+            </span>
+        );
         moreMenuItems.push({
             key: 'csv-import',
-            label: (
+            disabled: csvBlocked,
+            label: csvBlocked ? (
+                csvLabel(csvImportBlockedReason)
+            ) : (
                 <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
-                    <span className={styles.csvImportEntry}>
-                        <UploadOutlined aria-hidden />
-                        <span className={styles.csvImportLabel}>
-                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
-                            {/* The import expects a fixed column ORDER, and an
-                                admin standing in this menu has no other way to
-                                learn it (#315 follow-up). */}
-                            <span className={styles.csvImportHint}>
-                                {t('links.csvImport.columns', 'Spalten: {{columns}}', {
-                                    columns: [
-                                        t('links.accountInvites.email', 'E-Mail'),
-                                        t('links.accountInvites.firstName', 'Vorname'),
-                                        t('links.composer.lastName', 'Name'),
-                                        `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
-                                        csvTargetLabel,
-                                        t('links.composer.role', 'Rolle'),
-                                        t('links.composer.template', 'Vorlage'),
-                                        t('links.composer.topics', 'Themen & Fachbereiche'),
-                                    ].join(', '),
-                                })}
-                            </span>
-                        </span>
-                    </span>
+                    {/* The import expects a fixed column order, and this menu is the only place to learn it. */}
+                    {csvLabel(
+                        t('links.csvImport.columns', 'Spalten: {{columns}}', {
+                            columns: [
+                                t('links.accountInvites.email', 'E-Mail'),
+                                t('links.accountInvites.firstName', 'Vorname'),
+                                t('links.composer.lastName', 'Name'),
+                                `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                                csvTargetLabel,
+                                t('links.composer.role', 'Rolle'),
+                                t('links.composer.template', 'Vorlage'),
+                                t('links.composer.topics', 'Themen & Fachbereiche'),
+                            ].join(', '),
+                        }),
+                    )}
                 </Upload>
             ),
         });
         moreMenuItems.push({
             key: 'csv-template',
+            disabled: csvBlocked,
             icon: <DownloadOutlined aria-hidden />,
             label: t('links.csvImport.downloadTemplate', 'CSV-Vorlage herunterladen'),
         });
@@ -849,16 +856,17 @@ export const InviteComposer = ({
         },
     };
 
-    // #1026: the main label says what pressing it does to the unit — invite into
-    // an existing one, or create it and invite. "Empfänger nur anlegen" sends no
-    // mail at all, so it keeps its own label.
+    // "Empfänger nur anlegen" sends no mail, so it keeps its own label.
     const directSendLabel = createsUnit
         ? t('links.composer.sendCreateAndInvite', 'Anlegen & einladen')
         : t('links.composer.sendInvite', 'Einladen');
     const sendAndNextLabel = t('links.composer.sendAndNext', 'Senden & nächste');
+    const sendAndNextButtonLabel = createsUnit
+        ? t('links.composer.sendCreateAndInviteAndNext', 'Anlegen, einladen & nächste')
+        : t('links.composer.sendInviteAndNext', 'Einladen & nächste');
     // eslint-disable-next-line no-nested-ternary -- three mutually exclusive send modes
     const singleSendLabel = sendAndNext
-        ? sendAndNextLabel
+        ? sendAndNextButtonLabel
         : sendMode === 'direct'
         ? directSendLabel
         : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');
@@ -958,13 +966,7 @@ export const InviteComposer = ({
     const agencyLabel = t('links.composer.agency', 'Beratungsstelle');
     const topicsLabel = t('links.composer.topics', 'Themen & Fachbereiche');
 
-    /*
-     * Select-type field of the bar (Rolle, Themen & Fachbereiche): the M3
-     * floating-label select, folded into a value pill ("✓ Berater:in") once
-     * chosen. Expanding the pill opens the menu right away — the one thing a
-     * select is expanded for. A disabled placeholder keeps its pill and explains
-     * itself in a tooltip.
-     */
+    // Expanding a select's pill opens its menu right away: that is all a select expands for.
     function renderSelectField<V extends string>({
         key,
         label,
@@ -1034,8 +1036,6 @@ export const InviteComposer = ({
                 onSearch={onSearchQueryChange}
                 onSearchChange={onSearchQueryChange}
             >
-                {/* #1026 field order: E-Mail · Vorname · Name · Rolle · Träger ·
-                    Beratungsstelle · Themen & Fachbereiche · Vorlage · Senden. */}
                 <CollapsibleField
                     collapsed={isCollapsed('email')}
                     label={emailLabel}
@@ -1098,8 +1098,7 @@ export const InviteComposer = ({
                         onChange={(event) => setLastName(event.target.value)}
                     />
                 </CollapsibleField>
-                {/* #1026 slice 3: the role is sent as `targetRole`. Only the roles the
-                    viewer may hand out are offered; a single one renders locked. */}
+                {/* Only the roles the viewer may hand out; a single one renders locked. */}
                 {renderSelectField<InviteRole>({
                     key: 'role',
                     label: t('links.composer.role', 'Rolle'),
@@ -1125,6 +1124,7 @@ export const InviteComposer = ({
                         allowCreate={tenantAllowCreate && !tenantLocked}
                         label={tenantLabel}
                         locked={tenantLocked}
+                        resolveUnit={resolveTenant}
                         searchUnits={searchTenants}
                         onBlur={() => collapseIfValid('tenant', fieldValid.tenant)}
                     />
@@ -1143,6 +1143,7 @@ export const InviteComposer = ({
                             label={agencyLabel}
                             locked={agencyLocked}
                             reservedJoinsPendingUnit
+                            resolveUnit={resolveAgency}
                             searchUnits={searchAgencies ? searchAgenciesInTenant : undefined}
                             onBlur={() => collapseIfValid('agency', fieldValid.agency)}
                         />
@@ -1201,10 +1202,7 @@ export const InviteComposer = ({
                             onSelectTemplate?.(typeof id === 'number' ? id : Number(id));
                             collapse('template');
                         }}
-                        // The composer row is built from default-size (56px) SplitButtons — the
-                        // send button right next to it is one. The chooser's own default is the
-                        // legal editors' 40px pill, which left it a size short of every other
-                        // control in this row.
+                        // Match the row's 56px SplitButtons; the chooser defaults to the legal editors' 40px pill.
                         size="medium"
                     />
                 </CollapsibleField>

@@ -3,7 +3,6 @@ import type {
     AccountInviteStatus,
     AccountInviteTargetRole,
 } from '../../../api/accountInvites/accountInvites';
-import { backendInstantMs } from '../../../utils/backendInstant';
 
 /**
  * Pure derivation of the onboarding phase stepper (Links page, invite tracking).
@@ -348,7 +347,7 @@ export const inviteLastActivity = (invite: ActivityFacts): string => {
     // reduce would throw on an empty list and take the whole board down if the
     // API ever loosens that.
     return candidates.reduce(
-        (latest, value) => (backendInstantMs(value) > backendInstantMs(latest) ? value : latest),
+        (latest, value) => (new Date(value).getTime() > new Date(latest).getTime() ? value : latest),
         invite.createDate,
     );
 };
@@ -364,7 +363,7 @@ const RELATIVE_UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
 
 /** "vor 3 Tagen" / "3 days ago" — locale-aware, no library. Sub-minute reads as "now" wording. */
 export const formatRelativeTime = (iso: string, locale: string, now: Date = new Date()): string => {
-    const elapsed = backendInstantMs(iso) - now.getTime();
+    const elapsed = new Date(iso).getTime() - now.getTime();
     const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
     const match = RELATIVE_UNITS.find(({ ms }) => Math.abs(elapsed) >= ms);
     if (!match) {

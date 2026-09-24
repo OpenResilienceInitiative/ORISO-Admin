@@ -1,19 +1,17 @@
-/**
- * ORISO backend services serialise `LocalDateTime` WITHOUT a zone, and the
- * wall clock they store is UTC (pods run in UTC; MariaDB `create_date` equals
- * `utc_timestamp()` — measured on Pre-Dev for #1026). `new Date(value)` reads
- * a zoneless date-time as the BROWSER's local time, which in Germany shifts
- * every such timestamp one or two hours into the past ("vor 2 Stunden" for an
- * invite created seconds ago).
- *
- * This reads a zoneless date-time as UTC and leaves anything that already
- * carries `Z` or an offset — and date-only values, which ECMAScript already
- * treats as UTC — untouched.
- */
+// ORISO services send `LocalDateTime` without a zone, and the wall clock is UTC.
+// `new Date()` would read such a value as the browser's local time.
 const ZONELESS_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
-export const parseBackendInstant = (value: string): Date =>
-    new Date(ZONELESS_DATE_TIME.test(value) ? `${value}Z` : value);
+const asUtc = (value: string) => (ZONELESS_DATE_TIME.test(value) ? `${value}Z` : value);
 
-/** Milliseconds since the epoch of a backend timestamp (see {@link parseBackendInstant}). */
-export const backendInstantMs = (value: string): number => parseBackendInstant(value).getTime();
+export const parseBackendInstant = (value: string): Date => new Date(asUtc(value));
+
+/** Applied where a response enters the app: every zoneless date-time string becomes UTC. */
+export const withUtcInstants = <T>(value: T): T => {
+    if (typeof value === 'string') return asUtc(value) as T;
+    if (Array.isArray(value)) return value.map(withUtcInstants) as T;
+    if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, withUtcInstants(item)])) as T;
+    }
+    return value;
+};

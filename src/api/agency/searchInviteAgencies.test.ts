@@ -15,10 +15,10 @@ const hit = (id: number, extra: Record<string, unknown> = {}) => ({
     _embedded: { id, name: `Agency ${id}`, ...extra },
 });
 
-describe('searchInviteAgencies (#1026 slice 2)', () => {
+describe('searchInviteAgencies', () => {
     beforeEach(() => fetchData.mockReset());
 
-    it('calls the picker contract of AgencyService#307', async () => {
+    it('calls the agency list with the picker query', async () => {
         fetchData.mockResolvedValue({ _embedded: [], total: 0 });
         await searchInviteAgencies(' Sucht ');
         expect(fetchData).toHaveBeenCalledWith(
@@ -80,13 +80,28 @@ describe('searchInviteAgencies (#1026 slice 2)', () => {
         expect(page.hasMore).toBe(false);
     });
 
-    it('keeps paging when a Träger filter drops every hit of a page (hasMore follows the server)', async () => {
-        fetchData.mockResolvedValue({
-            total: 25,
-            _embedded: Array.from({ length: 10 }, (_, index) => hit(200 + index, { tenantId: 1 })),
+    it('reads ahead past pages the Träger filter empties, and says where it stopped', async () => {
+        const page = (ids: number[], tenantId: number) => ({
+            total: 30,
+            _embedded: ids.map((id) => hit(id, { tenantId })),
         });
-        const page = await searchInviteAgencies('', 40);
-        expect(page.hits).toEqual([]);
-        expect(page.hasMore).toBe(true);
+        fetchData
+            .mockResolvedValueOnce(page([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 1))
+            .mockResolvedValueOnce(page([11, 12, 13, 14, 15, 16, 17, 18, 19, 20], 40))
+            .mockResolvedValueOnce(page([21], 40));
+
+        const result = await searchInviteAgencies('', 40, 1);
+
+        expect(result.hits.map(({ id }) => id)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+        expect(result.page).toBe(2);
+        expect(result.hasMore).toBe(true);
+        expect(fetchData).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops reading ahead when the server has nothing more', async () => {
+        fetchData.mockResolvedValue({ total: 10, _embedded: [hit(1, { tenantId: 1 })] });
+        const result = await searchInviteAgencies('', 40, 1);
+        expect(result).toMatchObject({ hits: [], hasMore: false, page: 1 });
+        expect(fetchData).toHaveBeenCalledTimes(1);
     });
 });

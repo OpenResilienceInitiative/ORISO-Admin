@@ -2,7 +2,7 @@ import { selfAssignmentsEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
 /** Roles an admin may take on themselves in an agency (#1026 slice 3). */
-export type SelfAssignmentRole = 'COUNSELLOR' | 'AGENCY_ADMIN';
+export type SelfAssignmentRole = 'COUNSELLOR';
 
 export interface SelfAssignmentRequest {
     role: SelfAssignmentRole;
@@ -39,6 +39,7 @@ export const createSelfAssignment = async (body: SelfAssignmentRequest): Promise
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
             FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.NO_MATCH,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
         ],

@@ -145,6 +145,29 @@ describe('useIdAllocation', () => {
         expect(result.current.value).toBe(21);
     });
 
+    it('keeps a newer step guarded when an older, reset step settles', async () => {
+        const client = createClient();
+        const pending: Array<(value: { id: number | null }) => void> = [];
+        (client.nextFreeId as ReturnType<typeof vi.fn>).mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    pending.push(resolve);
+                }),
+        );
+        const { result } = renderHook(() => useIdAllocation({ client }));
+
+        act(() => result.current.step(1));
+        act(() => result.current.resetToAuto());
+        act(() => result.current.step(1));
+        await act(async () => {
+            pending[0]({ id: 21 });
+            await Promise.resolve();
+        });
+        act(() => result.current.step(1));
+
+        expect(client.nextFreeId).toHaveBeenCalledTimes(2);
+    });
+
     it('debounces manual typing by ~300 ms before checking availability', async () => {
         const client = createClient();
         const { result } = renderHook(() => useIdAllocation({ client }));
@@ -269,7 +292,7 @@ describe('useIdAllocation', () => {
         expect(result.current.canSubmit).toBe(true);
     });
 
-    describe('existing units (#1026)', () => {
+    describe('existing units', () => {
         const unit = { id: 7, name: 'Caritas Südbaden' };
 
         it('can start on an existing unit (prefill / viewer lock) without any availability check', () => {

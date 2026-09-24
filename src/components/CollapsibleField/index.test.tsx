@@ -36,7 +36,7 @@ const Harness = ({ initiallyCollapsed = false }: { initiallyCollapsed?: boolean 
     );
 };
 
-describe('CollapsibleField (#1026)', () => {
+describe('CollapsibleField', () => {
     it('shows a "✓ Label" pill that names the hidden value', () => {
         render(<Harness initiallyCollapsed />);
 

@@ -55,7 +55,6 @@ import {
     phaseAwaitingLabelKey,
     phaseLabelKey,
 } from './derivePhases';
-import { backendInstantMs, parseBackendInstant } from '../../../utils/backendInstant';
 import styles from './inviteProgressBoard.module.scss';
 
 /**
@@ -366,7 +365,7 @@ export const InviteProgressBoard = ({
         const factor = sort.direction === 'asc' ? 1 : -1;
         return [...filtered].sort((a, b) => {
             if (sort.key === 'invitedAt') {
-                return factor * (backendInstantMs(a.createDate) - backendInstantMs(b.createDate));
+                return factor * (new Date(a.createDate).getTime() - new Date(b.createDate).getTime());
             }
             // Ordered by the string the cell renders, not by the e-mail behind it.
             return factor * inviteDisplayName(a).localeCompare(inviteDisplayName(b), locale);
@@ -416,7 +415,7 @@ export const InviteProgressBoard = ({
     };
 
     const formatDate = (iso: string) =>
-        parseBackendInstant(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+        new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const emptyUnfiltered = invites.length === 0;
 

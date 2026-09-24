@@ -24,7 +24,7 @@ const sentBody = () => JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData);
 describe('#1026 invite wiring — request contract', () => {
     beforeEach(() => mocks.fetchData.mockReset());
 
-    it('sends role, alsoCounsellor, EXISTING Träger, topic permission and the import batch id', async () => {
+    it('sends role, alsoCounsellor and an EXISTING Träger', async () => {
         mocks.fetchData.mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
         await createAccountInvite({
@@ -35,7 +35,6 @@ describe('#1026 invite wiring — request contract', () => {
             agencyId: 900,
             agencyIdAllocationMode: 'MANUAL',
             alsoCounsellor: true,
-            importBatchId: 'batch-1',
         });
 
         expect(sentBody()).toMatchObject({
@@ -45,7 +44,6 @@ describe('#1026 invite wiring — request contract', () => {
             agencyId: 900,
             agencyIdAllocationMode: 'MANUAL',
             alsoCounsellor: true,
-            importBatchId: 'batch-1',
         });
     });
 
@@ -63,7 +61,7 @@ describe('#1026 invite wiring — request contract', () => {
         expect(sentBody().topicPermission).toBe(false);
     });
 
-    it('omits alsoCounsellor, topicPermission and importBatchId when not set', async () => {
+    it('omits alsoCounsellor and topicPermission when not set', async () => {
         mocks.fetchData.mockResolvedValueOnce(jsonResponse({ id: 3 }));
 
         await createAccountInvite({ targetRole: 'COUNSELLOR', recipientEmail: 'c@example.org' });
@@ -71,7 +69,6 @@ describe('#1026 invite wiring — request contract', () => {
         const body = sentBody();
         expect(body).not.toHaveProperty('alsoCounsellor');
         expect(body).not.toHaveProperty('topicPermission');
-        expect(body).not.toHaveProperty('importBatchId');
     });
 
     it('lets a 409 reach the caller on send and resend (UNIT_NOT_CREATED)', async () => {

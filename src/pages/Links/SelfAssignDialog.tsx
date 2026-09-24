@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
-import { FETCH_ERRORS } from '../../api/fetchData';
 import { agencyIdAllocationClient, type IdAllocationClient } from '../../api/idAllocation/idAllocation';
 import {
     createSelfAssignment,
@@ -20,8 +19,8 @@ import {
     type IdUnitSearch,
 } from '../../components/IdAllocationField';
 import { Modal } from '../../components/Modal';
-import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
-import { inviteConflictReasonKey, ROLE_LABEL_KEYS, type InviteViewerScope } from './inviteModel';
+import { explainInviteError } from './explainInviteError';
+import { inviteConflictReasonKey, ROLE_LABEL_KEYS } from './inviteModel';
 import styles from './selfAssignDialog.module.scss';
 
 /** One topic (Fachbereich) of the chosen agency. */
@@ -31,8 +30,6 @@ export interface SelfAssignTopic {
 }
 
 export interface SelfAssignDialogProps {
-    /** Who assigns themselves: agency admins may only become counsellors (#1026 role rule). */
-    viewerScope: InviteViewerScope;
     /** Preselected Beratungsstelle — the existing one chosen in the invite bar, if any. */
     initialAgency?: IdUnitOption;
     /** Type-ahead over the agencies the viewer may see (the invite bar's own search). */
@@ -48,8 +45,8 @@ export interface SelfAssignDialogProps {
     onAssigned?: (result: SelfAssignmentResult) => void;
 }
 
-const rolesFor = (viewerScope: InviteViewerScope): SelfAssignmentRole[] =>
-    viewerScope === 'agency' ? ['COUNSELLOR'] : ['COUNSELLOR', 'AGENCY_ADMIN'];
+// The server takes only the counsellor role: an agency-admin row was never read.
+const SELF_ASSIGN_ROLES: SelfAssignmentRole[] = ['COUNSELLOR'];
 
 /**
  * "Mich selbst eintragen" (#1026 slice 3, UserService#1215): the signed-in
@@ -59,7 +56,6 @@ const rolesFor = (viewerScope: InviteViewerScope): SelfAssignmentRole[] =>
  * lists where the admin is already entered, so a second click is not a guess.
  */
 export const SelfAssignDialog = ({
-    viewerScope,
     initialAgency,
     searchAgencies,
     loadAgencyTopics,
@@ -70,7 +66,7 @@ export const SelfAssignDialog = ({
     onAssigned,
 }: SelfAssignDialogProps) => {
     const { t } = useTranslation();
-    const roles = rolesFor(viewerScope);
+    const roles = SELF_ASSIGN_ROLES;
     const [role, setRole] = useState<SelfAssignmentRole>(roles[0]);
     const agency = useIdAllocation({
         client: agencyIdAllocation ?? agencyIdAllocationClient,
@@ -110,11 +106,7 @@ export const SelfAssignDialog = ({
 
     const roleLabel = (value: SelfAssignmentRole) => t(...ROLE_LABEL_KEYS[value]);
     const needsTopics = role === 'COUNSELLOR' && (topics?.length ?? 0) > 1;
-    const alreadyThere =
-        agencyId != null &&
-        (role === 'COUNSELLOR'
-            ? assignments?.counsellorAgencyIds.includes(agencyId)
-            : assignments?.agencyAdminAgencyIds.includes(agencyId));
+    const alreadyThere = agencyId != null && assignments?.counsellorAgencyIds.includes(agencyId);
     const canSubmit = agencyId != null && !submitting && !alreadyThere && (!needsTopics || topicIds.length > 0);
 
     const assignmentSummary = useMemo(() => {
@@ -139,24 +131,6 @@ export const SelfAssignDialog = ({
             : t('links.selfAssign.currentNone', 'Sie sind noch in keiner Beratungsstelle selbst eingetragen.');
     }, [assignments, t]);
 
-    const explainFailure = async (failure: unknown): Promise<string> => {
-        if (failure instanceof Response) {
-            if (failure.status === 409) {
-                const known = inviteConflictReasonKey(failure.headers.get(FETCH_ERRORS.X_REASON));
-                if (known) return t(...known);
-            }
-            if (failure.status === 403) {
-                return t(
-                    'links.selfAssign.forbidden',
-                    'In dieser Beratungsstelle dürfen Sie sich nicht in dieser Rolle eintragen.',
-                );
-            }
-            const backend = await extractApiErrorMessageOrNull(failure);
-            if (backend) return backend;
-        }
-        return t('links.selfAssign.failed', 'Eintragen hat nicht geklappt. Bitte erneut versuchen.');
-    };
-
     const submit = async () => {
         if (!canSubmit || agencyId == null) return;
         setSubmitting(true);
@@ -176,7 +150,7 @@ export const SelfAssignDialog = ({
             onAssigned?.(result);
             onClose();
         } catch (failure) {
-            setError(await explainFailure(failure));
+            setError((await explainInviteError(failure, { t, action: 'selfAssign' })).message);
         } finally {
             setSubmitting(false);
         }

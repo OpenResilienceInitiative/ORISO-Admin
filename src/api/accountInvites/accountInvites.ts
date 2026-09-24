@@ -1,5 +1,6 @@
 import routePathNames, { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { withUtcInstants } from '../../utils/backendInstant';
 import type { AllocationMode } from '../idAllocation/idAllocation';
 
 export type AccountInviteTargetRole =
@@ -80,7 +81,6 @@ export interface AccountInviteDTO {
     /** #1026: set while `inviteStatus === 'WAITING_FOR_UNIT'`. */
     waitingForUnit?: InviteWaitingForUnit | null;
     queueProblem?: InviteQueueProblem | null;
-    importBatchId?: string | null;
     /** #1026: counsellor topic permission; absent on an older backend. */
     topicPermission?: InviteTopicPermission | null;
     rawToken?: string;
@@ -117,8 +117,6 @@ export interface CreateAccountInviteRequest {
     acceptBaseUrl?: string;
     /** #1026 slice 3: AGENCY_ADMIN only; the backend defaults to `true`. */
     alsoCounsellor?: boolean;
-    /** #1026 slice 5: one id per CSV file, so the rows of a file may arrive in any order. */
-    importBatchId?: string;
     /** #1026 slice 6: omitted = the agency default. */
     topicPermission?: InviteTopicPermission | boolean;
 }
@@ -234,12 +232,14 @@ export const listAccountInvites = async (
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
 
-    return fetchData({
-        url: `${accountInvitesEndpoint}?${search.toString()}`,
-        method: FETCH_METHODS.GET,
-        skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
-    });
+    return withUtcInstants(
+        await fetchData({
+            url: `${accountInvitesEndpoint}?${search.toString()}`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        }),
+    );
 };
 
 export const createAccountInvite = async (body: CreateAccountInviteRequest): Promise<AccountInviteDTO> => {
@@ -259,6 +259,8 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         // learns that DELIVERY is misconfigured instead of "something went wrong".
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.NO_MATCH,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
@@ -273,7 +275,6 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
             firstName: body.firstName,
-            importBatchId: body.importBatchId,
             lastName: body.lastName,
             recipientEmail: body.recipientEmail,
             targetRole: body.targetRole,
@@ -283,7 +284,7 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             topicPermission: body.topicPermission,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 /**
@@ -320,7 +321,7 @@ export const sendAccountInvite = async (
             templateId: body.templateId,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const resendAccountInvite = async (
@@ -345,7 +346,7 @@ export const resendAccountInvite = async (
             templateId: body.templateId,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const revokeAccountInvite = async (inviteId: number): Promise<AccountInviteDTO> => {
@@ -355,7 +356,7 @@ export const revokeAccountInvite = async (inviteId: number): Promise<AccountInvi
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 /**
@@ -378,7 +379,7 @@ export const updateAccountInviteTopicPermission = async (
         ],
         bodyData: JSON.stringify({ topicPermission }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const listInviteEmailTemplates = async (kind?: InviteEmailTemplateKind): Promise<InviteEmailTemplateDTO[]> =>
@@ -457,7 +458,7 @@ export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promi
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
         bodyData: JSON.stringify(body),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const updateInviteEmailTemplate = async (
@@ -471,5 +472,5 @@ export const updateInviteEmailTemplate = async (
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
         bodyData: JSON.stringify(body),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };

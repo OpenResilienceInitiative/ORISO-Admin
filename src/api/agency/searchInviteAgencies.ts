@@ -2,8 +2,8 @@ import { agencyEndpointBase } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
+import type { InviteTopicPermission } from '../accountInvites/accountInvites';
 
-/** One hit of the invite-bar agency picker (#1026 slice 2). */
 export interface InviteAgencyHit {
     id: number;
     name?: string;
@@ -11,32 +11,32 @@ export interface InviteAgencyHit {
     tenantName?: string;
     /** Topic (Fachbereich) names — the search matches them too. */
     topics: string[];
+    /** Agency default for invited counsellors, when the server sends settings. */
+    topicPermission?: InviteTopicPermission;
 }
 
-/** One page of picker hits. `hasMore` follows the server's `total`, not the (Träger-filtered) hit count. */
+/** One page of picker hits; `page` is the last server page read (it may read ahead past empty ones). */
 export interface InviteAgencyPage {
     hits: InviteAgencyHit[];
-    /** The server's full hit count for this query (before the client-side Träger filter). */
+    /** The server's full hit count, before the client-side Träger filter. */
     total: number;
     hasMore: boolean;
+    page: number;
 }
 
 export const INVITE_AGENCY_PAGE_SIZE = 10;
+// Cap on read-ahead so a Träger without matches cannot page through everything at once.
+const MAX_READ_AHEAD = 20;
 
-/**
- * Type-ahead search for EXISTING agencies (AgencyService#307): the regular admin
- * agency list, whose `q` also matches topic names and which leaves deleted
- * agencies out with `excludeDeleted=true`. The backend scopes the hits to what
- * the caller may see (own Träger / own agencies / everything for the platform
- * admin). An older AgencyService simply ignores the extra parameter and matches
- * names only, so the picker degrades instead of failing.
- *
- * Paged (#1026): the endpoint has no perPage cap and reports the full hit count
- * in `total`; the picker asks for the next page when the admin wants more, so
- * every agency in scope is reachable — not just the first 10.
- */
-export const searchInviteAgencies = async (query: string, tenantId?: number, page = 1): Promise<InviteAgencyPage> => {
-    const q = query.trim() === '' ? '*' : query.trim();
+const TOPIC_PERMISSIONS: InviteTopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];
+
+/** The agency's `settings.counsellorTopicPermission`, or `undefined` when absent or unknown. */
+export const agencyTopicPermission = (agency: Record<string, any> | undefined): InviteTopicPermission | undefined => {
+    const value = agency?.settings?.counsellorTopicPermission;
+    return TOPIC_PERMISSIONS.includes(value) ? value : undefined;
+};
+
+const fetchAgencyPage = async (q: string, page: number) => {
     const result = await fetchData({
         url: `${agencyEndpointBase}?q=${encodeURIComponent(
             q,
@@ -47,20 +47,37 @@ export const searchInviteAgencies = async (query: string, tenantId?: number, pag
     });
     const { data, total: rawTotal } = removeEmbedded(result ?? {});
     const rows = (data ?? []) as Array<Record<string, any>>;
-    const total = Number.isFinite(Number(rawTotal)) ? Number(rawTotal) : rows.length;
-    const hits = rows
-        // AgencyService sends an unset deleteDate as the STRING "null" (seen on
-        // Pre-Dev); the shared helper knows that, a truthiness check did not.
-        .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))
-        .map((agency) => ({
-            id: Number(agency.id),
-            name: agency.name ?? undefined,
-            tenantId: agency.tenantId != null ? Number(agency.tenantId) : undefined,
-            tenantName: agency.tenantName ?? undefined,
-            topics: (agency.topics ?? [])
-                .map((topic: { name?: string }) => topic?.name)
-                .filter((name: unknown): name is string => typeof name === 'string' && name !== ''),
-        }))
-        .filter((agency) => tenantId == null || agency.tenantId == null || agency.tenantId === tenantId);
-    return { hits, total, hasMore: page * INVITE_AGENCY_PAGE_SIZE < total };
+    return { rows, total: Number.isFinite(Number(rawTotal)) ? Number(rawTotal) : rows.length };
+};
+
+const toHit = (agency: Record<string, any>): InviteAgencyHit => ({
+    id: Number(agency.id),
+    name: agency.name ?? undefined,
+    tenantId: agency.tenantId != null ? Number(agency.tenantId) : undefined,
+    tenantName: agency.tenantName ?? undefined,
+    topicPermission: agencyTopicPermission(agency),
+    topics: (agency.topics ?? [])
+        .map((topic: { name?: string }) => topic?.name)
+        .filter((name: unknown): name is string => typeof name === 'string' && name !== ''),
+});
+
+// `q` also matches topic names; an older AgencyService ignores `excludeDeleted`, so deleted agencies are
+// filtered here too. The server cannot filter by Träger, so a filtered page reads ahead until it has hits.
+export const searchInviteAgencies = async (query: string, tenantId?: number, page = 1): Promise<InviteAgencyPage> => {
+    const q = query.trim() === '' ? '*' : query.trim();
+    let current = page;
+    for (;;) {
+        // eslint-disable-next-line no-await-in-loop -- each page decides whether the next is needed
+        const { rows, total } = await fetchAgencyPage(q, current);
+        const hits = rows
+            // AgencyService sends an unset deleteDate as the string "null".
+            .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))
+            .map(toHit)
+            .filter((agency) => tenantId == null || agency.tenantId == null || agency.tenantId === tenantId);
+        const hasMore = current * INVITE_AGENCY_PAGE_SIZE < total;
+        if (hits.length > 0 || !hasMore || current - page + 1 >= MAX_READ_AHEAD) {
+            return { hits, total, hasMore, page: current };
+        }
+        current += 1;
+    }
 };

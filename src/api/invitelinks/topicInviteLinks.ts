@@ -1,5 +1,6 @@
 import { appURL } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { withUtcInstants } from '../../utils/backendInstant';
 import {
     buildListQueryString,
     invitelinksEndpoint,
@@ -73,7 +74,7 @@ export const listTopicInviteLinks = async (
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
 
-    return normalizeListResponse<TopicInviteLinkDTO>(raw, page, size);
+    return normalizeListResponse<TopicInviteLinkDTO>(withUtcInstants(raw), page, size);
 };
 
 /** invite-link-apis.json #2 — POST topic-based link + Authorization + X-Tenant-Id */

@@ -487,14 +487,8 @@ describe('derivePhases — waiting for a new unit (#1026 slice 5)', () => {
     });
 });
 
-/*
- * Pre-Dev finding (#1026): a revoke from 16 minutes ago read "vor 2 Stunden".
- * UserService sends invite timestamps as zoneless LocalDateTime in UTC
- * ("2026-09-21T17:26:02", measured on Pre-Dev); `new Date()` read that as
- * Berlin local time, i.e. two hours earlier. Earlier fixtures carried a "Z"
- * and hid it. These run in Europe/Berlin so the offset is real.
- */
-describe('backend timestamps without a zone are UTC (#1026)', () => {
+// Timestamps arrive as UTC (see withUtcInstants); these run in Europe/Berlin so an offset would show.
+describe('timestamps with a zone', () => {
     const originalTz = process.env.TZ;
     beforeAll(() => {
         process.env.TZ = 'Europe/Berlin';
@@ -504,19 +498,15 @@ describe('backend timestamps without a zone are UTC (#1026)', () => {
     });
     const now = new Date('2026-09-21T17:42:02Z');
 
-    it('reads a zoneless backend timestamp from 16 minutes ago as 16 minutes ago', () => {
-        expect(formatRelativeTime('2026-09-21T17:26:02', 'de', now)).toBe('vor 16 Minuten');
-    });
-
     it('keeps honouring an explicit zone or offset', () => {
         expect(formatRelativeTime('2026-09-21T17:26:02Z', 'de', now)).toBe('vor 16 Minuten');
         expect(formatRelativeTime('2026-09-21T19:26:02+02:00', 'de', now)).toBe('vor 16 Minuten');
     });
 
-    it('orders zoneless and zoned timestamps by the instant they denote', () => {
-        // 17:30 UTC (zoneless) is later than 19:20+02:00 = 17:20 UTC.
+    it('orders timestamps by the instant they denote', () => {
+        // 17:30 UTC is later than 19:20+02:00 = 17:20 UTC.
         expect(
-            inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00' })),
-        ).toBe('2026-09-21T17:30:00');
+            inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00Z' })),
+        ).toBe('2026-09-21T17:30:00Z');
     });
 });
