@@ -38,7 +38,7 @@ export const WithoutText: Story = { args: { text: '' } };
 export const InClippingRow: StoryObj = {
     render: () => (
         <div style={{ overflowX: 'auto', overflowY: 'hidden', padding: 8, width: 320 }}>
-            <M3Tooltip placement="bottom" portal text="Kommt mit #1026">
+            <M3Tooltip placement="bottom" portal text="Kommt bald">
                 <span tabIndex={0}>Rolle</span>
             </M3Tooltip>
         </div>
