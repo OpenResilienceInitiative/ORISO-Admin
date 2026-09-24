@@ -417,6 +417,11 @@ describe('InviteCsvImportModal', () => {
             expect(createInvite.mock.calls[1][0]).not.toHaveProperty('topicPermission', expect.anything());
         });
 
+        it('says what an empty topic cell means', () => {
+            renderAgency([row(2, 'anna@x.de')]);
+            expect(rowCells('anna@x.de').getByText('leer = Darf weitere Fachbereiche auswählen')).toBeInTheDocument();
+        });
+
         it('shows the new columns with readable values', () => {
             renderAgency([row(2, 'anna@x.de', { id: 42, target: 'EXISTING', topicPermission: 'SELECT_EXISTING' })]);
             const cells = rowCells('anna@x.de');

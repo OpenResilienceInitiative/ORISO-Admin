@@ -595,15 +595,14 @@ export const InviteCsvImportModal = ({
                 if (row.rejectedReason || (row.role ?? tabRole) !== 'COUNSELLOR') return '—';
                 const value = row.topicPermission;
                 if (value == null) {
+                    // Omitted on purpose: the server gives an empty cell SELECT_EXISTING.
                     return (
-                        <Tooltip
-                            title={t(
-                                'links.csvImport.topicPermissionOmittedHint',
-                                'Leer: Der Server wendet seine Voreinstellung an.',
-                            )}
-                        >
+                        <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS.SELECT_EXISTING.description)}>
                             <span className={styles.autoId}>
-                                {t('links.csvImport.topicPermissionOmitted', 'nicht angegeben')}
+                                {t(
+                                    'links.csvImport.topicPermissionOmitted',
+                                    'leer = Darf weitere Fachbereiche auswählen',
+                                )}
                             </span>
                         </Tooltip>
                     );
@@ -675,7 +674,7 @@ export const InviteCsvImportModal = ({
                       )
                     : t(
                           'links.csvImport.columnsHintAgencyV3',
-                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false), Berät auch (ja/nein) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein. Eine neue Beratungsstelle legt ihre BST-Admin-Zeile an; Berater:innen-Zeilen mit derselben Nummer warten darauf — die Reihenfolge der Zeilen ist egal.',
+                          'Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false; leer = Darf weitere Fachbereiche auswählen), Berät auch (ja/nein) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein. Eine neue Beratungsstelle legt ihre BST-Admin-Zeile an; Berater:innen-Zeilen mit derselben Nummer warten darauf — die Reihenfolge der Zeilen ist egal.',
                       )}
             </p>
             <ListingTable<ImportRow>
