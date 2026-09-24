@@ -7,7 +7,8 @@ import { CaseHandoverLogsPage } from './index';
 const TRANSLATIONS: Record<string, string> = {
     'tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE': 'Ungeplant verhindert',
 };
-const t = (key: string, options?: { defaultValue?: string }) => TRANSLATIONS[key] ?? options?.defaultValue ?? key;
+// Like i18next (returnEmptyString: false): an empty defaultValue falls through to the key.
+const t = (key: string, options?: { defaultValue?: string }) => TRANSLATIONS[key] ?? (options?.defaultValue || key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -92,8 +93,21 @@ vi.mock('../../../hooks/useCaseHandoverLogsData', () => ({
                     requesterName: 'Second Requester',
                     previousName: 'Second Previous',
                 },
+                {
+                    requestId: 3,
+                    sessionId: 44,
+                    status: 'GRANTED',
+                    auditOutcome: 'AUTO_APPROVED',
+                    reasonCode: 'TENANT_EMPTY_LABEL',
+                    reasonLabel: '',
+                    explanation: '',
+                    clientConsentRequired: false,
+                    createdAt: '2026-07-03T10:00:00Z',
+                    requesterName: 'Third Requester',
+                    previousName: 'Third Previous',
+                },
             ],
-            total: 2,
+            total: 3,
             page: 1,
             perPage: 20,
         },
@@ -127,6 +141,15 @@ describe('CaseHandoverLogsPage', () => {
         render(<CaseHandoverLogsPage />);
 
         expect(screen.getByText('Custom backend label')).toBeInTheDocument();
+    });
+
+    it('shows the code when a custom reason has an empty backend label', () => {
+        render(<CaseHandoverLogsPage />);
+
+        expect(screen.getByText('TENANT_EMPTY_LABEL')).toBeInTheDocument();
+        expect(
+            screen.queryByText('tenants.permissions.card.caseHandover.reason.TENANT_EMPTY_LABEL'),
+        ).not.toBeInTheDocument();
     });
 
     it('is results-only: no policy editing and no free-text explanation column', () => {

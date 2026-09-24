@@ -70,8 +70,9 @@ export const CaseHandoverLogsPage = () => {
                 dataIndex: 'reasonLabel',
                 key: 'reasonLabel',
                 width: 240,
-                // Backend label is English; translate by code, keep the label for unknown codes.
-                render: (label: string, row) => t(reasonTranslationKey(row.reasonCode), { defaultValue: label }),
+                // Backend label is English; translate by code, else the label, else the code itself.
+                render: (label: string, row) =>
+                    t(reasonTranslationKey(row.reasonCode), { defaultValue: label || row.reasonCode }),
             },
             {
                 title: t('caseHandoverLogs.table.auditOutcome'),
