@@ -1,5 +1,16 @@
 name: CI - Feature Branch
 
+# This workflow and ci-pull-request.yml ran the identical `node-build` plus
+# `build-storybook` on the same commit. Measured on one pushed commit whose only
+# change was a workflow file: 12 m 40 s here and 19 m 59 s there, for the same
+# output. Once a pull request exists it validates every push to the branch
+# anyway, and its checks are the ones branch protection reads — so this run
+# proves nothing twice.
+#
+# The `gate` job below costs a few seconds and skips the build when a pull
+# request already covers the commit. A branch without one still gets validated,
+# which is the only reason this workflow exists.
+
 on:
     push:
         branches-ignore:
@@ -7,9 +18,50 @@ on:
             - dev
             - pre-dev
 
+permissions:
+    contents: read
+    pull-requests: read # the gate asks whether a PR already covers this commit
+
+concurrency:
+    # Per branch, not per run: pushing three commits in a row used to start
+    # three full pipelines that all validated a commit nobody would look at
+    # again. Only the newest one can still matter.
+    group: ci-feature-branch-${{ github.ref }}
+    cancel-in-progress: true
+
 jobs:
-    build:
+    gate:
+        name: check whether a pull request already validates this commit
         runs-on: ubuntu-latest
+        timeout-minutes: 5
+        outputs:
+            run: ${{ steps.check.outputs.run }}
+
+        steps:
+            - name: Look for an open pull request on this commit
+              id: check
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  # `commits/{sha}/pulls` answers for the exact commit, so a
+                  # branch that is pushed but not yet proposed still builds.
+                  open_prs="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" \
+                      --jq '[.[] | select(.state == "open")] | length')"
+                  if [ "${open_prs}" -gt 0 ]; then
+                      echo "run=false" >> "$GITHUB_OUTPUT"
+                      echo "::notice::Skipped: ${open_prs} open pull request(s) already validate this commit."
+                  else
+                      echo "run=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+    build:
+        needs: gate
+        if: needs.gate.outputs.run == 'true'
+        runs-on: ubuntu-latest
+        # Without this a hung job sits until GitHub's 6-hour default. The whole
+        # pipeline takes about 13 minutes.
+        timeout-minutes: 40
 
         steps:
             - name: Checkout repository

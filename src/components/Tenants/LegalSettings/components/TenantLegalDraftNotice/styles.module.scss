@@ -1,0 +1,35 @@
+/* The Admin theme maps Ant's info token to ORISO's primary red. Keep a saved
+   draft informational and use the same neutral M3 surface as LegalDraftNotice. */
+
+.notice {
+    width: 100%;
+    min-width: 0;
+    max-width: 960px;
+    box-sizing: border-box;
+}
+
+.info {
+    border-color: var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+
+    :global(.ant-alert-icon),
+    :global(.ant-alert-message) {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+}
+
+@media (max-width: 600px) {
+    .notice {
+        flex-wrap: wrap;
+    }
+
+    .notice :global(.ant-alert-content) {
+        min-width: 0;
+        flex: 1 1 220px;
+    }
+
+    .notice :global(.ant-alert-action) {
+        margin-left: 36px;
+    }
+}

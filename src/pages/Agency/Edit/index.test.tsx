@@ -1,6 +1,7 @@
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Form, notification } from 'antd';
 import { AgencyPageEdit } from './index';
@@ -13,8 +14,16 @@ const renderWithClient = (ui: React.ReactElement<any>) => {
     return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 };
 
+// Every test here mounts the whole agency edit page and drives it through real antd
+// interactions. The heaviest take ~16s of CPU on an idle machine, which leaves no room
+// under the project's 30s budget once CI runs files in parallel: the same test measures
+// 16.2s on dev, and a run whose wall time is half its cumulative test time doubles that.
+vi.setConfig({ testTimeout: 60_000 });
+
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
     userRoles: {
@@ -29,10 +38,15 @@ const mocks = vi.hoisted(() => ({
     routeId: 'add',
     agencyData: undefined as any,
     createConsultantProps: undefined as any,
+    tenantTopics: [] as Array<{ id: number; name: string; status: string }>,
+    consultants: [] as Array<{ id: number; firstname: string; lastname: string; email: string }>,
+    hasConsultants: false,
+    cardSaveOnError: vi.fn(),
     legalForm: {
         setFields: vi.fn(),
         scrollToField: vi.fn(),
     },
+    agencyLegalProps: undefined as any,
 }));
 
 const translations: Record<string, string> = {
@@ -45,9 +59,20 @@ const translations: Record<string, string> = {
     'agency.edit.general.address.city': 'Stadt',
     'agency.edit.settings.title': 'Einstellungen zum Beratungsangebot',
     'agency.edit.general.more_settings.tenant.title': 'Trägerzuordnung',
+    'agency.edit.form.validationFailed':
+        'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
     'agency.form.registrationSettings.title': 'Sichtbarkeit in der Registrierung',
     'agency.form.registrationSettings.onlineWarning': 'Beratungsstelle sichtbar machen',
     'agency.form.registrationSettings.onlineDescription': 'Sichtbar stellen',
+    'agency.form.registrationSettings.consultants.label': 'Berater:innen hinzufügen',
+    'agency.form.registrationSettings.onlineNeedsConsultant':
+        'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.',
+    'agency.form.registrationSettings.noTopicConfirm.title': 'Kein Thema ausgewählt',
+    'agency.form.registrationSettings.noTopicConfirm.text':
+        'Sie haben kein Thema ausgewählt. Möchten Sie die Beratung trotzdem aktivieren?',
+    'agency.form.registrationSettings.noTopicConfirm.cancel': 'Abbrechen',
+    'agency.form.registrationSettings.noTopicConfirm.confirm': 'Trotzdem aktivieren',
+    'topics.title': 'Themen',
     'agency.form.registrationSettings.postCodeTitle': 'Für welches Gebiet ist die Beratungsstelle sichtbar?',
     'agency.form.registrationSettings.allPostCode': 'Für alle PLZ-Gebiete',
     'agency.form.registrationSettings.onlySelectedPostCodes': 'PLZ-Gebiete definieren',
@@ -108,12 +133,26 @@ vi.mock('../../../components/Card', () => ({
 }));
 
 vi.mock('../../../components/CardEditable', () => ({
-    CardEditable: function CardEditable({ children, initialValues }: { children: any; initialValues?: object }) {
+    CardEditable: function CardEditable({
+        children,
+        initialValues,
+        onSave,
+        titleKey,
+    }: {
+        children: any;
+        initialValues?: object;
+        onSave?: (data: unknown, options: { onError: () => void }) => void;
+        titleKey?: string;
+    }) {
         return (
-            <Form initialValues={initialValues}>
+            <Form
+                initialValues={initialValues}
+                onFinish={(values) => onSave?.(values, { onError: mocks.cardSaveOnError })}
+            >
                 {typeof children === 'function'
                     ? children({ editing: true, form: undefined, startEditing: vi.fn() })
                     : children}
+                {onSave && <button type="submit">{`${t(titleKey)} save`}</button>}
             </Form>
         );
     },
@@ -125,6 +164,12 @@ vi.mock('../../../components/Tenants/AppSettings/PermissionsSettings', () => ({
 
 vi.mock('../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer', () => ({
     DataProcessingAgreementContainer: () => <div />,
+}));
+vi.mock('../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer', () => ({
+    AgencyLegalTextContainer: (props: unknown) => {
+        mocks.agencyLegalProps = props;
+        return <div data-testid="agency-legal-text" />;
+    },
 }));
 
 vi.mock('../../../context/FeatureContext', () => ({
@@ -173,7 +218,7 @@ vi.mock('../../../hooks/useAgencyPostCodesData', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate }),
+    useAgencyUpdate: () => ({ mutate: mocks.mutate, mutateAsync: mocks.mutateAsync, isPending: mocks.isAgencySaving }),
 }));
 
 vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
@@ -181,15 +226,15 @@ vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
-    useAgencyHasConsultants: () => ({ data: false, isLoading: false }),
+    useAgencyHasConsultants: () => ({ data: mocks.hasConsultants, isLoading: false }),
 }));
 
 vi.mock('../../../hooks/useTenantTopics', () => ({
-    useTenantTopics: () => ({ data: [], isLoading: false }),
+    useTenantTopics: () => ({ data: mocks.tenantTopics, isLoading: false }),
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
-    useConsultantsOrAdminsData: () => ({ data: { data: [] }, isLoading: false }),
+    useConsultantsOrAdminsData: () => ({ data: { data: mocks.consultants }, isLoading: false }),
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
@@ -241,6 +286,7 @@ vi.mock('../../../utils/parseUserAuthInfo', () => ({
 describe('AgencyPageEdit create flow', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({
@@ -258,8 +304,14 @@ describe('AgencyPageEdit create flow', () => {
         mocks.routeId = 'add';
         mocks.agencyData = undefined;
         mocks.createConsultantProps = undefined;
+        mocks.tenantTopics = [];
+        mocks.consultants = [];
+        mocks.hasConsultants = false;
+        mocks.cardSaveOnError.mockReset();
         mocks.legalForm.setFields.mockReset();
         mocks.legalForm.scrollToField.mockReset();
+        mocks.agencyLegalProps = undefined;
+        mocks.isAgencySaving = false;
     });
 
     it('renders the tenant assignment field for super-admin agency creation', async () => {
@@ -294,6 +346,31 @@ describe('AgencyPageEdit create flow', () => {
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('names the missing required field in a notification when the save is blocked', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        renderWithClient(<AgencyPageEdit />);
+
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+        fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '86161' } });
+        fireEvent.change(screen.getByLabelText('Stadt'), { target: { value: 'Augsburg' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        // Without this the only feedback is the inline marker on a field that sits
+        // below the fold — from the top of the form, Save looked like a no-op.
+        await waitFor(
+            () =>
+                expect(notificationSpy).toHaveBeenCalledWith({
+                    message:
+                        'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
+                    description: 'Trägerzuordnung',
+                    duration: 8,
+                }),
+            { timeout: 5000 },
+        );
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        notificationSpy.mockRestore();
     });
 
     it('blocks the direct add route for a tenant admin whose DPA is unsigned', () => {
@@ -372,6 +449,60 @@ describe('AgencyPageEdit create flow', () => {
         );
     });
 
+    it('gives the agency legal editor an awaited publication callback', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        let finishUpdate: () => void = () => undefined;
+        mocks.mutateAsync.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishUpdate = resolve;
+                }),
+        );
+        renderWithClient(<AgencyPageEdit section="legal" />);
+
+        await waitFor(() => expect(mocks.agencyLegalProps).toBeDefined());
+        let settled = false;
+        const publication = mocks.agencyLegalProps
+            .onSaveAgencyWide({ content: { privacy: { de: '<p>normalized</p>' } } })
+            .then(() => {
+                settled = true;
+            });
+        await Promise.resolve();
+        expect(settled).toBe(false);
+        expect(mocks.mutateAsync).toHaveBeenCalledWith({
+            content: { privacy: { de: '<p>normalized</p>' } },
+        });
+
+        finishUpdate();
+        await publication;
+        expect(settled).toBe(true);
+    });
+
+    it('hands the pending agency update to the legal editor as saving', async () => {
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        mocks.isAgencySaving = true;
+        renderWithClient(<AgencyPageEdit section="legal" />);
+        await waitFor(() => expect(mocks.agencyLegalProps?.saving).toBe(true));
+    });
+
+    it('reports a rejected agency-wide publication and rethrows it to the legal editor', async () => {
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.routeId = '282';
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [], content: {} };
+        const rejection = new Response(null, { status: 400 });
+        mocks.mutateAsync.mockRejectedValue(rejection);
+        renderWithClient(<AgencyPageEdit section="legal" />);
+
+        await waitFor(() => expect(mocks.agencyLegalProps).toBeDefined());
+        await expect(
+            mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
+        ).rejects.toBe(rejection);
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        notificationSpy.mockRestore();
+    });
+
     it('renders a structured service validation error on the responsible field and focuses it', async () => {
         mocks.routeId = '282';
         mocks.agencyData = {
@@ -424,5 +555,397 @@ describe('AgencyPageEdit create flow', () => {
 
         expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
         notificationSpy.mockRestore();
+    });
+});
+
+const TOPIC = { id: 7, name: 'Debt counselling', status: 'ACTIVE' };
+const CONSULTANT = { id: 1, firstname: 'Erika', lastname: 'Beispiel', email: 'erika@example.org', tenantId: '7' };
+const FOREIGN_CONSULTANT = {
+    id: 2,
+    firstname: 'Fremd',
+    lastname: 'Mandant',
+    email: 'fremd@example.org',
+    tenantId: '99',
+};
+const CONSULTANT_LABEL = 'Erika Beispiel erika@example.org';
+
+const setupUser = () => userEvent.setup({ delay: null });
+
+const fillRequiredCreateFields = async (user: ReturnType<typeof userEvent.setup>) => {
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
+    fireEvent.change(screen.getByLabelText('PLZ'), { target: { value: '86161' } });
+    fireEvent.change(screen.getByLabelText('Stadt'), { target: { value: 'Augsburg' } });
+
+    await user.click(screen.getByRole('combobox', { name: /Trägerzuordnung/ }));
+    await user.click(await screen.findByRole('option', { name: 'Caritas Augsburg' }));
+};
+
+const assignConsultant = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+    await user.click(await screen.findByRole('option', { name: CONSULTANT_LABEL }));
+};
+
+const goLiveWithTopicsAvailable = async (user: ReturnType<typeof userEvent.setup>) => {
+    mocks.tenantTopics = [TOPIC];
+    mocks.consultants = [CONSULTANT];
+    renderWithClient(<AgencyPageEdit />);
+    await fillRequiredCreateFields(user);
+    await assignConsultant(user);
+    await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
+};
+
+describe('AgencyPageEdit no-topic activation confirm', () => {
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({
+            data: [{ id: 7, name: 'Caritas Augsburg' }],
+        });
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: true,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: false,
+            roles: [],
+            tenantId: 0,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.routeId = 'add';
+        mocks.agencyData = undefined;
+        mocks.createConsultantProps = undefined;
+        mocks.tenantTopics = [];
+        mocks.consultants = [];
+        mocks.hasConsultants = false;
+        mocks.cardSaveOnError.mockReset();
+    });
+
+    it('shows the confirm dialog and does not save when going live without a topic', async () => {
+        const user = setupUser();
+        await goLiveWithTopicsAvailable(user);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Kein Thema ausgewählt')).toBeInTheDocument();
+        expect(
+            within(dialog).getByText('Sie haben kein Thema ausgewählt. Möchten Sie die Beratung trotzdem aktivieren?'),
+        ).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the form values and does not save when the no-topic dialog is cancelled', async () => {
+        const user = setupUser();
+        await goLiveWithTopicsAvailable(user);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Name')).toHaveValue('Neue Beratungsstelle');
+        expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    });
+
+    it('saves offline:false and empty topicIds when the no-topic dialog is confirmed', async () => {
+        const user = setupUser();
+        await goLiveWithTopicsAvailable(user);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+    });
+
+    it('saves without a dialog when going live with a topic selected', async () => {
+        const user = setupUser();
+        await goLiveWithTopicsAvailable(user);
+
+        await user.click(screen.getByRole('combobox', { name: /Themen/ }));
+        await user.click(await screen.findByRole('option', { name: 'Debt counselling' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: ['7'] }));
+    });
+
+    it('does not warn when an already-online agency is saved without topics', async () => {
+        const user = setupUser();
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '86161',
+            city: 'Augsburg',
+            offline: false,
+            topics: [],
+            tenantId: 7,
+            consultantIds: [{ value: '1', label: CONSULTANT_LABEL }],
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(await screen.findByDisplayValue('Bestehende Stelle')).toBeInTheDocument();
+        // The create-route consultant effect forces online off on first paint. Turn it
+        // back on: this is still not an activation because initialValues.online is true.
+        const toggle = screen.getByRole('switch', { name: 'Sichtbar stellen' });
+        expect(toggle).not.toBeDisabled();
+        await user.click(toggle);
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+    });
+
+    const renderOfflineAgencyEdit = (topics: Array<{ id: number; name: string }> = []) => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.hasConsultants = true;
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            offline: true,
+            topics,
+            tenantId: 7,
+        };
+        renderWithClient(<AgencyPageEdit />);
+    };
+
+    const saveRegistrationCard = () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+    };
+
+    it('shows the confirm dialog when an existing offline agency goes live without a topic', async () => {
+        const user = setupUser();
+        renderOfflineAgencyEdit();
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('Kein Thema ausgewählt')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the registration card in edit mode when the no-topic dialog is cancelled', async () => {
+        const user = setupUser();
+        renderOfflineAgencyEdit();
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
+        expect(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' })).toBeInTheDocument();
+    });
+
+    it('saves the registration card online when the no-topic dialog is confirmed', async () => {
+        const user = setupUser();
+        renderOfflineAgencyEdit();
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: true }));
+        expect(mocks.cardSaveOnError).not.toHaveBeenCalled();
+    });
+
+    it('saves without a dialog when an existing agency has a persisted topic', async () => {
+        const user = setupUser();
+        renderOfflineAgencyEdit([{ id: 7, name: 'Debt counselling' }]);
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: true }));
+    });
+});
+
+describe('AgencyPageEdit registration visibility needs a counsellor', () => {
+    const NEEDS_CONSULTANT =
+        'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.';
+
+    const saveRegistrationCard = () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+    };
+
+    const renderAgencyWithoutAssignedConsultants = () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = false;
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
+        renderWithClient(<AgencyPageEdit />);
+    };
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: true,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: false,
+            roles: [],
+            tenantId: 0,
+        };
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.agencyData = undefined;
+        mocks.createConsultantProps = undefined;
+        mocks.tenantTopics = [];
+        mocks.consultants = [];
+        mocks.hasConsultants = false;
+        mocks.cardSaveOnError.mockReset();
+    });
+
+    it('lets the switch move and names the missing counsellor on save', async () => {
+        const user = setupUser();
+        renderAgencyWithoutAssignedConsultants();
+
+        // The switch used to be disabled here, which stated no reason at all.
+        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        expect(toggle).not.toBeDisabled();
+        await user.click(toggle);
+        saveRegistrationCard();
+
+        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('refuses to activate an offline agency while the lookup has not answered', async () => {
+        const user = setupUser();
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = undefined;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+
+        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('still saves the card when the counsellor lookup did not answer', async () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        // The HAS_CONSULTANTS request failed, so react-query leaves the flag undefined. The
+        // agency is online and staffed; a postcode-only edit must not be rejected for it.
+        mocks.hasConsultants = undefined;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: false, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(await screen.findByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
+    });
+
+    it('drops a counsellor picked before the tenant was chosen', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        // No tenant is picked yet, so the picker deliberately offers every tenant's counsellors.
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+        await user.click(await screen.findByRole('option', { name: /Fremd Mandant/ }));
+
+        // Choosing tenant 7 narrows the options. The select keeps values it cannot resolve, so
+        // without pruning the foreign id would still be submitted and then assigned.
+        await fillRequiredCreateFields(user);
+        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        const saved = mocks.mutate.mock.calls[0][0] as { consultantIds?: unknown[] };
+        expect(saved.consultantIds ?? []).toEqual([]);
+    });
+
+    it('does not offer a counsellor from another tenant', async () => {
+        const user = setupUser();
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        // The platform admin's consultant search spans tenants; the agency belongs to tenant 7.
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        renderWithClient(<AgencyPageEdit />);
+
+        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+    });
+
+    it('warns when the card saved but the counsellor could not be assigned', async () => {
+        const user = setupUser();
+        const warn = vi.spyOn(notification, 'warning').mockImplementation(() => undefined as never);
+        const success = vi.spyOn(notification, 'success').mockImplementation(() => undefined as never);
+        // The card save path reports success on its own; without forwarding the flag the
+        // admin would be told the agency saved while the counsellor stayed unassigned.
+        mocks.mutate.mockImplementation((_data, options) =>
+            options?.onSuccess?.({ id: 282, consultantAssignmentFailed: true }),
+        );
+        renderAgencyWithoutAssignedConsultants();
+
+        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        await assignConsultant(user);
+        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        await waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
+        expect(warn.mock.calls[0][0]).toEqual(
+            expect.objectContaining({ message: 'message.agency.consultantAssignmentFailed' }),
+        );
+        expect(success).toHaveBeenCalledTimes(1);
+        warn.mockRestore();
+        success.mockRestore();
+    });
+
+    it('goes live once a counsellor is picked, although the backend reports none yet', async () => {
+        const user = setupUser();
+        renderAgencyWithoutAssignedConsultants();
+
+        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        await assignConsultant(user);
+        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
+        saveRegistrationCard();
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
+        const saved = mocks.mutate.mock.calls[0][0] as { online?: boolean; consultantIds?: unknown[] };
+        expect(saved.online).toBe(true);
+        // The selection must reach the save, otherwise updateAgencyData has nothing to assign.
+        expect(saved.consultantIds).toHaveLength(1);
     });
 });

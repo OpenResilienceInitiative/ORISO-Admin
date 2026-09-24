@@ -49,7 +49,6 @@ const translations: Record<string, string> = {
     email: 'E-Mail',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
-    'counselor.passwordConfirmation': 'Passwort wiederholen',
     'counselor.displayName': 'Öffentlicher Anzeigename',
     'counselor.internalDisplayName': 'Interner Anzeigename',
     'counselor.salutation': 'Anrede',
@@ -66,6 +65,8 @@ const translations: Record<string, string> = {
     'counselor.avatar.motif': 'Symbol',
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
+    'counselor.absent': 'Abwesend',
+    'counselor.absenceMessage': 'Abwesenheitsnotiz',
     'counselor.assignedSupervisor': 'Fester Supervisor',
     'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
     'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
@@ -224,7 +225,6 @@ const fillMandatoryFields = async () => {
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
     setField('Passwort', 'Str0ng!Pass');
-    setField('Passwort wiederholen', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
@@ -766,6 +766,76 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
 
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
+    });
+});
+
+// antd resolves only REGISTERED fields in `onFinish`. This form shows the absence note but
+// not the toggle, so `absent` has to be registered and hidden or it arrives as `undefined`.
+describe('absence survives an unrelated edit', () => {
+    const ABSENCE_NOTE = 'Bin bis zum 30.09. nicht erreichbar.';
+    const absentConsultant = {
+        id: 'consultant-absent',
+        firstname: 'Ada',
+        lastname: 'Lovelace',
+        email: 'ada.lovelace@example.org',
+        username: 'ada-lovelace',
+        tenantId: TENANT.id,
+        agencies: [],
+        absent: true,
+        absenceMessage: ABSENCE_NOTE,
+    };
+
+    const openAbsentConsultant = () => {
+        mocks.params = { id: absentConsultant.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [absentConsultant] }, isLoading: false };
+        mocks.counselorResult = { data: absentConsultant, isLoading: false };
+    };
+
+    it('submits the stored absence when the admin only changed the e-mail', async () => {
+        const user = userEvent.setup();
+        openAbsentConsultant();
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        // The reason the admin opened the page at all: something unrelated.
+        setField('E-Mail', 'ada.neu@example.org');
+
+        const payload = await submit(user);
+
+        expect(payload.email).toBe('ada.neu@example.org');
+        expect(payload.absent).toBe(true);
+        expect(payload.absenceMessage).toBe(ABSENCE_NOTE);
+    });
+
+    it('shows the stored note, and submits what was typed into it', async () => {
+        // The note is rendered on this screen even though the toggle is not, so it has to be
+        // a field that actually saves — not a box that quietly discards what is typed.
+        const user = userEvent.setup();
+        openAbsentConsultant();
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.getByLabelText('Abwesenheitsnotiz')).toHaveValue(ABSENCE_NOTE);
+
+        setField('Abwesenheitsnotiz', 'Zurueck ab dem 01.10.');
+
+        const payload = await submit(user);
+        expect(payload.absent).toBe(true);
+        expect(payload.absenceMessage).toBe('Zurueck ab dem 01.10.');
+    });
+
+    it('leaves a present counsellor present, with no note on screen', async () => {
+        const user = userEvent.setup();
+        const present = { ...absentConsultant, id: 'consultant-present', absent: false, absenceMessage: undefined };
+        mocks.params = { id: present.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [present] }, isLoading: false };
+        mocks.counselorResult = { data: present, isLoading: false };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.queryByLabelText('Abwesenheitsnotiz')).not.toBeInTheDocument();
+
+        expect(await submit(user)).toMatchObject({ absent: false });
     });
 });
 
