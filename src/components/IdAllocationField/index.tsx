@@ -4,27 +4,13 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { M3NumberField } from '../M3NumberField';
 import type { IdUnitOption, IdValidationState, UseIdAllocationResult } from './useIdAllocation';
+import { useUnitSearch, type IdUnitSearch } from './useUnitSearch';
 import styles from './styles.module.scss';
 
 export { useIdAllocation } from './useIdAllocation';
 export type { IdFieldMode, IdUnitOption, IdValidationState, UseIdAllocationResult } from './useIdAllocation';
 
-/** One page of a paged type-ahead search; `hasMore` is the server's word, `total` its full hit count. */
-export interface IdUnitSearchPage {
-    units: IdUnitOption[];
-    hasMore: boolean;
-    total?: number;
-    /** The last server page this reply consumed, when it read ahead past empty pages. */
-    page?: number;
-}
-
-type IdUnitSearchResult = IdUnitOption[] | IdUnitSearchPage;
-
-/** A plain list is final; a page with `hasMore` makes the menu offer "Weitere anzeigen". */
-export type IdUnitSearch = (query: string, page?: number) => Promise<IdUnitSearchResult> | IdUnitSearchResult;
-
-const asPage = (result: IdUnitSearchResult): IdUnitSearchPage =>
-    Array.isArray(result) ? { units: result, hasMore: false } : result;
+export type { IdUnitSearch, IdUnitSearchPage } from './useUnitSearch';
 
 export interface IdAllocationFieldProps {
     /** Visible field label, e.g. "Träger" / "Beratungsstelle". */
@@ -52,7 +38,6 @@ export interface IdAllocationFieldProps {
 
 const BLOCKING_STATES: IdValidationState[] = ['reserved', 'assigned', 'error'];
 const DIGITS = /^\d+$/;
-const SEARCH_DEBOUNCE_MS = 150;
 
 type MenuEntry =
     | { key: string; kind: 'create'; label: string }
@@ -88,14 +73,7 @@ export const IdAllocationField = ({
 
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState<IdUnitOption[]>([]);
-    // Paging of the current query: the last page loaded and whether the server has more.
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(false);
-    const [total, setTotal] = useState<number | undefined>();
     const [nextFree, setNextFree] = useState<number | null | undefined>();
-    // The last number looked up via `resolveUnit`; `unit: null` = no such unit.
-    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null } | undefined>();
     const [activeIndex, setActiveIndex] = useState(0);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; minWidth: number }>();
 
@@ -114,55 +92,6 @@ export const IdAllocationField = ({
         return value === undefined ? '' : String(value);
     })();
 
-    // A new query (or a fresh open) starts at page 1 and replaces the list.
-    useEffect(() => {
-        if (!open || !searchUnits) return undefined;
-        let cancelled = false;
-        const timer = window.setTimeout(() => {
-            Promise.resolve(searchUnits(query.trim(), 1))
-                .then((found) => {
-                    if (cancelled) return;
-                    const first = asPage(found);
-                    setResults(first.units);
-                    setPage(first.page ?? 1);
-                    setHasMore(first.hasMore);
-                    setTotal(first.total);
-                })
-                .catch(() => {
-                    if (cancelled) return;
-                    setResults([]);
-                    setHasMore(false);
-                    setTotal(undefined);
-                });
-        }, SEARCH_DEBOUNCE_MS);
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
-    }, [open, query, searchUnits]);
-
-    const queryRef = useRef(query);
-    queryRef.current = query;
-    const loadMore = () => {
-        if (!searchUnits) return;
-        const forQuery = query;
-        const nextPage = page + 1;
-        Promise.resolve(searchUnits(forQuery.trim(), nextPage))
-            .then((found) => {
-                // A reply for a query the admin has typed past is stale.
-                if (queryRef.current !== forQuery) return;
-                const next = asPage(found);
-                setResults((previous) => {
-                    const known = new Set(previous.map((option) => option.id));
-                    return [...previous, ...next.units.filter((option) => !known.has(option.id))];
-                });
-                setPage(next.page ?? nextPage);
-                setHasMore(next.hasMore);
-                setTotal(next.total ?? total);
-            })
-            .catch(() => setHasMore(false));
-    };
-
     useEffect(() => {
         if (!open || !allowCreate) return undefined;
         let cancelled = false;
@@ -176,43 +105,17 @@ export const IdAllocationField = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, allowCreate]);
 
-    // Existing-only field: a typed number counts only once it resolves to a real unit.
-    const typedId = acceptTypedIds && DIGITS.test(query.trim()) ? Number(query.trim()) : undefined;
-    const lookupToken = useRef(0);
-    const lookUpTyped = (id: number) => {
-        if (!resolveUnit) return;
-        lookupToken.current += 1;
-        const token = lookupToken.current;
-        resolveUnit(id)
-            .catch(() => null)
-            .then((found) => {
-                if (token !== lookupToken.current) return;
-                setResolved({ id, unit: found });
-                if (found) allocation.selectExisting(found);
-            });
-    };
-    useEffect(() => {
-        if (!open || allowCreate || typedId === undefined || !resolveUnit) return undefined;
-        const timer = window.setTimeout(() => lookUpTyped(typedId), SEARCH_DEBOUNCE_MS);
-        return () => window.clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, allowCreate, typedId, resolveUnit]);
-
-    // A taken number usually is an existing unit: look it up so the menu can offer it.
     const assignedId = mode === 'manual' && validation === 'assigned' ? value : undefined;
-    useEffect(() => {
-        if (!allowCreate || assignedId === undefined || !resolveUnit) return undefined;
-        let cancelled = false;
-        resolveUnit(assignedId)
-            .catch(() => null)
-            .then((found) => {
-                if (!cancelled) setResolved({ id: assignedId, unit: found });
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [allowCreate, assignedId, resolveUnit]);
-    const assignedUnit = assignedId !== undefined && resolved?.id === assignedId ? resolved.unit : null;
+    const { results, hasMore, total, loadMore, typedId, typedUnit, assignedUnit, settleTyped } = useUnitSearch({
+        searchUnits,
+        resolveUnit,
+        open,
+        query,
+        allowCreate,
+        acceptTypedIds,
+        assignedId,
+        onTypedUnit: allocation.selectExisting,
+    });
 
     const trimmed = query.trim();
     const entries: MenuEntry[] = [];
@@ -237,7 +140,6 @@ export const IdAllocationField = ({
             ' · ',
         ),
     });
-    const typedUnit = typedId !== undefined && resolved?.id === typedId ? resolved.unit : undefined;
     if (allowCreate && typedId !== undefined) {
         entries.push({
             key: `typed-${typedId}`,
@@ -308,7 +210,7 @@ export const IdAllocationField = ({
 
     // Leaving the field right after typing a number must not drop the pending lookup.
     const leaveField = () => {
-        if (!allowCreate && typedId !== undefined && resolved?.id !== typedId) lookUpTyped(typedId);
+        settleTyped();
         closeMenu();
     };
 
@@ -327,7 +229,6 @@ export const IdAllocationField = ({
     const handleTextChange = (raw: string) => {
         setQuery(raw);
         setActiveIndex(0);
-        lookupToken.current += 1;
         if (!open) setOpen(true);
         const typed = raw.trim();
         // A new number is checked while the admin keeps typing; an existing-only field waits for the lookup.

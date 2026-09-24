@@ -1,5 +1,8 @@
 // Shared by the invite bar and the CSV import so both send the same contract.
 
+/** `direct` sends the templated e-mail; `createOnly` creates the recipient without a mail. */
+export type InviteSendMode = 'direct' | 'createOnly';
+
 /** Role the invited person gets ("Rolle"). */
 export type InviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN' | 'TENANT_ADMIN';
 

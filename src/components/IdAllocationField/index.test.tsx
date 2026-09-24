@@ -414,4 +414,25 @@ describe('IdAllocationField', () => {
         expect(screen.getByRole('option', { name: /Caritas Freiburg/ })).toBeInTheDocument();
         expect(screen.queryByRole('option', { name: /Caravan Hilfe/ })).not.toBeInTheDocument();
     });
+    it('asks for the next page once while it is still loading', async () => {
+        let answerPage2: (page: { units: { id: number; name: string }[]; hasMore: boolean }) => void = () => {};
+        const searchUnits = vi.fn((_query: string, page?: number) =>
+            page === 2
+                ? new Promise<{ units: { id: number; name: string }[]; hasMore: boolean }>((resolve) => {
+                      answerPage2 = resolve;
+                  })
+                : { units: [{ id: 1, name: 'Caritas Eins' }], hasMore: true },
+        );
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocationState()} searchUnits={searchUnits} />);
+
+        await user.click(screen.getByRole('combobox', { name: 'Beratungsstelle' }));
+        const more = await screen.findByRole('option', { name: 'Weitere anzeigen' });
+        await user.click(more);
+        await user.click(more);
+        await act(async () => answerPage2({ units: [{ id: 2, name: 'Caritas Zwei' }], hasMore: false }));
+
+        expect(searchUnits.mock.calls.filter(([, page]) => page === 2)).toHaveLength(1);
+        expect(screen.getByRole('option', { name: /Caritas Zwei/ })).toBeInTheDocument();
+    });
 });

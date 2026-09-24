@@ -20,6 +20,7 @@ import {
 } from '../../components/IdAllocationField';
 import { Modal } from '../../components/Modal';
 import { explainInviteError } from './explainInviteError';
+import { SELF_ASSIGN_ROLES } from './inviteRules';
 import { inviteConflictReasonKey, ROLE_LABEL_KEYS } from './inviteModel';
 import styles from './selfAssignDialog.module.scss';
 
@@ -44,9 +45,6 @@ export interface SelfAssignDialogProps {
     onAssigned?: (result: SelfAssignmentResult) => void;
 }
 
-// The server takes only the counsellor role: an agency-admin row was never read.
-const SELF_ASSIGN_ROLES: SelfAssignmentRole[] = ['COUNSELLOR'];
-
 /** "Mich selbst eintragen": the admin joins a Beratungsstelle with their existing account, no e-mail invite. */
 export const SelfAssignDialog = ({
     initialAgency,
@@ -59,7 +57,7 @@ export const SelfAssignDialog = ({
     onAssigned,
 }: SelfAssignDialogProps) => {
     const { t } = useTranslation();
-    const roles = SELF_ASSIGN_ROLES;
+    const roles = SELF_ASSIGN_ROLES as SelfAssignmentRole[];
     const [role, setRole] = useState<SelfAssignmentRole>(roles[0]);
     const agency = useIdAllocation({
         client: agencyIdAllocation ?? agencyIdAllocationClient,

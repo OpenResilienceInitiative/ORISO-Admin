@@ -2,8 +2,7 @@
 // Id, role and template stay raw here: only the caller knows the tab's id space and templates.
 
 import type { InviteRole, TopicPermission } from '../inviteModel';
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isValidEmail } from '../inviteRules';
 
 /**
  * First-cell labels (lower-cased) that mark a header row. Only a *recognised*
@@ -364,7 +363,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         const topicRaw = normalize(cell('topicPermission'));
         const alsoCounsellorRaw = normalize(cell('alsoCounsellor'));
 
-        if (!EMAIL_PATTERN.test(email)) {
+        if (!isValidEmail(email)) {
             reject('invalidEmail');
             return;
         }

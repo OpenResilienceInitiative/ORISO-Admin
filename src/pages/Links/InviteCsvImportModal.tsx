@@ -14,36 +14,17 @@ import {
 } from './csv/parseInviteCsv';
 import {
     ROLE_LABEL_KEYS,
-    rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
     type InviteRole,
     type InviteViewerScope,
     type TopicPermission,
 } from './inviteModel';
 import { explainInviteError } from './explainInviteError';
+import type { InviteCsvCreateRow } from './inviteRequest';
+import { csvSendOrder, invitableRoles } from './inviteRules';
 import styles from './inviteCsvImport.module.scss';
 
-/**
- * Payload per row — the tab wraps it into a full createAccountInvite request and
- * decides which id space `id` belongs to (see `InviteCsvIdKind`).
- */
-export interface InviteCsvCreateRow {
-    recipientEmail: string;
-    firstName?: string;
-    lastName?: string;
-    /** Resolved ID column: the file's value, or the batch-assigned one on the Träger tab. */
-    id?: number;
-    /** "Ziel": EXISTING invites into the unit with that id. */
-    target: InviteCsvTarget;
-    /** An empty "Rolle" cell means the tab's role. */
-    role: InviteRole;
-    /** "Vorlage" resolved to a template of this tab; `undefined` = the one chosen in the bar. */
-    templateId?: number;
-    /** Counsellors only; `undefined` = omitted, the server decides. */
-    topicPermission?: TopicPermission;
-    /** "Berät auch", agency admins only; `undefined` = the backend default (yes). */
-    alsoCounsellor?: boolean;
-}
+export type { InviteCsvCreateRow } from './inviteRequest';
 
 /** What the backend did with one row, as far as the preview shows it. */
 export interface InviteCsvCreateOutcome {
@@ -102,11 +83,6 @@ export interface InviteCsvImportModalProps {
     templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<InviteCsvCreateOutcome | void>;
-    /**
-     * Roles this tab may import on top of the viewer rule. The Träger tab only
-     * founds NEW Träger (Träger admins); other roles belong to the Berater tab.
-     */
-    tabRoles?: InviteRole[];
     /** A platform admin has no own Träger, so a Träger-admin row cannot name one on the counsellor tab. */
     ownTenantKnown?: boolean;
     /** The tab's invite list; created rows follow their live status in it. */
@@ -135,7 +111,6 @@ export const InviteCsvImportModal = ({
     viewerScope = 'platform',
     templates = [],
     createInvite,
-    tabRoles,
     ownTenantKnown = true,
     invites,
     onClose,
@@ -174,7 +149,7 @@ export const InviteCsvImportModal = ({
         ? t('links.accountInvites.tenantId', 'Träger-ID')
         : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
     const roleLabel = (role: InviteRole) => t(...ROLE_LABEL_KEYS[role]);
-    const allowedRoles = rolesForViewer(viewerScope).filter((role) => tabRoles == null || tabRoles.includes(role));
+    const allowedRoles = invitableRoles(viewerScope, isTenantId ? 'tenant' : 'counsellor');
 
     const findTemplate = (raw: string) => {
         const wanted = raw.trim().toLowerCase();
@@ -187,7 +162,7 @@ export const InviteCsvImportModal = ({
     const rowIssue = (row: ImportRow): string | undefined => {
         const role = row.role ?? tabRole;
         const line = { line: row.line };
-        if (!rolesForViewer(viewerScope).includes(role)) {
+        if (!invitableRoles(viewerScope, 'counsellor').includes(role)) {
             return t(
                 'links.csvImport.issue.roleNotAllowed',
                 'Die Rolle „{{role}}“ dürfen Sie nicht vergeben (Zeile {{line}}).',
@@ -288,17 +263,11 @@ export const InviteCsvImportModal = ({
     };
 
     // Founding admins first: rows that wait for a new unit need its admin invite to exist.
-    const sendOrder = (row: ImportRow) => {
-        const role = row.role ?? tabRole;
-        if (row.target === 'EXISTING') return 2;
-        if (role === 'TENANT_ADMIN') return 0;
-        return role === 'AGENCY_ADMIN' ? 1 : 2;
-    };
-
     const runImport = async () => {
         setRunning(true);
         const assigned = idByLine;
-        const queue = [...pendingRows].sort((a, b) => sendOrder(a) - sendOrder(b));
+        const order = (row: ImportRow) => csvSendOrder(row.role ?? tabRole, row.target ?? 'NEW');
+        const queue = [...pendingRows].sort((a, b) => order(a) - order(b));
         let created = 0;
         let failed = 0;
         let firstStop: string | null = null;

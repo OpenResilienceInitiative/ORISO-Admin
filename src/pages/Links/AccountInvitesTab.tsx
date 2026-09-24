@@ -17,7 +17,6 @@ import {
     updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
-import type { AllocationMode } from '../../api/idAllocation/idAllocation';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { findInviteTenant } from '../../api/tenant/findInviteTenant';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
@@ -38,6 +37,8 @@ import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
 import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
+import { toCreateInviteRequest } from './inviteRequest';
+import { isBulkSelectable, listedOnTab } from './inviteRules';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
@@ -46,28 +47,6 @@ interface AccountInvitesTabProps {
     templateKind: InviteEmailTemplateKind;
     includeAgencyField?: boolean;
 }
-
-/** Agency allocation mode of one CSV row: an existing agency, a pinned new number, or the next free one. */
-const csvAgencyAllocationMode = (row: InviteCsvCreateRow): AllocationMode => {
-    if (row.target === 'EXISTING') return 'EXISTING';
-    return row.id != null ? 'MANUAL' : 'AUTO';
-};
-
-// Only a DRAFT or a sent invite can still be sent or revoked.
-const isBulkSelectable = (invite: AccountInviteDTO) =>
-    invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
-
-/** Roles the invite tabs manage at all (the list endpoint may carry others, e.g. advice seekers). */
-const INVITE_TAB_ROLES: ReadonlySet<AccountInviteTargetRole> = new Set(['TENANT_ADMIN', 'AGENCY_ADMIN', 'COUNSELLOR']);
-
-/** The Träger tab keeps only Träger founders; invites that join an existing unit live on the counsellor tab. */
-const foundsTenant = (invite: AccountInviteDTO) =>
-    invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
-const belongsToTab = (invite: AccountInviteDTO, tenantTab: boolean) =>
-    INVITE_TAB_ROLES.has(invite.targetRole) && foundsTenant(invite) === tenantTab;
-/** An agency admin may invite counsellors only, so other invites in their agencies stay hidden. */
-const visibleForViewer = (invite: AccountInviteDTO, viewerScope: InviteViewerScope) =>
-    viewerScope !== 'agency' || invite.targetRole === 'COUNSELLOR';
 
 /** Topics of an agency for the self-assignment dialog (AgencyService admin detail). */
 const loadAgencyDetail = async (agencyId: number) => {
@@ -266,8 +245,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     targetRole: isTenantInvite ? 'TENANT_ADMIN' : undefined,
                 });
                 all.push(
-                    ...(response.content ?? []).filter(
-                        (invite) => belongsToTab(invite, isTenantInvite) && visibleForViewer(invite, viewerScope),
+                    ...(response.content ?? []).filter((invite) =>
+                        listedOnTab(invite, isTenantInvite ? 'tenant' : 'counsellor', viewerScope),
                     ),
                 );
                 totalPages = response.totalPages ?? 0;
@@ -455,50 +434,25 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const createCsvInvite = useCallback(
         async (row: InviteCsvCreateRow): Promise<InviteCsvCreateOutcome | undefined> => {
             if (!csvImport) return undefined;
-            // The Träger tab addresses the tenant id space; elsewhere the admin's own Träger goes out as EXISTING.
-            const ownTenant =
-                currentTenantId != null
-                    ? { tenantId: currentTenantId, tenantIdAllocationMode: 'EXISTING' as const }
-                    : {};
-            let unitFields: Pick<
-                Parameters<typeof createAccountInvite>[0],
-                'tenantId' | 'tenantIdAllocationMode' | 'agencyId' | 'agencyIdAllocationMode'
-            >;
-            if (isTenantInvite) {
-                unitFields =
-                    row.target === 'EXISTING'
-                        ? { tenantId: row.id, tenantIdAllocationMode: 'EXISTING' }
-                        : { tenantId: row.id };
-            } else if (row.role === 'TENANT_ADMIN') {
-                unitFields = ownTenant;
-            } else {
-                // Agency id column: "bestehend" = existing (checked, not reserved),
-                // a number for "neu" is pinned MANUAL, an empty cell takes the next free one.
-                unitFields = { ...ownTenant, agencyId: row.id, agencyIdAllocationMode: csvAgencyAllocationMode(row) };
-            }
-            const created = await createAccountInvite({
-                acceptBaseUrl: acceptBaseUrlForRole(row.role),
-                expiresInDays: 30,
-                firstName: row.firstName,
-                lastName: row.lastName,
-                recipientEmail: row.recipientEmail,
-                targetRole: row.role,
-                alsoCounsellor: row.alsoCounsellor,
-                topicPermission: row.topicPermission,
-                // A row may name its own template; empty means the bar's.
-                templateId:
-                    csvImport.sendMode === 'direct'
-                        ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
-                        : undefined,
-                ...unitFields,
-            });
+            const created = await createAccountInvite(
+                toCreateInviteRequest(
+                    { kind: 'csv', ...row },
+                    {
+                        tab: isTenantInvite ? 'tenant' : 'counsellor',
+                        viewer: viewerScope,
+                        sendMode: csvImport.sendMode,
+                        ownTenantId: currentTenantId,
+                        fallbackTemplateId: selectedTemplateId ?? activeTemplates[0]?.id,
+                    },
+                ),
+            );
             return {
                 inviteId: created?.id,
                 waiting: created?.inviteStatus === 'WAITING_FOR_UNIT',
                 noUnitAdmin: created?.queueProblem === 'NO_UNIT_ADMIN',
             };
         },
-        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId],
+        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId, viewerScope],
     );
 
     // Optimistic: the chip shows the new level at once; a failed save puts the old one back.
@@ -792,7 +746,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     tabRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
                     templates={activeTemplates}
                     viewerScope={viewerScope}
-                    tabRoles={isTenantInvite ? ['TENANT_ADMIN'] : undefined}
                     ownTenantKnown={currentTenantId != null}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
