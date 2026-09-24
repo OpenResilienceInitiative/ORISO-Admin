@@ -104,6 +104,17 @@
     .fieldStackPaired > :last-child {
         grid-column: 1 / -1;
     }
+
+    /* Sender block: the legal name is long, e-mail and phone pair up below it. */
+    .senderFields {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .senderFields > :first-child {
+        grid-column: 1 / -1;
+    }
 }
 
 /* Organisation master data (owner report 2026-08-19). The block moved out of

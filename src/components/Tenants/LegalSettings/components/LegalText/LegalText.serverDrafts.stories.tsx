@@ -138,11 +138,17 @@ export const PersistedServerDraft: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Sie bearbeiten einen Server-Entwurf')).toBeVisible();
-        const notice = canvas.getByTestId('tenant-server-draft-notice');
-        await expect(notice).toHaveClass('ant-alert-info');
-        await expect(notice).toHaveAttribute('role', 'status');
-        await expect(getComputedStyle(notice).backgroundColor).toBe('rgb(234, 231, 232)');
+        await expect(
+            await canvas.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
+        ).toBeVisible();
+        // The saved-draft state is an editor snackbar now, not a box above the card: it
+        // says when the draft was saved and that the previous version stays live, is
+        // announced politely, and offers exactly one action — Discard.
+        const notice = canvas.getByTestId('legal-draft-snackbar');
+        await expect(within(notice).getByRole('status')).toHaveTextContent(/Entwurf vom .+ noch nicht veröffentlicht/);
+        await expect(within(notice).getByRole('button', { name: 'Verwerfen' })).toBeVisible();
+        await expect(within(notice).getByRole('button', { name: 'Hinweis schließen' })).toBeVisible();
+        await expect(canvas.queryByText('Sie bearbeiten einen Server-Entwurf')).not.toBeInTheDocument();
 
         // 390px viewport minus Storybook's two 16px gutters. This caught the
         // card's former fixed 375px minimum width before visual review did.
@@ -156,7 +162,9 @@ export const PersistedServerDraft: Story = {
         });
         storyCanvas.style.width = originalWidth;
 
-        await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
+        // The loaded draft IS the saved one: nothing to save, but it differs from the
+        // live text, so publishing is offered.
+        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: /teilen|share/i })).not.toBeInTheDocument();
     },
@@ -169,7 +177,7 @@ export const LocalAndServerCollision: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
-        await userEvent.click(canvas.getByRole('button', { name: 'Lokalen Entwurf verwenden' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
         await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
     },
@@ -180,13 +188,41 @@ export const ConflictRefresh: Story = {
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        // "Entwurf speichern" appears once there is something to save.
+        await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
         await userEvent.click(await canvas.findByRole('button', { name: 'Entwurf speichern' }));
         await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Server-Entwurf laden' })).not.toBeInTheDocument();
-        await waitFor(() => expect(canvas.getByRole('button', { name: 'Server-Entwurf laden' })).toBeVisible(), {
+        await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
+        await waitFor(() => expect(canvas.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
             timeout: 3000,
         });
         await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
+    },
+};
+
+/**
+ * One snackbar at a time (M3). The saved-draft status comes first; closing it lets the
+ * help hint for the published imprint flip in — they never stack on top of each other.
+ */
+export const DraftSnackbarGivesWayToHelpHint: Story = {
+    parameters: { msw: { handlers: persistedHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const draftSnackbar = await canvas.findByTestId('legal-draft-snackbar');
+        // Count snackbar roots only (CSS-module class `_hintSnackbar_…`), not their inner parts.
+        const snackbarRoots = () =>
+            [...canvasElement.querySelectorAll('div')].filter((element) =>
+                [...element.classList].some((name) => /^_?hintSnackbar_/.test(name)),
+            );
+        await expect(snackbarRoots()).toHaveLength(1);
+
+        await userEvent.click(within(draftSnackbar).getByRole('button', { name: 'Hinweis schließen' }));
+
+        await waitFor(() => expect(canvas.queryByTestId('legal-draft-snackbar')).not.toBeInTheDocument());
+        await waitFor(() => expect(canvas.getByRole('button', { name: 'Nicht mehr anzeigen' })).toBeVisible());
+        await expect(snackbarRoots()).toHaveLength(1);
     },
 };
