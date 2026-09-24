@@ -637,7 +637,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeInTheDocument();
 
             // The next person only needs their own fields.
-            await user.type(email, 'bart.simpson@oriso.org');
+            await user.type(email, 'bart.simpson@example.org');
             await user.type(screen.getByLabelText('Vorname'), 'Bart');
             await user.type(screen.getByLabelText('Name'), 'Simpson');
             await waitFor(() => expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeEnabled(), {
@@ -646,7 +646,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             await user.click(screen.getByRole('button', { name: 'Senden & nächste' }));
             await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
             expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
-                recipientEmail: 'bart.simpson@oriso.org',
+                recipientEmail: 'bart.simpson@example.org',
                 agencyId: 900,
                 topicPermission: 'SELECT_EXISTING',
             });
@@ -683,7 +683,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             expect(await screen.findByText('Could not create link')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /^E-Mail bearbeiten/ })).toHaveAttribute(
                 'title',
-                'lisa.simpson@oriso.org',
+                'lisa.simpson@example.org',
             );
             expect(screen.getByRole('button', { name: /^Vorname bearbeiten/ })).toHaveAttribute('title', 'Lisa');
         });
