@@ -192,7 +192,7 @@ const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
 const ALL_COLUMNS_CSV = [
     'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch',
     'anna.beispiel@traeger.de;Anna;Beispiel;42;bestehend;Berater:in;;NONE;',
-    // #1026 slice 5: the BST-Admin row founds Beratungsstelle 900 ...
+    // The BST-Admin row founds Beratungsstelle 900 ...
     'bernd.muster@traeger.de;Bernd;Muster;900;neu;BST-Admin;;;ja',
     // ... and the counsellor row with the same number waits for it (any row order).
     'carla.test@traeger.de;Carla;Test;900;neu;Berater:in;Berater:innen-Willkommen;SELECT_EXISTING;',

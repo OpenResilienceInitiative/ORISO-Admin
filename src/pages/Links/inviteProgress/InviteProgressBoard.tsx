@@ -117,7 +117,7 @@ const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) =>
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
-/** A waiting invite (#1026 slice 5) can be revoked, but not sent or copied — it has no link yet. */
+/** A waiting invite has no link yet: it can be revoked, not sent or copied. */
 const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
 
 /** The topic permission only exists for counsellors, and stays editable after the account exists. */
@@ -160,10 +160,7 @@ export interface InviteProgressBoardProps {
     onRevoke: (invite: AccountInviteDTO) => void;
     /** Wired to the invite composer above the board (empty-state CTA). */
     onInviteCta?: () => void;
-    /**
-     * #1026 slice 6: change a counsellor invite's topic permission in place —
-     * also after the account exists. Omit to hide the column.
-     */
+    /** Also works after the account exists; omit to hide the column. */
     onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
     /** Invite ids whose topic permission is being saved right now (the select is disabled meanwhile). */
     topicPermissionSavingIds?: number[];
@@ -282,8 +279,7 @@ export const InviteProgressBoard = ({
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
-    // #1026 slice 6: the per-person topic permission sits in the recipient cell —
-    // a column of its own pushed the actions out of a 1440px table.
+    // The topic permission sits in the recipient cell: its own column pushed the actions out of a 1440px table.
     const showTopicPermission = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
     const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
     const topicShort = (value: TopicPermission) => t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
@@ -492,7 +488,7 @@ export const InviteProgressBoard = ({
                                                 label: topicTitle(option),
                                             }))}
                                             popupMatchSelectWidth={false}
-                                            // Invites created before #1026 carry no value: they behave as CREATE.
+                                            // Invites without a value (older ones) behave as CREATE.
                                             value={invite.topicPermission ?? 'CREATE'}
                                             onChange={(next) => {
                                                 if (next !== (invite.topicPermission ?? 'CREATE')) {
@@ -575,8 +571,8 @@ export const InviteProgressBoard = ({
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
                                     {isWaitingForUnit(invite) ? (
-                                        // Disable, don't hide (#1026): sending by hand is refused with
-                                        // 409 UNIT_NOT_CREATED until the unit exists — say why.
+                                        // Disable, don't hide: a manual send answers 409
+                                        // UNIT_NOT_CREATED until the unit exists.
                                         <M3Tooltip
                                             text={t(
                                                 'links.inviteProgress.action.resendWaiting',

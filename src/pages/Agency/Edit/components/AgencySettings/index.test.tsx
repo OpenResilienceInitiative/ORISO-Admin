@@ -145,7 +145,7 @@ describe('AgencySettings team/single toggle', () => {
     });
 });
 
-describe('AgencySettings counsellor topic permission default (#1026 slice 6)', () => {
+describe('AgencySettings counsellor topic permission default', () => {
     const TopicPermissionValue = () => {
         const value = Form.useWatch(['settings', 'counsellorTopicPermission']);
         return <span data-testid="form-topic-permission">{String(value)}</span>;

@@ -41,8 +41,7 @@ export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?
             labels.topicPermission ?? '',
             labels.alsoCounsellor ?? '',
         );
-        // #1026 slice 5: a NEW Beratungsstelle is founded by its BST-Admin row;
-        // counsellor rows name the same number and wait for it (any row order).
+        // A new Beratungsstelle is founded by its BST-Admin row; counsellor rows with the same number wait for it.
         rows =
             samples.idKind === 'agency'
                 ? [

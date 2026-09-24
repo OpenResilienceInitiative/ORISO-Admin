@@ -40,8 +40,7 @@ export const searchInviteAgencies = async (query: string, tenantId?: number): Pr
     const { data } = removeEmbedded(result ?? {});
     return (
         (data as Array<Record<string, any>>)
-            // AgencyService sends an unset deleteDate as the STRING "null" (seen on
-            // Pre-Dev); the shared helper knows that, a truthiness check did not.
+            // AgencyService sends an unset deleteDate as the string "null".
             .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))
             .map((agency) => ({
                 id: Number(agency.id),

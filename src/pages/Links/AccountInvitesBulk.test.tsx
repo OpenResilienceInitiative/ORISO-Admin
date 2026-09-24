@@ -609,7 +609,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         async () => {
             mocks.sendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
             mocks.resendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
-            // The Träger tab lists the invites that found a Träger (#1026).
+            // The Träger tab lists only the invites that found a Träger.
             mocks.listAccountInvites.mockResolvedValue(
                 invitesPage(MIXED_INVITES.map((row) => ({ ...row, targetRole: 'TENANT_ADMIN' }))),
             );

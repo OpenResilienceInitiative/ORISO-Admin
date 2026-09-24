@@ -233,7 +233,7 @@ describe('assignBatchTenantIds', () => {
     });
 });
 
-describe('parseInviteCsv — "Berät auch" (#1026 slice 3)', () => {
+describe('parseInviteCsv — "Berät auch"', () => {
     it('reads ja/nein and true/false by header', () => {
         const result = parseInviteCsv(
             'E-Mail;Rolle;Beratungsstellen-ID;Berät auch\r\na@x.de;BST-Admin;900;ja\r\nb@x.de;BST-Admin;901;false\r\nc@x.de;BST-Admin;902;\r\n',
