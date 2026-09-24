@@ -94,7 +94,9 @@ export const useIdAllocation = ({
     // "stale responses discarded" guarantee.
     const requestToken = useRef(0);
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-    const stepInFlight = useRef(false);
+    // Id of the running step; a reset clears it, so a stale step cannot clear a newer one.
+    const stepInFlight = useRef<number | null>(null);
+    const stepSeq = useRef(0);
 
     const cancelPendingCheck = () => {
         requestToken.current += 1;
@@ -146,8 +148,10 @@ export const useIdAllocation = ({
 
     const step = useCallback(
         (direction: 1 | -1) => {
-            if (stepInFlight.current) return;
-            stepInFlight.current = true;
+            if (stepInFlight.current !== null) return;
+            stepSeq.current += 1;
+            const stepId = stepSeq.current;
+            stepInFlight.current = stepId;
             cancelPendingCheck();
             const token = requestToken.current;
 
@@ -183,7 +187,7 @@ export const useIdAllocation = ({
                     setValidation(fromAuto ? 'auto' : 'error');
                 })
                 .finally(() => {
-                    stepInFlight.current = false;
+                    if (stepInFlight.current === stepId) stepInFlight.current = null;
                 });
         },
         [client, value],
@@ -191,7 +195,7 @@ export const useIdAllocation = ({
 
     const resetToAuto = useCallback(() => {
         cancelPendingCheck();
-        stepInFlight.current = false;
+        stepInFlight.current = null;
         setMode('auto');
         setValue(undefined);
         setUnit(undefined);
@@ -202,7 +206,7 @@ export const useIdAllocation = ({
 
     const selectExisting = useCallback((next: IdUnitOption) => {
         cancelPendingCheck();
-        stepInFlight.current = false;
+        stepInFlight.current = null;
         setMode('existing');
         setUnit(next);
         setValue(next.id);

@@ -190,6 +190,9 @@ export interface InviteComposerProps {
     searchTenants?: IdUnitSearch;
     /** Agency search; receives the currently chosen Träger so results can be scoped to it. */
     searchAgencies?: (query: string, context: { tenantId?: number }) => Promise<IdUnitOption[]> | IdUnitOption[];
+    /** Number lookups for the ID fields; `null` = no such unit. */
+    resolveTenant?: (id: number) => Promise<IdUnitOption | null>;
+    resolveAgency?: (id: number) => Promise<IdUnitOption | null>;
     /**
      * May the Träger field create a NEW Träger? Defaults to `requireTenantId`
      * (the Träger tab); elsewhere the field points at an existing Träger.
@@ -297,6 +300,8 @@ export const InviteComposer = ({
     placeholdersEnabled = false,
     searchTenants,
     searchAgencies,
+    resolveTenant,
+    resolveAgency,
     tenantAllowCreate = requireTenantId,
     initialValues,
     className,
@@ -934,6 +939,7 @@ export const InviteComposer = ({
                         allowCreate={tenantAllowCreate && !tenantLocked}
                         label={tenantLabel}
                         locked={tenantLocked}
+                        resolveUnit={resolveTenant}
                         searchUnits={searchTenants}
                         onBlur={() => collapseIfValid('tenant', fieldValid.tenant)}
                     />
@@ -949,6 +955,7 @@ export const InviteComposer = ({
                             allocation={agencyAllocation}
                             label={agencyLabel}
                             locked={agencyLocked}
+                            resolveUnit={resolveAgency}
                             searchUnits={searchAgencies ? searchAgenciesInTenant : undefined}
                             onBlur={() => collapseIfValid('agency', fieldValid.agency)}
                         />

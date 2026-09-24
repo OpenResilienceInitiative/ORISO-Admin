@@ -30,6 +30,8 @@ export interface IdAllocationFieldProps {
      * a typed number means "the unit with that number").
      */
     allowCreate?: boolean;
+    /** Looks a number up; `null` = no such unit. Without it, typed numbers are never taken as existing. */
+    resolveUnit?: (id: number) => Promise<IdUnitOption | null>;
     /** Called when focus leaves the field (the invite bar collapses a valid field then). */
     onBlur?: () => void;
     inputRef?: Ref<HTMLInputElement>;
@@ -68,6 +70,7 @@ export const IdAllocationField = ({
     locked = false,
     searchUnits,
     allowCreate = true,
+    resolveUnit,
     onBlur,
     inputRef,
     className,
@@ -81,6 +84,8 @@ export const IdAllocationField = ({
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<IdUnitOption[]>([]);
     const [nextFree, setNextFree] = useState<number | null | undefined>();
+    // The last number looked up via `resolveUnit`; `unit: null` = no such unit.
+    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null } | undefined>();
     const [activeIndex, setActiveIndex] = useState(0);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; minWidth: number }>();
 
@@ -131,6 +136,43 @@ export const IdAllocationField = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, allowCreate]);
 
+    // Existing-only field: a typed number counts only once it resolves to a real unit.
+    const typedId = DIGITS.test(query.trim()) ? Number(query.trim()) : undefined;
+    useEffect(() => {
+        if (!open || allowCreate || typedId === undefined || !resolveUnit) return undefined;
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            resolveUnit(typedId)
+                .catch(() => null)
+                .then((found) => {
+                    if (cancelled) return;
+                    setResolved({ id: typedId, unit: found });
+                    if (found) allocation.selectExisting(found);
+                });
+        }, SEARCH_DEBOUNCE_MS);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, allowCreate, typedId, resolveUnit]);
+
+    // A taken number usually is an existing unit: look it up so the menu can offer it.
+    const assignedId = mode === 'manual' && validation === 'assigned' ? value : undefined;
+    useEffect(() => {
+        if (!allowCreate || assignedId === undefined || !resolveUnit) return undefined;
+        let cancelled = false;
+        resolveUnit(assignedId)
+            .catch(() => null)
+            .then((found) => {
+                if (!cancelled) setResolved({ id: assignedId, unit: found });
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [allowCreate, assignedId, resolveUnit]);
+    const assignedUnit = assignedId !== undefined && resolved?.id === assignedId ? resolved.unit : null;
+
     // --- menu entries -------------------------------------------------------
     const trimmed = query.trim();
     const entries: MenuEntry[] = [];
@@ -146,30 +188,29 @@ export const IdAllocationField = ({
                     : t('idAllocationField.createNew', '＋ Neu anlegen (nächste freie Nummer)'),
         });
     }
-    if (DIGITS.test(trimmed)) {
-        const id = Number(trimmed);
+    const unitEntry = (option: IdUnitOption): MenuEntry => ({
+        key: `unit-${option.id}`,
+        kind: 'unit',
+        unit: option,
+        label: option.name ?? t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: option.id }),
+        secondary: [t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: option.id }), ...(option.topics ?? [])].join(
+            ' · ',
+        ),
+    });
+    const typedUnit = typedId !== undefined && resolved?.id === typedId ? resolved.unit : undefined;
+    if (allowCreate && typedId !== undefined) {
         entries.push({
-            key: `typed-${id}`,
+            key: `typed-${typedId}`,
             kind: 'typed',
-            id,
-            label: allowCreate
-                ? t('idAllocationField.useTypedNew', 'Nummer {{id}} verwenden', { id })
-                : t('idAllocationField.useTypedExisting', 'Nr. {{id}} übernehmen', { id }),
+            id: typedId,
+            label: t('idAllocationField.useTypedNew', 'Nummer {{id}} verwenden', { id: typedId }),
         });
     }
-    results.forEach((option) =>
-        entries.push({
-            key: `unit-${option.id}`,
-            kind: 'unit',
-            unit: option,
-            label: option.name ?? t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: option.id }),
-            secondary: [
-                t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: option.id }),
-                ...(option.topics ?? []),
-            ].join(' · '),
-        }),
-    );
-    const noMatches = searchUnits != null && trimmed !== '' && !DIGITS.test(trimmed) && results.length === 0;
+    const offered = allowCreate ? assignedUnit : typedUnit;
+    if (offered && !results.some((option) => option.id === offered.id)) entries.push(unitEntry(offered));
+    results.forEach((option) => entries.push(unitEntry(option)));
+    const noMatches = searchUnits != null && trimmed !== '' && typedId === undefined && results.length === 0;
+    const noUnitWithNumber = !allowCreate && typedUnit === null;
 
     const isSelected = (entry: MenuEntry) => {
         if (entry.kind === 'create') return mode === 'auto';
@@ -214,8 +255,7 @@ export const IdAllocationField = ({
     const choose = (entry: MenuEntry) => {
         if (entry.kind === 'create') allocation.resetToAuto();
         else if (entry.kind === 'unit') allocation.selectExisting(entry.unit);
-        else if (allowCreate) allocation.setManualValue(entry.id);
-        else allocation.selectExisting({ id: entry.id });
+        else allocation.setManualValue(entry.id);
         closeMenu();
     };
 
@@ -224,12 +264,8 @@ export const IdAllocationField = ({
         setActiveIndex(0);
         if (!open) setOpen(true);
         const typed = raw.trim();
-        // A typed number applies immediately — the availability check (new) or
-        // the unit pick (existing-only) runs while the admin keeps typing.
-        if (DIGITS.test(typed)) {
-            if (allowCreate) allocation.setManualValue(Number(typed));
-            else allocation.selectExisting({ id: Number(typed) });
-        }
+        // A new number is checked while the admin keeps typing; an existing-only field waits for the lookup.
+        if (allowCreate && DIGITS.test(typed)) allocation.setManualValue(Number(typed));
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -270,7 +306,12 @@ export const IdAllocationField = ({
         checking: t('idAllocationField.checking', 'Verfügbarkeit wird geprüft …'),
         available: undefined,
         reserved: t('idAllocationField.reserved', 'Diese ID ist durch eine offene Einladung reserviert.'),
-        assigned: t('idAllocationField.assigned', 'Diese ID ist bereits vergeben.'),
+        assigned: assignedUnit
+            ? t('idAllocationField.assignedExisting', 'Nr. {{id}} ist „{{name}}“ – zum Einladen im Menü übernehmen.', {
+                  id: assignedUnit.id,
+                  name: assignedUnit.name ?? assignedUnit.id,
+              })
+            : t('idAllocationField.assigned', 'Diese ID ist bereits vergeben.'),
         error: t('idAllocationField.serviceError', 'Verfügbarkeit konnte nicht geprüft werden.'),
         existing: undefined,
     };
@@ -372,6 +413,13 @@ export const IdAllocationField = ({
                         {noMatches && (
                             <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
                                 {t('idAllocationField.noMatches', 'Keine Treffer')}
+                            </li>
+                        )}
+                        {noUnitWithNumber && (
+                            <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
+                                {t('idAllocationField.noUnitWithNumber', 'Keine Einheit mit Nr. {{id}}', {
+                                    id: typedId,
+                                })}
                             </li>
                         )}
                     </ul>,

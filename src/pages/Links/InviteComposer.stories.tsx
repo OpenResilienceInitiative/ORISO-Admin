@@ -582,10 +582,29 @@ const PARTLY_FILLED = {
     tenant: TENANTS[0],
 };
 
-/**
- * 412px phone (the issue's test width): filled fields have collapsed to pills,
- * so the row needs far less horizontal scrolling than the full-width fields.
- */
+// Tapping a pill must bring the field back inside the frame, and the frame must not scroll sideways.
+const playTapPillOnPhone: Story['play'] = async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const frame = canvasElement.firstElementChild as HTMLElement;
+    await Promise.all(
+        [PILL.email, PILL.firstName, PILL.lastName, PILL.tenant].map((pill) =>
+            canvas.findByRole('button', { name: pill }),
+        ),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: PILL.lastName }));
+    const expanded = await canvas.findByRole('textbox', { name: /^(Name|Last name)$/ });
+    await waitFor(() => expect(expanded).toHaveFocus());
+    await expect(expanded).toHaveValue(PREFILLED.lastName);
+    const frameBox = frame.getBoundingClientRect();
+    await waitFor(() => {
+        const box = expanded.getBoundingClientRect();
+        expect(box.left).toBeGreaterThanOrEqual(frameBox.left - 1);
+        expect(box.right).toBeLessThanOrEqual(frameBox.right + 1);
+    });
+    await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth + 1);
+};
+
+/** 412px phone: filled fields are pills, and a tapped pill opens inside the screen. */
 export const Mobile412: Story = {
     args: { initialValues: PARTLY_FILLED },
     decorators: phoneFrame(412),
@@ -593,19 +612,10 @@ export const Mobile412: Story = {
         viewport: { options: { phone412: { name: 'Phone 412', styles: { width: '412px', height: '915px' } } } },
     },
     globals: { viewport: { value: 'phone412', isRotated: false } },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        await Promise.all(
-            [PILL.email, PILL.firstName, PILL.lastName, PILL.tenant].map((pill) =>
-                canvas.findByRole('button', { name: pill }),
-            ),
-        );
-        // Tapping a pill brings the full field back (the interaction itself is tested in PartiallyCollapsed).
-        await expect(canvas.getByRole('button', { name: PILL.email })).toBeEnabled();
-    },
+    play: playTapPillOnPhone,
 };
 
-/** 320px, the smallest phone we support: same behaviour, pills keep every control reachable by scrolling. */
+/** 320px, the smallest supported phone: same behaviour. */
 export const Mobile320: Story = {
     args: { initialValues: PARTLY_FILLED },
     decorators: phoneFrame(320),
@@ -613,10 +623,7 @@ export const Mobile320: Story = {
         viewport: { options: { phone320: { name: 'Phone 320', styles: { width: '320px', height: '640px' } } } },
     },
     globals: { viewport: { value: 'phone320', isRotated: false } },
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('button', { name: PILL.tenant })).toBeInTheDocument();
-    },
+    play: playTapPillOnPhone,
 };
 
 /** Send is wired: pressing „Einladen" hands the composed values (incl. role and target) to `onSubmit`. */

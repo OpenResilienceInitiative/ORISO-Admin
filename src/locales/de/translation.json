@@ -2147,6 +2147,8 @@
     "idAllocationField.searchPlaceholderExisting": "Name oder Nr.",
     "idAllocationField.locked": "Auf Ihre Einheit festgelegt",
     "idAllocationField.noMatches": "Keine Treffer",
+    "idAllocationField.assignedExisting": "Nr. {{id}} ist „{{name}}“ – zum Einladen im Menü übernehmen.",
+    "idAllocationField.noUnitWithNumber": "Keine Einheit mit Nr. {{id}}",
     "links.composer.blocked.tenant": "Bitte einen Träger wählen: bestehend, freie Nummer oder „Neu anlegen“.",
     "links.composer.blocked.agency": "Bitte eine Beratungsstelle wählen: bestehend, freie Nummer oder „Neu anlegen“.",
     "links.composer.newWithNumber": "Neu, Nr. {{id}}",
