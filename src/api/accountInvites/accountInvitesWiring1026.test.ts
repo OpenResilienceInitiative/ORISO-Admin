@@ -21,7 +21,7 @@ vi.mock('../fetchData', async () => {
 const jsonResponse = (body: unknown) => ({ json: () => Promise.resolve(body) });
 const sentBody = () => JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData);
 
-describe('#1026 invite wiring — request contract', () => {
+describe('invite wiring — request contract', () => {
     beforeEach(() => mocks.fetchData.mockReset());
 
     it('sends role, alsoCounsellor and an EXISTING Träger', async () => {
@@ -102,7 +102,7 @@ describe('#1026 invite wiring — request contract', () => {
     });
 });
 
-describe('#1026 self-assignment API', () => {
+describe('self-assignment API', () => {
     beforeEach(() => mocks.fetchData.mockReset());
 
     it('posts role, agency and topics and lets 409 reasons reach the caller', async () => {

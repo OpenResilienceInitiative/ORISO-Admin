@@ -10,10 +10,7 @@ import type { InviteViewerScope } from '../pages/Links/inviteModel';
  * - "Träger-Invites" create whole tenants and "Externe Inbounds" configure
  *   platform-wide inbound links → platform admin only.
  * - "Berater-Invites" create counsellors inside the admin's own unit → platform
- *   admin, tenant admin, and (#1026) Beratungsstellen-Admins (`agency-admin` /
- *   `restricted-agency-admin` without `tenant-admin`), who may invite ONLY
- *   counsellors into their own agencies. The backend enforces that rule
- *   (UserService#1215) and scopes the invite list and the agency search.
+ *   admin, tenant admin and agency admin (counsellors into own agencies only).
  */
 export type LinksTabKey = 'tenants' | 'counsellor' | 'external-inbounds';
 
@@ -34,11 +31,7 @@ export const resolveVisibleLinksTabs = ({ isSuperAdmin, hasRole }: LinksAccessCo
     return [];
 };
 
-/**
- * Who fills the counsellor tab's invite bar (#1026): the platform admin edits
- * everything, a tenant admin is pinned to their own Träger, a Beratungsstellen-
- * Admin to their own Träger AND own agencies and may invite counsellors only.
- */
+/** A tenant admin is pinned to their own Träger; an agency admin also to their own agencies. */
 export const resolveInviteViewerScope = ({ isSuperAdmin, hasRole }: LinksAccessContext): InviteViewerScope => {
     if (isSuperAdmin) return 'platform';
     if (!hasRole(UserRole.TenantAdmin) && isAgencyAdmin(hasRole)) return 'agency';
@@ -50,9 +43,7 @@ export const canSeeLinksSection = (context: LinksAccessContext): boolean => reso
 /**
  * The invite e-mail template kinds each Links tab sends with. Tenant invites and
  * the contract forward belong to the platform operator's work; the counsellor
- * invite is the kind everyone else sends with — tenant admins and, since #1026,
- * Beratungsstellen-Admins, who may write templates for it (Frank, Q30/Q31,
- * 2026-09-24).
+ * invite is the kind everyone else sends with.
  */
 const TEMPLATE_KINDS_BY_TAB: Record<LinksTabKey, InviteEmailTemplateKind[]> = {
     tenants: ['TENANT_INVITE', 'DPA_FORWARD'],
@@ -77,11 +68,7 @@ export const resolveVisibleTemplateKinds = (context: LinksAccessContext): Invite
  * every tenant, an edit by one tenant admin changes the mail every other tenant
  * sends; only the platform operator, who owns that shared text, may make it.
  *
- * Creating one is not gated by this, on purpose: everyone who may send invites
- * may also write a template (Q30/Q31, Frank 2026-09-24). Only the stored row is
- * protected, until templates carry an owning tenant.
- *
- * This is the UI's half. The server refuses the same PUT
- * (UserService `AccountInviteAccessPolicy#authorizeTemplateUpdate`).
+ * Creating one is not gated, on purpose: whoever may send invites may write a template.
+ * The server enforces the same rule (`AccountInviteAccessPolicy#authorizeTemplateUpdate`).
  */
 export const canEditSharedTemplates = ({ isSuperAdmin }: LinksAccessContext): boolean => isSuperAdmin;

@@ -59,11 +59,7 @@ export const TOPIC_PERMISSION_SHORT_LABEL_KEYS: Record<TopicPermission, [key: st
     CREATE: ['links.composer.topics.createShort', 'Anlegen'],
 };
 
-/**
- * "Berät auch" for an agency-admin invite (#1026 slice 3, backend field
- * `alsoCounsellor`, default `true`). The invitee can still change it while
- * onboarding.
- */
+/** "Berät auch" for an agency-admin invite (backend `alsoCounsellor`, default `true`); editable during onboarding. */
 export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
     'yes' | 'no',
     { title: [key: string, fallback: string]; description: [key: string, fallback: string] }
@@ -81,10 +77,7 @@ export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
     },
 };
 
-/**
- * German explanations for the 409 reasons of the invite and self-assignment
- * endpoints (#1026 slices 3 and 5). Keyed by the backend's `X-Reason` header.
- */
+/** German explanations for the 409 `X-Reason` values of the invite and self-assignment endpoints. */
 export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback: string]> = {
     NO_PENDING_UNIT_ADMIN: [
         'links.accountInvites.conflict.noPendingUnitAdmin',

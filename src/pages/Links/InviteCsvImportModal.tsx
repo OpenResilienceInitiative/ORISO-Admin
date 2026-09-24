@@ -41,7 +41,7 @@ export interface InviteCsvCreateRow {
     templateId?: number;
     /** Counsellors only; `undefined` = omitted, the server decides. */
     topicPermission?: TopicPermission;
-    /** #1026 "Berät auch" (agency admins only); `undefined` = the backend default (yes). */
+    /** "Berät auch", agency admins only; `undefined` = the backend default (yes). */
     alsoCounsellor?: boolean;
 }
 
@@ -49,7 +49,7 @@ export interface InviteCsvCreateRow {
 export interface InviteCsvCreateOutcome {
     /** The created invite, so the preview can follow its status in the invite list. */
     inviteId?: number;
-    /** Stored, not sent: the row waits for its new Beratungsstelle / Träger (#1026 slice 5). */
+    /** Stored, not sent: the row waits for its new Beratungsstelle / Träger. */
     waiting?: boolean;
     /** Waiting, and no admin row for that unit has arrived (yet). */
     noUnitAdmin?: boolean;
@@ -80,7 +80,7 @@ interface ImportRow {
     alsoCounsellor?: boolean;
     rejectedReason?: InviteCsvRejectionReason;
     state: RowState;
-    /** `created` flavour: stored and waiting for its unit (#1026 slice 5). */
+    /** `created` flavour: stored and waiting for its unit. */
     waiting?: boolean;
     noUnitAdmin?: boolean;
     inviteId?: number;
@@ -107,10 +107,7 @@ export interface InviteCsvImportModalProps {
      * founds NEW Träger (Träger admins); other roles belong to the Berater tab.
      */
     tabRoles?: InviteRole[];
-    /**
-     * Whether a Träger-admin row can name its Träger here: the counsellor tab
-     * invites into the viewer's OWN Träger, which a platform admin does not have.
-     */
+    /** A platform admin has no own Träger, so a Träger-admin row cannot name one on the counsellor tab. */
     ownTenantKnown?: boolean;
     /** The tab's invite list; created rows follow their live status in it. */
     invites?: AccountInviteDTO[];
@@ -228,9 +225,7 @@ export const InviteCsvImportModal = ({
                 line,
             );
         }
-        // #1026 slice 5: a counsellor never founds a Beratungsstelle. A NEW one
-        // needs its number, so the row can wait for the BST-Admin row with the
-        // same number — "Neu" without a number could never be matched.
+        // A counsellor never founds a Beratungsstelle; "Neu" without a number could never match its BST-Admin row.
         if (!isTenantId && role === 'COUNSELLOR' && row.target !== 'EXISTING' && row.explicitId == null) {
             return t(
                 'links.csvImport.issue.counsellorNeedsAgencyNumber',
@@ -449,7 +444,7 @@ export const InviteCsvImportModal = ({
             case 'created': {
                 const { waiting, noUnitAdmin } = liveQueueState(row);
                 if (waiting) {
-                    // #1026 slice 5: stored, not sent — explained in place, like a rejection.
+                    // Stored, not sent: explained in place, like a rejection.
                     return (
                         <span className={styles.rejection}>
                             <Tag color={noUnitAdmin ? 'red' : 'blue'}>

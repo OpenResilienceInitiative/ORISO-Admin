@@ -184,11 +184,7 @@ export interface InviteComposerProps {
     viewerScope?: InviteViewerScope;
     /** The viewer's own Träger — shown locked for tenant and agency admins. */
     ownTenant?: IdUnitOption;
-    /**
-     * The viewer's own Beratungsstelle — shown locked for an agency admin of ONE
-     * agency. Omit it for an agency admin of several: the field then picks among
-     * the hits of `searchAgencies` (scoped to their agencies), never a new one.
-     */
+    /** Locks the field for an agency admin of one agency; omit it so an admin of several picks among them. */
     ownAgency?: IdUnitOption;
     /** Role preselected in the "Rolle" field (the tab's target role in the app). */
     defaultRole?: InviteRole;
@@ -334,20 +330,14 @@ export const InviteComposer = ({
     const [firstName, setFirstName] = useState(initialValues?.firstName ?? '');
     const [lastName, setLastName] = useState(initialValues?.lastName ?? '');
     const [storedSendMode, setSendMode] = useState<InviteSendMode>(() => readPersistedSendMode(persistKey));
-    /*
-     * B4 "Senden & nächste": sends like "Direkt Versenden", then keeps the unit,
-     * the template and the topic level for the next person of this session and
-     * clears only the person. Session memory only — React state, never stored.
-     */
+    // Unlike the send mode, "Senden & nächste" lasts for this session only and is never persisted.
     const [sendAndNext, setSendAndNext] = useState(false);
     const sendMode: InviteSendMode = sendAndNext ? 'direct' : storedSendMode;
-    // Set after a "Senden & nächste" send: the E-Mail field takes focus once the cleared bar rendered.
+    // Focus must wait until the cleared bar has rendered.
     const [focusEmailPending, setFocusEmailPending] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
     const tenantLocked = viewerScope !== 'platform';
-    // An agency admin of ONE agency is pinned to it; with several, the field
-    // picks among them (the tab's search is scoped to them) — never a new one.
     const agencyMayBeNew = viewerScope !== 'agency';
     const agencyLocked = viewerScope === 'agency' && ownAgency != null;
     const lockedTenant = tenantLocked ? ownTenant : undefined;
@@ -370,9 +360,8 @@ export const InviteComposer = ({
         initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
     );
     const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
-    // "Stattdessen als BST-Admin einladen" switches the role for ONE founding
-    // invite; the role it replaced comes back once that invite went out, so the
-    // next person typed into the bar is not silently a second BST-Admin.
+    // The guided BST-Admin switch covers one founding invite only, so the next
+    // person is not silently a second BST-Admin.
     const [roleBeforeGuidedSwitch, setRoleBeforeGuidedSwitch] = useState<InviteRole | null>(null);
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
@@ -399,7 +388,6 @@ export const InviteComposer = ({
         if (lockedAgency) selectExistingAgency(lockedAgency);
     }, [lockedAgency?.id, lockedAgency?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // B4: after "Senden & nächste" the cleared E-Mail field takes focus for the next person.
     useEffect(() => {
         if (!focusEmailPending) return;
         setFocusEmailPending(false);
@@ -506,9 +494,7 @@ export const InviteComposer = ({
         if (initialValues?.lastName?.trim()) initial.add('lastName');
         if (initialValues?.tenant && !tenantLocked) initial.add('tenant');
         if (initialValues?.agency && !agencyLocked) initial.add('agency');
-        // A prefilled bar (stories, later resend/edit) shows its chosen values as
-        // pills. A fresh page starts with every field expanded: pills from the
-        // start only exist in the "Senden & nächste" state (B4).
+        // Only a prefilled bar starts as pills; a fresh page starts expanded.
         if (initialValues) SELECT_KEYS.forEach((key) => initial.add(key));
         return initial;
     });
@@ -524,13 +510,8 @@ export const InviteComposer = ({
             return next;
         });
 
-    /*
-     * #1026 (Pre-Dev E2E): an EXISTING Beratungsstelle picked while the Träger
-     * field is still empty brings its own Träger — the field takes it over as an
-     * existing unit, folded into its ✓ pill, so "Senden & nächste" keeps it too.
-     * A Träger the admin already chose (an existing one or a pinned new number)
-     * is never overwritten.
-     */
+    // An existing agency picked while the Träger is empty fills it in; a Träger
+    // the admin already chose is never overwritten.
     const pickedAgencyUnit = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     useEffect(() => {
         if (tenantLocked || pickedAgencyUnit?.tenantId == null) return;
@@ -665,8 +646,7 @@ export const InviteComposer = ({
             lastName: lastName.trim() || undefined,
             // AUTO pins no id in the browser — the backend assigns the smallest free one.
             tenantId,
-            // #1026 slice 4: a picked (or locked) Träger is sent as EXISTING; the
-            // Träger tab keeps AUTO/MANUAL for a NEW Träger.
+            // A picked or locked Träger goes out as EXISTING; a NEW Träger keeps AUTO/MANUAL.
             tenantIdAllocationMode:
                 (tenantAllowCreate && !tenantLocked) || tenantAllocation.mode === 'existing'
                     ? allocationModeOf(tenantAllocation)
@@ -690,8 +670,6 @@ export const InviteComposer = ({
         }
 
         if (outcome && sendAndNext) {
-            // B4: the next person joins the same unit with the same template and
-            // topic level — keep those as pills, clear only the person.
             setRecipientEmail('');
             setEmailTouched(false);
             setEmailTakenAddress(null);
@@ -715,9 +693,7 @@ export const InviteComposer = ({
         }
 
         if (outcome) {
-            // The send press keeps focus in the field being edited (see the send
-            // slot below). Starting over, that field must let go — otherwise its
-            // type-ahead reopens over the fresh bar.
+            // The send press kept focus in the edited field; let go, or its type-ahead reopens over the fresh bar.
             const active = document.activeElement;
             if (active instanceof HTMLElement && rootRef.current?.contains(active)) active.blur();
             setRecipientEmail('');
@@ -908,13 +884,12 @@ export const InviteComposer = ({
                 icon: <FileSaveIcon aria-hidden className={styles.menuIcon} data-glyph="file-save" />,
                 label: t('links.composer.sendCreateOnly', 'Empfänger nur anlegen'),
             },
-            // B4: send, then keep unit, template and topic level for the next person.
             {
                 key: 'sendAndNext',
                 icon: <ForwardToInboxOutlinedIcon aria-hidden className={styles.menuIcon} />,
                 label: sendAndNextLabel,
             },
-            // #1026 slice 3: the admin's own account instead of an e-mail invite.
+            // The admin's own account instead of an e-mail invite.
             ...(onSelfAssign
                 ? [
                       { type: 'divider' as const },
@@ -1210,32 +1185,19 @@ export const InviteComposer = ({
                 other resting state is tonal M3 secondary (owner call). The icon
                 stays in both states — a send button without its glyph was the
                 "icons are missing" note. */}
-                {/* Pressing send must not move focus: a blur would collapse the field
-                    still being edited, the row would give back its scroll, and the
-                    button would slide away between mousedown and mouseup — the click
-                    then landed on the row (found on Pre-Dev). Keyboard focus is unaffected. */}
+                {/* A blur on mousedown would collapse the edited field and slide the button away before mouseup. */}
                 <span className={styles.sendSlot} onMouseDownCapture={(event) => event.preventDefault()}>
                     <SplitButton
                         icon={bulkMode ? <SelectAllIcon fontSize="small" /> : renderSendGlyph()}
                         label={bulkMode ? String(selectionCount) : singleSendLabel}
                         mainDisabled={!sendReady || submitting}
                         mainDescribedBy={sendBlockedReason ? sendHintId : undefined}
-                        // The send-mode menu switches "Direkt Versenden" vs "Empfänger
-                        // nur anlegen", which only ever applies to the single-create
-                        // flow (see handleSend). In bulk mode it changed nothing and
-                        // only put a second, inert chevron next to the collapse one.
+                        // The send-mode menu only applies to single create; in bulk it was an inert extra chevron.
                         menu={bulkMode ? undefined : sendMenu}
                         menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
                         title={bulkMode ? bulkSendLabel : undefined}
-                        // Filled primary is the single-send CTA; the selection counter
-                        // stays tonal secondary even when ready (Figma 1165:16407
-                        // selection variant) — a state display with actions hanging off
-                        // it, not the page's call to action. What BOTH share: a filled
-                        // shape is a promise that pressing does something. The tonal
-                        // disabled rule keeps `opacity: 1`, so a dead tonal counter was
-                        // pixel-identical to a live one ("Number counter Button
-                        // funktioniert hier nicht"). Not-ready therefore rests
-                        // `outlined` — colour arrives with the ability to fire.
+                        // The selection counter is a state display, not the page CTA, so it stays secondary.
+                        // Tonal disabled keeps full opacity, so not-ready rests outlined or it would look live.
                         variant={(() => {
                             if (!sendReady) return 'outlined';
                             return bulkMode ? 'secondary' : 'primary';
@@ -1251,7 +1213,7 @@ export const InviteComposer = ({
                     <p className={styles.sendHint} id={sendHintId} role="status">
                         {sendBlockedReason}
                     </p>
-                    {/* The one-click fix for the one reason that has one (#1026 slice 5). */}
+                    {/* The one-click fix for the one reason that has one. */}
                     {offerAgencyAdminSwitch && (
                         <M3Button
                             className={styles.sendHintAction}

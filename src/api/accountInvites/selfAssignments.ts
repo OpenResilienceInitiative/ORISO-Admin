@@ -1,7 +1,6 @@
 import { selfAssignmentsEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
-/** Roles an admin may take on themselves in an agency (#1026 slice 3). */
 export type SelfAssignmentRole = 'COUNSELLOR';
 
 export interface SelfAssignmentRequest {
@@ -26,11 +25,7 @@ export interface SelfAssignments {
 
 export { selfAssignmentsEndpoint };
 
-/**
- * Assigns the calling admin — their existing account, no e-mail invite
- * (UserService#1215). 400/403/409 reject with the raw Response, so the caller
- * can name the cause (409 `X-Reason: SELF_ASSIGNMENT_ALREADY_EXISTS`).
- */
+/** Uses the caller's existing account; 400/403/409 reject with the raw Response so the caller can name the cause. */
 export const createSelfAssignment = async (body: SelfAssignmentRequest): Promise<SelfAssignmentResult> => {
     const response = await fetchData({
         url: selfAssignmentsEndpoint,

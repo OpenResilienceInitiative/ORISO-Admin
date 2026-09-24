@@ -447,7 +447,7 @@ describe('matchesInviteQuery (A4)', () => {
     });
 });
 
-describe('derivePhases — waiting for a new unit (#1026 slice 5)', () => {
+describe('derivePhases — waiting for a new unit', () => {
     const waiting = (overrides: Partial<AccountInviteDTO> = {}) =>
         invite({
             targetRole: 'COUNSELLOR',

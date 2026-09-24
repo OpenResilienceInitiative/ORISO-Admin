@@ -120,7 +120,7 @@ const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) =>
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
-/** A waiting invite (#1026 slice 5) can be revoked, but not sent or copied — it has no link yet. */
+/** A waiting invite has no link yet: it can be revoked, not sent or copied. */
 const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
 
 /** The topic permission only exists for counsellors, and stays editable after the account exists. */
@@ -163,11 +163,7 @@ export interface InviteProgressBoardProps {
     onRevoke: (invite: AccountInviteDTO) => void;
     /** Wired to the invite composer above the board (empty-state CTA). */
     onInviteCta?: () => void;
-    /**
-     * #1026 slice 6: change a counsellor invite's topic permission in place —
-     * also after the account exists. Without it the viewer may not change the
-     * level: the chip stays visible but disabled, with a tooltip saying why.
-     */
+    /** Changes a counsellor's topic permission, also after the account exists; without it the chip is disabled. */
     onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
     /** Invite ids whose topic permission is being saved right now (the chip is disabled meanwhile). */
     topicPermissionSavingIds?: number[];
@@ -384,9 +380,7 @@ export const InviteProgressBoard = ({
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
-    // #1026 slice 6: the per-person topic permission is a chip beside the role
-    // chip — a column of its own pushed the actions out of a 1440px table, and
-    // an outlined select made counsellor rows taller than every other row.
+    // A chip beside the role chip: a column pushed the actions out of 1440px, a select made rows taller.
     const showTopicPermission = targetRole !== 'TENANT_ADMIN';
     const topicPermissionLockedReason = t(
         'links.inviteProgress.topicsLocked',
@@ -672,8 +666,8 @@ export const InviteProgressBoard = ({
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
                                     {isWaitingForUnit(invite) ? (
-                                        // Disable, don't hide (#1026): sending by hand is refused with
-                                        // 409 UNIT_NOT_CREATED until the unit exists — say why.
+                                        // Disable, don't hide: a manual send answers 409
+                                        // UNIT_NOT_CREATED until the unit exists.
                                         <M3Tooltip
                                             text={t(
                                                 'links.inviteProgress.action.resendWaiting',

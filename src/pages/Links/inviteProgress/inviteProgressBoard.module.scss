@@ -90,9 +90,7 @@
     color: var(--m3-error, #b1005e);
 }
 
-/* #1026 slice 5: a waiting invite without unit admin — same magenta role as a
-   dead invite, because the admin has to act. Sits under the status chip. */
-
+/* Same magenta as a dead invite: the admin has to act. */
 .problemChip {
     display: flex;
     width: fit-content;
@@ -108,11 +106,7 @@
     white-space: nowrap;
 }
 
-/* #1026 slice 6 (redesign): the topic permission is a chip in the role chip's
-   line — same height (20px), border, radius and type as `.roleChip`, so a
-   counsellor row is exactly as tall as any other row. It is a button: a
-   trailing drop-down arrow, a state layer on hover/open, and the M3 menu below. */
-
+/* Same height, border and type as `.roleChip`, so a counsellor row is no taller than any other. */
 .topicChip {
     display: inline-flex;
     align-items: center;

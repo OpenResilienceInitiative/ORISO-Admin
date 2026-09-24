@@ -84,9 +84,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     revokeAccountInvite: mocks.revokeAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     updateAccountInviteTopicPermission: mocks.updateAccountInviteTopicPermission,
-    // E2: the editor's preview is rendered by the backend. Without this the real
-    // fetch would run under jsdom — which is a load-dependent hang, not an
-    // honest failure. (Same omission #751 had; see the preview mock there.)
+    // The real preview fetch hangs under jsdom instead of failing.
     previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
 }));
 
@@ -105,9 +103,7 @@ vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
 }));
 
-// The composer's ID fields talk to the allocation endpoints (#570); the field
-// behaviour has its own test files, but tests that TYPE a manual id need the
-// availability check to answer, so the clients are wired to hoisted mocks.
+// Tests that type a manual id need the availability check to answer.
 vi.mock('../../api/idAllocation/idAllocation', () => ({
     tenantIdAllocationClient: {
         checkIdAvailability: mocks.checkTenantIdAvailability,
@@ -164,12 +160,6 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-/*
- * #1026: Beratungsstellen-Admins reach the counsellor tab. They may invite
- * counsellors ONLY, into their OWN agencies (the backend enforces it,
- * UserService#1215, and scopes the agency search and the invite list), so the
- * bar never offers anything the backend would refuse.
- */
 const agencyAdminRoles = (...roles: UserRole[]) => ({
     roles,
     hasRole: (wanted: UserRole | UserRole[]) =>
@@ -209,7 +199,7 @@ const agencyPage = (hits: Array<Record<string, unknown>>, total = hits.length, h
 describe.each([
     ['agency admin', UserRole.AgencyAdmin],
     ['restricted agency admin', UserRole.RestrictedAgencyAdmin],
-])('CounsellorInvitesTab for a %s (#1026)', (_label, agencyRole) => {
+])('CounsellorInvitesTab for a %s', (_label, agencyRole) => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.localStorage.clear();
@@ -371,13 +361,7 @@ describe.each([
     });
 });
 
-/*
- * #1026 (Pre-Dev E2E): the platform admin picks an EXISTING Beratungsstelle
- * without choosing a Träger first. The hit names its Träger, so the Träger
- * field takes it over (as an existing unit, folded into its ✓ pill) — and
- * "Senden & nächste" keeps it for the next person like every other unit field.
- */
-describe('CounsellorInvitesTab — platform admin picks an existing agency first (#1026)', () => {
+describe('CounsellorInvitesTab — platform admin picks an existing agency first', () => {
     const FOREIGN_AGENCY = {
         id: 14,
         name: 'Mail v2 Einzeltest',

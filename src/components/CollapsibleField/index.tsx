@@ -80,9 +80,7 @@ export const CollapsibleField = ({
     const slotRef = useRef<HTMLDivElement>(null);
     const lastWidth = useRef<number | undefined>(undefined);
     const lastCollapsed = useRef(collapsed);
-    // Only a pill click hands focus to the field. A field that re-opens because
-    // the bar was reset (after a send) must not grab focus — its type-ahead
-    // would pop open over the fresh row.
+    // Only a pill click focuses the field; one reopened by a reset would pop its type-ahead over the fresh row.
     const expandRequested = useRef(false);
 
     useLayoutEffect(() => {

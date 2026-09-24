@@ -102,10 +102,7 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
             )}
 
             {isEditMode && (
-                // #1026 slice 6 (AgencyService#308): prefills the topic permission of
-                // every counsellor invited into this agency. Existing agencies read
-                // CREATE (today's "+"), new ones start with NONE — so the field is
-                // offered once the agency exists.
+                // Only offered once the agency exists: new agencies start with NONE, existing ones read CREATE.
                 <MuiSelectField
                     label="agency.form.settings.counsellorTopicPermission.title"
                     help="agency.form.settings.counsellorTopicPermission.help"
