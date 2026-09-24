@@ -517,7 +517,8 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
     const fill = async (agencyNumber = '275') => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@oriso.org');
+        // dev #1048: sample addresses use example.org, never a domain we really own.
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), agencyNumber);
@@ -636,7 +637,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeInTheDocument();
 
             // The next person only needs their own fields.
-            await user.type(email, 'bart.simpson@oriso.org');
+            await user.type(email, 'bart.simpson@example.org');
             await user.type(screen.getByLabelText('Vorname'), 'Bart');
             await user.type(screen.getByLabelText('Name'), 'Simpson');
             await waitFor(() => expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeEnabled(), {
@@ -645,7 +646,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             await user.click(screen.getByRole('button', { name: 'Senden & nächste' }));
             await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
             expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
-                recipientEmail: 'bart.simpson@oriso.org',
+                recipientEmail: 'bart.simpson@example.org',
                 agencyId: 900,
                 topicPermission: 'SELECT_EXISTING',
             });
@@ -682,7 +683,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
             expect(await screen.findByText('Could not create link')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /^E-Mail bearbeiten/ })).toHaveAttribute(
                 'title',
-                'lisa.simpson@oriso.org',
+                'lisa.simpson@example.org',
             );
             expect(screen.getByRole('button', { name: /^Vorname bearbeiten/ })).toHaveAttribute('title', 'Lisa');
         });
@@ -748,7 +749,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
                 'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
             ),
         ).toHaveLength(2);
-        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@oriso.org');
+        expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
         expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
     });
 

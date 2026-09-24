@@ -90,9 +90,9 @@ class InviteFrameFixtureGenerator {
         new InviteEmailPreviewService(
             templateRepository,
             new InviteAcceptUrlBuilder(
-                "https://app.oriso.org", "https://admin.oriso.org", "https://app.oriso.org"),
+                "https://app.example.org", "https://admin.example.org", "https://app.example.org"),
             dispatchService,
-            new AdminPanelUrl("https://admin.oriso.org"));
+            new AdminPanelUrl("https://admin.example.org"));
 
     List<String> written = new ArrayList<>();
 
@@ -236,7 +236,7 @@ class InviteFrameFixtureGenerator {
         inviteMailTransport,
         InviteFrameMailRendererFixture.inviteFrameMailRenderer(
             new EmailBrandingResolver(
-                tenantService, tenantTemplateSupplier, "ORISO", "", "https://app.oriso.org")),
+                tenantService, tenantTemplateSupplier, "ORISO", "", "https://app.example.org")),
         "http://consultingtypeservice:8080/service",
         "smtp-user",
         "smtp-pass");

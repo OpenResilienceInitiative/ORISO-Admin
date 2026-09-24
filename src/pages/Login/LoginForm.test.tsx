@@ -145,7 +145,7 @@ describe('LoginForm', () => {
     });
 
     /*
-     * Owner review of predev.oriso.org/admin, "Muss zentrierter sein": the
+     * Owner review of predev.example.org/admin, "Muss zentrierter sein": the
      * password-reset link was the only child of the sign-in form that did not
      * share the axis of the fields and the submit button — it hugged the inline
      * start ~100px left of the form centre.

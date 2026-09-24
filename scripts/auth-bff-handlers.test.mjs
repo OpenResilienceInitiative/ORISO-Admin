@@ -1,10 +1,11 @@
 import { Readable } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTH_ACCESS_TOKEN_COOKIE,
     AUTH_REFRESH_TOKEN_COOKIE,
     buildAuthCookieAttributes,
     createAuthBffHandler,
+    getAuthBffConfig,
     getRequestAuthBffConfig,
 } from './auth-bff-handlers.mjs';
 
@@ -32,8 +33,8 @@ describe('auth BFF cookie domain', () => {
 });
 
 /**
- * The Admin runs on the same host as the counselling app (dev.oriso.org/admin next to
- * dev.oriso.org/app). The app keeps its own session in the cookies `keycloak` and `refreshToken`
+ * The Admin runs on the same host as the counselling app (dev.example.org/admin next to
+ * dev.example.org/app). The app keeps its own session in the cookies `keycloak` and `refreshToken`
  * on Path=/, and the browser sends those to /admin as well. The BFF therefore must use cookie
  * names of its own and must never write to Path=/ — before this, the Admin picked up the app
  * user's token, and every Admin login or logout deleted the app session.
@@ -54,7 +55,7 @@ describe('auth BFF on a host shared with the counselling app', () => {
 
     const call = async (method, url, { cookie, body, config } = {}) => {
         const request = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
-        Object.assign(request, { method, url, headers: { host: 'dev.oriso.org', ...(cookie ? { cookie } : {}) } });
+        Object.assign(request, { method, url, headers: { host: 'dev.example.org', ...(cookie ? { cookie } : {}) } });
         const headers = {};
         const response = {
             statusCode: 200,
@@ -179,4 +180,69 @@ describe('auth BFF on a host shared with the counselling app', () => {
             );
         },
     );
+});
+
+/**
+ * ORISO-Helm#368: the BFF never invents a login host. Without an API or Keycloak URL it used to
+ * post every Admin login to http://localhost; now it refuses to start and names the variable.
+ */
+describe('auth BFF login endpoint configuration', () => {
+    const URL_KEYS = ['VITE_API_URL', 'REACT_APP_API_URL', 'VITE_KEYCLOAK_URL', 'REACT_APP_KEYCLOAK_URL'];
+    const saved = {};
+
+    beforeEach(() => {
+        for (const key of URL_KEYS) {
+            saved[key] = process.env[key];
+            delete process.env[key];
+        }
+    });
+
+    afterEach(() => {
+        for (const key of URL_KEYS) {
+            if (saved[key] === undefined) {
+                delete process.env[key];
+            } else {
+                process.env[key] = saved[key];
+            }
+        }
+    });
+
+    it('throws and names the variables when neither API nor Keycloak URL is set', () => {
+        expect(() => getAuthBffConfig()).toThrow(/VITE_API_URL/);
+        expect(() => getAuthBffConfig()).toThrow(/VITE_KEYCLOAK_URL/);
+    });
+
+    it('refuses to create the handler without a login host', () => {
+        expect(() => createAuthBffHandler()).toThrow(/VITE_API_URL/);
+    });
+
+    it('ignores a whitespace-only Keycloak URL and uses the API host', () => {
+        process.env.VITE_API_URL = 'https://admin.example.org';
+        process.env.VITE_KEYCLOAK_URL = '   ';
+        expect(getAuthBffConfig().loginEndpoint).toMatch(/^https:\/\/admin\.example\.org\/auth\/realms\//);
+    });
+
+    it('treats whitespace-only values as missing', () => {
+        process.env.VITE_API_URL = '  ';
+        process.env.VITE_KEYCLOAK_URL = ' ';
+        expect(() => getAuthBffConfig()).toThrow(/VITE_API_URL/);
+    });
+
+    it('treats an empty value as missing', () => {
+        process.env.VITE_API_URL = '';
+        expect(() => getAuthBffConfig()).toThrow(/VITE_API_URL/);
+    });
+
+    it('logs in against the API host when only VITE_API_URL is set', () => {
+        process.env.VITE_API_URL = 'https://admin.example.org';
+        expect(getAuthBffConfig().loginEndpoint).toMatch(
+            /^https:\/\/admin\.example\.org\/auth\/realms\/[^/]+\/protocol\/openid-connect\/token$/,
+        );
+    });
+
+    it('prefers the dedicated Keycloak host when set', () => {
+        process.env.VITE_API_URL = 'https://admin.example.org';
+        process.env.VITE_KEYCLOAK_URL = 'https://auth.example.org';
+        expect(getAuthBffConfig().loginEndpoint).toMatch(/^https:\/\/auth\.example\.org\/realms\//);
+    });
 });
