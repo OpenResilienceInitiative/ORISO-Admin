@@ -110,6 +110,26 @@ describe('the shared consultant field set', () => {
         expect(screen.getAllByRole('radio').length).toBeGreaterThan(1);
     });
 
+    it('shows an initials placeholder until a name is typed, then the initials', async () => {
+        const user = userEvent.setup();
+        render(
+            <Form>
+                <ConsultantPersonalFields />
+            </Form>,
+        );
+
+        // A bare red circle read as "the initials failed to load" (owner, 2026-09-24).
+        const initialsTile = () => screen.getAllByRole('radio')[0];
+        expect(initialsTile()).toHaveAccessibleName('counselor.avatar.initials.empty');
+        expect(screen.getByTestId('initials-placeholder')).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText(/^firstname/), 'Ada');
+        await user.type(screen.getByLabelText(/^lastname/), 'Lovelace');
+
+        expect(initialsTile()).toHaveTextContent('AL');
+        expect(screen.queryByTestId('initials-placeholder')).not.toBeInTheDocument();
+    });
+
     it('writes the avatar choice into the two fields that carry it', async () => {
         const user = userEvent.setup();
         render(<Harness />);

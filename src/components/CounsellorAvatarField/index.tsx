@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
+import AbcIcon from '@mui/icons-material/Abc';
 import { AvatarPickerGrid, type AvatarOption } from '../AvatarPickerGrid';
 import { ReactComponent as ArrowIcon } from '../../resources/img/svg/keyboard-arrow-down.svg';
 import { ANIMAL_AVATARS } from '../../resources/img/svg/avatars';
@@ -21,7 +22,7 @@ export const INITIALS_TILE_ID = '__initials__';
 
 /** Tile diameter and grid gap, mirrored from AvatarPickerGrid's stylesheet. */
 const TILE_SIZE = 52;
-const GRID_GAP = 8;
+const GRID_GAP = 12;
 /** One arrow click travels exactly one row, so the motion is legible. */
 const ROW_STEP = TILE_SIZE + GRID_GAP;
 /**
@@ -124,9 +125,15 @@ export const CounsellorAvatarField = ({
         () => [
             {
                 id: INITIALS_TILE_ID,
-                // Empty until a name is typed — an empty tinted circle is honest,
-                // a placeholder letter would be a name the counsellor never has.
-                node: <span className={styles.initials}>{initials}</span>,
+                // Until a name is typed there are no initials. A bare red circle
+                // read as "failed to load" (owner, 2026-09-24), and a placeholder
+                // letter would be a name the counsellor never has — so the tile
+                // shows the generic "ABC" glyph that stands for "initials".
+                node: initials ? (
+                    <span className={styles.initials}>{initials}</span>
+                ) : (
+                    <AbcIcon aria-hidden="true" data-testid="initials-placeholder" />
+                ),
                 label: initials ? t('counselor.avatar.initials', { initials }) : t('counselor.avatar.initials.empty'),
             },
             ...ANIMAL_AVATARS.map(({ id, Icon }) => ({
