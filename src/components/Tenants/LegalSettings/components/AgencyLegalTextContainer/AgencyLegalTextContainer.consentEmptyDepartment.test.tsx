@@ -176,11 +176,14 @@ describe('AgencyLegalTextContainer → DepartmentDataProtectionCard — the firs
         // … and it goes live with the policy it belongs to, unblocked.
         await userEvent.click(screen.getByRole('button', { name: 'publish' }));
         expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>own</p>' },
-            publish: true,
-            consentText: { de: STRINGS['legal.consent.template.platform.text'] },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>own</p>' },
+                publish: true,
+                consentText: { de: STRINGS['legal.consent.template.platform.text'] },
+            },
+            expect.anything(),
+        );
     });
 
     it('still shows a stored sentence rather than an empty field', async () => {

@@ -292,7 +292,18 @@ export const AgencyLegalTextContainer = ({
      * blank means the level above still governs at runtime (decision 1), and re-seeding it here
      * would silently re-author a legal sentence nobody wrote.
      */
-    const forkSeedsConsent = isDepartment && !hasOwnText && departmentConsent !== undefined;
+    /* Whether the SENTENCE is this Fachbereich's own.
+       A stored sentence answers for itself, whatever the body says: the sentence is a field of the
+       policy and a blank body only means the level above still governs the document TEXT
+       (decision 1). Asking the body instead threw away every sentence saved against an empty
+       policy — which is exactly how the first one is authored — so a saved sentence read back as
+       the inherited one (#929).
+       The body still settles the one case the stored map cannot: an EMPTY map is "deliberately
+       blank" at a level that has already forked, and "nothing authored here yet" at one that has
+       not. An omitted `consentText` and an explicit `{}` are the same value on the wire, so there
+       is nothing else left to ask. */
+    const hasOwnConsent = departmentConsent !== undefined && (Object.keys(departmentConsent).length > 0 || hasOwnText);
+    const forkSeedsConsent = isDepartment && !hasOwnConsent && departmentConsent !== undefined;
     const consentByLanguage = useMemo(() => {
         if (field !== 'privacy' || !isDepartment) {
             return undefined;
@@ -367,10 +378,23 @@ export const AgencyLegalTextContainer = ({
             // Only the policy carries a consent sentence (decision 7), and the publish call omits
             // the property entirely when the card had none to give — a backend that does not know
             // `consentText` never receives it.
+            /* Say what happened. A fire-and-forget mutate left a Fachbereich save with no
+               success and no failure message at all — a rejected save was indistinguishable
+               from a stored one, which is why a sentence that never reached the server was
+               only noticed on the next reload (#929). The agency-wide branch below has
+               reported both outcomes all along. */
+            const feedback = {
+                onSuccess: () =>
+                    notification.success({
+                        message: t(publish ? 'legal.department.published' : 'legal.department.draftSaved'),
+                        duration: 4,
+                    }),
+                onError: () => notification.error({ message: t('legal.department.saveError'), duration: 6 }),
+            };
             if (field === 'privacy') {
-                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) });
+                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) }, feedback);
             } else {
-                publishImprint.mutate({ content, publish });
+                publishImprint.mutate({ content, publish }, feedback);
             }
             return;
         }
@@ -519,8 +543,15 @@ export const AgencyLegalTextContainer = ({
         <DepartmentDataProtectionCard
             // Remount when the source changes, so the editor resets to it instead of keeping the
             // previous department's text in an uncontrolled TipTap instance.
+            // The consent sentence is part of what the card holds, so it belongs in the identity
+            // too: keyed on the body alone, a refetch that changed only the sentence left the
+            // card's staged edits in place and kept showing them as if they had been stored.
+            // It is the sentence the card SHOWS that counts: an unforked Fachbereich shows the
+            // level above's, which its own record does not carry.
             key={`${agencyId}-${field}-${String(selected)}-${
-                isDepartment ? departmentQuery.data?.content ?? '' : agencyEditorGeneration
+                isDepartment
+                    ? JSON.stringify([departmentQuery.data?.content ?? '', consentByLanguage ?? {}])
+                    : agencyEditorGeneration
             }`}
             documentType={field}
             documentScope={isDepartment ? 'department' : 'agency'}
