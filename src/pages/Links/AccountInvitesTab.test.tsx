@@ -617,7 +617,7 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
         const chooseSendAndNext = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
             await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
-            return screen.findByRole('button', { name: 'Senden & nächste' });
+            return screen.findByRole('button', { name: /& nächste$/ });
         };
 
         it('keeps Träger, Beratungsstelle, Vorlage and topics, clears the person and focuses E-Mail', async () => {
@@ -659,22 +659,73 @@ describe('CounsellorInvitesTab — #1026 wiring', () => {
                 'Darf weitere Fachbereiche auswählen',
             );
             expect(screen.getByRole('button', { name: /^Vorlage bearbeiten/ })).toHaveTextContent('Standard');
-            expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
 
             // The next person only needs their own fields.
             await user.type(email, 'bart.simpson@example.org');
             await user.type(screen.getByLabelText('Vorname'), 'Bart');
             await user.type(screen.getByLabelText('Name'), 'Simpson');
-            await waitFor(() => expect(screen.getByRole('button', { name: 'Senden & nächste' })).toBeEnabled(), {
-                timeout: 10_000,
-            });
-            await user.click(screen.getByRole('button', { name: 'Senden & nächste' }));
+            await waitFor(
+                () => expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeEnabled(),
+                {
+                    timeout: 10_000,
+                },
+            );
+            await user.click(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' }));
             await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
             expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
                 recipientEmail: 'bart.simpson@example.org',
                 agencyId: 900,
                 topicPermission: 'SELECT_EXISTING',
             });
+        });
+
+        it('lets the next counsellor wait for the agency a "Neu" founding invite just reserved', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockResolvedValueOnce({
+                ...invite(100, 79, 'EMAIL_SENT'),
+                targetRole: 'AGENCY_ADMIN',
+                agencyId: 950,
+                agencyIdAllocationMode: 'AUTO',
+            });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+            await user.type(await screen.findByLabelText('E-Mail'), 'marge.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Marge');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            await user.click(
+                await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+            );
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+                targetRole: 'AGENCY_ADMIN',
+                agencyIdAllocationMode: 'AUTO',
+            });
+
+            await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+            await user.type(screen.getByLabelText('E-Mail'), 'lisa.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            const next = screen.getByRole('button', { name: /& nächste$/ });
+            await waitFor(() => expect(next).toBeEnabled(), { timeout: 10_000 });
+            await user.click(next);
+
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                targetRole: 'COUNSELLOR',
+                agencyId: 950,
+                agencyIdAllocationMode: 'MANUAL',
+            });
+        });
+
+        it('keeps saying whether the send creates the agency', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            const user = await fill('900');
+            await chooseSendAndNext(user);
+            expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
         });
 
         it('puts Rolle back to the default role for the next person', async () => {

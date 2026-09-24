@@ -427,7 +427,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     );
                 }
                 await loadInvites();
-                return true;
+                return created ?? true;
             } catch (error) {
                 const explained = await explain(error, 'create', inviteRole);
                 // The composer marks a taken address inline and keeps the row.
@@ -709,8 +709,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 templates={templates}
                 onBulkSend={onBulkSend}
                 onClearSelection={() => setSelectedIds([])}
-                // Agency admins see the CSV import disabled; see `csvImportBlockedReason`.
                 onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
+                csvImportBlockedReason={
+                    isAgencyViewer
+                        ? t(
+                              'links.csvImport.blockedAgencyAdmin',
+                              'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
+                          )
+                        : undefined
+                }
                 onDeleteSelected={() => setBulkDeleteConfirmOpen(true)}
                 onManageTemplates={(intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list')}
                 // A4: the tab owns the query; the board filters the list it holds.

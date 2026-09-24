@@ -243,7 +243,7 @@ const FIELD = {
 };
 const SEND = {
     invite: either('Einladen', 'Invite'),
-    sendAndNext: either('Senden & nächste', 'Send & next'),
+    sendAndNext: /^((Anlegen, einladen|Einladen) & nächste|(Create, invite|Invite) & next)$/,
     createAndInvite: either('Anlegen & einladen', 'Create & invite'),
 };
 

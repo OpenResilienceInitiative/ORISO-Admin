@@ -58,7 +58,13 @@ export type InviteSendMode = 'direct' | 'createOnly';
  * contract; `'emailTaken'` is the P3 case that the composer renders inline on
  * the e-mail field rather than as a global toast.
  */
-export type InviteSubmitOutcome = boolean | 'emailTaken';
+export type InviteSubmitOutcome = boolean | 'emailTaken' | InviteCreated;
+
+/** What the bar needs from a created invite: the numbers the server assigned. */
+export interface InviteCreated {
+    agencyId?: number | null;
+    tenantId?: number | null;
+}
 
 export type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 
@@ -141,6 +147,8 @@ export interface InviteComposerProps {
      * import time — the file itself is never uploaded anywhere.
      */
     onCsvParsed?: (result: ParseInviteCsvResult, sendMode: InviteSendMode) => void;
+    /** Shows the CSV entries disabled with this reason instead of hiding them. */
+    csvImportBlockedReason?: string;
     /**
      * Number of rows currently checked in the invites table (#316). Any value
      * > 0 flips the send split button into bulk mode ("N ausgewählte senden").
@@ -293,6 +301,7 @@ export const InviteComposer = ({
     onSelectTemplate,
     onCreateFromTemplate,
     onCsvParsed,
+    csvImportBlockedReason,
     selectionCount = 0,
     onBulkSend,
     onClearSelection,
@@ -692,10 +701,15 @@ export const InviteComposer = ({
             setRoleBeforeGuidedSwitch(null);
             setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
             setCollapsedKeys(new Set<CollapsibleKey>(['tenant', 'agency', 'topics', 'template']));
-            // A number this invite may just have reserved has to be checked again:
-            // for the next counsellor it is now "wird mit einer offenen Admin-Einladung angelegt".
+            // A number this invite just reserved is re-checked: the next counsellor waits for that unit.
+            // "Neu" becomes the number the server assigned, or the next person would need an admin of their own.
+            const created = typeof outcome === 'object' ? outcome : undefined;
             if (tenantAllocation.mode === 'manual') tenantAllocation.setManualValue(tenantAllocation.value);
-            if (agencyAllocation.mode === 'manual') agencyAllocation.setManualValue(agencyAllocation.value);
+            if (agencyAllocation.mode === 'auto' && created?.agencyId != null) {
+                agencyAllocation.setManualValue(created.agencyId);
+            } else if (agencyAllocation.mode === 'manual') {
+                agencyAllocation.setManualValue(agencyAllocation.value);
+            }
             setFocusEmailPending(true);
             return;
         }
@@ -757,38 +771,44 @@ export const InviteComposer = ({
 
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (onCsvParsed) {
+        const csvBlocked = csvImportBlockedReason != null;
+        const csvLabel = (hint: string) => (
+            <span className={styles.csvImportEntry}>
+                <UploadOutlined aria-hidden />
+                <span className={styles.csvImportLabel}>
+                    {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
+                    <span className={styles.csvImportHint}>{hint}</span>
+                </span>
+            </span>
+        );
         moreMenuItems.push({
             key: 'csv-import',
-            label: (
+            disabled: csvBlocked,
+            label: csvBlocked ? (
+                csvLabel(csvImportBlockedReason)
+            ) : (
                 <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
-                    <span className={styles.csvImportEntry}>
-                        <UploadOutlined aria-hidden />
-                        <span className={styles.csvImportLabel}>
-                            {t('links.csvImport.menuEntry', 'CSV-Datei importieren')}
-                            {/* The import expects a fixed column ORDER, and an
-                                admin standing in this menu has no other way to
-                                learn it (#315 follow-up). */}
-                            <span className={styles.csvImportHint}>
-                                {t('links.csvImport.columns', 'Spalten: {{columns}}', {
-                                    columns: [
-                                        t('links.accountInvites.email', 'E-Mail'),
-                                        t('links.accountInvites.firstName', 'Vorname'),
-                                        t('links.composer.lastName', 'Name'),
-                                        `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
-                                        csvTargetLabel,
-                                        t('links.composer.role', 'Rolle'),
-                                        t('links.composer.template', 'Vorlage'),
-                                        t('links.composer.topics', 'Themen & Fachbereiche'),
-                                    ].join(', '),
-                                })}
-                            </span>
-                        </span>
-                    </span>
+                    {/* The import expects a fixed column order, and this menu is the only place to learn it. */}
+                    {csvLabel(
+                        t('links.csvImport.columns', 'Spalten: {{columns}}', {
+                            columns: [
+                                t('links.accountInvites.email', 'E-Mail'),
+                                t('links.accountInvites.firstName', 'Vorname'),
+                                t('links.composer.lastName', 'Name'),
+                                `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                                csvTargetLabel,
+                                t('links.composer.role', 'Rolle'),
+                                t('links.composer.template', 'Vorlage'),
+                                t('links.composer.topics', 'Themen & Fachbereiche'),
+                            ].join(', '),
+                        }),
+                    )}
                 </Upload>
             ),
         });
         moreMenuItems.push({
             key: 'csv-template',
+            disabled: csvBlocked,
             icon: <DownloadOutlined aria-hidden />,
             label: t('links.csvImport.downloadTemplate', 'CSV-Vorlage herunterladen'),
         });
@@ -841,9 +861,12 @@ export const InviteComposer = ({
         ? t('links.composer.sendCreateAndInvite', 'Anlegen & einladen')
         : t('links.composer.sendInvite', 'Einladen');
     const sendAndNextLabel = t('links.composer.sendAndNext', 'Senden & nächste');
+    const sendAndNextButtonLabel = createsUnit
+        ? t('links.composer.sendCreateAndInviteAndNext', 'Anlegen, einladen & nächste')
+        : t('links.composer.sendInviteAndNext', 'Einladen & nächste');
     // eslint-disable-next-line no-nested-ternary -- three mutually exclusive send modes
     const singleSendLabel = sendAndNext
-        ? sendAndNextLabel
+        ? sendAndNextButtonLabel
         : sendMode === 'direct'
         ? directSendLabel
         : t('links.composer.sendCreateOnly', 'Empfänger nur anlegen');

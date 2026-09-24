@@ -257,14 +257,18 @@ describe.each([
         expect(mocks.createAccountInvite.mock.calls[0][0].alsoCounsellor).toBeUndefined();
     });
 
-    it('offers no CSV import (it can carry roles and new units the backend refuses)', async () => {
+    it('shows the CSV import disabled, with the reason', async () => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
         await screen.findByRole('button', { name: /Standard/ }, { timeout: 10_000 });
-        const more = screen.queryByRole('button', { name: 'Weitere Aktionen' });
-        if (more) await user.click(more);
-        expect(screen.queryByText('CSV-Datei importieren')).not.toBeInTheDocument();
-        expect(screen.queryByText('CSV-Vorlage herunterladen')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+        const entry = (await screen.findByText('CSV-Datei importieren')).closest('[role="menuitem"]');
+        expect(entry).toHaveAttribute('aria-disabled', 'true');
+        expect(
+            screen.getByText(
+                'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('lists only counsellor invites', async () => {
@@ -369,7 +373,7 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
 
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
-        const send = await screen.findByRole('button', { name: 'Senden & nächste' });
+        const send = await screen.findByRole('button', { name: 'Einladen & nächste' });
         await waitFor(() => expect(send).toBeEnabled(), SLOW);
         await user.click(send);
 
