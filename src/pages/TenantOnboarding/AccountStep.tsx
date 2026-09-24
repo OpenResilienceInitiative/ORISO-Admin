@@ -13,7 +13,7 @@ interface AccountStepProps {
     busy: boolean;
     /** Set when the registration failed technically (retryable). */
     showRegistrationError: boolean;
-    /** Omitted when there is no previous step (joining an existing Träger, #1026). */
+    /** Omitted when there is no previous step (joining an existing Träger). */
     onBack?: () => void;
     onSubmit: (password: string) => void;
 }

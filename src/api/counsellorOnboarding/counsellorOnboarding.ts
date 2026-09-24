@@ -34,25 +34,14 @@ export interface CounsellorTopicOption {
     name: string | null;
 }
 
-/**
- * How far the invitee may extend their own topics (ORISO-Admin#1026, slice 6):
- * `CREATE` = the "+" adds further topics of the Träger (today's behaviour);
- * `SELECT_EXISTING` = pick among the agency's topics only; `NONE` = the
- * assigned department is fixed — without one, exactly one agency topic.
- */
+/** CREATE: "+" adds Träger topics. SELECT_EXISTING: agency topics only. NONE: assigned one, else exactly one. */
 export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
-    /**
-     * #1026 slice 3: `AGENCY_ADMIN` invites run this wizard too. Absent (older
-     * backend) = `COUNSELLOR`.
-     */
+    /** Absent (older backend) means `COUNSELLOR`. */
     targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
-    /**
-     * Agency-admin invites only: the inviter's proposal whether the invitee also
-     * counsels. The wizard shows it as a switch the invitee may change.
-     */
+    /** Agency-admin invites only: the inviter's proposal, shown as a switch the invitee may change. */
     alsoCounsellor?: boolean | null;
     recipientEmail: string;
     firstName: string | null;
@@ -75,7 +64,7 @@ export interface CounsellorOnboardingInviteDTO {
      * coverage is selectable.
      */
     availableTopics?: CounsellorTopicOption[];
-    /** Absent (older backend) = `CREATE`, i.e. today's behaviour. */
+    /** Absent (older backend) means `CREATE`. */
     topicPermission?: CounsellorTopicPermission;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
@@ -121,10 +110,7 @@ export interface CounsellorRegistrationRequest {
      * as its departments; the invitee becomes its owner.
      */
     agency?: { name: string };
-    /**
-     * Agency-admin invites only (#1026 slice 3): the invitee's own choice. Off =
-     * an agency-admin login only, no consultant, topics optional.
-     */
+    /** Agency-admin invites only. Off = an admin login only: no consultant, topics optional. */
     alsoCounsellor?: boolean;
 }
 
@@ -346,8 +332,7 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            // Like the backend (#1026 slice 3): an agency admin who does not counsel
-            // needs no topic; an agency-admin invite always carries CREATE.
+            // Like the backend: a non-counselling agency admin needs no topic; agency admins always get CREATE.
             const agencyAdmin = invite.targetRole === 'AGENCY_ADMIN';
             const counselling = !agencyAdmin || (request.alsoCounsellor ?? invite.alsoCounsellor ?? true);
             // Like the backend: coverage plus — with CREATE only — every active tenant topic.

@@ -200,9 +200,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         value: topic.id,
         label: topicLabel(topic, topicFallback),
     }));
-    // ORISO-Admin#1026, slice 6: without CREATE there is no "+" — the invitee
-    // chooses among the agency's own topics (SELECT_EXISTING) or keeps the
-    // assigned one (NONE; without an assigned one: exactly one agency topic).
+    // Without CREATE there is no "+": the invitee only picks among the agency's own topics.
     const topicPermission = effectiveTopicPermission(invite);
     const agencyTopicsOnly = topicPermission !== 'CREATE';
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
@@ -230,8 +228,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
-    // #1026 slice 3: an agency admin who does not counsel needs no counsellor profile.
-    // Frank Q28: a FOUNDING one still gives the new agency at least one topic.
+    // An agency admin who does not counsel needs no counsellor profile,
+    // but a founding one still gives the new agency at least one topic.
     const agencyAdmin = isAgencyAdminInvite(invite);
     const counselling = counsels(invite, data);
     const needsTopics = counselling || createsAgency;
@@ -420,7 +418,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {selectableTopics.length === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
-                        // submit that can never be enabled (the dead end of #1 on dev).
+                        // submit that can never be enabled.
                         <Typography
                             role="alert"
                             variant="body2"

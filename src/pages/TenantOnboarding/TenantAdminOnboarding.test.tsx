@@ -469,14 +469,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
     });
 });
 
-/*
- * #1026 slice 4/5: a Träger-admin invite into a Träger that already exists
- * (or a second admin of a new Träger its first admin has meanwhile created).
- * The resolve answers `joinsExistingTenant: true` with the `tenantId`; the
- * wizard asks only for the password — no organisation step, no Träger
- * creation, no DPA — and registers with `account.password` alone.
- */
-describe('TenantAdminOnboarding — joining an existing Träger (#1026)', () => {
+describe('TenantAdminOnboarding — joining an existing Träger', () => {
     const JOIN_INVITE = {
         recipientEmail: 'second.admin@tenant.example',
         firstName: 'Paula',
