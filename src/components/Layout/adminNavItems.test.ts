@@ -221,18 +221,15 @@ describe('buildAdminNavItems', () => {
         it.each([
             ['agency-admin + user-admin', hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin)],
             ['restricted-agency-admin + user-admin', hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin)],
-        ])(
-            'is shown to a Beratungsstellen-Admin (%s), who invites counsellors into own agencies (#1026)',
-            (_label, hasRole) => {
-                const items = build({
-                    isSuperAdmin: false,
-                    hasRole,
-                    can: canFor(Resource.Agency, Resource.AgencyAdminUser, Resource.Consultant),
-                    labels,
-                    settingsPath: '/admin/theme-settings/general',
-                });
-                expect(linksEntry(items)).toBeDefined();
-            },
-        );
+        ])('is shown to a Beratungsstellen-Admin (%s)', (_label, hasRole) => {
+            const items = build({
+                isSuperAdmin: false,
+                hasRole,
+                can: canFor(Resource.Agency, Resource.AgencyAdminUser, Resource.Consultant),
+                labels,
+                settingsPath: '/admin/theme-settings/general',
+            });
+            expect(linksEntry(items)).toBeDefined();
+        });
     });
 });

@@ -253,13 +253,7 @@ export const Mobile: Story = {
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
 };
 
-/*
- * #1026: a new Beratungsstelle with a queue. Oskar's BST-Admin invite founds
- * agency 900; Lena and Tom wait for it ("Beratungsstelle noch nicht angelegt").
- * Rita waits for agency 901, whose admin invite was revoked — the problem badge
- * "Kein BST-Admin" says so. Anke is an accepted counsellor whose topic
- * permission is changed right in the table.
- */
+/* Oskar founds agency 900, Lena and Tom wait for it; Rita waits for 901, whose admin invite was revoked. */
 const queueInvite = (overrides: Partial<AccountInviteDTO>): AccountInviteDTO =>
     tenantInvite({ targetRole: 'COUNSELLOR', tenantId: 40, expiresAt: null, ...overrides });
 
@@ -346,10 +340,7 @@ const QueueBoard = ({
 const rowOf = (canvasElement: HTMLElement, email: string) =>
     within(within(canvasElement).getByText(email).closest('tr') as HTMLElement);
 
-/**
- * Waiting invites get a NEW first step, „Beratungsstelle noch nicht angelegt";
- * manual resend is disabled (with a tooltip, not hidden), revoke stays possible.
- */
+/** Waiting invites get a new first step; manual resend is disabled with a tooltip, revoke stays possible. */
 export const QueueWaitingStep: Story = {
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
@@ -389,11 +380,7 @@ export const TopicPermissionInTable: Story = {
     },
 };
 
-/**
- * The same queue on a phone (390 px, narrower than the issue's 412 px): the topic
- * select and the problem badge stack into the card, and the topic select's short
- * label is its only information, so it must be readable in full — no ellipsis.
- */
+/** On a phone the topic select stacks into the card; its short label is all it says, so it must not be cut off. */
 export const QueueMobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     args: { onTopicPermissionChange: fn() },

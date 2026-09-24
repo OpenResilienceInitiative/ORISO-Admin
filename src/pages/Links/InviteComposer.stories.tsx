@@ -261,8 +261,7 @@ export const Empty: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: FIELD.tenant })).toBeEnabled();
-        // A fresh page starts with every field expanded (B4): pills from the start
-        // only exist after „Senden & nächste".
+        // A fresh page starts expanded; pills only exist after „Senden & nächste".
         await expect(canvas.getByRole('combobox', { name: FIELD.role })).toBeInTheDocument();
         await expect(canvas.getByRole('combobox', { name: FIELD.topics })).toBeInTheDocument();
         await expect(canvas.queryByRole('button', { name: PILL.role })).not.toBeInTheDocument();
@@ -482,11 +481,7 @@ export const NewAgencyNumber: Story = {
     },
 };
 
-/**
- * A counsellor for a NEW Beratungsstelle whose BST-Admin invite is already open:
- * number 150 is reserved by that invite, so the counsellor joins it and waits —
- * the field says so instead of flagging a collision, and sending is allowed.
- */
+/** Number 150 is reserved by an open BST-Admin invite: the counsellor joins it and waits, no collision. */
 export const CounsellorJoinsPendingAgency: Story = {
     args: {
         initialValues: {
@@ -527,10 +522,7 @@ export const CounsellorJoinsPendingAgency: Story = {
     },
 };
 
-/**
- * „BST-Admin" adds „Berät auch" (default on, backend `alsoCounsellor`); turning
- * it to „Nur Verwaltung" is what the submit carries.
- */
+/** „BST-Admin" adds „Berät auch" (default on); „Nur Verwaltung" is what the submit then carries. */
 export const AgencyAdminAlsoCounsellor: Story = {
     args: { initialValues: { ...PREFILLED, role: 'AGENCY_ADMIN' }, onSubmit: fn(() => true) },
     play: async ({ args, canvasElement }) => {
@@ -555,12 +547,7 @@ export const AgencyAdminAlsoCounsellor: Story = {
     },
 };
 
-/**
- * Found on Pre-Dev: pressing „Einladen" right after picking a Beratungsstelle
- * did nothing. The mousedown blurred the still-open field, it collapsed to its
- * pill, the row gave back its scroll and the button slid away before mouseup —
- * the click landed on the row. Pressing the send button must not move focus.
- */
+/** Pressing „Einladen" right after picking a Beratungsstelle sends: the press must not move focus. */
 export const SendRightAfterPickingAgency: Story = {
     args: {
         initialValues: {
@@ -602,12 +589,7 @@ export const SelfAssignMenuEntry: Story = {
     },
 };
 
-/**
- * B4 „Senden & nächste": sends like „Direkt Versenden", then prepares the bar
- * for the next person of the same session — Träger, Beratungsstelle, Vorlage and
- * „Themen & Fachbereiche" stay as ✓ pills, E-Mail, Vorname, Name and Rolle are
- * cleared (Rolle back to the default), and the cursor waits in E-Mail.
- */
+/** „Senden & nächste" keeps unit, template and topics as pills, clears the person and focuses E-Mail. */
 export const SendAndNext: Story = {
     args: { initialValues: { ...PREFILLED, topicPermission: 'SELECT_EXISTING' }, onSubmit: fn(() => true) },
     play: async ({ args, canvasElement }) => {
@@ -642,11 +624,7 @@ export const SendAndNext: Story = {
     },
 };
 
-/**
- * #1026 (Pre-Dev E2E): the platform admin picks an EXISTING Beratungsstelle
- * before any Träger. The hit names its Träger, so the Träger field takes it over
- * as a ✓ pill — and „Senden & nächste" keeps it for the next person.
- */
+/** An existing Beratungsstelle picked before any Träger fills in its Träger; „Senden & nächste" keeps both. */
 export const AgencyPickFillsTraeger: Story = {
     args: {
         tenantAllowCreate: false,

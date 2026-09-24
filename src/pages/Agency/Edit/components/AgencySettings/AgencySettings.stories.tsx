@@ -12,13 +12,7 @@ const FormValue = () => {
     return <output data-testid="topic-permission-value">{String(value)}</output>;
 };
 
-/**
- * The agency's "Einstellungen" card as it edits an existing Beratungsstelle.
- * #1026 slice 6 adds the agency default for the topic permission of newly
- * invited counsellors (`settings.counsellorTopicPermission`, AgencyService#308):
- * existing agencies read „Darf weitere Themen anlegen" (today's behaviour),
- * new ones start with „Keine weiteren Fachbereiche".
- */
+/** Settings card of an existing Beratungsstelle, incl. the topic permission default for invited counsellors. */
 const meta: Meta<typeof AgencySettings> = {
     title: 'Organisms/Agency/AgencySettings',
     component: AgencySettings,

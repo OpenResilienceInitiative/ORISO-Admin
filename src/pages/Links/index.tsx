@@ -116,7 +116,7 @@ export const LinksPage = () => {
     );
 };
 
-/** `/admin/links` lands on the first tab the admin may see (tenant and agency admins: counsellor invites). */
+/** `/admin/links` lands on the first tab the admin may see. */
 export const LinksIndexRedirect = () => {
     const [firstTab] = useVisibleLinkTabs();
     return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;

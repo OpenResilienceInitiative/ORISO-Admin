@@ -8,12 +8,7 @@ export type AccountInviteTargetRole =
     | 'COUNSELLOR'
     | 'PLATFORM_ADMIN'
     | 'ADVICE_SEEKER';
-/**
- * `WAITING_FOR_UNIT` (#1026 slice 5, UserService#1216): the invite points at a
- * Beratungsstelle / Träger that does not exist yet. It is stored, NOT sent — no
- * link, no mail, no expiry — and goes out automatically once the unit's first
- * admin has finished onboarding.
- */
+/** `WAITING_FOR_UNIT`: stored but not sent (no link, mail or expiry) until the new unit's first admin onboarded. */
 export type AccountInviteStatus =
     | 'WAITING_FOR_UNIT'
     | 'DRAFT'
@@ -22,14 +17,10 @@ export type AccountInviteStatus =
     | 'EXPIRED'
     | 'REVOKED'
     | 'SUPERSEDED';
-/** Which unit a waiting invite waits for. */
 export type InviteWaitingForUnit = 'AGENCY' | 'TENANT';
 /** Derived on read: the waiting invite has no pending admin invite that would create its unit. */
 export type InviteQueueProblem = 'NO_UNIT_ADMIN';
-/**
- * Per-counsellor topic permission (#1026 slice 6, UserService#1213). The CSV
- * import may also send `true` (= CREATE) / `false` (= NONE).
- */
+/** The CSV import may also send `true` (= CREATE) / `false` (= NONE). */
 export type InviteTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 export type EmailVerificationStatus = 'NOT_REQUIRED' | 'PENDING' | 'VERIFIED' | 'FAILED';
 export type TwoFactorGateStatus = 'NOT_REQUIRED' | 'PENDING_SETUP' | 'ACTIVE' | 'WAIVED' | 'DISABLED_BY_POLICY';
@@ -72,15 +63,15 @@ export interface AccountInviteDTO {
      */
     dpaForwardedAt?: string | null;
     dpaSignedAt?: string | null;
-    /** #1026: how the Träger / Beratungsstelle was addressed (null on invites created before). */
+    /** How the unit was addressed; `null` on older invites. */
     tenantIdAllocationMode?: AllocationMode | null;
     agencyIdAllocationMode?: AllocationMode | null;
-    /** #1026: agency-admin invites only — the person also counsels. */
+    /** Agency-admin invites only. */
     alsoCounsellor?: boolean | null;
-    /** #1026: set while `inviteStatus === 'WAITING_FOR_UNIT'`. */
+    /** Set only while `inviteStatus === 'WAITING_FOR_UNIT'`. */
     waitingForUnit?: InviteWaitingForUnit | null;
     queueProblem?: InviteQueueProblem | null;
-    /** #1026: counsellor topic permission; absent on an older backend. */
+    /** Counsellor invites only; absent on an older backend. */
     topicPermission?: InviteTopicPermission | null;
     rawToken?: string;
     acceptUrl?: string;
@@ -114,9 +105,9 @@ export interface CreateAccountInviteRequest {
     expiresInDays?: number;
     templateId?: number;
     acceptBaseUrl?: string;
-    /** #1026 slice 3: AGENCY_ADMIN only; the backend defaults to `true`. */
+    /** AGENCY_ADMIN only; the backend defaults to `true`. */
     alsoCounsellor?: boolean;
-    /** #1026 slice 6: omitted = the agency default. */
+    /** Omitted = the agency default. */
     topicPermission?: InviteTopicPermission | boolean;
 }
 
@@ -203,7 +194,6 @@ export const counsellorOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${
  */
 export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string => {
     if (targetRole === 'TENANT_ADMIN') return tenantAdminOnboardingAcceptBaseUrl;
-    // #1026 slice 3 (UserService#1215): agency admins use the counsellor wizard too.
     if (targetRole === 'COUNSELLOR' || targetRole === 'AGENCY_ADMIN') return counsellorOnboardingAcceptBaseUrl;
     return accountInviteAcceptBaseUrl;
 };
@@ -262,8 +252,7 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
-        // JSON.stringify drops undefined keys, so an unset field is simply not sent
-        // (an omitted topicPermission means "the agency default", #1026 slice 6).
+        // JSON.stringify drops undefined keys: an omitted topicPermission means the agency default.
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,
@@ -305,8 +294,7 @@ export const sendAccountInvite = async (
         // BAD_GATEWAY_WITH_RESPONSE: same for a 502 SMTP failure (UserService#1160).
         // The invite stays DRAFT — the backend writes EMAIL_SENT only after SMTP
         // confirms the handover — so the admin can retry once mail is configured.
-        // CONFLICT_WITH_RESPONSE: a waiting invite answers 409 `UNIT_NOT_CREATED`
-        // until its unit exists (#1026 slice 5) — the caller explains that.
+        // A waiting invite answers 409 `UNIT_NOT_CREATED` until its unit exists; the caller explains it.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
@@ -330,8 +318,7 @@ export const resendAccountInvite = async (
         method: FETCH_METHODS.POST,
         skipAuth: false,
         // Same 403 (UserService#1006) and 502 (UserService#1160) surfacing as send.
-        // CONFLICT_WITH_RESPONSE: a waiting invite answers 409 `UNIT_NOT_CREATED`
-        // until its unit exists (#1026 slice 5) — the caller explains that.
+        // A waiting invite answers 409 `UNIT_NOT_CREATED` until its unit exists; the caller explains it.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
@@ -356,11 +343,7 @@ export const revokeAccountInvite = async (inviteId: number): Promise<AccountInvi
     return response.json();
 };
 
-/**
- * Changes the topic permission of one invite (#1026 slice 6, UserService#1213).
- * When the account already exists, the counsellor's permission follows.
- * 400/403 reach the caller as the raw Response so the table can explain them.
- */
+/** Also updates an existing account; 400/403 reject with the raw Response for the table to explain. */
 export const updateAccountInviteTopicPermission = async (
     inviteId: number,
     topicPermission: InviteTopicPermission,

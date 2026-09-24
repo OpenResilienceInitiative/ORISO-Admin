@@ -63,11 +63,7 @@ export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
 };
 
-/*
- * #1026: Beratungsstellen-Admins get "Berater-Invites" too — counsellors only,
- * into their own agencies. The backend scopes the agency search to them, so the
- * stories answer it with the admin's own agencies only.
- */
+// The backend scopes the agency search to an agency admin's own agencies; these handlers do the same.
 const agencyHit = (id: number, name: string) => ({
     _embedded: { id, name, tenantId: 40, tenantName: 'Caritas Freiburg', topics: [], deleteDate: 'null' },
 });
@@ -92,10 +88,7 @@ const agencyAdminHandlers = (agencies: Array<{ id: number; name: string }>) => [
     ownAgenciesHandler(agencies),
 ];
 
-/**
- * Agency admin of ONE Beratungsstelle: only "Berater-Invites"; Rolle fixed on
- * „Berater:in", Träger and Beratungsstelle locked to their own unit, no CSV import.
- */
+/** Agency admin of one Beratungsstelle: Rolle, Träger and Beratungsstelle locked, no CSV import. */
 export const AgencyAdmin: Story = {
     parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
     decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
@@ -124,10 +117,7 @@ export const RestrictedAgencyAdmin: Story = {
     decorators: [withOutlet([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
 };
 
-/**
- * Agency admin of SEVERAL Beratungsstellen: the field picks among them only —
- * no „Neu anlegen", no number stepping, no founding hint.
- */
+/** Agency admin of several Beratungsstellen: picks among them only, never a new one. */
 export const AgencyAdminSeveralAgencies: Story = {
     parameters: {
         msw: {

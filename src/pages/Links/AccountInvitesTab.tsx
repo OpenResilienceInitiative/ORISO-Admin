@@ -60,20 +60,12 @@ const isBulkSelectable = (invite: AccountInviteDTO) =>
 /** Roles the invite tabs manage at all (the list endpoint may carry others, e.g. advice seekers). */
 const INVITE_TAB_ROLES: ReadonlySet<AccountInviteTargetRole> = new Set(['TENANT_ADMIN', 'AGENCY_ADMIN', 'COUNSELLOR']);
 
-/**
- * Which tab lists an invite (#1026): the Träger tab keeps the invites that
- * FOUND a Träger; everything that joins an existing unit — counsellors, BST
- * admins, and Träger admins invited into an existing Träger — lives on the
- * counsellor tab, where the bar that creates them sits.
- */
+/** The Träger tab keeps only Träger founders; invites that join an existing unit live on the counsellor tab. */
 const foundsTenant = (invite: AccountInviteDTO) =>
     invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
 const belongsToTab = (invite: AccountInviteDTO, tenantTab: boolean) =>
     INVITE_TAB_ROLES.has(invite.targetRole) && foundsTenant(invite) === tenantTab;
-/**
- * An agency admin may only invite counsellors (UserService#1215); the list the
- * backend scopes to their agencies shows exactly those, nothing they cannot act on.
- */
+/** An agency admin may invite counsellors only, so other invites in their agencies stay hidden. */
 const visibleForViewer = (invite: AccountInviteDTO, viewerScope: InviteViewerScope) =>
     viewerScope !== 'agency' || invite.targetRole === 'COUNSELLOR';
 
@@ -125,9 +117,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         result: ParseInviteCsvResult;
         sendMode: InviteSendMode;
     } | null>(null);
-    // #1026 slice 3: "Mich selbst eintragen" — undefined = closed; `{}` = open without a preset agency.
+    // undefined = closed; `{}` = open without a preset agency.
     const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
-    // #1026 slice 6: invites whose topic permission is being saved.
     const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
     // Bulk selection (#316): checked row ids, the open/closed state of the
     // "Ausgewählte löschen" confirmation, and a guard while a batch runs.
@@ -141,23 +132,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // derived from.
     const [searchQuery, setSearchQuery] = useState('');
 
-    // The JWT carries `tenantId` as a STRING — "0" for the platform admin is
-    // truthy, so a bare `|| undefined` pinned the platform admin to "Träger 0".
-    // Only a real Träger (> 0) is the viewer's own one.
+    // tenantId is a STRING in the JWT: "0" (platform admin) is truthy, so only > 0 is a real own Träger.
     const jwtTenantId = Number(parseUserAuthInfo().tenantId);
     const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
     const { isSuperAdmin, hasRole } = useUserRoles();
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
-    // #1026: platform admin, Träger admin (own Träger) or Beratungsstellen-Admin
-    // (own Träger and own agencies, counsellors only). The Träger tab is platform-only.
+    // The Träger tab is platform-only.
     const viewerScope: InviteViewerScope = isTenantInvite
         ? 'platform'
         : resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
 
-    // #1026: an agency admin's own agencies. The agency search is scoped per role
-    // by the backend (AgencyService#307), so an empty query returns exactly them.
-    // One agency locks the field; several make it a pick among them.
+    // The backend scopes the agency search per role, so an empty query returns
+    // exactly the agency admin's own agencies.
     const [ownAgencies, setOwnAgencies] = useState<InviteAgencyHit[]>([]);
     useEffect(() => {
         if (!isAgencyViewer) return undefined;
@@ -265,8 +252,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             let totalPages = 1;
             while (page < totalPages) {
                 // Pagination is intentionally sequential because totalPages comes from the preceding response.
-                // The counsellor tab lists every role that JOINS a unit (#1026), so it
-                // loads unfiltered and keeps its share below.
+                // The counsellor tab lists every role that joins a unit, so it loads unfiltered.
                 // eslint-disable-next-line no-await-in-loop
                 const response = await listAccountInvites({
                     page,
@@ -358,7 +344,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [isTenantInvite, targetRole, t],
     );
 
-    // #1026 slice 4: the platform admin picks an EXISTING Träger by name.
+    // The platform admin picks an existing Träger by name.
     const searchTenantsForPicker = useCallback(async (query: string) => {
         const response = await searchTenantData({ search: query, perPage: 10 });
         return (response.data ?? [])
@@ -384,7 +370,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
-            // #1026 slice 3: the bar's "Rolle" is the invite's target role.
             const inviteRole: InviteRole = values.role ?? (isTenantInvite ? 'TENANT_ADMIN' : 'COUNSELLOR');
             try {
                 // The backend routes the department: an existing agency adopts its only topic.
@@ -412,7 +397,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 });
                 rememberGeneratedLink(created);
                 if (created?.inviteStatus === 'WAITING_FOR_UNIT') {
-                    // #1026 slice 5: stored, not sent — say when it WILL go out.
+                    // Stored, not sent: say when it will go out.
                     message.info(
                         t(
                             'links.accountInvites.createdWaiting',
@@ -450,8 +435,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const createCsvInvite = useCallback(
         async (row: InviteCsvCreateRow): Promise<InviteCsvCreateOutcome | undefined> => {
             if (!csvImport) return undefined;
-            // #1026: the tenant id space on the Träger tab ("bestehend" = an existing
-            // Träger), the admin's own Träger everywhere else (EXISTING when known).
+            // The Träger tab addresses the tenant id space; elsewhere the admin's own Träger goes out as EXISTING.
             const ownTenant =
                 currentTenantId != null
                     ? { tenantId: currentTenantId, tenantIdAllocationMode: 'EXISTING' as const }
@@ -468,9 +452,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             } else if (row.role === 'TENANT_ADMIN') {
                 unitFields = ownTenant;
             } else {
-                // The file's id column addresses the agency space here: "bestehend" =
-                // an existing agency (checked, not reserved); a number for "neu" is
-                // pinned MANUAL, an empty cell asks for the next free one.
+                // Agency id column: "bestehend" = existing (checked, not reserved),
+                // a number for "neu" is pinned MANUAL, an empty cell takes the next free one.
                 unitFields = { ...ownTenant, agencyId: row.id, agencyIdAllocationMode: csvAgencyAllocationMode(row) };
             }
             const created = await createAccountInvite({
@@ -498,7 +481,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId],
     );
 
-    // #1026 slice 6: the table changes a counsellor's topic permission in place.
     const onTopicPermissionChange = useCallback(
         async (invite: AccountInviteDTO, topicPermission: TopicPermission) => {
             setTopicSavingIds((ids) => [...ids, invite.id]);

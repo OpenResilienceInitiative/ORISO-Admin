@@ -90,7 +90,6 @@ export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/usera
 export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
-/** #1026 slice 3 (UserService#1215): "assign me as counsellor / agency admin of this agency". */
 export const selfAssignmentsEndpoint = `${userServiceURL}/service/useradmin/self-assignments`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;

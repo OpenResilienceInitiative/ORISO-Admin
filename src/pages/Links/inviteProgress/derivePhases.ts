@@ -20,7 +20,7 @@ import type {
 export type PhaseState = 'done' | 'current' | 'pending' | 'warning' | 'error';
 
 export type PhaseKey =
-    /** #1026 slice 5: the new Beratungsstelle / Träger the invite waits for exists. */
+    /** The new Beratungsstelle / Träger the invite waits for exists. */
     | 'agencyUnitCreated'
     | 'tenantUnitCreated'
     | 'invited'
@@ -116,10 +116,7 @@ export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): bo
 export const isDraftInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
     invite.inviteStatus === 'DRAFT';
 
-/**
- * #1026 slice 5: stored, not sent — the Beratungsstelle / Träger it points at
- * does not exist yet. The mail goes out once the unit's first admin onboarded.
- */
+/** Stored, not sent: its unit does not exist yet; the mail goes out once the unit's first admin onboarded. */
 export const isWaitingForUnit = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
     invite.inviteStatus === 'WAITING_FOR_UNIT';
 
@@ -186,7 +183,6 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
  */
 const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
     const roleKeys = phaseKeysForRole(invite.targetRole);
-    // #1026 slice 5: a waiting invite gets a NEW first step for the unit it waits for.
     const keys: readonly PhaseKey[] = isWaitingForUnit(invite)
         ? [invite.waitingForUnit === 'TENANT' ? 'tenantUnitCreated' : 'agencyUnitCreated', ...roleKeys]
         : roleKeys;
@@ -209,8 +205,7 @@ const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
  *   is `error` (the magenta error role), later ones `pending`.
  */
 export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
-    // #1026 slice 5: nothing has happened yet except the wait for the unit — the
-    // first step is current, or a warning while no unit admin is pending.
+    // Only the wait for the unit has started: step one is current, or a warning while no unit admin is pending.
     if (isWaitingForUnit(invite)) {
         return phaseKeysForInvite(invite).map((key, index) => {
             if (index > 0) return { key, state: 'pending' as const };
