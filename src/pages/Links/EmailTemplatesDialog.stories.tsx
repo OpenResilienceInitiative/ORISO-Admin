@@ -200,13 +200,18 @@ export const Error: Story = {
 };
 
 /**
- * ORISO-Admin#1026 — a Träger admin (tenant 1) opens the manager. Creating a template is
- * theirs to do (owner decision 2026-09-23, confirmed by Frank 2026-09-24): "Neue Vorlage"
- * stays enabled. Changing a *stored* one is not — one text is shared by every Träger — so
- * "Bearbeiten" stays visible but disabled with the reason, per the house rule
- * "disable, don't hide".
+ * ORISO-Admin#1026 — a Träger admin (tenant 1) opens the manager, with one template of their
+ * own and one the platform operator wrote.
+ *
+ * - Creating is theirs to do (owner decision 2026-09-23, confirmed by Frank 2026-09-24):
+ *   "Neue Vorlage" stays enabled.
+ * - Their own template is theirs to change: "Bearbeiten" is live.
+ * - The platform's text is the mail every other Träger sends, so that row's "Bearbeiten" is
+ *   visible but disabled with the reason — house rule "disable, don't hide".
+ *
+ * `editable` per row comes from the server (ORISO-UserService#1210).
  */
-export const TraegerAdminSharedTemplateLocked: Story = {
+export const TraegerAdminOwnAndPlatformTemplates: Story = {
     args: { templateKind: 'COUNSELLOR_INVITE' },
     decorators: [
         (Story) => {
@@ -214,13 +219,45 @@ export const TraegerAdminSharedTemplateLocked: Story = {
             return <Story />;
         },
     ],
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, () =>
+                    HttpResponse.json([
+                        {
+                            ...TEMPLATES[3],
+                            id: 31,
+                            name: 'Unsere eigene Berater-Einladung',
+                            tenantId: 1,
+                            editable: true,
+                        },
+                        {
+                            ...TEMPLATES[3],
+                            id: 32,
+                            name: 'Berater-Willkommen (Plattform)',
+                            tenantId: null,
+                            editable: false,
+                        },
+                    ]),
+                ),
+                createdTemplate,
+            ],
+        },
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
         const body = within(canvasElement.ownerDocument.body);
-        const editButtons = await body.findAllByRole('button', { name: /Bearbeiten|Edit/ });
-        editButtons.forEach((button) => expect(button).toBeDisabled());
+        // Found by name, not by row order — the list sorts by kind and date, which is
+        // not what this story is about.
+        await body.findByText('Unsere eigene Berater-Einladung');
+        const editButtonInRowOf = (name: string) => {
+            const row = body.getByText(name).closest('tr');
+            if (!row) throw new Error(`no template row named ${name}`);
+            return within(row as HTMLElement).getByRole('button', { name: /Bearbeiten|Edit/ });
+        };
+        await expect(editButtonInRowOf('Unsere eigene Berater-Einladung')).toBeEnabled();
+        await expect(editButtonInRowOf('Berater-Willkommen (Plattform)')).toBeDisabled();
         await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
     },
 };

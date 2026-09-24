@@ -784,6 +784,48 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         );
     });
 
+    /* ORISO-UserService#1210 gave a template an owning Träger. `editable` on the row is
+       the server's own answer to "may this caller change it?" — own-tenant templates
+       yes, the ownerless platform text no. The Admin must follow that per row, not
+       grey out everything a non-platform admin sees. */
+    it('lets a Träger admin edit their own Träger’s template', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: 40, editable: true }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled();
+    });
+
+    it('keeps the platform’s own template read-only for a Träger admin', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: null, editable: false }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    });
+
+    it('opens the edit form on a double-click on the Träger’s own template', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: 40, editable: true }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        fireEvent.doubleClick(screen.getByTestId('template-row'));
+
+        expect(await screen.findByDisplayValue('Welcome')).toBeInTheDocument();
+    });
+
     it('leaves creating a template open — the owner decision of 2026-09-23', async () => {
         // Q30/Q31, Frank 2026-09-24: everyone who may send invites may also
         // create templates. Only changing a *stored, shared* one stays with the

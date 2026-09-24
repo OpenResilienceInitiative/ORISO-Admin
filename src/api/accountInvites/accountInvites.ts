@@ -99,6 +99,17 @@ export interface ListAccountInvitesParams {
 
 export interface InviteEmailTemplateDTO {
     id: number;
+    /**
+     * The Träger this template belongs to, or `null` for a platform template the operator
+     * wrote and everyone may use (ORISO-Admin#1026, ORISO-UserService#1210).
+     */
+    tenantId?: number | null;
+    /**
+     * The server's own answer to "may this caller change this stored template?" — own-Träger
+     * templates yes, the platform's text only for the platform admin. Optional while a server
+     * without ORISO-UserService#1210 may still answer; the UI then falls back to the role rule.
+     */
+    editable?: boolean;
     kind: InviteEmailTemplateKind;
     name: string;
     language: string | null;

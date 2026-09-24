@@ -127,6 +127,12 @@ export const EmailTemplatesDialog = ({
         'links.templates.platformAdminOnly',
         'Nur Plattform-Admins können geteilte Vorlagen ändern',
     );
+    /* Whether THIS row is the caller's to change. Since ORISO-UserService#1210 a template
+       carries an owning Träger, and the server answers `editable` per row: a Träger's own
+       template is theirs, the ownerless platform text is the operator's. `canEdit` stays
+       as the fallback for a server that does not send the field yet, so a deployment
+       order cannot silently hand out edit rights. */
+    const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
     const {
@@ -452,7 +458,7 @@ export const EmailTemplatesDialog = ({
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
                     <div className={listingTableStyles.actionGroup}>
-                        {canEdit ? (
+                        {mayEditTemplate(template) ? (
                             <Button size="small" onClick={() => openEditForm(template)}>
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
@@ -487,7 +493,16 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [canEdit, isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, sharedTemplateLockReason, t],
+        [
+            isSelectable,
+            kindLabel,
+            mayEditTemplate,
+            onSelect,
+            openEditForm,
+            selectedTemplateId,
+            sharedTemplateLockReason,
+            t,
+        ],
     );
 
     const listFooter = (
@@ -676,7 +691,11 @@ export const EmailTemplatesDialog = ({
                                 // Picking a template opens it for editing, and save writes it back.
                                 // Without the right to edit shared templates, the pick starts a new
                                 // template from it instead, as "Neu aus …" does.
-                                guardDraft(() => (canEdit ? openEditForm(template) : openCreateFromTemplate(template)));
+                                guardDraft(() =>
+                                    mayEditTemplate(template)
+                                        ? openEditForm(template)
+                                        : openCreateFromTemplate(template),
+                                );
                             }
                         }}
                     />
@@ -731,7 +750,7 @@ export const EmailTemplatesDialog = ({
                         : undefined,
                     // Manager-only mode: without picking, a row click is free
                     // for the edit shortcut — for whoever may edit at all.
-                    onDoubleClick: onSelect || !canEdit ? undefined : () => openEditForm(template),
+                    onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
                 })}
             />
         </Modal>
