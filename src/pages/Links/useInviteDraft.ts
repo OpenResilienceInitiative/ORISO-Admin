@@ -464,9 +464,8 @@ export const useInviteDraft = ({
     };
 
     return {
-        rootRef,
-        handleRowFocus,
-        tab,
+        /** The bar's root and its focus handler, which folds open select pills once focus moves on. */
+        row: { ref: rootRef, onFocus: handleRowFocus },
         fields,
         email: {
             value: recipientEmail,
@@ -477,9 +476,7 @@ export const useInviteDraft = ({
         },
         firstName: { value: firstName, set: setFirstName },
         lastName: { value: lastName, set: setLastName },
-        role,
-        setRole,
-        roleOptions,
+        role: { value: role, set: setRole, options: roleOptions },
         tenant: {
             allocation: tenantAllocation,
             locked: tenantLocked,
@@ -494,27 +491,22 @@ export const useInviteDraft = ({
             search: searchAgencies ? searchAgenciesInTenant : undefined,
             picked: pickedAgency,
         },
-        topicPermission,
-        setTopicPermission,
-        alsoCounsellor,
-        setAlsoCounsellor,
-        activeTemplates,
-        selectedTemplate,
-        isCollapsed,
-        collapse,
-        collapseIfValid,
-        expand,
-        openSelect,
-        setOpenSelect,
-        sendMode,
-        sendAndNext,
-        chooseSendMode,
-        isValid,
-        blockReason,
-        offerAgencyAdminSwitch,
-        switchToAgencyAdmin,
-        sendLabel,
-        send,
+        topics: { value: topicPermission, set: setTopicPermission },
+        alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
+        /** Which fields show as pills, and which select menu is open. */
+        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect },
+        submit: {
+            mode: sendMode,
+            andNext: sendAndNext,
+            chooseMode: chooseSendMode,
+            isValid,
+            label: sendLabel,
+            send,
+            /** Why send is off; `undefined` while it can fire. */
+            blockReason,
+            offerAgencyAdminSwitch,
+            switchToAgencyAdmin,
+        },
     };
 };
 

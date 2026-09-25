@@ -40,7 +40,7 @@ const renderOptionWithHint = (option: { label?: ReactNode; data: DefaultOptionTy
 };
 
 interface SelectFieldProps<V extends string> {
-    draft: InviteDraftState;
+    pills: InviteDraftState['pills'];
     fieldKey: CollapsibleKey;
     label: string;
     value: V;
@@ -53,7 +53,7 @@ interface SelectFieldProps<V extends string> {
 
 // Expanding a select's pill opens its menu right away: that is all a select expands for.
 const SelectField = <V extends string>({
-    draft,
+    pills,
     fieldKey,
     label,
     value,
@@ -65,32 +65,32 @@ const SelectField = <V extends string>({
 }: SelectFieldProps<V>) => (
     <span className={styles.placeholderSlot}>
         <CollapsibleField
-            collapsed={draft.isCollapsed(fieldKey)}
+            collapsed={pills.isCollapsed(fieldKey)}
             disabled={disabled}
             fieldKey={fieldKey}
             label={label}
             pillText={valueLabel}
             valueSummary={valueLabel}
             onExpand={() => {
-                draft.expand(fieldKey);
-                draft.setOpenSelect(fieldKey);
+                pills.expand(fieldKey);
+                pills.setOpenSelect(fieldKey);
             }}
         >
             <FloatingLabelSelect<V>
                 className={className}
                 disabled={disabled}
                 label={label}
-                open={draft.openSelect === fieldKey}
+                open={pills.openSelect === fieldKey}
                 optionRender={renderOptionWithHint}
                 options={options}
                 popupMatchSelectWidth={false}
                 value={value}
                 onChange={(next) => {
                     onChange(next);
-                    draft.setOpenSelect(null);
-                    draft.collapse(fieldKey);
+                    pills.setOpenSelect(null);
+                    pills.collapse(fieldKey);
                 }}
-                onOpenChange={(nextOpen) => draft.setOpenSelect(nextOpen ? fieldKey : null)}
+                onOpenChange={(nextOpen) => pills.setOpenSelect(nextOpen ? fieldKey : null)}
             />
         </CollapsibleField>
     </span>
@@ -107,15 +107,15 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
     const topicsLabel = t('links.composer.topics', 'Themen & Fachbereiche');
     const roleLabel = (value: InviteRole) => t(...ROLE_LABEL_KEYS[value]);
     const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
-    const { email, firstName, lastName, tenant, agency } = draft;
+    const { email, firstName, lastName, role, tenant, agency, topics, alsoCounsellor, pills } = draft;
 
     return (
         <>
             <CollapsibleField
-                collapsed={draft.isCollapsed('email')}
+                collapsed={pills.isCollapsed('email')}
                 label={emailLabel}
                 valueSummary={email.value.trim()}
-                onExpand={() => draft.expand('email')}
+                onExpand={() => pills.expand('email')}
             >
                 <FloatingLabelInput
                     autoComplete="email"
@@ -140,57 +140,57 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                     value={email.value}
                     onBlur={() => {
                         email.touch();
-                        draft.collapseIfValid('email');
+                        pills.collapseIfValid('email');
                     }}
                     onChange={(event) => email.set(event.target.value)}
                 />
             </CollapsibleField>
             <CollapsibleField
-                collapsed={draft.isCollapsed('firstName')}
+                collapsed={pills.isCollapsed('firstName')}
                 label={firstNameLabel}
                 valueSummary={firstName.value.trim()}
-                onExpand={() => draft.expand('firstName')}
+                onExpand={() => pills.expand('firstName')}
             >
                 <FloatingLabelInput
                     className={styles.nameField}
                     label={firstNameLabel}
                     name="firstName"
                     value={firstName.value}
-                    onBlur={() => draft.collapseIfValid('firstName')}
+                    onBlur={() => pills.collapseIfValid('firstName')}
                     onChange={(event) => firstName.set(event.target.value)}
                 />
             </CollapsibleField>
             <CollapsibleField
-                collapsed={draft.isCollapsed('lastName')}
+                collapsed={pills.isCollapsed('lastName')}
                 label={lastNameLabel}
                 valueSummary={lastName.value.trim()}
-                onExpand={() => draft.expand('lastName')}
+                onExpand={() => pills.expand('lastName')}
             >
                 <FloatingLabelInput
                     className={classNames(styles.nameField, styles.lastNameField)}
                     label={lastNameLabel}
                     name="lastName"
                     value={lastName.value}
-                    onBlur={() => draft.collapseIfValid('lastName')}
+                    onBlur={() => pills.collapseIfValid('lastName')}
                     onChange={(event) => lastName.set(event.target.value)}
                 />
             </CollapsibleField>
             <SelectField<InviteRole>
                 className={styles.roleField}
-                disabled={draft.roleOptions.length < 2}
-                draft={draft}
+                disabled={role.options.length < 2}
                 fieldKey="role"
                 label={t('links.composer.role', 'Rolle')}
-                options={draft.roleOptions.map((option) => ({ value: option, label: roleLabel(option) }))}
-                value={draft.role}
-                valueLabel={roleLabel(draft.role)}
-                onChange={draft.setRole}
+                options={role.options.map((option) => ({ value: option, label: roleLabel(option) }))}
+                pills={pills}
+                value={role.value}
+                valueLabel={roleLabel(role.value)}
+                onChange={role.set}
             />
             <CollapsibleField
-                collapsed={!tenant.locked && draft.isCollapsed('tenant')}
+                collapsed={!tenant.locked && pills.isCollapsed('tenant')}
                 label={tenantLabel}
                 valueSummary={tenant.label}
-                onExpand={() => draft.expand('tenant')}
+                onExpand={() => pills.expand('tenant')}
             >
                 <IdAllocationField
                     allocation={tenant.allocation}
@@ -199,15 +199,15 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                     locked={tenant.locked}
                     resolveUnit={clients.resolveTenant}
                     searchUnits={clients.searchTenants}
-                    onBlur={() => draft.collapseIfValid('tenant')}
+                    onBlur={() => pills.collapseIfValid('tenant')}
                 />
             </CollapsibleField>
             {draft.fields.agency && (
                 <CollapsibleField
-                    collapsed={!agency.locked && draft.isCollapsed('agency')}
+                    collapsed={!agency.locked && pills.isCollapsed('agency')}
                     label={agencyLabel}
                     valueSummary={agency.label}
-                    onExpand={() => draft.expand('agency')}
+                    onExpand={() => pills.expand('agency')}
                 >
                     <IdAllocationField
                         acceptTypedIds={agency.mayBeNew}
@@ -218,14 +218,13 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                         reservedJoinsPendingUnit
                         resolveUnit={clients.resolveAgency}
                         searchUnits={agency.search}
-                        onBlur={() => draft.collapseIfValid('agency')}
+                        onBlur={() => pills.collapseIfValid('agency')}
                     />
                 </CollapsibleField>
             )}
             {draft.fields.topics && (
                 <SelectField<TopicPermission>
                     className={styles.topicsField}
-                    draft={draft}
                     fieldKey="topics"
                     label={topicsLabel}
                     options={TOPIC_PERMISSIONS.map((option) => ({
@@ -233,15 +232,15 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                         label: topicTitle(option),
                         description: t(...TOPIC_PERMISSION_LABEL_KEYS[option].description),
                     }))}
-                    value={draft.topicPermission}
-                    valueLabel={topicTitle(draft.topicPermission)}
-                    onChange={draft.setTopicPermission}
+                    pills={pills}
+                    value={topics.value}
+                    valueLabel={topicTitle(topics.value)}
+                    onChange={topics.set}
                 />
             )}
             {draft.fields.alsoCounsellor && (
                 <SelectField<'yes' | 'no'>
                     className={styles.topicsField}
-                    draft={draft}
                     fieldKey="alsoCounsellor"
                     label={t('links.composer.alsoCounsellor.label', 'Berät auch')}
                     options={(['yes', 'no'] as const).map((option) => ({
@@ -249,9 +248,10 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                         label: t(...ALSO_COUNSELLOR_LABEL_KEYS[option].title),
                         description: t(...ALSO_COUNSELLOR_LABEL_KEYS[option].description),
                     }))}
-                    value={draft.alsoCounsellor ? 'yes' : 'no'}
-                    valueLabel={t(...ALSO_COUNSELLOR_LABEL_KEYS[draft.alsoCounsellor ? 'yes' : 'no'].title)}
-                    onChange={(next) => draft.setAlsoCounsellor(next === 'yes')}
+                    pills={pills}
+                    value={alsoCounsellor.value ? 'yes' : 'no'}
+                    valueLabel={t(...ALSO_COUNSELLOR_LABEL_KEYS[alsoCounsellor.value ? 'yes' : 'no'].title)}
+                    onChange={(next) => alsoCounsellor.set(next === 'yes')}
                 />
             )}
         </>
@@ -275,12 +275,13 @@ interface InviteSendButtonProps {
 /** The single-invite send button with its send-mode menu. */
 export const InviteSendButton = ({ draft, submitting, hintId, onSelfAssign }: InviteSendButtonProps) => {
     const { t } = useTranslation();
+    const { submit } = draft;
     const menu: MenuProps = {
         items: [
             {
                 key: 'direct',
                 icon:
-                    draft.sendMode === 'direct' ? (
+                    submit.mode === 'direct' ? (
                         <MailFilledIcon aria-hidden className={styles.menuIcon} data-glyph="mail-filled" />
                     ) : (
                         <MailIcon aria-hidden className={styles.menuIcon} data-glyph="mail" />
@@ -309,26 +310,26 @@ export const InviteSendButton = ({ draft, submitting, hintId, onSelfAssign }: In
                 : []),
         ],
         selectable: true,
-        selectedKeys: [draft.sendAndNext ? 'sendAndNext' : draft.sendMode],
+        selectedKeys: [submit.andNext ? 'sendAndNext' : submit.mode],
         onClick: ({ key }) => {
             if (key === 'selfAssign') {
                 onSelfAssign?.(draft.agency.picked);
                 return;
             }
-            draft.chooseSendMode(key as InviteSendMode | 'sendAndNext');
+            submit.chooseMode(key as InviteSendMode | 'sendAndNext');
         },
     };
     return (
         <SplitButton
-            icon={<SendGlyph ready={draft.isValid} sendMode={draft.sendMode} />}
-            label={draft.sendLabel}
-            mainDescribedBy={draft.blockReason ? hintId : undefined}
-            mainDisabled={!draft.isValid || submitting}
+            icon={<SendGlyph ready={submit.isValid} sendMode={submit.mode} />}
+            label={submit.label}
+            mainDescribedBy={submit.blockReason ? hintId : undefined}
+            mainDisabled={!submit.isValid || submitting}
             menu={menu}
             menuLabel={t('links.composer.sendMenuLabel', 'Sendeoptionen')}
             // Tonal disabled keeps full opacity, so not-ready rests outlined or it would look live.
-            variant={draft.isValid ? 'primary' : 'outlined'}
-            onClick={draft.send}
+            variant={submit.isValid ? 'primary' : 'outlined'}
+            onClick={submit.send}
         />
     );
 };
@@ -336,14 +337,15 @@ export const InviteSendButton = ({ draft, submitting, hintId, onSelfAssign }: In
 /** Why send is off, and the one-click fix for the founding rule. */
 export const InviteSendHint = ({ draft, hintId }: { draft: InviteDraftState; hintId: string }) => {
     const { t } = useTranslation();
-    if (!draft.blockReason) return null;
+    const { submit } = draft;
+    if (!submit.blockReason) return null;
     return (
         <div className={styles.sendHintRow}>
             <p className={styles.sendHint} id={hintId} role="status">
-                {draft.blockReason}
+                {submit.blockReason}
             </p>
-            {draft.offerAgencyAdminSwitch && (
-                <M3Button className={styles.sendHintAction} variant="text" onClick={draft.switchToAgencyAdmin}>
+            {submit.offerAgencyAdminSwitch && (
+                <M3Button className={styles.sendHintAction} variant="text" onClick={submit.switchToAgencyAdmin}>
                     {t('links.composer.switchToAgencyAdmin', 'Stattdessen als BST-Admin einladen')}
                 </M3Button>
             )}
