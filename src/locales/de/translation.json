@@ -2308,7 +2308,7 @@
     "links.composer.topics.noneShort": "Keine weiteren",
     "links.composer.topics.selectExistingShort": "Auswählen",
     "links.composer.topics.createShort": "Anlegen",
-    "links.csvImport.topicPermissionOmitted": "leer = Darf weitere Fachbereiche auswählen",
+    "links.csvImport.topicPermissionOmitted": "Leere CSV-Zelle = Darf weitere Fachbereiche auswählen",
     "links.csvImport.blockedAgencyAdmin": "Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.",
     "links.composer.sendCreateAndInviteAndNext": "Anlegen, einladen & nächste",
     "links.composer.sendInviteAndNext": "Einladen & nächste",
