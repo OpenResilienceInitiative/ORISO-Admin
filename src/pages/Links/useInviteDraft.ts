@@ -237,12 +237,27 @@ export const useInviteDraft = ({
         ? agencyAllocation.canSubmit || agencyJoinsPendingUnit
         : agencyAllocation.mode === 'existing';
     const agencyIdValid = !fields.agency || agencyPicked;
+    // The agency is resolved by number alone, so it can belong to another Träger than the one chosen.
+    const chosenTenantId =
+        tenantAllocation.mode === 'existing' || tenantAllocation.mode === 'manual' ? tenantAllocation.value : undefined;
+    const agencyInOtherTenant =
+        fields.agency &&
+        pickedAgency?.tenantId != null &&
+        chosenTenantId != null &&
+        pickedAgency.tenantId !== chosenTenantId;
     const needsUnitAdmin = agencyIsNew && counsellorNeedsUnitAdmin(role, agencyAllocation);
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     // A counsellor account cannot be provisioned without names.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
     const isValid =
-        emailValid && !emailTaken && tenantIdValid && agencyIdValid && !needsUnitAdmin && templateValid && namesValid;
+        emailValid &&
+        !emailTaken &&
+        tenantIdValid &&
+        agencyIdValid &&
+        !agencyInOtherTenant &&
+        !needsUnitAdmin &&
+        templateValid &&
+        namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     const fieldValid: Record<CollapsibleKey, boolean> = {
@@ -326,6 +341,12 @@ export const useInviteDraft = ({
             return t(
                 'links.composer.blocked.agency',
                 'Bitte eine Beratungsstelle wählen: bestehend, freie Nummer oder „Neu anlegen“.',
+            );
+        }
+        if (agencyInOtherTenant) {
+            return t(
+                'links.composer.blocked.agencyOtherTenant',
+                'Diese Beratungsstelle gehört zu einem anderen Träger. Bitte den Träger ändern oder eine Beratungsstelle dieses Trägers wählen.',
             );
         }
         if (needsUnitAdmin) {

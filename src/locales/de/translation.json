@@ -2170,6 +2170,7 @@
     "idAllocationField.noUnitWithNumber": "Keine Einheit mit Nr. {{id}}",
     "links.composer.blocked.tenant": "Bitte einen Träger wählen: bestehend, freie Nummer oder „Neu anlegen“.",
     "links.composer.blocked.agency": "Bitte eine Beratungsstelle wählen: bestehend, freie Nummer oder „Neu anlegen“.",
+    "links.composer.blocked.agencyOtherTenant": "Diese Beratungsstelle gehört zu einem anderen Träger. Bitte den Träger ändern oder eine Beratungsstelle dieses Trägers wählen.",
     "links.composer.blocked.ownAgency": "Bitte eine Ihrer Beratungsstellen wählen.",
     "links.composer.newWithNumber": "Neu, Nr. {{id}}",
     "links.composer.role": "Rolle",
