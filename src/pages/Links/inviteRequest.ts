@@ -97,16 +97,16 @@ export const toCreateInviteRequest = (
         firstName: source.firstName,
         lastName: source.lastName,
     };
+    const fields = fieldsForRole(source.role, context.tab);
     if (source.kind === 'csv') {
         return {
             ...base,
             ...csvUnits(source, context),
-            alsoCounsellor: source.alsoCounsellor,
-            topicPermission: source.topicPermission,
+            alsoCounsellor: fields.alsoCounsellor ? source.alsoCounsellor : undefined,
+            topicPermission: fields.topics ? source.topicPermission : undefined,
             templateId: direct ? source.templateId ?? context.fallbackTemplateId : undefined,
         };
     }
-    const fields = fieldsForRole(source.role, context.tab);
     return {
         ...base,
         ...draftUnits(source, context),
