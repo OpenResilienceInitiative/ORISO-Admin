@@ -546,33 +546,29 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         expect(await screen.findByText('Invite konnte nicht erneut gesendet werden')).toBeInTheDocument();
     });
 
-    it(
-        'keeps going after a 403 — one toast, every selected row still tried',
-        { timeout: 90_000 },
-        async () => {
-            mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
-            mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
-            await renderCounsellorTab();
-            const user = userEvent.setup();
+    it('keeps going after a 403 — one toast, every selected row still tried', { timeout: 90_000 }, async () => {
+        mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
 
-            await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
-            await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
 
-            const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
-            await waitFor(() => expect(sendButton).toBeEnabled());
-            await user.click(sendButton);
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
 
-            // A 403 is that invite's own (its unit may be foreign), so the next row still goes out.
-            await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
-            expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
-            const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
-            expect(roleToasts).toHaveLength(1);
-            // The count summary stays — the cause toast comes ON TOP of it.
-            expect(
-                await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
-            ).toBeInTheDocument();
-        },
-    );
+        // A 403 is that invite's own (its unit may be foreign), so the next row still goes out.
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
+        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
+        expect(roleToasts).toHaveLength(1);
+        // The count summary stays — the cause toast comes ON TOP of it.
+        expect(
+            await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
+        ).toBeInTheDocument();
+    });
 
     it('fails only the row with the 403 and delivers the rows after it', { timeout: 90_000 }, async () => {
         mocks.listAccountInvites.mockResolvedValue(
