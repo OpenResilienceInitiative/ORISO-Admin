@@ -33,7 +33,16 @@ const ALL: DisplayStatus[] = [
 /** Every state `resolveDisplayStatus` can produce. */
 export const AllStates: Story = {
     render: () => (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <div
+            style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 12,
+                padding: 16,
+                borderRadius: 16,
+                background: 'var(--admin-table-surface, #f6f3f3)',
+            }}
+        >
             {ALL.map((status) => (
                 <StatusBadge key={status} status={status} />
             ))}

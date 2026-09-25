@@ -22,7 +22,7 @@ export interface UserCardProps {
     onDelete: () => void;
 }
 
-/** Phone card (< 768px): name and status on one line, expand next to edit and delete. */
+/** Phone card (< 768px): one row with name over status, expand next to edit and delete. */
 export const UserCard = ({
     name,
     email,
@@ -41,10 +41,12 @@ export const UserCard = ({
     return (
         <article className={styles.card} aria-label={displayName}>
             <div className={styles.summary}>
-                <span className={styles.name} title={displayName}>
-                    {displayName}
-                </span>
-                <StatusBadge status={status} inviteTo={inviteTo} />
+                <div className={styles.lead}>
+                    <span className={styles.name} title={displayName}>
+                        {displayName}
+                    </span>
+                    <StatusBadge status={status} inviteTo={inviteTo} />
+                </div>
                 <div className={styles.actions}>
                     <IconButton
                         icon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
