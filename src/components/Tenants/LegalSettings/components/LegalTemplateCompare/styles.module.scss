@@ -1,0 +1,157 @@
+/* Left/right compare of a received legal template and the own draft (#1070).
+   Colours come from the ORISO M3 tokens only. */
+
+.compare {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    container-type: inline-size;
+    gap: 12px;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px;
+    border: 1px solid var(--m3-outline-variant);
+    background: var(--m3-surface-container-low);
+    border-radius: 16px;
+    gap: 8px;
+}
+
+.heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+}
+
+.marker {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px 2px 6px;
+    background: var(--m3-primary-container);
+    border-radius: 8px;
+    color: var(--m3-on-primary-container);
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    letter-spacing: 0.5px;
+    line-height: 20px;
+}
+
+.markerDot {
+    color: var(--m3-primary);
+    font-size: 10px;
+}
+
+.source {
+    color: var(--m3-on-surface);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+
+.sentAt,
+.hint,
+.archiveMeta {
+    margin: 0;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.lock {
+    padding: 8px 12px;
+    margin: 0;
+    background: var(--m3-surface-container-highest);
+    border-radius: 8px;
+    color: var(--m3-on-surface);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.actions,
+.bar,
+.archiveList {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.bar {
+    margin-bottom: 8px;
+}
+
+.archiveList {
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}
+
+.archiveMeta {
+    margin-bottom: 12px;
+}
+
+.panes {
+    display: grid;
+    align-items: start;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+    &.collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.templatePane,
+.draftPane {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* The template can be long; its text stays selectable so passages can be copied. */
+.reader {
+    min-width: 0;
+    user-select: text;
+}
+
+.toggle {
+    align-self: flex-start;
+    padding: 6px 12px;
+    border: 1px solid var(--m3-outline);
+    background: transparent;
+    border-radius: 100px;
+    color: var(--m3-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary);
+        outline-offset: 2px;
+    }
+}
+
+/* Narrow: template on top, own draft below (#1070, < 900px). */
+@container (max-width: 899px) {
+    .panes {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .actions {
+        justify-content: stretch;
+
+        > * {
+            flex: 1 1 auto;
+        }
+    }
+}
