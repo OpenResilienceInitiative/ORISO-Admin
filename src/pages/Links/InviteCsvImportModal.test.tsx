@@ -572,9 +572,8 @@ describe('InviteCsvImportModal', () => {
         });
 
         it('sends other roles to the Berater tab when the Träger tab only founds Träger', () => {
-            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }), {
-                tabRoles: ['TENANT_ADMIN'],
-            });
+            // idKind "tenant" (the renderModal default) limits this tab to Träger admins.
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }));
             expect(
                 rowCells('anna@x.de').getByText(
                     'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
