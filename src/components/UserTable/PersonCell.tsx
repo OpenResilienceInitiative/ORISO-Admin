@@ -11,7 +11,10 @@ export interface PersonCellProps {
     alsoLabel?: string;
 }
 
-/** Line 1: name + role chip. Line 2: e-mail, copy, @username. Long values are cut; the tooltip has them in full. */
+/**
+ * Line 1: name + role chip. Line 2: e-mail, copy, @username. When tight, chip and
+ * username wrap below instead of cutting the name; long values are cut, the tooltip has them in full.
+ */
 export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps) => {
     const { t } = useTranslation();
     const title = name || email;
@@ -29,24 +32,30 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
                 <span className={styles.name} title={title}>
                     {title}
                 </span>
-                {alsoLabel && <span className={styles.also}>{alsoLabel}</span>}
+                {alsoLabel && (
+                    <span className={styles.also} title={alsoLabel}>
+                        {alsoLabel}
+                    </span>
+                )}
             </div>
             {(email || username) && (
                 <div className={styles.line}>
-                    {name && (
-                        <span className={styles.email} title={email}>
-                            {email}
-                        </span>
-                    )}
                     {email && (
-                        <button
-                            type="button"
-                            className={styles.copy}
-                            aria-label={t('userTable.person.copyEmail', 'E-Mail kopieren')}
-                            onClick={copyEmail}
-                        >
-                            <ContentCopyOutlinedIcon aria-hidden />
-                        </button>
+                        <span className={styles.contact}>
+                            {name && (
+                                <span className={styles.email} title={email}>
+                                    {email}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                className={styles.copy}
+                                aria-label={t('userTable.person.copyEmail', 'E-Mail kopieren')}
+                                onClick={copyEmail}
+                            >
+                                <ContentCopyOutlinedIcon aria-hidden />
+                            </button>
+                        </span>
                     )}
                     {username && (
                         <span className={styles.username} title={`${usernameLabel}: @${username}`}>

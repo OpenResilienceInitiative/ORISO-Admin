@@ -11,14 +11,24 @@
 .line {
     display: flex;
     min-width: 0;
+    flex-wrap: wrap;
     align-items: center;
     gap: 2px 8px;
+}
+
+.contact {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 8px;
 }
 
 .name,
 .email,
 .username {
     min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -34,7 +44,6 @@
     display: inline-flex;
     height: 22px;
     box-sizing: border-box;
-    flex-shrink: 0;
     align-items: center;
     padding: 0 8px;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
@@ -50,15 +59,6 @@
     font: 400 12px/16px var(--m3-body-font-family);
 }
 
-/* The e-mail gives way first; the username keeps at least a few characters. */
-.email {
-    flex: 0 1 auto;
-}
-
-.username {
-    flex: 0 3 auto;
-}
-
 .username:before {
     content: '· ';
 }
@@ -71,8 +71,8 @@
     align-items: center;
     justify-content: center;
     padding: 0;
-    margin: -6px -4px -6px -6px;
     border: 0;
+    margin: -6px -4px -6px -6px;
     border-radius: 50%;
     background: transparent;
     color: var(--m3-on-surface-variant, #444748);
