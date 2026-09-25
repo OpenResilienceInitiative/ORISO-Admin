@@ -194,6 +194,11 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
 
 const renderTenantTab = () => render(<TenantInvitesTab />);
 
+// A plain flag survives vi.clearAllMocks(); reset it so no block inherits the platform-admin view.
+beforeEach(() => {
+    mocks.superAdmin = false;
+});
+
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
         vi.clearAllMocks();
