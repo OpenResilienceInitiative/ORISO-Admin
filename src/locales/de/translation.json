@@ -470,6 +470,8 @@
     "userTable.columns.name": "Name",
     "userTable.columns.actions": "Aktionen",
     "userTable.centres.of": "Beratungsstellen von {{name}}",
+    "userTable.centres.show": "Beratungsstellen von {{name}} anzeigen",
+    "userTable.centres.hide": "Beratungsstellen von {{name}} ausblenden",
     "userTable.centres.topicsHere": "Berät hier",
     "userTable.invite": "Einladen",
     "userTable.loadMore.count": "{{shown}} von {{total}}",

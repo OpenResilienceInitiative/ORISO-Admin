@@ -533,6 +533,8 @@
     "userTable.columns.name": "Name",
     "userTable.columns.actions": "Actions",
     "userTable.centres.of": "Counselling centres of {{name}}",
+    "userTable.centres.show": "Show {{name}}'s counselling centres",
+    "userTable.centres.hide": "Hide {{name}}'s counselling centres",
     "userTable.centres.topicsHere": "Counsels here on",
     "userTable.invite": "Invite",
     "userTable.loadMore.count": "{{shown}} of {{total}}",

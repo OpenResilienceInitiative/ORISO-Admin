@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import type { CounselorData } from '../../../types/counselor';
-import { hasOtherIdentityFor, nameFieldOf, sortColumnOf, topicsAtCentre } from './userRows';
+import { encodeUsername } from '../../../utils/encryptionHelpers';
+import { displayUsername, hasOtherIdentityFor, nameFieldOf, sortColumnOf, topicsAtCentre } from './userRows';
 
 const person = (row: Partial<CounselorData>) => row as CounselorData;
 
@@ -27,6 +28,17 @@ describe('topicsAtCentre', () => {
     it('is undefined when either side does not carry topics', () => {
         expect(topicsAtCentre(person({}), { topics: [] } as never)).toBeUndefined();
         expect(topicsAtCentre(person({ topics: [] }), {} as never)).toBeUndefined();
+    });
+});
+
+describe('displayUsername', () => {
+    it('decodes a legacy Base32 "enc." username', () => {
+        expect(displayUsername(encodeUsername('lmeier'))).toBe('lmeier');
+    });
+
+    it('keeps a plain username and a value it cannot decode', () => {
+        expect(displayUsername('amuster')).toBe('amuster');
+        expect(displayUsername('enc.1')).toBe('enc.1');
     });
 });
 

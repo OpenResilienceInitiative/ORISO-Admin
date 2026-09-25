@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
+import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { UsersList } from './index';
 
@@ -277,7 +278,7 @@ const expectPeople = async (canvasElement: HTMLElement) => {
 const expectPersonCell = async (canvasElement: HTMLElement, alsoLabel?: string) => {
     const row = await rowOf(canvasElement, 'Muster');
     await expect(within(row).getByText('@amuster')).toBeVisible();
-    await expect(within(row).getByRole('button', { name: 'E-Mail kopieren' })).toBeVisible();
+    await expect(within(row).getByRole('button', { name: 'E-Mail von Anna Muster kopieren' })).toBeVisible();
     await expect(within(canvasElement).queryByRole('columnheader', { name: /^Auch / })).toBeNull();
     if (alsoLabel) {
         await expect(within(row).getByText(alsoLabel).parentElement).toBe(
@@ -441,13 +442,59 @@ export const ConsultantWithSeveralCentres: Story = {
         await expect(await canvas.findByText('20095 Hamburg')).toBeVisible();
         await expect(canvas.queryByText('80331 München')).toBeNull();
 
-        await user.click(canvas.getByRole('button', { name: /Beratungsstellen von Anna Muster/ }));
+        const toggle = canvas.getByRole('button', { name: 'Beratungsstellen von Anna Muster anzeigen' });
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await user.click(toggle);
         const details = await canvas.findByRole('list', { name: /Beratungsstellen von Anna Muster/ });
+        await expect(toggle).toHaveAttribute('aria-controls', details.id);
+        await expect(toggle).toHaveAccessibleName('Beratungsstellen von Anna Muster ausblenden');
         const centres = within(details).getAllByRole('listitem');
         await expect(centres).toHaveLength(2);
         await expect(centres[0]).toHaveTextContent(/Beratungsstelle Nord.*Schulden/);
         await expect(centres[1]).toHaveTextContent(/Suchtberatung Süd.*Sucht/);
         await expect(centres[1]).not.toHaveTextContent('Familie');
+    },
+};
+
+/** The Träger tab keeps its own AntD table (name, subdomain, ID, counsellors, actions). */
+export const TenantsTab: Story = {
+    render: onTab('tenants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenantadmin/search', () =>
+                    HttpResponse.json({
+                        total: 1,
+                        _embedded: [{ id: 7, name: 'Caritas Nord', subdomain: 'nord', beraterCount: 12 }],
+                    }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Caritas Nord');
+        await expect(within(row).getByText('12')).toBeVisible();
+        await expect(within(row).getByRole('link', { name: /nord/ })).toBeVisible();
+        await expect(within(row).queryByText(/^@/)).toBeNull();
+    },
+};
+
+/** Legacy rows still carry the RC-era Base32 username (`enc.…`); the cell shows it decoded. */
+export const LegacyEncodedUsername: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, () =>
+                    consultantsResponse([{ ...CONSULTANTS[0], username: encodeUsername('lmeier') }]),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(row).getByText('@lmeier')).toBeVisible();
+        await expect(within(row).queryByText(/enc\./)).toBeNull();
     },
 };
 
