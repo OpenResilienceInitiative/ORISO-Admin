@@ -1202,13 +1202,13 @@ describe('CSV import payload per tab', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 7, 'EMAIL_SENT'));
     });
 
-    it('sends each row on its own, with the own Träger as EXISTING, the row role and the founding BST-Admin first', async () => {
+    it('sends each row on its own, with the own Träger as EXISTING and the row role, BST-Admin rows before counsellor rows', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
-        // Counsellor first, its founding BST-Admin second: the order must not matter.
+        // Counsellor row first in the file: the BST-Admin row must still be sent first.
         await importCsv(
             user,
             'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch\r\n' +
@@ -1219,9 +1219,9 @@ describe('CSV import payload per tab', () => {
         await user.click(await screen.findByRole('button', { name: '2 Empfänger anlegen' }));
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
 
-        // The founding BST-Admin row goes first, so the counsellor row can wait for it.
-        const [second, first] = mocks.createAccountInvite.mock.calls.map(([body]) => body);
-        expect(first).toMatchObject({
+        // Admin rows go first, so a counsellor row for a new unit can wait for its admin.
+        const [adminCall, counsellorCall] = mocks.createAccountInvite.mock.calls.map(([body]) => body);
+        expect(counsellorCall).toMatchObject({
             targetRole: 'COUNSELLOR',
             recipientEmail: 'pinned@example.org',
             tenantId: 7,
@@ -1230,15 +1230,15 @@ describe('CSV import payload per tab', () => {
             agencyIdAllocationMode: 'MANUAL',
             topicPermission: 'CREATE',
         });
-        expect(second).toMatchObject({
+        expect(adminCall).toMatchObject({
             targetRole: 'AGENCY_ADMIN',
             recipientEmail: 'auto@example.org',
             tenantId: 7,
             agencyIdAllocationMode: 'AUTO',
             alsoCounsellor: false,
         });
-        expect(second.agencyId).toBeUndefined();
-        expect(first).not.toHaveProperty('importBatchId');
+        expect(adminCall.agencyId).toBeUndefined();
+        expect(counsellorCall).not.toHaveProperty('importBatchId');
     });
 
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
