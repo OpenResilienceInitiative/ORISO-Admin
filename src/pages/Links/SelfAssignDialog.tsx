@@ -73,9 +73,14 @@ export const SelfAssignDialog = ({
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        // A late answer after closing, or from an older loader, must not overwrite the current one.
+        let cancelled = false;
         loadAssignments()
-            .then(setAssignments)
-            .catch(() => setAssignments(null));
+            .then((loaded) => !cancelled && setAssignments(loaded))
+            .catch(() => !cancelled && setAssignments(null));
+        return () => {
+            cancelled = true;
+        };
     }, [loadAssignments]);
 
     useEffect(() => {
