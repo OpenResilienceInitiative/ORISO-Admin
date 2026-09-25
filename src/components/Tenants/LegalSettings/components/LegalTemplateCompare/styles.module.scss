@@ -118,7 +118,11 @@
 
 /* The template can be long; its text stays selectable so passages can be copied. */
 .reader {
+    overflow: hidden;
     min-width: 0;
+    padding-top: 8px;
+    border: 1px solid var(--m3-outline-variant);
+    border-radius: 28px;
     user-select: text;
 }
 
