@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
@@ -226,4 +226,117 @@ export const SortRejectedByServer: Story = {
             'aria-sort',
         );
     },
+};
+
+// ---- One story per users-hub tab: the same people, and edit/delete lead where they always did.
+
+const AGENCY_ADMINS_ENDPOINT = '*/service/useradmin/agencyadmins/search';
+
+const PLATFORM_ADMINS: CounselorData[] = [
+    { ...CONSULTANTS[0], id: 'pa-1', tenantId: '0', tenantName: '', agencies: [] },
+    { ...CONSULTANTS[1], id: 'pa-2', tenantId: '0', tenantName: '', agencies: [] },
+];
+
+const EditTarget = () => <p data-testid="edit-target">{useLocation().pathname}</p>;
+
+const onTab = (tab: string) => () =>
+    (
+        <Routes>
+            <Route path="/" element={<Navigate to={`/admin/users/${tab}`} replace />} />
+            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+            <Route path="*" element={<EditTarget />} />
+        </Routes>
+    );
+
+const rowOf = async (canvasElement: HTMLElement, lastname: string) => {
+    const cell = await within(canvasElement).findByText(new RegExp(lastname));
+    return cell.closest('tr') as HTMLElement;
+};
+
+// The last two buttons of a row are edit and delete, in the old and the new table alike.
+const rowButtons = (row: HTMLElement) => within(row).getAllByRole('button').slice(-2);
+
+const expectPeople = async (canvasElement: HTMLElement) => {
+    await rowOf(canvasElement, 'Muster');
+    await expect(within(canvasElement).getByText(/Beispiel/)).toBeVisible();
+};
+
+const expectEditGoesTo = async (canvasElement: HTMLElement, path: string) => {
+    const [edit] = rowButtons(await rowOf(canvasElement, 'Muster'));
+    await userEvent.click(edit);
+    await expect(await within(canvasElement).findByTestId('edit-target')).toHaveTextContent(path);
+};
+
+const expectDeleteDialog = async (canvasElement: HTMLElement, title: RegExp) => {
+    const [, remove] = rowButtons(await rowOf(canvasElement, 'Muster'));
+    await userEvent.click(remove);
+    await expect(await within(canvasElement.ownerDocument.body).findByRole('dialog')).toHaveTextContent(title);
+};
+
+export const ConsultantsTab: Story = {
+    render: onTab('consultants'),
+    parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] } },
+    play: async ({ canvasElement, step }) => {
+        await expectPeople(canvasElement);
+        await step('delete asks with the counsellor dialog', () =>
+            expectDeleteDialog(canvasElement, /Berater wirklich löschen/),
+        );
+    },
+};
+
+export const ConsultantsTabEdit: Story = {
+    ...ConsultantsTab,
+    play: ({ canvasElement }) => expectEditGoesTo(canvasElement, '/admin/users/consultants/c-1'),
+};
+
+const AGENCY_ADMINS = CONSULTANTS.map((admin, index) => ({ ...admin, id: `aa-${index + 1}` }));
+
+export const AgencyAdminsTab: Story = {
+    render: onTab('agency-admins'),
+    parameters: { msw: { handlers: [http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS))] } },
+    play: async ({ canvasElement, step }) => {
+        await expectPeople(canvasElement);
+        await step('delete asks with the counsellor dialog', () =>
+            expectDeleteDialog(canvasElement, /Berater wirklich löschen/),
+        );
+    },
+};
+
+export const AgencyAdminsTabEdit: Story = {
+    ...AgencyAdminsTab,
+    play: ({ canvasElement }) => expectEditGoesTo(canvasElement, '/admin/users/agency-admins/aa-1'),
+};
+
+export const TenantAdminsTab: Story = {
+    render: onTab('tenant-admins'),
+    parameters: { msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))] } },
+    play: async ({ canvasElement, step }) => {
+        await expectPeople(canvasElement);
+        await step('delete asks with the admin dialog', () =>
+            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        );
+    },
+};
+
+export const TenantAdminsTabEdit: Story = {
+    ...TenantAdminsTab,
+    play: ({ canvasElement }) => expectEditGoesTo(canvasElement, '/admin/users/tenant-admins/ta-1'),
+};
+
+export const PlatformAdminsTab: Story = {
+    render: onTab('platform-admins'),
+    parameters: {
+        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))] },
+    },
+    play: async ({ canvasElement, step }) => {
+        await expectPeople(canvasElement);
+        await step('delete asks with the admin dialog', () =>
+            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        );
+    },
+};
+
+export const PlatformAdminsTabEdit: Story = {
+    ...PlatformAdminsTab,
+    play: ({ canvasElement }) => expectEditGoesTo(canvasElement, '/admin/users/platform-admins/pa-1'),
 };
