@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Alert, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo } from 'react';
@@ -10,6 +10,7 @@ import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../..
 import { MuiSwitchField } from '../../../mui/MuiSwitchField/index';
 import { MuiColorField } from '../../../mui/MuiColorField';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
+import { MuiRadioGroupField } from '../../../mui/MuiRadioGroupField';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData, TENANT_QUERY_KEY } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
@@ -54,8 +55,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         },
     });
     const systemEmailsAllowed = settings.globalFeatureSystemNotificationEmailsEnabled !== false;
-    const ownServerSelected = Form.useWatch(['settings', 'smtp', 'enabled'], form);
-    const applyPlatformEmailRestrictions = useCallback(
+    const ownServerSelected = Form.useWatch(['settings', 'smtpMode'], form) === 'OWN';
+    const prepareTenantSettings = useCallback(
         (formData) => ({
             ...formData,
             settings: {
@@ -63,6 +64,10 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 featureSystemNotificationEmailsEnabled: systemEmailsAllowed
                     ? formData?.settings?.featureSystemNotificationEmailsEnabled
                     : false,
+                smtp:
+                    formData?.settings?.smtpMode === 'OWN'
+                        ? { ...formData?.settings?.smtp, enabled: true }
+                        : { enabled: false, emailThemeColor: formData?.settings?.smtp?.emailThemeColor },
             },
         }),
         [systemEmailsAllowed],
@@ -77,11 +82,12 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         const tenantSettings = data?.settings ?? {};
         const tenantSmtpSettings = tenantSettings.smtp ?? {};
 
-        return applyPlatformEmailRestrictions({
+        return {
             ...data,
             settings: {
                 ...DEFAULT_SMTP_SETTINGS,
                 ...tenantSettings,
+                smtpMode: tenantSettings.smtpMode ?? undefined,
                 featureSystemNotificationEmailsEnabled: inheritBoolean(
                     tenantSettings.featureSystemNotificationEmailsEnabled,
                     settings.globalFeatureSystemNotificationEmailsEnabled ??
@@ -101,8 +107,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                     emailThemeColor: tenantSmtpSettings.emailThemeColor ?? DEFAULT_SMTP_SETTINGS.smtp.emailThemeColor,
                 },
             },
-        });
-    }, [applyPlatformEmailRestrictions, data, settings.globalFeatureSystemNotificationEmailsEnabled]);
+        };
+    }, [data, settings.globalFeatureSystemNotificationEmailsEnabled]);
     const formKey = useMemo(
         () =>
             [
@@ -111,6 +117,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 systemEmailsAllowed,
                 settings.globalFeatureSystemNotificationEmailsEnabled,
                 data?.settings?.featureSystemNotificationEmailsEnabled,
+                data?.settings?.smtpMode,
                 data?.settings?.smtp?.enabled,
                 data?.settings?.smtp?.host,
                 data?.settings?.smtp?.port,
@@ -139,7 +146,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     );
     const ownServerRule = (acceptStoredPassword = false, port = false) => ({
         validator: (_: unknown, value: string | number | undefined) =>
-            !form.getFieldValue(['settings', 'smtp', 'enabled']) ||
+            form.getFieldValue(['settings', 'smtpMode']) !== 'OWN' ||
             (!isBlank(value) && (!port || (Number(value) >= 1 && Number(value) <= 65535))) ||
             (acceptStoredPassword && tenantSmtpPasswordSet)
                 ? Promise.resolve()
@@ -165,9 +172,12 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         initialValues={initialValues}
                         titleKey="tenants.appSettings.smtp.title"
                         subTitleKey="tenants.appSettings.smtp.description"
-                        onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
+                        onSave={(formData) => mutate(prepareTenantSettings(formData))}
                     >
                         <div className={styles.fieldGrid}>
+                            {data?.settings?.smtpMode == null && (
+                                <Alert type="warning" showIcon message={t('tenants.appSettings.smtp.legacyModeMissing')} />
+                            )}
                             <MuiSwitchField
                                 className={styles.smtpSwitch}
                                 label={renderSwitchLabel(
@@ -179,21 +189,25 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
                             />
 
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'tenants.appSettings.smtp.smtpToggle.title',
-                                    'tenants.appSettings.smtp.smtpToggle.description',
-                                )}
-                                name={['settings', 'smtp', 'enabled']}
-                                
-                                switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
-                            />
+                            <MuiRadioGroupField
+                                vertical
+                                required
+                                labelKey="tenants.appSettings.smtp.mode"
+                                name={['settings', 'smtpMode']}
+                            >
+                                <MuiRadioGroupField.Radio value="PLATFORM">
+                                    {t('tenants.appSettings.smtp.platformMode')}
+                                </MuiRadioGroupField.Radio>
+                                <MuiRadioGroupField.Radio value="OWN">
+                                    {t('tenants.appSettings.smtp.ownMode')}
+                                </MuiRadioGroupField.Radio>
+                            </MuiRadioGroupField>
 
                             <MuiFormField
                                 label={t('tenants.appSettings.smtp.host')}
                                 name={['settings', 'smtp', 'host']}
                                 helpText={t('tenants.appSettings.smtp.host.helpText')}
+                                rules={[ownServerRule()]}
                                 disabled={!ownServerSelected}
                             />
                             <MuiNumberFormField
@@ -203,6 +217,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 min={1}
                                 inputProps={{ max: 65535 }}
                                 rules={[
+                                    ownServerRule(false, true),
                                     {
                                         type: 'number',
                                         min: 1,
@@ -216,6 +231,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 label={t('tenants.appSettings.smtp.username')}
                                 name={['settings', 'smtp', 'username']}
                                 helpText={t('tenants.appSettings.smtp.username.helpText')}
+                                rules={[ownServerRule()]}
                                 autoComplete="off"
                                 disabled={!ownServerSelected}
                             />
@@ -227,6 +243,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                         ? 'tenants.appSettings.smtp.passwordStored'
                                         : 'tenants.appSettings.smtp.passwordNotSet',
                                 )}
+                                rules={[ownServerRule(true)]}
                                 autoComplete="new-password"
                                 disabled={!ownServerSelected}
                             />
@@ -234,6 +251,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 label={t('tenants.appSettings.smtp.from')}
                                 name={['settings', 'smtp', 'from']}
                                 helpText={t('tenants.appSettings.smtp.from.helpText')}
+                                rules={[ownServerRule()]}
                                 disabled={!ownServerSelected}
                             />
                             <MuiColorField
@@ -241,7 +259,6 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 labelKey="tenants.appSettings.smtp.emailThemeColor"
                                 help="tenants.appSettings.smtp.emailThemeColor.helpText"
                                 name={['settings', 'smtp', 'emailThemeColor']}
-                                disabled={!ownServerSelected}
                             />
                             <MuiSwitchField
                                 className={styles.smtpSwitch}

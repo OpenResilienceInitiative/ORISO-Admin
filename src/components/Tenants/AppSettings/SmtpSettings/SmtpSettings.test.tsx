@@ -50,6 +50,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
         mocks.tenantData = {
             id: 1,
             settings: {
+                smtpMode: 'OWN',
                 smtp: {
                     enabled: true,
                     host: 'smtp.tenant.org',
@@ -121,7 +122,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
     });
 
     it('keeps platform SMTP values out of a tenant in platform mode', async () => {
-        mocks.tenantData.settings.smtp = { enabled: false, passwordSet: false };
+        mocks.tenantData.settings.smtpMode = 'PLATFORM';
         renderCard();
 
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
@@ -129,9 +130,12 @@ describe('SmtpSettings (write-only password, #730)', () => {
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
         const sent = mocks.mutate.mock.calls[0][0];
-        expect(sent.settings.smtp).toMatchObject({ enabled: false, host: '', username: '', from: '', password: '' });
-        expect(JSON.stringify(sent.settings.smtp)).not.toContain('global.example.org');
-        expect(JSON.stringify(sent.settings.smtp)).not.toContain('global-user');
+        expect(sent.settings.smtpMode).toBe('PLATFORM');
+        expect(sent.settings.smtp).toEqual({ enabled: false, emailThemeColor: '#0f3b8f' });
+        expect(JSON.stringify(sent.settings.smtp)).not.toContain('smtp.tenant.org');
+        expect(JSON.stringify(sent.settings.smtp)).not.toContain('tenant-user');
+        expect(JSON.stringify(sent.settings)).not.toContain('global.example.org');
+        expect(JSON.stringify(sent.settings)).not.toContain('global-user');
     });
 
     it('refuses to save an incomplete own-server configuration', async () => {
@@ -142,6 +146,18 @@ describe('SmtpSettings (write-only password, #730)', () => {
         fireEvent.click(screen.getByText('card.edit.save'));
 
         expect(await screen.findAllByText('tenants.appSettings.smtp.ownServerIncomplete')).not.toHaveLength(0);
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('requires an explicit choice for an unaudited legacy tenant', async () => {
+        delete mocks.tenantData.settings.smtpMode;
+        renderCard();
+
+        expect(screen.getByText('tenants.appSettings.smtp.legacyModeMissing')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        expect(await screen.findByText('form.errors.required')).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 });
