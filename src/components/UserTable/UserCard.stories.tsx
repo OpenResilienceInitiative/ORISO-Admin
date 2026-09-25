@@ -15,6 +15,7 @@ const meta = {
     args: {
         name: 'Maria Huber',
         email: 'maria.huber@caritas-berlin.de',
+        username: 'mhuber',
         status: 'ACTIVE',
         onEdit: fn(),
         onDelete: fn(),
@@ -36,6 +37,7 @@ export const Collapsed: Story = {
         await userEvent.click(toggle);
         await expect(toggle).toHaveAttribute('aria-expanded', 'true');
         await expect(canvas.getByText('maria.huber@caritas-berlin.de')).toBeVisible();
+        await expect(canvas.getByText('@mhuber')).toBeVisible();
         await expect(canvas.getByText('Caritas Berlin · Träger-ID 12')).toBeVisible();
 
         await userEvent.click(canvas.getByRole('button', { name: /bearbeiten|Edit/ }));
