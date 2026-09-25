@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, waitFor, within } from 'storybook/test';
-import { SortPill, type NameSortField } from './SortPill';
+import { SortPill, type NameSortField, type SortPillValue } from './SortPill';
 
 /** Secondary sort for the name column: Nachname, Vorname or E-Mail. */
 const meta = {
@@ -60,5 +60,26 @@ export const Compact: Story = {
         const pill = canvas.getByRole('button', { name: /Name nach Nachname|Name by Last name/ });
         await expect(pill).toBeVisible();
         await expect(pill.getBoundingClientRect().width).toBeLessThan(130);
+    },
+};
+
+/** Where the date column is hidden (tablet), the pill also offers "Zuletzt aktualisiert". */
+export const WithDate: Story = {
+    render: () => {
+        const DatePlayground = () => {
+            const [value, setValue] = useState<SortPillValue>('lastUpdated');
+            return <SortPill value={value} onChange={setValue} withDate compact />;
+        };
+        return <DatePlayground />;
+    },
+    play: async ({ canvas, canvasElement, userEvent }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            canvas.getByRole('button', { name: /Sortiert nach Zuletzt aktualisiert|Sorted by Last updated/ }),
+        );
+        const menu = await body.findByRole('menu', { name: /Sortieren nach|Sort by/ });
+        await expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(4);
+        await userEvent.click(within(menu).getByRole('menuitemradio', { name: /Nachname|Last name/ }));
+        await expect(await canvas.findByRole('button', { name: /Name nach Nachname|Name by Last name/ })).toBeVisible();
     },
 };

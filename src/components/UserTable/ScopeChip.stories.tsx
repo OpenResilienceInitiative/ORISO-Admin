@@ -43,6 +43,25 @@ export const Tenant: Story = {
     },
 };
 
+/** The card stays open while the pointer moves from the chip onto it (WCAG 1.4.13 hoverable). */
+export const HoverableCard: Story = {
+    play: async ({ canvas, canvasElement, userEvent }) => {
+        const chip = canvas.getByText(/Träger|Provider/).closest('[data-scope-chip]') as HTMLElement;
+        await userEvent.hover(chip);
+        const card = await waitFor(() => canvas.getByRole('tooltip'));
+        await userEvent.unhover(chip);
+        await userEvent.hover(card);
+        await new Promise((resolve) => {
+            setTimeout(resolve, 400);
+        });
+        await expect(canvas.getByRole('tooltip')).toBeVisible();
+        await expect(getComputedStyle(card).pointerEvents).not.toBe('none');
+
+        await userEvent.unhover(card);
+        await waitFor(() => expect(canvasElement.querySelector('[role="tooltip"]')).toBeNull());
+    },
+};
+
 /** Same look, other word. Keyboard focus opens the card; Escape closes it. */
 export const Agency: Story = {
     args: {

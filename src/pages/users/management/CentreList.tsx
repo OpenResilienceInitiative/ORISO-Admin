@@ -5,10 +5,11 @@ import { displayName, topicsAtCentre } from './userRows';
 import styles from './userDataTable.module.scss';
 
 /** Every centre of a person with the topics they counsel on there. */
-export const CentreList = ({ row }: { row: CounselorData }) => {
+export const CentreList = ({ row, id }: { row: CounselorData; id?: string }) => {
     const { t } = useTranslation();
     return (
         <ul
+            id={id}
             className={styles.centres}
             aria-label={t('userTable.centres.of', 'Beratungsstellen von {{name}}', { name: displayName(row) })}
         >

@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useId, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -21,7 +21,7 @@ import { PersonCell } from '../../../components/UserTable/PersonCell';
 import { RowMenu, type RowMenuItem } from '../../../components/UserTable/RowMenu';
 import { RelativeTime } from '../../../components/UserTable/RelativeTime';
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
-import { SortPill, type NameSortField } from '../../../components/UserTable/SortPill';
+import { SortPill, type NameSortField, type SortPillValue } from '../../../components/UserTable/SortPill';
 import { StatusBadge } from '../../../components/UserTable/StatusBadge';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -37,6 +37,7 @@ import { getVisibleColumns, USER_TABLE_CONFIGS } from './userTableConfigs';
 import {
     DATE_SORT_FIELD,
     displayName,
+    displayUsername,
     hasOtherIdentityFor,
     NAME_SORT_FIELD,
     nameFieldOf,
@@ -96,6 +97,8 @@ export const UserDataTable = ({
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const [openRows, setOpenRows] = useState<string[]>([]);
+    const tableId = useId();
+    const centresId = (row: CounselorData) => `${tableId}-centres-${row.id}`;
     const [pickedNameField, setPickedNameField] = useState<NameSortField>('lastname');
 
     const layout = useUserTableLayout();
@@ -144,6 +147,9 @@ export const UserDataTable = ({
         ? foldedContext
         : contextKeys.map((key) => ({ key, label: contextLabels[key] }));
 
+    // Tablet hides the date column, so its sort moves into the pill.
+    const dateInPill = layout === 'tablet' && !!configColumn('lastUpdated')?.sortable;
+
     const actionsWidth = { wide: 140, compact: config.showAgencyExpand ? 136 : 104, tablet: 64, phone: 0 }[layout];
 
     const columns: DataTableColumn[] = [
@@ -153,7 +159,14 @@ export const UserDataTable = ({
             sortable: !!configColumn('lastname')?.sortable,
             addon: configColumn('lastname')?.sortable && (
                 <span className={styles.pill}>
-                    <SortPill value={nameField} onChange={pickNameField} compact={narrow} />
+                    <SortPill
+                        value={dateInPill && activeColumn === 'lastUpdated' ? 'lastUpdated' : nameField}
+                        onChange={(value: SortPillValue) =>
+                            value === 'lastUpdated' ? onSortChange(DATE_SORT_FIELD, 'DESC') : pickNameField(value)
+                        }
+                        compact={narrow}
+                        withDate={dateInPill}
+                    />
                 </span>
             ),
         },
@@ -192,7 +205,7 @@ export const UserDataTable = ({
                     <PersonCell
                         name={name}
                         email={row.email}
-                        username={row.username}
+                        username={row.username && displayUsername(row.username)}
                         alsoLabel={
                             has('hasOtherIdentity') && hasOtherIdentityFor(sectionId, row) ? identityLabel : undefined
                         }
@@ -299,8 +312,17 @@ export const UserDataTable = ({
                         {canExpand(row) && (
                             <IconButton
                                 icon={isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                ariaLabel={t('userTable.centres.of', 'Beratungsstellen von {{name}}', { name })}
+                                ariaLabel={
+                                    isOpen
+                                        ? t('userTable.centres.hide', 'Beratungsstellen von {{name}} ausblenden', {
+                                              name,
+                                          })
+                                        : t('userTable.centres.show', 'Beratungsstellen von {{name}} anzeigen', {
+                                              name,
+                                          })
+                                }
                                 ariaExpanded={isOpen}
+                                ariaControls={centresId(row)}
                                 onClick={() => toggleRow(row.id)}
                             />
                         )}
@@ -389,7 +411,7 @@ export const UserDataTable = ({
                 <DataTableRow
                     key={row.id}
                     expanded={openRows.includes(row.id)}
-                    expandedContent={<CentreList row={row} />}
+                    expandedContent={<CentreList row={row} id={centresId(row)} />}
                     expansionColSpan={columns.length}
                 >
                     {columns.map((column) => (

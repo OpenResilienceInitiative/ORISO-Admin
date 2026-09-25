@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
+import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { UsersList } from './index';
 
@@ -314,7 +315,7 @@ const expectPeople = async (canvasElement: HTMLElement) => {
 const expectPersonCell = async (canvasElement: HTMLElement, alsoLabel?: string) => {
     const row = await rowOf(canvasElement, 'Muster');
     await expect(within(row).getByText('@amuster')).toBeVisible();
-    await expect(within(row).getByRole('button', { name: 'E-Mail kopieren' })).toBeVisible();
+    await expect(within(row).getByRole('button', { name: 'E-Mail von Anna Muster kopieren' })).toBeVisible();
     await expect(within(canvasElement).queryByRole('columnheader', { name: /^Auch / })).toBeNull();
     if (alsoLabel) {
         await expect(within(row).getByText(alsoLabel).parentElement).toBe(
@@ -484,13 +485,59 @@ export const ConsultantWithSeveralCentres: Story = {
         await expect(await canvas.findByText('20095 Hamburg')).toBeVisible();
         await expect(canvas.queryByText('80331 München')).toBeNull();
 
-        await user.click(canvas.getByRole('button', { name: /Beratungsstellen von Anna Muster/ }));
+        const toggle = canvas.getByRole('button', { name: 'Beratungsstellen von Anna Muster anzeigen' });
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await user.click(toggle);
         const details = await canvas.findByRole('list', { name: /Beratungsstellen von Anna Muster/ });
+        await expect(toggle).toHaveAttribute('aria-controls', details.id);
+        await expect(toggle).toHaveAccessibleName('Beratungsstellen von Anna Muster ausblenden');
         const centres = within(details).getAllByRole('listitem');
         await expect(centres).toHaveLength(2);
         await expect(centres[0]).toHaveTextContent(/Beratungsstelle Nord.*Schulden/);
         await expect(centres[1]).toHaveTextContent(/Suchtberatung Süd.*Sucht/);
         await expect(centres[1]).not.toHaveTextContent('Familie');
+    },
+};
+
+/** The Träger tab keeps its own AntD table (name, subdomain, ID, counsellors, actions). */
+export const TenantsTab: Story = {
+    render: onTab('tenants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenantadmin/search', () =>
+                    HttpResponse.json({
+                        total: 1,
+                        _embedded: [{ id: 7, name: 'Caritas Nord', subdomain: 'nord', beraterCount: 12 }],
+                    }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Caritas Nord');
+        await expect(within(row).getByText('12')).toBeVisible();
+        await expect(within(row).getByRole('link', { name: /nord/ })).toBeVisible();
+        await expect(within(row).queryByText(/^@/)).toBeNull();
+    },
+};
+
+/** Legacy rows still carry the RC-era Base32 username (`enc.…`); the cell shows it decoded. */
+export const LegacyEncodedUsername: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, () =>
+                    consultantsResponse([{ ...CONSULTANTS[0], username: encodeUsername('lmeier') }]),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(row).getByText('@lmeier')).toBeVisible();
+        await expect(within(row).queryByText(/enc\./)).toBeNull();
     },
 };
 
@@ -595,7 +642,7 @@ export const ConsultantsTabAt834: Story = {
         await step('three columns plus the ⋯ menu', async () => {
             const headers = canvas.getAllByRole('columnheader').map((header) => header.textContent ?? '');
             await expect(headers.filter(Boolean)).toHaveLength(3);
-            await expect(canvas.queryByRole('columnheader', { name: /Zuletzt aktualisiert/ })).toBeNull();
+            await expect(canvas.queryByRole('columnheader', { name: /^Zuletzt aktualisiert/ })).toBeNull();
             await expect(within(row).getByText('20095 Hamburg')).toBeVisible();
             await expect(within(row).getByText('Aktiv')).toBeVisible();
             await noSideScroll(canvasElement);
@@ -617,6 +664,29 @@ export const ConsultantsTabAt834: Story = {
             await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }));
             await expect(await canvas.findByTestId('edit-target')).toHaveTextContent('/admin/users/consultants/c-1');
         });
+    },
+};
+
+/** 768–1023 hides the date column; the name pill then shows and offers "Zuletzt aktualisiert". */
+export const ConsultantsTabAt834SortedByDate: Story = {
+    ...ConsultantsTabAt834,
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await rowOf(canvasElement, 'Muster');
+        // Default order is "last updated, newest first".
+        const pill = canvas.getByRole('button', { name: /nach Zuletzt aktualisiert/ });
+        await user.click(pill);
+        await expect(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' })).toHaveAttribute(
+            'aria-checked',
+            'true',
+        );
+        await user.click(body.getByRole('menuitemradio', { name: 'Vorname' }));
+        await expect(await canvas.findByRole('button', { name: /Name nach Vorname/ })).toBeVisible();
+
+        await user.click(canvas.getByRole('button', { name: /Name nach Vorname/ }));
+        await user.click(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' }));
+        await expect(await canvas.findByRole('button', { name: /nach Zuletzt aktualisiert/ })).toBeVisible();
     },
 };
 
@@ -724,6 +794,69 @@ export const ConsultantsTabAt390: Story = {
             await expect(canvas.getByText('3 von 3')).toBeVisible();
             await expect(canvas.getByRole('button', { name: 'Weitere laden' })).toBeDisabled();
         });
+    },
+};
+
+// Server state for the delete story: the person is gone after DELETE.
+let pagedPeople: CounselorData[] = [];
+const PAGE_SIZE_2 = 2;
+const deletablePaged = [
+    http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+        return HttpResponse.json({
+            total: pagedPeople.length,
+            _embedded: pagedPeople.slice((page - 1) * PAGE_SIZE_2, page * PAGE_SIZE_2),
+        });
+    }),
+    http.delete('*/service/useradmin/consultants/:id', ({ params }) => {
+        pagedPeople = pagedPeople.filter((person) => person.id !== params.id);
+        return new HttpResponse(null, { status: 200 });
+    }),
+];
+
+/** Phone: after "Weitere laden" a delete refetches the page; the card goes and the count follows. */
+export const ConsultantsTabAt390DeleteAfterLoadMore: Story = {
+    render: onTab('consultants'),
+    parameters: { msw: { handlers: deletablePaged } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    beforeEach: () => {
+        pagedPeople = [...CONSULTANTS, CLARA];
+    },
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await user.click(await canvas.findByRole('button', { name: 'Weitere laden' }));
+        await waitFor(() => expect(canvas.getAllByRole('article')).toHaveLength(3));
+
+        await user.click(canvas.getByRole('button', { name: 'Clara Dritte löschen' }));
+        const dialog = await body.findByRole('dialog');
+        await user.click(within(dialog).getByRole('button', { name: /Löschen/i }));
+
+        await waitFor(() => expect(canvas.queryByRole('article', { name: 'Clara Dritte' })).toBeNull());
+        await expect(canvas.getAllByRole('article')).toHaveLength(2);
+        await expect(canvas.getByText('2 von 2')).toBeVisible();
+    },
+};
+
+/** Legacy `enc.` usernames are decoded on the card too. */
+export const ConsultantsTabAt390LegacyUsername: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, () =>
+                    consultantsResponse([{ ...CONSULTANTS[0], username: encodeUsername('lmeier') }]),
+                ),
+            ],
+        },
+    },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await user.click(await canvas.findByRole('button', { name: 'Details zu Anna Muster' }));
+        const card = canvas.getByRole('article', { name: 'Anna Muster' });
+        await expect(within(card).getByText('@lmeier')).toBeVisible();
+        await expect(within(card).queryByText(/enc\./)).toBeNull();
     },
 };
 

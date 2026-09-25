@@ -19,6 +19,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const resolvedToken = (token: string) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${token})`;
+    document.body.append(probe);
+    const { color } = getComputedStyle(probe);
+    probe.remove();
+    return color;
+};
+
 const ALL: DisplayStatus[] = [
     'ACTIVE',
     'ABSENT',
@@ -72,14 +81,19 @@ export const AllStates: Story = {
         await expect(seen).toEqual(
             ALL.map((status) => ({ status, word: true, icon: true, dot: false, tone: TONE[status] ?? 'pending' })),
         );
+        // Pending text is the container's own on-colour (M3 pair).
+        const pending = canvasElement.querySelector('[data-status="CREATED"]') as HTMLElement;
+        await expect(getComputedStyle(pending).color).toBe(resolvedToken('--m3-on-tertiary-container'));
     },
 };
 
 export const Invited: Story = {
     args: { status: 'INVITED', inviteTo: '/admin/links/counsellor' },
-    play: async ({ canvas }) => {
+    play: async ({ canvas, userEvent }) => {
         const link = canvas.getByRole('link', { name: /^(Eingeladen|Invited)/ });
         await expect(link).toHaveAttribute('href', '/admin/links/counsellor');
+        await userEvent.hover(link);
+        await expect(getComputedStyle(link).color).toBe(resolvedToken('--m3-on-tertiary-container'));
     },
 };
 

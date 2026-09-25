@@ -8,27 +8,38 @@ import menuStyles from './menu.module.scss';
 import styles from './sortPill.module.scss';
 
 export type NameSortField = 'lastname' | 'firstname' | 'email';
+export type SortPillValue = NameSortField | 'lastUpdated';
 
-const FIELDS: { key: NameSortField; fallback: string }[] = [
+const FIELDS: { key: SortPillValue; fallback: string }[] = [
     { key: 'lastname', fallback: 'Nachname' },
     { key: 'firstname', fallback: 'Vorname' },
     { key: 'email', fallback: 'E-Mail' },
 ];
+const DATE_FIELD = { key: 'lastUpdated' as const, fallback: 'Zuletzt aktualisiert' };
 
-export interface SortPillProps {
-    value: NameSortField;
-    onChange: (value: NameSortField) => void;
+export interface SortPillProps<T extends SortPillValue = NameSortField> {
+    value: T;
+    onChange: (value: T) => void;
     /** Narrow tables: "Name nach" is left to screen readers. */
     compact?: boolean;
+    /** Adds "Zuletzt aktualisiert" where the date column is hidden. */
+    withDate?: boolean;
 }
 
-/** Chooses what the name column sorts by: Nachname, Vorname or E-Mail. */
-export const SortPill = ({ value, onChange, compact = false }: SortPillProps) => {
+/** Chooses what the name column sorts by: Nachname, Vorname or E-Mail (optionally the date). */
+export const SortPill = <T extends SortPillValue = NameSortField>({
+    value,
+    onChange,
+    compact = false,
+    withDate = false,
+}: SortPillProps<T>) => {
     const { t } = useTranslation();
     const menuId = useId();
     const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-    const label = (key: NameSortField) =>
-        t(`userTable.sortPill.${key}`, FIELDS.find((field) => field.key === key)?.fallback ?? key);
+    const fields = withDate ? [...FIELDS, DATE_FIELD] : FIELDS;
+    const label = (key: SortPillValue) =>
+        t(`userTable.sortPill.${key}`, fields.find((field) => field.key === key)?.fallback ?? key);
+    const byDate = value === 'lastUpdated';
 
     return (
         <>
@@ -41,7 +52,9 @@ export const SortPill = ({ value, onChange, compact = false }: SortPillProps) =>
                 onClick={(event) => setAnchor(event.currentTarget)}
             >
                 <span className={compact ? styles.srOnly : styles.prefix}>
-                    {t('userTable.sortPill.prefix', 'Name nach')}
+                    {byDate
+                        ? t('userTable.sortPill.prefixAny', 'Sortiert nach')
+                        : t('userTable.sortPill.prefix', 'Name nach')}
                 </span>
                 <strong className={styles.value}>{label(value)}</strong>
                 <ExpandMoreIcon className={styles.chevron} aria-hidden />
@@ -53,10 +66,14 @@ export const SortPill = ({ value, onChange, compact = false }: SortPillProps) =>
                 onClose={() => setAnchor(null)}
                 slotProps={{
                     paper: { className: menuStyles.paper },
-                    list: { 'aria-label': t('userTable.sortPill.menuLabel', 'Name sortieren nach') },
+                    list: {
+                        'aria-label': withDate
+                            ? t('userTable.sortPill.menuLabelAny', 'Sortieren nach')
+                            : t('userTable.sortPill.menuLabel', 'Name sortieren nach'),
+                    },
                 }}
             >
-                {FIELDS.map(({ key }) => (
+                {fields.map(({ key }) => (
                     <MenuItem
                         key={key}
                         role="menuitemradio"
@@ -65,7 +82,7 @@ export const SortPill = ({ value, onChange, compact = false }: SortPillProps) =>
                         className={menuStyles.item}
                         onClick={() => {
                             setAnchor(null);
-                            onChange(key);
+                            onChange(key as T);
                         }}
                     >
                         <span className={menuStyles.icon} aria-hidden>
