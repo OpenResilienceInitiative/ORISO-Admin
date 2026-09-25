@@ -549,7 +549,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
 
         const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         expect(
-            await screen.findByText(/Eine neue Beratungsstelle legt nur eine BST-Admin an/, undefined, {
+            await screen.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an\./, undefined, {
                 timeout: 10_000,
             }),
         ).toBeInTheDocument();

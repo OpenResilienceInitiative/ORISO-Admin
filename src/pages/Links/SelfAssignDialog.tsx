@@ -209,9 +209,8 @@ export const SelfAssignDialog = ({
                         return assignmentSummary;
                     })()}
                 </p>
-                {(error || alreadyThere || agencyId == null || needsTopics) && assignmentSummary && (
-                    <p className={styles.current}>{assignmentSummary}</p>
-                )}
+                {(error || alreadyThere || agencyId == null || (needsTopics && topicIds.length === 0)) &&
+                    assignmentSummary && <p className={styles.current}>{assignmentSummary}</p>}
             </div>
         </Modal>
     );
