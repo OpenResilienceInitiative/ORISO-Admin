@@ -12,6 +12,7 @@ import styles from './userCard.module.scss';
 export interface UserCardProps {
     name: string;
     email: string;
+    username?: string;
     status: DisplayStatus;
     /** Target of the „Eingeladen" link. */
     inviteTo?: string;
@@ -26,6 +27,7 @@ export interface UserCardProps {
 export const UserCard = ({
     name,
     email,
+    username,
     status,
     inviteTo,
     children,
@@ -71,6 +73,7 @@ export const UserCard = ({
                 {expanded && (
                     <>
                         {name && <span className={styles.email}>{email}</span>}
+                        {username && <span className={styles.email}>@{username}</span>}
                         {children}
                     </>
                 )}

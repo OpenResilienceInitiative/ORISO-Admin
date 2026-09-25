@@ -5,8 +5,9 @@ import type { DisplayStatus } from '../../types/userDisplayStatus';
 import { StatusBadge } from './StatusBadge';
 
 /**
- * Account status as a word in a tonal chip. „Eingeladen" is a link into the
- * invite section, where the invitation itself can be followed up.
+ * Account status as a word in a tonal chip with an icon. Active = primary
+ * container, waiting states = tertiary container, ended states = secondary
+ * container. „Eingeladen" links into the invite section.
  */
 const meta = {
     title: 'Molecules/UserTable/StatusBadge',
@@ -48,12 +49,29 @@ export const AllStates: Story = {
             ))}
         </div>
     ),
-    play: async ({ canvas }) => {
+    play: async ({ canvas, canvasElement }) => {
         await expect(canvas.getByText(/^(Aktiv|Active)$/)).toBeVisible();
         await expect(canvas.getByText(/^(Abwesend|Absent)$/)).toBeVisible();
         // DISABLED (not unlocked) and INACTIVE share one word.
         await expect(canvas.getAllByText(/^(Inaktiv|Inactive)$/)).toHaveLength(2);
         await expect(canvas.getByText(/^(Wird gelöscht|Being deleted)$/)).toBeVisible();
+
+        const TONE: Partial<Record<DisplayStatus, string>> = { ACTIVE: 'active', IN_DELETION: 'ended', ERROR: 'ended' };
+        const seen = ALL.map((status) => {
+            const badge = canvasElement.querySelector(`[data-status="${status}"]`);
+            const icon = badge?.querySelector('svg');
+            return {
+                status,
+                word: !!badge?.textContent?.trim(),
+                icon: icon?.getAttribute('aria-hidden') === 'true',
+                // The old dot was an aria-hidden span; the icon replaces it.
+                dot: !!badge?.querySelector('span[aria-hidden]'),
+                tone: badge?.getAttribute('data-tone'),
+            };
+        });
+        await expect(seen).toEqual(
+            ALL.map((status) => ({ status, word: true, icon: true, dot: false, tone: TONE[status] ?? 'pending' })),
+        );
     },
 };
 
