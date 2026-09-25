@@ -81,6 +81,34 @@ describe('useTenantAdminOnboardingFlow', () => {
         },
     );
 
+    it.each([
+        ['the reserved number', { reservedTenantId: undefined }],
+        ['the reservation token', { tenantIdReservationToken: undefined }],
+    ])('treats a new-Träger invite without %s as an INVALID link', async (_missing, gap) => {
+        const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...gap }) });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        await waitFor(() => expect(result.current.state.phase).toBe('link-error'));
+        expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe('INVALID');
+    });
+
+    it("keeps the invite's Träger number when the registration answers without one", async () => {
+        const client = createClient({
+            registerTenantAdmin: vi.fn().mockResolvedValue({ twoFactor: { secret: 'S', qrCodeBase64: null } }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456');
+        });
+
+        expect(result.current.state).toEqual({ phase: 'done', tenantId: 21 });
+    });
+
     it('treats a missing token as an INVALID link without calling the backend', async () => {
         const client = createClient();
         const { result } = renderHook(() => useTenantAdminOnboardingFlow('', client));

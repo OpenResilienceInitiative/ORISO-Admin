@@ -127,7 +127,16 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     return;
                 }
                 // Joining an existing Träger skips organisation and DPA.
-                setState({ phase: loaded.joinsExistingTenant ? 'account' : 'organisation' });
+                if (loaded.joinsExistingTenant) {
+                    setState({ phase: 'account' });
+                    return;
+                }
+                // A new Träger is registered against its reservation; without it the link cannot work.
+                if (loaded.reservedTenantId == null || !loaded.tenantIdReservationToken) {
+                    setState({ phase: 'link-error', reason: 'INVALID' });
+                    return;
+                }
+                setState({ phase: 'organisation' });
             })
             .catch((error: unknown) => {
                 if (cancelled) return;
@@ -227,13 +236,18 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                               // server authorises that against its own record of the forward.
                               dpa: dpa ?? FORWARDED_DPA,
                               account: { password },
+                              // Checked on load: a new-Träger invite without both is a link error.
                               reservedTenantId: invite.reservedTenantId as number,
                               tenantIdReservationToken: invite.tenantIdReservationToken as string,
                           },
                 );
                 setState({
                     phase: 'two-factor',
-                    result: { tenantId: result.tenantId, twoFactor: result.twoFactor, resumed: false },
+                    result: {
+                        tenantId: result.tenantId ?? invitedTenantId(invite),
+                        twoFactor: result.twoFactor,
+                        resumed: false,
+                    },
                 });
             } catch (error) {
                 failFlow(error, 'registration');
