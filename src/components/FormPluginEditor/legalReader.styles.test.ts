@@ -181,3 +181,24 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
         expect(base).toMatch(/box-shadow:/);
     });
 });
+
+describe('lower function bar — every control stays reachable (#1066)', () => {
+    // Measured in Storybook: language + consent + one Fachbereich + version cut the version
+    // menu off at the card's right edge, and the hidden scroll track gave no hint it was there.
+    const bar = moduleStyles.match(/\n\.functionBar\s*{[\s\S]*?\n}/)?.[0] ?? '';
+
+    it('wraps onto a second row instead of scrolling controls out of view', () => {
+        expect(bar).toMatch(/flex-wrap:\s*wrap;/);
+        expect(bar).not.toMatch(/overflow-x:\s*auto;/);
+    });
+
+    it('lets the text surface of the fixed 740px card give way to a wrapped bar', () => {
+        // With two bar rows the 280px floor pushed the white surface 24px over the bar.
+        const fixedCard = moduleStyles.match(/&:not\(\.inDialog\)\s*{[\s\S]*?\n {8}}/)?.[0] ?? '';
+        expect(fixedCard).toMatch(/\.editor\s*{[^}]*min-height:\s*0;/);
+    });
+
+    it('lets a single control shrink to the bar width, truncating its label', () => {
+        expect(bar).toMatch(/>\s*\*\s*{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/);
+    });
+});

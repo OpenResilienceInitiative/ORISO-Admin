@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../../enums/UserRole';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
@@ -67,6 +67,17 @@ const LockedPlatform = ({ children }: { children: ReactNode }): ReactNode => {
         setReady(true);
     }, [setManualSettings]);
     return ready ? children : null;
+};
+
+/** Every control of the lower function bar lies inside it; none is pushed past its right edge. */
+const expectFunctionBarFits = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    const bar = await canvas.findByTestId('m3-editor-function-bar', {}, { timeout: 8000 });
+    await waitFor(() => expect(canvas.getByRole('button', { name: 'Versionsverlauf' })).toBeVisible());
+    const barRight = bar.getBoundingClientRect().right;
+    Array.from(bar.children).forEach((child) =>
+        expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
+    );
 };
 
 const meta = {
@@ -140,5 +151,23 @@ export const SingleFachbereichPreselected: Story = {
         await expect(await canvas.findByText('Schwangerschaftsberatung', {}, { timeout: 8000 })).toBeVisible();
         await expect(canvas.queryByText('Alle Fachbereiche')).not.toBeInTheDocument();
         await expect(canvas.getByText('Vom Träger übernommen')).toBeVisible();
+        await expectFunctionBarFits(canvasElement);
+    },
+};
+
+/** Same card at 390px (mobile): the function bar wraps, every control stays inside the card. */
+export const SingleFachbereichMobile: Story = {
+    ...SingleFachbereichPreselected,
+    // 16px gutter + 358px card + 16px gutter = a 390px phone.
+    parameters: { layout: 'fullscreen' },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 358 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        await expectFunctionBarFits(canvasElement);
     },
 };
