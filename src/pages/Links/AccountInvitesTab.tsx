@@ -102,8 +102,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
     const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
     const [roleSavingIds, setRoleSavingIds] = useState<number[]>([]);
-    // The list does not carry an account's added roles; remember the ones added here.
-    const [grantedRoles, setGrantedRoles] = useState<Record<number, InviteRole[]>>({});
     // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
     // (see loadInvites) and the board already filters it client-side by status
     // bucket, so the query joins that same client-side pipeline instead of
@@ -122,7 +120,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         : resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
     const tab: InviteTab = isTenantInvite ? 'tenant' : 'counsellor';
-    const { invites, setInvites, loading, reload: loadInvites } = useInviteList(tab, viewerScope);
+    const { invites, setInvites, tileCounts, loading, reload: loadInvites } = useInviteList(tab, viewerScope);
 
     // The backend scopes the agency search per role, so an empty query returns
     // exactly the agency admin's own agencies.
@@ -498,11 +496,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         (invite: AccountInviteDTO, role: InviteRole) =>
             withRoleSaving(invite.id, async () => {
                 if (role !== 'AGENCY_ADMIN' || !invite.provisionedUserId) return;
+                // Until the next load brings the account's roles, show the added one at once.
                 const markGranted = () =>
-                    setGrantedRoles((current) => ({
-                        ...current,
-                        [invite.id]: [...(current[invite.id] ?? []), role],
-                    }));
+                    setInvites((current) =>
+                        current.map((row) =>
+                            row.id === invite.id
+                                ? {
+                                      ...row,
+                                      accountRoles: [...new Set([...(row.accountRoles ?? ['COUNSELLOR']), role])],
+                                  }
+                                : row,
+                        ),
+                    );
                 try {
                     await addConsultantRole(invite.provisionedUserId, {
                         role,
@@ -516,7 +521,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     message.error(explained.message);
                 }
             }),
-        [explain, t, withRoleSaving],
+        [explain, setInvites, t, withRoleSaving],
     );
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
@@ -604,7 +609,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onRoleChange={isTenantInvite ? undefined : onRoleChange}
                 onRoleAdd={isTenantInvite ? undefined : onRoleAdd}
                 roleSavingIds={roleSavingIds}
-                grantedRoles={grantedRoles}
+                tileCounts={tileCounts}
             />
             {selfAssign && (
                 <SelfAssignDialog

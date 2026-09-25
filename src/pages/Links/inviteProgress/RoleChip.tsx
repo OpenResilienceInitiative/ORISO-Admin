@@ -59,10 +59,11 @@ const UsersAreaLink = ({ children }: { children: string }) =>
     );
 
 export interface RoleChipProps {
-    invite: Pick<AccountInviteDTO, 'targetRole' | 'inviteStatus' | 'tenantIdAllocationMode' | 'provisionedUserId'>;
+    invite: Pick<
+        AccountInviteDTO,
+        'targetRole' | 'inviteStatus' | 'tenantIdAllocationMode' | 'provisionedUserId' | 'accountRoles'
+    >;
     displayName: string;
-    /** Roles this session added to the account; the list does not carry them. */
-    grantedRoles?: InviteRole[];
     viewer: InviteViewerScope;
     tab: InviteTab;
     saving?: boolean;
@@ -77,16 +78,15 @@ export const RoleChip = ({
     displayName,
     viewer,
     tab,
-    grantedRoles = [],
     saving = false,
     onChangeRole,
     onAddRole,
 }: RoleChipProps) => {
     const { t } = useTranslation();
-    const menu = roleMenuFor(invite, viewer, tab, { grantedRoles });
+    const menu = roleMenuFor(invite, viewer, tab);
     const roleLabel = (role: InviteRole) => t(...ROLE_LABEL_KEYS[role]);
     const current = invite.targetRole as InviteRole;
-    const extra = invite.targetRole === 'COUNSELLOR' && grantedRoles.includes('AGENCY_ADMIN');
+    const extra = invite.targetRole === 'COUNSELLOR' && Boolean(invite.accountRoles?.includes('AGENCY_ADMIN'));
     const label = extra ? `${roleLabel(current)} + ${roleLabel('AGENCY_ADMIN')}` : roleLabel(current);
 
     const handlerFor = (action: 'change' | 'add') => (action === 'change' ? onChangeRole : onAddRole);

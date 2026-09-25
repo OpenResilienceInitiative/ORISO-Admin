@@ -109,6 +109,25 @@ describe('InviteProgressBoard', () => {
         expect(screen.queryByRole('checkbox', { name: 'Angenommen' })).not.toBeInTheDocument();
     });
 
+    it("counts the tiles from the server's tab totals, not from the rows it holds", () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                tileCounts={{
+                    prepared: { total: 24, details: { DRAFT: 24 } },
+                    invited: { total: 0, details: {} },
+                    accountCreated: { total: 0, details: {} },
+                    done: { total: 0, details: {} },
+                    needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, SUPERSEDED: 1 } },
+                }}
+            />,
+        );
+
+        const tiles = within(screen.getByRole('group', { name: 'Onboarding-Übersicht' })).getAllByRole('button');
+        expect(tiles[0]).toHaveTextContent('24Vorbereitet24 Draft');
+        expect(tiles[4]).toHaveTextContent('3Braucht Aktion1 Abgelaufen · 1 Widerrufen · 1 Ersetzt');
+    });
+
     it('says "keine" on an empty tile instead of an empty breakdown', () => {
         render(<InviteProgressBoard {...baseProps()} />);
         expect(screen.getByRole('button', { name: '0 Vorbereitet keine' })).toBeInTheDocument();
@@ -190,13 +209,13 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person7@example.org').closest('tr') as HTMLElement);
-        // Compact label under the track: the signature is outstanding.
-        expect(row.getByText('Wartet auf Vertragsunterschrift')).toBeInTheDocument();
-        // The forwarded bead is done and announced as such.
-        expect(row.getByText('Vertragsunterlagen weitergeleitet – abgeschlossen')).toBeInTheDocument();
+        // The signature is the awaited step.
+        expect(row.getByText(/^Wartet auf Vertragsunterschrift – aktueller Schritt/)).toBeInTheDocument();
+        // The forwarded bead is done, dated, and announced as such.
+        expect(row.getByText(/^Vertragsunterlagen weitergeleitet – abgeschlossen, 03\.08\.2026/)).toBeInTheDocument();
         // The track must NOT claim completion anywhere in this row.
-        expect(row.queryByText('Fertig – abgeschlossen')).not.toBeInTheDocument();
-        expect(row.queryByText('Vertrag unterschrieben – abgeschlossen')).not.toBeInTheDocument();
+        expect(row.queryByText(/^Fertig – abgeschlossen/)).not.toBeInTheDocument();
+        expect(row.queryByText(/^Vertrag unterschrieben – abgeschlossen/)).not.toBeInTheDocument();
     });
 
     it('completes the track only once the signature landed', () => {
@@ -216,8 +235,8 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person8@example.org').closest('tr') as HTMLElement);
-        expect(row.getByText('Vertrag unterschrieben – abgeschlossen')).toBeInTheDocument();
-        expect(row.getByText('Fertig – abgeschlossen')).toBeInTheDocument();
+        expect(row.getByText(/^Vertrag unterschrieben – abgeschlossen, 04\.08\.2026/)).toBeInTheDocument();
+        expect(row.getByText(/^Fertig – abgeschlossen/)).toBeInTheDocument();
     });
 
     it('wires resend/copy/revoke and disables ALL THREE actions on terminal rows (C4/C5)', async () => {
@@ -685,7 +704,9 @@ describe('InviteProgressBoard — role chip', () => {
     it('names both roles once "auch BST-Admin" was added, and offers it no more', async () => {
         render(
             <InviteProgressBoard
-                {...counsellorProps([accepted], { onRoleAdd: vi.fn(), grantedRoles: { 31: ['AGENCY_ADMIN'] } })}
+                {...counsellorProps([{ ...accepted, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }], {
+                    onRoleAdd: vi.fn(),
+                })}
             />,
         );
 
@@ -739,6 +760,37 @@ describe('InviteProgressBoard — dated tracker', () => {
             expect.stringMatching(/^Eingeladen – abgeschlossen, 24\.09\.2026, .*24\.09\., \d\d:\d\d$/),
             expect.stringMatching(/^Konto angelegt – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
             'Wartet auf Abschluss – aktueller Schritt',
+        ]);
+    });
+
+    it('dates every reached step on the Träger tab too', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    invite(42, {
+                        tenantIdAllocationMode: 'MANUAL',
+                        sentAt: '2026-09-24T09:01:00Z',
+                        inviteStatus: 'ACCEPTED',
+                        acceptedAt: '2026-09-25T12:30:12Z',
+                        accountCreatedAt: '2026-09-25T12:30:12Z',
+                        unitCreatedAt: '2026-09-25T12:30:12Z',
+                        twoFactorStatus: 'ACTIVE',
+                        twoFactorDoneAt: '2026-09-25T12:40:00Z',
+                    }),
+                ]}
+            />,
+        );
+
+        const row = within(screen.getByText('person42@example.org').closest('tr') as HTMLElement);
+        const steps = within(row.getByRole('list', { name: 'Onboarding-Fortschritt' })).getAllByRole('listitem');
+        expect(steps.map((step) => step.textContent)).toEqual([
+            expect.stringMatching(/^Eingeladen – abgeschlossen, 24\.09\.2026, .*24\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Registriert – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Träger angelegt – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^2FA aktiv – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Wartet auf Vertragsunterschrift – aktueller Schritt$/),
+            expect.stringMatching(/^Fertig – ausstehend$/),
         ]);
     });
 

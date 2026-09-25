@@ -115,10 +115,12 @@ const lockAll = (entries: RoleMenuEntry[], reason: RoleLockReason): RoleMenu => 
  * the users area. Locked entries stay in the menu, disabled with their reason.
  */
 export const roleMenuFor = (
-    invite: Pick<AccountInviteDTO, 'targetRole' | 'inviteStatus' | 'tenantIdAllocationMode' | 'provisionedUserId'>,
+    invite: Pick<
+        AccountInviteDTO,
+        'targetRole' | 'inviteStatus' | 'tenantIdAllocationMode' | 'provisionedUserId' | 'accountRoles'
+    >,
     viewer: InviteViewerScope,
     tab: InviteTab,
-    { grantedRoles = [] }: { grantedRoles?: InviteRole[] } = {},
 ): RoleMenu => {
     const allowed = invitableRoles(viewer, tab);
     const tabRoles: InviteRole[] = tab === 'tenant' ? ['TENANT_ADMIN'] : ALL_ROLES;
@@ -142,7 +144,8 @@ export const roleMenuFor = (
     if (invite.inviteStatus !== 'ACCEPTED') return lockAll(changeEntries, 'inactive');
 
     let addReason: RoleLockReason | undefined;
-    if (invite.targetRole === 'AGENCY_ADMIN' || grantedRoles.includes('AGENCY_ADMIN')) addReason = 'alreadyHasRole';
+    if (invite.targetRole === 'AGENCY_ADMIN' || invite.accountRoles?.includes('AGENCY_ADMIN'))
+        addReason = 'alreadyHasRole';
     else if (!allowed.includes('AGENCY_ADMIN') || invite.targetRole !== 'COUNSELLOR') addReason = 'notInvitable';
     else if (!invite.provisionedUserId) addReason = 'accountPending';
     return {

@@ -11,6 +11,7 @@ import {
     lifecycleOf,
     matchesInviteQuery,
     phaseReachedAt,
+    tileCountsFromServer,
 } from './derivePhases';
 
 const invite = (overrides: Partial<AccountInviteDTO> = {}): AccountInviteDTO => ({
@@ -469,6 +470,7 @@ describe('phaseReachedAt (the date under each step)', () => {
         completedAt: null,
         dpaSignedAt: '2026-09-26T10:00:00Z',
         dpaForwardedAt: '2026-09-25T10:00:00Z',
+        twoFactorDoneAt: '2026-09-25T12:40:00Z',
     });
 
     it.each([
@@ -480,7 +482,8 @@ describe('phaseReachedAt (the date under each step)', () => {
         ['dpaForwarded', '2026-09-25T10:00:00Z'],
         ['dpaSigned', '2026-09-26T10:00:00Z'],
         ['completed', null],
-        ['twoFactorActive', null],
+        ['tenantCreated', '2026-09-24T09:00:00Z'],
+        ['twoFactorActive', '2026-09-25T12:40:00Z'],
     ] as const)('dates %s with %s', (key, expected) => {
         expect(phaseReachedAt(key, dated)).toBe(expected);
     });
@@ -528,5 +531,67 @@ describe('timestamps with a zone', () => {
         expect(
             inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00Z' })),
         ).toBe('2026-09-21T17:30:00Z');
+    });
+});
+
+describe('derivePhases — the Träger tab dates its own steps', () => {
+    const founding = (overrides: Partial<AccountInviteDTO> = {}) =>
+        invite({ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'MANUAL', ...overrides });
+
+    it('keeps its own steps when the invite created the Träger itself', () => {
+        expect(
+            states(
+                founding({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-09-25T12:30:00Z',
+                    accountCreatedAt: '2026-09-25T12:30:00Z',
+                    unitCreatedAt: '2026-09-25T12:30:00Z',
+                }),
+            ),
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:current',
+            'dpaSigned:pending',
+            'completed:pending',
+        ]);
+    });
+
+    it('puts "Träger angelegt" first after the invite when a co-founder created the Träger', () => {
+        expect(states(founding({ unitCreatedAt: '2026-09-24T09:00:00Z' }))).toEqual([
+            'invited:done',
+            'tenantCreated:done',
+            'registered:current',
+            'twoFactorActive:pending',
+            'dpaSigned:pending',
+            'completed:pending',
+        ]);
+    });
+});
+
+describe('tileCountsFromServer (the tiles count every page of the tab)', () => {
+    it('reads the totals and the breakdown, with revoked and replaced under "Braucht Aktion"', () => {
+        expect(
+            tileCountsFromServer(
+                { PREPARED: 24, INVITED: 0, ACCOUNT_CREATED: 0, DONE: 3, NEEDS_ACTION: 1, CLOSED: 2 },
+                {
+                    PREPARED: { DRAFT: 23, WAITING_FOR_UNIT: 1 },
+                    DONE: { ACCEPTED: 3 },
+                    NEEDS_ACTION: { EXPIRED: 1 },
+                    CLOSED: { REVOKED: 1, SUPERSEDED: 1 },
+                },
+            ),
+        ).toEqual({
+            prepared: { total: 24, details: { DRAFT: 23, WAITING_FOR_UNIT: 1 } },
+            invited: { total: 0, details: {} },
+            accountCreated: { total: 0, details: {} },
+            done: { total: 3, details: { ACCEPTED: 3 } },
+            needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, SUPERSEDED: 1 } },
+        });
+    });
+
+    it('gives nothing while the server sends no counts', () => {
+        expect(tileCountsFromServer(undefined, undefined)).toBeUndefined();
     });
 });

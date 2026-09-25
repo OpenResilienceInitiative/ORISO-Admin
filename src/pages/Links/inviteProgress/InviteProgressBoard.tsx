@@ -47,6 +47,7 @@ import {
     isWaitingForUnit,
     lifecycleOf,
     LIFECYCLE_PHASES,
+    type LifecycleCounts,
     type LifecycleDetail,
     type LifecyclePhase,
     matchesInviteQuery,
@@ -189,8 +190,8 @@ export interface InviteProgressBoardProps {
     onRoleAdd?: (invite: AccountInviteDTO, role: InviteRole) => void;
     /** Invite ids whose role is being saved right now. */
     roleSavingIds?: number[];
-    /** Roles added to accepted accounts in this session, by invite id. */
-    grantedRoles?: Record<number, InviteRole[]>;
+    /** The server's tile counts over every page of the tab; without them the board counts its rows. */
+    tileCounts?: LifecycleCounts;
 }
 
 /** Per-row topic permission as a chip in the role chip's line; picking a level saves at once. */
@@ -254,7 +255,7 @@ export const InviteProgressBoard = ({
     onRoleChange,
     onRoleAdd,
     roleSavingIds = [],
-    grantedRoles = {},
+    tileCounts,
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
@@ -283,7 +284,7 @@ export const InviteProgressBoard = ({
     // overview the search is run against, and a "3 Abgeschlossen" that silently
     // meant "3 among the rows matching fisch" would be a different number every
     // keystroke.
-    const phaseCounts = useMemo(() => countLifecyclePhases(invites), [invites]);
+    const phaseCounts = useMemo(() => tileCounts ?? countLifecyclePhases(invites), [tileCounts, invites]);
 
     const searched = useMemo(
         () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
@@ -353,9 +354,6 @@ export const InviteProgressBoard = ({
     useEffect(() => {
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
-
-    // Frank's dated 3/4-step tracker is the counsellor tab's; the Träger track keeps its six compact beads.
-    const datedTrack = targetRole !== 'TENANT_ADMIN';
 
     // A chip beside the role chip: a column pushed the actions out of 1440px, a select made rows taller.
     const showTopicPermission = targetRole !== 'TENANT_ADMIN';
@@ -475,7 +473,7 @@ export const InviteProgressBoard = ({
                     // warning bead is the queue problem, not a delivery problem.
                     const queueProblem = hasQueueProblem(invite);
                     const phases = derivePhases(invite).map((phase) => {
-                        const reachedAt = datedTrack ? phaseReachedAt(phase.key, invite) : null;
+                        const reachedAt = phaseReachedAt(phase.key, invite);
                         return {
                             key: phase.key,
                             state: phase.state,
@@ -537,7 +535,6 @@ export const InviteProgressBoard = ({
                                                 viewer={viewerScope}
                                                 tab={targetRole === 'TENANT_ADMIN' ? 'tenant' : 'counsellor'}
                                                 saving={roleSavingIds.includes(invite.id)}
-                                                grantedRoles={grantedRoles[invite.id]}
                                                 onChangeRole={onRoleChange && ((role) => onRoleChange(invite, role))}
                                                 onAddRole={onRoleAdd && ((role) => onRoleAdd(invite, role))}
                                             />

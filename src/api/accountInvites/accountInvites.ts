@@ -84,7 +84,11 @@ export interface AccountInviteDTO {
     unitCreatedAt?: string | null;
     sentAt?: string | null;
     accountCreatedAt?: string | null;
+    /** When 2FA was activated or waived; dates the Träger tab's "2FA aktiv" step. */
+    twoFactorDoneAt?: string | null;
     completedAt?: string | null;
+    /** Accepted invites: the roles the account holds now, also ones added later. */
+    accountRoles?: AccountInviteTargetRole[] | null;
     rawToken?: string;
     acceptUrl?: string;
 }
@@ -95,8 +99,10 @@ export interface PagedAccountInviteResponse {
     totalPages: number;
     page: number;
     size: number;
-    /** Every phase counted over all pages; ignores the status and phase filters. */
+    /** Every phase counted over all pages of the tab; ignores the status and phase filters. */
     phaseCounts?: Partial<Record<InviteProgressPhase, number>>;
+    /** Per phase, what its count is made of: the status, or why a NEEDS_ACTION invite is stuck. */
+    phaseDetailCounts?: Partial<Record<InviteProgressPhase, Record<string, number>>>;
 }
 
 export interface CreateAccountInviteRequest {
@@ -130,9 +136,13 @@ export interface SendAccountInviteRequest {
     acceptBaseUrl?: string;
 }
 
+/** The Admin's two tabs: Träger admins founding a Träger, and everyone joining a unit. */
+export type AccountInviteListTab = 'TENANT' | 'UNIT';
+
 export interface ListAccountInvitesParams {
     page?: number;
     size?: number;
+    tab?: AccountInviteListTab;
     targetRole?: AccountInviteTargetRole;
     status?: AccountInviteStatus;
     tenantId?: number;
@@ -231,6 +241,7 @@ export const listAccountInvites = async (
     const search = new URLSearchParams();
     search.set('page', String(params.page ?? 0));
     search.set('size', String(params.size ?? 20));
+    if (params.tab) search.set('tab', params.tab);
     if (params.targetRole) search.set('target_role', params.targetRole);
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));

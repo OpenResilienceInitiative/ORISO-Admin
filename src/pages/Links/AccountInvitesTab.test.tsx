@@ -1109,6 +1109,38 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             );
         });
 
+        it('shows "+ BST-Admin" after a reload, read from the account roles the list carries', async () => {
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([{ ...acceptedRow, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }]),
+            );
+            render(<CounsellorInvitesTab />);
+
+            expect(await screen.findByRole('button', { name: /^Rolle von Anke Roth/ })).toHaveTextContent(
+                'Berater:in + BST-Admin',
+            );
+        });
+
+        it("asks for its own tab and counts the tiles from the server's totals over every page", async () => {
+            mocks.listAccountInvites.mockResolvedValue({
+                ...invitesPage([sentRow]),
+                totalElements: 27,
+                phaseCounts: { PREPARED: 24, INVITED: 1, ACCOUNT_CREATED: 0, DONE: 0, NEEDS_ACTION: 1, CLOSED: 1 },
+                phaseDetailCounts: {
+                    PREPARED: { DRAFT: 24 },
+                    INVITED: { EMAIL_SENT: 1 },
+                    NEEDS_ACTION: { EXPIRED: 1 },
+                    CLOSED: { SUPERSEDED: 1 },
+                },
+            });
+            render(<CounsellorInvitesTab />);
+
+            expect(await screen.findByRole('button', { name: /^24 Vorbereitet/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /^2 Braucht Aktion 1 Abgelaufen · 1 Ersetzt/ }),
+            ).toBeInTheDocument();
+            expect(mocks.listAccountInvites).toHaveBeenCalledWith(expect.objectContaining({ tab: 'UNIT' }));
+        });
+
         it('explains a refused role change in German', async () => {
             mocks.listAccountInvites.mockResolvedValue(invitesPage([sentRow]));
             mocks.changeAccountInviteRole.mockRejectedValue(

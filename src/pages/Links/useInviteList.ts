@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { listAccountInvites, type AccountInviteDTO } from '../../api/accountInvites/accountInvites';
 import type { InviteViewerScope } from './inviteModel';
 import { listedOnTab, type InviteTab } from './inviteRules';
+import { tileCountsFromServer, type LifecycleCounts } from './inviteProgress/derivePhases';
 
-// The complete list, because the board counts client-side; only the newest load writes, as loads walk several pages.
+// The complete list, because the table searches and sorts client-side; only the newest load writes, as loads walk several pages.
 export const useInviteList = (tab: InviteTab, viewer: InviteViewerScope) => {
     const { t } = useTranslation();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
+    const [tileCounts, setTileCounts] = useState<LifecycleCounts | undefined>();
     const [loading, setLoading] = useState(false);
     const loadRevision = useRef(0);
 
@@ -19,22 +21,25 @@ export const useInviteList = (tab: InviteTab, viewer: InviteViewerScope) => {
         setLoading(true);
         try {
             const all: AccountInviteDTO[] = [];
+            let counts: LifecycleCounts | undefined;
             let page = 0;
             let totalPages = 1;
             while (page < totalPages) {
-                // The counsellor tab lists every role that joins a unit, so it loads unfiltered.
                 // eslint-disable-next-line no-await-in-loop -- totalPages comes from the previous page
                 const response = await listAccountInvites({
                     page,
                     size: 200,
-                    targetRole: tab === 'tenant' ? 'TENANT_ADMIN' : undefined,
+                    tab: tab === 'tenant' ? 'TENANT' : 'UNIT',
                 });
                 all.push(...(response.content ?? []).filter((invite) => listedOnTab(invite, tab, viewer)));
+                // Every page carries the same totals over the whole tab.
+                counts ??= tileCountsFromServer(response.phaseCounts, response.phaseDetailCounts);
                 totalPages = response.totalPages ?? 0;
                 page += 1;
             }
             if (!isLatest()) return;
             setInvites(all);
+            setTileCounts(counts);
         } catch {
             if (!isLatest()) return;
             message.error(t('links.error.loadFailed', 'Could not load links'));
@@ -48,5 +53,5 @@ export const useInviteList = (tab: InviteTab, viewer: InviteViewerScope) => {
         reload();
     }, [reload]);
 
-    return { invites, setInvites, loading, reload };
+    return { invites, setInvites, tileCounts, loading, reload };
 };

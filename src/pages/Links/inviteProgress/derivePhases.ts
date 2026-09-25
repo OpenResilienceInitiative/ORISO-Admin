@@ -3,6 +3,7 @@ import type {
     AccountInviteStatus,
     AccountInviteTargetRole,
     InviteProgressPhase,
+    PagedAccountInviteResponse,
 } from '../../../api/accountInvites/accountInvites';
 import { parseBackendInstant } from '../../../utils/backendInstant';
 
@@ -156,10 +157,8 @@ const isPhaseProven = (key: PhaseKey, invite: PhaseFacts): boolean => {
         case 'accountCreated':
             return hasAccepted(invite);
         case 'tenantCreated':
-            // The accept flow registers the account AND creates the tenant from
-            // its reservation in one server-side step; the DTO carries no finer
-            // signal, so acceptance is the honest proof for both beads.
-            return hasAccepted(invite);
+            // The founder's registration creates the Träger; a co-founder's was created by a peer.
+            return hasAccepted(invite) || invite.unitCreatedAt != null;
         case 'dpaForwarded':
             return invite.dpaForwardedAt != null;
         case 'dpaSigned':
@@ -194,15 +193,32 @@ const unitStepOf = (invite: PhaseFacts): PhaseKey => {
     return unit === 'TENANT' ? 'tenantUnitCreated' : 'agencyUnitCreated';
 };
 
+/** A co-founder's Träger was created by a peer before this invite registered. */
+const traegerCreatedByPeer = (invite: PhaseFacts): boolean =>
+    invite.unitCreatedAt != null &&
+    (invite.acceptedAt == null ||
+        parseBackendInstant(invite.unitCreatedAt).getTime() < parseBackendInstant(invite.acceptedAt).getTime());
+
+const traegerKeys = (invite: PhaseFacts): readonly PhaseKey[] =>
+    traegerCreatedByPeer(invite)
+        ? [
+              'invited',
+              'tenantCreated',
+              ...TENANT_PHASE_KEYS.filter((key) => key !== 'invited' && key !== 'tenantCreated'),
+          ]
+        : TENANT_PHASE_KEYS;
+
 const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
+    // The Träger tab keeps its own steps; its "Träger angelegt" step carries the unit date.
+    if (invite.targetRole === 'TENANT_ADMIN') {
+        const keys = traegerKeys(invite);
+        if (invite.dpaForwardedAt == null) return keys;
+        return keys.flatMap((key) => (key === 'dpaSigned' ? (['dpaForwarded', 'dpaSigned'] as const) : [key]));
+    }
     const roleKeys = phaseKeysForRole(invite.targetRole);
     // Frank, 25 Sept: an invite that waited for a new unit keeps that step, dated, after its release.
     const waited = isWaitingForUnit(invite) || invite.unitCreatedAt != null;
-    const keys: readonly PhaseKey[] = waited ? [unitStepOf(invite), ...roleKeys] : roleKeys;
-    if (invite.targetRole !== 'TENANT_ADMIN' || invite.dpaForwardedAt == null) {
-        return keys;
-    }
-    return keys.flatMap((key) => (key === 'dpaSigned' ? (['dpaForwarded', 'dpaSigned'] as const) : [key]));
+    return waited ? [unitStepOf(invite), ...roleKeys] : roleKeys;
 };
 
 /**
@@ -256,7 +272,13 @@ export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
 
 type ReachedFacts = Pick<
     AccountInviteDTO,
-    'unitCreatedAt' | 'sentAt' | 'accountCreatedAt' | 'completedAt' | 'dpaForwardedAt' | 'dpaSignedAt'
+    | 'unitCreatedAt'
+    | 'sentAt'
+    | 'accountCreatedAt'
+    | 'twoFactorDoneAt'
+    | 'completedAt'
+    | 'dpaForwardedAt'
+    | 'dpaSignedAt'
 >;
 
 /** When a step was reached, from the server's step timestamps (ORISO-UserService#1260); null when unknown. */
@@ -264,9 +286,12 @@ export const phaseReachedAt = (key: PhaseKey, invite: ReachedFacts): string | nu
     switch (key) {
         case 'agencyUnitCreated':
         case 'tenantUnitCreated':
+        case 'tenantCreated':
             return invite.unitCreatedAt ?? null;
         case 'invited':
             return invite.sentAt ?? null;
+        case 'twoFactorActive':
+            return invite.twoFactorDoneAt ?? null;
         case 'registered':
         case 'accountCreated':
             return invite.accountCreatedAt ?? null;
@@ -362,11 +387,30 @@ export type LifecycleCounts = Record<
     { total: number; details: Partial<Record<LifecycleDetail, number>> }
 >;
 
-// Counted over the tab's own rows: the server's phaseCounts span every tab and ignore the agency scope filter.
+const emptyCounts = (): LifecycleCounts =>
+    Object.fromEntries(LIFECYCLE_PHASES.map((phase) => [phase, { total: 0, details: {} }])) as LifecycleCounts;
+
+/** The tiles from the server's counts over every page of the tab; `undefined` from an older backend. */
+export const tileCountsFromServer = (
+    phaseCounts: PagedAccountInviteResponse['phaseCounts'],
+    phaseDetailCounts: PagedAccountInviteResponse['phaseDetailCounts'],
+): LifecycleCounts | undefined => {
+    if (!phaseCounts) return undefined;
+    const counts = emptyCounts();
+    (Object.keys(TILE_OF_PROGRESS_PHASE) as InviteProgressPhase[]).forEach((serverPhase) => {
+        const tile = counts[TILE_OF_PROGRESS_PHASE[serverPhase]];
+        tile.total += phaseCounts[serverPhase] ?? 0;
+        Object.entries(phaseDetailCounts?.[serverPhase] ?? {}).forEach(([detail, count]) => {
+            const key = detail as LifecycleDetail;
+            tile.details[key] = (tile.details[key] ?? 0) + count;
+        });
+    });
+    return counts;
+};
+
+/** Counts the given rows; the board's fallback when no server counts are passed in. */
 export const countLifecyclePhases = (invites: readonly LifecycleFacts[]): LifecycleCounts => {
-    const counts = Object.fromEntries(
-        LIFECYCLE_PHASES.map((phase) => [phase, { total: 0, details: {} }]),
-    ) as LifecycleCounts;
+    const counts = emptyCounts();
     invites.forEach((invite) => {
         const reading = lifecycleOf(invite);
         if (!reading) return;

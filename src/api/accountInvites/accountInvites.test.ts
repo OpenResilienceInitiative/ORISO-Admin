@@ -56,6 +56,16 @@ describe('account invite API', () => {
         );
     });
 
+    it('asks for one tab, so the list and the tile counts cover that tab only', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+
+        await listAccountInvites({ tab: 'TENANT' });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({ url: `${accountInvitesEndpoint}?page=0&size=20&tab=TENANT` }),
+        );
+    });
+
     it('reads the zoneless UTC timestamps of the invite list as UTC', async () => {
         mocks.fetchData.mockResolvedValueOnce({
             content: [{ id: 1, createDate: '2026-09-21T17:26:02', expiresAt: null }],

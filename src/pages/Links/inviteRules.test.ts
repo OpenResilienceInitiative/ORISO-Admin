@@ -162,10 +162,10 @@ describe('inviteRules', () => {
                 current: false,
                 disabledReason: 'alreadyHasRole',
             });
-            // Granted in this session: the list does not carry the account's roles.
+            // The list carries the account's roles, so this survives a reload.
             expect(
-                roleMenuFor(accepted(), 'tenant', 'counsellor', { grantedRoles: ['AGENCY_ADMIN'] }).entries[0]
-                    .disabledReason,
+                roleMenuFor(accepted({ accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }), 'tenant', 'counsellor')
+                    .entries[0].disabledReason,
             ).toBe('alreadyHasRole');
         });
 

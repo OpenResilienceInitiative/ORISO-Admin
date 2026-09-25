@@ -633,3 +633,95 @@ export const DatedTracker: Story = {
         );
     },
 };
+
+/*
+ * The tiles count the whole tab on the server (ORISO-UserService#1260 `phaseCounts`), over every
+ * page, so they do not shrink to the rows loaded here. Revoked and replaced sit under „Braucht Aktion".
+ */
+export const TileCountsOverTheWholeTab: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: {
+        targetRole: 'COUNSELLOR',
+        viewerScope: 'tenant',
+        invites: ROLE_INVITES,
+        tileCounts: {
+            prepared: { total: 24, details: { DRAFT: 21, WAITING_FOR_UNIT: 3 } },
+            invited: { total: 12, details: { EMAIL_SENT: 12 } },
+            accountCreated: { total: 4, details: { ACCEPTED: 4 } },
+            done: { total: 31, details: { ACCEPTED: 31 } },
+            needsAction: {
+                total: 6,
+                details: { EXPIRED: 2, REVOKED: 1, SUPERSEDED: 1, LINK_EXPIRED: 1, DELIVERY_FAILED: 1 },
+            },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const tiles = tileGroup(canvasElement).getAllByRole('button');
+        await expect(tiles[0]).toHaveTextContent(/^24Vorbereitet/);
+        await expect(tiles[3]).toHaveTextContent(/^31Fertig/);
+        await expect(tiles[4]).toHaveTextContent(
+            /^6Braucht Aktion2 Abgelaufen · 1 Widerrufen · 1 Ersetzt · 1 Link abgelaufen · 1 Versand fehlgeschlagen$/,
+        );
+    },
+};
+
+/* Träger tab: its own steps, each reached one dated like on the counsellor tab. */
+const TRAEGER_DATED: AccountInviteDTO[] = [
+    tenantInvite({
+        firstName: 'Sabine',
+        lastName: 'Keller',
+        recipientEmail: 'sabine.keller@caritas-passau.example.org',
+        tenantIdAllocationMode: 'MANUAL',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-09-25T12:30:12Z',
+        accessGateStatus: 'READY',
+        twoFactorStatus: 'ACTIVE',
+        sentAt: '2026-09-24T09:01:00Z',
+        accountCreatedAt: '2026-09-25T12:30:12Z',
+        // Her registration created the Träger.
+        unitCreatedAt: '2026-09-25T12:30:12Z',
+        twoFactorDoneAt: '2026-09-25T12:41:05Z',
+    }),
+    tenantInvite({
+        firstName: 'Jonas',
+        lastName: 'Brandt',
+        recipientEmail: 'jonas.brandt@caritas-passau.example.org',
+        tenantIdAllocationMode: 'MANUAL',
+        sentAt: '2026-09-24T09:02:00Z',
+        // A co-founder: Sabine created the Träger before he registered.
+        unitCreatedAt: '2026-09-25T12:30:12Z',
+    }),
+];
+
+export const TraegerDatedTracker: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: { targetRole: 'TENANT_ADMIN', invites: TRAEGER_DATED },
+    play: async ({ canvasElement }) => {
+        const steps = (email: string) => within(rowOf(canvasElement, email).getByRole('list')).getAllByRole('listitem');
+        const founder = steps('sabine.keller@caritas-passau.example.org');
+        await expect(founder).toHaveLength(6);
+        await expect(founder[0]).toHaveTextContent(/24\.09\., 11:01$/);
+        await expect(founder[1]).toHaveTextContent(/25\.09\., 14:30$/);
+        await expect(founder[2]).toHaveTextContent(/^(Träger angelegt|Organisation created).*25\.09\., 14:30$/);
+        await expect(founder[3]).toHaveTextContent(/25\.09\., 14:41$/);
+
+        const coFounder = steps('jonas.brandt@caritas-passau.example.org');
+        await expect(coFounder[1]).toHaveTextContent(/^(Träger angelegt|Organisation created).*25\.09\., 14:30$/);
+    },
+};
+
+/* The chip reads the account's roles from the list, so „+ BST-Admin" survives a reload. */
+export const RoleChipAfterReload: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: {
+        targetRole: 'COUNSELLOR',
+        viewerScope: 'tenant',
+        onRoleAdd: fn(),
+        invites: [{ ...ROLE_INVITES[1], accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }],
+    },
+    play: async ({ canvasElement }) => {
+        await expect(roleChipOf(canvasElement, 'Anke Roth')).toHaveTextContent(
+            /^(Berater:in \+ BST-Admin|Counsellor \+ Agency admin)$/,
+        );
+    },
+};
