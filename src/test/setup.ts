@@ -38,6 +38,27 @@ if (typeof window !== 'undefined') {
 
         return originalGetComputedStyle(element);
     }) as typeof window.getComputedStyle;
+
+    // Emotion's dev build gives every rule its own <style> tag, and antd rescans all of <head>
+    // on every component mount; one tag per sheet (as in production) keeps big forms in budget.
+    const [emotion, { createElement }, { flushSync }, { createRoot }] = await Promise.all([
+        import('@emotion/react'),
+        import('react'),
+        import('react-dom'),
+        import('react-dom/client'),
+    ]);
+    const found: { cache?: ReturnType<typeof emotion.__unsafe_useEmotionCache> } = {};
+    const EmotionCacheProbe = () => {
+        // eslint-disable-next-line no-underscore-dangle -- emotion's only public handle on its default cache
+        found.cache = emotion.__unsafe_useEmotionCache();
+        return null;
+    };
+    const probeRoot = createRoot(document.createElement('div'));
+    flushSync(() => probeRoot.render(createElement(EmotionCacheProbe)));
+    probeRoot.unmount();
+    if (found.cache) {
+        found.cache.sheet.isSpeedy = true;
+    }
 }
 
 // antd's static `message` / `notification` APIs render through a module-level
