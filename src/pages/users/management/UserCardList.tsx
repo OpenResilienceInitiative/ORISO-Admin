@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import { LoadMoreFooter } from '../../../components/UserTable/LoadMoreFooter';
 import { UserCard } from '../../../components/UserTable/UserCard';
 import type { CounselorData } from '../../../types/counselor';
 import { resolveDisplayStatus } from '../../../types/userDisplayStatus';
-import { appendPage, displayName } from './userRows';
+import { appendPage, displayName, displayUsername } from './userRows';
 import styles from './userDataTable.module.scss';
 
 export interface UserCardListProps {
@@ -19,10 +19,12 @@ export interface UserCardListProps {
     ariaLabel?: string;
 }
 
-const sameRows = (a: CounselorData[], b: CounselorData[]) =>
-    a.length === b.length && a.every((row, index) => row === b[index]);
+type Pages = Record<number, CounselorData[]>;
 
-/** Phone list: page 1 replaces, every later page is appended under what is already shown. */
+/**
+ * Phone list: page 1 replaces, later pages are appended. Pages are kept by number, so a
+ * refetch (e.g. after a delete) replaces its own page instead of appending to it.
+ */
 export const UserCardList = ({
     rows,
     loading,
@@ -34,15 +36,24 @@ export const UserCardList = ({
     details,
     ariaLabel,
 }: UserCardListProps) => {
-    const [shown, setShown] = useState(rows);
+    const [pages, setPages] = useState<Pages>({ [page]: rows });
 
     useEffect(() => {
         if (loading) return;
-        setShown((current) => {
-            if (page > 1) return appendPage(current, rows);
-            return sameRows(current, rows) ? current : rows;
+        setPages((current) => {
+            if (current[page] === rows) return current;
+            return page > 1 ? { ...current, [page]: rows } : { 1: rows };
         });
     }, [rows, page, loading]);
+
+    const shown = useMemo(
+        () =>
+            Object.keys(pages)
+                .map(Number)
+                .sort((a, b) => a - b)
+                .reduce<CounselorData[]>((list, number) => appendPage(list, pages[number]), []),
+        [pages],
+    );
 
     if (!loading && shown.length === 0) return <AdminEmpty />;
 
@@ -55,7 +66,7 @@ export const UserCardList = ({
                         key={row.id}
                         name={displayName(row)}
                         email={row.email}
-                        username={row.username}
+                        username={row.username && displayUsername(row.username)}
                         status={resolveDisplayStatus(row)}
                         actionsDisabled={pending}
                         onEdit={onEdit && (() => onEdit(row))}

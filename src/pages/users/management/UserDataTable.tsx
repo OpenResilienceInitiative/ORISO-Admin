@@ -21,7 +21,7 @@ import { PersonCell } from '../../../components/UserTable/PersonCell';
 import { RowMenu, type RowMenuItem } from '../../../components/UserTable/RowMenu';
 import { RelativeTime } from '../../../components/UserTable/RelativeTime';
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
-import { SortPill, type NameSortField } from '../../../components/UserTable/SortPill';
+import { SortPill, type NameSortField, type SortPillValue } from '../../../components/UserTable/SortPill';
 import { StatusBadge } from '../../../components/UserTable/StatusBadge';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -142,6 +142,9 @@ export const UserDataTable = ({
         ? foldedContext
         : contextKeys.map((key) => ({ key, label: contextLabels[key] }));
 
+    // Tablet hides the date column, so its sort moves into the pill.
+    const dateInPill = layout === 'tablet' && !!configColumn('lastUpdated')?.sortable;
+
     const actionsWidth = { wide: 140, compact: config.showAgencyExpand ? 136 : 104, tablet: 64, phone: 0 }[layout];
 
     const columns: DataTableColumn[] = [
@@ -151,7 +154,14 @@ export const UserDataTable = ({
             sortable: !!configColumn('lastname')?.sortable,
             addon: configColumn('lastname')?.sortable && (
                 <span className={styles.pill}>
-                    <SortPill value={nameField} onChange={pickNameField} compact={narrow} />
+                    <SortPill
+                        value={dateInPill && activeColumn === 'lastUpdated' ? 'lastUpdated' : nameField}
+                        onChange={(value: SortPillValue) =>
+                            value === 'lastUpdated' ? onSortChange(DATE_SORT_FIELD, 'DESC') : pickNameField(value)
+                        }
+                        compact={narrow}
+                        withDate={dateInPill}
+                    />
                 </span>
             ),
         },
