@@ -450,6 +450,22 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         ...extra,
     });
 
+    it('names the missing Träger admin in the badge of an invite that waits for a new Träger', async () => {
+        const tenantOrphan = invite(13, {
+            targetRole: 'AGENCY_ADMIN',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'TENANT',
+            queueProblem: 'NO_UNIT_ADMIN',
+            emailDeliveryStatus: null,
+        });
+        render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
+
+        const badge = screen.getByTestId('queue-problem-badge');
+        expect(badge).toHaveTextContent('Kein Träger-Admin');
+        await userEvent.hover(badge);
+        expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
+    });
+
     it('shows a waiting invite with the new first step, resend disabled but revoke possible', () => {
         render(<InviteProgressBoard {...counsellorProps([waiting])} />);
 
@@ -489,9 +505,15 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
     });
 
-    it('offers no topic column without a change handler and on the Träger tab', () => {
-        render(<InviteProgressBoard {...baseProps()} onTopicPermissionChange={vi.fn()} />);
+    it('offers no topic select on the Träger tab, even for a counsellor row', () => {
+        render(<InviteProgressBoard {...baseProps()} invites={[accepted]} onTopicPermissionChange={vi.fn()} />);
 
-        expect(screen.queryByRole('columnheader', { name: 'Themen & Fachbereiche' })).toBeNull();
+        expect(screen.queryByRole('combobox', { name: /Themen für/ })).toBeNull();
+    });
+
+    it('offers no topic select without a change handler', () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted])} />);
+
+        expect(screen.queryByRole('combobox', { name: /Themen für/ })).toBeNull();
     });
 });

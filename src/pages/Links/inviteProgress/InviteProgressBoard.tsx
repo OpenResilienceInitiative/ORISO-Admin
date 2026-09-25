@@ -121,6 +121,26 @@ const isActionable = (invite: AccountInviteDTO) =>
 const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
 
 /** The topic permission only exists for counsellors, and stays editable after the account exists. */
+type Translate = (key: string, fallback: string) => string;
+
+/** Badge and tooltip of a queue problem, naming the unit the invite waits for. */
+const queueProblemCopy = (invite: Pick<AccountInviteDTO, 'waitingForUnit'>, t: Translate) =>
+    invite.waitingForUnit === 'TENANT'
+        ? {
+              badge: t('links.inviteProgress.queueProblemTenant', 'Kein Träger-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemTenantHint',
+                  'Für diesen neuen Träger ist keine Träger-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine Träger-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+          }
+        : {
+              badge: t('links.inviteProgress.queueProblem', 'Kein BST-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemHint',
+                  'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+          };
+
 const hasEditableTopicPermission = (invite: AccountInviteDTO) =>
     invite.targetRole === 'COUNSELLOR' && !isDeadInvite(invite);
 
@@ -551,19 +571,18 @@ export const InviteProgressBoard = ({
                                     </span>
                                 </M3Tooltip>
                                 {hasQueueProblem(invite) && (
-                                    <M3Tooltip
-                                        text={t(
-                                            'links.inviteProgress.queueProblemHint',
-                                            'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
-                                        )}
-                                    >
+                                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
                                         <span
                                             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
                                             tabIndex={0}
-                                            className={styles.problemChip}
+                                            className={classNames(
+                                                styles.statusChip,
+                                                styles.statusChipDead,
+                                                styles.problemChip,
+                                            )}
                                             data-testid="queue-problem-badge"
                                         >
-                                            {t('links.inviteProgress.queueProblem', 'Kein BST-Admin')}
+                                            {queueProblemCopy(invite, t).badge}
                                         </span>
                                     </M3Tooltip>
                                 )}

@@ -90,20 +90,11 @@
     color: var(--m3-error, #b1005e);
 }
 
-/* Same magenta as a dead invite: the admin has to act. */
+/* Composed with .statusChip and .statusChipDead (same magenta as a dead invite): only the layout differs. */
 .problemChip {
     display: flex;
     width: fit-content;
-    align-items: center;
     margin-top: 4px;
-    padding: 2px 10px;
-    border: 1px solid color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
-    border-radius: 30px;
-    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
-    color: var(--m3-error, #b1005e);
-    font: 500 12px/16px var(--m3-body-font-family);
-    letter-spacing: 0.25px;
-    white-space: nowrap;
 }
 
 .topicSelect {

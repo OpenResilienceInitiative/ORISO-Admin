@@ -582,6 +582,22 @@ describe('InviteCsvImportModal', () => {
             ).toBeInTheDocument();
         });
 
+        it('rejects a new Beratungsstelle when the viewer has no own Träger to found it in', () => {
+            renderAgency(
+                [
+                    row(2, 'anna@x.de', { role: 'AGENCY_ADMIN' }),
+                    row(3, 'ben@x.de'),
+                    row(4, 'carla@x.de', { id: 42, target: 'EXISTING' }),
+                ],
+                { ownTenantKnown: false },
+            );
+            const hint =
+                'Eine neue Beratungsstelle braucht einen Träger. Ohne eigenen Träger laden Sie hier nur in bestehende Beratungsstellen ein (Ziel „bestehend“) (Zeile {{line}}).';
+            expect(rowCells('anna@x.de').getByText(hint.replace('{{line}}', '2'))).toBeInTheDocument();
+            expect(rowCells('ben@x.de').getByText(hint.replace('{{line}}', '3'))).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+        });
+
         it('spells out parse-level rejections next to the chip', () => {
             renderModal(
                 parseResultOf({
