@@ -152,12 +152,8 @@ describe('InviteCsvImportModal', () => {
         expect(await screen.findByText('1 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
     });
 
-    /*
-     * A 403 carries the backend's reason (UserService#1006). The run says it
-     * once — preferring the backend's own message — instead of reducing it to
-     * anonymous "Fehlgeschlagen" rows.
-     */
-    it('surfaces the backend role message once when rows fail with 403', async () => {
+    // A 403 is about its own row (UserService#1006): its reason stands under that row.
+    it("shows the backend's 403 reason under each row it hit", async () => {
         createInvite.mockImplementation(async () => {
             // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
             throw new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
@@ -175,13 +171,14 @@ describe('InviteCsvImportModal', () => {
 
         await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
 
-        expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        expect(createInvite).toHaveBeenCalledTimes(2);
-        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
-        expect(roleToasts).toHaveLength(1);
-        // The count summary stays — the cause toast comes ON TOP of it.
         expect(await screen.findByText('0 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite).toHaveBeenCalledTimes(2);
+        ['a@example.org', 'b@example.org'].forEach((email) => {
+            expect(rowCells(email).getByText('Nicht berechtigt')).toBeInTheDocument();
+            expect(
+                rowCells(email).getByText('Only platform admins can create administrative accounts'),
+            ).toBeInTheDocument();
+        });
         expect(onCreated).not.toHaveBeenCalled();
         expect(onClose).not.toHaveBeenCalled();
     });
@@ -240,6 +237,32 @@ describe('InviteCsvImportModal', () => {
         expect(rowCells('c@example.org').getByText('Angelegt')).toBeInTheDocument();
         expect(onCreated).toHaveBeenCalledTimes(1);
         expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('stops the batch on an SMTP 502, which fails every further row the same way', async () => {
+        createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
+            if (row.recipientEmail === 'b@example.org') {
+                // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's rejection (a raw Response)
+                throw new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' }), {
+                    status: 502,
+                });
+            }
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', missingName: false },
+                    { line: 3, email: 'c@example.org', firstName: 'C', lastName: 'Three', missingName: false },
+                ],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
+
+        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite).toHaveBeenCalledTimes(2);
+        expect(rowCells('c@example.org').getByText('Versand fehlgeschlagen')).toBeInTheDocument();
     });
 
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {
