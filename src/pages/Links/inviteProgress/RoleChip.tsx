@@ -94,7 +94,8 @@ export const RoleChip = ({
         .filter((entry) => !entry.current)
         .map((entry) => entry.disabledReason ?? (handlerFor(entry.action) ? undefined : 'noHandler'));
     const usable = blockers.some((reason) => reason == null);
-    const disabled = saving || !usable;
+    // The users-area link stays reachable even when every role entry is locked.
+    const disabled = saving || (!usable && !menu.pointsToUsers);
 
     let hint = CHANGE_HINT_KEYS[menu.lockedReason ?? menu.mode];
     if (!menu.lockedReason && !usable && !saving) {

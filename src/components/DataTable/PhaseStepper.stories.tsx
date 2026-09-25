@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, within } from 'storybook/test';
 import { PhaseStepper } from './PhaseStepper';
 
 /**
@@ -79,5 +81,53 @@ export const BeadsOnly: Story = {
         phases: TENANT_TRACK(['done', 'done', 'current', 'pending', 'pending']),
         showActiveLabel: false,
         ariaLabel: 'Onboarding-Fortschritt',
+    },
+};
+
+const DATED_TRAEGER_TRACK = [
+    {
+        key: 'unit',
+        label: 'Träger angelegt',
+        state: 'done',
+        at: { short: '20.09., 08:00', full: '20.09.2026, 08:00 Uhr' },
+    },
+    {
+        key: 'invited',
+        label: 'Eingeladen',
+        state: 'done',
+        at: { short: '20.09., 08:05', full: '20.09.2026, 08:05 Uhr' },
+    },
+    {
+        key: 'registered',
+        label: 'Registriert',
+        state: 'done',
+        at: { short: '21.09., 10:12', full: '21.09.2026, 10:12 Uhr' },
+    },
+    {
+        key: 'dpaSigned',
+        label: 'Vertrag unterschrieben',
+        state: 'done',
+        at: { short: '22.09., 14:30', full: '22.09.2026, 14:30 Uhr' },
+    },
+    { key: 'twoFactorActive', label: '2FA aktiv', state: 'current' },
+    { key: 'completed', label: 'Fertig', state: 'pending' },
+] as const;
+
+/** Six dated Träger steps in a phone-wide card: the track scrolls inside the card instead of spilling out. */
+export const DatedTrackInPhoneCard: Story = {
+    args: { phases: DATED_TRAEGER_TRACK.map((phase) => ({ ...phase })), ariaLabel: 'Onboarding-Fortschritt' },
+    decorators: [
+        (Story) => (
+            <div data-testid="card" style={{ width: 320, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const track = canvasElement.querySelector('ol') as HTMLElement;
+        const card = within(canvasElement).getByTestId('card');
+        await expect(track.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right);
+        // Whatever does not fit must stay reachable: the track itself scrolls.
+        await expect(track.scrollWidth <= track.clientWidth || getComputedStyle(track).overflowX === 'auto').toBe(true);
     },
 };

@@ -93,7 +93,8 @@ export interface RoleMenu {
     pointsToUsers: boolean;
 }
 
-const OPEN_STATUSES: ReadonlySet<AccountInviteDTO['inviteStatus']> = new Set([
+/** Statuses of an invite that is still in play (not accepted, expired, revoked or replaced). */
+export const OPEN_STATUSES: ReadonlySet<AccountInviteDTO['inviteStatus']> = new Set([
     'DRAFT',
     'EMAIL_SENT',
     'WAITING_FOR_UNIT',

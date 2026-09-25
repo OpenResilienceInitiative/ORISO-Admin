@@ -4,6 +4,7 @@
 
 .stepper {
     display: inline-flex;
+    max-width: 100%;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
@@ -143,11 +144,15 @@
  * connector runs from bead centre to bead centre.
  */
 
+/* Six dated steps need 528px; in a phone card the track scrolls instead of spilling out. Focusing a bead scrolls it into view. */
 .trackDated {
+    max-width: 100%;
     align-items: flex-start;
+    overflow-x: auto;
 
     .phase {
         width: 88px;
+        flex: none;
         flex-direction: column;
         align-items: center;
         gap: 2px;

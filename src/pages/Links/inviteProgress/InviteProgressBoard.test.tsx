@@ -709,6 +709,19 @@ describe('InviteProgressBoard — role chip', () => {
         expect(onRoleChange).not.toHaveBeenCalled();
     });
 
+    it('keeps the users-area link reachable when every role entry is locked', async () => {
+        const alsoAdmin = { ...accepted, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] } as AccountInviteDTO;
+        render(
+            <InviteProgressBoard {...counsellorProps([alsoAdmin], { onRoleAdd: vi.fn(), onRoleChange: vi.fn() })} />,
+        );
+
+        // "auch BST-Admin" is taken and the account exists: nothing to pick, but the removal link must still open.
+        expect(roleChip('Anke Roth')).not.toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(roleChip('Anke Roth'));
+        const menu = await screen.findByRole('menu');
+        expect(within(menu).getByRole('link', { name: 'Rolle entfernen: im Bereich Benutzer' })).toBeInTheDocument();
+    });
+
     it('shows a role the viewer may not hand out, disabled with the reason', async () => {
         render(<InviteProgressBoard {...counsellorProps([open], { viewerScope: 'agency', onRoleChange: vi.fn() })} />);
 
@@ -728,7 +741,9 @@ describe('InviteProgressBoard — role chip', () => {
         );
 
         expect(roleChip('Anke Roth')).toHaveTextContent(/^Berater:in \+ BST-Admin$/);
-        expect(roleChip('Anke Roth')).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(roleChip('Anke Roth'));
+        const menu = await screen.findByRole('menu');
+        expect(within(menu).getByText('+ auch BST-Admin').closest('li')).toHaveAttribute('aria-disabled', 'true');
     });
 
     it.each([
@@ -746,7 +761,8 @@ describe('InviteProgressBoard — role chip', () => {
                 />,
             );
 
-            expect(roleChip('Anke Roth')).toHaveAttribute('aria-disabled', 'true');
+            // Every entry is locked, yet the chip opens: its menu links to the users area.
+            expect(roleChip('Anke Roth')).not.toHaveAttribute('aria-disabled', 'true');
             await userEvent.hover(roleChip('Anke Roth'));
             const tooltip = await screen.findByRole('tooltip');
             expect(tooltip).toHaveTextContent(why);

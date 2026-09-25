@@ -303,6 +303,37 @@ describe('InviteCsvImportModal', () => {
         expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
     });
 
+    it('keeps a 502 row retryable when the only invite for that address is an old, closed one', async () => {
+        createInvite.mockImplementation(async () => {
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's rejection (a raw Response)
+            throw new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_TRANSPORT_FAILED' }), {
+                status: 502,
+            });
+        });
+        const parseResult = parseResultOf({
+            rows: [{ line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false }],
+        });
+        const { rerender } = renderModal(parseResult);
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+        expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+
+        // Re-inviting after an earlier invite expired is normal; that old invite is not this run's.
+        rerender(
+            <InviteCsvImportModal
+                createInvite={createInvite}
+                idKind="tenant"
+                invites={[{ id: 3, recipientEmail: 'a@example.org', inviteStatus: 'EXPIRED' } as never]}
+                parseResult={parseResult}
+                takenTenantIds={new Set([1, 2, 4])}
+                onClose={onClose}
+                onCreated={onCreated}
+            />,
+        );
+
+        expect(rowCells('a@example.org').queryByText('Angelegt, nicht versendet')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+    });
+
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {
         renderModal(
             parseResultOf({
@@ -610,9 +641,8 @@ describe('InviteCsvImportModal', () => {
         });
 
         it('sends other roles to the Berater tab when the Träger tab only founds Träger', () => {
-            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }), {
-                tabRoles: ['TENANT_ADMIN'],
-            });
+            // idKind "tenant" (the renderModal default) limits this tab to Träger admins.
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }));
             expect(
                 rowCells('anna@x.de').getByText(
                     'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
