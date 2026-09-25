@@ -192,6 +192,13 @@ describe('parseInviteCsv — Ziel, Rolle, Vorlage and Themen & Fachbereiche', ()
         expect(result.rows[0]).toMatchObject({ id: 7 });
         expect(result.rows[0].target).toBeUndefined();
     });
+
+    it('lets a recognised ID header win over an unknown header that sits in the ID position', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Vorname;Name;Bemerkung;Beratungsstellen-ID;Ziel\r\nd@x.de;D;E;99;7;bestehend\r\n',
+        );
+        expect(result.rows[0]).toMatchObject({ id: 7, target: 'EXISTING' });
+    });
 });
 
 describe('detectInviteCsvDelimiter', () => {
