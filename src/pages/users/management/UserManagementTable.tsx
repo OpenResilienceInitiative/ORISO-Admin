@@ -3,10 +3,13 @@ import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import { PlusOutlined } from '@ant-design/icons';
+import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
+import { SortNotice } from '../../../components/UserTable/SortNotice';
+import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -30,6 +33,7 @@ import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
+import { UserDataTable } from './UserDataTable';
 import {
     normalizeTenantAdminSortField,
     USER_TABLE_API_SAFE_ORDER,
@@ -59,7 +63,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const { t } = useTranslation();
     const { can } = useUserPermissions();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
     const { isEnabled } = useReleasesToggle();
     const { settings } = useAppConfigContext();
     const { data: tenantData } = useTenantData();
@@ -238,6 +242,14 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [sectionId],
     );
 
+    const onUserSortChange = useCallback((sortBy: string, order: 'ASC' | 'DESC') => {
+        setTableState((prev) => ({ ...prev, current: 1, sortBy, order }));
+    }, []);
+
+    // Links only invites counsellors, and Träger (with their admin) for a platform admin.
+    const canInvite =
+        (isConsultants && canSeeLinksSection({ isSuperAdmin, hasRole })) || (isTenantAdmins && isSuperAdmin);
+
     const onCloseDelete = useCallback(() => {
         setDeleteUserId(null);
         setDeleteTenantAdmin(null);
@@ -358,7 +370,16 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         onSearchChange={setSearchDebounced}
                         searchPlaceholder={t(config.searchPlaceholderKey)}
                     >
-                        {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
+                        {(canCreate || canInvite) && (
+                            <div className={styles.toolbarActions}>
+                                {canInvite && (
+                                    <Link to={routePathNames.links} className={styles.inviteButton}>
+                                        {t('userTable.invite', 'Einladen')}
+                                    </Link>
+                                )}
+                                {canCreate && createButton}
+                            </div>
+                        )}
                     </GlobalSearchBar>
                     {isConsultants && allowedNumberOfUsers > 0 && (
                         <span className={styles.sectionCount}>
@@ -391,23 +412,42 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     style={{ marginBottom: 16 }}
                 />
             )}
-            {rejectedSort && (
-                <p role="status" className={styles.sortNotice}>
-                    {t('users.table.sortRejected')}
-                </p>
-            )}
-            <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
-                <ResizeTable
-                    rowKey="id"
+            {rejectedSort && <SortNotice shownOrder={t('userTable.sortNotice.safeOrder', 'Vorname A–Z')} />}
+            {!isTenants && (
+                <UserDataTable
+                    sectionId={sectionId}
+                    rows={tableData as CounselorData[]}
                     loading={isLoading}
-                    columns={columns}
-                    dataSource={tableData}
-                    pagination={pagination}
-                    onChange={handleTableAction}
-                    rowClassName={isOrganizations ? undefined : rowClassName}
-                    locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
+                    showTenant={showTenantColumn}
+                    showSubdomain={showSubdomain}
+                    canEditOrDelete={canEditOrDelete}
+                    sortBy={shownSortBy}
+                    order={shownOrder}
+                    onSortChange={onUserSortChange}
+                    onEdit={onEditUser}
+                    onDelete={onDeleteUser}
+                    page={tableState.current}
+                    pageSize={tableState.pageSize}
+                    total={responseList?.total ?? 0}
+                    onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
+                    onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
+                    ariaLabel={t(config.searchPlaceholderKey)}
                 />
-            </div>
+            )}
+            {isTenants && (
+                <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
+                    <ResizeTable
+                        rowKey="id"
+                        loading={isLoading}
+                        columns={columns}
+                        dataSource={tableData}
+                        pagination={pagination}
+                        onChange={handleTableAction}
+                        rowClassName={isOrganizations ? undefined : rowClassName}
+                        locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
+                    />
+                </div>
+            )}
             {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
                 <DeleteUserModal
                     deleteUserId={deleteUserId}

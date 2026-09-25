@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
@@ -180,6 +180,7 @@ export const TenantAdminsForPlatformAdmin: Story = {
         await expect(header.getBoundingClientRect().right).toBeLessThanOrEqual(scroller.getBoundingClientRect().right);
         await expect(await canvas.findByText('Caritas Hamburg')).toBeVisible();
         await expect(canvas.getByText('Diakonie Berlin')).toBeVisible();
+        await expect(canvasElement.querySelectorAll('[data-scope-chip="tenant"]')).toHaveLength(2);
     },
 };
 
@@ -197,7 +198,7 @@ export const TenantAdminsForTraegerAdmin: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Muster')).toBeVisible();
+        await expect(await canvas.findByText(/Muster/)).toBeVisible();
         await expect(canvas.queryByRole('columnheader', { name: 'Träger' })).toBeNull();
     },
 };
@@ -224,6 +225,7 @@ export const SortRejectedByServer: Story = {
         await expect(canvas.getByRole('columnheader', { name: /Vorname/ })).toHaveAttribute('aria-sort', 'ascending');
         await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).not.toHaveAttribute(
             'aria-sort',
+            'descending',
         );
     },
 };
@@ -278,6 +280,26 @@ export const ConsultantsTab: Story = {
     parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] } },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
+        const canvas = within(canvasElement);
+        await step('status as words, centre as chip with PLZ and Ort', async () => {
+            await expect(canvas.getByText('Aktiv')).toBeVisible();
+            await expect(canvas.getByText('Abwesend')).toBeVisible();
+            await expect(canvas.getByText('20095 Hamburg')).toBeVisible();
+        });
+        await step('arrows only where the server sorts; newest first by default', async () => {
+            await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).toHaveAttribute(
+                'aria-sort',
+                'descending',
+            );
+            await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'none');
+            await expect(canvas.getByRole('columnheader', { name: 'Beratungsstellen' })).not.toHaveAttribute(
+                'aria-sort',
+            );
+            await expect(canvas.getByRole('columnheader', { name: 'Status' })).not.toHaveAttribute('aria-sort');
+        });
+        await step('"Einladen" leads to the Links section', async () => {
+            await expect(canvas.getByRole('link', { name: /Einladen/ })).toHaveAttribute('href', '/admin/links');
+        });
         await step('delete asks with the counsellor dialog', () =>
             expectDeleteDialog(canvasElement, /Berater wirklich löschen/),
         );
@@ -339,4 +361,85 @@ export const PlatformAdminsTab: Story = {
 export const PlatformAdminsTabEdit: Story = {
     ...PlatformAdminsTab,
     play: ({ canvasElement }) => expectEditGoesTo(canvasElement, '/admin/users/platform-admins/pa-1'),
+};
+
+/** Several centres: the first shows in the row, the rest and the topics per centre on expand. */
+export const ConsultantWithSeveralCentres: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, () =>
+                    consultantsResponse([
+                        {
+                            ...CONSULTANTS[0],
+                            topics: [
+                                { id: 1, name: 'Schulden' },
+                                { id: 2, name: 'Sucht' },
+                            ] as CounselorData['topics'],
+                            agencies: [
+                                {
+                                    id: '101',
+                                    name: 'Beratungsstelle Nord',
+                                    postcode: '20095',
+                                    city: 'Hamburg',
+                                    topics: [{ id: 1, name: 'Schulden' }],
+                                },
+                                {
+                                    id: '102',
+                                    name: 'Suchtberatung Süd',
+                                    postcode: '80331',
+                                    city: 'München',
+                                    topics: [
+                                        { id: 2, name: 'Sucht' },
+                                        { id: 3, name: 'Familie' },
+                                    ],
+                                },
+                            ] as CounselorData['agencies'],
+                        },
+                    ]),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('20095 Hamburg')).toBeVisible();
+        await expect(canvas.queryByText('80331 München')).toBeNull();
+
+        await user.click(canvas.getByRole('button', { name: /Beratungsstellen von Anna Muster/ }));
+        const details = await canvas.findByRole('list', { name: /Beratungsstellen von Anna Muster/ });
+        const centres = within(details).getAllByRole('listitem');
+        await expect(centres).toHaveLength(2);
+        await expect(centres[0]).toHaveTextContent(/Beratungsstelle Nord.*Schulden/);
+        await expect(centres[1]).toHaveTextContent(/Suchtberatung Süd.*Sucht/);
+        await expect(centres[1]).not.toHaveTextContent('Familie');
+    },
+};
+
+/** The name column sorts by Nachname, Vorname or E-Mail; the pill says which. */
+export const SortNameByEmail: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+                    const field = new URL(request.url).searchParams.get('field');
+                    return consultantsResponse(field === 'EMAIL' ? [...CONSULTANTS].reverse() : CONSULTANTS);
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await rowOf(canvasElement, 'Muster');
+        await user.click(canvas.getByRole('button', { name: /Name nach/ }));
+        await user.click(await body.findByRole('menuitemradio', { name: 'E-Mail' }));
+
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
+        await expect(within(nameHeader).getByRole('button', { name: /Name nach E-Mail/ })).toBeVisible();
+        await waitFor(() => expect(canvas.getAllByRole('row')[1]).toHaveTextContent('Ben Beispiel'));
+    },
 };

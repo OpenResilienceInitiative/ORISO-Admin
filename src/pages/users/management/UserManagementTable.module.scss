@@ -114,12 +114,25 @@
     }
 }
 
-.sortNotice {
-    margin: 0 0 12px;
-    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
-    line-height: 18px;
-    color: #646d78;
+/* Outlined twin of the create button: same height and shape, second in weight. */
+.inviteButton {
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 24px;
+    border: 1px solid var(--m3-outline, #747878);
+    margin-right: 12px;
+    border-radius: 28px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 600 16px/24px Inter, 'Helvetica Neue', Arial, sans-serif;
+    white-space: nowrap;
+
+    &:hover,
+    &:focus-visible {
+        background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+        color: var(--m3-on-surface, #1b1b1c);
+    }
 }
 
 .tableContainer {
