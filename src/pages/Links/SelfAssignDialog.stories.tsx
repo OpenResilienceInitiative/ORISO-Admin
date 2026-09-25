@@ -56,6 +56,8 @@ export const CounsellorWithTopics: Story = {
         await userEvent.click(await body.findByTitle('Schulden'));
         await userEvent.keyboard('{Escape}');
         await waitFor(() => expect(confirm).toBeEnabled());
+        // With a topic picked, the status line carries the summary; it must not appear a second time.
+        await expect(body.getAllByText(/Berater:in in Nr\. 14|counsellor in no\. 14/)).toHaveLength(1);
         await userEvent.click(confirm);
 
         await waitFor(() =>
