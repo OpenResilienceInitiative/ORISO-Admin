@@ -172,6 +172,23 @@ describe('IdAllocationField', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
 
+    // An id the admin cleared again was never confirmed, so it must not stay pinned.
+    it('leaves the typed number when the admin clears the field', async () => {
+        const allocation = allocationState();
+        const user = userEvent.setup();
+        const { rerender } = render(<IdAllocationField label="Beratungsstelle" allocation={allocation} />);
+
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await user.type(input, '3');
+        expect(allocation.setManualValue).toHaveBeenLastCalledWith(3);
+
+        const typed = { ...allocation, mode: 'manual' as const, value: 3, validation: 'available' as const };
+        rerender(<IdAllocationField label="Beratungsstelle" allocation={typed} />);
+        await user.clear(input);
+        expect(allocation.setManualValue).toHaveBeenLastCalledWith(undefined);
+    });
+
     it('finds existing units by name or topic and picks one', async () => {
         const allocation = allocationState();
         const searchUnits = vi.fn((query: string) =>

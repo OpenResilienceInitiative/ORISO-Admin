@@ -34,7 +34,7 @@ import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import {
     ALSO_COUNSELLOR_LABEL_KEYS,
-    DEFAULT_TOPIC_PERMISSION,
+    BAR_DEFAULT_TOPIC_PERMISSION,
     ROLE_LABEL_KEYS,
     rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
@@ -342,7 +342,7 @@ export const InviteComposer = ({
     // Which select-type field's menu is open (opened directly from its pill).
     const [openSelect, setOpenSelect] = useState<CollapsibleKey | null>(null);
     const [topicPermission, setTopicPermission] = useState<TopicPermission>(
-        initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
+        initialValues?.topicPermission ?? BAR_DEFAULT_TOPIC_PERMISSION,
     );
     const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
 
@@ -376,7 +376,7 @@ export const InviteComposer = ({
     useEffect(() => {
         if (!pickedAgency) {
             // Leaving a chosen agency ("Neu") must not keep that agency's default.
-            if (hadPickedAgency.current) setTopicPermission(DEFAULT_TOPIC_PERMISSION);
+            if (hadPickedAgency.current) setTopicPermission(BAR_DEFAULT_TOPIC_PERMISSION);
             hadPickedAgency.current = false;
             return undefined;
         }
