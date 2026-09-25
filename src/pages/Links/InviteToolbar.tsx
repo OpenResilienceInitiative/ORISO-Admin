@@ -121,7 +121,7 @@ export const InviteToolbar = ({
     const onCsvPicked = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         // Cleared so picking the same file again still fires a change.
-        event.target.value = '';
+        if (csvInputRef.current) csvInputRef.current.value = '';
         if (file) handleCsvFile(file);
     };
 
