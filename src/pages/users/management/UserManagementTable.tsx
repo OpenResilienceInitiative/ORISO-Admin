@@ -17,6 +17,7 @@ import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
+import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
@@ -29,11 +30,13 @@ import { CounselorData } from '../../../types/counselor';
 import { TenantData } from '../../../types/tenant';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
+import type { UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
 import { UserDataTable } from './UserDataTable';
+import { UserScopeFilters, useScopeFilterAvailability } from './UserScopeFilters';
 import {
     normalizeTenantAdminSortField,
     USER_TABLE_API_SAFE_ORDER,
@@ -41,6 +44,8 @@ import {
 } from '../../../constants/userTableSort';
 import type { UserSearchResult } from '../../../utils/fetchUserSearchWithSortFallback';
 import styles from './UserManagementTable.module.scss';
+
+const NO_FILTERS: UserSearchFilters = {};
 
 interface UserManagementTableProps {
     figmaTableHeader?: boolean;
@@ -82,6 +87,12 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         order: config.defaultSort.order,
         pageSize: 10,
     });
+    // Kept per tab, so the first render after a tab switch never searches with the old tab's state.
+    const [picked, setPicked] = useState<{ tab: string; sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
+    const [filterState, setFilterState] = useState<{ tab: string; filters: UserSearchFilters } | null>(null);
+    const pickedSort = picked?.tab === sectionId ? picked : null;
+    const filters = filterState?.tab === sectionId ? filterState.filters : NO_FILTERS;
+    const scopeFilters = useScopeFilterAvailability(sectionId);
 
     useEffect(() => {
         setTableState({
@@ -94,6 +105,20 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setSearch('');
     }, [sectionId, config.defaultSort.field, config.defaultSort.order]);
 
+    // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
+    const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
+    const saveSort = useSaveAdminListSort();
+    const preferencesPending = !isTenants && preferencesQuery.isLoading;
+    const savedSort = preferencesQuery.data?.sorts?.[sectionId];
+    const userSort = isTenants
+        ? { sortBy: tableState.sortBy, order: tableState.order }
+        : pickedSort ??
+          (savedSort && { sortBy: savedSort.field, order: savedSort.order }) ?? {
+              sortBy: config.defaultSort.field,
+              order: config.defaultSort.order,
+          };
+    const userQueryState = { ...tableState, sortBy: userSort.sortBy, order: userSort.order };
+
     const tenantsQuery = useTenantsData({
         page: tableState.current,
         perPage: tableState.pageSize,
@@ -105,21 +130,23 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const consultantsQuery = useConsultantsOrAdminsData({
         search,
-        ...tableState,
+        ...userQueryState,
+        filters,
         typeOfUser: consultantsSectionId,
-        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants && !preferencesPending,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
         search,
-        ...tableState,
-        enabled: isTenantAdmins,
+        ...userQueryState,
+        filters,
+        enabled: isTenantAdmins && !preferencesPending,
     });
 
     const platformAdminsQuery = usePlatformAdminsData({
         search,
-        ...tableState,
-        enabled: isPlatformAdmins,
+        ...userQueryState,
+        enabled: isPlatformAdmins && !preferencesPending,
     });
 
     const activeQuery = (() => {
@@ -131,8 +158,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
     // When the server refused the chosen order, the arrow follows the rows it actually sent.
     const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
-    const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : tableState.sortBy;
-    const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : tableState.order;
+    const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : userQueryState.sortBy;
+    const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : userQueryState.order;
 
     const { mutate: deleteTenant } = useDeleteTenant({
         onSuccess: () => {
@@ -242,9 +269,22 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [sectionId],
     );
 
-    const onUserSortChange = useCallback((sortBy: string, order: 'ASC' | 'DESC') => {
-        setTableState((prev) => ({ ...prev, current: 1, sortBy, order }));
-    }, []);
+    const onUserSortChange = useCallback(
+        (sortBy: string, order: 'ASC' | 'DESC') => {
+            setPicked({ tab: sectionId, sortBy, order });
+            setTableState((prev) => ({ ...prev, current: 1 }));
+            saveSort(sectionId, { field: sortBy, order });
+        },
+        [saveSort, sectionId],
+    );
+
+    const onFiltersChange = useCallback(
+        (next: UserSearchFilters) => {
+            setFilterState({ tab: sectionId, filters: next });
+            setTableState((prev) => ({ ...prev, current: 1 }));
+        },
+        [sectionId],
+    );
 
     // Links only invites counsellors, and Träger (with their admin) for a platform admin.
     const canInvite =
@@ -412,12 +452,13 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     style={{ marginBottom: 16 }}
                 />
             )}
+            {!isTenants && <UserScopeFilters sectionId={sectionId} filters={filters} onChange={onFiltersChange} />}
             {rejectedSort && <SortNotice shownOrder={t('userTable.sortNotice.safeOrder', 'Vorname A–Z')} />}
             {!isTenants && (
                 <UserDataTable
                     sectionId={sectionId}
                     rows={tableData as CounselorData[]}
-                    loading={isLoading}
+                    loading={isLoading || preferencesPending}
                     showTenant={showTenantColumn}
                     showSubdomain={showSubdomain}
                     canEditOrDelete={canEditOrDelete}
@@ -431,6 +472,14 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     total={responseList?.total ?? 0}
                     onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
                     onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
+                    onTenantClick={
+                        scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
+                    }
+                    onAgencyClick={
+                        scopeFilters.canListAgencies
+                            ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
+                            : undefined
+                    }
                     ariaLabel={t(config.searchPlaceholderKey)}
                 />
             )}
