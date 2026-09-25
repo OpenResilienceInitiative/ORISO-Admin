@@ -287,14 +287,20 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         // An unrecognised header cell keeps its fixed position, so an old custom ID
         // label ("Träger-Nummer") still reads its 4th column as the ID.
         columnIndex = { email: 0 };
-        records[0].cells.forEach((cell, index) => {
-            if (index === 0) return;
+        const recognised = records[0].cells.map((cell, index) => {
+            if (index === 0) return undefined;
             const label = normalize(cell);
-            const key = (Object.keys(HEADER_LABELS) as Array<Exclude<ColumnKey, 'email'>>).find((candidate) =>
+            return (Object.keys(HEADER_LABELS) as Array<Exclude<ColumnKey, 'email'>>).find((candidate) =>
                 HEADER_LABELS[candidate].includes(label),
             );
-            const resolved = key ?? INVITE_CSV_COLUMN_ORDER[index];
-            if (resolved && columnIndex[resolved] == null) columnIndex[resolved] = index;
+        });
+        // Named columns claim first, so a positional fallback never steals a column that is labelled later on.
+        recognised.forEach((key, index) => {
+            if (key && columnIndex[key] == null) columnIndex[key] = index;
+        });
+        recognised.forEach((key, index) => {
+            const fallback = INVITE_CSV_COLUMN_ORDER[index];
+            if (index > 0 && !key && fallback && columnIndex[fallback] == null) columnIndex[fallback] = index;
         });
     }
     const columns = INVITE_CSV_COLUMN_ORDER.filter((key) => columnIndex[key] != null);
