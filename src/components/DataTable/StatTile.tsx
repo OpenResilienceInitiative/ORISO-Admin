@@ -40,7 +40,12 @@ export const StatTile = ({
         <>
             <span className={classNames(styles.value, { [styles.valueError]: tone === 'error' })}>{value}</span>
             <span className={styles.label}>{label}</span>
-            {supportingText && <span className={styles.supportingText}>{supportingText}</span>}
+            {/* A long breakdown ends in "…" on one line; the title shows it whole. */}
+            {supportingText && (
+                <span className={styles.supportingText} title={supportingText}>
+                    {supportingText}
+                </span>
+            )}
         </>
     );
 
