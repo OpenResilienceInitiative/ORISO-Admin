@@ -101,10 +101,11 @@ export const AgencyAdmin: Story = {
         // One role on offer: „Rolle" is fixed on „Berater:in".
         await expect(canvas.getByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
         // Platform-only tabs stay visible, disabled, and say why.
-        await expect(canvas.queryByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeNull();
-        const tenantTab = canvas.getByText(/Träger-Invites|Tenant invites/).closest('[aria-disabled="true"]');
-        await expect(tenantTab).not.toBeNull();
-        (tenantTab as HTMLElement).focus();
+        // Announced like its enabled siblings: a link, marked disabled.
+        const tenantTab = canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ });
+        await expect(tenantTab).toHaveAttribute('aria-disabled', 'true');
+        await expect(tenantTab).not.toHaveAttribute('href');
+        tenantTab.focus();
         await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
             /Nur Plattform-Admins|Platform admins only/,
         );
