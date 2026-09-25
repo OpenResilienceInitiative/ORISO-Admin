@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import decodeHTML from './decodeHTML';
 
 describe('decodeHTML', () => {
@@ -17,5 +17,19 @@ describe('decodeHTML', () => {
 
     it('returns an empty string for empty input', () => {
         expect(decodeHTML('')).toBe('');
+    });
+
+    describe('with markup in a stored name', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        // A detached element of the live page still loads <img> and fires onerror; the name must never get there.
+        it('parses it outside the live page and keeps only the text', () => {
+            const createElement = vi.spyOn(document, 'createElement');
+
+            expect(decodeHTML('<img src=x onerror="alert(1)">Caritas &#43; Diakonie')).toBe('Caritas + Diakonie');
+            expect(createElement).not.toHaveBeenCalled();
+        });
     });
 });
