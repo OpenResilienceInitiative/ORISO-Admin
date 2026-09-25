@@ -100,6 +100,16 @@ interface TenantAdminPermissionToggles {
     voiceMessagesSupervisionChats?: boolean | null;
 }
 
+/** Same shape as an agency's `dataProtectionOfficerContact`. */
+export interface TenantDataProtectionOfficer {
+    nameAndLegalForm?: string | null;
+    street?: string | null;
+    postcode?: string | null;
+    city?: string | null;
+    phoneNumber?: string | null;
+    email?: string | null;
+}
+
 export interface BasicTenantData {
     id: number | null;
     key?: number | null;
@@ -119,6 +129,11 @@ export interface BasicTenantData {
     contactEmail?: string | null;
     /** Contact phone number (max 64). */
     contactPhone?: string | null;
+    /**
+     * Optional DPO of the Träger (Admin#1067), inherited by Beratungsstellen without their own.
+     * Absent keeps the stored value; all fields blank clears it.
+     */
+    dataProtectionOfficer?: TenantDataProtectionOfficer | null;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate
     updateDate?: string;
