@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
-import { message } from 'antd';
+import EditorHintSnackbar from '../FormPluginEditor/EditorHintSnackbar';
 import styles from './personCell.module.scss';
+
+const SNACKBAR_MS = 4000;
 
 export interface PersonCellProps {
     name: string;
@@ -20,11 +24,19 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
     const title = name || email;
     const usernameLabel = t('userTable.person.username', 'Benutzername');
 
+    const [copied, setCopied] = useState<'ok' | 'failed' | null>(null);
+
+    useEffect(() => {
+        if (!copied) return undefined;
+        const timer = setTimeout(() => setCopied(null), SNACKBAR_MS);
+        return () => clearTimeout(timer);
+    }, [copied]);
+
     const copyEmail = () =>
         navigator.clipboard
             .writeText(email)
-            .then(() => message.success(t('userTable.person.emailCopied', 'E-Mail kopiert')))
-            .catch(() => message.error(t('links.copyFailed', 'Kopieren fehlgeschlagen')));
+            .then(() => setCopied('ok'))
+            .catch(() => setCopied('failed'));
 
     return (
         <div className={styles.person}>
@@ -50,7 +62,9 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
                             <button
                                 type="button"
                                 className={styles.copy}
-                                aria-label={t('userTable.person.copyEmail', 'E-Mail kopieren')}
+                                aria-label={t('userTable.person.copyEmail', 'E-Mail von {{name}} kopieren', {
+                                    name: title,
+                                })}
                                 onClick={copyEmail}
                             >
                                 <ContentCopyOutlinedIcon aria-hidden />
@@ -64,6 +78,21 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
                     )}
                 </div>
             )}
+            {copied &&
+                createPortal(
+                    <div className={styles.snackbarSlot} data-testid="person-copy-snackbar">
+                        <EditorHintSnackbar
+                            tone={copied === 'ok' ? 'success' : 'error'}
+                            text={
+                                copied === 'ok'
+                                    ? t('userTable.person.emailCopied', 'E-Mail kopiert')
+                                    : t('links.copyFailed', 'Kopieren fehlgeschlagen')
+                            }
+                            onClose={() => setCopied(null)}
+                        />
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 };

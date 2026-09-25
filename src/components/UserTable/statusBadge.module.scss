@@ -21,7 +21,7 @@
 
 .pending {
     background: var(--m3-tertiary-container);
-    color: var(--m3-primary);
+    color: var(--m3-on-tertiary-container);
 }
 
 .ended {
@@ -41,8 +41,8 @@
 }
 
 .link:hover {
-    background: color-mix(in srgb, var(--m3-primary) 8%, var(--m3-tertiary-container));
-    color: var(--m3-primary);
+    background: color-mix(in srgb, var(--m3-on-tertiary-container) 8%, var(--m3-tertiary-container));
+    color: var(--m3-on-tertiary-container);
 }
 
 .link:focus-visible {

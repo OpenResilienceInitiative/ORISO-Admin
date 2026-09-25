@@ -92,3 +92,14 @@
     width: 15px;
     height: 15px;
 }
+
+/* The editor snackbar is absolute; this slot pins it to the viewport bottom. */
+.snackbarSlot {
+    position: fixed;
+    z-index: 1400;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+}

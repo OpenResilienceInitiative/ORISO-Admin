@@ -475,7 +475,7 @@
     "userTable.loadMore.count": "{{shown}} von {{total}}",
     "userTable.loadMore.button": "Weitere laden",
     "userTable.person.username": "Benutzername",
-    "userTable.person.copyEmail": "E-Mail kopieren",
+    "userTable.person.copyEmail": "E-Mail von {{name}} kopieren",
     "userTable.person.emailCopied": "E-Mail kopiert",
     "links.inviteProgress.summaryLabel": "Onboarding-Übersicht",
     "links.inviteProgress.summary.invited": "Eingeladen",
