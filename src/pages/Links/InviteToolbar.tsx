@@ -1,6 +1,6 @@
-import type { FocusEvent, ReactNode, Ref } from 'react';
+import { useRef, type ChangeEvent, type FocusEvent, type ReactNode, type Ref } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
-import { message, Upload, type MenuProps } from 'antd';
+import { message, type MenuProps } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
@@ -10,7 +10,7 @@ import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
-import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
+import { downloadInviteCsvTemplate, type InviteCsvTemplateLabels } from './csv/inviteCsvTemplate';
 import { ROLE_LABEL_KEYS, type InviteSendMode } from './inviteModel';
 import type { InviteTab } from './inviteRules';
 import styles from './inviteComposer.module.scss';
@@ -100,11 +100,12 @@ export const InviteToolbar = ({
     // Resending always mails, so bulk send needs a template whatever the send mode.
     const bulkReady = selectedTemplate != null;
 
+    const csvInputRef = useRef<HTMLInputElement>(null);
     const handleCsvFile = async (file: File) => {
         // Direct mode needs a template, or the batch would silently create without sending.
         if (sendMode === 'direct' && selectedTemplate == null) {
             message.error(t('links.accountInvites.templateRequired', 'Bitte zuerst ein Template auswählen.'));
-            return Upload.LIST_IGNORE;
+            return;
         }
         try {
             const result = parseInviteCsv(await readFileText(file));
@@ -116,7 +117,12 @@ export const InviteToolbar = ({
         } catch {
             message.error(t('links.csvImport.readFailed', 'CSV-Datei konnte nicht gelesen werden.'));
         }
-        return Upload.LIST_IGNORE;
+    };
+    const onCsvPicked = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        // Cleared so picking the same file again still fires a change.
+        event.target.value = '';
+        if (file) handleCsvFile(file);
     };
 
     // The id column is the Träger-ID on the Träger tab and the agency id elsewhere.
@@ -124,7 +130,18 @@ export const InviteToolbar = ({
         tab === 'tenant'
             ? t('links.accountInvites.tenantId', 'Träger-ID')
             : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
-    const csvTargetLabel = t('links.csvImport.col.target', 'Ziel');
+    // One label set for the menu hint and the template header, so the two cannot drift apart.
+    const csvColumns: Required<InviteCsvTemplateLabels> = {
+        email: t('links.accountInvites.email', 'E-Mail'),
+        firstName: t('links.accountInvites.firstName', 'Vorname'),
+        lastName: t('links.composer.lastName', 'Name'),
+        id: csvIdLabel,
+        target: t('links.csvImport.col.target', 'Ziel'),
+        role: t('links.composer.role', 'Rolle'),
+        template: t('links.composer.template', 'Vorlage'),
+        topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
+        alsoCounsellor: t('links.composer.alsoCounsellor.label', 'Berät auch'),
+    };
 
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (csv) {
@@ -141,26 +158,16 @@ export const InviteToolbar = ({
         moreMenuItems.push({
             key: 'csv-import',
             disabled: csvBlocked,
-            label: csvBlocked ? (
-                csvLabel(csv.blockedReason as string)
-            ) : (
-                <Upload accept=".csv,text/csv" beforeUpload={handleCsvFile} showUploadList={false}>
-                    {/* The import expects a fixed column order, and this menu is the only place to learn it. */}
-                    {csvLabel(
-                        t('links.csvImport.columns', 'Spalten: {{columns}}', {
-                            columns: [
-                                t('links.accountInvites.email', 'E-Mail'),
-                                t('links.accountInvites.firstName', 'Vorname'),
-                                t('links.composer.lastName', 'Name'),
-                                `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
-                                csvTargetLabel,
-                                t('links.composer.role', 'Rolle'),
-                                t('links.composer.template', 'Vorlage'),
-                                t('links.composer.topics', 'Themen & Fachbereiche'),
-                            ].join(', '),
-                        }),
-                    )}
-                </Upload>
+            // The import expects a fixed column order, and this menu is the only place to learn it.
+            label: csvLabel(
+                csvBlocked
+                    ? (csv.blockedReason as string)
+                    : t('links.csvImport.columns', 'Spalten: {{columns}}', {
+                          columns: Object.values({
+                              ...csvColumns,
+                              id: `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                          }).join(', '),
+                      }),
             ),
         });
         moreMenuItems.push({
@@ -182,23 +189,19 @@ export const InviteToolbar = ({
 
     const moreMenu: MenuProps = {
         items: moreMenuItems,
+        // Mouse and keyboard both land here, so the hidden picker opens for either.
         onClick: ({ key }) => {
+            if (key === 'csv-import') {
+                csvInputRef.current?.click();
+                return;
+            }
             if (key === 'delete-selected') {
                 bulk?.onDeleteSelected();
                 return;
             }
             if (key === 'csv-template') {
                 downloadInviteCsvTemplate(
-                    {
-                        email: t('links.accountInvites.email', 'E-Mail'),
-                        firstName: t('links.accountInvites.firstName', 'Vorname'),
-                        lastName: t('links.composer.lastName', 'Name'),
-                        id: csvIdLabel,
-                        target: csvTargetLabel,
-                        role: t('links.composer.role', 'Rolle'),
-                        template: t('links.composer.template', 'Vorlage'),
-                        topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
-                    },
+                    csvColumns,
                     t('links.csvImport.templateFileName', 'oriso-einladungen-vorlage.csv'),
                     // German column values on purpose: the parser accepts them in any UI language.
                     {
@@ -236,6 +239,7 @@ export const InviteToolbar = ({
 
     return (
         <div ref={rootRef} className={classNames(styles.composer, className)} onFocus={onFocus}>
+            {csv && <input ref={csvInputRef} accept=".csv,text/csv" hidden type="file" onChange={onCsvPicked} />}
             <GlobalSearchBar
                 leading={moreButton}
                 scrollButtons

@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
@@ -1182,7 +1182,7 @@ describe('CSV import payload per tab', () => {
         // silent null the day the menu changes, so assert it is really mounted.
         await screen.findByText('CSV-Datei importieren', undefined, slow);
         const fileInput = await waitFor(() => {
-            const input = document.querySelector<HTMLInputElement>('.ant-upload input[type="file"]');
+            const input = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv,text/csv"]');
             expect(input).not.toBeNull();
             return input as HTMLInputElement;
         }, slow);
@@ -1202,7 +1202,7 @@ describe('CSV import payload per tab', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 7, 'EMAIL_SENT'));
     });
 
-    it('sends every row of a file with one import batch id, the own Träger as EXISTING and the row role', async () => {
+    it('sends each row on its own, with the own Träger as EXISTING, the row role and the founding BST-Admin first', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
@@ -1259,5 +1259,62 @@ describe('CSV import payload per tab', () => {
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();
+    });
+});
+
+describe('CSV entries in the more-menu', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 7 });
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+    });
+
+    const openMenu = async () => {
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await screen.findByRole('button', { name: /Standard/ }, { timeout: 10_000 });
+        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+        return user;
+    };
+
+    it('lists the same nine columns in the menu hint as in the downloaded template', async () => {
+        const blobs: Blob[] = [];
+        const createObjectURL = vi.fn((blob: Blob) => {
+            blobs.push(blob);
+            return 'blob:template';
+        });
+        Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+        const user = await openMenu();
+
+        const entry = (await screen.findByText('CSV-Datei importieren')).closest('[role="menuitem"]') as HTMLElement;
+        expect(entry).toHaveTextContent('Berät auch');
+        await user.click(screen.getByText('CSV-Vorlage herunterladen'));
+
+        const text = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsText(blobs[0]);
+        });
+        const header = text
+            .replace(/^\ufeff/, '')
+            .split('\r\n')[0]
+            .split(';');
+        expect(header).toHaveLength(9);
+        expect(header[8]).toBe('Berät auch');
+    });
+
+    it('opens the file picker when the menu item itself is activated, as the keyboard does', async () => {
+        const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+        await openMenu();
+
+        const entry = (await screen.findByText('CSV-Datei importieren')).closest('[role="menuitem"]') as HTMLElement;
+        fireEvent.click(entry);
+
+        const picker = click.mock.contexts.find((input) => (input as HTMLInputElement).type === 'file');
+        expect(picker).toHaveAttribute('accept', '.csv,text/csv');
+        click.mockRestore();
     });
 });
