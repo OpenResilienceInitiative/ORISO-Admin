@@ -166,8 +166,8 @@ export interface TenantAdminNewTenantRegistrationRequest {
 }
 
 export interface TenantAdminRegistrationResultDTO {
-    /** The created (inactive) tenant — equals the reserved ID. */
-    tenantId: number;
+    /** The created (inactive) tenant — equals the reserved ID; absent for a join that names no Träger. */
+    tenantId?: number;
     twoFactor: {
         /** Base32 TOTP secret to show/link in the authenticator app. */
         secret: string;
@@ -457,7 +457,7 @@ export const createStubTenantAdminOnboardingClient = (
                     throw new Error('JOIN_TAKES_ACCOUNT_ONLY');
                 }
                 registered = true;
-                return { tenantId: invite.tenantId ?? 0, twoFactor: STUB_TWO_FACTOR };
+                return { tenantId: invite.tenantId ?? undefined, twoFactor: STUB_TWO_FACTOR };
             }
             if (
                 !('organisation' in request) ||

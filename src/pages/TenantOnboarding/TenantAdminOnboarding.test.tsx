@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
+    createStubTenantAdminOnboardingClient,
     InviteLinkError,
     TenantAdminOnboardingClient,
     TenantAdminOnboardingInviteDTO,
@@ -535,6 +536,24 @@ describe('TenantAdminOnboarding — joining an existing Träger', () => {
         await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
         await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
         expect(await screen.findByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
+    });
+
+    it('shows no Träger number after a fresh join whose invite carries none', async () => {
+        const client = createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { ...JOIN_INVITE, tenantId: undefined },
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done-tenant-id')).not.toBeInTheDocument();
     });
 
     // A resumed invite without any tenant id must not claim "Träger 0".
