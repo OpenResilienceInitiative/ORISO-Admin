@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
 import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 import Typography from '@mui/material/Typography';
 import ArrowForward from '@mui/icons-material/ArrowForward';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
@@ -33,6 +34,8 @@ interface OrganisationDpaStepProps {
     initialDpa: DpaAcceptanceData | null;
     /** Declared delegation (#723) — the step renders the calm on-hold state. */
     forward: WizardDpaForwardState | null;
+    /** The representative already confirmed (#1065) — no consent block, organisation data only. */
+    confirmed?: boolean;
     /** Raw invite token — the only credential of the public forward endpoints. */
     inviteToken: string;
     forwardClient: DpaForwardClient;
@@ -100,6 +103,7 @@ export const OrganisationDpaStep = ({
     initialOrganisation,
     initialDpa,
     forward,
+    confirmed = false,
     inviteToken,
     forwardClient,
     onForwarded,
@@ -131,7 +135,9 @@ export const OrganisationDpaStep = ({
     // `undefined`, and `undefined !== null` is true — a caller that simply
     // does not pass `forward` would silently render the on-hold state and
     // withhold the consent control.
-    const forwarded = forward != null;
+    const forwarded = forward != null && !confirmed;
+    // Forwarded or confirmed: either way this step carries no own consent act.
+    const consentSettled = forwarded || confirmed;
 
     const onFinish = (values: OrganisationDpaFormValues) => {
         const organisation: OrganisationData = {
@@ -140,9 +146,9 @@ export const OrganisationDpaStep = ({
             address: values.address.trim(),
             ...enteredSenderFields(values),
         };
-        if (forwarded) {
-            // The delegation replaces the consent act — the signature arrives
-            // through the sign link; only the organisation data is submitted.
+        if (consentSettled) {
+            // The delegation (or the confirmation already given) replaces the
+            // consent act; only the organisation data is submitted.
             setSubmitBlocker(null);
             onSubmit(organisation, null);
             return;
@@ -171,10 +177,10 @@ export const OrganisationDpaStep = ({
         // The consent state is part of "incomplete" as well — show its own
         // inline error from now on, whatever else is missing.
         setAcceptTouched(true);
-        setSubmitBlocker(dpaUnavailable && !forwarded ? 'dpa' : 'fields');
+        setSubmitBlocker(dpaUnavailable && !consentSettled ? 'dpa' : 'fields');
         // Actually move the viewport AND the caret to what is missing. antd's
         // own `scrollToField` silently did nothing here (#594.6 review).
-        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !forwarded && !dpaAccepted) {
+        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !consentSettled && !dpaAccepted) {
             focusDpaConsent();
         }
     };
@@ -265,7 +271,16 @@ export const OrganisationDpaStep = ({
                     {t('tenantOnboarding.organisation.title')}
                 </Typography>
                 <div className={styles.dpaBlock}>
-                    {forwarded ? (
+                    {confirmed && (
+                        <>
+                            <Alert severity="success" data-testid="dpa-confirmed-notice" sx={{ mb: 2 }}>
+                                <AlertTitle>{t('tenantOnboarding.dpa.confirmed.title')}</AlertTitle>
+                                {t('tenantOnboarding.dpa.confirmed.description')}
+                            </Alert>
+                            {organisationSection}
+                        </>
+                    )}
+                    {forwarded && (
                         <>
                             {/* On hold, not an error (#723): the delegation IS the
                                 valid completion of this step; the agreement stays
@@ -320,7 +335,8 @@ export const OrganisationDpaStep = ({
                                 </div>
                             </div>
                         </>
-                    ) : (
+                    )}
+                    {!consentSettled && (
                         <>
                             <DpaFormSection
                                 dpaHtml={dpaHtml}

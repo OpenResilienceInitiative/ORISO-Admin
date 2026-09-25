@@ -51,6 +51,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         organisation,
         dpa,
         dpaForward,
+        dpaConfirmed,
         submitError,
         busy,
         retryLoad,
@@ -123,6 +124,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     initialOrganisation={organisation}
                     initialDpa={dpa}
                     forward={dpaForward}
+                    confirmed={dpaConfirmed}
                     inviteToken={inviteToken}
                     forwardClient={resolvedForwardClient}
                     onForwarded={markDpaForwarded}
