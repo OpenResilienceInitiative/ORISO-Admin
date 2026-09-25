@@ -970,6 +970,21 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(await screen.findByText(/Einladung vorgemerkt/)).toBeInTheDocument();
     });
 
+    it('names the Träger in the waiting toast when the invite waits for a new Träger', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.createAccountInvite.mockResolvedValue({
+            ...invite(101, 79, 'WAITING_FOR_UNIT'),
+            targetRole: 'COUNSELLOR',
+            waitingForUnit: 'TENANT',
+        });
+        const user = await fill('900');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        expect(await screen.findByText(/sobald der Träger angelegt ist/)).toBeInTheDocument();
+    });
+
     it('explains 409 NO_PENDING_UNIT_ADMIN in German', async () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.createAccountInvite.mockRejectedValue(

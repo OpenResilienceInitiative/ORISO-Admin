@@ -639,10 +639,10 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('offers no topic column without a change handler and on the Träger tab', () => {
-        render(<InviteProgressBoard {...baseProps()} onTopicPermissionChange={vi.fn()} />);
+    it('offers no topic select on the Träger tab, even for a counsellor row', () => {
+        render(<InviteProgressBoard {...baseProps()} invites={[accepted]} onTopicPermissionChange={vi.fn()} />);
 
-        expect(screen.queryByRole('columnheader', { name: 'Themen & Fachbereiche' })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Themen für/ })).toBeNull();
     });
 });
 
