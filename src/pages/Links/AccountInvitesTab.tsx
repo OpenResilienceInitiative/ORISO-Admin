@@ -15,6 +15,7 @@ import {
     revokeAccountInvite,
     updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
+import { addConsultantRole, changeAccountInviteRole } from '../../api/accountInvites/inviteRoles';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { findInviteTenant } from '../../api/tenant/findInviteTenant';
@@ -34,7 +35,7 @@ import { InviteComposer, type InviteSendMode, type InviteSubmitOutcome } from '.
 import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
-import type { InviteViewerScope, TopicPermission } from './inviteModel';
+import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
 import { toCreateInviteRequest } from './inviteRequest';
 import { isBulkSelectable, type InviteTab } from './inviteRules';
@@ -100,6 +101,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // undefined = closed; `{}` = open without a preset agency.
     const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
     const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
+    const [roleSavingIds, setRoleSavingIds] = useState<number[]>([]);
+    // The list does not carry an account's added roles; remember the ones added here.
+    const [grantedRoles, setGrantedRoles] = useState<Record<number, InviteRole[]>>({});
     // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
     // (see loadInvites) and the board already filters it client-side by status
     // bucket, so the query joins that same client-side pipeline instead of
@@ -435,6 +439,83 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [loadInvites, t],
     );
 
+    const withRoleSaving = useCallback(async (inviteId: number, run: () => Promise<void>) => {
+        setRoleSavingIds((ids) => [...ids, inviteId]);
+        try {
+            await run();
+        } finally {
+            setRoleSavingIds((ids) => ids.filter((id) => id !== inviteId));
+        }
+    }, []);
+
+    const onRoleChange = useCallback(
+        (invite: AccountInviteDTO, role: InviteRole) =>
+            withRoleSaving(invite.id, async () => {
+                if (role === 'TENANT_ADMIN') return;
+                try {
+                    const updated = await changeAccountInviteRole(invite.id, { targetRole: role });
+                    // A role change can move other rows of the same new unit through the queue.
+                    await loadInvites();
+                    if (invite.inviteStatus !== 'EMAIL_SENT') {
+                        message.success(t('links.accountInvites.roleChanged', 'Rolle geändert.'));
+                        return;
+                    }
+                    // The link stays valid, but the mail already sent named the old role: offer, never force, a resend.
+                    const key = `role-changed-${invite.id}`;
+                    message.success({
+                        key,
+                        duration: 8,
+                        content: (
+                            <span className={styles.snackbar}>
+                                {t(
+                                    'links.accountInvites.roleChangedMailOutdated',
+                                    'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
+                                )}
+                                <button
+                                    type="button"
+                                    className={styles.snackbarAction}
+                                    onClick={() => {
+                                        message.destroy(key);
+                                        onResend(updated ?? invite);
+                                    }}
+                                >
+                                    {t('links.accountInvites.resendAfterRoleChange', 'Erneut senden')}
+                                </button>
+                            </span>
+                        ),
+                    });
+                } catch (error) {
+                    message.error((await explain(error, 'roleChange', role)).message);
+                }
+            }),
+        [explain, loadInvites, onResend, t, withRoleSaving],
+    );
+
+    const onRoleAdd = useCallback(
+        (invite: AccountInviteDTO, role: InviteRole) =>
+            withRoleSaving(invite.id, async () => {
+                if (role !== 'AGENCY_ADMIN' || !invite.provisionedUserId) return;
+                const markGranted = () =>
+                    setGrantedRoles((current) => ({
+                        ...current,
+                        [invite.id]: [...(current[invite.id] ?? []), role],
+                    }));
+                try {
+                    await addConsultantRole(invite.provisionedUserId, {
+                        role,
+                        agencyId: invite.agencyId ?? undefined,
+                    });
+                    markGranted();
+                    message.success(t('links.accountInvites.roleAdded', '„auch BST-Admin“ hinzugefügt.'));
+                } catch (error) {
+                    const explained = await explain(error, 'roleAdd', role);
+                    if (explained.reason === 'ROLE_ALREADY_GRANTED') markGranted();
+                    message.error(explained.message);
+                }
+            }),
+        [explain, t, withRoleSaving],
+    );
+
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
     const composerRef = useRef<HTMLDivElement>(null);
@@ -516,6 +597,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onInviteCta={focusComposer}
                 onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                 topicPermissionSavingIds={topicSavingIds}
+                viewerScope={viewerScope}
+                onRoleChange={isTenantInvite ? undefined : onRoleChange}
+                onRoleAdd={isTenantInvite ? undefined : onRoleAdd}
+                roleSavingIds={roleSavingIds}
+                grantedRoles={grantedRoles}
             />
             {selfAssign && (
                 <SelfAssignDialog

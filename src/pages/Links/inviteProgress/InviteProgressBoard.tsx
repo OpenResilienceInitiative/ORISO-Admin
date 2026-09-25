@@ -3,10 +3,6 @@ import { useTranslation } from 'react-i18next';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import CheckIcon from '@mui/icons-material/Check';
-import { Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
 import classNames from 'classnames';
 import type {
     AccountInviteDTO,
@@ -32,19 +28,24 @@ import {
     TOPIC_PERMISSION_LABEL_KEYS,
     TOPIC_PERMISSION_SHORT_LABEL_KEYS,
     TOPIC_PERMISSIONS,
+    type InviteRole,
+    type InviteViewerScope,
     type TopicPermission,
 } from '../inviteModel';
+import { RoleChip } from './RoleChip';
+import { RowChipMenu } from './RowChipMenu';
 import {
     countLifecyclePhases,
-    deriveLifecyclePhase,
     derivePhases,
     isDraftInvite,
     formatRelativeTime,
+    formatStepTime,
     hasQueueProblem,
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
     isWaitingForUnit,
+    lifecycleOf,
     LIFECYCLE_PHASES,
     type LifecycleDetail,
     type LifecyclePhase,
@@ -53,6 +54,7 @@ import {
     PHASE_LABEL_FALLBACKS,
     phaseAwaitingLabelKey,
     phaseLabelKey,
+    phaseReachedAt,
 } from './derivePhases';
 import styles from './inviteProgressBoard.module.scss';
 
@@ -105,16 +107,28 @@ const DETAIL_ORDER: LifecycleDetail[] = [
     'EXPIRED',
     'REVOKED',
     'SUPERSEDED',
+    'LINK_EXPIRED',
     'DELIVERY_FAILED',
+    'PROVISIONING_FAILED',
     'NO_UNIT_ADMIN',
 ];
+
+const DETAIL_FALLBACK_LABELS: Record<Exclude<LifecycleDetail, AccountInviteStatus>, [key: string, fallback: string]> = {
+    DELIVERY_FAILED: ['links.inviteProgress.detail.deliveryFailed', 'Versand fehlgeschlagen'],
+    NO_UNIT_ADMIN: ['links.inviteProgress.queueProblem', 'Kein BST-Admin'],
+    LINK_EXPIRED: ['links.inviteProgress.detail.linkExpired', 'Link abgelaufen'],
+    PROVISIONING_FAILED: ['links.inviteProgress.detail.provisioningFailed', 'Kontoanlage fehlgeschlagen'],
+};
 
 /** The tile is the board's only filter; `null` shows everything. */
 type InviteFilter = LifecyclePhase | null;
 
 /** The single predicate behind both the rendered rows and the selection pruning. */
 const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter) =>
-    filter == null || deriveLifecyclePhase(invite).phase === filter;
+    filter == null || lifecycleOf(invite)?.phase === filter;
+
+const isInviteRole = (role: AccountInviteDTO['targetRole']): role is InviteRole =>
+    role === 'COUNSELLOR' || role === 'AGENCY_ADMIN' || role === 'TENANT_ADMIN';
 
 /** An invite still able to change can be resent/revoked (terminal states cannot). */
 const isActionable = (invite: AccountInviteDTO) =>
@@ -167,6 +181,16 @@ export interface InviteProgressBoardProps {
     onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
     /** Invite ids whose topic permission is being saved right now (the chip is disabled meanwhile). */
     topicPermissionSavingIds?: number[];
+    /** Who looks at the board: decides which roles the role chip may hand out. */
+    viewerScope?: InviteViewerScope;
+    /** Changes the role of an invite not accepted yet; without it those entries stay disabled. */
+    onRoleChange?: (invite: AccountInviteDTO, role: InviteRole) => void;
+    /** Adds a role to an existing account ("+ auch BST-Admin"). */
+    onRoleAdd?: (invite: AccountInviteDTO, role: InviteRole) => void;
+    /** Invite ids whose role is being saved right now. */
+    roleSavingIds?: number[];
+    /** Roles added to accepted accounts in this session, by invite id. */
+    grantedRoles?: Record<number, InviteRole[]>;
 }
 
 /** Per-row topic permission as a chip in the role chip's line; picking a level saves at once. */
@@ -185,74 +209,24 @@ const TopicPermissionChip = ({
     onChange: (next: TopicPermission) => void;
 }) => {
     const { t } = useTranslation();
-    const [open, setOpen] = useState(false);
     const title = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].title);
     const description = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].description);
     const short = t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
-    const label = t('links.inviteProgress.topicsChip', 'Themen: {{value}}', { value: short });
 
-    const items: MenuProps['items'] = TOPIC_PERMISSIONS.map((option) => ({
-        key: option,
-        label: (
-            <span className={styles.topicOption}>
-                <span className={styles.topicOptionCheck} aria-hidden>
-                    {option === value && <CheckIcon fontSize="inherit" />}
-                </span>
-                <span className={styles.topicOptionText}>
-                    <span className={styles.topicOptionTitle}>{title(option)}</span>
-                    <span className={styles.topicOptionDescription}>{description(option)}</span>
-                </span>
-            </span>
-        ),
-    }));
-
-    const chip = (
-        <button
-            type="button"
-            className={classNames(styles.topicChip, { [styles.topicChipOpen]: open })}
-            // aria-disabled instead of disabled: a disabled button swallows the
-            // hover and focus the tooltip needs to explain why it is locked.
-            aria-disabled={disabled || undefined}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-label={`${t('links.inviteProgress.topicsFor', 'Themen für {{name}}', {
-                name: displayName,
-            })}: ${short}`}
-        >
-            <span>{label}</span>
-            <ArrowDropDownIcon className={styles.topicChipIcon} aria-hidden />
-        </button>
-    );
-
-    // Dropdown and M3Tooltip both clone their child: the Dropdown gets a span, the tooltip the button.
     return (
-        <Dropdown
-            open={open && !disabled}
-            onOpenChange={(next) => setOpen(disabled ? false : next)}
-            trigger={['click']}
-            placement="bottomLeft"
-            // On a phone the chip sits mid-row: shift the menu back into the
-            // viewport instead of letting its right edge run off-screen.
-            align={{ overflow: { adjustX: 1, adjustY: 1, shiftX: true } }}
-            overlayClassName={styles.topicMenu}
-            menu={{
-                items,
-                selectedKeys: [value],
-                onClick: ({ key }) => {
-                    setOpen(false);
-                    if (key !== value) onChange(key as TopicPermission);
-                },
-            }}
-        >
-            <span className={styles.topicChipAnchor}>
-                <M3Tooltip
-                    portal
-                    text={disabled && disabledReason ? disabledReason : `${title(value)} – ${description(value)}`}
-                >
-                    {chip}
-                </M3Tooltip>
-            </span>
-        </Dropdown>
+        <RowChipMenu
+            label={t('links.inviteProgress.topicsChip', 'Themen: {{value}}', { value: short })}
+            ariaLabel={`${t('links.inviteProgress.topicsFor', 'Themen für {{name}}', { name: displayName })}: ${short}`}
+            tooltip={disabled && disabledReason ? disabledReason : `${title(value)} – ${description(value)}`}
+            disabled={disabled}
+            options={TOPIC_PERMISSIONS.map((option) => ({
+                key: option,
+                title: title(option),
+                description: description(option),
+                checked: option === value,
+            }))}
+            onSelect={(key) => onChange(key as TopicPermission)}
+        />
     );
 };
 
@@ -276,18 +250,21 @@ export const InviteProgressBoard = ({
     onInviteCta,
     onTopicPermissionChange,
     topicPermissionSavingIds = [],
+    viewerScope = 'platform',
+    onRoleChange,
+    onRoleAdd,
+    roleSavingIds = [],
+    grantedRoles = {},
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
     const [filter, setFilter] = useState<InviteFilter>(null);
     const [sort, setSort] = useState<DataTableSort | null>(null);
 
-    const detailLabel = (detail: LifecycleDetail) => {
-        if (detail === 'DELIVERY_FAILED')
-            return t('links.inviteProgress.detail.deliveryFailed', 'Versand fehlgeschlagen');
-        if (detail === 'NO_UNIT_ADMIN') return t('links.inviteProgress.queueProblem', 'Kein BST-Admin');
-        return t(`links.accountInvites.status.${detail}`, INVITE_STATUS_FALLBACK_LABELS[detail]);
-    };
+    const detailLabel = (detail: LifecycleDetail) =>
+        detail in DETAIL_FALLBACK_LABELS
+            ? t(...DETAIL_FALLBACK_LABELS[detail as keyof typeof DETAIL_FALLBACK_LABELS])
+            : t(`links.accountInvites.status.${detail}`, INVITE_STATUS_FALLBACK_LABELS[detail as AccountInviteStatus]);
     // "2 Draft · 1 Wartet": which raw statuses make up a tile's count.
     const detailBreakdown = (details: Partial<Record<LifecycleDetail, number>>) =>
         DETAIL_ORDER.filter((detail) => (details[detail] ?? 0) > 0)
@@ -376,6 +353,9 @@ export const InviteProgressBoard = ({
     useEffect(() => {
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
+
+    // Frank's dated 3/4-step tracker is the counsellor tab's; the Träger track keeps its six compact beads.
+    const datedTrack = targetRole !== 'TENANT_ADMIN';
 
     // A chip beside the role chip: a column pushed the actions out of 1440px, a select made rows taller.
     const showTopicPermission = targetRole !== 'TENANT_ADMIN';
@@ -494,35 +474,39 @@ export const InviteProgressBoard = ({
                     // A waiting invite without a unit admin was never mailed: its
                     // warning bead is the queue problem, not a delivery problem.
                     const queueProblem = hasQueueProblem(invite);
-                    const phases = derivePhases(invite).map((phase) => ({
-                        key: phase.key,
-                        state: phase.state,
-                        ...(queueProblem && phase.state === 'warning'
-                            ? {
-                                  stateLabel:
-                                      invite.waitingForUnit === 'TENANT'
-                                          ? t(
-                                                'links.inviteProgress.queueProblemTenantState',
-                                                'Kein Träger-Admin – Einladung wartet',
-                                            )
-                                          : t(
-                                                'links.inviteProgress.queueProblemState',
-                                                'Kein BST-Admin – Einladung wartet',
-                                            ),
-                                  stateHint: t(
-                                      'links.inviteProgress.queueProblemStateHint',
-                                      'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
-                                  ),
-                              }
-                            : {}),
-                        // A CURRENT phase is awaited, not reached: its label says
-                        // what the row waits FOR ("Wartet auf Registrierung")
-                        // instead of printing the reached-state word.
-                        label:
-                            phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
-                                ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
-                                : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
-                    }));
+                    const phases = derivePhases(invite).map((phase) => {
+                        const reachedAt = datedTrack ? phaseReachedAt(phase.key, invite) : null;
+                        return {
+                            key: phase.key,
+                            state: phase.state,
+                            ...(reachedAt ? { at: formatStepTime(reachedAt, locale) } : {}),
+                            ...(queueProblem && phase.state === 'warning'
+                                ? {
+                                      stateLabel:
+                                          invite.waitingForUnit === 'TENANT'
+                                              ? t(
+                                                    'links.inviteProgress.queueProblemTenantState',
+                                                    'Kein Träger-Admin – Einladung wartet',
+                                                )
+                                              : t(
+                                                    'links.inviteProgress.queueProblemState',
+                                                    'Kein BST-Admin – Einladung wartet',
+                                                ),
+                                      stateHint: t(
+                                          'links.inviteProgress.queueProblemStateHint',
+                                          'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
+                                      ),
+                                  }
+                                : {}),
+                            // A CURRENT phase is awaited, not reached: its label says
+                            // what the row waits FOR ("Wartet auf Registrierung")
+                            // instead of printing the reached-state word.
+                            label:
+                                phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
+                                    ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
+                                    : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
+                        };
+                    });
 
                     return (
                         <DataTableRow
@@ -546,9 +530,22 @@ export const InviteProgressBoard = ({
                                     <span className={styles.identityName}>{displayName}</span>
                                     {hasName && <span className={styles.identityEmail}>{invite.recipientEmail}</span>}
                                     <span className={styles.identityMeta}>
-                                        <span className={styles.roleChip}>
-                                            {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
-                                        </span>
+                                        {isInviteRole(invite.targetRole) ? (
+                                            <RoleChip
+                                                invite={invite}
+                                                displayName={displayName}
+                                                viewer={viewerScope}
+                                                tab={targetRole === 'TENANT_ADMIN' ? 'tenant' : 'counsellor'}
+                                                saving={roleSavingIds.includes(invite.id)}
+                                                grantedRoles={grantedRoles[invite.id]}
+                                                onChangeRole={onRoleChange && ((role) => onRoleChange(invite, role))}
+                                                onAddRole={onRoleAdd && ((role) => onRoleAdd(invite, role))}
+                                            />
+                                        ) : (
+                                            <span className={styles.roleChip}>
+                                                {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
+                                            </span>
+                                        )}
                                         {targetRole === 'TENANT_ADMIN' && invite.tenantId != null && (
                                             <span className={styles.idHint}>
                                                 {t('links.inviteProgress.tenantIdShort', 'Träger-ID {{id}}', {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
-import type { TopicPermission } from '../inviteModel';
+import type { InviteRole, TopicPermission } from '../inviteModel';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import { InviteProgressBoard } from './InviteProgressBoard';
 
@@ -34,10 +34,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// What the server sends for each status (ORISO-UserService#1260); special rows override it.
+const SERVER_PHASE: Record<AccountInviteDTO['inviteStatus'], NonNullable<AccountInviteDTO['progressPhase']>> = {
+    WAITING_FOR_UNIT: 'PREPARED',
+    DRAFT: 'PREPARED',
+    EMAIL_SENT: 'INVITED',
+    ACCEPTED: 'ACCOUNT_CREATED',
+    EXPIRED: 'NEEDS_ACTION',
+    REVOKED: 'CLOSED',
+    SUPERSEDED: 'CLOSED',
+};
+
 let nextId = 0;
 const tenantInvite = (overrides: Partial<AccountInviteDTO>): AccountInviteDTO => {
     nextId += 1;
     return {
+        progressPhase: SERVER_PHASE[overrides.inviteStatus ?? 'EMAIL_SENT'],
         id: nextId,
         targetRole: 'TENANT_ADMIN',
         tenantId: 20 + nextId,
@@ -117,6 +129,7 @@ const TENANT_INVITES: AccountInviteDTO[] = [
         lastName: 'Brandt',
         recipientEmail: 'postfach@beratung-erfurt.example.org',
         emailDeliveryStatus: 'FAILED',
+        progressPhase: 'NEEDS_ACTION',
         createDate: '2026-08-06T12:00:00Z',
     }),
     tenantInvite({
@@ -173,6 +186,7 @@ const COUNSELLOR_INVITES: AccountInviteDTO[] = [
         acceptedAt: '2026-08-02T10:00:00Z',
         provisioningStatus: 'COMPLETED',
         accessGateStatus: 'READY',
+        progressPhase: 'DONE',
         createDate: '2026-07-29T10:00:00Z',
     }),
     counsellorInvite({
@@ -347,6 +361,7 @@ const QUEUE_INVITES: AccountInviteDTO[] = [
         inviteStatus: 'WAITING_FOR_UNIT',
         waitingForUnit: 'AGENCY',
         queueProblem: 'NO_UNIT_ADMIN',
+        progressPhase: 'NEEDS_ACTION',
         emailDeliveryStatus: null,
         topicPermission: 'NONE',
     }),
@@ -500,4 +515,121 @@ export const QueueMobile: Story = {
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ canvasElement }) => expectTopicChipsInline(canvasElement),
+};
+
+/* Role chip and dated tracker (#1026, Frank 25 Sept; contract ORISO-UserService#1260). */
+const ROLE_INVITES: AccountInviteDTO[] = [
+    queueInvite({
+        firstName: 'Lena',
+        lastName: 'Vogt',
+        recipientEmail: 'lena.vogt@example.org',
+        agencyId: 12,
+        topicPermission: 'NONE',
+        sentAt: '2026-09-24T09:01:00Z',
+    }),
+    queueInvite({
+        firstName: 'Anke',
+        lastName: 'Roth',
+        recipientEmail: 'anke.roth@example.org',
+        agencyId: 12,
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-09-25T12:30:12Z',
+        provisionedUserId: 'c-anke',
+        topicPermission: 'SELECT_EXISTING',
+        // Waited for agency 12, which Oskar created on the 24th.
+        unitCreatedAt: '2026-09-24T09:00:00Z',
+        sentAt: '2026-09-24T09:01:00Z',
+        accountCreatedAt: '2026-09-25T12:30:12Z',
+    }),
+];
+
+const RoleBoard = ({
+    onRoleChange,
+    onRoleAdd,
+}: {
+    onRoleChange?: (invite: AccountInviteDTO, role: InviteRole) => void;
+    onRoleAdd?: (invite: AccountInviteDTO, role: InviteRole) => void;
+}) => (
+    <InviteProgressBoard
+        invites={ROLE_INVITES}
+        loading={false}
+        targetRole="COUNSELLOR"
+        viewerScope="tenant"
+        selectedIds={[]}
+        onSelectionChange={() => {}}
+        isRowSelectable={() => false}
+        onResend={() => {}}
+        onCopyLink={() => {}}
+        onRevoke={() => {}}
+        onTopicPermissionChange={() => {}}
+        onRoleChange={onRoleChange}
+        onRoleAdd={onRoleAdd}
+    />
+);
+
+const roleChipOf = (canvasElement: HTMLElement, name: string) =>
+    within(canvasElement).getByRole('button', { name: new RegExp(`^(Rolle von|Role of) ${name}`) });
+
+/**
+ * The role chip opens a menu like the topic chip. Before acceptance Berater:in and BST-Admin swap
+ * (Träger-Admin is disabled: it needs a new invite); after acceptance only „+ auch BST-Admin" is left,
+ * and removal points to the users area. Hover explains what the role means and what can change.
+ */
+export const RoleChipMenu: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: { onRoleChange: fn(), onRoleAdd: fn() },
+    render: (args) => <RoleBoard onRoleChange={args.onRoleChange} onRoleAdd={args.onRoleAdd} />,
+    play: async ({ canvasElement, args }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const lena = roleChipOf(canvasElement, 'Lena Vogt');
+
+        await userEvent.hover(lena);
+        const tooltip = await body.findByRole('tooltip');
+        await expect(tooltip).toHaveTextContent(/Berät Ratsuchende|Counsels advice seekers/);
+        await expect(tooltip).toHaveTextContent(/Noch nicht angenommen|Not accepted yet/);
+        await userEvent.unhover(lena);
+
+        await userEvent.click(lena);
+        const menu = await body.findByRole('menu');
+        const items = within(menu).getAllByRole('menuitem');
+        await expect(items).toHaveLength(3);
+        await expect(items[2]).toHaveAttribute('aria-disabled', 'true');
+        await expect(items[2]).toHaveTextContent(/widerrufen und neu einladen|revoke and invite again/);
+        await userEvent.click(within(menu).getByText(/^(BST-Admin|Agency admin)$/));
+        await expect(args.onRoleChange).toHaveBeenCalledWith(
+            expect.objectContaining({ recipientEmail: 'lena.vogt@example.org' }),
+            'AGENCY_ADMIN',
+        );
+
+        await userEvent.click(roleChipOf(canvasElement, 'Anke Roth'));
+        const accountMenu = await body.findByRole('menu');
+        await expect(within(accountMenu).getByRole('link')).toHaveAttribute('href', '/admin/users/consultants');
+        await userEvent.click(within(accountMenu).getByText(/^(\+ auch BST-Admin|\+ also Agency admin)$/));
+        await expect(args.onRoleAdd).toHaveBeenCalledWith(
+            expect.objectContaining({ recipientEmail: 'anke.roth@example.org' }),
+            'AGENCY_ADMIN',
+        );
+    },
+};
+
+/** Tracker: 4 dated steps when the invite waited for a new unit, otherwise 3; the full timestamp is in the tooltip. */
+export const DatedTracker: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => <RoleBoard />,
+    play: async ({ canvasElement }) => {
+        const steps = (email: string) => within(rowOf(canvasElement, email).getByRole('list')).getAllByRole('listitem');
+        await expect(steps('anke.roth@example.org')).toHaveLength(4);
+        await expect(steps('lena.vogt@example.org')).toHaveLength(3);
+
+        const [unit, invited, account] = steps('anke.roth@example.org');
+        await expect(unit).toHaveTextContent(/24\.09\., 11:00$/);
+        await expect(invited).toHaveTextContent(/24\.09\., 11:01$/);
+        await expect(account).toHaveTextContent(/25\.09\., 14:30$/);
+
+        const bead = account.querySelector<HTMLElement>('[tabindex="0"]') as HTMLElement;
+        await userEvent.hover(bead);
+        await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
+            '25.09.2026, 14:30:12',
+        );
+    },
 };

@@ -66,3 +66,96 @@ export const listedOnTab = (invite: AccountInviteDTO, tab: InviteTab, viewer: In
     // The backend scopes an agency admin's list; they act on counsellor invites only.
     return viewer !== 'agency' || invite.targetRole === 'COUNSELLOR';
 };
+
+/** Why a role-chip entry is off; the chip's tooltip and menu say it in words. */
+export type RoleLockReason =
+    | 'notInvitable'
+    | 'needsNewInvite'
+    | 'accountExists'
+    | 'accountPending'
+    | 'alreadyHasRole'
+    | 'inactive'
+    | 'foundsTenant';
+
+export interface RoleMenuEntry {
+    /** `change` replaces the invited role; `add` gives an existing account one more. */
+    action: 'change' | 'add';
+    role: InviteRole;
+    current: boolean;
+    disabledReason?: RoleLockReason;
+}
+
+export interface RoleMenu {
+    mode: 'change' | 'add' | 'locked';
+    entries: RoleMenuEntry[];
+    lockedReason?: RoleLockReason;
+    /** Taking a role away is done in the users area, not here. */
+    pointsToUsers: boolean;
+}
+
+const OPEN_STATUSES: ReadonlySet<AccountInviteDTO['inviteStatus']> = new Set([
+    'DRAFT',
+    'EMAIL_SENT',
+    'WAITING_FOR_UNIT',
+]);
+
+// The backend swaps only these two; a Träger-level role has its own placement and link (UserService#1260).
+const SWAPPABLE_ROLES: ReadonlySet<InviteRole> = new Set(['COUNSELLOR', 'AGENCY_ADMIN']);
+
+const lockAll = (entries: RoleMenuEntry[], reason: RoleLockReason): RoleMenu => ({
+    mode: 'locked',
+    lockedReason: reason,
+    entries: entries.map((entry) => ({ ...entry, disabledReason: reason })),
+    pointsToUsers: false,
+});
+
+/**
+ * The role chip's menu (Frank, 25 Sept). Before acceptance Berater:in and BST-Admin swap within what
+ * the viewer may invite; once the account exists only "+ auch BST-Admin" is left, and removal lives in
+ * the users area. Locked entries stay in the menu, disabled with their reason.
+ */
+export const roleMenuFor = (
+    invite: Pick<AccountInviteDTO, 'targetRole' | 'inviteStatus' | 'tenantIdAllocationMode' | 'provisionedUserId'>,
+    viewer: InviteViewerScope,
+    tab: InviteTab,
+    { grantedRoles = [] }: { grantedRoles?: InviteRole[] } = {},
+): RoleMenu => {
+    const allowed = invitableRoles(viewer, tab);
+    const tabRoles: InviteRole[] = tab === 'tenant' ? ['TENANT_ADMIN'] : ALL_ROLES;
+    const current = invite.targetRole as InviteRole;
+    const changeReason = (role: InviteRole): RoleLockReason | undefined => {
+        if (role === current) return undefined;
+        if (!allowed.includes(role)) return 'notInvitable';
+        return SWAPPABLE_ROLES.has(role) && SWAPPABLE_ROLES.has(current) ? undefined : 'needsNewInvite';
+    };
+    const changeEntries = tabRoles.map<RoleMenuEntry>((role) => {
+        const reason = changeReason(role);
+        return { action: 'change', role, current: role === current, ...(reason ? { disabledReason: reason } : {}) };
+    });
+
+    if (invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING') {
+        return lockAll(changeEntries, 'foundsTenant');
+    }
+    if (OPEN_STATUSES.has(invite.inviteStatus)) {
+        return { mode: 'change', entries: changeEntries, pointsToUsers: false };
+    }
+    if (invite.inviteStatus !== 'ACCEPTED') return lockAll(changeEntries, 'inactive');
+
+    let addReason: RoleLockReason | undefined;
+    if (invite.targetRole === 'AGENCY_ADMIN' || grantedRoles.includes('AGENCY_ADMIN')) addReason = 'alreadyHasRole';
+    else if (!allowed.includes('AGENCY_ADMIN') || invite.targetRole !== 'COUNSELLOR') addReason = 'notInvitable';
+    else if (!invite.provisionedUserId) addReason = 'accountPending';
+    return {
+        mode: 'add',
+        entries: [
+            {
+                action: 'add',
+                role: 'AGENCY_ADMIN',
+                current: false,
+                ...(addReason ? { disabledReason: addReason } : {}),
+            },
+            ...changeEntries.map((entry) => ({ ...entry, disabledReason: 'accountExists' as const })),
+        ],
+        pointsToUsers: true,
+    };
+};

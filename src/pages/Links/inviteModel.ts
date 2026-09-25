@@ -94,6 +94,27 @@ export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback:
         'links.selfAssign.conflict.alreadyExists',
         'Sie sind in dieser Beratungsstelle bereits in dieser Rolle eingetragen.',
     ],
+    // Role change and role addition (ORISO-UserService#1260).
+    INVITE_ALREADY_ACCEPTED: [
+        'links.accountInvites.conflict.inviteAlreadyAccepted',
+        'Das Konto besteht bereits: Die Einladung lässt sich nicht mehr ändern. Ergänzen Sie „auch BST-Admin“ oder ändern Sie Rollen im Bereich Benutzer.',
+    ],
+    INVITE_NOT_PENDING: [
+        'links.accountInvites.conflict.inviteNotPending',
+        'Die Einladung ist nicht mehr aktiv (abgelaufen, widerrufen oder ersetzt). Bitte neu einladen.',
+    ],
+    ROLE_CHANGE_NEEDS_NEW_INVITE: [
+        'links.accountInvites.conflict.roleChangeNeedsNewInvite',
+        'Träger-Admin hat einen eigenen Einladungsweg: Bitte die Einladung widerrufen und neu einladen.',
+    ],
+    ONLY_UNIT_ADMIN: [
+        'links.accountInvites.conflict.onlyUnitAdmin',
+        'Das ist die einzige BST-Admin-Einladung für diese neue Beratungsstelle. Laden Sie zuerst eine weitere BST-Admin ein, sonst warten die Berater:innen auf niemanden.',
+    ],
+    ROLE_ALREADY_GRANTED: [
+        'links.accountInvites.conflict.roleAlreadyGranted',
+        'Das Konto hat diese Rolle schon (oder ist bereits Träger- bzw. Plattform-Admin).',
+    ],
 };
 
 /** The explanation for a 409 `X-Reason`, or `undefined` for a reason this module does not know. */

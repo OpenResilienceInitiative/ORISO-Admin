@@ -9,6 +9,7 @@ import {
     isBulkSelectable,
     isValidEmail,
     listedOnTab,
+    roleMenuFor,
     SELF_ASSIGN_ROLES,
 } from './inviteRules';
 
@@ -89,5 +90,112 @@ describe('inviteRules', () => {
         [{ targetRole: 'ADVICE_SEEKER' }, 'counsellor', 'platform', false],
     ] as const)('lists %j on the %s tab for a %s viewer: %s', (patch, tab, viewer, listed) => {
         expect(listedOnTab(invite(patch as Partial<AccountInviteDTO>), tab, viewer)).toBe(listed);
+    });
+
+    describe('roleMenuFor (the role chip in the table)', () => {
+        const open = (patch: Partial<AccountInviteDTO> = {}) => invite({ inviteStatus: 'EMAIL_SENT', ...patch });
+        const accepted = (patch: Partial<AccountInviteDTO> = {}) =>
+            invite({
+                inviteStatus: 'ACCEPTED',
+                acceptedAt: '2026-09-20T10:00:00Z',
+                provisionedUserId: 'c-31',
+                ...patch,
+            });
+
+        it('swaps Berater:in and BST-Admin on an open invite; Träger-Admin needs a new invite', () => {
+            expect(roleMenuFor(open(), 'tenant', 'counsellor')).toEqual({
+                mode: 'change',
+                entries: [
+                    { action: 'change', role: 'COUNSELLOR', current: true },
+                    { action: 'change', role: 'AGENCY_ADMIN', current: false },
+                    { action: 'change', role: 'TENANT_ADMIN', current: false, disabledReason: 'needsNewInvite' },
+                ],
+                pointsToUsers: false,
+            });
+        });
+
+        it('keeps a Träger-Admin invite into an existing Träger where it is: other roles need a new invite', () => {
+            const { entries } = roleMenuFor(
+                open({ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }),
+                'platform',
+                'counsellor',
+            );
+            expect(entries.map((entry) => entry.disabledReason)).toEqual([
+                'needsNewInvite',
+                'needsNewInvite',
+                undefined,
+            ]);
+        });
+
+        it('treats drafts and invites waiting for a unit as open', () => {
+            expect(roleMenuFor(open({ inviteStatus: 'DRAFT' }), 'platform', 'counsellor').mode).toBe('change');
+            expect(roleMenuFor(open({ inviteStatus: 'WAITING_FOR_UNIT' }), 'platform', 'counsellor').mode).toBe(
+                'change',
+            );
+        });
+
+        it('shows the roles an agency admin may not hand out, disabled with the reason', () => {
+            expect(roleMenuFor(open(), 'agency', 'counsellor').entries).toEqual([
+                { action: 'change', role: 'COUNSELLOR', current: true },
+                { action: 'change', role: 'AGENCY_ADMIN', current: false, disabledReason: 'notInvitable' },
+                { action: 'change', role: 'TENANT_ADMIN', current: false, disabledReason: 'notInvitable' },
+            ]);
+        });
+
+        it('only adds "auch BST-Admin" once the account exists; removal points to the users area', () => {
+            expect(roleMenuFor(accepted(), 'tenant', 'counsellor')).toEqual({
+                mode: 'add',
+                entries: [
+                    { action: 'add', role: 'AGENCY_ADMIN', current: false },
+                    { action: 'change', role: 'COUNSELLOR', current: true, disabledReason: 'accountExists' },
+                    { action: 'change', role: 'AGENCY_ADMIN', current: false, disabledReason: 'accountExists' },
+                    { action: 'change', role: 'TENANT_ADMIN', current: false, disabledReason: 'accountExists' },
+                ],
+                pointsToUsers: true,
+            });
+        });
+
+        it('offers the added role disabled once the account already has it', () => {
+            expect(roleMenuFor(accepted({ targetRole: 'AGENCY_ADMIN' }), 'tenant', 'counsellor').entries[0]).toEqual({
+                action: 'add',
+                role: 'AGENCY_ADMIN',
+                current: false,
+                disabledReason: 'alreadyHasRole',
+            });
+            // Granted in this session: the list does not carry the account's roles.
+            expect(
+                roleMenuFor(accepted(), 'tenant', 'counsellor', { grantedRoles: ['AGENCY_ADMIN'] }).entries[0]
+                    .disabledReason,
+            ).toBe('alreadyHasRole');
+        });
+
+        it('keeps "auch BST-Admin" disabled for a viewer who may not hand it out', () => {
+            expect(roleMenuFor(accepted(), 'agency', 'counsellor').entries[0].disabledReason).toBe('notInvitable');
+        });
+
+        it('waits for the account before adding a role to it', () => {
+            expect(
+                roleMenuFor(accepted({ provisionedUserId: null }), 'tenant', 'counsellor').entries[0].disabledReason,
+            ).toBe('accountPending');
+        });
+
+        it('locks the chip of an inactive invite and of a Träger founder', () => {
+            const expired = roleMenuFor(open({ inviteStatus: 'EXPIRED' }), 'platform', 'counsellor');
+            expect(expired.mode).toBe('locked');
+            expect(expired.lockedReason).toBe('inactive');
+            expect(expired.entries.every((entry) => entry.disabledReason === 'inactive')).toBe(true);
+
+            const founder = roleMenuFor(
+                open({ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'AUTO' }),
+                'platform',
+                'tenant',
+            );
+            expect(founder).toEqual({
+                mode: 'locked',
+                lockedReason: 'foundsTenant',
+                entries: [{ action: 'change', role: 'TENANT_ADMIN', current: true, disabledReason: 'foundsTenant' }],
+                pointsToUsers: false,
+            });
+        });
     });
 });

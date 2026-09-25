@@ -12,7 +12,7 @@ type Key = [key: string, fallback: string];
 
 export interface InviteErrorContext {
     t: TFunction | ((key: string, fallback?: string, options?: Record<string, unknown>) => string);
-    action: 'create' | 'send' | 'resend' | 'selfAssign' | 'topicPermission';
+    action: 'create' | 'send' | 'resend' | 'selfAssign' | 'topicPermission' | 'roleChange' | 'roleAdd';
     /** Role of the invite, for the 403 fallback. */
     role?: AccountInviteTargetRole;
     /** Which id space a plain 409 on create collided in. */
@@ -40,6 +40,11 @@ const REASON_LABELS: Record<string, Key> = {
     UNIT_NOT_CREATED: ['links.inviteError.label.unitNotCreated', 'Beratungsstelle noch nicht angelegt'],
     SELF_ASSIGNMENT_ALREADY_EXISTS: ['links.inviteError.label.alreadyAssigned', 'Bereits eingetragen'],
     CONSULTANT_IDENTITY_ALREADY_GRANTED: ['links.inviteError.label.alreadyAssigned', 'Bereits eingetragen'],
+    INVITE_ALREADY_ACCEPTED: ['links.inviteError.label.alreadyAccepted', 'Bereits angenommen'],
+    INVITE_NOT_PENDING: ['links.inviteError.label.notPending', 'Nicht mehr aktiv'],
+    ROLE_CHANGE_NEEDS_NEW_INVITE: ['links.inviteError.label.needsNewInvite', 'Neue Einladung nötig'],
+    ONLY_UNIT_ADMIN: ['links.inviteError.label.onlyUnitAdmin', 'Einzige BST-Admin'],
+    ROLE_ALREADY_GRANTED: ['links.inviteError.label.roleAlreadyGranted', 'Rolle schon vorhanden'],
 };
 
 const SMTP_MESSAGES: Record<SmtpSendFailureDetail, Key> = {
@@ -74,9 +79,14 @@ const ACTION_FALLBACKS: Record<InviteErrorContext['action'], Key> = {
         'links.accountInvites.topicPermissionFailed',
         'Die Themen-Berechtigung konnte nicht geändert werden.',
     ],
+    roleChange: ['links.accountInvites.roleChangeFailed', 'Die Rolle konnte nicht geändert werden.'],
+    roleAdd: ['links.accountInvites.roleAddFailed', 'Die Rolle konnte nicht hinzugefügt werden.'],
 };
 
 const forbiddenFallback = ({ action, role }: InviteErrorContext): Key => {
+    if (action === 'roleChange' || action === 'roleAdd') {
+        return ['links.accountInvites.forbiddenRole', 'Ihre Rolle ist nicht berechtigt, diese Rolle zu vergeben.'];
+    }
     if (action === 'selfAssign') {
         return [
             'links.selfAssign.forbidden',
@@ -176,6 +186,16 @@ export const explainInviteError = async (
                           ]
                         : ACTION_FALLBACKS[context.action],
                 ),
+        };
+    }
+    if (status === 404 && context.action === 'roleAdd') {
+        return {
+            ...base,
+            label: say(['links.inviteError.label.notFound', 'Nicht gefunden']),
+            message: say([
+                'links.inviteError.accountNotFound',
+                'Dieses Konto gibt es nicht mehr oder es ist zum Löschen vorgemerkt.',
+            ]),
         };
     }
     if (status === 404) {

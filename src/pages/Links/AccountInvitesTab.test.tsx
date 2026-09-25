@@ -63,6 +63,8 @@ const mocks = vi.hoisted(() => ({
     revokeAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     updateAccountInviteTopicPermission: vi.fn(),
+    changeAccountInviteRole: vi.fn(),
+    addConsultantRole: vi.fn(),
     searchTenantData: vi.fn(),
     getAgencyDataById: vi.fn(),
     searchInviteAgencies: vi.fn(),
@@ -89,6 +91,11 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     // fetch would run under jsdom — which is a load-dependent hang, not an
     // honest failure. (Same omission #751 had; see the preview mock there.)
     previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
+}));
+
+vi.mock('../../api/accountInvites/inviteRoles', () => ({
+    changeAccountInviteRole: mocks.changeAccountInviteRole,
+    addConsultantRole: mocks.addConsultantRole,
 }));
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
@@ -1003,6 +1010,87 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         reject(new Error('network'));
         await waitFor(() => expect(chip).toHaveTextContent('Themen: Keine weiteren'));
         expect(await screen.findByText('Die Themen-Berechtigung konnte nicht geändert werden.')).toBeInTheDocument();
+    });
+
+    describe('role chip (ORISO-UserService#1260)', () => {
+        const sentRow = {
+            ...invite(5, 79, 'EMAIL_SENT'),
+            targetRole: 'COUNSELLOR',
+            firstName: 'Lena',
+            lastName: 'Vogt',
+            emailDeliveryStatus: 'SENT',
+            progressPhase: 'INVITED',
+        };
+        const acceptedRow = {
+            ...invite(6, 79, 'ACCEPTED'),
+            targetRole: 'COUNSELLOR',
+            firstName: 'Anke',
+            lastName: 'Roth',
+            agencyId: 12,
+            acceptedAt: '2026-08-02T10:00:00Z',
+            provisionedUserId: 'c-6',
+            progressPhase: 'ACCOUNT_CREATED',
+        };
+
+        beforeEach(() => {
+            mocks.superAdmin = true;
+        });
+
+        it('changes the role of a sent invite and offers to resend the mail that names the old role', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([sentRow]));
+            mocks.changeAccountInviteRole.mockResolvedValue({ ...sentRow, targetRole: 'AGENCY_ADMIN' });
+            mocks.resendAccountInvite.mockResolvedValue({ ...sentRow, id: 50 });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Lena Vogt/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('BST-Admin'));
+
+            await waitFor(() =>
+                expect(mocks.changeAccountInviteRole).toHaveBeenCalledWith(5, { targetRole: 'AGENCY_ADMIN' }),
+            );
+            expect(
+                await screen.findByText('Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.'),
+            ).toBeInTheDocument();
+            // No automatic resend: only the snackbar action sends the mail again.
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+            await user.click(screen.getByRole('button', { name: 'Erneut senden' }));
+            await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledWith(5, expect.anything()));
+        });
+
+        it('adds "auch BST-Admin" to an accepted counsellor in the agency of the invite', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([acceptedRow]));
+            mocks.addConsultantRole.mockResolvedValue({ consultantId: 'c-6', role: 'AGENCY_ADMIN', agencyIds: [12] });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Anke Roth/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('+ auch BST-Admin'));
+
+            await waitFor(() =>
+                expect(mocks.addConsultantRole).toHaveBeenCalledWith('c-6', { role: 'AGENCY_ADMIN', agencyId: 12 }),
+            );
+            expect(await screen.findByText('„auch BST-Admin“ hinzugefügt.')).toBeInTheDocument();
+            await waitFor(() =>
+                expect(screen.getByRole('button', { name: /^Rolle von Anke Roth/ })).toHaveTextContent(
+                    'Berater:in + BST-Admin',
+                ),
+            );
+        });
+
+        it('explains a refused role change in German', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([sentRow]));
+            mocks.changeAccountInviteRole.mockRejectedValue(
+                new Response(null, { status: 409, headers: { 'X-Reason': 'ONLY_UNIT_ADMIN' } }),
+            );
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Lena Vogt/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('BST-Admin'));
+
+            expect(await screen.findByText(/einzige BST-Admin-Einladung/)).toBeInTheDocument();
+        });
     });
 });
 
