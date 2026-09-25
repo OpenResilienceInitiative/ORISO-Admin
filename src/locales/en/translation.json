@@ -2176,7 +2176,7 @@
     "links.csvImport.target.existing": "Existing",
     "links.csvImport.target.new": "New",
     "links.csvImport.templateFromBar": "as in the bar",
-    "links.csvImport.topicPermissionOmitted": "empty = may pick further departments",
+    "links.csvImport.topicPermissionOmitted": "Empty CSV cell = may pick further departments",
     "links.csvImport.columnsHintV2": "Columns: e-mail, first name, name, tenant ID, target (neu), role, template — only the e-mail is required. Empty tenant IDs are assigned automatically; an empty template uses the one in the bar.",
     "links.csvImport.columnsHintAgencyV2": "Columns: e-mail, first name, name, agency ID, target (neu/bestehend), role, template, topics & departments (NONE/SELECT_EXISTING/CREATE or true/false) — only the e-mail is required. “bestehend” invites into the agency with that number; with “neu” a given number must be free, empty ones are assigned on create.",
     "links.composer.topics.none": "No further departments",

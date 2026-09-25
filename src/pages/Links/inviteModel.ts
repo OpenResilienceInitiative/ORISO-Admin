@@ -7,12 +7,13 @@ export type InviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN' | 'TENANT_ADMIN';
 // Beratungsstelle, and they may only invite counsellors.
 export type InviteViewerScope = 'platform' | 'tenant' | 'agency';
 
-// `NONE` (default): preselected departments only. `SELECT_EXISTING`: may add the
+// `NONE`: preselected departments only. `SELECT_EXISTING`: may add the
 // agency's existing departments. `CREATE`: may create new topics.
 export type TopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 export const TOPIC_PERMISSIONS: TopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];
-export const DEFAULT_TOPIC_PERMISSION: TopicPermission = 'NONE';
+// The invite bar's preselection only; an empty CSV cell is omitted and the server applies SELECT_EXISTING (Q32).
+export const BAR_DEFAULT_TOPIC_PERMISSION: TopicPermission = 'NONE';
 
 export const INVITE_ROLES: InviteRole[] = ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN'];
 

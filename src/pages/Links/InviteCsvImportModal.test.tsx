@@ -410,7 +410,9 @@ describe('InviteCsvImportModal', () => {
 
         it('says what an empty topic cell means', () => {
             renderAgency([row(2, 'anna@x.de')]);
-            expect(rowCells('anna@x.de').getByText('leer = Darf weitere Fachbereiche auswählen')).toBeInTheDocument();
+            expect(
+                rowCells('anna@x.de').getByText('Leere CSV-Zelle = Darf weitere Fachbereiche auswählen'),
+            ).toBeInTheDocument();
         });
 
         it('shows the new columns with readable values', () => {

@@ -32,7 +32,7 @@ import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_2
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import {
-    DEFAULT_TOPIC_PERMISSION,
+    BAR_DEFAULT_TOPIC_PERMISSION,
     ROLE_LABEL_KEYS,
     rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
@@ -318,7 +318,7 @@ export const InviteComposer = ({
     // Which select-type field's menu is open (opened directly from its pill).
     const [openSelect, setOpenSelect] = useState<CollapsibleKey | null>(null);
     const [topicPermission, setTopicPermission] = useState<TopicPermission>(
-        initialValues?.topicPermission ?? DEFAULT_TOPIC_PERMISSION,
+        initialValues?.topicPermission ?? BAR_DEFAULT_TOPIC_PERMISSION,
     );
 
     // Träger tab (#570): the Träger-ID is allocated, not guessed — visible Auto
