@@ -70,3 +70,60 @@
         transition: none;
     }
 }
+
+.rowText {
+    display: none;
+}
+
+/*
+ * Phone (#1026, Frank 25 Sept): the pill becomes a checklist row — label,
+ * value, ✓ at the end. The bar stacks, so the row takes the full width.
+ */
+@media (max-width: 599px) {
+    .slot {
+        flex: 1 1 100%;
+    }
+
+    .pill {
+        width: 100%;
+        height: auto;
+        min-height: 56px;
+        justify-content: flex-start;
+        padding: 8px 16px;
+        border-radius: 16px;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .label {
+        display: none;
+    }
+
+    .check {
+        order: 1;
+        margin-left: auto;
+    }
+
+    .rowText {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    .rowLabel {
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.4px;
+        line-height: 16px;
+        opacity: 0.8;
+    }
+
+    .rowValue {
+        overflow: hidden;
+        font-size: 16px;
+        font-weight: 400;
+        letter-spacing: 0.5px;
+        line-height: 24px;
+        overflow-wrap: anywhere;
+    }
+}

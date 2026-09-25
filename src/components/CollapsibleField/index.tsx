@@ -47,11 +47,15 @@ const settleRowScroll = (slot: HTMLElement) => {
     const scroller = horizontalScroller(slot);
     if (!scroller || scroller.scrollLeft === 0) return;
     const active = document.activeElement as HTMLElement | null;
+    // Focus on the row's scroll buttons means the admin is paging through it: keep the position.
+    if (active && active !== document.body && !scroller.contains(active)) return;
     const scrollerRect = scroller.getBoundingClientRect();
     let target = 0;
     if (active && scroller.contains(active)) {
         // Keep the focused control's right edge inside the visible band.
-        const activeRight = active.getBoundingClientRect().right - scrollerRect.left + scroller.scrollLeft;
+        // The whole field (a unit field is an input plus its controls), as the row's scroll buttons reveal it.
+        const field = active.closest('[data-field-key]') ?? active;
+        const activeRight = field.getBoundingClientRect().right - scrollerRect.left + scroller.scrollLeft;
         target = Math.max(0, activeRight - scroller.clientWidth + 8);
     }
     if (target < scroller.scrollLeft) scroller.scrollLeft = target;
@@ -63,7 +67,7 @@ const CheckGlyph = () => (
     </svg>
 );
 
-// A valid, blurred field collapses to a "✓ Label" pill so a full row fits a phone.
+// A valid, blurred field collapses to a "✓ Label" pill; below 600px it is a full-width checklist row instead.
 // The width animates via measured FLIP, since `auto` widths cannot be transitioned.
 export const CollapsibleField = ({
     label,
@@ -169,6 +173,11 @@ export const CollapsibleField = ({
                 >
                     <CheckGlyph />
                     <span className={styles.label}>{pillText ?? label}</span>
+                    {/* Phone checklist row (<600px): label and value side by side; CSS picks one of the two. */}
+                    <span className={styles.rowText}>
+                        <span className={styles.rowLabel}>{label}</span>
+                        {valueSummary && <span className={styles.rowValue}>{valueSummary}</span>}
+                    </span>
                 </button>
             )}
             {/* Hidden, not unmounted: input refs, caret and open requests must survive. */}

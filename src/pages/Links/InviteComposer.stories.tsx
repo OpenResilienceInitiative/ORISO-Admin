@@ -266,6 +266,14 @@ const PREFILLED = {
     agency: { id: 101, name: 'Caritas Suchtberatung Freiburg', topics: ['Sucht', 'Glücksspiel'] },
 };
 
+// Person and Träger done, the rest still open: the phone checklist mixes done rows and open fields.
+const PARTLY_FILLED_FOR_CHECKLIST = {
+    recipientEmail: PREFILLED.recipientEmail,
+    firstName: PREFILLED.firstName,
+    lastName: PREFILLED.lastName,
+    tenant: TENANTS[0],
+};
+
 /** Nothing filled: Träger and Beratungsstelle rest on "Neu"; sending stays off until e-mail and names are there. */
 export const Empty: Story = {
     play: async ({ canvasElement }) => {
@@ -308,8 +316,9 @@ export const RoleSelectKeepsValues: Story = {
 /** A row scrolled right gives the scroll back when fields collapse, so their pills stay visible. */
 export const RowScrollSettlesAfterCollapse: Story = {
     decorators: [
+        // 1000, not 900: the scroll buttons take 88px, and the focused Träger field must stay whole.
         (Story) => (
-            <div style={{ width: 900 }}>
+            <div style={{ width: 1000 }}>
                 <Story />
             </div>
         ),
@@ -332,6 +341,147 @@ export const RowScrollSettlesAfterCollapse: Story = {
                 scroller.getBoundingClientRect().left - 1,
             ),
         );
+    },
+};
+
+const SCROLL = {
+    start: /^(Nach links blättern|Scroll left)$/,
+    end: /^(Nach rechts blättern|Scroll right)$/,
+};
+
+const frameOf = (width: number) => {
+    const Frame: NonNullable<Meta<typeof InviteBar>['decorators']> = (Story) => (
+        <div style={{ width }}>
+            <Story />
+        </div>
+    );
+    return Frame;
+};
+
+const rowScroller = (canvasElement: HTMLElement) =>
+    canvasElement.querySelector<HTMLElement>('[class*="scroller"]') as HTMLElement;
+
+/**
+ * A row wider than its frame gets ‹ › buttons at both ends (Windows mice have no sideways scroll).
+ * Back is off at the start, forward is off at the end — disabled, never hidden.
+ */
+export const ScrollButtonsOnOverflow: Story = {
+    decorators: [frameOf(900)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        const back = await canvas.findByRole('button', { name: SCROLL.start });
+        const forward = canvas.getByRole('button', { name: SCROLL.end });
+        await expect(back).toBeDisabled();
+        await expect(forward).toBeEnabled();
+
+        await userEvent.click(forward);
+        await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(0));
+        await waitFor(() => expect(back).toBeEnabled());
+
+        // Keyboard: the button is a real button, Enter scrolls on.
+        forward.focus();
+        const beforeKey = scroller.scrollLeft;
+        await userEvent.keyboard('{Enter}');
+        await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(beforeKey + 1));
+
+        for (let press = 0; press < 12 && !(forward as HTMLButtonElement).disabled; press += 1) {
+            const before = scroller.scrollLeft;
+            // eslint-disable-next-line no-await-in-loop -- each press depends on where the last one landed
+            await userEvent.click(forward);
+            // eslint-disable-next-line no-await-in-loop
+            await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(before + 1));
+        }
+        await waitFor(() => expect(forward).toBeDisabled(), { timeout: 4000 });
+        await expect(forward).toBeVisible();
+        await expect(scroller.scrollLeft).toBeGreaterThanOrEqual(scroller.scrollWidth - scroller.clientWidth - 1);
+        // The send button, the row's last control, is whole at the end.
+        const send = canvas.getByRole('button', { name: SEND.createAndInvite });
+        await expect(send.getBoundingClientRect().right).toBeLessThanOrEqual(
+            scroller.getBoundingClientRect().right + 1,
+        );
+
+        await userEvent.click(back);
+        await waitFor(() => expect(forward).toBeEnabled());
+    },
+};
+
+/** Nothing to scroll: a row that fits shows no scroll buttons at all. */
+export const ScrollButtonsOnlyWhenOverflowing: Story = {
+    // A Träger admin has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
+    args: { initialValues: { ...PREFILLED, role: 'TENANT_ADMIN' } },
+    decorators: [frameOf(1400)],
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('button', { name: PILL.email });
+        const scroller = rowScroller(canvasElement);
+        await waitFor(() => expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1));
+        await expect(canvas.queryByRole('button', { name: SCROLL.start })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: SCROLL.end })).not.toBeInTheDocument();
+    },
+};
+
+/** Focus on a field outside the window scrolls the row until that whole field is visible. */
+export const FocusRevealsHiddenField: Story = {
+    decorators: [frameOf(900)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        // The Beratungsstelle field is a group (number input plus its mode controls): all of it must show.
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        const slot = agency.closest<HTMLElement>('[data-field-key]') as HTMLElement;
+        // Half of the field sticks out at the right edge — the case the browser's own focus scroll leaves alone.
+        const slotBox = slot.getBoundingClientRect();
+        const viewBox = scroller.getBoundingClientRect();
+        scroller.scrollLeft += slotBox.right - slotBox.width / 2 - viewBox.right;
+        await waitFor(() =>
+            expect(slot.getBoundingClientRect().right).toBeGreaterThan(scroller.getBoundingClientRect().right + 20),
+        );
+
+        agency.focus();
+        await waitFor(() => {
+            const box = slot.getBoundingClientRect();
+            const view = scroller.getBoundingClientRect();
+            expect(box.left).toBeGreaterThanOrEqual(view.left - 1);
+            expect(box.right).toBeLessThanOrEqual(view.right + 1);
+        });
+    },
+};
+
+/**
+ * Phone (390px): no sideways row. Each field is a checklist row — label, value and ✓ —
+ * and tapping a row opens that field in place, full width.
+ */
+export const ChecklistOnPhone: Story = {
+    args: { initialValues: PARTLY_FILLED_FOR_CHECKLIST },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        const rows = await Promise.all(
+            [PILL.email, PILL.firstName, PILL.lastName, PILL.tenant].map((pill) =>
+                canvas.findByRole('button', { name: pill }),
+            ),
+        );
+        const width = scroller.clientWidth;
+        rows.forEach((row) => expect(row.getBoundingClientRect().width).toBeGreaterThanOrEqual(width - 2));
+        const tops = rows.map((row) => row.getBoundingClientRect().top);
+        tops.slice(1).forEach((top, index) => expect(top).toBeGreaterThan(tops[index]));
+
+        // innerText skips hidden text: the row really shows label and value, and its ✓.
+        await expect(rows[0].innerText).toMatch(/E-Mail|E-mail/);
+        await expect(rows[0].innerText).toContain(PARTLY_FILLED_FOR_CHECKLIST.recipientEmail);
+        await expect(rows[3].innerText).toContain('Caritas Südbaden');
+        await expect(rows[0].querySelector('svg')).toBeVisible();
+
+        await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+        await expect(canvas.queryByRole('button', { name: SCROLL.end })).not.toBeInTheDocument();
+
+        await userEvent.click(rows[0]);
+        const input = await canvas.findByRole('textbox', { name: FIELD.email });
+        await waitFor(() => expect(input).toHaveFocus());
+        await waitFor(() => expect(input.getBoundingClientRect().width).toBeGreaterThanOrEqual(width - 2));
     },
 };
 

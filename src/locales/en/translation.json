@@ -1927,6 +1927,8 @@
     "globalSearch.collapse": "Collapse search",
     "globalSearch.toggle": "Open or close search",
     "globalSearch.submit": "Run search",
+    "globalSearch.scrollStart": "Scroll left",
+    "globalSearch.scrollEnd": "Scroll right",
     "globalSearch.moreOptions": "More options",
     "globalSearch.placeholder": "Search",
     "statistic.dashboard.text.currentlyInCounselling": "Currently in counselling",

@@ -113,6 +113,7 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
         <>
             <CollapsibleField
                 collapsed={draft.isCollapsed('email')}
+                fieldKey="email"
                 label={emailLabel}
                 valueSummary={email.value.trim()}
                 onExpand={() => draft.expand('email')}
@@ -147,6 +148,7 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
             </CollapsibleField>
             <CollapsibleField
                 collapsed={draft.isCollapsed('firstName')}
+                fieldKey="firstName"
                 label={firstNameLabel}
                 valueSummary={firstName.value.trim()}
                 onExpand={() => draft.expand('firstName')}
@@ -162,6 +164,7 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
             </CollapsibleField>
             <CollapsibleField
                 collapsed={draft.isCollapsed('lastName')}
+                fieldKey="lastName"
                 label={lastNameLabel}
                 valueSummary={lastName.value.trim()}
                 onExpand={() => draft.expand('lastName')}
@@ -188,6 +191,7 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
             />
             <CollapsibleField
                 collapsed={!tenant.locked && draft.isCollapsed('tenant')}
+                fieldKey="tenant"
                 label={tenantLabel}
                 valueSummary={tenant.label}
                 onExpand={() => draft.expand('tenant')}
@@ -205,6 +209,7 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
             {draft.fields.agency && (
                 <CollapsibleField
                     collapsed={!agency.locked && draft.isCollapsed('agency')}
+                    fieldKey="agency"
                     label={agencyLabel}
                     valueSummary={agency.label}
                     onExpand={() => draft.expand('agency')}

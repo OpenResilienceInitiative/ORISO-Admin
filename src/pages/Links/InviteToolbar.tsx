@@ -238,6 +238,8 @@ export const InviteToolbar = ({
         <div ref={rootRef} className={classNames(styles.composer, className)} onFocus={onFocus}>
             <GlobalSearchBar
                 leading={moreButton}
+                scrollButtons
+                stackOnPhone
                 searchPlaceholder={search?.placeholder}
                 // Enter resolves to the same handler: the list already filters as you type.
                 value={search ? search.query : undefined}

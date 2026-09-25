@@ -1926,6 +1926,8 @@
     "globalSearch.collapse": "Suche einklappen",
     "globalSearch.toggle": "Suche öffnen oder schließen",
     "globalSearch.submit": "Suche ausführen",
+    "globalSearch.scrollStart": "Nach links blättern",
+    "globalSearch.scrollEnd": "Nach rechts blättern",
     "globalSearch.moreOptions": "Weitere Optionen",
     "globalSearch.placeholder": "Suchen",
     "agency.postcode.minimum": "Die Postleitzahl muss aus 5 Ziffern bestehen.",

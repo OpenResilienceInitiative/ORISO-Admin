@@ -191,3 +191,23 @@
 .sendSlot {
     display: contents;
 }
+
+/* Phone checklist (#1026): an opened field fills its line like the row it replaced. */
+@media (max-width: 599px) {
+    .placeholderSlot {
+        flex: 1 1 100%;
+    }
+
+    .emailField,
+    .nameField,
+    .roleField,
+    .topicsField {
+        width: 100%;
+    }
+
+    /* The rounded group ends face neighbours that are now on other lines. */
+    .emailField,
+    .lastNameField {
+        --fli-radius: 4px;
+    }
+}
