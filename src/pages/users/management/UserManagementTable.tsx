@@ -13,7 +13,6 @@ import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -32,7 +31,8 @@ import decodeHTML from '../../../utils/decodeHTML';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
-import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
+import { mapSorterToApiField } from './useUserTableColumns';
+import { TenantTable } from './TenantTable';
 import { UserDataTable } from './UserDataTable';
 import {
     normalizeTenantAdminSortField,
@@ -51,7 +51,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;
     const config = USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants];
-    const isOrganizations = config.sectionKind === 'organizations';
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
@@ -71,7 +70,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
     const [search, setSearch] = useState('');
-    const [openRows, setOpenRows] = useState<string[]>([]);
     const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
@@ -90,7 +88,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             order: config.defaultSort.order,
             pageSize: 10,
         });
-        setOpenRows([]);
         setSearch('');
     }, [sectionId, config.defaultSort.field, config.defaultSort.order]);
 
@@ -157,10 +154,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         (!isTenants || isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING));
     const canEditOrDelete = can([PermissionAction.Update, PermissionAction.Delete], config.updateResource);
 
-    const onToggleRow = useCallback((id: string) => {
-        setOpenRows((current) => (current.includes(id) ? current.filter((rowId) => rowId !== id) : [...current, id]));
-    }, []);
-
     const onEditUser = useCallback(
         (record: CounselorData) => {
             navigate(`${config.editPathPrefix}/${record.id}`);
@@ -189,24 +182,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const onDeleteTenant = useCallback((record: TenantData) => {
         setTenantToDelete(record);
     }, []);
-
-    const columns = useUserTableColumns({
-        sectionId,
-        showTenant: showTenantColumn,
-        showSubdomain,
-        openRows,
-        onToggleRow,
-        onEditUser,
-        onDeleteUser,
-        onEditTenant: isTenants ? onEditTenant : undefined,
-        onDeleteTenant: isTenants ? onDeleteTenant : undefined,
-        canEditOrDelete,
-        mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
-        figmaTableHeader: figmaTableHeader && !isOrganizations,
-        fixActionsColumn: !isMobile,
-        sortBy: shownSortBy,
-        order: shownOrder,
-    }).filter((column) => column.key !== 'status' || config.showStatus);
 
     const updateSearch = useCallback((value: string) => {
         setTableState((state) => ({ ...state, current: 1 }));
@@ -255,15 +230,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setDeleteTenantAdmin(null);
         refetch();
     }, [refetch]);
-
-    const rowClassName = useCallback(
-        (record: CounselorData | TenantData) =>
-            classNames({
-                'counselorList__row--expanded':
-                    !isOrganizations && openRows.includes(String((record as CounselorData).id)),
-            }),
-        [isOrganizations, openRows],
-    );
 
     const pagination = useMemo(
         () => ({
@@ -435,18 +401,22 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 />
             )}
             {isTenants && (
-                <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
-                    <ResizeTable
-                        rowKey="id"
-                        loading={isLoading}
-                        columns={columns}
-                        dataSource={tableData}
-                        pagination={pagination}
-                        onChange={handleTableAction}
-                        rowClassName={isOrganizations ? undefined : rowClassName}
-                        locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
-                    />
-                </div>
+                <TenantTable
+                    rows={tenantsQuery.data?.data ?? []}
+                    loading={isLoading}
+                    pagination={pagination}
+                    onChange={handleTableAction}
+                    emptyTextKey={config.emptyTextKey}
+                    figmaTableHeader={figmaTableHeader}
+                    showSubdomain={showSubdomain}
+                    canEditOrDelete={canEditOrDelete}
+                    mainTenantSubdomain={settings.mainTenantSubdomainForSingleDomainMultitenancy}
+                    fixActionsColumn={!isMobile}
+                    sortBy={shownSortBy}
+                    order={shownOrder}
+                    onEdit={onEditTenant}
+                    onDelete={onDeleteTenant}
+                />
             )}
             {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
                 <DeleteUserModal

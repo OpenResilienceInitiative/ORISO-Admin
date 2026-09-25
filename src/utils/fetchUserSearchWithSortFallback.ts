@@ -1,4 +1,4 @@
-import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import {
     USER_TABLE_API_SAFE_ORDER,
     USER_TABLE_API_SAFE_SORT,
@@ -42,7 +42,7 @@ export const fetchUserSearchWithSortFallback = async ({
             url: `${url}&order=${sortDirection}&field=${sortField}`,
             method: FETCH_METHODS.GET,
             skipAuth: false,
-            responseHandling: [],
+            responseHandling: [FETCH_ERRORS.BAD_REQUEST],
         }).then((result: HalResponseList<CounselorData>) => removeEmbedded(result) as ResponseList<CounselorData>);
 
     try {
@@ -56,7 +56,9 @@ export const fetchUserSearchWithSortFallback = async ({
         }
         try {
             const safeList = await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
-            return { ...safeList, rejectedSort: { field, order: sortOrder } };
+            // Only a 400 means the server refused the sort; other failures get no notice.
+            const sortRefused = primaryError instanceof Error && primaryError.message === FETCH_ERRORS.BAD_REQUEST;
+            return sortRefused ? { ...safeList, rejectedSort: { field, order: sortOrder } } : safeList;
         } catch (fallbackError) {
             if (rethrowOnFailure) {
                 throw fallbackError;

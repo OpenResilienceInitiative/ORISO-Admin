@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useId, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -37,6 +37,7 @@ import { getVisibleColumns, USER_TABLE_CONFIGS } from './userTableConfigs';
 import {
     DATE_SORT_FIELD,
     displayName,
+    displayUsername,
     hasOtherIdentityFor,
     NAME_SORT_FIELD,
     nameFieldOf,
@@ -91,6 +92,8 @@ export const UserDataTable = ({
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const [openRows, setOpenRows] = useState<string[]>([]);
+    const tableId = useId();
+    const centresId = (row: CounselorData) => `${tableId}-centres-${row.id}`;
     const [pickedNameField, setPickedNameField] = useState<NameSortField>('lastname');
 
     const layout = useUserTableLayout();
@@ -187,7 +190,7 @@ export const UserDataTable = ({
                     <PersonCell
                         name={name}
                         email={row.email}
-                        username={row.username}
+                        username={row.username && displayUsername(row.username)}
                         alsoLabel={
                             has('hasOtherIdentity') && hasOtherIdentityFor(sectionId, row) ? identityLabel : undefined
                         }
@@ -284,8 +287,17 @@ export const UserDataTable = ({
                         {canExpand(row) && (
                             <IconButton
                                 icon={isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                ariaLabel={t('userTable.centres.of', 'Beratungsstellen von {{name}}', { name })}
+                                ariaLabel={
+                                    isOpen
+                                        ? t('userTable.centres.hide', 'Beratungsstellen von {{name}} ausblenden', {
+                                              name,
+                                          })
+                                        : t('userTable.centres.show', 'Beratungsstellen von {{name}} anzeigen', {
+                                              name,
+                                          })
+                                }
                                 ariaExpanded={isOpen}
+                                ariaControls={centresId(row)}
                                 onClick={() => toggleRow(row.id)}
                             />
                         )}
@@ -374,7 +386,7 @@ export const UserDataTable = ({
                 <DataTableRow
                     key={row.id}
                     expanded={openRows.includes(row.id)}
-                    expandedContent={<CentreList row={row} />}
+                    expandedContent={<CentreList row={row} id={centresId(row)} />}
                     expansionColSpan={columns.length}
                 >
                     {columns.map((column) => (

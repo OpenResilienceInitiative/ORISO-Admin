@@ -1,6 +1,7 @@
 import type { NameSortField } from '../../../components/UserTable/SortPill';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import type { CounselorData } from '../../../types/counselor';
+import { decodeUsername } from '../../../utils/encryptionHelpers';
 
 type Centre = CounselorData['agencies'][number];
 
@@ -23,6 +24,15 @@ export const sortColumnOf = (sortBy?: string): UserSortColumn | undefined => {
 };
 
 export const displayName = (row: CounselorData) => [row.firstname, row.lastname].filter(Boolean).join(' ');
+
+// Legacy rows may still hold the Base32 `enc.…` form; a broken one is shown raw.
+export const displayUsername = (username: string) => {
+    try {
+        return decodeUsername(username);
+    } catch {
+        return username;
+    }
+};
 
 // Topics are assigned per person; at a centre only those the centre offers apply.
 export const topicsAtCentre = (row: CounselorData, centre: Centre): string[] | undefined => {
