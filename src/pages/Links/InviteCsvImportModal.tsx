@@ -200,6 +200,14 @@ export const InviteCsvImportModal = ({
                 line,
             );
         }
+        // The backend cannot infer the Träger of a new Beratungsstelle, and this file has no Träger column.
+        if (!isTenantId && !ownTenantKnown && role !== 'TENANT_ADMIN' && row.target !== 'EXISTING') {
+            return t(
+                'links.csvImport.issue.newAgencyNeedsTenant',
+                'Eine neue Beratungsstelle braucht einen Träger. Ohne eigenen Träger laden Sie hier nur in bestehende Beratungsstellen ein (Ziel „bestehend“) (Zeile {{line}}).',
+                line,
+            );
+        }
         // A counsellor never founds a Beratungsstelle; "Neu" without a number could never match its BST-Admin row.
         if (!isTenantId && role === 'COUNSELLOR' && row.target !== 'EXISTING' && row.explicitId == null) {
             return t(
