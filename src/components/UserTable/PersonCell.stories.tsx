@@ -86,3 +86,26 @@ export const NarrowColumn: Story = {
         await expect(canvas.getByRole('button', { name: /E-Mail kopieren|Copy e-mail/ })).toBeVisible();
     },
 };
+
+/** In an auto-layout table the cell gives way (ellipsis) instead of widening its column. */
+export const InAutoTable: Story = {
+    args: NarrowColumn.args,
+    decorators: [
+        (Story) => (
+            <table style={{ width: 220, borderCollapse: 'collapse' }}>
+                <tbody>
+                    <tr>
+                        <td style={{ padding: 0 }}>
+                            <Story />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        ),
+    ],
+    play: async ({ canvas, canvasElement }) => {
+        const name = canvas.getByText('Dr. Maria-Theresia Huber-Oberndorfer');
+        await expect(canvasElement.querySelector('table')!.getBoundingClientRect().width).toBeLessThanOrEqual(220);
+        await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+    },
+};

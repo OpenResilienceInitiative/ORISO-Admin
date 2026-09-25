@@ -1,9 +1,11 @@
-/* Typography mirrors the invite list's identity cell. */
+/* Typography mirrors the invite list's identity cell. The 0 minimum lets an
+   auto-layout table column shrink the cell (ellipsis) instead of growing. */
+
 .person {
-    display: flex;
+    display: grid;
     min-width: 0;
-    flex-direction: column;
     gap: 2px;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .line {
