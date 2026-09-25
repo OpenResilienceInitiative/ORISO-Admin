@@ -75,7 +75,7 @@ export const SwitchOnSingleSelect: Story = {
         const canvas = within(canvasElement);
         const combobox = await canvas.findByRole('combobox', { name: /Themen/ });
         await waitFor(() => expect(combobox).toHaveValue('Allgemeine Sozialberatung'));
-        await expect(canvas.getByText(/genau einen Fachbereich/)).toBeVisible();
+        await expect(canvas.getByText(/nur ein Thema \(Fachbereich\) pro Beratungsstelle/)).toBeVisible();
         await pick(canvasElement, 'Schuldnerberatung');
         await expect(combobox).toHaveValue('Schuldnerberatung');
         await expect(canvas.queryByRole('button', { name: 'Allgemeine Sozialberatung' })).toBeNull();
@@ -92,7 +92,9 @@ export const SwitchOnLegacyMultiTopicAgency: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('alert')).toHaveTextContent(/2 Fachbereiche/);
+        await expect(await canvas.findByRole('alert')).toHaveTextContent(
+            /2 Themen\. .*nur ein Thema \(Fachbereich\) pro Beratungsstelle/,
+        );
         await expect(canvas.getByRole('button', { name: 'Allgemeine Sozialberatung' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Schuldnerberatung' })).toBeVisible();
         await userEvent.click(canvas.getByRole('combobox', { name: /Themen/ }));

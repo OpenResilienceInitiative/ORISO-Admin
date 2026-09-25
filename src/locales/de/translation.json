@@ -2203,7 +2203,8 @@
     "globalSettings.oneTopicPerAgency.title": "Fachbereiche",
     "globalSettings.oneTopicPerAgency.switch": "Eine Beratungsstelle hat genau einen Fachbereich",
     "globalSettings.oneTopicPerAgency.help": "Gilt für die ganze Plattform. Beratungsstellen, die schon mehrere Fachbereiche haben, behalten sie, können aber keinen weiteren hinzufügen.",
-    "agency.form.settings.oneTopicPerAgency.help": "Auf dieser Plattform hat jede Beratungsstelle genau einen Fachbereich.",
-    "agency.form.settings.oneTopicPerAgency.legacyNotice": "Diese Beratungsstelle hat noch {{count}} Fachbereiche. Auf dieser Plattform ist nur einer erlaubt: Sie können Fachbereiche entfernen, aber keinen hinzufügen.",
-    "message.error.ONE_TOPIC_PER_AGENCY": "Diese Plattform erlaubt nur einen Fachbereich pro Beratungsstelle."
+    "agency.form.settings.oneTopicPerAgency.help": "Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "Diese Beratungsstelle hat noch {{count}} Themen. Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt: Sie können Themen entfernen, aber keines hinzufügen.",
+    "message.error.ONE_TOPIC_PER_AGENCY": "Diese Plattform erlaubt nur ein Thema (Fachbereich) pro Beratungsstelle.",
+    "message.error.SETTINGS_UNAVAILABLE": "Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut."
 }

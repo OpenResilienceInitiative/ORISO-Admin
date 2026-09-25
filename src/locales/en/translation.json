@@ -2203,7 +2203,8 @@
     "globalSettings.oneTopicPerAgency.title": "Topics",
     "globalSettings.oneTopicPerAgency.switch": "One topic per counselling centre",
     "globalSettings.oneTopicPerAgency.help": "Applies to the whole platform. Counselling centres that already have several topics keep them but cannot add another.",
-    "agency.form.settings.oneTopicPerAgency.help": "On this platform every counselling centre has exactly one topic.",
-    "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one is allowed on this platform: you can remove topics but not add one.",
-    "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre."
+    "agency.form.settings.oneTopicPerAgency.help": "Only one topic per counselling centre is allowed on this platform.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one topic per counselling centre is allowed on this platform: you can remove topics but not add one.",
+    "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre.",
+    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment."
 }

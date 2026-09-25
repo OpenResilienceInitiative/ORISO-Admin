@@ -21,12 +21,12 @@ vi.mock('antd', () => ({ message: { error: messageError } }));
 // eslint-disable-next-line import/first
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, X_REASON } from '../fetchData';
 
-const saveAgency = () => {
+const saveAgency = (status = 409, reason = 'ONE_TOPIC_PER_AGENCY') => {
     vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
-            status: 409,
-            headers: { get: (name: string) => (name === 'X-Reason' ? 'ONE_TOPIC_PER_AGENCY' : null) },
+            status,
+            headers: { get: (name: string) => (name === 'X-Reason' ? reason : null) },
             json: async () => ({}),
         }),
     );
@@ -59,7 +59,7 @@ describe('agency save rejected by the one-topic-per-agency switch', () => {
         await expect(saveAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
         expect(messageError).toHaveBeenLastCalledWith(
             expect.objectContaining({
-                content: 'Diese Plattform erlaubt nur einen Fachbereich pro Beratungsstelle.',
+                content: 'Diese Plattform erlaubt nur ein Thema (Fachbereich) pro Beratungsstelle.',
             }),
         );
     });
@@ -69,6 +69,18 @@ describe('agency save rejected by the one-topic-per-agency switch', () => {
         await expect(saveAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
         expect(messageError).toHaveBeenLastCalledWith(
             expect.objectContaining({ content: 'This platform allows only one topic per counselling centre.' }),
+        );
+    });
+
+    // AgencyService#316 fails closed (503) when it cannot read the switch for a topic-adding save.
+    it('asks to try again when the server cannot read the switch', async () => {
+        await i18next.changeLanguage('de');
+        await expect(saveAgency(503, 'SETTINGS_UNAVAILABLE')).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                content:
+                    'Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut.',
+            }),
         );
     });
 });
