@@ -53,7 +53,9 @@ describe('SmtpSettings (write-only password, #730)', () => {
                 smtp: {
                     enabled: true,
                     host: 'smtp.tenant.org',
+                    port: 587,
                     username: 'tenant-user',
+                    from: 'tenant@example.org',
                     passwordSet: true,
                 },
             },
@@ -116,6 +118,31 @@ describe('SmtpSettings (write-only password, #730)', () => {
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
         const sent = mocks.mutate.mock.calls[0][0];
         expect(sent.settings.smtp.password).toBe('rotated-secret');
+    });
+
+    it('keeps platform SMTP values out of a tenant in platform mode', async () => {
+        mocks.tenantData.settings.smtp = { enabled: false, passwordSet: false };
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+        const sent = mocks.mutate.mock.calls[0][0];
+        expect(sent.settings.smtp).toMatchObject({ enabled: false, host: '', username: '', from: '', password: '' });
+        expect(JSON.stringify(sent.settings.smtp)).not.toContain('global.example.org');
+        expect(JSON.stringify(sent.settings.smtp)).not.toContain('global-user');
+    });
+
+    it('refuses to save an incomplete own-server configuration', async () => {
+        mocks.tenantData.settings.smtp = { enabled: true, host: 'smtp.tenant.org', passwordSet: false };
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        expect(await screen.findAllByText('tenants.appSettings.smtp.ownServerIncomplete')).not.toHaveLength(0);
+        expect(mocks.mutate).not.toHaveBeenCalled();
     });
 });
 

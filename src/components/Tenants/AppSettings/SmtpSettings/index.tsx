@@ -30,25 +30,11 @@ const DEFAULT_SMTP_SETTINGS = {
     },
 } as const;
 
-const isBlank = (value?: string | number | boolean | null) => value === undefined || value === null || value === '';
-
-const inheritString = (value: string | null | undefined, inheritedValue: string) =>
-    isBlank(value) ? inheritedValue : value;
+const isBlank = (value?: string | number | boolean | null) =>
+    value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
 
 const inheritBoolean = (value: boolean | null | undefined, inheritedValue: boolean) =>
     value === undefined || value === null ? inheritedValue : value;
-
-const inheritNumber = (value: number | null | undefined, inheritedValue: number) =>
-    value === undefined || value === null ? inheritedValue : value;
-
-const normalizeSmtpPort = (value: string | undefined) => {
-    if (isBlank(value)) {
-        return DEFAULT_SMTP_SETTINGS.smtp.port;
-    }
-
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : DEFAULT_SMTP_SETTINGS.smtp.port;
-};
 
 export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     const { t } = useTranslation();
@@ -68,34 +54,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         },
     });
     const systemEmailsAllowed = settings.globalFeatureSystemNotificationEmailsEnabled !== false;
-    const smtpAllowed = settings.globalSmtpEnabled !== false;
-    const inheritedSettings = useMemo(
-        () => ({
-            featureSystemNotificationEmailsEnabled:
-                settings.globalFeatureSystemNotificationEmailsEnabled ??
-                DEFAULT_SMTP_SETTINGS.featureSystemNotificationEmailsEnabled,
-            smtp: {
-                enabled: settings.globalSmtpEnabled ?? DEFAULT_SMTP_SETTINGS.smtp.enabled,
-                host: settings.globalSmtpHost ?? DEFAULT_SMTP_SETTINGS.smtp.host,
-                port: normalizeSmtpPort(settings.globalSmtpPort),
-                secure: settings.globalSmtpSecure ?? DEFAULT_SMTP_SETTINGS.smtp.secure,
-                username: settings.globalSmtpUsername ?? DEFAULT_SMTP_SETTINGS.smtp.username,
-                // the password is write-only (#730): no stored secret is ever inherited into the form
-                from: settings.globalSmtpFrom ?? DEFAULT_SMTP_SETTINGS.smtp.from,
-                emailThemeColor: settings.globalSmtpEmailThemeColor ?? DEFAULT_SMTP_SETTINGS.smtp.emailThemeColor,
-            },
-        }),
-        [
-            settings.globalFeatureSystemNotificationEmailsEnabled,
-            settings.globalSmtpEmailThemeColor,
-            settings.globalSmtpEnabled,
-            settings.globalSmtpFrom,
-            settings.globalSmtpHost,
-            settings.globalSmtpPort,
-            settings.globalSmtpSecure,
-            settings.globalSmtpUsername,
-        ],
-    );
+    const ownServerSelected = Form.useWatch(['settings', 'smtp', 'enabled'], form);
     const applyPlatformEmailRestrictions = useCallback(
         (formData) => ({
             ...formData,
@@ -104,13 +63,9 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 featureSystemNotificationEmailsEnabled: systemEmailsAllowed
                     ? formData?.settings?.featureSystemNotificationEmailsEnabled
                     : false,
-                smtp: {
-                    ...(formData?.settings?.smtp ?? {}),
-                    enabled: smtpAllowed ? formData?.settings?.smtp?.enabled : false,
-                },
             },
         }),
-        [smtpAllowed, systemEmailsAllowed],
+        [systemEmailsAllowed],
     );
     const tenantSmtpPasswordSet = useMemo(() => {
         const tenantSmtpSettings = data?.settings?.smtp ?? {};
@@ -126,47 +81,35 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
             ...data,
             settings: {
                 ...DEFAULT_SMTP_SETTINGS,
-                ...inheritedSettings,
                 ...tenantSettings,
                 featureSystemNotificationEmailsEnabled: inheritBoolean(
                     tenantSettings.featureSystemNotificationEmailsEnabled,
-                    inheritedSettings.featureSystemNotificationEmailsEnabled,
+                    settings.globalFeatureSystemNotificationEmailsEnabled ??
+                        DEFAULT_SMTP_SETTINGS.featureSystemNotificationEmailsEnabled,
                 ),
                 smtp: {
                     ...DEFAULT_SMTP_SETTINGS.smtp,
-                    ...inheritedSettings.smtp,
                     ...tenantSmtpSettings,
-                    enabled: inheritBoolean(tenantSmtpSettings.enabled, inheritedSettings.smtp.enabled),
-                    host: inheritString(tenantSmtpSettings.host, inheritedSettings.smtp.host),
-                    port: inheritNumber(tenantSmtpSettings.port, inheritedSettings.smtp.port),
-                    secure: inheritBoolean(tenantSmtpSettings.secure, inheritedSettings.smtp.secure),
-                    username: inheritString(tenantSmtpSettings.username, inheritedSettings.smtp.username),
+                    enabled: tenantSmtpSettings.enabled === true,
+                    host: tenantSmtpSettings.host ?? '',
+                    port: tenantSmtpSettings.port ?? DEFAULT_SMTP_SETTINGS.smtp.port,
+                    secure: tenantSmtpSettings.secure ?? false,
+                    username: tenantSmtpSettings.username ?? '',
                     // set-only semantics (#730): the field always starts empty; blank = keep stored password
                     password: '',
-                    from: inheritString(tenantSmtpSettings.from, inheritedSettings.smtp.from),
-                    emailThemeColor: inheritString(
-                        tenantSmtpSettings.emailThemeColor,
-                        inheritedSettings.smtp.emailThemeColor,
-                    ),
+                    from: tenantSmtpSettings.from ?? '',
+                    emailThemeColor: tenantSmtpSettings.emailThemeColor ?? DEFAULT_SMTP_SETTINGS.smtp.emailThemeColor,
                 },
             },
         });
-    }, [applyPlatformEmailRestrictions, data, inheritedSettings]);
+    }, [applyPlatformEmailRestrictions, data, settings.globalFeatureSystemNotificationEmailsEnabled]);
     const formKey = useMemo(
         () =>
             [
                 'smtp',
                 tenantId,
                 systemEmailsAllowed,
-                smtpAllowed,
-                inheritedSettings.featureSystemNotificationEmailsEnabled,
-                inheritedSettings.smtp.enabled,
-                inheritedSettings.smtp.host,
-                inheritedSettings.smtp.port,
-                inheritedSettings.smtp.secure,
-                inheritedSettings.smtp.username,
-                inheritedSettings.smtp.from,
-                inheritedSettings.smtp.emailThemeColor,
+                settings.globalFeatureSystemNotificationEmailsEnabled,
                 data?.settings?.featureSystemNotificationEmailsEnabled,
                 data?.settings?.smtp?.enabled,
                 data?.settings?.smtp?.host,
@@ -177,7 +120,13 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 data?.settings?.smtp?.from,
                 data?.settings?.smtp?.emailThemeColor,
             ].join('|'),
-        [data, inheritedSettings, smtpAllowed, systemEmailsAllowed, tenantId, tenantSmtpPasswordSet],
+        [
+            data,
+            settings.globalFeatureSystemNotificationEmailsEnabled,
+            systemEmailsAllowed,
+            tenantId,
+            tenantSmtpPasswordSet,
+        ],
     );
     const renderSwitchLabel = useCallback(
         (titleKey: string, descriptionKey?: string) => (
@@ -188,6 +137,14 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         ),
         [t],
     );
+    const ownServerRule = (acceptStoredPassword = false, port = false) => ({
+        validator: (_: unknown, value: string | number | undefined) =>
+            !form.getFieldValue(['settings', 'smtp', 'enabled']) ||
+            (!isBlank(value) && (!port || (Number(value) >= 1 && Number(value) <= 65535))) ||
+            (acceptStoredPassword && tenantSmtpPasswordSet)
+                ? Promise.resolve()
+                : Promise.reject(new Error(t('tenants.appSettings.smtp.ownServerIncomplete'))),
+    });
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -229,7 +186,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                     'tenants.appSettings.smtp.smtpToggle.description',
                                 )}
                                 name={['settings', 'smtp', 'enabled']}
-                                disabled={!smtpAllowed}
+                                
                                 switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
                             />
 
@@ -237,7 +194,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 label={t('tenants.appSettings.smtp.host')}
                                 name={['settings', 'smtp', 'host']}
                                 helpText={t('tenants.appSettings.smtp.host.helpText')}
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiNumberFormField
                                 label={t('tenants.appSettings.smtp.port')}
@@ -253,14 +210,14 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                         message: t('tenants.appSettings.smtp.port.invalid'),
                                     },
                                 ]}
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiFormField
                                 label={t('tenants.appSettings.smtp.username')}
                                 name={['settings', 'smtp', 'username']}
                                 helpText={t('tenants.appSettings.smtp.username.helpText')}
                                 autoComplete="off"
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiPasswordFormField
                                 label={t('tenants.appSettings.smtp.passwordNew')}
@@ -271,20 +228,20 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                         : 'tenants.appSettings.smtp.passwordNotSet',
                                 )}
                                 autoComplete="new-password"
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiFormField
                                 label={t('tenants.appSettings.smtp.from')}
                                 name={['settings', 'smtp', 'from']}
                                 helpText={t('tenants.appSettings.smtp.from.helpText')}
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiColorField
                                 className={styles.colorField}
                                 labelKey="tenants.appSettings.smtp.emailThemeColor"
                                 help="tenants.appSettings.smtp.emailThemeColor.helpText"
                                 name={['settings', 'smtp', 'emailThemeColor']}
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                             />
                             <MuiSwitchField
                                 className={styles.smtpSwitch}
@@ -293,7 +250,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                     'tenants.appSettings.smtp.secure.description',
                                 )}
                                 name={['settings', 'smtp', 'secure']}
-                                disabled={!smtpAllowed}
+                                disabled={!ownServerSelected}
                                 switchLabel={t('tenants.appSettings.smtp.secure')}
                             />
                         </div>
