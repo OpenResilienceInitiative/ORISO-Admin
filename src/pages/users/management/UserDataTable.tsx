@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import CheckIcon from '@mui/icons-material/Check';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -171,7 +170,6 @@ export const UserDataTable = ({
                   },
               ]
             : []),
-        ...(has('hasOtherIdentity') ? [{ key: 'hasOtherIdentity', label: identityLabel, width: 150 }] : []),
         {
             key: 'actions',
             label: '',
@@ -188,7 +186,16 @@ export const UserDataTable = ({
         const name = displayName(row);
         switch (key) {
             case 'name':
-                return <PersonCell name={name} email={row.email} />;
+                return (
+                    <PersonCell
+                        name={name}
+                        email={row.email}
+                        username={row.username}
+                        alsoLabel={
+                            has('hasOtherIdentity') && hasOtherIdentityFor(sectionId, row) ? identityLabel : undefined
+                        }
+                    />
+                );
             case 'tenant':
                 return row.tenantId ? <ScopeChip kind="tenant" id={row.tenantId} name={row.tenantName} /> : null;
             case 'subdomain':
@@ -219,12 +226,6 @@ export const UserDataTable = ({
                 const date = getLastUpdatedAt(row);
                 return date ? <RelativeTime value={date.toISOString()} /> : '—';
             }
-            case 'hasOtherIdentity':
-                return hasOtherIdentityFor(sectionId, row) ? (
-                    <span role="img" aria-label={identityLabel} data-testid="other-identity-checkmark">
-                        <CheckIcon className={styles.check} aria-hidden />
-                    </span>
-                ) : null;
             case 'actions': {
                 const isOpen = openRows.includes(row.id);
                 const pending = row.status === 'IN_DELETION';

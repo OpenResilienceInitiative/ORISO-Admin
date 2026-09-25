@@ -30,6 +30,7 @@ const CONSULTANTS: CounselorData[] = [
         tenantId: '1',
         tenantName: 'Demo-Mandant',
         updateDate: '2026-09-22T08:15:00',
+        otherIdentityTypes: ['TENANT_ADMIN'],
     },
     {
         id: 'c-2',
@@ -157,7 +158,14 @@ export const Error: Story = {
 const TENANT_ADMINS_ENDPOINT = '*/service/useradmin/tenantadmins/search';
 
 const TENANT_ADMINS: CounselorData[] = [
-    { ...CONSULTANTS[0], id: 'ta-1', tenantId: '3', tenantName: 'Caritas Hamburg', agencies: [] },
+    {
+        ...CONSULTANTS[0],
+        id: 'ta-1',
+        tenantId: '3',
+        tenantName: 'Caritas Hamburg',
+        agencies: [],
+        hasOtherIdentity: true,
+    },
     { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
 ];
 
@@ -265,6 +273,21 @@ const expectPeople = async (canvasElement: HTMLElement) => {
     await expect(within(canvasElement).getByText(/Beispiel/)).toBeVisible();
 };
 
+// Username and the "Auch …" mark live in the person cell; there is no separate column for them.
+const expectPersonCell = async (canvasElement: HTMLElement, alsoLabel?: string) => {
+    const row = await rowOf(canvasElement, 'Muster');
+    await expect(within(row).getByText('@amuster')).toBeVisible();
+    await expect(within(row).getByRole('button', { name: 'E-Mail kopieren' })).toBeVisible();
+    await expect(within(canvasElement).queryByRole('columnheader', { name: /^Auch / })).toBeNull();
+    if (alsoLabel) {
+        await expect(within(row).getByText(alsoLabel).parentElement).toBe(
+            within(row).getByText('Anna Muster').parentElement,
+        );
+    } else {
+        await expect(within(row).queryByText(/^Auch /)).toBeNull();
+    }
+};
+
 const expectEditGoesTo = async (canvasElement: HTMLElement, path: string) => {
     const [edit] = rowButtons(await rowOf(canvasElement, 'Muster'));
     await userEvent.click(edit);
@@ -299,6 +322,9 @@ export const ConsultantsTab: Story = {
             );
             await expect(canvas.getByRole('columnheader', { name: 'Status' })).not.toHaveAttribute('aria-sort');
         });
+        await step('person cell: @username, copy, "Auch Träger-Admin" next to the name', () =>
+            expectPersonCell(canvasElement, 'Auch Träger-Admin'),
+        );
         await step('"Einladen" leads to the Links section', async () => {
             await expect(canvas.getByRole('link', { name: /Einladen/ })).toHaveAttribute('href', '/admin/links');
         });
@@ -336,6 +362,7 @@ export const TenantAdminsTab: Story = {
     parameters: { msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))] } },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
+        await step('person cell with "Auch Berater*in"', () => expectPersonCell(canvasElement, 'Auch Berater*in'));
         await step('delete asks with the admin dialog', () =>
             expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
         );
@@ -354,6 +381,11 @@ export const PlatformAdminsTab: Story = {
     },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
+        await step('same person cell and status chips as the other tabs', async () => {
+            await expectPersonCell(canvasElement);
+            const row = await rowOf(canvasElement, 'Muster');
+            await expect(row.querySelector('[data-status] svg')).not.toBeNull();
+        });
         await step('delete asks with the admin dialog', () =>
             expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
         );
