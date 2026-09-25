@@ -14,7 +14,8 @@ import { TwoFactorCodeInvalidError } from '../../api/tenantOnboarding/TwoFactorC
  * not re-issue the setup material — the step then renders verify-only.
  */
 export interface TwoFactorStepData {
-    tenantId: number;
+    /** Unknown when a resumed invite names no Träger. */
+    tenantId?: number;
     twoFactor: { secret: string; qrCodeBase64: string | null } | null;
     /** True when the step was entered by resuming a consumed-but-2FA-pending link. */
     resumed: boolean;
@@ -43,7 +44,7 @@ export type TenantAdminOnboardingState =
     | { phase: 'organisation' }
     | { phase: 'account' }
     | { phase: 'two-factor'; result: TwoFactorStepData }
-    | { phase: 'done'; tenantId: number };
+    | { phase: 'done'; tenantId?: number };
 
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type TenantAdminOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
@@ -77,8 +78,8 @@ const FORWARDED_DPA: DpaAcceptanceData = {
 };
 
 /** The Träger the invite is about: the joined one or the reserved new one. */
-const invitedTenantId = (invite: TenantAdminOnboardingInviteDTO): number =>
-    (invite.joinsExistingTenant ? invite.tenantId : invite.reservedTenantId) ?? invite.tenantId ?? 0;
+const invitedTenantId = (invite: TenantAdminOnboardingInviteDTO): number | undefined =>
+    (invite.joinsExistingTenant ? invite.tenantId : invite.reservedTenantId) ?? invite.tenantId;
 
 export const useTenantAdminOnboardingFlow = (inviteToken: string, client: TenantAdminOnboardingClient) => {
     const [state, setState] = useState<TenantAdminOnboardingState>({ phase: 'loading' });

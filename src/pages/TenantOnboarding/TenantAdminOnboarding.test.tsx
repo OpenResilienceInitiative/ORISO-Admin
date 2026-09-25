@@ -536,6 +536,26 @@ describe('TenantAdminOnboarding — joining an existing Träger', () => {
         await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
         expect(await screen.findByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
     });
+
+    // A resumed invite without any tenant id must not claim "Träger 0".
+    it('shows no Träger number when the resumed invite carries none', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...JOIN_INVITE,
+                tenantId: undefined,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done-tenant-id')).not.toBeInTheDocument();
+        expect(screen.queryByText('0')).not.toBeInTheDocument();
+    });
 });
 
 /**
