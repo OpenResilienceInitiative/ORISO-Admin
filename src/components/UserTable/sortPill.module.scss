@@ -1,0 +1,38 @@
+/* Tonal pill, same surface as the table's header band. */
+.pill {
+    display: inline-flex;
+    height: 36px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 10px 0 14px;
+    border: 0;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    border-radius: 18px;
+    color: var(--m3-on-surface, #1b1b1c);
+    cursor: pointer;
+    font: 400 13px/16px var(--m3-body-font-family);
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.pill:hover {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, var(--admin-table-chip-surface, #e4e2e2));
+}
+
+.pill:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.prefix {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.value {
+    font-weight: 600;
+}
+
+.chevron {
+    width: 18px !important;
+    height: 18px !important;
+}
