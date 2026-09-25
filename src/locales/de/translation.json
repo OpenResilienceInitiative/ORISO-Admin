@@ -2176,6 +2176,7 @@
     "links.csvImport.target.existing": "Bestehend",
     "links.csvImport.target.new": "Neu",
     "links.csvImport.templateFromBar": "wie in der Leiste",
+    "links.csvImport.topicPermissionOmitted": "leer = Darf weitere Fachbereiche auswählen",
     "links.csvImport.columnsHintV2": "Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu), Rolle, Vorlage — nur E-Mail ist Pflicht. Leere Träger-IDs werden automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.",
     "links.csvImport.columnsHintAgencyV2": "Spalten: E-Mail, Vorname, Name, Beratungsstellen-ID, Ziel (neu/bestehend), Rolle, Vorlage, Themen & Fachbereiche (NONE/SELECT_EXISTING/CREATE oder true/false) — nur E-Mail ist Pflicht. „bestehend“ lädt in die Beratungsstelle mit dieser Nummer ein; bei „neu“ muss eine angegebene Nummer frei sein, leere werden beim Anlegen vergeben.",
     "links.composer.topics.none": "Keine weiteren Fachbereiche",

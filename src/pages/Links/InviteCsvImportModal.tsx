@@ -15,7 +15,6 @@ import {
     type ParseInviteCsvResult,
 } from './csv/parseInviteCsv';
 import {
-    DEFAULT_TOPIC_PERMISSION,
     ROLE_LABEL_KEYS,
     rolesForViewer,
     TOPIC_PERMISSION_LABEL_KEYS,
@@ -268,8 +267,7 @@ export const InviteCsvImportModal = ({
         const assigned = idByLine;
         let created = 0;
         let failed = 0;
-        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
-        // the first one so the admin gets the cause once, on top of the row states.
+        // The first 403's reason is said once, on top of the row states.
         let firstForbidden: Response | null = null;
 
         // Sequential on purpose: one POST per invite keeps failures attributable per
@@ -289,8 +287,8 @@ export const InviteCsvImportModal = ({
                     target: row.target ?? 'NEW',
                     role,
                     templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
-                    topicPermission:
-                        role === 'COUNSELLOR' ? row.topicPermission ?? DEFAULT_TOPIC_PERMISSION : undefined,
+                    // An empty cell is omitted: the server applies its own default.
+                    topicPermission: role === 'COUNSELLOR' ? row.topicPermission : undefined,
                 });
                 created += 1;
                 patchRow(row.line, { state: 'created', explicitId: id });
@@ -309,22 +307,6 @@ export const InviteCsvImportModal = ({
                         conflict &&
                         (error as Response).headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE,
                 });
-                if (forbidden) {
-                    // A role-level 403 applies to EVERY row — the remaining requests
-                    // would all fail the same way, so mark them forbidden and stop
-                    // instead of hammering the backend once per row.
-                    const remaining = pendingRows.slice(i + 1);
-                    failed += remaining.length;
-                    remaining.forEach((skipped) =>
-                        patchRow(skipped.line, {
-                            state: 'failed',
-                            conflict: false,
-                            emailTaken: false,
-                            forbidden: true,
-                        }),
-                    );
-                    break;
-                }
             }
         }
 
@@ -537,7 +519,20 @@ export const InviteCsvImportModal = ({
             width: 180,
             render: (_: unknown, row: ImportRow) => {
                 if (row.rejectedReason || (row.role ?? tabRole) !== 'COUNSELLOR') return '—';
-                const value = row.topicPermission ?? DEFAULT_TOPIC_PERMISSION;
+                const value = row.topicPermission;
+                if (value == null) {
+                    // Omitted on purpose: the server gives an empty cell SELECT_EXISTING.
+                    return (
+                        <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS.SELECT_EXISTING.description)}>
+                            <span className={styles.autoId}>
+                                {t(
+                                    'links.csvImport.topicPermissionOmitted',
+                                    'leer = Darf weitere Fachbereiche auswählen',
+                                )}
+                            </span>
+                        </Tooltip>
+                    );
+                }
                 return (
                     <Tooltip title={t(...TOPIC_PERMISSION_LABEL_KEYS[value].description)}>
                         <span>{t(...TOPIC_PERMISSION_LABEL_KEYS[value].title)}</span>

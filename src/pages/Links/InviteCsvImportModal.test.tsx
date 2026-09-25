@@ -154,9 +154,9 @@ describe('InviteCsvImportModal', () => {
     });
 
     /*
-     * A 403 fails every row for the same ROLE reason (UserService#1006). The run
-     * must say so once — preferring the backend's own message — instead of
-     * reducing it to anonymous "Fehlgeschlagen" rows.
+     * A 403 carries the backend's reason (UserService#1006). The run says it
+     * once — preferring the backend's own message — instead of reducing it to
+     * anonymous "Fehlgeschlagen" rows.
      */
     it('surfaces the backend role message once when rows fail with 403', async () => {
         createInvite.mockImplementation(async () => {
@@ -178,9 +178,7 @@ describe('InviteCsvImportModal', () => {
 
         expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
         expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        // The role rejection applies to every row — after the first 403 the run must
-        // NOT keep firing doomed requests; the rest is marked forbidden client-side.
-        expect(createInvite).toHaveBeenCalledTimes(1);
+        expect(createInvite).toHaveBeenCalledTimes(2);
         const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
         expect(roleToasts).toHaveLength(1);
         // The count summary stays — the cause toast comes ON TOP of it.
@@ -212,13 +210,13 @@ describe('InviteCsvImportModal', () => {
         expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('stops calling createInvite after the first role-level 403 and marks the rest forbidden', async () => {
+    // A row may name a unit the admin does not own, so a 403 is that row's failure, not the batch's.
+    it('keeps sending after a 403 on one row and marks only that row forbidden', async () => {
         createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
-            if (row.recipientEmail === 'a@example.org') {
-                return;
+            if (row.recipientEmail === 'b@example.org') {
+                // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
+                throw new Response(null, { status: 403 });
             }
-            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
-            throw new Response(null, { status: 403 });
         });
         renderModal(
             parseResultOf({
@@ -232,13 +230,15 @@ describe('InviteCsvImportModal', () => {
 
         await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
 
-        expect(await rowCells('a@example.org').findByText('Angelegt')).toBeInTheDocument();
-        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        // Row c was never attempted — the 403 on row b already condemned it.
-        expect(await rowCells('c@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        expect(createInvite).toHaveBeenCalledTimes(2);
-        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
-        // The successful row still refreshes the table; the modal stays open for the report.
+        expect(await screen.findByText('2 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite.mock.calls.map(([row]) => row.recipientEmail)).toEqual([
+            'a@example.org',
+            'b@example.org',
+            'c@example.org',
+        ]);
+        expect(rowCells('a@example.org').getByText('Angelegt')).toBeInTheDocument();
+        expect(rowCells('b@example.org').getByText('Nicht berechtigt')).toBeInTheDocument();
+        expect(rowCells('c@example.org').getByText('Angelegt')).toBeInTheDocument();
         expect(onCreated).toHaveBeenCalledTimes(1);
         expect(onClose).not.toHaveBeenCalled();
     });
@@ -383,7 +383,7 @@ describe('InviteCsvImportModal', () => {
                 ...props,
             });
 
-        it('sends an existing agency, the row template and the topic permission; empty cells use the defaults', async () => {
+        it('sends an existing agency, the row template and the topic permission; an empty topic cell is omitted', async () => {
             const user = userEvent.setup();
             renderAgency([
                 row(2, 'anna@x.de', { id: 42, target: 'EXISTING', template: 'standard', topicPermission: 'CREATE' }),
@@ -404,8 +404,13 @@ describe('InviteCsvImportModal', () => {
                 target: 'NEW',
                 role: 'COUNSELLOR',
                 templateId: undefined,
-                topicPermission: 'NONE',
             });
+            expect(createInvite.mock.calls[1][0]).not.toHaveProperty('topicPermission', expect.anything());
+        });
+
+        it('says what an empty topic cell means', () => {
+            renderAgency([row(2, 'anna@x.de')]);
+            expect(rowCells('anna@x.de').getByText('leer = Darf weitere Fachbereiche auswählen')).toBeInTheDocument();
         });
 
         it('shows the new columns with readable values', () => {

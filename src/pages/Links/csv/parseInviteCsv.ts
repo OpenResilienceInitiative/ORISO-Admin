@@ -148,7 +148,7 @@ export interface ParsedInviteRow {
     role?: InviteRole;
     /** "Vorlage" as written (name or number); the caller resolves it against its templates. */
     template?: string;
-    /** "Themen & Fachbereiche"; `undefined` = the default (NONE). */
+    /** "Themen & Fachbereiche"; `undefined` = omitted, the server applies SELECT_EXISTING (Q32). */
     topicPermission?: TopicPermission;
     /** First and/or last name empty — still importable (owner decision), just flagged. */
     missingName: boolean;
