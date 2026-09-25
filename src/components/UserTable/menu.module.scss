@@ -1,0 +1,42 @@
+/* Shared by RowMenu and SortPill: M3 menu surface on MUI's Menu. */
+.paper {
+    min-width: 200px;
+    background: var(--m3-surface-container-lowest, #fcf9f9) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 16px rgb(0 0 0 / 14%), 0 1px 3px rgb(0 0 0 / 20%) !important;
+}
+
+.item {
+    min-height: 44px !important;
+    color: var(--m3-on-surface, #1b1b1c) !important;
+    font: 400 14px/20px var(--m3-body-font-family) !important;
+    gap: 12px;
+}
+
+.item:global(.Mui-focusVisible) {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: -2px;
+}
+
+.error {
+    color: var(--m3-error, #b1005e) !important;
+}
+
+.icon {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.check {
+    width: 20px;
+    height: 20px;
+    color: var(--m3-primary, #a5000a);
+}
