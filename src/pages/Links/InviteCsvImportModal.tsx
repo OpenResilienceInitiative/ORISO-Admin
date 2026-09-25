@@ -21,7 +21,7 @@ import {
 } from './inviteModel';
 import { explainInviteError } from './explainInviteError';
 import type { InviteCsvCreateRow } from './inviteRequest';
-import { csvSendOrder, invitableRoles } from './inviteRules';
+import { csvSendOrder, invitableRoles, OPEN_STATUSES } from './inviteRules';
 import styles from './inviteCsvImport.module.scss';
 
 export type { InviteCsvCreateRow } from './inviteRequest';
@@ -256,9 +256,14 @@ export const InviteCsvImportModal = ({
             : new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
 
     // The reloaded list tells whether a 502 row's invite exists; a retry would then only collide with it.
+    // Only an open invite can be this run's: an expired or revoked one for the same address is history.
     const storedInvite = (row: ImportRow) =>
         row.state === 'failed' && row.mayBeStored
-            ? invites?.find((invite) => invite.recipientEmail.trim().toLowerCase() === row.email.trim().toLowerCase())
+            ? invites?.find(
+                  (invite) =>
+                      OPEN_STATUSES.has(invite.inviteStatus) &&
+                      invite.recipientEmail.trim().toLowerCase() === row.email.trim().toLowerCase(),
+              )
             : undefined;
 
     const pendingRows = importableRows.filter(
