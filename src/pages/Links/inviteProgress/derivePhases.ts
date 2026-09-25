@@ -2,7 +2,9 @@ import type {
     AccountInviteDTO,
     AccountInviteStatus,
     AccountInviteTargetRole,
+    InviteProgressPhase,
 } from '../../../api/accountInvites/accountInvites';
+import { parseBackendInstant } from '../../../utils/backendInstant';
 
 /**
  * Pure derivation of the onboarding phase stepper (Links page, invite tracking).
@@ -66,7 +68,7 @@ export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
     dpaForwarded: 'Vertragsunterlagen weitergeleitet',
     dpaSigned: 'Vertrag unterschrieben',
     accountCreated: 'Konto angelegt',
-    completed: 'Abgeschlossen',
+    completed: 'Fertig',
 };
 
 /**
@@ -107,6 +109,8 @@ type PhaseFacts = Pick<
     | 'dpaSignedAt'
     | 'waitingForUnit'
     | 'queueProblem'
+    | 'unitCreatedAt'
+    | 'tenantIdAllocationMode'
 >;
 
 export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
@@ -137,6 +141,9 @@ const hasAccepted = (invite: PhaseFacts) => invite.acceptedAt != null || invite.
 const isPhaseProven = (key: PhaseKey, invite: PhaseFacts): boolean => {
     const ready = invite.accessGateStatus === 'READY';
     switch (key) {
+        case 'agencyUnitCreated':
+        case 'tenantUnitCreated':
+            return invite.unitCreatedAt != null;
         case 'invited':
             // A bounced e-mail un-proves the send: EMAIL_SENT plus FAILED means
             // nobody was reached — the bead becomes a warning, not a done.
@@ -181,11 +188,17 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
  * where a forward actually happened (#725 "when applicable") — a self-signing
  * tenant never sees a permanently-idle forward bead.
  */
+// A released invite no longer says what it waited for: a counsellor waits for its agency, an admin for its Träger.
+const unitStepOf = (invite: PhaseFacts): PhaseKey => {
+    const unit = invite.waitingForUnit ?? (invite.targetRole === 'COUNSELLOR' ? 'AGENCY' : 'TENANT');
+    return unit === 'TENANT' ? 'tenantUnitCreated' : 'agencyUnitCreated';
+};
+
 const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
     const roleKeys = phaseKeysForRole(invite.targetRole);
-    const keys: readonly PhaseKey[] = isWaitingForUnit(invite)
-        ? [invite.waitingForUnit === 'TENANT' ? 'tenantUnitCreated' : 'agencyUnitCreated', ...roleKeys]
-        : roleKeys;
+    // Frank, 25 Sept: an invite that waited for a new unit keeps that step, dated, after its release.
+    const waited = isWaitingForUnit(invite) || invite.unitCreatedAt != null;
+    const keys: readonly PhaseKey[] = waited ? [unitStepOf(invite), ...roleKeys] : roleKeys;
     if (invite.targetRole !== 'TENANT_ADMIN' || invite.dpaForwardedAt == null) {
         return keys;
     }
@@ -241,6 +254,49 @@ export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
     });
 };
 
+type ReachedFacts = Pick<
+    AccountInviteDTO,
+    'unitCreatedAt' | 'sentAt' | 'accountCreatedAt' | 'completedAt' | 'dpaForwardedAt' | 'dpaSignedAt'
+>;
+
+/** When a step was reached, from the server's step timestamps (ORISO-UserService#1260); null when unknown. */
+export const phaseReachedAt = (key: PhaseKey, invite: ReachedFacts): string | null => {
+    switch (key) {
+        case 'agencyUnitCreated':
+        case 'tenantUnitCreated':
+            return invite.unitCreatedAt ?? null;
+        case 'invited':
+            return invite.sentAt ?? null;
+        case 'registered':
+        case 'accountCreated':
+            return invite.accountCreatedAt ?? null;
+        case 'dpaForwarded':
+            return invite.dpaForwardedAt ?? null;
+        case 'dpaSigned':
+            return invite.dpaSignedAt ?? null;
+        case 'completed':
+            return invite.completedAt ?? null;
+        default:
+            return null;
+    }
+};
+
+/** "25.09., 14:30" under the step; the full timestamp for its tooltip. */
+export const formatStepTime = (iso: string, locale: string): { short: string; full: string } => {
+    const at = parseBackendInstant(iso);
+    return {
+        short: at.toLocaleString(locale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        full: at.toLocaleString(locale, {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        }),
+    };
+};
+
 /**
  * The five tiles above the table and the board's only filter (Frank, 25 Sept):
  * Vorbereitet · Eingeladen · Konto angelegt · Fertig · Braucht Aktion.
@@ -255,26 +311,50 @@ export const LIFECYCLE_PHASES: readonly LifecyclePhase[] = [
     'needsAction',
 ];
 
-/** The raw status a tile's breakdown counts; two problems have no status of their own. */
-export type LifecycleDetail = AccountInviteStatus | 'DELIVERY_FAILED' | 'NO_UNIT_ADMIN';
+/**
+ * The server derives the phase (ORISO-UserService#1260 `InviteProgress`); this is only its tile.
+ * Frank put revoked and replaced invites under "Braucht Aktion", so `CLOSED` goes there too.
+ */
+const TILE_OF_PROGRESS_PHASE: Record<InviteProgressPhase, LifecyclePhase> = {
+    PREPARED: 'prepared',
+    INVITED: 'invited',
+    ACCOUNT_CREATED: 'accountCreated',
+    DONE: 'done',
+    NEEDS_ACTION: 'needsAction',
+    CLOSED: 'needsAction',
+};
+
+/** What a tile's breakdown counts: the raw status, or why a "needs action" row is stuck when the status hides it. */
+export type LifecycleDetail =
+    | AccountInviteStatus
+    | 'DELIVERY_FAILED'
+    | 'NO_UNIT_ADMIN'
+    | 'LINK_EXPIRED'
+    | 'PROVISIONING_FAILED';
 
 export interface LifecycleReading {
     phase: LifecyclePhase;
     detail: LifecycleDetail;
 }
 
-/** Which tile an invite belongs to, and which raw status puts it there. */
-export const deriveLifecyclePhase = (invite: PhaseFacts): LifecycleReading => {
-    if (isDeadInvite(invite)) return { phase: 'needsAction', detail: invite.inviteStatus };
-    if (hasQueueProblem(invite)) return { phase: 'needsAction', detail: 'NO_UNIT_ADMIN' };
-    // A bounce only needs action while it still blocks the invitee; once accepted it is history.
-    if (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite)) {
-        return { phase: 'needsAction', detail: 'DELIVERY_FAILED' };
+type LifecycleFacts = Pick<AccountInviteDTO, 'progressPhase' | 'inviteStatus' | 'emailDeliveryStatus' | 'queueProblem'>;
+
+const needsActionDetail = (invite: LifecycleFacts): LifecycleDetail => {
+    if (invite.inviteStatus === 'WAITING_FOR_UNIT') return 'NO_UNIT_ADMIN';
+    if (invite.inviteStatus === 'ACCEPTED') return 'PROVISIONING_FAILED';
+    if (invite.inviteStatus === 'EMAIL_SENT') {
+        return invite.emailDeliveryStatus === 'FAILED' ? 'DELIVERY_FAILED' : 'LINK_EXPIRED';
     }
-    if (isDraftInvite(invite) || isWaitingForUnit(invite)) return { phase: 'prepared', detail: invite.inviteStatus };
-    if (!hasAccepted(invite)) return { phase: 'invited', detail: invite.inviteStatus };
-    // "Fertig" follows the stepper's final gate: a Träger is only done once the DPA signature landed.
-    return { phase: isPhaseProven('completed', invite) ? 'done' : 'accountCreated', detail: 'ACCEPTED' };
+    return invite.inviteStatus;
+};
+
+/** The invite's tile and the detail its breakdown counts; `undefined` while the server sends no phase. */
+export const lifecycleOf = (invite: LifecycleFacts): LifecycleReading | undefined => {
+    if (!invite.progressPhase) return undefined;
+    return {
+        phase: TILE_OF_PROGRESS_PHASE[invite.progressPhase],
+        detail: invite.progressPhase === 'NEEDS_ACTION' ? needsActionDetail(invite) : invite.inviteStatus,
+    };
 };
 
 export type LifecycleCounts = Record<
@@ -282,14 +362,16 @@ export type LifecycleCounts = Record<
     { total: number; details: Partial<Record<LifecycleDetail, number>> }
 >;
 
-export const countLifecyclePhases = (invites: readonly PhaseFacts[]): LifecycleCounts => {
+// Counted over the tab's own rows: the server's phaseCounts span every tab and ignore the agency scope filter.
+export const countLifecyclePhases = (invites: readonly LifecycleFacts[]): LifecycleCounts => {
     const counts = Object.fromEntries(
         LIFECYCLE_PHASES.map((phase) => [phase, { total: 0, details: {} }]),
     ) as LifecycleCounts;
     invites.forEach((invite) => {
-        const { phase, detail } = deriveLifecyclePhase(invite);
-        counts[phase].total += 1;
-        counts[phase].details[detail] = (counts[phase].details[detail] ?? 0) + 1;
+        const reading = lifecycleOf(invite);
+        if (!reading) return;
+        counts[reading.phase].total += 1;
+        counts[reading.phase].details[reading.detail] = (counts[reading.phase].details[reading.detail] ?? 0) + 1;
     });
     return counts;
 };

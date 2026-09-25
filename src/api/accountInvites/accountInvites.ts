@@ -28,6 +28,8 @@ export type TwoFactorGateStatus = 'NOT_REQUIRED' | 'PENDING_SETUP' | 'ACTIVE' | 
 export type AccessGateStatus = 'BLOCKED_INVITE' | 'BLOCKED_EMAIL' | 'BLOCKED_TWO_FACTOR' | 'READY';
 export type InviteEmailDeliveryStatus = 'SENT' | 'FAILED';
 export type InviteEmailTemplateKind = 'TENANT_INVITE' | 'COUNSELLOR_INVITE' | 'DPA_FORWARD';
+/** `CLOSED` = revoked or replaced; the server gives it no tile of its own. */
+export type InviteProgressPhase = 'PREPARED' | 'INVITED' | 'ACCOUNT_CREATED' | 'DONE' | 'NEEDS_ACTION' | 'CLOSED';
 
 export interface AccountInviteDTO {
     id: number;
@@ -74,6 +76,15 @@ export interface AccountInviteDTO {
     queueProblem?: InviteQueueProblem | null;
     /** Counsellor invites only; absent on an older backend. */
     topicPermission?: InviteTopicPermission | null;
+    /** The consultant (or admin) account the accepted invite created; the add-role call addresses it. */
+    provisionedUserId?: string | null;
+    /** The one tracker phase, derived on the server (ORISO-UserService#1260); absent on an older backend. */
+    progressPhase?: InviteProgressPhase | null;
+    /** When each tracker step was reached; null until then. */
+    unitCreatedAt?: string | null;
+    sentAt?: string | null;
+    accountCreatedAt?: string | null;
+    completedAt?: string | null;
     rawToken?: string;
     acceptUrl?: string;
 }
@@ -84,6 +95,8 @@ export interface PagedAccountInviteResponse {
     totalPages: number;
     page: number;
     size: number;
+    /** Every phase counted over all pages; ignores the status and phase filters. */
+    phaseCounts?: Partial<Record<InviteProgressPhase, number>>;
 }
 
 export interface CreateAccountInviteRequest {
