@@ -803,6 +803,20 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         ).toBeInTheDocument();
     });
 
+    it('fills the Träger from an agency taken by its number', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        const user = await fill('275');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 10_000 }));
+
+        expect(await screen.findByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
+            'title',
+            expect.stringContaining('79'),
+        );
+    });
+
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {
         mocks.searchInviteAgencies.mockResolvedValue({
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
