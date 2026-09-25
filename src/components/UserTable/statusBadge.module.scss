@@ -1,0 +1,61 @@
+/* Tonal chip (owner call: chips are tonal); the small dot follows the approved
+   table design and never carries the meaning alone — the word does. */
+
+.badge {
+    display: inline-flex;
+    height: 28px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 14px;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 13px/16px var(--m3-body-font-family);
+    gap: 8px;
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+.link {
+    padding-right: 10px;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.link:hover {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, var(--admin-table-chip-surface, #e4e2e2));
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.link:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.linkIcon {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.active {
+    background: var(--admin-status-active, #2f6b35);
+}
+
+.pending {
+    background: var(--admin-status-pending, #9a5b00);
+}
+
+.muted {
+    background: var(--m3-outline, #747878);
+}
+
+.error {
+    background: var(--m3-error, #b1005e);
+}

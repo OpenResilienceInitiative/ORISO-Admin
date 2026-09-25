@@ -1,0 +1,66 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
+import type { DisplayStatus } from '../../types/userDisplayStatus';
+import { StatusBadge } from './StatusBadge';
+
+/**
+ * Account status as a word in a tonal chip. „Eingeladen" is a link into the
+ * invite section, where the invitation itself can be followed up.
+ */
+const meta = {
+    title: 'Molecules/UserTable/StatusBadge',
+    component: StatusBadge,
+    parameters: { layout: 'padded' },
+    args: { status: 'ACTIVE' },
+} satisfies Meta<typeof StatusBadge>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const ALL: DisplayStatus[] = [
+    'ACTIVE',
+    'ABSENT',
+    'DISABLED',
+    'INVITED',
+    'INACTIVE',
+    'CREATED',
+    'IN_PROGRESS',
+    'ERROR',
+    'IN_DELETION',
+];
+
+/** Every state `resolveDisplayStatus` can produce. */
+export const AllStates: Story = {
+    render: () => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {ALL.map((status) => (
+                <StatusBadge key={status} status={status} />
+            ))}
+        </div>
+    ),
+    play: async ({ canvas }) => {
+        await expect(canvas.getByText(/^(Aktiv|Active)$/)).toBeVisible();
+        await expect(canvas.getByText(/^(Abwesend|Absent)$/)).toBeVisible();
+        // DISABLED (not unlocked) and INACTIVE share one word.
+        await expect(canvas.getAllByText(/^(Inaktiv|Inactive)$/)).toHaveLength(2);
+        await expect(canvas.getByText(/^(Wird gelöscht|Being deleted)$/)).toBeVisible();
+    },
+};
+
+export const Invited: Story = {
+    args: { status: 'INVITED', inviteTo: '/admin/links/counsellor' },
+    play: async ({ canvas }) => {
+        const link = canvas.getByRole('link', { name: /^(Eingeladen|Invited)/ });
+        await expect(link).toHaveAttribute('href', '/admin/links/counsellor');
+    },
+};
+
+/** Every other state is plain text, never a link. */
+export const Absent: Story = {
+    args: { status: 'ABSENT' },
+    play: async ({ canvas }) => {
+        await expect(canvas.queryByRole('link')).toBeNull();
+        await expect(canvas.getByText(/^(Abwesend|Absent)$/)).toBeVisible();
+    },
+};
