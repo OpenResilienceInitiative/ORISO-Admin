@@ -596,7 +596,7 @@ export const InviteCsvImportModal = ({
                             <span className={styles.autoId}>
                                 {t(
                                     'links.csvImport.topicPermissionOmitted',
-                                    'leer = Darf weitere Fachbereiche auswählen',
+                                    'Leere CSV-Zelle = Darf weitere Fachbereiche auswählen',
                                 )}
                             </span>
                         </Tooltip>
