@@ -2,14 +2,7 @@ import { globalSmtpTestEmailEndpoint } from '../../appConfig';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 
 export interface GlobalSmtpTestPayload {
-    host: string;
-    port: number;
-    secure: boolean;
-    username: string;
-    password: string;
-    from: string;
     recipientEmail: string;
-    emailThemeColor?: string;
 }
 
 export const sendGlobalSmtpTestEmail = (payload: GlobalSmtpTestPayload) =>

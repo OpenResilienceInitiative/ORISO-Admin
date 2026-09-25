@@ -138,6 +138,32 @@
     grid-template-columns: 1fr;
 }
 
+.smtpReadStatus,
+.smtpReadOnly {
+    margin: 0;
+    padding: 20px 24px 24px;
+}
+
+.smtpReadOnly {
+    display: grid;
+    gap: 16px;
+
+    > div {
+        min-width: 0;
+    }
+
+    dt {
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 14px;
+    }
+
+    dd {
+        overflow-wrap: anywhere;
+        margin: 4px 0 0;
+        font-size: 16px;
+    }
+}
+
 .testForm {
     display: flex;
     min-height: 0;
