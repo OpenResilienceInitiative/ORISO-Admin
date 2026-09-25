@@ -2201,7 +2201,7 @@
     "links.composer.topics.create": "Darf weitere Themen anlegen",
     "links.composer.topics.createHint": "Darf neue Themen anlegen (Plus-Knopf).",
     "links.composer.blocked.tenantExisting": "Bitte einen bestehenden Träger wählen.",
-    "links.composer.blocked.counsellorNeedsUnitAdmin": "Eine neue Beratungsstelle legt nur eine BST-Admin an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.",
+    "links.composer.blocked.counsellorNeedsUnitAdmin": "Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.",
     "links.selfAssign.menuEntry": "Mich selbst eintragen …",
     "links.composer.alsoCounsellor.label": "Berät auch",
     "links.composer.switchToAgencyAdmin": "Stattdessen als BST-Admin einladen",
