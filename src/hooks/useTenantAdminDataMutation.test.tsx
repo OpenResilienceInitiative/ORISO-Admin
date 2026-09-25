@@ -11,6 +11,12 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('../api/fetchData', () => ({ fetchData: vi.fn(), FETCH_METHODS: { PUT: 'PUT' } }));
 
+const notifySuccess = vi.hoisted(() => vi.fn());
+vi.mock('antd', async () => {
+    const antd = await vi.importActual<typeof import('antd')>('antd');
+    return { ...antd, notification: { ...antd.notification, success: notifySuccess } };
+});
+
 vi.mock('../api/tenant/getSingleTenantData', () => ({
     getSingleTenantData: vi.fn(),
 }));
@@ -54,6 +60,7 @@ const createWrapper = () => {
 beforeEach(() => {
     getSingleTenantDataMock.mockReset();
     vi.mocked(fetchData).mockReset();
+    notifySuccess.mockReset();
 });
 
 describe('useTenantAdminDataMutation', () => {
@@ -131,5 +138,37 @@ describe('useTenantAdminDataMutation', () => {
         expect(body.theming).toEqual(platform.theming);
         expect(body.content.impressum).toEqual({ de: '<p>Neu</p>' });
         expect(body.content.privacy).toEqual(platform.content.privacy);
+    });
+    it('announces a generic success by default', async () => {
+        vi.mocked(fetchData).mockResolvedValue(seedTenantAdminData);
+        const { result } = renderHook(
+            () => useTenantAdminDataMutation({ id: '1', seedTenantAdminData, prefetchTenantAdminData: false }),
+            { wrapper: createWrapper() },
+        );
+
+        await result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>' } } });
+
+        expect(notifySuccess).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'message.success.setting.update' }),
+        );
+    });
+
+    // #1066: the legal card says "Veröffentlicht" itself; a second, generic toast read as noise.
+    it('stays silent on success when the caller brings its own confirmation', async () => {
+        vi.mocked(fetchData).mockResolvedValue(seedTenantAdminData);
+        const { result } = renderHook(
+            () =>
+                useTenantAdminDataMutation({
+                    id: '1',
+                    seedTenantAdminData,
+                    prefetchTenantAdminData: false,
+                    successMessageKey: null,
+                }),
+            { wrapper: createWrapper() },
+        );
+
+        await result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>' } } });
+
+        expect(notifySuccess).not.toHaveBeenCalled();
     });
 });

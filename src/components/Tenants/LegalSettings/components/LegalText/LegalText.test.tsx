@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalText } from './index';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
@@ -43,7 +43,39 @@ const mocks = vi.hoisted(() => ({
     clearConflict: vi.fn(),
     versions: [] as unknown[],
     historyState: 'available' as 'available' | 'unsupported' | 'unavailable',
+    notifySuccess: vi.fn(),
+    readOnlyReason: { key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false },
+    // The real hook hands out the same object until the tenant is re-read; the card relies on that.
+    dataCache: undefined as { key: unknown[]; value: unknown } | undefined,
 }));
+
+vi.mock('../../hooks/useLegalTextReadOnlyReason', () => ({
+    useLegalTextReadOnlyReason: () => mocks.readOnlyReason,
+}));
+
+vi.mock('antd', async () => {
+    const antd = await vi.importActual<typeof import('antd')>('antd');
+    return { ...antd, notification: { ...antd.notification, success: mocks.notifySuccess } };
+});
+
+const tenantFormData = () => {
+    const key = [mocks.imprint, mocks.storedConsent, mocks.activeLanguages];
+    if (!mocks.dataCache || mocks.dataCache.key.some((part, index) => part !== key[index])) {
+        mocks.dataCache = {
+            key,
+            value: {
+                content: {
+                    imprint: mocks.imprint,
+                    // Absence is meaningful (ADR-021 decision 4): a backend that cannot store the
+                    // consent wording omits the key, and the editor then offers no consent input.
+                    ...(mocks.storedConsent === undefined ? {} : { privacyConsent: mocks.storedConsent }),
+                },
+                settings: { activeLanguages: mocks.activeLanguages },
+            },
+        };
+    }
+    return mocks.dataCache.value;
+};
 
 // The version history is an independent react-query call; this suite has no client.
 vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
@@ -51,15 +83,7 @@ vi.mock('../../../../../hooks/useLegalTextVersions.hook', () => ({
 }));
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
     useTenantAppearanceFormData: () => ({
-        data: {
-            content: {
-                imprint: mocks.imprint,
-                // Absence is meaningful (ADR-021 decision 4): a backend that cannot store the
-                // consent wording omits the key, and the editor then offers no consent input.
-                ...(mocks.storedConsent === undefined ? {} : { privacyConsent: mocks.storedConsent }),
-            },
-            settings: { activeLanguages: mocks.activeLanguages },
-        },
+        data: tenantFormData(),
         isLoading: false,
         mutate: mocks.updateTenant,
         mutateAsync: mocks.updateTenant,
@@ -239,6 +263,9 @@ beforeEach(() => {
     mocks.updateTenant.mockReset();
     mocks.versions = [];
     mocks.historyState = 'available';
+    mocks.notifySuccess.mockReset();
+    mocks.readOnlyReason = { key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false };
+    mocks.dataCache = undefined;
     window.localStorage.clear();
     window.sessionStorage.clear();
 });
@@ -397,8 +424,8 @@ describe('LegalText (M3 editor)', () => {
                 showConfirmationModal={{
                     titleKey: 'privacy.confirmation.title',
                     contentKey: 'privacy.confirmation.content',
-                    cancelLabelKey: 'privacy.confirmation.confirm',
-                    okLabelKey: 'privacy.confirmation.cancel',
+                    cancelLabelKey: 'privacy.confirmation.cancel',
+                    okLabelKey: 'privacy.confirmation.confirm',
                     field: ['content', 'confirmPrivacy'],
                 }}
             />,
@@ -411,6 +438,7 @@ describe('LegalText (M3 editor)', () => {
         // No save yet — the modal must decide first.
         await screen.findByText('privacy.confirmation.content');
         expect(mocks.updateTenant).not.toHaveBeenCalled();
+        expect(mocks.serverSave).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole('button', { name: 'privacy.confirmation.cancel' }));
 
@@ -1098,5 +1126,199 @@ describe('LegalText — tenant server draft', () => {
         finishDiscard();
         await waitFor(() => expect(mocks.serverDiscard).toHaveBeenCalledWith('server:1'));
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+    });
+});
+
+describe('LegalText — publish confirmation and publication state (#1066)', () => {
+    const renderPrivacy = () =>
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="privacy.title"
+                legalType="privacy"
+                placeHolderKey="settings.privacy.placeholder"
+                showConfirmationModal={{
+                    titleKey: 'privacy.confirmation.title',
+                    contentKey: 'privacy.confirmation.content',
+                    cancelLabelKey: 'privacy.confirmation.cancel',
+                    okLabelKey: 'privacy.confirmation.confirm',
+                    field: ['content', 'confirmPrivacy'],
+                }}
+            />,
+        );
+    const renderImprint = () =>
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+
+    const askToInform = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+        await screen.findByText('privacy.confirmation.content');
+    };
+
+    const expectNothingPublished = async () => {
+        await waitFor(() => expect(screen.queryByText('privacy.confirmation.content')).not.toBeInTheDocument());
+        expect(mocks.serverSave).not.toHaveBeenCalled();
+        expect(mocks.updateTenant).not.toHaveBeenCalled();
+        // The admin can still publish: nothing was decided.
+        expect(screen.getByRole('button', { name: 'legal.m3Editor.publish' })).toBeInTheDocument();
+    };
+
+    it('Escape on "Ratsuchende informieren?" publishes nothing', async () => {
+        const user = userEvent.setup();
+        renderPrivacy();
+        await askToInform(user);
+
+        fireEvent.keyDown(document.querySelector('.ant-modal-wrap') as HTMLElement, { key: 'Escape', keyCode: 27 });
+
+        await expectNothingPublished();
+    });
+
+    it('the X on "Ratsuchende informieren?" publishes nothing', async () => {
+        const user = userEvent.setup();
+        renderPrivacy();
+        await askToInform(user);
+
+        await user.click(document.querySelector('.ant-modal-close') as HTMLElement);
+
+        await expectNothingPublished();
+    });
+
+    it('a click outside "Ratsuchende informieren?" publishes nothing', async () => {
+        const user = userEvent.setup();
+        renderPrivacy();
+        await askToInform(user);
+        const wrap = document.querySelector('.ant-modal-wrap') as HTMLElement;
+
+        fireEvent.mouseDown(wrap);
+        fireEvent.mouseUp(wrap);
+        fireEvent.click(wrap);
+
+        await expectNothingPublished();
+    });
+
+    it('"Ja" publishes and informs the advice seekers', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        renderPrivacy();
+        await askToInform(user);
+
+        await user.click(screen.getByRole('button', { name: 'privacy.confirmation.confirm' }));
+
+        await waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
+        expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({ content: { confirmPrivacy: true } });
+    });
+
+    it('"Nein" publishes without informing anyone', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        renderPrivacy();
+        await askToInform(user);
+
+        await user.click(screen.getByRole('button', { name: 'privacy.confirmation.cancel' }));
+
+        await waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
+        expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({ content: { confirmPrivacy: false } });
+    });
+
+    it('confirms a publish with one "Veröffentlicht" toast instead of two generic ones', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+
+        await waitFor(() =>
+            expect(mocks.notifySuccess).toHaveBeenCalledWith(
+                expect.objectContaining({ message: 'legal.published.toast' }),
+            ),
+        );
+        expect(mocks.notifySuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('still confirms "Entwurf gespeichert" for a plain draft save', async () => {
+        const user = userEvent.setup();
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
+
+        await waitFor(() =>
+            expect(mocks.notifySuccess).toHaveBeenCalledWith(
+                expect.objectContaining({ message: 'legal.serverDraft.saved' }),
+            ),
+        );
+    });
+
+    it('says the live text is published when nothing differs from it', () => {
+        renderImprint();
+
+        expect(screen.getByTestId('legal-publication-status')).toHaveTextContent('legal.status.published');
+    });
+
+    it('drops the published claim while unpublished changes are on screen', async () => {
+        const user = userEvent.setup();
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(screen.queryByTestId('legal-publication-status')).not.toBeInTheDocument();
+    });
+
+    it('claims nothing for a text that was never published', () => {
+        mocks.imprint = {};
+        renderImprint();
+
+        expect(screen.queryByTestId('legal-publication-status')).not.toBeInTheDocument();
+    });
+
+    it('says since when the text is published right after publishing', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+
+        const status = await screen.findByTestId('legal-publication-status');
+        expect(status).toHaveTextContent('legal.status.publishedAt');
+        expect(status.querySelector('time')).toHaveAttribute('dateTime');
+    });
+
+    it('keeps showing the text it just published while the tenant is still being re-read', async () => {
+        const user = userEvent.setup();
+        mocks.updateTenant.mockResolvedValue(undefined);
+        renderImprint();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.m3Editor.publish' }));
+
+        await screen.findByTestId('legal-publication-status');
+        // The stale tenant read still holds the old text; the card must not flip back to it.
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+    });
+
+    it('names the platform-wide lock as the reason when it is what blocks the Träger', () => {
+        mocks.canEdit = false;
+        mocks.readOnlyReason = { key: 'tenants.legal.readOnly.lockedPlatformWide', platformLock: true };
+        renderImprint();
+
+        expect(screen.getByText('tenants.legal.readOnly.lockedPlatformWide')).toBeInTheDocument();
+    });
+
+    it('keeps the role help text when the lock is not what blocks the viewer', () => {
+        mocks.canEdit = false;
+        renderImprint();
+
+        expect(screen.queryByText('tenants.legal.readOnly.lockedPlatformWide')).not.toBeInTheDocument();
     });
 });

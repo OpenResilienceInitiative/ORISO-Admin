@@ -12,7 +12,8 @@ import { TENANT_DATA_KEY } from './useTenantData.hook';
 interface TenantAdminDataOptions
     extends UseMutationOptions<Partial<TenantAdminData>, unknown, Partial<TenantAdminData>> {
     id: string | number;
-    successMessageKey?: string;
+    /** `null` suppresses the success toast for callers that confirm the outcome themselves. */
+    successMessageKey?: string | null;
     /** Skip GET /service/tenantadmin/{id} and use this payload as the PUT merge base instead. */
     seedTenantAdminData?: TenantAdminData;
     prefetchTenantAdminData?: boolean;
@@ -56,10 +57,12 @@ export const useTenantAdminDataMutation = ({
             }
             // Appearance cards may seed from /service/tenant — refresh that cache after PUT.
             queryClient.invalidateQueries({ queryKey: [TENANT_DATA_KEY] });
-            notification.success({
-                message: t(successMessageKey),
-                duration: 3,
-            });
+            if (successMessageKey !== null) {
+                notification.success({
+                    message: t(successMessageKey),
+                    duration: 3,
+                });
+            }
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
         // `responseHandling: []` means fetchData rejects a 5xx without showing anything,
