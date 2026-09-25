@@ -27,3 +27,11 @@
         );
     }
 }
+
+// #1070: a template forwarded by the Träger sits beside the own draft; same page-raster cap.
+@media (min-width: 768px) {
+    .documentEditorItem:has([data-legal-compare-open='true']) {
+        --card-deck-item-width: 1440px;
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
+    }
+}

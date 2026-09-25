@@ -2180,7 +2180,7 @@
     "legal.template.send.audience.label": "Empfänger",
     "legal.template.send.confirm": "Senden",
     "legal.template.send.conflict": "Der Entwurf wurde inzwischen geändert. Laden Sie die Seite neu und senden Sie die aktuelle Fassung.",
-    "legal.template.send.missing": "Es gibt keinen gespeicherten Plattform-Entwurf mehr. Speichern Sie den Entwurf erneut.",
+    "legal.template.send.missing": "Es gibt keinen gespeicherten Entwurf mehr. Speichern Sie den Entwurf erneut.",
     "legal.template.send.error": "Die Vorlage konnte nicht gesendet werden.",
     "legal.template.disabled.noDraft": "Speichern Sie zuerst einen Entwurf. Versendet wird immer die gespeicherte Fassung.",
     "legal.template.disabled.unsaved": "Es gibt ungespeicherte Änderungen. Speichern Sie den Entwurf, damit genau diese Fassung versendet wird.",

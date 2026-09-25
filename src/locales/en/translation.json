@@ -2180,7 +2180,7 @@
     "legal.template.send.audience.label": "Recipients",
     "legal.template.send.confirm": "Send",
     "legal.template.send.conflict": "The draft has changed in the meantime. Reload the page and send the current version.",
-    "legal.template.send.missing": "There is no saved platform draft any more. Save the draft again.",
+    "legal.template.send.missing": "There is no saved draft any more. Save the draft again.",
     "legal.template.send.error": "The template could not be sent.",
     "legal.template.disabled.noDraft": "Save a draft first. It is always the saved version that is sent.",
     "legal.template.disabled.unsaved": "There are unsaved changes. Save the draft so that exactly this version is sent.",

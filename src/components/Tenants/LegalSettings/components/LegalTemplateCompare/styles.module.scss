@@ -15,8 +15,8 @@
     flex-direction: column;
     padding: 16px 20px;
     border: 1px solid var(--m3-outline-variant);
-    background: var(--m3-surface-container-low);
     border-radius: 16px;
+    background: var(--m3-surface-container-low);
     gap: 8px;
 }
 
@@ -32,8 +32,8 @@
     display: inline-flex;
     align-items: center;
     padding: 2px 10px 2px 6px;
-    background: var(--m3-primary-container);
     border-radius: 8px;
+    background: var(--m3-primary-container);
     color: var(--m3-on-primary-container);
     font-size: 12px;
     font-weight: 500;
@@ -66,9 +66,9 @@
 
 .lock {
     padding: 8px 12px;
+    border-radius: 8px;
     margin: 0;
     background: var(--m3-surface-container-highest);
-    border-radius: 8px;
     color: var(--m3-on-surface);
     font-size: 14px;
     line-height: 20px;
@@ -126,8 +126,8 @@
     align-self: flex-start;
     padding: 6px 12px;
     border: 1px solid var(--m3-outline);
-    background: transparent;
     border-radius: 100px;
+    background: transparent;
     color: var(--m3-primary);
     cursor: pointer;
     font: inherit;
