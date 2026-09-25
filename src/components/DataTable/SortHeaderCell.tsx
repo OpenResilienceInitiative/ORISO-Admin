@@ -78,6 +78,7 @@ export const SortHeaderCell = ({ column, sort, onSortChange, sortRequired = fals
             ) : (
                 <span aria-label={column.ariaLabel}>{column.label}</span>
             )}
+            {column.addon}
         </th>
     );
 };

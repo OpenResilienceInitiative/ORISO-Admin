@@ -22,7 +22,7 @@ export const SCOPE_FALLBACKS = {
 } as const;
 
 /**
- * Grey chip: kind + ID, postcode and city. Hover or focus opens a card with the
+ * Grey chip: kind + ID, postcode and city (the name when there is no place). Hover or focus opens a card with the
  * full name, address and ID; Escape closes it (WCAG 1.4.13).
  */
 export const ScopeChip = ({ kind, id, name, postcode, city, address, onClick }: ScopeChipProps) => {
@@ -66,7 +66,7 @@ export const ScopeChip = ({ kind, id, name, postcode, city, address, onClick }: 
             <span className={styles.kind}>
                 {t(`userTable.scope.${kind}.short`, SCOPE_FALLBACKS[kind].short)} {id}
             </span>
-            {place && <span className={styles.place}>{place}</span>}
+            {(place || name) && <span className={styles.place}>{place || name}</span>}
         </>
     );
 
