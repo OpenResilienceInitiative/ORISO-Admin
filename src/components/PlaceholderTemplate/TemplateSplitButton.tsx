@@ -38,6 +38,13 @@ export interface TemplateSplitButtonProps {
      * a size below them.
      */
     size?: SplitButtonSize;
+    /** Optional fixed main label when choosing templates is the secondary action. */
+    label?: ReactNode;
+    mainTestId?: string;
+    mainDataMissingToken?: boolean;
+    mainInvalid?: boolean;
+    /** Id of the element explaining why the main action is invalid or disabled. */
+    mainDescribedBy?: string;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -59,6 +66,11 @@ export const TemplateSplitButton = ({
     disabled = false,
     icon = <DescriptionOutlinedIcon />,
     size = 'small',
+    label,
+    mainTestId,
+    mainDataMissingToken,
+    mainInvalid,
+    mainDescribedBy,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -129,7 +141,7 @@ export const TemplateSplitButton = ({
         <SplitButton
             disabled={disabled}
             icon={icon}
-            label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
+            label={label ?? active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}
             menuLabel={t('placeholderTemplate.template.menuLabel', 'Vorlagenmenü öffnen')}
             // Outlined at rest (#741, owner call on PR #727): the previous light
@@ -146,6 +158,10 @@ export const TemplateSplitButton = ({
             // tab order instead of offering a button that does nothing (#727
             // post-merge review). The chevron menu stays fully interactive.
             mainDisabled={!onMainClick}
+            mainTestId={mainTestId}
+            mainDataMissingToken={mainDataMissingToken}
+            mainInvalid={mainInvalid}
+            mainDescribedBy={mainDescribedBy}
             onClick={onMainClick}
         />
     );

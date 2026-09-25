@@ -1,23 +1,27 @@
-ORISO
-==============================================================
-
 Ihre Einladung zu ORISO
+================================================================
 
-Hallo Erika Musterfrau,
+Hallo Maren Muster,
 
 Sie wurden eingeladen, ein Konto auf der ORISO-Plattform einzurichten.
 Bitte schliessen Sie die Einrichtung ueber den folgenden Link ab:
-
-https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
 
 Der Link ist 30 Tage gueltig. Bei Fragen antworten Sie bitte nicht auf diese
 E-Mail, sondern wenden Sie sich an Ihre Ansprechperson.
 
 Accept invitation:
-https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
+https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
 
---------------------------------------------------------------
+----------------------------------------------------------------
+We will never ask for your password by email. Do not pass this link on to anyone.
+
 ORISO
-Imprint: https://app.oriso.org/impressum
-Privacy: https://app.oriso.org/datenschutz
-This is an automated message. Please do not reply to this e-mail.
+Musterstraße 1, 12345 Musterstadt
+kontakt@example.org
+
+ORISO is a service provided by ORISO.
+
+Privacy: https://app.example.org/datenschutz
+Imprint: https://app.example.org/impressum
+
+This email is part of your invitation and cannot be unsubscribed from. Please do not reply to it.

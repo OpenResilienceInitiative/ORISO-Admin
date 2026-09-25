@@ -8,6 +8,7 @@ const runtimeEnvKeys = [
     'COOKIE_DOMAIN',
     'COOKIE_SECURE',
     'HOSTNAMES_WITHOUT_COOKIE_DOMAIN',
+    'APP_URL',
 ];
 
 const loadRuntimeConfig = async (config: Record<string, string | undefined>) => {
@@ -108,5 +109,64 @@ describe('runtimeConfig observability', () => {
         expect(runtimeConfig.observabilityEnabled).toBe(false);
         expect(runtimeConfig.otelMetricsUrl).toBe('');
         expect(runtimeConfig.otelExportIntervalMillis).toBe(60000);
+    });
+});
+
+describe('bundle build identity', () => {
+    it('keeps the full baked commit when runtime configuration claims another build', async () => {
+        const baked = 'a6b74669b6fe20a515c277228bdb42d67eb5a9a9';
+        vi.stubEnv('VITE_BUILD_COMMIT', baked);
+        const { getBuildCommit, runtimeConfig } = await loadRuntimeConfig({
+            PLATFORM_VERSION: 'v2.0.6',
+            BUILD_COMMIT: 'b'.repeat(40),
+            VITE_BUILD_COMMIT: 'c'.repeat(40),
+        });
+        Object.assign(window, {
+            _env_: { BUILD_COMMIT: 'd'.repeat(40) },
+            __ENV__: { BUILD_COMMIT: 'e'.repeat(40) },
+            env: { BUILD_COMMIT: 'f'.repeat(40) },
+        });
+        expect(runtimeConfig.platformVersion).toBe('v2.0.6');
+        expect(getBuildCommit()).toBe(baked);
+    });
+
+    it.each([
+        undefined,
+        '',
+        'unknown',
+        'a3445a9',
+        'g'.repeat(40),
+        'a'.repeat(39),
+        'a'.repeat(41),
+        ` ${'a'.repeat(40)}`,
+    ])('leaves a missing or malformed baked commit unidentified: %s', async (commit) => {
+        vi.stubEnv('VITE_BUILD_COMMIT', commit);
+        const { getBuildCommit } = await loadRuntimeConfig({ BUILD_COMMIT: 'b'.repeat(40) });
+        expect(getBuildCommit()).toBeUndefined();
+    });
+});
+
+// ORISO-Helm#368 (AD-02): the app host is configured, never rewritten from the API host.
+describe('runtimeConfig app base URL', () => {
+    it('does not guess app.* from an api.* host', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'https://api.example.org' });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://api.example.org');
+        expect(runtimeConfig.appBaseUrl).not.toContain('app.example.org');
+    });
+
+    it('uses the configured API URL on a single-domain deployment without APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'https://beratung.example.org' });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://beratung.example.org');
+    });
+
+    it('uses the configured APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            API_URL: 'https://api.example.org',
+            APP_URL: 'app.example.org',
+        });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://app.example.org');
     });
 });

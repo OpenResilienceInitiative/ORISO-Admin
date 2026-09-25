@@ -18,7 +18,7 @@ const commitConsentText = async (text: string) => {
     await userEvent.click(input);
     (input as HTMLTextAreaElement).focus();
     await userEvent.paste(text);
-    await userEvent.click(screen.getByRole('button', { name: 'save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 };
 
 vi.mock('react-i18next', () => ({
@@ -45,18 +45,23 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onPublish,
         onSaveDraft,
         onViewVersionChange,
+        consentSlot,
         topicSlot,
         belowSlot,
+        snackbarSlot,
     }: {
         value?: string;
         versions?: { id: string; label: string; content: string; restorable?: boolean }[];
         onPublish?: (html: string) => void;
         onSaveDraft?: (html: string) => void;
         onViewVersionChange?: (versionId: string | null) => void;
+        consentSlot?: React.ReactNode;
         topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value}>
+            {snackbarSlot}
             <ul data-testid="versions">
                 {(versions ?? []).map((version) => (
                     <li key={version.id} data-restorable={String(version.restorable)}>
@@ -81,6 +86,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
                     saveDraft
                 </button>
             )}
+            {consentSlot}
             {topicSlot}
             {belowSlot}
         </div>
@@ -203,6 +209,20 @@ describe('DepartmentDataProtectionCard — consent field', () => {
         expect(onSave).not.toHaveBeenCalled();
         expect(screen.getByText(/legal.consent.publishBlocked.description/)).toHaveTextContent('de');
     });
+
+    it('tells assistive technology why the consent action is marked invalid', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich stimme zu.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de']}
+                onSave={() => undefined}
+            />,
+        );
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveAccessibleDescription(
+            /legal\.consent\.publishBlocked\.description/,
+        );
+    });
 });
 
 /**
@@ -239,24 +259,23 @@ describe('DepartmentDataProtectionCard — consent follows the selected version'
 
     const consentInput = () => screen.getByRole('textbox') as HTMLTextAreaElement;
 
-    it('shows the archived sentence while that version is on screen', async () => {
+    it('keeps both consent split-button segments disabled while an archived version is on screen', async () => {
         renderCard();
         await openConsent();
         expect(consentInput()).toHaveValue('Heutiger Satz mit {{legal_links}}.');
         await userEvent.click(screen.getByRole('button', { name: 'cancel' }));
 
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
-        await openConsent();
-
-        expect(consentInput()).toHaveValue('Alter Satz mit {{legal_links}}.');
+        expect(screen.getByTestId('consent-edit-trigger')).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' })).toBeDisabled();
     });
 
-    it('makes the archived sentence read-only — the published chain is append-only', async () => {
+    it('re-enables the consent split button when the look-back ends', async () => {
         renderCard();
         await userEvent.click(screen.getByRole('button', { name: 'view 17' }));
-        await openConsent();
-
-        expect(consentInput()).toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: 'back to draft' }));
+        expect(screen.getByTestId('consent-edit-trigger')).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' })).toBeEnabled();
     });
 
     it('returns to the editable current sentence when the look-back ends', async () => {
@@ -379,7 +398,20 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
         expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
     });
 
-    it('stays silent while every authored sentence is valid — blank is not a violation', () => {
+    it('stays silent while every sentence carries the token', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: 'I read {{legal_links}}.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+    });
+
+    it('reports a blank language as missing (owner call 2026-09-23)', () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: '' }}
@@ -389,7 +421,9 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
             />,
         );
 
-        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
+            'legal.consent.publishBlocked.description:EN',
+        );
     });
 });
 
@@ -418,7 +452,9 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         expect(screen.getByTestId('consent-missing-token-error')).toHaveTextContent('{{legal_links}}');
     });
 
-    it('reads a blank sentence as inheritance, never as an error', async () => {
+    it('blocks a blank sentence and opens it with the platform template written in', async () => {
+        // Owner call 2026-09-23: no "empty means inherited" notice — the template is in the field,
+        // and an empty sentence is an error that blocks publishing.
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: '   ' }}
@@ -428,10 +464,10 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
             />,
         );
 
-        expect(screen.getByTestId('consent-edit-trigger')).not.toHaveAttribute('data-missing-token');
+        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
         await openConsent();
-        expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
-        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.emptyMeansInherited');
+        expect(screen.queryByTestId('consent-inherited-notice')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-empty-error')).not.toBeInTheDocument();
     });
 
     it('clears the mark as soon as the token is typed back in', async () => {

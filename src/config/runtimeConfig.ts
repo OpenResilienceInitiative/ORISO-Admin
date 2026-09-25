@@ -74,8 +74,9 @@ const configuredApiUrl = readConfigValue('API_URL') ?? '';
 const apiHost = stripUrlProtocol(configuredApiUrl);
 const keycloakHost = readConfigValue('KEYCLOAK_URL');
 const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
-const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
-const appHost = configuredAppHost || apiHost.replace(/^api\./i, 'app.');
+// ORISO-Helm#368: APP_URL, else the configured API URL (Helm serves app and API on one domain).
+// Never a host rewritten from the API host (the old `api.` -> `app.` guess).
+const appHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
 const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
 
 let apiBaseUrl = origin;
@@ -156,4 +157,11 @@ export const keycloakAuthPath = (path: string) => {
         : `${keycloakOrigin}/auth/realms`;
 
     return `${realmBaseUrl}/${runtimeConfig.keycloakRealm}${path}`;
+};
+
+// Bundle identity deliberately bypasses env.js and every runtime config global.
+// Local builds without an injected full commit remain explicitly unidentified.
+export const getBuildCommit = (): string | undefined => {
+    const commit = import.meta.env.VITE_BUILD_COMMIT;
+    return commit && /^[0-9a-f]{40}$/.test(commit) ? commit : undefined;
 };

@@ -10,8 +10,8 @@ import {
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyPermissionConstraintsToSettings,
-    DEFAULT_PERMISSION_SETTINGS,
     getRestrictedFields,
+    platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
@@ -84,11 +84,24 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         [allowedPermissionToggles, enforcedPermissionToggles],
     );
 
+    // An unset field takes the platform preset (initial preset ← allowed toggles ← resolved
+    // policies), never a blanket "on" that could contradict the backend (ORISO-Admin#989). Read
+    // from the query result, not the pending-aware copy: the form initialises in the same render
+    // in which loading ends, one tick before the effect above copies the data over.
+    const loadedPolicies =
+        permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId
+            ? permissionPolicyData.policies
+            : undefined;
+    const presetValues = useMemo(
+        () => platformPresetValues({ allowedPermissionToggles, permissionPolicies: loadedPolicies }),
+        [allowedPermissionToggles, loadedPolicies],
+    );
+
     const initialValues = useMemo(
         () => ({
             ...tenantData,
             settings: {
-                ...DEFAULT_PERMISSION_SETTINGS,
+                ...presetValues,
                 ...applyPermissionConstraintsToSettings(
                     tenantData?.settings ?? {},
                     allowedPermissionToggles,
@@ -96,7 +109,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                 ),
             },
         }),
-        [tenantData, allowedPermissionToggles, enforcedPermissionToggles],
+        [tenantData, presetValues, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
     const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);

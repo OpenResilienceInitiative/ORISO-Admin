@@ -15,7 +15,7 @@ const preview = (html: string, subject: string): InviteEmailPreviewDTO => ({
     subject,
     html,
     plainText: 'ORISO\n=====',
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
 });
 
 const PLATFORM = preview(invitePlatformDe, 'Ihre Einladung zu ORISO');
@@ -71,11 +71,7 @@ export const NoTenantLogo: Story = {
     args: { logoFallbackReason: 'NO_LOGO' },
 };
 
-/**
- * Tenant with a base64/`data:` logo. It exists, but Gmail and Outlook block embedded image data,
- * so the backend deliberately degrades to the wordmark — the panel explains that specific case
- * instead of leaving it looking like a missing upload.
- */
+/** Unsupported or external logo: explain first-party delivery without blaming inline storage. */
 export const LogoNotUsableInEmail: Story = {
     args: { logoFallbackReason: 'LOGO_NOT_REMOTE' },
 };

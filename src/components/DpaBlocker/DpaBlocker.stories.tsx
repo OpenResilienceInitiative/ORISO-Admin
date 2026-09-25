@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { DpaBlocker } from './DpaBlocker';
+import { dpaMailPreviewStoryHandlers } from '../DpaForwardDialog/dpaMailPreviewStory';
 
 const SHORT_DPA = JSON.stringify({
     de: '<h2>Vertragsunterlagen</h2><p>Zwischen dem Plattformbetreiber und Ihrer Organisation wird der folgende Vertrag über die Verarbeitung personenbezogener Daten geschlossen.</p><p>§ 1 Gegenstand: Der Betreiber verarbeitet personenbezogene Daten ausschließlich im Auftrag und nach Weisung der Organisation.</p>',
@@ -41,11 +42,12 @@ const LONG_DPA = JSON.stringify({
 const meta = {
     title: 'Organisms/DpaBlocker',
     component: DpaBlocker,
-    parameters: { layout: 'fullscreen' },
+    parameters: { layout: 'fullscreen', msw: { handlers: dpaMailPreviewStoryHandlers } },
     args: {
         onSign: fn(),
         onRetry: fn(),
         onLogout: fn(),
+        tenantId: 42,
     },
 } satisfies Meta<typeof DpaBlocker>;
 
@@ -136,5 +138,18 @@ export const FullscreenReaderOverTheBlocker: Story = {
         // Visible means: above the blocker overlay, not merely mounted.
         await expect(Number(dialog.style.zIndex)).toBeGreaterThan(1300);
         await expect(dialog.querySelector('.ProseMirror')?.textContent ?? '').toContain('Abschnitt 1');
+    },
+};
+
+/** Forwarding from the authenticated contract gate, including narrow layouts. */
+export const ForwardToSigner: Story = {
+    args: {
+        reason: 'UNSIGNED',
+        signable: true,
+        dpaContent: SHORT_DPA,
+        onForward: fn().mockResolvedValue({
+            link: { signUrl: 'https://example.org/dpa-sign/demo', expiresAt: null },
+            mailFailed: false,
+        }),
     },
 };

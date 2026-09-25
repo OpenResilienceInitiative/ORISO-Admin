@@ -13,9 +13,11 @@ import {
     listAccountInvites,
     listInviteEmailTemplates,
     resendAccountInvite,
+    sendAccountInvite,
     tenantAdminOnboardingAcceptBaseUrl,
     updateInviteEmailTemplate,
 } from './accountInvites';
+import { extractSmtpSendFailure } from '../../utils/extractApiErrorMessage';
 
 const mocks = vi.hoisted(() => ({
     fetchData: vi.fn(),
@@ -59,7 +61,7 @@ describe('account invite API', () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => responseBody });
 
         const result = await createAccountInvite({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -68,7 +70,7 @@ describe('account invite API', () => {
         });
 
         expect(JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData)).toEqual({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -111,7 +113,7 @@ describe('account invite API', () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 2 }) });
 
         await resendAccountInvite(2, {
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             templateId: 4,
         });
 
@@ -305,10 +307,80 @@ describe('branded invite e-mail preview (UserService#914)', () => {
             subject: 'Ihre Einladung zu ORISO',
             html: '<!doctype html><html lang="de"><body>mail</body></html>',
             plainText: 'ORISO\n=====',
-            sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+            sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
         };
         mocks.fetchData.mockResolvedValueOnce(preview);
 
         await expect(getInviteEmailPreview()).resolves.toBe(preview);
+    });
+});
+
+/*
+ * UserService#1160: when the invite mail cannot be handed to SMTP the request is
+ * answered 502 `{"reason":"SMTP_SEND_FAILED","detail":"<category>"}`. Every call
+ * that SENDS mail must opt into BAD_GATEWAY_WITH_RESPONSE, otherwise the raw
+ * Response never reaches the caller and the cause is swallowed by CATCH_ALL.
+ */
+describe('invite mail delivery failures (UserService#1160)', () => {
+    beforeEach(() => {
+        mocks.fetchData.mockReset();
+    });
+
+    const smtp502 = (detail?: string) =>
+        new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', ...(detail ? { detail } : {}) }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+    it.each([
+        [
+            'create',
+            () =>
+                createAccountInvite({
+                    recipientEmail: 'person@example.org',
+                    targetRole: 'TENANT_ADMIN',
+                    templateId: 4,
+                    tenantId: 7,
+                }),
+        ],
+        ['send', () => sendAccountInvite(11, { templateId: 4 })],
+        ['resend', () => resendAccountInvite(11, { templateId: 4 })],
+    ])('opts %s into BAD_GATEWAY_WITH_RESPONSE so the 502 reaches the caller', async (_name, call) => {
+        mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 11 }) });
+
+        await call();
+
+        expect(mocks.fetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE);
+        // The 403 role surfacing (UserService#1006) must survive untouched.
+        expect(mocks.fetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE);
+    });
+
+    it('rejects with the raw 502 response instead of resolving an invite', async () => {
+        const rejection = smtp502('SMTP_CREDENTIALS_MISSING');
+        mocks.fetchData.mockRejectedValueOnce(rejection);
+
+        await expect(sendAccountInvite(11, { templateId: 4 })).rejects.toBe(rejection);
+    });
+
+    it.each([
+        'SMTP_CREDENTIALS_MISSING',
+        'SMTP_DISABLED_OR_INCOMPLETE',
+        'SMTP_SETTINGS_UNAVAILABLE',
+        'SMTP_TRANSPORT_FAILED',
+    ])('decodes the %s category out of the 502 body', async (detail) => {
+        await expect(extractSmtpSendFailure(smtp502(detail))).resolves.toEqual({ detail });
+    });
+
+    it('reports a categoryless SMTP failure as detail null rather than guessing a cause', async () => {
+        await expect(extractSmtpSendFailure(smtp502())).resolves.toEqual({ detail: null });
+    });
+
+    it('ignores responses that are not an SMTP send failure', async () => {
+        await expect(extractSmtpSendFailure(new Response(null, { status: 403 }))).resolves.toBeNull();
+        await expect(
+            extractSmtpSendFailure(new Response(JSON.stringify({ reason: 'OTHER' }), { status: 502 })),
+        ).resolves.toBeNull();
+        await expect(extractSmtpSendFailure(new Response('not json', { status: 502 }))).resolves.toBeNull();
+        await expect(extractSmtpSendFailure(new Error('network down'))).resolves.toBeNull();
     });
 });

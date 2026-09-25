@@ -10,6 +10,7 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
 import { DoneStep } from './DoneStep';
+import { dpaMailPreviewStoryHandlers } from '../../components/DpaForwardDialog/dpaMailPreviewStory';
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -24,7 +25,7 @@ import { DoneStep } from './DoneStep';
 const meta = {
     title: 'Pages/TenantOnboarding/Flow',
     component: TenantAdminOnboarding,
-    parameters: { layout: 'centered' },
+    parameters: { layout: 'centered', msw: { handlers: dpaMailPreviewStoryHandlers } },
     decorators: [
         // The preview decorator already provides a MemoryRouter (Link in the done state).
         (Story) => (
@@ -49,7 +50,7 @@ export const OrganisationAndDpa: Story = {
 /**
  * Owner report 2026-08-19 — the step is read as three named blocks now: the
  * agreement, "Stammdaten Organisation" (moved down from the top of the step)
- * and "Daten der unterschriftsberechtigten Person" directly below it, whose
+ * and "Daten der vertretungsberechtigten Person" directly below it, whose
  * header is what lets the four signer labels be short.
  */
 export const OrganisationAndDpaSections: Story = {
@@ -67,7 +68,7 @@ export const OrganisationAndDpaSections: Story = {
         await expect(masterData.compareDocumentPosition(signer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         // Language-agnostic, like the forward stories: the point is that the
         // labels are SHORT now, not which locale the preview happens to run in.
-        await expect(canvas.getByLabelText(/^Name$/)).toBeVisible();
+        await expect(canvas.getByLabelText(/^Vollständiger Name$/)).toBeVisible();
         await expect(canvas.getByLabelText(/^E-?Mail$/i)).toBeVisible();
     },
 };
@@ -137,7 +138,7 @@ export const OrganisationDpaForwardDialog: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(
-            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+            await canvas.findByRole('button', { name: /nicht vertretungsberechtigt|not authorised/ }),
         );
         await waitFor(async () => expect(await body.findByTestId('dpa-forward-dialog')).toBeVisible());
     },
@@ -165,7 +166,7 @@ export const OrganisationDpaForwardedOnHold: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(
-            await canvas.findByRole('button', { name: /nicht unterschriftsberechtigt|not authorised/ }),
+            await canvas.findByRole('button', { name: /nicht vertretungsberechtigt|not authorised/ }),
         );
         // Opening mints nothing (#712/#836): the sign link is created by the
         // explicit act, and only then can the forward be confirmed.

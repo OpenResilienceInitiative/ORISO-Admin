@@ -14,6 +14,7 @@ import { DpaLegalReader } from '../../components/DpaLegalForm/DpaLegalReader';
 import { DpaForwardDialog } from '../../components/DpaForwardDialog/DpaForwardDialog';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
+import { TraegerSenderFields } from '../../components/Tenants/TraegerSenderFields';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
 import { pickLegalContentLanguage } from '../../components/Tenants/LegalSettings/utils/legalContentLanguages';
 import {
@@ -43,6 +44,9 @@ interface OrganisationDpaFormValues {
     name: string;
     subdomain: string;
     address: string;
+    legalName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     signerName: string;
     signerPosition: string;
     signerEmail: string;
@@ -65,6 +69,14 @@ const BLOCKER_MESSAGE: Record<SubmitBlocker, string> = {
  * page's global id space.
  */
 const FORM_NAME = 'tenantOnboarding';
+
+/** The optional sender block goes out only where something was entered. */
+const enteredSenderFields = (values: OrganisationDpaFormValues) =>
+    Object.fromEntries(
+        (['legalName', 'contactEmail', 'contactPhone'] as const)
+            .map((field) => [field, values[field]?.trim() ?? ''])
+            .filter(([, value]) => value !== ''),
+    ) as Pick<OrganisationData, 'legalName' | 'contactEmail' | 'contactPhone'>;
 
 /**
  * Step 1 (#571): organisation master data plus the EXISTING DPA/AVV form —
@@ -126,6 +138,7 @@ export const OrganisationDpaStep = ({
             name: values.name.trim(),
             subdomain: values.subdomain.trim(),
             address: values.address.trim(),
+            ...enteredSenderFields(values),
         };
         if (forwarded) {
             // The delegation replaces the consent act — the signature arrives
@@ -211,6 +224,11 @@ export const OrganisationDpaStep = ({
                     rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
                 />
             </div>
+            {/* Optional sender block for the mail footer (Frank, 2026-09-23): entered where
+                the address is, never required to continue. */}
+            <div className={classNames(styles.fieldStack, styles.senderFields)}>
+                <TraegerSenderFields />
+            </div>
         </div>
     );
 
@@ -228,6 +246,9 @@ export const OrganisationDpaStep = ({
                     name: initialOrganisation?.name ?? '',
                     subdomain: initialOrganisation?.subdomain ?? '',
                     address: initialOrganisation?.address ?? '',
+                    legalName: initialOrganisation?.legalName ?? '',
+                    contactEmail: initialOrganisation?.contactEmail ?? '',
+                    contactPhone: initialOrganisation?.contactPhone ?? '',
                     signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
                     signerPosition: initialDpa?.signerPosition ?? '',
                     signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
@@ -303,6 +324,12 @@ export const OrganisationDpaStep = ({
                         <>
                             <DpaFormSection
                                 dpaHtml={dpaHtml}
+                                // The backend distinguishes "operator published
+                                // nothing" from "our own read of it failed"
+                                // (#dpaUnavailableReason). Passing it through is
+                                // the whole point: the two states look identical
+                                // on this page but need opposite remedies.
+                                unavailableReason={invite.dpaUnavailableReason}
                                 textLabel={t('tenantOnboarding.dpa.title')}
                                 // Owner annotation 2026-08-18 (I2): the reader's own icon +
                                 // title + info line goes in this view — mirrors DpaBlocker,
@@ -357,6 +384,7 @@ export const OrganisationDpaStep = ({
             {forwardDialogOpen && (
                 <DpaForwardDialog
                     forward={(request) => forwardClient.forward(inviteToken, request)}
+                    inviteToken={inviteToken}
                     onClose={() => setForwardDialogOpen(false)}
                     onForwarded={({ link, recipientEmail, mailFailed }) => {
                         setForwardDialogOpen(false);

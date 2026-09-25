@@ -13,7 +13,7 @@ export const MANDATORY_CONSENT_TOKEN = 'legal_links';
 export const hasMandatoryConsentToken = (text: string | undefined): boolean =>
     listPlaceholders(text ?? '').includes(`{{${MANDATORY_CONSENT_TOKEN}}}`);
 
-/** A consent sentence that was never authored is not a violation — it simply does not exist. */
+/** Blank text, i.e. nothing authored at this level. */
 export const isBlankConsentText = (text: string | undefined): boolean => !text || text.trim() === '';
 
 /**
@@ -25,7 +25,14 @@ export const isBlankConsentText = (text: string | undefined): boolean => !text |
  */
 export const consentPublicationBlockers = (consentByLanguage: Record<string, string> | undefined): string[] =>
     Object.entries(consentByLanguage ?? {})
-        .filter(([, text]) => !isBlankConsentText(text) && !hasMandatoryConsentToken(text))
+        .filter(([, text]) => !hasMandatoryConsentToken(text))
+        .map(([language]) => language)
+        .sort();
+
+/** Languages whose consent sentence is empty — the editor pre-fills the template, so this is a gap. */
+export const blankConsentLanguages = (consentByLanguage: Record<string, string> | undefined): string[] =>
+    Object.entries(consentByLanguage ?? {})
+        .filter(([, text]) => isBlankConsentText(text))
         .map(([language]) => language)
         .sort();
 

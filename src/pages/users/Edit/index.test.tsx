@@ -49,7 +49,6 @@ const translations: Record<string, string> = {
     email: 'E-Mail',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
-    'counselor.passwordConfirmation': 'Passwort wiederholen',
     'counselor.displayName': 'Öffentlicher Anzeigename',
     'counselor.internalDisplayName': 'Interner Anzeigename',
     'counselor.salutation': 'Anrede',
@@ -59,8 +58,15 @@ const translations: Record<string, string> = {
     'counselor.salutation.option.counsellor_gender_neutral': 'Berater*in',
     'counselor.salutation.option.not_specified': 'Keine Angabe',
     'counselor.position': 'Funktion',
+    'counselor.avatar': 'Avatar',
+    'counselor.avatar.hint': 'Initialen oder Symbol.',
+    'counselor.avatar.initials': 'Initialen',
+    'counselor.avatar.initials.empty': 'Initialen',
+    'counselor.avatar.motif': 'Symbol',
     'counselor.personalTitle': 'Titel',
     'counselor.adminRemarks': 'Interne Anmerkungen',
+    'counselor.absent': 'Abwesend',
+    'counselor.absenceMessage': 'Abwesenheitsnotiz',
     'counselor.assignedSupervisor': 'Fester Supervisor',
     'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
     'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
@@ -219,7 +225,6 @@ const fillMandatoryFields = async () => {
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
     setField('Passwort', 'Str0ng!Pass');
-    setField('Passwort wiederholen', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
@@ -328,6 +333,57 @@ describe('salutation control (#994)', () => {
         await fillMandatoryFields();
 
         expect(await submit(user)).toMatchObject({ salutation: 'not_specified' });
+    });
+});
+
+describe('counsellor avatar (#1046)', () => {
+    it('submits the chosen motif as the ICON kind plus its id', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        // t is mocked to a single label per key, so every motif tile shares one
+        // accessible name here — the first is a real, arbitrary motif.
+        await user.click(screen.getAllByRole('radio', { name: 'Symbol' })[0]);
+
+        const submitted = await submit(user);
+        expect(submitted.avatarKind).toBe('ICON');
+        expect(submitted.avatarId).toEqual(expect.any(String));
+        expect(submitted.avatarId).not.toBe('');
+    });
+
+    it('submits INITIALS without a motif id', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        await user.click(screen.getByRole('radio', { name: 'Initialen' }));
+
+        expect(await submit(user)).toMatchObject({ avatarKind: 'INITIALS', avatarId: '' });
+    });
+
+    it('shows the stored choice again when the consultant is reopened', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', avatarKind: 'ICON', avatarId: 'fox' },
+            isLoading: false,
+        };
+        renderForm();
+
+        const selected = await screen.findByRole('radio', { name: 'Symbol', checked: true });
+        expect(selected).toBeInTheDocument();
+    });
+
+    it('leaves a consultant who never chose without a selection, and writes nothing', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        expect(screen.queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+
+        // The field is registered, so the key exists — it must carry no choice.
+        const submitted = await submit(user);
+        expect(submitted.avatarKind).toBeUndefined();
     });
 });
 
@@ -710,5 +766,121 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
 
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
+    });
+});
+
+// antd resolves only REGISTERED fields in `onFinish`. This form shows the absence note but
+// not the toggle, so `absent` has to be registered and hidden or it arrives as `undefined`.
+describe('absence survives an unrelated edit', () => {
+    const ABSENCE_NOTE = 'Bin bis zum 30.09. nicht erreichbar.';
+    const absentConsultant = {
+        id: 'consultant-absent',
+        firstname: 'Ada',
+        lastname: 'Lovelace',
+        email: 'ada.lovelace@example.org',
+        username: 'ada-lovelace',
+        tenantId: TENANT.id,
+        agencies: [],
+        absent: true,
+        absenceMessage: ABSENCE_NOTE,
+    };
+
+    const openAbsentConsultant = () => {
+        mocks.params = { id: absentConsultant.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [absentConsultant] }, isLoading: false };
+        mocks.counselorResult = { data: absentConsultant, isLoading: false };
+    };
+
+    it('submits the stored absence when the admin only changed the e-mail', async () => {
+        const user = userEvent.setup();
+        openAbsentConsultant();
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        // The reason the admin opened the page at all: something unrelated.
+        setField('E-Mail', 'ada.neu@example.org');
+
+        const payload = await submit(user);
+
+        expect(payload.email).toBe('ada.neu@example.org');
+        expect(payload.absent).toBe(true);
+        expect(payload.absenceMessage).toBe(ABSENCE_NOTE);
+    });
+
+    it('shows the stored note, and submits what was typed into it', async () => {
+        // The note is rendered on this screen even though the toggle is not, so it has to be
+        // a field that actually saves — not a box that quietly discards what is typed.
+        const user = userEvent.setup();
+        openAbsentConsultant();
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.getByLabelText('Abwesenheitsnotiz')).toHaveValue(ABSENCE_NOTE);
+
+        setField('Abwesenheitsnotiz', 'Zurueck ab dem 01.10.');
+
+        const payload = await submit(user);
+        expect(payload.absent).toBe(true);
+        expect(payload.absenceMessage).toBe('Zurueck ab dem 01.10.');
+    });
+
+    it('leaves a present counsellor present, with no note on screen', async () => {
+        const user = userEvent.setup();
+        const present = { ...absentConsultant, id: 'consultant-present', absent: false, absenceMessage: undefined };
+        mocks.params = { id: present.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [present] }, isLoading: false };
+        mocks.counselorResult = { data: present, isLoading: false };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.queryByLabelText('Abwesenheitsnotiz')).not.toBeInTheDocument();
+
+        expect(await submit(user)).toMatchObject({ absent: false });
+    });
+});
+
+describe('existing consultant username validation', () => {
+    it('saves added agency membership without revalidating or changing an immutable email-style username', async () => {
+        const topic = { id: 2, name: 'Kinder und Jugendliche' };
+        const originalAgency = {
+            id: 12,
+            name: 'Original agency',
+            postcode: '10115',
+            city: 'Berlin',
+            tenantId: TENANT.id,
+            topics: [topic],
+        };
+        const addedAgency = { ...originalAgency, id: 14, name: 'Isolated test agency' };
+        const existing = {
+            id: 'bart',
+            firstname: 'Bart',
+            lastname: 'Simpson',
+            email: 'bart.simpson@example.org',
+            username: 'bart.simpson@example.org',
+            tenantId: TENANT.id,
+            agencies: [originalAgency],
+            isSupervisor: false,
+        };
+        mocks.params = { id: existing.id, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [existing] }, isLoading: false };
+        mocks.counselorResult = { data: { ...existing, topics: [topic] }, isLoading: false };
+        mocks.agenciesResult = { data: { data: [originalAgency, addedAgency] }, isLoading: false };
+        mocks.topicsResult = { data: [topic], isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+        expect(screen.getByLabelText('Benutzername')).toHaveValue(existing.username);
+        await chooseOption(user, 'Beratungsstelle', '10115 Isolated test agency Berlin');
+        const payload = await submit(user);
+        expect(payload.username).toBe(existing.username);
+        expect(payload.agencies.map(({ value }: { value: number }) => Number(value)).sort()).toEqual([12, 14]);
+        expect(payload).toMatchObject({
+            firstname: existing.firstname,
+            lastname: existing.lastname,
+            email: existing.email,
+            isSupervisor: false,
+        });
+        expect(screen.getByLabelText('Benutzername')).toBeDisabled();
     });
 });

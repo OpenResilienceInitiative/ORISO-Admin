@@ -11,6 +11,10 @@
     // Wider than the space beside the FAB on purpose: subsections run off the
     // right edge and are swiped into view.
     overflow-x: auto;
+    // overflow-x creates a scrollport that also clips overflow-y — pad so the
+    // 3px focus ring on .segment is never cut off by the bottom bar (#900).
+    padding-block: 3px;
+    margin-block: -3px;
     border-radius: 28px;
     scrollbar-width: none;
 

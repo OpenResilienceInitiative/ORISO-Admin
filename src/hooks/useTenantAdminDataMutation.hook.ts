@@ -4,7 +4,7 @@ import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
-import { mergeTenantAdminData } from '../utils/mergeTenantAdminData';
+import { mergeTenantAdminData, serializeTenantAdminDataUpdate } from '../utils/mergeTenantAdminData';
 import { useSingleTenantData, TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
 import { TENANT_DATA_KEY } from './useTenantData.hook';
@@ -27,7 +27,8 @@ export const useTenantAdminDataMutation = ({
 }: TenantAdminDataOptions) => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
-    const shouldPrefetchTenantAdminData = prefetchTenantAdminData && !!id && id !== 'add' && !seedTenantAdminData;
+    const shouldPrefetchTenantAdminData =
+        prefetchTenantAdminData && id !== null && id !== undefined && id !== '' && id !== 'add' && !seedTenantAdminData;
     const { data: tenantAdminData } = useSingleTenantData({
         id,
         enabled: shouldPrefetchTenantAdminData,
@@ -41,7 +42,7 @@ export const useTenantAdminDataMutation = ({
                 url: `${tenantAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.PUT,
                 skipAuth: false,
-                bodyData: JSON.stringify(mergeTenantAdminData(mergeBase, data)),
+                bodyData: serializeTenantAdminDataUpdate(mergeBase, data),
                 responseHandling: [],
             });
         },

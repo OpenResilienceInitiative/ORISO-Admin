@@ -19,11 +19,13 @@ import { Gender } from '../../../enums/Gender';
 import { useAgencyData } from '../../../hooks/useAgencyData';
 import { useAgencyPostCodesData } from '../../../hooks/useAgencyPostCodesData';
 import { useAgencyUpdate } from '../../../hooks/useAgencyUpdate';
+import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
+import { NoTopicConfirmModal } from './components/NoTopicConfirm';
 import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
@@ -39,6 +41,8 @@ import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettin
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import type { AgencyData } from '../../../types/agency';
+import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -75,6 +79,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
+    const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [pendingCardSave, setPendingCardSave] = useState<{
+        formData: Record<string, unknown>;
+        options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] };
+    } | null>(null);
     const { data: agencyData, isLoading, error: agencyError } = useAgencyData({ id });
     // 403 and 404 are surfaced identically here so a foreign agency's mere existence
     // isn't observable from the UI. Any other failure keeps rendering the (empty) page
@@ -91,7 +100,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         refetch: refetchDpaGate,
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
-    const { mutate, isPending: isAgencySaving } = useAgencyUpdate(id);
+    const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
+    const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const agencySettingsTabs = isAgencyInaccessible
@@ -195,27 +205,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         [initialValues],
     );
 
-    const onSubmit = useCallback(
+    const persistAgency = useCallback(
         (formData) => {
-            setSubmitted(true);
-
-            const selectedTenantId = Number(formData?.tenantId);
-            if (isSuperAdmin && (!Number.isFinite(selectedTenantId) || selectedTenantId <= 0)) {
-                form.setFields([
-                    {
-                        name: 'tenantId',
-                        errors: [t('form.errors.required')],
-                    },
-                ]);
-                notification.error({
-                    message: t('agency.edit.general.more_settings.tenant.title'),
-                    description: t('form.errors.required'),
-                    duration: 5,
-                });
-                setSubmitted(false);
-                return;
-            }
-
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
@@ -238,10 +229,64 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 },
             });
         },
-        [buildAgencyUpdateData, form, isEditing, isSuperAdmin, mutate, navigate, t],
+        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
     );
 
-    const onSaveCard = useCallback(
+    /**
+     * antd stops at its own validation and never reaches `onSubmit`, so the
+     * tenant notification above cannot fire for an empty required field. The
+     * agency form is taller than the viewport and its required fields sit in
+     * three different cards: submitting from the top looked like the Save
+     * button did nothing at all. Say what is missing and scroll to it.
+     */
+    const onValidationFailed = useCallback(
+        ({ errorFields }: { errorFields?: ValidationErrorField[] }) => {
+            const fields = describeAgencyValidationErrors(errorFields, t);
+
+            notification.error({
+                message: t('agency.edit.form.validationFailed'),
+                description: fields || t('form.errors.required'),
+                duration: 8,
+            });
+        },
+        [t],
+    );
+
+    const onSubmit = useCallback(
+        (formData) => {
+            setSubmitted(true);
+
+            const selectedTenantId = Number(formData?.tenantId);
+            if (isSuperAdmin && (!Number.isFinite(selectedTenantId) || selectedTenantId <= 0)) {
+                form.setFields([
+                    {
+                        name: 'tenantId',
+                        errors: [t('form.errors.required')],
+                    },
+                ]);
+                notification.error({
+                    message: t('agency.edit.general.more_settings.tenant.title'),
+                    description: t('form.errors.required'),
+                    duration: 5,
+                });
+                setSubmitted(false);
+                return;
+            }
+
+            const isActivatingCounselling =
+                formData.online === true && (!agencyData?.id || initialValues.online === false);
+            const tenantOffersTopics = (tenantTopics?.length ?? 0) > 0;
+            if (isActivatingCounselling && tenantOffersTopics && normalizeTopicIds(formData.topicIds).length === 0) {
+                setPendingNoTopicForm(formData);
+                return;
+            }
+
+            persistAgency(formData);
+        },
+        [agencyData?.id, form, initialValues.online, isSuperAdmin, persistAgency, t, tenantTopics?.length],
+    );
+
+    const persistCard = useCallback(
         (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
             // Card forms deliberately submit only their own nested fields. Passing a
             // full snapshot here lets a fast follow-up card save re-send stale nulls
@@ -265,15 +310,93 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         });
                     }
                 },
-                onSuccess: () => {
+                onSuccess: (response) => {
                     notification.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
+                    // A card save can assign counsellors too, so the same warning
+                    // persistAgency shows belongs here. Without it the card reports
+                    // success while the counsellor silently stayed unassigned.
+                    if (response?.consultantAssignmentFailed) {
+                        notification.warning({
+                            message: t('message.agency.consultantAssignmentFailed'),
+                            duration: 8,
+                        });
+                    }
                 },
             });
         },
         [isEditing, mutate, t],
+    );
+
+    const confirmNoTopicActivation = useCallback(() => {
+        if (pendingCardSave) {
+            const pending = pendingCardSave;
+            setPendingCardSave(null);
+            persistCard(pending.formData, pending.options);
+            return;
+        }
+
+        const formData = pendingNoTopicForm;
+        setPendingNoTopicForm(null);
+        if (formData) {
+            persistAgency(formData);
+        }
+    }, [pendingCardSave, pendingNoTopicForm, persistAgency, persistCard]);
+
+    const cancelNoTopicActivation = useCallback(() => {
+        if (pendingCardSave) {
+            pendingCardSave.options?.onError?.();
+            setPendingCardSave(null);
+            return;
+        }
+
+        setPendingNoTopicForm(null);
+        setSubmitted(false);
+    }, [pendingCardSave]);
+
+    const onSaveCard = useCallback(
+        (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
+            const isActivatingCounselling = formData.online === true && initialValues.online === false;
+            const tenantOffersTopics = (tenantTopics?.length ?? 0) > 0;
+            if (
+                isActivatingCounselling &&
+                tenantOffersTopics &&
+                normalizeTopicIds(formData.topicIds ?? initialValues.topicIds).length === 0
+            ) {
+                setPendingCardSave({ formData, options });
+                return;
+            }
+
+            persistCard(formData, options);
+        },
+        [initialValues.online, initialValues.topicIds, persistCard, tenantTopics?.length],
+    );
+
+    // The agency legal-draft flow must know whether publication really completed before
+    // deleting the exact saved revision. Mutation callbacks are intentionally unsuitable
+    // for that transaction: they can be skipped after an unmount, while mutateAsync gives
+    // the caller one settled promise for the backend write.
+    const onSaveAgencyWide = useCallback(
+        async <T,>(formData: T) => {
+            try {
+                await mutateAsync(formData as Partial<AgencyData>);
+                notification.success({
+                    message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
+                    duration: 3,
+                });
+            } catch (error) {
+                if (error instanceof Response && error.status === 400) {
+                    notification.error({
+                        message: t('message.error.default'),
+                        duration: 8,
+                    });
+                }
+                throw error;
+            }
+        },
+        [isEditing, mutateAsync, t],
     );
 
     const onCancel = useCallback(() => {
@@ -354,6 +477,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     size="large"
                     disabled={isReadOnly}
                     onFinish={onSubmit}
+                    onFinishFailed={onValidationFailed}
+                    scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
                 >
                     <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
                     {/* #620: the create flow shares the row width responsively (CardGrid)
@@ -388,6 +513,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             size="large"
             disabled={isReadOnly}
             onFinish={onSubmit}
+            onFinishFailed={onValidationFailed}
+            scrollToFirstError={{ behavior: 'smooth', block: 'center' }}
         >
             <h3 className={pageStyles.backHeadline}>{t('agency.edit.settings.functionalities.title')}</h3>
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
@@ -426,7 +553,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <AgencyLegalTextContainer
                         agencyData={agencyData}
                         field="imprint"
-                        onSaveAgencyWide={onSaveCard}
+                        onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
                 </CardDeck.Item>
@@ -434,7 +561,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <AgencyLegalTextContainer
                         agencyData={agencyData}
                         field="privacy"
-                        onSaveAgencyWide={onSaveCard}
+                        onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
                 </CardDeck.Item>
@@ -530,6 +657,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     )}
             </Page.BackWithActions>
             {agencyContent}
+            {(pendingNoTopicForm || pendingCardSave) && (
+                <NoTopicConfirmModal onConfirm={confirmNoTopicActivation} onClose={cancelNoTopicActivation} />
+            )}
         </Page>
     );
 };

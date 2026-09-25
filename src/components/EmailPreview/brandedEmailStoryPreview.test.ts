@@ -21,25 +21,35 @@ describe('branded e-mail story preview — the house footer survives verbatim', 
     const { html } = renderBrandedEmailStoryPreview(SUBJECT, BODY);
 
     it('keeps the brand name, the legal pointers and the automated-send note', () => {
-        expect(html).toContain('>ORISO</strong>');
+        expect(html).toContain('font-size:13px;line-height:20px;">ORISO</div>');
         expect(html).toContain('>Impressum</a>');
         expect(html).toContain('>Datenschutz</a>');
-        expect(html).toContain('Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.');
+        expect(html).toContain(
+            'Diese E-Mail gehört zu Ihrer Einladung und lässt sich nicht abbestellen. Bitte antworten Sie nicht darauf.',
+        );
     });
 
-    it('keeps the footer bar itself — surface, top rule and rounded bottom corners', () => {
-        expect(html).toMatch(/bgcolor="#f0edee"[^>]*border-top:1px solid #c4c7c8;/);
+    it('keeps the frame itself — rounded white card, security note inside it, footer below it', () => {
+        expect(html).toMatch(/bgcolor="#ffffff"[^>]*border-radius:24px;border:1px solid #e0dada;/);
+        expect(html).toContain(
+            'Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.',
+        );
+        expect(html).toMatch(/<div class="flinks"/);
     });
 
     /**
-     * The sample call-to-action of a DPA_FORWARD render points at the APP host,
-     * not the admin console: `targetRoleFor` sends every kind except
-     * TENANT_INVITE down the counsellor/app branch. A frame whose CTA suddenly
-     * reads `admin.oriso.org` is the wrong fixture.
+     * The sample call-to-action of a DPA_FORWARD render is the counsellor link:
+     * `targetRoleFor` sends every kind except TENANT_INVITE down the COUNSELLOR
+     * branch, and `InviteAcceptUrlBuilder` points that role at the Admin
+     * counsellor onboarding route. A frame whose CTA reads tenant-onboarding or
+     * the old app `/account-invite/` route is the wrong fixture.
      */
-    it('keeps the app-host call-to-action shape a DPA_FORWARD preview renders with', () => {
-        expect(html).toContain('https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN');
-        expect(html).not.toContain('admin.oriso.org');
+    it('keeps the counsellor call-to-action shape a DPA_FORWARD preview renders with', () => {
+        expect(html).toContain('>Einladung annehmen</a>');
+        expect(html).toContain('Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:');
+        expect(html).toContain('https://admin.example.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN');
+        expect(html).not.toContain('/admin/tenant-onboarding/');
+        expect(html).not.toContain('/account-invite/');
     });
 });
 
@@ -49,7 +59,8 @@ describe('branded e-mail story preview — per-mail cells', () => {
     it('puts this mail’s subject and content into the frame', () => {
         expect(subject).toBe(SUBJECT);
         expect(kind).toBe('DPA_FORWARD');
-        expect(html).toContain(`font-weight:bold;">${SUBJECT}</td>`);
+        expect(html).toContain(`mso-line-height-rule:exactly;">${SUBJECT}</h1>`);
+        expect(html).toContain(`<title>${SUBJECT}</title>`);
         expect(html).toContain('<p>Guten Tag Dr. Ruth Recht,</p>');
         // A single newline stays a line break inside one paragraph.
         expect(html).toContain('eingerichtet werden.<br>Bitte prüfen');
@@ -57,7 +68,7 @@ describe('branded e-mail story preview — per-mail cells', () => {
 
     it('drops the fixture’s own sample content — no counsellor invite left behind', () => {
         expect(html).not.toContain('Willkommen im Beratungsteam');
-        expect(html).not.toContain('Erika');
+        expect(html).not.toContain('Maren');
     });
 
     it('links the sign link the way the backend does', () => {

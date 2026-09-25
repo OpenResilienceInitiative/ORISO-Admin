@@ -13,6 +13,7 @@ import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiForm
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import routePathNames from '../../appConfig';
 import { FETCH_ERRORS } from '../../api/fetchData';
+import { LoginFailureTransport, recordLoginFailure } from '../../observability/loginFailureTracker';
 import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
@@ -32,6 +33,16 @@ const LoginForm = () => {
     const otpHelpTextKey =
         twoFactorType === TwoFactorType.None ? 'message.form.login.otp' : `message.form.login.otp.${twoFactorType}`;
 
+    const describeTransport = (errorMessage: string): LoginFailureTransport => {
+        if (errorMessage === FETCH_ERRORS.BAD_REQUEST) {
+            return 'bad_request';
+        }
+        if (errorMessage === FETCH_ERRORS.UNAUTHORIZED) {
+            return 'unauthorized';
+        }
+        return 'unexpected';
+    };
+
     // Function gets fired on Form Submit
     const onFinish = async (values: any) => {
         setPostLoading(true);
@@ -43,22 +54,36 @@ const LoginForm = () => {
                 navigate('/admin');
             },
             onError: (error) => {
-                if (error.message === FETCH_ERRORS.BAD_REQUEST) {
+                const otpType = error.options?.data?.otpType;
+                const otpSubmitted = Boolean(values?.otp);
+                const stage = otpSubmitted ? 'otp' : 'password';
+                if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
+                    // The password was right, the realm asks for the second factor.
                     setOtpDisabled(false);
-                    setTwoFactorType(error.options?.data?.otpType || TwoFactorType.None);
+                    setTwoFactorType(otpType);
+                    recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
+                    recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
                 } else if (error.message === TENANT_ACCESS_DENIED) {
                     message.error(t('message.error.auth.tenantAccessDenied'));
+                    recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
                 } else if (error.message === FETCH_ERRORS.TIMEOUT) {
                     message.error(t('message.error.auth.network'));
+                    recordLoginFailure({ outcome: 'unavailable', transport: 'network', stage });
                 } else {
                     // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered
                     // invitee get ONE combined, privacy-preserving hint — deliberately
                     // not distinguishable, so the form cannot be used to enumerate
                     // whether an account exists. (A successful login with a missing DPA
                     // never lands here: it authenticates and hits the global blocker.)
+                    //
+                    // Keycloak reports a wrong password AND a wrong one-time code as
+                    // 400 invalid_grant "Invalid user credentials" without an otpType.
+                    // Until 2026-09 that 400 silently revealed the OTP field instead of
+                    // saying anything, so a plain typo looked like a dead button.
                     setShowCredentialsHint(true);
+                    recordLoginFailure({ outcome: 'credentials', transport: describeTransport(error.message), stage });
                 }
                 setPostLoading(false);
             },
