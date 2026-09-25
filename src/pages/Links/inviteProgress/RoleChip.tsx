@@ -90,11 +90,18 @@ export const RoleChip = ({
     const label = extra ? `${roleLabel(current)} + ${roleLabel('AGENCY_ADMIN')}` : roleLabel(current);
 
     const handlerFor = (action: 'change' | 'add') => (action === 'change' ? onChangeRole : onAddRole);
-    const usable = menu.entries.some((entry) => !entry.disabledReason && !entry.current && handlerFor(entry.action));
+    const blockers = menu.entries
+        .filter((entry) => !entry.current)
+        .map((entry) => entry.disabledReason ?? (handlerFor(entry.action) ? undefined : 'noHandler'));
+    const usable = blockers.some((reason) => reason == null);
     const disabled = saving || !usable;
 
     let hint = CHANGE_HINT_KEYS[menu.lockedReason ?? menu.mode];
-    if (!menu.lockedReason && !usable && !saving) hint = CHANGE_HINT_KEYS.noHandler;
+    if (!menu.lockedReason && !usable && !saving) {
+        // A missing permission is claimed only when it is the cause; an account fact ("hat die Rolle schon") wins otherwise.
+        const factual = blockers.find((reason) => reason !== 'noHandler' && reason !== 'notInvitable');
+        hint = CHANGE_HINT_KEYS[blockers.includes('noHandler') || !factual ? 'noHandler' : factual];
+    }
     const tooltip = `${label}: ${t(...ROLE_MEANING_KEYS[current])} ${t(...hint)}`;
 
     const options: Array<RowChipOption | 'divider'> = menu.entries.map((entry) => {

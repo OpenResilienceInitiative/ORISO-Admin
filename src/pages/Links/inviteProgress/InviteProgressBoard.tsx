@@ -116,10 +116,32 @@ const DETAIL_ORDER: LifecycleDetail[] = [
 
 const DETAIL_FALLBACK_LABELS: Record<Exclude<LifecycleDetail, AccountInviteStatus>, [key: string, fallback: string]> = {
     DELIVERY_FAILED: ['links.inviteProgress.detail.deliveryFailed', 'Versand fehlgeschlagen'],
-    NO_UNIT_ADMIN: ['links.inviteProgress.queueProblem', 'Kein BST-Admin'],
+    NO_UNIT_ADMIN: ['links.inviteProgress.queueProblem', 'Keine BST-Admin'],
     LINK_EXPIRED: ['links.inviteProgress.detail.linkExpired', 'Link abgelaufen'],
     PROVISIONING_FAILED: ['links.inviteProgress.detail.provisioningFailed', 'Kontoanlage fehlgeschlagen'],
 };
+
+type Translate = (key: string, fallback: string) => string;
+
+/** Badge, tooltip and step label of a queue problem, naming the unit the invite waits for. */
+const queueProblemCopy = (invite: Pick<AccountInviteDTO, 'waitingForUnit'>, t: Translate) =>
+    invite.waitingForUnit === 'TENANT'
+        ? {
+              badge: t('links.inviteProgress.queueProblemTenant', 'Keine Träger-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemTenantHint',
+                  'Für diesen neuen Träger ist keine Träger-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine Träger-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+              state: t('links.inviteProgress.queueProblemTenantState', 'Keine Träger-Admin – Einladung wartet'),
+          }
+        : {
+              badge: t('links.inviteProgress.queueProblem', 'Keine BST-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemHint',
+                  'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+              state: t('links.inviteProgress.queueProblemState', 'Keine BST-Admin – Einladung wartet'),
+          };
 
 /** The tile is the board's only filter; `null` shows everything. */
 type InviteFilter = LifecyclePhase | null;
@@ -480,16 +502,7 @@ export const InviteProgressBoard = ({
                             ...(reachedAt ? { at: formatStepTime(reachedAt, locale) } : {}),
                             ...(queueProblem && phase.state === 'warning'
                                 ? {
-                                      stateLabel:
-                                          invite.waitingForUnit === 'TENANT'
-                                              ? t(
-                                                    'links.inviteProgress.queueProblemTenantState',
-                                                    'Kein Träger-Admin – Einladung wartet',
-                                                )
-                                              : t(
-                                                    'links.inviteProgress.queueProblemState',
-                                                    'Kein BST-Admin – Einladung wartet',
-                                                ),
+                                      stateLabel: queueProblemCopy(invite, t).state,
                                       stateHint: t(
                                           'links.inviteProgress.queueProblemStateHint',
                                           'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
@@ -620,19 +633,14 @@ export const InviteProgressBoard = ({
                                     </span>
                                 </M3Tooltip>
                                 {hasQueueProblem(invite) && (
-                                    <M3Tooltip
-                                        text={t(
-                                            'links.inviteProgress.queueProblemHint',
-                                            'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
-                                        )}
-                                    >
+                                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
                                         <span
                                             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
                                             tabIndex={0}
                                             className={styles.problemChip}
                                             data-testid="queue-problem-badge"
                                         >
-                                            {t('links.inviteProgress.queueProblem', 'Kein BST-Admin')}
+                                            {queueProblemCopy(invite, t).badge}
                                         </span>
                                     </M3Tooltip>
                                 )}

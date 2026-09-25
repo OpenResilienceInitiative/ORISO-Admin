@@ -524,11 +524,28 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
     });
 
-    it('marks a waiting invite without unit admin with the "Kein BST-Admin" badge', () => {
+    it('marks a waiting invite without unit admin with the "Keine BST-Admin" badge', () => {
         render(<InviteProgressBoard {...counsellorProps([orphan])} />);
 
-        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Kein BST-Admin');
-        expect(screen.getByRole('button', { name: '1 Braucht Aktion 1 Kein BST-Admin' })).toBeInTheDocument();
+        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Keine BST-Admin');
+        expect(screen.getByRole('button', { name: '1 Braucht Aktion 1 Keine BST-Admin' })).toBeInTheDocument();
+    });
+
+    it('names the missing Träger admin in the badge of an invite that waits for a new Träger', async () => {
+        const tenantOrphan = invite(13, {
+            targetRole: 'AGENCY_ADMIN',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'TENANT',
+            queueProblem: 'NO_UNIT_ADMIN',
+            emailDeliveryStatus: null,
+            progressPhase: 'NEEDS_ACTION',
+        });
+        render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
+
+        const badge = screen.getByTestId('queue-problem-badge');
+        expect(badge).toHaveTextContent('Keine Träger-Admin');
+        await userEvent.hover(badge);
+        expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
     });
 
     it('names the queue problem for screen readers instead of calling it a delivery problem', () => {
@@ -537,7 +554,7 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         const row = screen.getByText('person11@example.org').closest('tr') as HTMLElement;
         const progress = within(row).getByRole('list', { name: 'Onboarding-Fortschritt' });
         expect(progress).not.toHaveTextContent('Zustellproblem');
-        expect(progress).toHaveTextContent('Kein BST-Admin – Einladung wartet');
+        expect(progress).toHaveTextContent('Keine BST-Admin – Einladung wartet');
     });
 
     const topicChip = () => screen.getByRole('button', { name: /Themen für/ });
@@ -713,6 +730,29 @@ describe('InviteProgressBoard — role chip', () => {
         expect(roleChip('Anke Roth')).toHaveTextContent(/^Berater:in \+ BST-Admin$/);
         expect(roleChip('Anke Roth')).toHaveAttribute('aria-disabled', 'true');
     });
+
+    it.each([
+        ['has the role already', { accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }, 'Das Konto hat diese Rolle schon.'],
+        ['is still being created', { provisionedUserId: null }, 'Das Konto wird noch angelegt.'],
+    ])(
+        'says why a locked chip is locked when the account %s, not that permission is missing',
+        async (_, patch, why) => {
+            render(
+                <InviteProgressBoard
+                    {...counsellorProps([{ ...accepted, ...patch } as AccountInviteDTO], {
+                        onRoleAdd: vi.fn(),
+                        onRoleChange: vi.fn(),
+                    })}
+                />,
+            );
+
+            expect(roleChip('Anke Roth')).toHaveAttribute('aria-disabled', 'true');
+            await userEvent.hover(roleChip('Anke Roth'));
+            const tooltip = await screen.findByRole('tooltip');
+            expect(tooltip).toHaveTextContent(why);
+            expect(tooltip).not.toHaveTextContent('keine Berechtigung');
+        },
+    );
 
     it('explains that a Träger-Admin needs a new invite instead of a role change', async () => {
         render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn() })} />);
