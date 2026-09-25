@@ -1,0 +1,20 @@
+/* Typography mirrors the invite list's identity cell. */
+.person {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.name {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 600 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    overflow-wrap: anywhere;
+}
+
+.email {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    overflow-wrap: anywhere;
+}
