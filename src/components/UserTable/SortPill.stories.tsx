@@ -52,3 +52,13 @@ export const EscapeKeepsValue: Story = {
         await expect(canvas.getByRole('button', { name: /Nachname|Last name/ })).toBeVisible();
     },
 };
+
+/** Narrow tables: only the field shows; the button still reads "Name nach …". */
+export const Compact: Story = {
+    args: { compact: true },
+    play: async ({ canvas }) => {
+        const pill = canvas.getByRole('button', { name: /Name nach Nachname|Name by Last name/ });
+        await expect(pill).toBeVisible();
+        await expect(pill.getBoundingClientRect().width).toBeLessThan(130);
+    },
+};

@@ -34,6 +34,16 @@ export const TabScroller = ({ children }: TabScrollerProps) => {
         return () => observer.disconnect();
     }, [measure]);
 
+    // Again once the arrows appear: they narrow the viewport.
+    useEffect(() => {
+        const el = viewportRef.current;
+        const active = el?.querySelector<HTMLElement>('[aria-selected="true"], [aria-current="page"]');
+        if (!el || !active) return;
+        const overshoot = active.getBoundingClientRect().right - el.getBoundingClientRect().right;
+        if (overshoot > 0) el.scrollLeft += overshoot;
+        measure();
+    }, [state.overflow, measure]);
+
     const scrollBy = (direction: 1 | -1) => {
         const el = viewportRef.current;
         el?.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: 'smooth' });

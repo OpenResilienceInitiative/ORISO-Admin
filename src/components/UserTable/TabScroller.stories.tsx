@@ -23,8 +23,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const Tabs = ({ width, count }: { width: number; count: number }) => {
-    const [active, setActive] = useState('counsellors');
+const Tabs = ({ width, count, initial = 'counsellors' }: { width: number; count: number; initial?: string }) => {
+    const [active, setActive] = useState(initial);
     return (
         <div style={{ width }}>
             <TabScroller>
@@ -58,5 +58,20 @@ export const Fitting: Story = {
     play: async ({ canvas }) => {
         await expect(canvas.getAllByRole('tab')).toHaveLength(2);
         await expect(canvas.queryByRole('button', { name: /Tabs nach|Scroll tabs/ })).toBeNull();
+    },
+};
+
+/** The tab you are on starts in view, even when it is the last one. */
+export const ActiveTabInView: Story = {
+    render: () => <Tabs width={360} count={4} initial="platform-admins" />,
+    play: async ({ canvas }) => {
+        const active = canvas.getByRole('tab', { selected: true });
+        const viewport = active.closest('[class*="viewport"]') as HTMLElement;
+        await waitFor(() =>
+            expect(active.getBoundingClientRect().right).toBeLessThanOrEqual(
+                viewport.getBoundingClientRect().right + 1,
+            ),
+        );
+        await expect(canvas.getByRole('button', { name: /Tabs nach rechts|Scroll tabs right/ })).toBeDisabled();
     },
 };

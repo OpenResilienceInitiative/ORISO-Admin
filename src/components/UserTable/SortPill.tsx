@@ -18,10 +18,12 @@ const FIELDS: { key: NameSortField; fallback: string }[] = [
 export interface SortPillProps {
     value: NameSortField;
     onChange: (value: NameSortField) => void;
+    /** Narrow tables: "Name nach" is left to screen readers. */
+    compact?: boolean;
 }
 
 /** Chooses what the name column sorts by: Nachname, Vorname or E-Mail. */
-export const SortPill = ({ value, onChange }: SortPillProps) => {
+export const SortPill = ({ value, onChange, compact = false }: SortPillProps) => {
     const { t } = useTranslation();
     const menuId = useId();
     const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -38,7 +40,9 @@ export const SortPill = ({ value, onChange }: SortPillProps) => {
                 aria-controls={anchor ? menuId : undefined}
                 onClick={(event) => setAnchor(event.currentTarget)}
             >
-                <span className={styles.prefix}>{t('userTable.sortPill.prefix', 'Name nach')}</span>
+                <span className={compact ? styles.srOnly : styles.prefix}>
+                    {t('userTable.sortPill.prefix', 'Name nach')}
+                </span>
                 <strong className={styles.value}>{label(value)}</strong>
                 <ExpandMoreIcon className={styles.chevron} aria-hidden />
             </button>
