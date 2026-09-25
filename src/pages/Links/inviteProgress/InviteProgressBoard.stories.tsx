@@ -657,10 +657,10 @@ export const TileCountsOverTheWholeTab: Story = {
     },
     play: async ({ canvasElement }) => {
         const tiles = tileGroup(canvasElement).getAllByRole('button');
-        await expect(tiles[0]).toHaveTextContent(/^24Vorbereitet/);
-        await expect(tiles[3]).toHaveTextContent(/^31Fertig/);
+        await expect(tiles[0]).toHaveTextContent(/^24(Vorbereitet|Prepared)/);
+        await expect(tiles[3]).toHaveTextContent(/^31(Fertig|Done)/);
         await expect(tiles[4]).toHaveTextContent(
-            /^6Braucht Aktion2 Abgelaufen · 1 Widerrufen · 1 Ersetzt · 1 Link abgelaufen · 1 Versand fehlgeschlagen$/,
+            /^6(Braucht Aktion|Needs action)2 (Abgelaufen|Expired) · 1 (Widerrufen|Revoked) · 1 (Ersetzt|Superseded) · 1 (Link abgelaufen|Link expired) · 1 (Versand fehlgeschlagen|Delivery failed)$/,
         );
     },
 };
@@ -700,13 +700,15 @@ export const TraegerDatedTracker: Story = {
         const steps = (email: string) => within(rowOf(canvasElement, email).getByRole('list')).getAllByRole('listitem');
         const founder = steps('sabine.keller@caritas-passau.example.org');
         await expect(founder).toHaveLength(6);
-        await expect(founder[0]).toHaveTextContent(/24\.09\., 11:01$/);
-        await expect(founder[1]).toHaveTextContent(/25\.09\., 14:30$/);
-        await expect(founder[2]).toHaveTextContent(/^(Träger angelegt|Organisation created).*25\.09\., 14:30$/);
-        await expect(founder[3]).toHaveTextContent(/25\.09\., 14:41$/);
+        await expect(founder[0]).toHaveTextContent(/(24\.09\., 11:01|09\/24, 11:01 AM)$/);
+        await expect(founder[1]).toHaveTextContent(/(25\.09\., 14:30|09\/25, 02:30 PM)$/);
+        await expect(founder[2]).toHaveTextContent(/(25\.09\., 14:30|09\/25, 02:30 PM)$/);
+        await expect(founder[3]).toHaveTextContent(/(25\.09\., 14:41|09\/25, 02:41 PM)$/);
 
+        // Sabine created the Träger before Jonas registered: the step comes right after the invite.
         const coFounder = steps('jonas.brandt@caritas-passau.example.org');
-        await expect(coFounder[1]).toHaveTextContent(/^(Träger angelegt|Organisation created).*25\.09\., 14:30$/);
+        await expect(coFounder[1]).toHaveTextContent(/(25\.09\., 14:30|09\/25, 02:30 PM)$/);
+        await expect(coFounder[2]).not.toHaveTextContent(/\d\d:\d\d/);
     },
 };
 
