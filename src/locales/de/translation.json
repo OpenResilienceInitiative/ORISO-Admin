@@ -612,6 +612,7 @@
     "links.templates.newTitle": "Neue Vorlage",
     "links.templates.editTitle": "Vorlage bearbeiten",
     "links.templates.platformAdminOnly": "Nur Plattform-Admins können geteilte Vorlagen ändern",
+    "links.templates.noPermission": "Sie haben keine Berechtigung, diese Vorlage zu ändern",
     "links.templates.edit": "Bearbeiten",
     "links.templates.delete": "Löschen",
     "links.templates.pickHint": "Vorlage anklicken, um sie für den Versand zu übernehmen — oder eine neue anlegen.",

@@ -128,6 +128,16 @@ export const EmailTemplatesDialog = ({
         'links.templates.platformAdminOnly',
         'Nur Plattform-Admins können geteilte Vorlagen ändern',
     );
+    const noPermissionLockReason = t(
+        'links.templates.noPermission',
+        'Sie haben keine Berechtigung, diese Vorlage zu ändern',
+    );
+    // `editable: false` alone does not say why; only an unowned row is the platform's shared one.
+    const lockReasonFor = useCallback(
+        (template: InviteEmailTemplateDTO) =>
+            template.tenantId == null && !isSuperAdmin ? sharedTemplateLockReason : noPermissionLockReason,
+        [isSuperAdmin, noPermissionLockReason, sharedTemplateLockReason],
+    );
     // The server answers per row; the role rule covers a server without `editable`.
     const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
     // Preview context is deliberately separate from the persisted template draft.
@@ -460,7 +470,7 @@ export const EmailTemplatesDialog = ({
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
                         ) : (
-                            <M3Tooltip text={sharedTemplateLockReason}>
+                            <M3Tooltip text={lockReasonFor(template)}>
                                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
                                 <span tabIndex={0}>
                                     <Button disabled size="small">
@@ -484,16 +494,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [
-            isSelectable,
-            kindLabel,
-            mayEditTemplate,
-            onSelect,
-            openEditForm,
-            selectedTemplateId,
-            sharedTemplateLockReason,
-            t,
-        ],
+        [isSelectable, kindLabel, lockReasonFor, mayEditTemplate, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
