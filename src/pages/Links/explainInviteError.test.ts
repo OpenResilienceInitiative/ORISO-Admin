@@ -61,13 +61,14 @@ describe('explainInviteError', () => {
         expect(explained.status).toBe(404);
     });
 
-    it('prefers the backend text of a 403 and stops a batch', async () => {
+    // A 403 can be about one row's unit (a foreign number), so it never stops a batch.
+    it('prefers the backend text of a 403 and fails only that row', async () => {
         const explained = await explainInviteError(
             response(403, { body: { message: 'Nur eigene Beratungsstellen' } }),
             create,
         );
         expect(explained.message).toBe('Nur eigene Beratungsstellen');
-        expect(explained.stopsBatch).toBe(true);
+        expect(explained.stopsBatch).toBe(false);
         const bare = await explainInviteError(response(403), { ...create, role: 'TENANT_ADMIN' });
         expect(bare.message).toBe('Nur Plattform-Administratoren können Träger-Admins einladen.');
         expect(bare.label).toBe('Nicht berechtigt');

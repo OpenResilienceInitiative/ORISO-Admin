@@ -312,7 +312,7 @@ export const InviteCsvImportModal = ({
                 };
                 patchRow(row.line, { state: 'failed', failure });
                 if (explained.stopsBatch) {
-                    // 403 and 502 fail every further row the same way: mark them and stop.
+                    // An SMTP 502 fails every further row the same way: mark them and stop.
                     firstStop = explained.message;
                     const remaining = queue.slice(i + 1);
                     failed += remaining.length;
