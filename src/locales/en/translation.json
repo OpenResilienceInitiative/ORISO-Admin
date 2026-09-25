@@ -1063,6 +1063,7 @@
     "users.allUsers": "Accounts",
     "users.sectionPills.myAccess": "My access",
     "users.table.collapse": "Collapse line",
+    "users.table.sortRejected": "The server cannot sort this way. The list is sorted by first name A–Z.",
     "users.table.expand": "Expand lines",
     "users.table.lastUpdated": "Last updated",
     "agency.add.general.headline": "Back to overview",

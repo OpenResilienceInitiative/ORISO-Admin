@@ -46,7 +46,8 @@ describe('fetchUserSearchWithSortFallback', () => {
 
         expect(fetchDataMock).toHaveBeenCalledTimes(2);
         expect(fetchDataMock.mock.calls[1][0].url).toContain('&order=ASC&field=FIRSTNAME');
-        expect(result).toEqual(list(['Bob']));
+        // The caller must learn the real order, so the header arrow can follow the rows.
+        expect(result).toEqual({ ...list(['Bob']), rejectedSort: { field: 'UPDATE_DATE', order: 'DESC' } });
     });
 
     it('returns an empty list (never hangs / throws) when even the safe fallback fails', async () => {
