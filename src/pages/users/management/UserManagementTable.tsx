@@ -28,7 +28,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
-import { USER_TABLE_CONFIGS } from './userTableConfigs';
+import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
 import { normalizeTenantAdminSortField } from '../../../constants/userTableSort';
 import styles from './UserManagementTable.module.scss';
@@ -136,7 +136,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         },
     });
 
-    const showTenantColumn = isSuperAdmin && !isTenantAdmins && !isTenants;
+    const showTenantColumn = shouldShowTenantColumn(sectionId, isSuperAdmin);
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
 
     const canCreate =
