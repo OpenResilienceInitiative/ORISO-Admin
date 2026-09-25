@@ -43,4 +43,26 @@ describe('SelfAssignDialog', () => {
 
         expect(screen.getByText(/Nr\. 14/)).toBeInTheDocument();
     });
+
+    it('keeps "Eintragen" off while the agency topics are still loading', async () => {
+        const topics = deferred<{ id: number; name: string }[]>();
+        render(
+            <SelfAssignDialog
+                initialAgency={AGENCY}
+                loadAgencyTopics={() => topics.promise}
+                loadAssignments={async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] })}
+                onClose={vi.fn()}
+            />,
+        );
+        await screen.findByText(/noch in keiner Beratungsstelle/);
+
+        // Unknown topic count: sending now would omit topicIds for a multi-topic agency and get a 400.
+        expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeDisabled();
+
+        await act(async () => {
+            topics.resolve([{ id: 2, name: 'Sucht' }]);
+            await topics.promise;
+        });
+        expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeEnabled();
+    });
 });
