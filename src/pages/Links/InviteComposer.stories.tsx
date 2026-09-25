@@ -466,7 +466,7 @@ export const NewAgencyNumber: Story = {
         await userEvent.click(agencyUp);
         await waitFor(() => expect(agency).toHaveValue('141'));
         await expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
-        await canvas.findByText(/Eine neue Beratungsstelle legt nur eine BST-Admin an|Only an agency admin creates/);
+        await canvas.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an|Only an agency admin creates/);
 
         await userEvent.click(
             canvas.getByRole('button', { name: /Stattdessen als BST-Admin einladen|Invite as agency admin instead/ }),
