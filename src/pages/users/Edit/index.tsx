@@ -41,14 +41,19 @@ import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
 import routePathNames from '../../../appConfig';
-import { addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
+import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
+import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
 import {
     buildTopicsPayload,
+    centreLabel,
     centreTopicOptions,
+    findCentre,
     findTopicsLostByMove,
     initialTopicsByCentre,
+    notOfferedAt,
+    topicsChanged,
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
@@ -105,6 +110,7 @@ export const UserEditOrAdd = () => {
     const [form] = Form.useForm();
     const { can } = useUserPermissions();
     const { t } = useTranslation();
+    const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
     // The gate itself lives in one place, because the quick-create dialog asks the same
     // question — see `ADMIN_REMARKS_ROLES`.
@@ -254,6 +260,22 @@ export const UserEditOrAdd = () => {
     const showTopicPickers = isConsultantForm && topics?.length > 0 && hasSelectedAgencies;
     // An older UserService rejects unknown fields, so only send what it announced.
     const serverStoresTopicsPerCentre = Array.isArray(consultantById?.topicsByAgency);
+    /** Names for topics a centre no longer lists, so their chips stay readable. */
+    const topicName = useCallback(
+        (topicId: string) =>
+            [...(topics ?? []), ...(consultantById?.topics ?? [])].find(
+                (topic) => String(topic?.id) === String(topicId),
+            )?.name,
+        [topics, consultantById],
+    );
+    /** Centres whose picked topics include one the centre no longer offers. */
+    const centresWithDroppedTopics = useCallback(
+        (centreIds: string[], byCentre: TopicsByCentre) =>
+            centreIds.filter(
+                (centreId) => notOfferedAt(findCentre(filteredAgencies, centreId), byCentre[centreId]).length,
+            ),
+        [filteredAgencies],
+    );
 
     useEffect(() => {
         const { tenantId = 0 } = parseUserAuthInfo();
@@ -314,18 +336,20 @@ export const UserEditOrAdd = () => {
     }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
 
     useEffect(() => {
-        if (!isEditing || !isConsultantForm || !consultantById || initialCentresRef.current) {
+        // The assigned centres come from the search row; a cached detail record can arrive first.
+        if (!isEditing || !isConsultantForm || !consultantById || !singleData || initialCentresRef.current) {
             return;
         }
-        const centreIds = (singleData?.agencies || []).map(({ id: agencyId }) => String(agencyId));
-        if (centreIds.length > 0 && filteredAgencies.length === 0) {
+        const centreIds = (singleData.agencies || []).map(({ id: agencyId }) => String(agencyId));
+        // A centre missing from the list has unknown topics: stay uninitialised, save keeps what is stored.
+        if (!centreIds.every((centreId) => findCentre(filteredAgencies, centreId))) {
             return;
         }
 
-        const byCentre = initialTopicsByCentre(centreIds, filteredAgencies, consultantById);
+        const byCentre = initialTopicsByCentre(centreIds, filteredAgencies, consultantById, topicName);
         initialCentresRef.current = { ids: centreIds, byCentre };
         form.setFieldsValue({ topicsByAgency: byCentre });
-    }, [consultantById, singleData, filteredAgencies, isEditing, isConsultantForm, form]);
+    }, [consultantById, singleData, filteredAgencies, isEditing, isConsultantForm, form, topicName]);
 
     // Personal-info fields (#994) are only served by the get-by-id endpoint, not by the
     // search result the rest of the form prefills from.
@@ -387,11 +411,18 @@ export const UserEditOrAdd = () => {
         (data, byCentre: TopicsByCentre) => {
             const payload = { ...data };
             delete payload.topicsByAgency;
-            if (isConsultantForm && isEditing && !initialCentresRef.current) {
-                // The centre list never loaded, so the pickers were empty: keep what is stored.
-                payload.topicIds = (consultantById?.topics ?? []).map(({ id: topicId }) => String(topicId));
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // null = keep what is stored. Used when the pickers never loaded, and when a topic the
+            // centre dropped is still held and nothing changed: the server would reject it (400).
+            const keepStored =
+                isConsultantForm &&
+                isEditing &&
+                (!initialCentresRef.current ||
+                    (!topicsChanged(initialCentresRef.current, centreIds, byCentre) &&
+                        centresWithDroppedTopics(centreIds, byCentre).length > 0));
+            if (keepStored) {
+                payload.topicIds = null;
             } else if (isConsultantForm) {
-                const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
                 const { topicIds, topicsByAgency } = buildTopicsPayload(centreIds, byCentre);
                 payload.topicIds = topicIds;
                 if (serverStoresTopicsPerCentre) {
@@ -413,17 +444,42 @@ export const UserEditOrAdd = () => {
             // coercion a standing supervisor could be set but never removed.
             mutate({ ...payload, assignedSupervisorId: payload.assignedSupervisorId ?? '' });
         },
-        [isConsultantForm, isEditing, consultantById, serverStoresTopicsPerCentre, mutate, canWriteStandingSupervisor],
+        [
+            isConsultantForm,
+            isEditing,
+            centresWithDroppedTopics,
+            serverStoresTopicsPerCentre,
+            mutate,
+            canWriteStandingSupervisor,
+        ],
     );
 
     const onSave = useCallback(
         (data) => {
             const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // A topic change is saved as a whole, and the server refuses a topic the centre no
+            // longer offers. So the admin removes the marked ones first, rather than losing them unseen.
+            const blocking =
+                isConsultantForm &&
+                initialCentresRef.current &&
+                topicsChanged(initialCentresRef.current, centreIds, byCentre)
+                    ? centresWithDroppedTopics(centreIds, byCentre)
+                    : [];
+            if (blocking.length > 0) {
+                form.setFields(
+                    blocking.map((centreId) => ({
+                        name: ['topicsByAgency', centreId],
+                        errors: [t('counselor.topicsAtAgency.notOfferedBlocksChange')],
+                    })),
+                );
+                return;
+            }
             const lost =
                 isConsultantForm && initialCentresRef.current
                     ? findTopicsLostByMove({
                           initialCentreIds: initialCentresRef.current.ids,
-                          centreIds: (data.agencies ?? []).map(({ value }) => String(value)),
+                          centreIds,
                           initialByCentre: initialCentresRef.current.byCentre,
                           byCentre,
                           centres: filteredAgencies,
@@ -435,7 +491,7 @@ export const UserEditOrAdd = () => {
             }
             persist(data, byCentre);
         },
-        [isConsultantForm, filteredAgencies, form, persist],
+        [isConsultantForm, filteredAgencies, form, persist, centresWithDroppedTopics, t],
     );
 
     const dropLostTopics = () => {
@@ -452,8 +508,17 @@ export const UserEditOrAdd = () => {
                 targetId,
                 lost.topics.map(({ value }) => value),
             );
-        } catch {
-            message.error({ content: t('counselor.topicsLostByMove.addFailed'), duration: 8 });
+        } catch (error) {
+            const agency = centreLabel(lost.target);
+            const reasons = {
+                [ADD_TOPICS_ERRORS.FORBIDDEN]: t('counselor.topicsLostByMove.addForbidden', { agency }),
+                [ADD_TOPICS_ERRORS.ONE_TOPIC_PER_AGENCY]: t('counselor.topicsLostByMove.oneTopicPerAgency', { agency }),
+                [ADD_TOPICS_ERRORS.SETTINGS_UNAVAILABLE]: t('counselor.topicsLostByMove.settingsUnavailable'),
+            };
+            message.error({
+                content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
+                duration: 8,
+            });
             return;
         } finally {
             setAddingTopics(false);
@@ -587,6 +652,10 @@ export const UserEditOrAdd = () => {
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }
+                        // The "remove the marked topics first" error has no rule to clear it.
+                        Object.keys(changedValues.topicsByAgency ?? {}).forEach((centreId) =>
+                            form.setFields([{ name: ['topicsByAgency', centreId], errors: [] }]),
+                        );
                     }}
                     onFinishFailed={onFinishFailed}
                     initialValues={{
@@ -649,6 +718,7 @@ export const UserEditOrAdd = () => {
                                         <CentreTopicPickers
                                             selectedCentres={selectedAgencies}
                                             centres={filteredAgencies}
+                                            topicName={topicName}
                                         />
                                     )}
 
@@ -728,12 +798,15 @@ export const UserEditOrAdd = () => {
             {pendingMove && (
                 <TopicsLostByMoveDialog
                     lost={pendingMove.lost}
+                    // Role-level only: the permission model has no per-centre check. A centre the
+                    // admin may not change answers 403, which addLostTopicsToTarget explains.
                     canEditTarget={can(PermissionAction.Update, Resource.Agency)}
+                    oneTopicPerAgency={appSettings?.oneTopicPerAgencyEnabled === true}
                     busy={addingTopics}
                     onAddToTarget={addLostTopicsToTarget}
                     onDrop={dropLostTopics}
                     onCreateCentre={() => navigate(routePathNames.agencyAdd)}
-                    onClose={() => setPendingMove(null)}
+                    onClose={() => !addingTopics && setPendingMove(null)}
                 />
             )}
         </Page>

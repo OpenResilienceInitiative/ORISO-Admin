@@ -45,7 +45,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         topicsByAgency,
     } = formData;
 
-    const topicIds = parseTopicIds(formData);
+    // null = keep the stored topics (the server treats a missing list as empty).
+    const topicIds = formData.topicIds === null ? null : parseTopicIds(formData);
 
     const strippedCounselor = {
         firstname,

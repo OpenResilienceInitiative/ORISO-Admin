@@ -44,12 +44,15 @@ export const findCentre = (centres: CentreWithTopics[], id: string) =>
 
 /**
  * Pre-fills each assigned centre with its stored topics. Legacy entries, and the flat list an
- * older server returns, fill every centre that offers them.
+ * older server returns, fill every centre that offers them. A stored topic the centre no longer
+ * offers stays in (after the offered ones) so a save cannot drop it unseen; so does a legacy
+ * topic no assigned centre offers.
  */
 export const initialTopicsByCentre = (
     centreIds: string[],
     centres: CentreWithTopics[],
     stored: StoredTopics,
+    topicName: (id: string) => string | undefined = () => undefined,
 ): Record<string, Option[]> => {
     const perCentre = new Map<string, Set<string>>();
     const legacy = new Set<string>();
@@ -68,12 +71,45 @@ export const initialTopicsByCentre = (
         (stored.topics ?? []).forEach(({ id }) => id !== null && id !== undefined && legacy.add(String(id)));
     }
 
+    const offeredAnywhere = new Set(
+        centreIds.flatMap((centreId) => centreTopicOptions(findCentre(centres, centreId)).map(({ value }) => value)),
+    );
+    const orphanLegacy = [...legacy].filter((id) => !offeredAnywhere.has(id));
+
     return Object.fromEntries(
         centreIds.map((centreId) => {
             const held = new Set([...(perCentre.get(centreId) ?? []), ...legacy]);
             const offered = centreTopicOptions(findCentre(centres, centreId));
-            return [centreId, offered.filter(({ value }) => held.has(value))];
+            const offeredIds = new Set(offered.map(({ value }) => value));
+            const dropped = [...(perCentre.get(centreId) ?? []), ...orphanLegacy]
+                .filter((id, index, all) => !offeredIds.has(id) && all.indexOf(id) === index)
+                .map((id) => ({ value: id, label: topicName(id) ?? id }));
+            return [centreId, [...offered.filter(({ value }) => held.has(value)), ...dropped]];
         }),
+    );
+};
+
+/** Picked topics the centre does not offer (any more). */
+export const notOfferedAt = (centre: CentreWithTopics | undefined, picked: Array<Option | string> = []): string[] => {
+    if (!centre) {
+        return [];
+    }
+    const offered = new Set(centreTopicOptions(centre).map(({ value }) => value));
+    return picked.map(idOf).filter((id) => !offered.has(id));
+};
+
+/** Whether the centres or any centre's topics differ from what was loaded. */
+export const topicsChanged = (
+    initial: { ids: string[]; byCentre: Record<string, Option[]> },
+    centreIds: string[],
+    byCentre: TopicsByCentre = {},
+): boolean => {
+    const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
+    if (!sameSet(initial.ids, centreIds)) {
+        return true;
+    }
+    return centreIds.some(
+        (id) => !sameSet((initial.byCentre[id] ?? []).map(idOf), [...new Set((byCentre[id] ?? []).map(idOf))]),
     );
 };
 

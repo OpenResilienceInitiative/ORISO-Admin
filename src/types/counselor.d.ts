@@ -58,7 +58,8 @@ export interface CounselorData {
     createDate?: string;
     updateDate?: string;
     topics?: TopicData[];
-    topicIds?: Array<{ value: string; label: string }> | string[];
+    /** null = keep the stored topics. */
+    topicIds?: Array<{ value: string; label: string }> | string[] | null;
     /** #1264: topics per centre; an entry without agencyId is legacy and valid at every centre. */
     topicsByAgency?: Array<{ agencyId?: number | null; topicIds?: number[] }>;
 }

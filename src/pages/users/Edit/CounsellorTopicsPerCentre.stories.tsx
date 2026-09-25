@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import i18n from 'i18next';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
@@ -45,7 +45,7 @@ const record = async (request: Request) => {
 };
 const sentTo = (method: string, suffix: string) => sent.filter((r) => r.method === method && r.path.endsWith(suffix));
 
-const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>) => {
+const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>, searchDelayMs = 0) => {
     const consultant = {
         id: CONSULTANT_ID,
         firstname: 'Ada',
@@ -61,9 +61,10 @@ const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>) =>
     return [
         http.get('*/service/tenantadmin/:id', () => HttpResponse.json({ id: TENANT_ID, name: 'Demo-Träger' })),
         http.get('*/service/topic/', () => HttpResponse.json([SUCHT, SCHULDEN, FAMILIE])),
-        http.get('*/service/users/consultants/search', () =>
-            HttpResponse.json({ _embedded: [{ _embedded: consultant }], total: 1 }),
-        ),
+        http.get('*/service/users/consultants/search', async () => {
+            await delay(searchDelayMs);
+            return HttpResponse.json({ _embedded: [{ _embedded: consultant }], total: 1 });
+        }),
         http.get('*/service/agencyadmin/agencies', () =>
             HttpResponse.json({ _embedded: CENTRES.map((c) => ({ _embedded: c })), total: CENTRES.length }),
         ),
@@ -160,6 +161,55 @@ export const SaveSendsTopicsPerCentre: Story = {
     },
 };
 
+/** Second visit: the detail record is cached, the search answers later. Topics must survive. */
+export const DetailBeforeSearchKeepsTopics: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(
+                [NORD, SUED],
+                {
+                    topicsByAgency: [
+                        { agencyId: 1, topicIds: [11] },
+                        { agencyId: 2, topicIds: [13] },
+                    ],
+                },
+                800,
+            ),
+        },
+    },
+    play: async () => {
+        await unlock();
+        await expect(await screen.findByRole('button', { name: 'Sucht' })).toBeVisible();
+        await save();
+        await waitFor(() => expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)).toHaveLength(1));
+        await expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)[0].body.topicsByAgency).toEqual([
+            { agencyId: 1, topicIds: [11] },
+            { agencyId: 2, topicIds: [13] },
+        ]);
+    },
+};
+
+/** Nord no longer offers Familie: it stays as a marked chip and an unrelated save keeps it. */
+export const DroppedTopicStaysMarked: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers([NORD], {
+                topicsByAgency: [{ agencyId: 1, topicIds: [11, 13] }],
+                topics: [SUCHT, FAMILIE],
+            }),
+        },
+    },
+    play: async () => {
+        await unlock();
+        const chip = tr('counselor.topicsAtAgency.notOfferedChip', { topic: 'Familie' });
+        await expect(await screen.findByRole('button', { name: chip })).toBeVisible();
+        await expect(screen.getByText(tr('counselor.topicsAtAgency.notOfferedNotice'))).toBeVisible();
+        await save();
+        await waitFor(() => expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)).toHaveLength(1));
+        await expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)[0].body.topicIds).toBeNull();
+    },
+};
+
 const moveParameters = { msw: { handlers: handlers([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] }) } };
 
 /** Nord → Ost: Ost does not offer "Schulden", so saving asks first. */
@@ -189,7 +239,11 @@ export const MoveAddsTopicAtNewCentre: Story = {
             }),
         );
         await waitFor(() => expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)).toHaveLength(1));
-        await expect(sentTo('PUT', '/agencies/3')[0].body.topicIds).toEqual(['13', '12']);
+        const agencyBody = sentTo('PUT', '/agencies/3')[0].body;
+        await expect(agencyBody.topicIds).toEqual([13, 12]);
+        // Only what the server would otherwise clear goes back; legal texts and settings stay out.
+        await expect(agencyBody).not.toHaveProperty('content');
+        await expect(agencyBody).not.toHaveProperty('settings');
         await expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)[0].body.topicsByAgency).toEqual([
             { agencyId: 3, topicIds: [13, 12] },
         ]);

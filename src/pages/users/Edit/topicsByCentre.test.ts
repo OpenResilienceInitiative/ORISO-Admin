@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildTopicsPayload, centreLabel, findTopicsLostByMove, initialTopicsByCentre } from './topicsByCentre';
+import {
+    buildTopicsPayload,
+    centreLabel,
+    findTopicsLostByMove,
+    initialTopicsByCentre,
+    notOfferedAt,
+    topicsChanged,
+} from './topicsByCentre';
 
 const SUCHT = { id: 11, name: 'Sucht' };
 const SCHULDEN = { id: 12, name: 'Schulden' };
@@ -37,6 +44,40 @@ describe('initialTopicsByCentre', () => {
             '1': [option(SCHULDEN)],
             '3': [option(FAMILIE)],
         });
+    });
+});
+
+describe('topics a centre no longer offers', () => {
+    const names = (id: string) => ({ '13': 'Familie' }[id]);
+
+    it('keeps a stored topic the centre dropped, after the offered ones', () => {
+        expect(
+            initialTopicsByCentre(['1'], CENTRES, { topicsByAgency: [{ agencyId: 1, topicIds: [13, 11] }] }, names),
+        ).toEqual({ '1': [option(SUCHT), option(FAMILIE)] });
+    });
+
+    it('keeps a legacy topic that no assigned centre offers', () => {
+        expect(initialTopicsByCentre(['1'], CENTRES, { topicsByAgency: [{ topicIds: [13] }] }, names)).toEqual({
+            '1': [option(FAMILIE)],
+        });
+    });
+
+    it('falls back to the id when the name is unknown', () => {
+        expect(initialTopicsByCentre(['1'], CENTRES, { topicsByAgency: [{ agencyId: 1, topicIds: [99] }] })).toEqual({
+            '1': [{ value: '99', label: '99' }],
+        });
+    });
+
+    it('lists the picked topics a centre does not offer', () => {
+        expect(notOfferedAt(NORD, [option(SUCHT), option(FAMILIE), '12'])).toEqual(['13']);
+        expect(notOfferedAt(undefined, [option(SUCHT)])).toEqual([]);
+    });
+
+    it('tells a changed selection from the one that was loaded', () => {
+        const initial = { ids: ['1'], byCentre: { '1': [option(SUCHT), option(FAMILIE)] } };
+        expect(topicsChanged(initial, ['1'], { '1': [option(FAMILIE), option(SUCHT)] })).toBe(false);
+        expect(topicsChanged(initial, ['1'], { '1': [option(SUCHT)] })).toBe(true);
+        expect(topicsChanged(initial, ['1', '2'], { '1': [option(SUCHT), option(FAMILIE)], '2': [] })).toBe(true);
     });
 });
 

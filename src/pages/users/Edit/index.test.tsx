@@ -2,6 +2,7 @@ import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
@@ -42,6 +43,7 @@ const mocks = vi.hoisted(() => ({
     params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
     canUpdateAgency: true,
     addTopicsToAgency: vi.fn(),
+    appSettings: {} as Record<string, unknown>,
 }));
 
 const TENANT = { id: 7, name: 'Caritas Augsburg' };
@@ -79,12 +81,21 @@ const translations: Record<string, string> = {
     agency: 'Beratungsstelle',
     'topics.title': 'Themen',
     'counselor.topicsAtAgency': 'Themen bei {{agency}}',
+    'counselor.topicsAtAgency.notOfferedChip': '{{topic}} – wird hier nicht mehr angeboten',
+    'counselor.topicsAtAgency.notOfferedNotice': 'Markierte Themen bietet diese Stelle nicht mehr an.',
+    'counselor.topicsAtAgency.notOfferedBlocksChange': 'Erst markierte Themen entfernen.',
     'counselor.topicsLostByMove.title': 'Themen passen nicht zur neuen Beratungsstelle',
     'counselor.topicsLostByMove.text': '{{agency}} bietet nicht an: {{topics}}.',
     'counselor.topicsLostByMove.addToTarget': 'Thema bei {{agency}} ergänzen',
     'counselor.topicsLostByMove.drop': 'Thema weglassen',
     'counselor.topicsLostByMove.createCentre': 'Neue Beratungsstelle anlegen',
     'counselor.topicsLostByMove.noAgencyRight': 'Keine Berechtigung für {{agency}}.',
+    'counselor.topicsLostByMove.publicAtTarget': 'Wird danach bei {{agency}} öffentlich angeboten.',
+    'counselor.topicsLostByMove.oneTopicPerAgency':
+        'Nur ein Thema (Fachbereich) pro Stelle: {{agency}} hat schon eins.',
+    'counselor.topicsLostByMove.addForbidden': 'Keine Berechtigung, {{agency}} zu ändern.',
+    'counselor.topicsLostByMove.addFailed': 'Hinzufügen fehlgeschlagen.',
+    'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -184,8 +195,15 @@ vi.mock('../../../hooks/useCounselorById', () => ({
     useCounselorById: () => mocks.counselorResult,
 }));
 
-vi.mock('../../../api/agency/addTopicsToAgency', () => ({
-    addTopicsToAgency: mocks.addTopicsToAgency,
+vi.mock('../../../api/agency/addTopicsToAgency', async () => {
+    const actual = await vi.importActual<typeof import('../../../api/agency/addTopicsToAgency')>(
+        '../../../api/agency/addTopicsToAgency',
+    );
+    return { ...actual, addTopicsToAgency: mocks.addTopicsToAgency };
+});
+
+vi.mock('../../../context/useAppConfig', () => ({
+    useAppConfigContext: () => ({ settings: mocks.appSettings }),
 }));
 
 vi.mock('../../../api/tenant/searchTenantData', () => ({
@@ -282,6 +300,7 @@ beforeEach(() => {
     mocks.canUpdateAgency = true;
     mocks.addTopicsToAgency.mockReset();
     mocks.addTopicsToAgency.mockResolvedValue(undefined);
+    mocks.appSettings = {};
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
@@ -589,6 +608,105 @@ describe('topics per centre (#1264)', () => {
         ]);
     });
 
+    it('keeps the stored topics when the detail record arrives before the search result', async () => {
+        // A cached get-by-id (second visit) resolves before the search: the centres are unknown then,
+        // and locking the pickers to "no centres" would save an empty topic list.
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+        const loaded = mocks.consultantsResult;
+        mocks.consultantsResult = { data: undefined, isLoading: true } as any;
+        const user = userEvent.setup();
+        const { rerender } = renderForm();
+
+        mocks.consultantsResult = loaded;
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await unlock(user);
+
+        expect(await screen.findByRole('button', { name: 'Sucht' })).toBeInTheDocument();
+        expect(await submit(user)).toMatchObject({
+            topicIds: ['11', '13'],
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+    });
+
+    it('keeps the stored topics of a centre that is missing from the centre list', async () => {
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+            topics: [SUCHT, FAMILIE],
+        });
+        // Süd is assigned but not in the list (other tenant, deleted, beyond the page).
+        mocks.agenciesResult = { data: { data: [NORD, OST, WEST] }, isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        // null = "keep what is stored"; a flat list would be redistributed, or rejected.
+        const payload = await submit(user);
+        expect(payload.topicIds).toBeNull();
+        expect(payload).not.toHaveProperty('topicsByAgency');
+    });
+
+    describe('a stored topic the centre no longer offers', () => {
+        const editWithDroppedTopic = async (user: ReturnType<typeof userEvent.setup>) => {
+            // Nord offers Sucht and Schulden; Familie was stored there before Nord dropped it.
+            editConsultant([NORD], {
+                topicsByAgency: [{ agencyId: 1, topicIds: [11, 13] }],
+                topics: [SUCHT, FAMILIE],
+            });
+            renderForm();
+            await unlock(user);
+        };
+
+        it('shows it as a marked chip with a notice, and keeps it on an unrelated save', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+
+            expect(
+                screen.getByRole('button', { name: 'Familie – wird hier nicht mehr angeboten' }),
+            ).toBeInTheDocument();
+            expect(screen.getByText('Markierte Themen bietet diese Stelle nicht mehr an.')).toBeInTheDocument();
+            const payload = await submit(user);
+            expect(payload.topicIds).toBeNull();
+            expect(payload).not.toHaveProperty('topicsByAgency');
+        });
+
+        it('saves without it once the admin removed it', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+            await removeChip(user, 'Familie – wird hier nicht mehr angeboten');
+
+            expect(await submit(user)).toMatchObject({
+                topicIds: ['11'],
+                topicsByAgency: [{ agencyId: 1, topicIds: [11] }],
+            });
+        });
+
+        it('asks to remove it before other topic changes are saved', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+            await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Schulden');
+            await user.keyboard('{Escape}');
+            await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+            expect(await screen.findByText('Erst markierte Themen entfernen.')).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+    });
+
     describe('moving a counsellor to a centre that lacks a topic (Admin#1034)', () => {
         const moveNordToOst = async (user: ReturnType<typeof userEvent.setup>) => {
             editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
@@ -639,6 +757,67 @@ describe('topics per centre (#1264)', () => {
 
             expect(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' })).toBeDisabled();
             expect(dialog).toHaveTextContent('Keine Berechtigung für Ost (10115 Berlin).');
+        });
+
+        it('says the topic becomes publicly offered at the new centre', async () => {
+            const user = userEvent.setup();
+            const dialog = await moveNordToOst(user);
+
+            expect(dialog).toHaveTextContent('Wird danach bei Ost (10115 Berlin) öffentlich angeboten.');
+        });
+
+        it('disables adding the topic, with the reason, when a centre may hold only one topic', async () => {
+            mocks.appSettings = { oneTopicPerAgencyEnabled: true };
+            const user = userEvent.setup();
+            const dialog = await moveNordToOst(user);
+
+            expect(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' })).toBeDisabled();
+            expect(dialog).toHaveTextContent(
+                'Nur ein Thema (Fachbereich) pro Stelle: Ost (10115 Berlin) hat schon eins.',
+            );
+        });
+
+        it('explains a refused right to edit the centre and does not save', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.FORBIDDEN));
+            const toast = vi.spyOn(message, 'error');
+            const user = userEvent.setup();
+            await moveNordToOst(user);
+            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(
+                    expect.objectContaining({ content: 'Keine Berechtigung, Ost (10115 Berlin) zu ändern.' }),
+                ),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('asks to try again when the one-topic switch cannot be read', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.SETTINGS_UNAVAILABLE));
+            const toast = vi.spyOn(message, 'error');
+            const user = userEvent.setup();
+            await moveNordToOst(user);
+            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(
+                    expect.objectContaining({ content: 'Gerade nicht prüfbar, bitte erneut versuchen.' }),
+                ),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('cannot be closed while the topic is being added', async () => {
+            mocks.addTopicsToAgency.mockReturnValue(new Promise(() => {}));
+            const user = userEvent.setup();
+            await moveNordToOst(user);
+            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape', keyCode: 27 });
+
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Thema weglassen' })).toBeDisabled();
         });
 
         it('"Neue Beratungsstelle anlegen" opens the agency create page without saving', async () => {
