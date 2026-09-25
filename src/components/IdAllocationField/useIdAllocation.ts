@@ -15,9 +15,6 @@ export interface IdUnitOption {
     tenantName?: string;
     /** Agencies only: the default topic permission for counsellors invited into it. */
     topicPermission?: 'NONE' | 'SELECT_EXISTING' | 'CREATE';
-    /** Agencies only: lets the bar fill an empty Träger field. */
-    tenantId?: number;
-    tenantName?: string;
 }
 
 /**
