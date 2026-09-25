@@ -94,14 +94,18 @@
             justify-items: start;
             cursor: pointer;
             margin-top: @grid-base-two;
-            color: var(--skin-color-primary-contrast-safe, @primary);
+            color: var(--m3-primary, var(--skin-color-primary-contrast-safe, @primary));
+
+            svg {
+                fill: currentColor;
+            }
 
             .text {
-                color: var(--skin-color-primary-contrast-safe, @primary);
+                color: var(--m3-primary, var(--skin-color-primary-contrast-safe, @primary));
                 margin: auto 0 auto @grid-base;
 
                 &:hover {
-                    color: var(--skin-color-primary-contrast-safe, @hover-primary);
+                    color: color-mix(in srgb, var(--m3-primary, #a5000a) 84%, #000000);
                 }
             }
         }
@@ -181,7 +185,7 @@
 
     &__key {
         .bp-min(@fromMedium, set) {
-            border-left: 2px solid var(--skin-color-primary, @primary);
+            border-left: 2px solid var(--m3-primary, var(--skin-color-primary, @primary));
             padding-left: @grid-base-two;
         }
         .bp-min(@fromMedium);
@@ -255,6 +259,11 @@
                 margin: 0 @grid-base 0 0;
             }
             .bp-min(@fromSmall);
+        }
+
+        // The info glyph has no fill of its own and rendered black (#1068).
+        .tooltip__trigger svg {
+            fill: var(--m3-on-surface-variant, #444748);
         }
     }
 
