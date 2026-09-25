@@ -18,8 +18,11 @@ export interface UserCardProps {
     /** Extra details shown when expanded (Träger, Stellen, …). */
     children?: ReactNode;
     defaultExpanded?: boolean;
-    onEdit: () => void;
-    onDelete: () => void;
+    /** Omitted = no permission; the button is left out. */
+    onEdit?: () => void;
+    onDelete?: () => void;
+    /** E.g. while the account is being deleted. */
+    actionsDisabled?: boolean;
 }
 
 /** Phone card (< 768px): one row with name over status, expand next to edit and delete. */
@@ -32,6 +35,7 @@ export const UserCard = ({
     defaultExpanded = false,
     onEdit,
     onDelete,
+    actionsDisabled = false,
 }: UserCardProps) => {
     const { t } = useTranslation();
     const detailsId = useId();
@@ -55,16 +59,22 @@ export const UserCard = ({
                         ariaControls={detailsId}
                         onClick={() => setExpanded((open) => !open)}
                     />
-                    <IconButton
-                        icon={<EditOutlinedIcon />}
-                        ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name: displayName })}
-                        onClick={onEdit}
-                    />
-                    <IconButton
-                        icon={<DeleteOutlinedIcon />}
-                        ariaLabel={t('userTable.card.delete', '{{name}} löschen', { name: displayName })}
-                        onClick={onDelete}
-                    />
+                    {onEdit && (
+                        <IconButton
+                            icon={<EditOutlinedIcon />}
+                            ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name: displayName })}
+                            disabled={actionsDisabled}
+                            onClick={onEdit}
+                        />
+                    )}
+                    {onDelete && (
+                        <IconButton
+                            icon={<DeleteOutlinedIcon />}
+                            ariaLabel={t('userTable.card.delete', '{{name}} löschen', { name: displayName })}
+                            disabled={actionsDisabled}
+                            onClick={onDelete}
+                        />
+                    )}
                 </div>
             </div>
             <div id={detailsId} className={styles.details} hidden={!expanded}>
