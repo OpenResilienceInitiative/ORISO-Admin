@@ -1,5 +1,5 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
-import { http, HttpResponse, delay } from 'msw';
+import { http, HttpResponse, delay, type RequestHandler } from 'msw';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -56,6 +56,31 @@ const CONSULTANTS: CounselorData[] = [
 
 const consultantsResponse = (list: CounselorData[]) => HttpResponse.json({ total: list.length, _embedded: list });
 
+const TENANTS_ENDPOINT = '*/service/tenantadmin/search';
+const AGENCIES_ENDPOINT = '*/service/agencyadmin/agencies';
+const PREFERENCES_ENDPOINT = '*/service/useradmin/list-preferences';
+
+const TENANTS = [
+    { id: 3, name: 'Caritas Hamburg' },
+    { id: 7, name: 'Diakonie Berlin' },
+];
+
+const AGENCIES = [
+    { id: 101, name: 'Beratungsstelle Nord', postcode: '20095', city: 'Hamburg', tenantId: 3 },
+    { id: 102, name: 'Jugendberatung Mitte', postcode: '10115', city: 'Berlin', tenantId: 7 },
+    { id: 103, name: 'Suchtberatung Süd', postcode: '80331', city: 'München', tenantId: 3 },
+];
+
+const halList = (list: object[]) => HttpResponse.json({ total: list.length, _embedded: list });
+
+// Every story also answers the saved-sort and filter-list calls; its own handlers come first and win.
+const DEFAULT_HANDLERS = [
+    http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
+    http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
+    http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
+];
+const withDefaults = (handlers: RequestHandler[]) => [...handlers, ...DEFAULT_HANDLERS];
+
 const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
@@ -76,7 +101,9 @@ type Story = StoryObj<typeof meta>;
 
 /** The consultants section with a populated, sortable table. */
 export const Filled: Story = {
-    parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] } },
+    parameters: {
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
+    },
 };
 
 /**
@@ -87,7 +114,7 @@ export const Filled: Story = {
 export const LongAgencyNames: Story = {
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () =>
                     consultantsResponse([
                         {
@@ -127,33 +154,37 @@ export const LongAgencyNames: Story = {
                         },
                     ]),
                 ),
-            ],
+            ]),
         },
     },
 };
 
 /** No consultants yet — the table shows its empty state. */
 export const Empty: Story = {
-    parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse([]))] } },
+    parameters: { msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse([]))]) } },
 };
 
 /** Request in flight — the table renders its loading spinner. */
 export const Loading: Story = {
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, async () => {
                     await delay('infinite');
                     return consultantsResponse([]);
                 }),
-            ],
+            ]),
         },
     },
 };
 
 /** Backend failure (500): the search helper degrades gracefully to an empty table. */
 export const Error: Story = {
-    parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] } },
+    parameters: {
+        msw: {
+            handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))]),
+        },
+    },
 };
 
 // GET .../service/useradmin/tenantadmins/search — same HAL body; each admin carries its Träger.
@@ -181,7 +212,7 @@ const onTenantAdminsTab = () => (
 export const TenantAdminsForPlatformAdmin: Story = {
     render: onTenantAdminsTab,
     parameters: {
-        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))] },
+        msw: { handlers: withDefaults([http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))]) },
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -206,7 +237,11 @@ export const TenantAdminsForTraegerAdmin: Story = {
         },
     ],
     parameters: {
-        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS.slice(0, 1)))] },
+        msw: {
+            handlers: withDefaults([
+                http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS.slice(0, 1))),
+            ]),
+        },
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -222,13 +257,13 @@ export const TenantAdminsForTraegerAdmin: Story = {
 export const SortRejectedByServer: Story = {
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, ({ request }) =>
                     new URL(request.url).searchParams.get('field') === 'FIRSTNAME'
                         ? consultantsResponse(CONSULTANTS)
                         : new HttpResponse(null, { status: 400 }),
                 ),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement }) => {
@@ -304,7 +339,9 @@ const expectDeleteDialog = async (canvasElement: HTMLElement, title: RegExp) => 
 
 export const ConsultantsTab: Story = {
     render: onTab('consultants'),
-    parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] } },
+    parameters: {
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
+    },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
         const canvas = within(canvasElement);
@@ -345,7 +382,9 @@ const AGENCY_ADMINS = CONSULTANTS.map((admin, index) => ({ ...admin, id: `aa-${i
 
 export const AgencyAdminsTab: Story = {
     render: onTab('agency-admins'),
-    parameters: { msw: { handlers: [http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS))] } },
+    parameters: {
+        msw: { handlers: withDefaults([http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS))]) },
+    },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
         await step('delete asks with the counsellor dialog', () =>
@@ -361,7 +400,9 @@ export const AgencyAdminsTabEdit: Story = {
 
 export const TenantAdminsTab: Story = {
     render: onTab('tenant-admins'),
-    parameters: { msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))] } },
+    parameters: {
+        msw: { handlers: withDefaults([http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))]) },
+    },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
         await step('person cell with "Auch Berater*in"', () => expectPersonCell(canvasElement, 'Auch Berater*in'));
@@ -379,7 +420,7 @@ export const TenantAdminsTabEdit: Story = {
 export const PlatformAdminsTab: Story = {
     render: onTab('platform-admins'),
     parameters: {
-        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))] },
+        msw: { handlers: withDefaults([http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))]) },
     },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
@@ -404,7 +445,7 @@ export const ConsultantWithSeveralCentres: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () =>
                     consultantsResponse([
                         {
@@ -435,7 +476,7 @@ export const ConsultantWithSeveralCentres: Story = {
                         },
                     ]),
                 ),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement, userEvent: user }) => {
@@ -458,12 +499,12 @@ export const SortNameByEmail: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
                     const field = new URL(request.url).searchParams.get('field');
                     return consultantsResponse(field === 'EMAIL' ? [...CONSULTANTS].reverse() : CONSULTANTS);
                 }),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement, userEvent: user }) => {
@@ -510,7 +551,7 @@ export const ConsultantsTabAt1024: Story = {
     render: onTab('consultants'),
     parameters: {
         ...WIDTHS,
-        msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] },
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'laptop1024', isRotated: false } },
     decorators: [withSidebarRail],
@@ -542,7 +583,7 @@ export const ConsultantsTabAt834: Story = {
     render: onTab('consultants'),
     parameters: {
         ...WIDTHS,
-        msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] },
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'tablet834', isRotated: false } },
     decorators: [withSidebarRail],
@@ -585,13 +626,13 @@ export const TenantAdminsTabAt1280: Story = {
     parameters: {
         ...WIDTHS,
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(TENANT_ADMINS_ENDPOINT, () =>
                     consultantsResponse(
                         TENANT_ADMINS.map((admin) => ({ ...admin, tenantSubdomain: 'caritas-hamburg-nord' })),
                     ),
                 ),
-            ],
+            ]),
         },
     },
     globals: { viewport: { value: 'laptop', isRotated: false } },
@@ -609,7 +650,7 @@ export const PlatformAdminsTabAt1280: Story = {
     render: onTab('platform-admins'),
     parameters: {
         ...WIDTHS,
-        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))] },
+        msw: { handlers: withDefaults([http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))]) },
     },
     globals: { viewport: { value: 'laptop', isRotated: false } },
     decorators: [withSidebarRail],
@@ -654,7 +695,7 @@ const pagedConsultants = http.get(CONSULTANTS_ENDPOINT, ({ request }) =>
 
 export const ConsultantsTabAt390: Story = {
     render: onTab('consultants'),
-    parameters: { msw: { handlers: [pagedConsultants] } },
+    parameters: { msw: { handlers: withDefaults([pagedConsultants]) } },
     globals: { viewport: { value: 'phone', isRotated: false } },
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
@@ -697,23 +738,6 @@ export const ConsultantsTabAt390Edit: Story = {
 
 // ---- Träger / BST filters and the saved sort (UserService #1263).
 
-const TENANTS_ENDPOINT = '*/service/tenantadmin/search';
-const AGENCIES_ENDPOINT = '*/service/agencyadmin/agencies';
-const PREFERENCES_ENDPOINT = '*/service/useradmin/list-preferences';
-
-const TENANTS = [
-    { id: 3, name: 'Caritas Hamburg' },
-    { id: 7, name: 'Diakonie Berlin' },
-];
-
-const AGENCIES = [
-    { id: 101, name: 'Beratungsstelle Nord', postcode: '20095', city: 'Hamburg', tenantId: 3 },
-    { id: 102, name: 'Jugendberatung Mitte', postcode: '10115', city: 'Berlin', tenantId: 7 },
-    { id: 103, name: 'Suchtberatung Süd', postcode: '80331', city: 'München', tenantId: 3 },
-];
-
-const halList = (list: object[]) => HttpResponse.json({ total: list.length, _embedded: list });
-
 /** Records every search URL so a play function can read the params the table sent. */
 const searchSpy = (endpoint: string, rows: CounselorData[] = CONSULTANTS, total = 25) => {
     const urls: URL[] = [];
@@ -723,12 +747,6 @@ const searchSpy = (endpoint: string, rows: CounselorData[] = CONSULTANTS, total 
     });
     return { urls, handler, last: () => urls[urls.length - 1] };
 };
-
-const scopeHandlers = [
-    http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
-    http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
-    http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
-];
 
 const pick = async (canvasElement: HTMLElement, label: string, option: RegExp) => {
     const user = userEvent.setup();
@@ -742,7 +760,7 @@ const platformConsultants = searchSpy(CONSULTANTS_ENDPOINT);
 /** Platform admin on Beratende: Träger and centre filter narrow the search and show in the context bar. */
 export const FilterByTraegerAndCentre: Story = {
     render: onTab('consultants'),
-    parameters: { msw: { handlers: [platformConsultants.handler, ...scopeHandlers] } },
+    parameters: { msw: { handlers: withDefaults([platformConsultants.handler]) } },
     globals: { viewport: { value: 'laptop', isRotated: false } },
     beforeEach: () => {
         platformConsultants.urls.length = 0;
@@ -794,7 +812,7 @@ const tenantAdminSpy = searchSpy(TENANT_ADMINS_ENDPOINT, TENANT_ADMINS);
 /** Träger-Admins tab: only the Träger filter; tenant admins belong to no centre. */
 export const FilterTenantAdminsByTraeger: Story = {
     render: onTab('tenant-admins'),
-    parameters: { msw: { handlers: [tenantAdminSpy.handler, ...scopeHandlers] } },
+    parameters: { msw: { handlers: withDefaults([tenantAdminSpy.handler]) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
@@ -809,7 +827,7 @@ const chipSpy = searchSpy(CONSULTANTS_ENDPOINT);
 /** A click on a row's BST chip filters the table to that centre. */
 export const ChipSetsCentreFilter: Story = {
     render: onTab('consultants'),
-    parameters: { msw: { handlers: [chipSpy.handler, ...scopeHandlers] } },
+    parameters: { msw: { handlers: withDefaults([chipSpy.handler]) } },
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         const row = await rowOf(canvasElement, 'Muster');
@@ -831,7 +849,7 @@ export const CentreFilterForTraegerAdmin: Story = {
         },
     ],
     parameters: {
-        msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS)), ...scopeHandlers] },
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -852,11 +870,11 @@ export const CentreFilterForBstAdmin: Story = {
     decorators: [bstAuth],
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS)),
                 http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES.slice(0, 2))),
                 http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement, userEvent: user }) => {
@@ -875,11 +893,11 @@ export const CentreFilterForBstAdminWithOneCentre: Story = {
     ...CentreFilterForBstAdmin,
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS)),
                 http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES.slice(0, 1))),
                 http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement }) => {
@@ -893,7 +911,7 @@ export const FilterResetsCardsAt390: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
                     const params = new URL(request.url).searchParams;
                     if (params.get('agencyId') === '102')
@@ -904,8 +922,7 @@ export const FilterResetsCardsAt390: Story = {
                             : { total: 3, _embedded: CONSULTANTS },
                     );
                 }),
-                ...scopeHandlers,
-            ],
+            ]),
         },
     },
     globals: { viewport: { value: 'phone', isRotated: false } },
@@ -929,12 +946,12 @@ export const SavedSortOnMount: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 savedSortSpy.handler,
                 http.get(PREFERENCES_ENDPOINT, () =>
                     HttpResponse.json({ sorts: { consultants: { field: 'LASTNAME', order: 'DESC' } } }),
                 ),
-            ],
+            ]),
         },
     },
     beforeEach: () => {
@@ -944,11 +961,11 @@ export const SavedSortOnMount: Story = {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
-        await expect(savedSortSpy.urls.length).toBeGreaterThan(0);
-        for (const url of savedSortSpy.urls) {
-            await expect(url.searchParams.get('field')).toBe('LASTNAME');
-            await expect(url.searchParams.get('order')).toBe('DESC');
-        }
+        const orders = savedSortSpy.urls.map(
+            (url) => `${url.searchParams.get('field')} ${url.searchParams.get('order')}`,
+        );
+        await expect(orders.length).toBeGreaterThan(0);
+        await expect(new Set(orders)).toEqual(new Set(['LASTNAME DESC']));
     },
 };
 
@@ -959,14 +976,14 @@ export const SortChangeIsSaved: Story = {
     render: onTab('agency-admins'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS)),
                 http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
                 http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, async ({ request, params }) => {
                     savedBodies.push({ tab: String(params.tab), body: await request.json() });
                     return new HttpResponse(null, { status: 204 });
                 }),
-            ],
+            ]),
         },
     },
     beforeEach: () => {
@@ -988,11 +1005,11 @@ export const SortSaveFails: Story = {
     ...SortChangeIsSaved,
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS)),
                 http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
                 http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 500 })),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement, userEvent: user }) => {
@@ -1001,7 +1018,9 @@ export const SortSaveFails: Story = {
         await user.click(within(canvas.getByRole('columnheader', { name: /^Name/ })).getAllByRole('button')[0]);
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'ascending');
         // Give a toast the time to appear before asserting there is none.
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => {
+            setTimeout(resolve, 300);
+        });
         await expect(canvasElement.ownerDocument.querySelector('.ant-message-notice')).toBeNull();
     },
 };
@@ -1013,10 +1032,10 @@ export const PreferencesUnavailable: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 fallbackSpy.handler,
                 http.get(PREFERENCES_ENDPOINT, () => new HttpResponse(null, { status: 500 })),
-            ],
+            ]),
         },
     },
     beforeEach: () => {
