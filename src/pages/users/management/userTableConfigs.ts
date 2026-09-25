@@ -157,9 +157,10 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         searchPlaceholderKey: 'consultant-search-placeholder',
         columns: [
             ...tenantAdminIdentityColumns(),
+            // Right after the person, so a platform admin sees the Träger without scrolling.
+            col('tenant', true, false, 150),
             col('subdomain', true, false, 160),
             col('hasOtherIdentity', true, false, 110),
-            col('tenant', true, false, 120),
             col('actions', true, false, 80),
         ],
     },
@@ -203,3 +204,7 @@ export const getVisibleColumns = (sectionId: TypeOfUser, options: { showTenant: 
 
 export const canReadSection = (sectionId: TypeOfUser, can: (action: PermissionAction, resource: Resource) => boolean) =>
     can(PermissionAction.Read, USER_TABLE_CONFIGS[sectionId].readResource);
+
+// A platform admin sees every Träger, so each row names its Träger; a Träger admin only sees their own.
+export const shouldShowTenantColumn = (sectionId: TypeOfUser, isSuperAdmin: boolean) =>
+    isSuperAdmin && USER_TABLE_CONFIGS[sectionId].sectionKind === 'users';
