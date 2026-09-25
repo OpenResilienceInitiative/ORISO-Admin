@@ -16,6 +16,8 @@ export interface ScopeChipProps {
     onClick?: () => void;
 }
 
+const CLOSE_DELAY_MS = 150;
+
 export const SCOPE_FALLBACKS = {
     tenant: { short: 'Träger', idLabel: 'Träger-ID' },
     agency: { short: 'BST', idLabel: 'BST-ID' },
@@ -23,20 +25,33 @@ export const SCOPE_FALLBACKS = {
 
 /**
  * Grey chip: kind + ID, postcode and city. Hover or focus opens a card with the
- * full name, address and ID; Escape closes it (WCAG 1.4.13).
+ * full name, address and ID; the pointer can move onto the card, Escape closes it (WCAG 1.4.13).
  */
 export const ScopeChip = ({ kind, id, name, postcode, city, address, onClick }: ScopeChipProps) => {
     const { t } = useTranslation();
     const cardId = useId();
     const anchorRef = useRef<HTMLElement>(null);
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+    const cancelClose = () => clearTimeout(closeTimer.current);
     // Fixed, not absolute: the table's scroll container would clip the card.
     const open = () => {
+        cancelClose();
         const rect = anchorRef.current?.getBoundingClientRect();
         if (rect) setPosition({ top: rect.bottom + 6, left: rect.left });
     };
-    const close = () => setPosition(null);
+    const close = () => {
+        cancelClose();
+        setPosition(null);
+    };
+    // Grace period to cross the gap between chip and card.
+    const closeSoon = () => {
+        cancelClose();
+        closeTimer.current = setTimeout(() => setPosition(null), CLOSE_DELAY_MS);
+    };
+
+    useEffect(() => cancelClose, []);
 
     useEffect(() => {
         if (!position) return undefined;
@@ -57,7 +72,7 @@ export const ScopeChip = ({ kind, id, name, postcode, city, address, onClick }: 
         className: styles.chip,
         'aria-describedby': position ? cardId : undefined,
         onMouseEnter: open,
-        onMouseLeave: close,
+        onMouseLeave: closeSoon,
         onFocus: open,
         onBlur: close,
     };
@@ -83,7 +98,14 @@ export const ScopeChip = ({ kind, id, name, postcode, city, address, onClick }: 
                 </span>
             )}
             {position && (
-                <span id={cardId} role="tooltip" className={styles.card} style={position}>
+                <span
+                    id={cardId}
+                    role="tooltip"
+                    className={styles.card}
+                    style={position}
+                    onMouseEnter={cancelClose}
+                    onMouseLeave={closeSoon}
+                >
                     <span className={styles.cardId}>
                         {t(`userTable.scope.${kind}.idLabel`, SCOPE_FALLBACKS[kind].idLabel)} {id}
                     </span>

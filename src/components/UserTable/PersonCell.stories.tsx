@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, spyOn, waitFor } from 'storybook/test';
+import { expect, spyOn, waitFor, within } from 'storybook/test';
 import { PersonCell } from './PersonCell';
 
 /**
@@ -46,11 +46,28 @@ export const AlsoOtherRole: Story = {
     },
 };
 
+/** The button names whose e-mail it copies; the result shows as an M3 snackbar. */
 export const CopyEmail: Story = {
     play: async ({ canvas, userEvent }) => {
         const writeText = spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
-        await userEvent.click(canvas.getByRole('button', { name: /E-Mail kopieren|Copy e-mail/ }));
+        await userEvent.click(
+            canvas.getByRole('button', { name: /^(E-Mail von Maria Huber kopieren|Copy Maria Huber's e-mail)$/ }),
+        );
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('maria.huber@caritas-berlin.de'));
+        const snackbar = await waitFor(() => within(document.body).getByTestId('person-copy-snackbar'));
+        await expect(snackbar).toHaveTextContent(/E-Mail kopiert|E-mail copied/);
+        await expect(document.querySelector('.ant-message')).toBeNull();
+    },
+};
+
+export const CopyEmailFailed: Story = {
+    play: async ({ canvas, userEvent }) => {
+        spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+        await userEvent.click(canvas.getByRole('button', { name: /Maria Huber/ }));
+        const snackbar = await waitFor(() => within(document.body).getByTestId('person-copy-snackbar'));
+        await expect(snackbar).toHaveTextContent(/Kopieren fehlgeschlagen|Copy failed/);
+        await userEvent.click(within(snackbar).getByRole('button'));
+        await waitFor(() => expect(within(document.body).queryByTestId('person-copy-snackbar')).toBeNull());
     },
 };
 
@@ -83,7 +100,7 @@ export const NarrowColumn: Story = {
         await expect(email.getBoundingClientRect().height).toBeLessThanOrEqual(16);
         // The chip and the copy button never shrink away.
         await expect(canvas.getByText('Auch Berater*in')).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /E-Mail kopieren|Copy e-mail/ })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Dr. Maria-Theresia Huber-Oberndorfer/ })).toBeVisible();
     },
 };
 
