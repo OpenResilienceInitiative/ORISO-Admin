@@ -506,14 +506,14 @@ export const TenantsTab: Story = {
     render: onTab('tenants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get('*/service/tenantadmin/search', () =>
                     HttpResponse.json({
                         total: 1,
                         _embedded: [{ id: 7, name: 'Caritas Nord', subdomain: 'nord', beraterCount: 12 }],
                     }),
                 ),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement }) => {
@@ -529,11 +529,11 @@ export const LegacyEncodedUsername: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () =>
                     consultantsResponse([{ ...CONSULTANTS[0], username: encodeUsername('lmeier') }]),
                 ),
-            ],
+            ]),
         },
     },
     play: async ({ canvasElement }) => {
@@ -852,7 +852,7 @@ const deletablePaged = [
 /** Phone: after "Weitere laden" a delete refetches the page; the card goes and the count follows. */
 export const ConsultantsTabAt390DeleteAfterLoadMore: Story = {
     render: onTab('consultants'),
-    parameters: { msw: { handlers: deletablePaged } },
+    parameters: { msw: { handlers: withDefaults(deletablePaged) } },
     globals: { viewport: { value: 'phone', isRotated: false } },
     beforeEach: () => {
         pagedPeople = [...CONSULTANTS, CLARA];
@@ -878,11 +878,11 @@ export const ConsultantsTabAt390LegacyUsername: Story = {
     render: onTab('consultants'),
     parameters: {
         msw: {
-            handlers: [
+            handlers: withDefaults([
                 http.get(CONSULTANTS_ENDPOINT, () =>
                     consultantsResponse([{ ...CONSULTANTS[0], username: encodeUsername('lmeier') }]),
                 ),
-            ],
+            ]),
         },
     },
     globals: { viewport: { value: 'phone', isRotated: false } },
@@ -1186,15 +1186,23 @@ export const QuickSortChangesSaveOnce: Story = {
     },
 };
 
+const failedSaves = { count: 0 };
+
 /** Saving fails: no error toast, the chosen order stays. */
 export const SortSaveFails: Story = {
     ...SortChangeIsSaved,
+    beforeEach: () => {
+        failedSaves.count = 0;
+    },
     parameters: {
         msw: {
             handlers: withDefaults([
                 http.get(AGENCY_ADMINS_ENDPOINT, () => consultantsResponse(AGENCY_ADMINS)),
                 http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
-                http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 500 })),
+                http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => {
+                    failedSaves.count += 1;
+                    return new HttpResponse(null, { status: 500 });
+                }),
             ]),
         },
     },
@@ -1203,11 +1211,12 @@ export const SortSaveFails: Story = {
         await rowOf(canvasElement, 'Muster');
         await user.click(within(canvas.getByRole('columnheader', { name: /^Name/ })).getAllByRole('button')[0]);
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'ascending');
+        await waitFor(() => expect(failedSaves.count).toBe(1), { timeout: 2000 });
         // Give a toast the time to appear before asserting there is none.
         await new Promise((resolve) => {
             setTimeout(resolve, 300);
         });
-        await expect(canvasElement.ownerDocument.querySelector('.ant-message-notice')).toBeNull();
+        await expect(canvasElement.ownerDocument.querySelector('.ant-message-error')).toBeNull();
     },
 };
 
