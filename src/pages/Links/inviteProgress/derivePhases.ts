@@ -241,37 +241,55 @@ export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
     });
 };
 
-/** Summary-strip buckets: the four stat tiles above the table. */
-export type InviteBucket = 'invited' | 'inProgress' | 'completed' | 'problem';
+/**
+ * The five tiles above the table and the board's only filter (Frank, 25 Sept):
+ * Vorbereitet · Eingeladen · Konto angelegt · Fertig · Braucht Aktion.
+ */
+export type LifecyclePhase = 'prepared' | 'invited' | 'accountCreated' | 'done' | 'needsAction';
 
-export const INVITE_BUCKETS: readonly InviteBucket[] = ['invited', 'inProgress', 'completed', 'problem'];
+export const LIFECYCLE_PHASES: readonly LifecyclePhase[] = [
+    'prepared',
+    'invited',
+    'accountCreated',
+    'done',
+    'needsAction',
+];
 
-export const deriveInviteBucket = (invite: PhaseFacts): InviteBucket => {
-    // A delivery failure only means "problem" while it still blocks the invitee.
-    // Once accepted, the bounce is history — the same reading `derivePhases`
-    // takes — so a completed onboarding is never filed under "Abgelaufen / Problem".
-    if (
-        isDeadInvite(invite) ||
-        hasQueueProblem(invite) ||
-        (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite))
-    ) {
-        return 'problem';
+/** The raw status a tile's breakdown counts; two problems have no status of their own. */
+export type LifecycleDetail = AccountInviteStatus | 'DELIVERY_FAILED' | 'NO_UNIT_ADMIN';
+
+export interface LifecycleReading {
+    phase: LifecyclePhase;
+    detail: LifecycleDetail;
+}
+
+/** Which tile an invite belongs to, and which raw status puts it there. */
+export const deriveLifecyclePhase = (invite: PhaseFacts): LifecycleReading => {
+    if (isDeadInvite(invite)) return { phase: 'needsAction', detail: invite.inviteStatus };
+    if (hasQueueProblem(invite)) return { phase: 'needsAction', detail: 'NO_UNIT_ADMIN' };
+    // A bounce only needs action while it still blocks the invitee; once accepted it is history.
+    if (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite)) {
+        return { phase: 'needsAction', detail: 'DELIVERY_FAILED' };
     }
-    // "Abgeschlossen" follows the stepper's final gate: a tenant invite is only
-    // complete once the DPA signature landed — READY alone is not completion.
-    if (isPhaseProven('completed', invite)) {
-        return 'completed';
-    }
-    if (hasAccepted(invite)) {
-        return 'inProgress';
-    }
-    return 'invited';
+    if (isDraftInvite(invite) || isWaitingForUnit(invite)) return { phase: 'prepared', detail: invite.inviteStatus };
+    if (!hasAccepted(invite)) return { phase: 'invited', detail: invite.inviteStatus };
+    // "Fertig" follows the stepper's final gate: a Träger is only done once the DPA signature landed.
+    return { phase: isPhaseProven('completed', invite) ? 'done' : 'accountCreated', detail: 'ACCEPTED' };
 };
 
-export const countInviteBuckets = (invites: readonly PhaseFacts[]): Record<InviteBucket, number> => {
-    const counts: Record<InviteBucket, number> = { invited: 0, inProgress: 0, completed: 0, problem: 0 };
+export type LifecycleCounts = Record<
+    LifecyclePhase,
+    { total: number; details: Partial<Record<LifecycleDetail, number>> }
+>;
+
+export const countLifecyclePhases = (invites: readonly PhaseFacts[]): LifecycleCounts => {
+    const counts = Object.fromEntries(
+        LIFECYCLE_PHASES.map((phase) => [phase, { total: 0, details: {} }]),
+    ) as LifecycleCounts;
     invites.forEach((invite) => {
-        counts[deriveInviteBucket(invite)] += 1;
+        const { phase, detail } = deriveLifecyclePhase(invite);
+        counts[phase].total += 1;
+        counts[phase].details[detail] = (counts[phase].details[detail] ?? 0) + 1;
     });
     return counts;
 };

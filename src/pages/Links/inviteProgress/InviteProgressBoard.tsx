@@ -21,11 +21,9 @@ import {
     DataTablePagination,
     DataTableRow,
     DataTableSort,
-    DataTableToolbar,
     PhaseStepper,
     StatTile,
 } from '../../../components/DataTable';
-import { FilterChip } from '../../../components/FilterChip';
 import { IconButton } from '../../../components/IconButton';
 import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
@@ -37,18 +35,19 @@ import {
     type TopicPermission,
 } from '../inviteModel';
 import {
-    countInviteBuckets,
-    deriveInviteBucket,
+    countLifecyclePhases,
+    deriveLifecyclePhase,
     derivePhases,
     isDraftInvite,
     formatRelativeTime,
     hasQueueProblem,
-    INVITE_BUCKETS,
-    InviteBucket,
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
     isWaitingForUnit,
+    LIFECYCLE_PHASES,
+    type LifecycleDetail,
+    type LifecyclePhase,
     matchesInviteQuery,
     PHASE_AWAITING_FALLBACKS,
     PHASE_LABEL_FALLBACKS,
@@ -89,32 +88,33 @@ export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> =
     SUPERSEDED: 'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
 };
 
-const STATUS_FILTER_ORDER: AccountInviteStatus[] = [
-    'WAITING_FOR_UNIT',
+const PHASE_FALLBACK_LABELS: Record<LifecyclePhase, string> = {
+    prepared: 'Vorbereitet',
+    invited: 'Eingeladen',
+    accountCreated: 'Konto angelegt',
+    done: 'Fertig',
+    needsAction: 'Braucht Aktion',
+};
+
+/** Breakdown order inside a tile; the two problems without a status of their own come last. */
+const DETAIL_ORDER: LifecycleDetail[] = [
     'DRAFT',
+    'WAITING_FOR_UNIT',
     'EMAIL_SENT',
     'ACCEPTED',
     'EXPIRED',
     'REVOKED',
     'SUPERSEDED',
+    'DELIVERY_FAILED',
+    'NO_UNIT_ADMIN',
 ];
 
-const BUCKET_FALLBACK_LABELS: Record<InviteBucket, string> = {
-    invited: 'Eingeladen',
-    inProgress: 'In Bearbeitung',
-    completed: 'Abgeschlossen',
-    problem: 'Abgelaufen / Problem',
-};
-
-/** One active filter at a time: a summary tile (bucket) or a status chip. */
-type InviteFilter = { kind: 'bucket'; bucket: InviteBucket } | { kind: 'status'; status: AccountInviteStatus };
+/** The tile is the board's only filter; `null` shows everything. */
+type InviteFilter = LifecyclePhase | null;
 
 /** The single predicate behind both the rendered rows and the selection pruning. */
-const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) => {
-    if (!filter) return true;
-    if (filter.kind === 'status') return invite.inviteStatus === filter.status;
-    return deriveInviteBucket(invite) === filter.bucket;
-};
+const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter) =>
+    filter == null || deriveLifecyclePhase(invite).phase === filter;
 
 /** An invite still able to change can be resent/revoked (terminal states cannot). */
 const isActionable = (invite: AccountInviteDTO) =>
@@ -279,8 +279,20 @@ export const InviteProgressBoard = ({
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
-    const [filter, setFilter] = useState<InviteFilter | null>(null);
+    const [filter, setFilter] = useState<InviteFilter>(null);
     const [sort, setSort] = useState<DataTableSort | null>(null);
+
+    const detailLabel = (detail: LifecycleDetail) => {
+        if (detail === 'DELIVERY_FAILED')
+            return t('links.inviteProgress.detail.deliveryFailed', 'Versand fehlgeschlagen');
+        if (detail === 'NO_UNIT_ADMIN') return t('links.inviteProgress.queueProblem', 'Kein BST-Admin');
+        return t(`links.accountInvites.status.${detail}`, INVITE_STATUS_FALLBACK_LABELS[detail]);
+    };
+    // "2 Draft · 1 Wartet": which raw statuses make up a tile's count.
+    const detailBreakdown = (details: Partial<Record<LifecycleDetail, number>>) =>
+        DETAIL_ORDER.filter((detail) => (details[detail] ?? 0) > 0)
+            .map((detail) => `${details[detail]} ${detailLabel(detail)}`)
+            .join(' · ') || t('links.inviteProgress.detail.none', 'keine');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
 
@@ -294,28 +306,24 @@ export const InviteProgressBoard = ({
     // overview the search is run against, and a "3 Abgeschlossen" that silently
     // meant "3 among the rows matching fisch" would be a different number every
     // keystroke.
-    const bucketCounts = useMemo(() => countInviteBuckets(invites), [invites]);
+    const phaseCounts = useMemo(() => countLifecyclePhases(invites), [invites]);
 
     const searched = useMemo(
         () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
         [invites, searchQuery],
     );
 
-    const filtered = useMemo(() => {
-        if (!filter) return searched;
-        if (filter.kind === 'status') return searched.filter((invite) => invite.inviteStatus === filter.status);
-        return searched.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
-    }, [searched, filter]);
+    const filtered = useMemo(() => searched.filter((invite) => matchesFilter(invite, filter)), [searched, filter]);
 
     /**
-     * Switching a tile or a chip also prunes the selection down to the rows the
+     * Switching a tile also prunes the selection down to the rows the
      * new filter still shows. The bulk actions above the board act on the
      * selection, NOT on what is on screen — a row hidden by a filter would
      * otherwise stay silently checked and get resent or revoked without the
      * admin ever seeing it. Complementary to the `searched`-based effect below,
      * which covers the search-query dimension.
      */
-    const applyFilter = (next: InviteFilter | null) => {
+    const applyFilter = (next: InviteFilter) => {
         setFilter(next);
         if (selectedIds.length === 0) return;
         const stillVisible = selectedIds.filter((id) =>
@@ -412,36 +420,19 @@ export const InviteProgressBoard = ({
                 role="group"
                 aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
             >
-                {INVITE_BUCKETS.map((bucket) => (
+                {LIFECYCLE_PHASES.map((phase) => (
                     <StatTile
-                        key={bucket}
+                        key={phase}
                         className={styles.summaryTile}
-                        label={t(`links.inviteProgress.summary.${bucket}`, BUCKET_FALLBACK_LABELS[bucket])}
-                        value={bucketCounts[bucket]}
-                        tone={bucket === 'problem' ? 'error' : 'default'}
-                        active={filter?.kind === 'bucket' && filter.bucket === bucket}
-                        onClick={() =>
-                            applyFilter(
-                                filter?.kind === 'bucket' && filter.bucket === bucket
-                                    ? null
-                                    : { kind: 'bucket', bucket },
-                            )
-                        }
+                        label={t(`links.inviteProgress.phaseTile.${phase}`, PHASE_FALLBACK_LABELS[phase])}
+                        value={phaseCounts[phase].total}
+                        supportingText={detailBreakdown(phaseCounts[phase].details)}
+                        tone={phase === 'needsAction' ? 'error' : 'default'}
+                        active={filter === phase}
+                        onClick={() => applyFilter(filter === phase ? null : phase)}
                     />
                 ))}
             </div>
-
-            <DataTableToolbar
-                filters={STATUS_FILTER_ORDER.map((status) => (
-                    <FilterChip
-                        key={status}
-                        label={t(`links.accountInvites.status.${status}`, INVITE_STATUS_FALLBACK_LABELS[status])}
-                        tooltip={t(`links.accountInvites.statusHint.${status}`, INVITE_STATUS_FALLBACK_HINTS[status])}
-                        selected={filter?.kind === 'status' && filter.status === status}
-                        onChange={(next) => applyFilter(next ? { kind: 'status', status } : null)}
-                    />
-                ))}
-            />
 
             <DataTable
                 ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}

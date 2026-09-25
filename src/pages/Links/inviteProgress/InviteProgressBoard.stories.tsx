@@ -7,9 +7,10 @@ import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvite
 import { InviteProgressBoard } from './InviteProgressBoard';
 
 /**
- * The Onboarding tracking board of the Links page: summary tiles (click =
- * bucket filter), status chips, the phase-progress table and client-side
- * pagination. Träger run the five-phase track (Eingeladen → Registriert →
+ * The Onboarding tracking board of the Links page: five phase tiles (the
+ * only filter — Vorbereitet, Eingeladen, Konto angelegt, Fertig, Braucht
+ * Aktion, each with its count and raw-status breakdown), the phase-progress
+ * table and client-side pagination. Träger run the five-phase track (Eingeladen → Registriert →
  * AVV bestätigt → 2FA aktiv → Abgeschlossen), Berater the three-phase track.
  * Dead invites (abgelaufen/widerrufen/ersetzt) carry the magenta error role.
  */
@@ -202,9 +203,59 @@ const Wired = ({ invites, targetRole }: { invites: AccountInviteDTO[]; targetRol
     );
 };
 
-/** Träger tracking: nine invites covering every bucket, bead state and chip. */
+/** Träger tracking: nine invites covering every tile, bead state and status badge. */
 export const TenantInvites: Story = {
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
+};
+
+const tileGroup = (canvasElement: HTMLElement) =>
+    within(within(canvasElement).getByRole('group', { name: /Onboarding-Übersicht|Onboarding overview/ }));
+
+const tableRows = (canvasElement: HTMLElement) =>
+    within(canvasElement)
+        .getAllByRole('row')
+        .filter((row) => row.closest('tbody'));
+
+/**
+ * One row of five tiles is the board's only filter. „Braucht Aktion" (magenta) holds the expired,
+ * revoked and replaced invites plus the bounced mail; a second press clears the filter.
+ */
+export const PhaseTilesFilter: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
+    play: async ({ canvasElement }) => {
+        const tiles = tileGroup(canvasElement).getAllByRole('button');
+        await expect(tiles.map((tile) => tile.querySelector('span')?.nextElementSibling?.textContent)).toEqual([
+            'Vorbereitet',
+            'Eingeladen',
+            'Konto angelegt',
+            'Fertig',
+            'Braucht Aktion',
+        ]);
+        // One row on desktop.
+        const tops = new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().top)));
+        await expect(tops.size).toBe(1);
+        // No status chips any more — the tiles are the filter.
+        await expect(within(canvasElement).queryByRole('checkbox', { name: /^(Angenommen|Accepted)$/ })).toBeNull();
+
+        const needsAction = tiles[4];
+        await expect(needsAction).toHaveTextContent(
+            /^4Braucht Aktion1 Abgelaufen · 1 Widerrufen · 1 Ersetzt · 1 Versand fehlgeschlagen$/,
+        );
+        await userEvent.click(needsAction);
+        await expect(needsAction).toHaveAttribute('aria-pressed', 'true');
+        await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(4));
+        await expect(within(canvasElement).getByText('Claudia Winter')).toBeInTheDocument();
+        await expect(within(canvasElement).queryByText('Maria Huber')).toBeNull();
+
+        await userEvent.click(tiles[0]);
+        await expect(needsAction).toHaveAttribute('aria-pressed', 'false');
+        await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(1));
+        await expect(within(canvasElement).getByText('Ayşe Demir')).toBeInTheDocument();
+
+        await userEvent.click(tiles[0]);
+        await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(TENANT_INVITES.length));
+    },
 };
 
 /** Berater tracking: the short three-phase track incl. a provisioning row. */
@@ -247,7 +298,7 @@ export const Empty: Story = {
     ),
 };
 
-/** Phone 390: tiles go 2×2 and rows collapse into stacked cards with the mini stepper. */
+/** Phone 390: tiles in two columns („Braucht Aktion" alone on the last line), rows as stacked cards. */
 export const Mobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,

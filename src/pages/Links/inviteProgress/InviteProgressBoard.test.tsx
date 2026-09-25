@@ -72,13 +72,33 @@ const baseProps = () => ({
 describe('InviteProgressBoard', () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it('renders one summary tile per bucket with derived counts', () => {
-        render(<InviteProgressBoard {...baseProps()} />);
+    it('renders the five phase tiles with their counts and a breakdown by raw status', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    ...INVITES,
+                    invite(5, { inviteStatus: 'DRAFT', emailDeliveryStatus: null }),
+                    invite(6, { inviteStatus: 'REVOKED' }),
+                ]}
+            />,
+        );
 
-        expect(screen.getByRole('button', { name: '1 Eingeladen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 In Bearbeitung' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 Abgeschlossen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+        const tiles = within(screen.getByRole('group', { name: 'Onboarding-Übersicht' })).getAllByRole('button');
+        expect(tiles.map((tile) => tile.textContent)).toEqual([
+            '1Vorbereitet1 Draft',
+            '1Eingeladen1 Gesendet',
+            '1Konto angelegt1 Angenommen',
+            '1Fertig1 Angenommen',
+            '2Braucht Aktion1 Abgelaufen · 1 Widerrufen',
+        ]);
+        // The tiles are the only filter: the status chip row is gone.
+        expect(screen.queryByRole('checkbox', { name: 'Angenommen' })).not.toBeInTheDocument();
+    });
+
+    it('says "keine" on an empty tile instead of an empty breakdown', () => {
+        render(<InviteProgressBoard {...baseProps()} />);
+        expect(screen.getByRole('button', { name: '0 Vorbereitet keine' })).toBeInTheDocument();
     });
 
     it('renders a DRAFT row all-grey with the draft label instead of an active "Eingeladen"', () => {
@@ -102,7 +122,7 @@ describe('InviteProgressBoard', () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);
 
-        const problemTile = screen.getByRole('button', { name: '1 Abgelaufen / Problem' });
+        const problemTile = screen.getByRole('button', { name: /^1 Braucht Aktion/ });
         await user.click(problemTile);
 
         const table = within(screen.getByRole('table'));
@@ -114,17 +134,20 @@ describe('InviteProgressBoard', () => {
         expect(within(screen.getByRole('table')).getByText('person1@example.org')).toBeInTheDocument();
     });
 
-    it('filters by status chip (single-select)', async () => {
+    it('filters by one tile at a time; another tile replaces the filter', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);
 
-        await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
-
+        await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
         const table = within(screen.getByRole('table'));
         expect(table.getByText('person2@example.org')).toBeInTheDocument();
-        expect(table.queryByText('person1@example.org')).not.toBeInTheDocument();
+        expect(table.queryByText('person3@example.org')).not.toBeInTheDocument();
         // The count in the pagination footer follows the filter.
-        expect(screen.getByText('1–2 von 2')).toBeInTheDocument();
+        expect(screen.getByText('1–1 von 1')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /^1 Fertig/ }));
+        expect(within(screen.getByRole('table')).getByText('person3@example.org')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^1 Konto angelegt/ })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('shows the phase stepper per row (dead rows carry the error phase)', () => {
@@ -233,17 +256,10 @@ describe('InviteProgressBoard', () => {
         expect((acceptedRow.getByText('Angenommen').closest('td') as HTMLElement).querySelector('a')).toBeNull();
     });
 
-    // C3: "Status ersetzt unklar" — broadened by the owner to every status, in
-    // both places it is shown: the filter chip and the row badge.
-    it('explains every status on hover, on the filter chip and on the row badge (C3)', async () => {
+    // C3: "Status ersetzt unklar" — broadened by the owner to every status; the row badge explains it.
+    it('explains every status on hover on the row badge (C3)', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} invites={[invite(9, { inviteStatus: 'SUPERSEDED' })]} />);
-
-        await user.hover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(
-            'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
-        );
-        await user.unhover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
 
         const badge = within(screen.getByRole('table')).getByText('Ersetzt');
         await user.hover(badge);
@@ -254,13 +270,26 @@ describe('InviteProgressBoard', () => {
         expect(badge).toHaveAttribute('tabindex', '0');
     });
 
-    it('gives each of the six statuses its own explanation, not just Ersetzt (C3)', () => {
-        render(<InviteProgressBoard {...baseProps()} />);
-
-        // One chip per status, each carrying a distinct explanation.
-        const hints = ['Draft', 'Gesendet', 'Angenommen', 'Abgelaufen', 'Widerrufen', 'Ersetzt'].map(
-            (label) => screen.getByRole('checkbox', { name: label }).closest('span')?.textContent,
+    it('gives each of the six statuses its own explanation, not just Ersetzt (C3)', async () => {
+        const user = userEvent.setup();
+        const statuses = ['DRAFT', 'EMAIL_SENT', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'SUPERSEDED'] as const;
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={statuses.map((inviteStatus, index) => invite(20 + index, { inviteStatus }))}
+            />,
         );
+
+        const labels = ['Draft', 'Gesendet', 'Angenommen', 'Abgelaufen', 'Widerrufen', 'Ersetzt'];
+        // One tooltip at a time: hover, read, leave.
+        const hints = await labels.reduce<Promise<string[]>>(async (previous, label) => {
+            const collected = await previous;
+            const badge = within(screen.getByRole('table')).getByText(label);
+            await user.hover(badge);
+            const hint = (await screen.findByRole('tooltip')).textContent ?? '';
+            await user.unhover(badge);
+            return [...collected, hint];
+        }, Promise.resolve([]));
         expect(new Set(hints).size).toBe(6);
     });
 
@@ -324,12 +353,12 @@ describe('InviteProgressBoard', () => {
             await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
             expect(props.onSelectionChange).toHaveBeenLastCalledWith([1]);
 
-            // person1 is EMAIL_SENT, so the "Angenommen" chip hides it.
-            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            // person1 is EMAIL_SENT, so the "Konto angelegt" tile hides it.
+            await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
             expect(props.onSelectionChange).toHaveBeenLastCalledWith([]);
 
             // Really deselected, not just reported: it comes back unchecked.
-            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
             expect(screen.getByRole('checkbox', { name: rowCheckbox })).not.toBeChecked();
         });
 
@@ -342,8 +371,8 @@ describe('InviteProgressBoard', () => {
             await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
             props.onSelectionChange.mockClear();
 
-            // The "Eingeladen" bucket contains person1 — nothing to prune.
-            await user.click(screen.getByRole('button', { name: '1 Eingeladen' }));
+            // The "Eingeladen" tile contains person1 — nothing to prune.
+            await user.click(screen.getByRole('button', { name: /^1 Eingeladen/ }));
             expect(props.onSelectionChange).not.toHaveBeenCalled();
             expect(screen.getByRole('checkbox', { name: rowCheckbox })).toBeChecked();
         });
@@ -363,7 +392,7 @@ describe('InviteProgressBoard', () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} invites={[invite(1)]} onInviteCta={vi.fn()} />);
 
-        await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+        await user.click(screen.getByRole('button', { name: /^0 Konto angelegt/ }));
         expect(screen.getByText('Keine Einladungen für diesen Filter.')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Erste Einladung senden' })).not.toBeInTheDocument();
     });
@@ -466,7 +495,7 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         render(<InviteProgressBoard {...counsellorProps([orphan])} />);
 
         expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Kein BST-Admin');
-        expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '1 Braucht Aktion 1 Kein BST-Admin' })).toBeInTheDocument();
     });
 
     it('names the queue problem for screen readers instead of calling it a delivery problem', () => {

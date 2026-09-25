@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import {
-    countInviteBuckets,
-    deriveInviteBucket,
+    countLifecyclePhases,
+    deriveLifecyclePhase,
     derivePhases,
     formatRelativeTime,
     inviteDisplayName,
@@ -256,112 +256,88 @@ describe('derivePhases — Berater (COUNSELLOR)', () => {
     });
 });
 
-describe('deriveInviteBucket', () => {
-    it('buckets live unaccepted invites as invited', () => {
-        expect(deriveInviteBucket(invite())).toBe('invited');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }))).toBe('invited');
-    });
+describe('deriveLifecyclePhase (the five tiles)', () => {
+    const accepted = { inviteStatus: 'ACCEPTED' as const, acceptedAt: '2026-08-02T10:00:00Z' };
+    const read = (overrides: Partial<AccountInviteDTO>) => deriveLifecyclePhase(invite(overrides));
 
-    it('buckets accepted-but-not-ready invites as inProgress', () => {
-        expect(deriveInviteBucket(invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }))).toBe(
-            'inProgress',
-        );
-    });
-
-    it('keeps a READY tenant invite in progress while the DPA signature is outstanding', () => {
-        // The tile must not contradict the stepper: gate READY without a landed
-        // signature is "waiting on the signature", never "Abgeschlossen".
+    it('files drafts and invites waiting for a new unit under "Vorbereitet"', () => {
+        expect(read({ inviteStatus: 'DRAFT', emailDeliveryStatus: null })).toEqual({
+            phase: 'prepared',
+            detail: 'DRAFT',
+        });
         expect(
-            deriveInviteBucket(
-                invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z', accessGateStatus: 'READY' }),
-            ),
-        ).toBe('inProgress');
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaForwardedAt: '2026-08-03T10:00:00Z',
-                }),
-            ),
-        ).toBe('inProgress');
+            read({
+                targetRole: 'COUNSELLOR',
+                inviteStatus: 'WAITING_FOR_UNIT',
+                waitingForUnit: 'AGENCY',
+                emailDeliveryStatus: null,
+            }),
+        ).toEqual({ phase: 'prepared', detail: 'WAITING_FOR_UNIT' });
     });
 
-    it('buckets a READY tenant invite as completed once the signature landed', () => {
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
-            ),
-        ).toBe('completed');
+    it('files a sent invite without an account under "Eingeladen"', () => {
+        expect(read({})).toEqual({ phase: 'invited', detail: 'EMAIL_SENT' });
     });
 
-    it('buckets READY counsellor invites as completed — no DPA gate on that track', () => {
-        expect(
-            deriveInviteBucket(
-                invite({
-                    targetRole: 'COUNSELLOR',
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                }),
-            ),
-        ).toBe('completed');
+    it('files an accepted invite with onboarding still open under "Konto angelegt"', () => {
+        expect(read(accepted)).toEqual({ phase: 'accountCreated', detail: 'ACCEPTED' });
+        // Gate READY without the signature is not the end of the Träger track (#725).
+        expect(read({ ...accepted, accessGateStatus: 'READY', dpaForwardedAt: '2026-08-03T10:00:00Z' })).toEqual({
+            phase: 'accountCreated',
+            detail: 'ACCEPTED',
+        });
     });
 
-    it('buckets dead invites and failed deliveries as problem', () => {
-        expect(deriveInviteBucket(invite({ inviteStatus: 'EXPIRED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'REVOKED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'SUPERSEDED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ emailDeliveryStatus: 'FAILED' }))).toBe('problem');
+    it('files a finished onboarding under "Fertig"', () => {
+        expect(read({ ...accepted, accessGateStatus: 'READY', dpaSignedAt: '2026-08-04T10:00:00Z' })).toEqual({
+            phase: 'done',
+            detail: 'ACCEPTED',
+        });
+        expect(read({ ...accepted, targetRole: 'COUNSELLOR', accessGateStatus: 'READY' }).phase).toBe('done');
+    });
+
+    it('files expired, revoked and replaced invites under "Braucht Aktion"', () => {
+        expect(read({ inviteStatus: 'EXPIRED' })).toEqual({ phase: 'needsAction', detail: 'EXPIRED' });
+        expect(read({ inviteStatus: 'REVOKED' })).toEqual({ phase: 'needsAction', detail: 'REVOKED' });
+        expect(read({ inviteStatus: 'SUPERSEDED' })).toEqual({ phase: 'needsAction', detail: 'SUPERSEDED' });
+    });
+
+    it('also needs action when the mail bounced or no unit admin is left to release the invite', () => {
+        expect(read({ emailDeliveryStatus: 'FAILED' })).toEqual({ phase: 'needsAction', detail: 'DELIVERY_FAILED' });
+        expect(
+            read({
+                targetRole: 'COUNSELLOR',
+                inviteStatus: 'WAITING_FOR_UNIT',
+                waitingForUnit: 'AGENCY',
+                queueProblem: 'NO_UNIT_ADMIN',
+                emailDeliveryStatus: null,
+            }),
+        ).toEqual({ phase: 'needsAction', detail: 'NO_UNIT_ADMIN' });
     });
 
     it('stops calling a bounce a problem once the invite was accepted', () => {
-        // A historical FAILED delivery on a finished onboarding must not land the
-        // row under "Abgelaufen / Problem" while its stepper shows all-done —
-        // the bucket now reads the bounce the same way derivePhases does.
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    emailDeliveryStatus: 'FAILED',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
-            ),
-        ).toBe('completed');
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    emailDeliveryStatus: 'FAILED',
-                }),
-            ),
-        ).toBe('inProgress');
+        expect(read({ ...accepted, emailDeliveryStatus: 'FAILED' }).phase).toBe('accountCreated');
     });
 
-    it('counts every bucket over a list', () => {
+    it('counts each tile with its breakdown by raw status', () => {
         expect(
-            countInviteBuckets([
+            countLifecyclePhases([
+                invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }),
+                invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }),
+                invite({ targetRole: 'COUNSELLOR', inviteStatus: 'WAITING_FOR_UNIT', emailDeliveryStatus: null }),
                 invite(),
-                invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }),
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
+                invite(accepted),
                 invite({ inviteStatus: 'EXPIRED' }),
-                invite({ inviteStatus: 'EXPIRED' }),
+                invite({ inviteStatus: 'REVOKED' }),
+                invite({ emailDeliveryStatus: 'FAILED' }),
             ]),
-        ).toEqual({ invited: 1, inProgress: 1, completed: 1, problem: 2 });
+        ).toEqual({
+            prepared: { total: 3, details: { DRAFT: 2, WAITING_FOR_UNIT: 1 } },
+            invited: { total: 1, details: { EMAIL_SENT: 1 } },
+            accountCreated: { total: 1, details: { ACCEPTED: 1 } },
+            done: { total: 0, details: {} },
+            needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, DELIVERY_FAILED: 1 } },
+        });
     });
 });
 
@@ -475,11 +451,6 @@ describe('derivePhases — waiting for a new unit', () => {
 
     it('turns the first step into a warning while no unit admin is pending', () => {
         expect(states(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))[0]).toBe('agencyUnitCreated:warning');
-    });
-
-    it('files a waiting invite under "Eingeladen", and one without unit admin under "Problem"', () => {
-        expect(deriveInviteBucket(waiting())).toBe('invited');
-        expect(deriveInviteBucket(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))).toBe('problem');
     });
 
     it('drops the extra step once the invite has been released', () => {

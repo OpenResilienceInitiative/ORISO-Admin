@@ -9,7 +9,7 @@
 .summary {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(4, minmax(128px, 1fr));
+    grid-template-columns: repeat(5, minmax(128px, 1fr));
 }
 
 .summaryTile {
@@ -274,6 +274,11 @@
 @media (max-width: 767px) {
     .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Five tiles in two columns: "Braucht Aktion" takes the last line on its own. */
+    .summaryTile:last-child {
+        grid-column: 1 / -1;
     }
 
     .row {
