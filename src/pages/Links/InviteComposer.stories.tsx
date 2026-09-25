@@ -9,6 +9,7 @@ import {
     listInviteEmailTemplates,
     type InviteEmailTemplateDTO,
 } from '../../api/accountInvites/accountInvites';
+import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import { UserRole } from '../../enums/UserRole';
@@ -606,6 +607,58 @@ export const TypeAheadOpen: Story = {
         await body.findByRole('option', { name: /Caritas Schuldnerberatung Lörrach/ });
         // Scoped to the chosen Träger: the Diakonie agency of another Träger is not offered.
         await expect(body.queryByRole('option', { name: /Diakonie/ })).not.toBeInTheDocument();
+    },
+};
+
+// Answers like AgencyService: `tenantId` narrows in the query. Records every request the picker sends.
+const agencySearchRequests: URL[] = [];
+const agencyServerHandler = http.get('*/service/agencyadmin/agencies', ({ request }) => {
+    const url = new URL(request.url);
+    agencySearchRequests.push(url);
+    const tenantId = url.searchParams.get('tenantId');
+    const rows = AGENCIES.filter((agency) => tenantId == null || agency.tenantId === Number(tenantId));
+    return HttpResponse.json({
+        total: rows.length,
+        _embedded: rows.map((agency) => ({ _embedded: { ...agency, deleteDate: 'null' } })),
+    });
+});
+
+/** Träger first: the agency search asks the server for that Träger only, one request per query, no read-ahead. */
+export const TraegerNarrowsAgencySearchOnServer: Story = {
+    parameters: { msw: { handlers: [...defaultHandlers, agencyServerHandler] } },
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+        searchAgencies: async (query, { tenantId, page, signal }) => {
+            const result = await searchInviteAgencies(query, tenantId, page, signal);
+            return { units: result.hits, hasMore: result.hasMore, total: result.total, page: result.page };
+        },
+    },
+    play: async ({ canvasElement }) => {
+        agencySearchRequests.length = 0;
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await body.findByRole('option', { name: /Caritas Schuldnerberatung Lörrach/ });
+        await userEvent.type(agency, 'sucht');
+        await waitFor(() =>
+            expect(agencySearchRequests.some((url) => url.searchParams.get('q') === 'sucht')).toBe(true),
+        );
+        await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ });
+
+        await expect(body.queryByRole('option', { name: /Diakonie|AWO/ })).not.toBeInTheDocument();
+        await expect(agencySearchRequests.length).toBeGreaterThan(0);
+        await expect(agencySearchRequests.map((url) => url.searchParams.get('tenantId'))).toEqual(
+            agencySearchRequests.map(() => String(TENANTS[0].id)),
+        );
+        await expect(agencySearchRequests.map((url) => url.searchParams.get('page'))).toEqual(
+            agencySearchRequests.map(() => '1'),
+        );
     },
 };
 

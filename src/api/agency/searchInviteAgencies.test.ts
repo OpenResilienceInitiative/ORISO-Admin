@@ -75,30 +75,43 @@ describe('searchInviteAgencies', () => {
         expect(page.hasMore).toBe(false);
     });
 
-    it('reads ahead past pages the Träger filter empties, and says where it stopped', async () => {
-        const page = (ids: number[], tenantId: number) => ({
+    it('asks the server for the chosen Träger and reads no pages ahead', async () => {
+        fetchData.mockResolvedValue({
             total: 30,
-            _embedded: ids.map((id) => hit(id, { tenantId })),
+            _embedded: Array.from({ length: 10 }, (_, index) => hit(index + 1, { tenantId: 40 })),
         });
-        fetchData
-            .mockResolvedValueOnce(page([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 1))
-            .mockResolvedValueOnce(page([11, 12, 13, 14, 15, 16, 17, 18, 19, 20], 40))
-            .mockResolvedValueOnce(page([21], 40));
 
-        const result = await searchInviteAgencies('', 40, 1);
+        const result = await searchInviteAgencies('Sucht', 40, 2);
 
-        expect(result.hits.map(({ id }) => id)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-        expect(result.page).toBe(2);
-        expect(result.hasMore).toBe(true);
-        expect(fetchData).toHaveBeenCalledTimes(2);
+        expect(fetchData).toHaveBeenCalledTimes(1);
+        expect(fetchData.mock.calls[0][0].url).toBe(
+            'https://api.test/service/agencyadmin/agencies?q=Sucht&page=2&perPage=10&field=NAME&order=ASC&excludeDeleted=true&tenantId=40',
+        );
+        // The server counted only this Träger, so its total is the picker's total.
+        expect(result).toMatchObject({ total: 30, hasMore: true, page: 2 });
+        expect(result.hits).toHaveLength(10);
     });
 
-    it('reads ahead at most 20 pages, then hands back the empty page with more to come', async () => {
+    it('hands back an empty page instead of paging on when the chosen Träger has no hits there', async () => {
+        // An AgencyService without the tenant filter still answers with other Träger: shown as nothing.
+        fetchData.mockResolvedValue({ total: 1000, _embedded: [hit(1, { tenantId: 1 })] });
+        const result = await searchInviteAgencies('', 40, 1);
+        expect(fetchData).toHaveBeenCalledTimes(1);
+        expect(result).toMatchObject({ hits: [], hasMore: true, page: 1 });
+    });
+
+    it('sends no tenantId without a chosen Träger', async () => {
+        fetchData.mockResolvedValue({ total: 0, _embedded: [] });
+        await searchInviteAgencies('Sucht');
+        expect(fetchData.mock.calls[0][0].url).not.toContain('tenantId');
+    });
+
+    it('reads ahead past pages that only hold deleted agencies, at most 20', async () => {
         fetchData.mockResolvedValue({
             total: 1000,
-            _embedded: Array.from({ length: 10 }, (_, index) => hit(index + 1, { tenantId: 1 })),
+            _embedded: [hit(1, { tenantId: 40, deleteDate: '2026-09-01T00:00:00Z' })],
         });
-        const result = await searchInviteAgencies('', 40, 3);
+        const result = await searchInviteAgencies('', undefined, 3);
         expect(fetchData).toHaveBeenCalledTimes(20);
         expect(fetchData.mock.calls[19][0].url).toContain('&page=22&');
         expect(result).toMatchObject({ hits: [], hasMore: true, page: 22 });
@@ -108,16 +121,16 @@ describe('searchInviteAgencies', () => {
         const controller = new AbortController();
         fetchData.mockImplementation(async () => {
             controller.abort();
-            return { total: 1000, _embedded: [hit(1, { tenantId: 1 })] };
+            return { total: 1000, _embedded: [hit(1, { deleteDate: '2026-09-01T00:00:00Z' })] };
         });
-        await expect(searchInviteAgencies('', 40, 1, controller.signal)).rejects.toThrow();
+        await expect(searchInviteAgencies('', undefined, 1, controller.signal)).rejects.toThrow();
         expect(fetchData).toHaveBeenCalledTimes(1);
         expect(fetchData.mock.calls[0][0].signal).toBe(controller.signal);
     });
 
     it('stops reading ahead when the server has nothing more', async () => {
-        fetchData.mockResolvedValue({ total: 10, _embedded: [hit(1, { tenantId: 1 })] });
-        const result = await searchInviteAgencies('', 40, 1);
+        fetchData.mockResolvedValue({ total: 10, _embedded: [hit(1, { deleteDate: '2026-09-01T00:00:00Z' })] });
+        const result = await searchInviteAgencies('', undefined, 1);
         expect(result).toMatchObject({ hits: [], hasMore: false, page: 1 });
         expect(fetchData).toHaveBeenCalledTimes(1);
     });

@@ -15,17 +15,17 @@ export interface InviteAgencyHit {
     topicPermission?: InviteTopicPermission;
 }
 
-/** One page of picker hits; `page` is the last server page read (it may read ahead past empty ones). */
+/** One page of picker hits; `page` is the last server page read (it may read ahead past deleted-only ones). */
 export interface InviteAgencyPage {
     hits: InviteAgencyHit[];
-    /** The server's full hit count, before the client-side Träger filter. */
+    /** The server's full hit count; with a Träger, that Träger's count. */
     total: number;
     hasMore: boolean;
     page: number;
 }
 
 export const INVITE_AGENCY_PAGE_SIZE = 10;
-// Cap on read-ahead so a Träger without matches cannot page through everything at once.
+// Cap on read-ahead so a run of deleted agencies cannot page through everything at once.
 const MAX_READ_AHEAD = 20;
 
 const TOPIC_PERMISSIONS: InviteTopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];
@@ -36,11 +36,12 @@ export const agencyTopicPermission = (agency: Record<string, any> | undefined): 
     return TOPIC_PERMISSIONS.includes(value) ? value : undefined;
 };
 
-const fetchAgencyPage = async (q: string, page: number, signal?: AbortSignal) => {
+const fetchAgencyPage = async (q: string, page: number, tenantId?: number, signal?: AbortSignal) => {
+    const tenantFilter = tenantId == null ? '' : `&tenantId=${tenantId}`;
     const result = await fetchData({
         url: `${agencyEndpointBase}?q=${encodeURIComponent(
             q,
-        )}&page=${page}&perPage=${INVITE_AGENCY_PAGE_SIZE}&field=NAME&order=ASC&excludeDeleted=true`,
+        )}&page=${page}&perPage=${INVITE_AGENCY_PAGE_SIZE}&field=NAME&order=ASC&excludeDeleted=true${tenantFilter}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
@@ -62,9 +63,24 @@ const toHit = (agency: Record<string, any>): InviteAgencyHit => ({
         .filter((name: unknown): name is string => typeof name === 'string' && name !== ''),
 });
 
-// `q` also matches topic names; an older AgencyService ignores `excludeDeleted`, so deleted agencies are
-// filtered here too. The server cannot filter by Träger, so a filtered page reads ahead until it has hits;
-// `signal` stops that read-ahead once the picker has moved on to a newer query.
+const readPage = async (
+    q: string,
+    page: number,
+    tenantId?: number,
+    signal?: AbortSignal,
+): Promise<InviteAgencyPage> => {
+    const { rows, total } = await fetchAgencyPage(q, page, tenantId, signal);
+    const hits = rows
+        // AgencyService sends an unset deleteDate as the string "null".
+        .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))
+        .map(toHit)
+        // No-op on a current AgencyService; an older one ignores `tenantId` and must not leak other Träger.
+        .filter((agency) => tenantId == null || agency.tenantId == null || agency.tenantId === tenantId);
+    return { hits, total, hasMore: page * INVITE_AGENCY_PAGE_SIZE < total, page };
+};
+
+// With a Träger the server filters and counts, so one page is one request. Without one, read ahead past
+// deleted-only pages (an older AgencyService ignores `excludeDeleted`); `signal` stops that on a newer query.
 export const searchInviteAgencies = async (
     query: string,
     tenantId?: number,
@@ -72,20 +88,13 @@ export const searchInviteAgencies = async (
     signal?: AbortSignal,
 ): Promise<InviteAgencyPage> => {
     const q = query.trim() === '' ? '*' : query.trim();
+    if (tenantId != null) return readPage(q, page, tenantId, signal);
     let current = page;
     for (;;) {
         signal?.throwIfAborted();
         // eslint-disable-next-line no-await-in-loop -- each page decides whether the next is needed
-        const { rows, total } = await fetchAgencyPage(q, current, signal);
-        const hits = rows
-            // AgencyService sends an unset deleteDate as the string "null".
-            .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))
-            .map(toHit)
-            .filter((agency) => tenantId == null || agency.tenantId == null || agency.tenantId === tenantId);
-        const hasMore = current * INVITE_AGENCY_PAGE_SIZE < total;
-        if (hits.length > 0 || !hasMore || current - page + 1 >= MAX_READ_AHEAD) {
-            return { hits, total, hasMore, page: current };
-        }
+        const result = await readPage(q, current, undefined, signal);
+        if (result.hits.length > 0 || !result.hasMore || current - page + 1 >= MAX_READ_AHEAD) return result;
         current += 1;
     }
 };

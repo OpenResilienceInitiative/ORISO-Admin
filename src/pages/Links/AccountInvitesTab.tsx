@@ -306,11 +306,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 ),
                 hasMore: result.hasMore,
                 page: result.page,
-                // With a Träger chosen, the platform admin's server total counts every Träger.
-                total: viewerScope !== 'platform' || tenantId == null ? result.total : undefined,
+                total: result.total,
             };
         },
-        [viewerScope],
+        [],
     );
 
     const onCreate = useCallback(
