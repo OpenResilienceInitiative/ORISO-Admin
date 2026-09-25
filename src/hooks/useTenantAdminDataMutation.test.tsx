@@ -71,6 +71,7 @@ describe('useTenantAdminDataMutation', () => {
             <QueryClientProvider client={client}>{children}</QueryClientProvider>
         );
         vi.mocked(fetchData).mockResolvedValue(seed);
+        getSingleTenantDataMock.mockResolvedValue(seed);
         const { result } = renderHook(
             () =>
                 useTenantAdminDataMutation({
@@ -141,6 +142,7 @@ describe('useTenantAdminDataMutation', () => {
     });
     it('announces a generic success by default', async () => {
         vi.mocked(fetchData).mockResolvedValue(seedTenantAdminData);
+        getSingleTenantDataMock.mockResolvedValue(seedTenantAdminData);
         const { result } = renderHook(
             () => useTenantAdminDataMutation({ id: '1', seedTenantAdminData, prefetchTenantAdminData: false }),
             { wrapper: createWrapper() },
@@ -156,6 +158,7 @@ describe('useTenantAdminDataMutation', () => {
     // #1066: the legal card says "Veröffentlicht" itself; a second, generic toast read as noise.
     it('stays silent on success when the caller brings its own confirmation', async () => {
         vi.mocked(fetchData).mockResolvedValue(seedTenantAdminData);
+        getSingleTenantDataMock.mockResolvedValue(seedTenantAdminData);
         const { result } = renderHook(
             () =>
                 useTenantAdminDataMutation({
@@ -170,5 +173,55 @@ describe('useTenantAdminDataMutation', () => {
         await result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>' } } });
 
         expect(notifySuccess).not.toHaveBeenCalled();
+    });
+    // #1066: TenantService replaces every field of a tenant on PUT. The seed from /service/tenant
+    // carries neither the Erstantwort texts nor other languages of `claim`, so a PUT built on it
+    // wiped them. The body has to rest on a full, fresh /service/tenantadmin read.
+    it('keeps the Erstantwort texts and other languages when a legal text is published', async () => {
+        const stored: TenantAdminData = {
+            ...seedTenantAdminData,
+            content: {
+                ...seedTenantAdminData.content,
+                impressum: { de: '<p>Alt</p>', en: '<p>Old</p>' },
+                claim: { de: 'Hilfe', en: 'Help' },
+                erstantwortGreeting: { de: '<p>Guten Tag</p>' },
+                erstantwortWhoReadsAlong: { de: '<p>Team</p>' },
+                erstantwortEmergencyAddition: { de: '<p>Notruf 112</p>' },
+                erstantwortFreeNotice: { de: '<p>Kostenfrei</p>' },
+                erstantwortClosing: { de: '<p>Grüße</p>' },
+                erstantwortResponseDeadlineDays: 2,
+            } as TenantAdminData['content'],
+        };
+        getSingleTenantDataMock.mockResolvedValue(stored);
+        vi.mocked(fetchData).mockResolvedValue(stored);
+        const { result } = renderHook(
+            () => useTenantAdminDataMutation({ id: '1', seedTenantAdminData, prefetchTenantAdminData: false }),
+            { wrapper: createWrapper() },
+        );
+
+        await result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>', en: '<p>New</p>' } } });
+
+        expect(getSingleTenantDataMock).toHaveBeenCalledWith('1', { silent: true });
+        const body = JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string);
+        expect(body.content.impressum).toEqual({ de: '<p>Neu</p>', en: '<p>New</p>' });
+        expect(body.content.claim).toEqual({ de: 'Hilfe', en: 'Help' });
+        expect(body.content.erstantwortGreeting).toEqual({ de: '<p>Guten Tag</p>' });
+        expect(body.content.erstantwortWhoReadsAlong).toEqual({ de: '<p>Team</p>' });
+        expect(body.content.erstantwortEmergencyAddition).toEqual({ de: '<p>Notruf 112</p>' });
+        expect(body.content.erstantwortFreeNotice).toEqual({ de: '<p>Kostenfrei</p>' });
+        expect(body.content.erstantwortClosing).toEqual({ de: '<p>Grüße</p>' });
+        expect(body.content.erstantwortResponseDeadlineDays).toBe(2);
+    });
+
+    it('writes nothing when the fresh tenant read fails', async () => {
+        getSingleTenantDataMock.mockRejectedValue(new Error('CATCH_ALL'));
+        const { result } = renderHook(
+            () => useTenantAdminDataMutation({ id: '1', seedTenantAdminData, prefetchTenantAdminData: false }),
+            { wrapper: createWrapper() },
+        );
+
+        await expect(result.current.mutateAsync({ content: { impressum: { de: '<p>Neu</p>' } } })).rejects.toThrow();
+
+        expect(fetchData).not.toHaveBeenCalled();
     });
 });
