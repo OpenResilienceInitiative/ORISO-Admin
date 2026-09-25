@@ -2266,7 +2266,7 @@
     "links.composer.topics.noneShort": "No more",
     "links.composer.topics.selectExistingShort": "Select",
     "links.composer.topics.createShort": "Create",
-    "links.csvImport.topicPermissionOmitted": "empty = may pick further departments",
+    "links.csvImport.topicPermissionOmitted": "Empty CSV cell = may pick further departments",
     "links.csvImport.blockedAgencyAdmin": "Platform and Träger admins only: a file can carry roles and new agencies.",
     "links.composer.sendCreateAndInviteAndNext": "Create, invite & next",
     "links.composer.sendInviteAndNext": "Invite & next",

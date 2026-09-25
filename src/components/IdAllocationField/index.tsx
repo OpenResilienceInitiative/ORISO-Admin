@@ -233,6 +233,8 @@ export const IdAllocationField = ({
         const typed = raw.trim();
         // A new number is checked while the admin keeps typing; an existing-only field waits for the lookup.
         if (allowCreate && DIGITS.test(typed)) allocation.setManualValue(Number(typed));
+        // A cleared number was never confirmed, so it must not stay pinned.
+        else if (allowCreate && typed === '' && mode === 'manual') allocation.setManualValue(undefined);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
