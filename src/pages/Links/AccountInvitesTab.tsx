@@ -286,8 +286,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     }, []);
 
     const searchAgenciesForPicker = useCallback(
-        async (query: string, { tenantId, page = 1 }: { tenantId?: number; page?: number }) => {
-            const result = await searchInviteAgencies(query, tenantId, page);
+        async (
+            query: string,
+            { tenantId, page = 1, signal }: { tenantId?: number; page?: number; signal?: AbortSignal },
+        ) => {
+            const result = await searchInviteAgencies(query, tenantId, page, signal);
             return {
                 units: result.hits.map(
                     ({ id, name, topics, tenantId: agencyTenantId, tenantName, topicPermission }) => ({
@@ -520,8 +523,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {selfAssign && (
                 <SelfAssignDialog
                     initialAgency={selfAssign.agency}
-                    searchAgencies={(query, page) =>
-                        searchAgenciesForPicker(query, { tenantId: currentTenantId, page })
+                    searchAgencies={(query, page, signal) =>
+                        searchAgenciesForPicker(query, { tenantId: currentTenantId, page, signal })
                     }
                     loadAgencyTopics={loadAgencyTopics}
                     onClose={() => setSelfAssign(undefined)}

@@ -36,7 +36,7 @@ export const agencyTopicPermission = (agency: Record<string, any> | undefined): 
     return TOPIC_PERMISSIONS.includes(value) ? value : undefined;
 };
 
-const fetchAgencyPage = async (q: string, page: number) => {
+const fetchAgencyPage = async (q: string, page: number, signal?: AbortSignal) => {
     const result = await fetchData({
         url: `${agencyEndpointBase}?q=${encodeURIComponent(
             q,
@@ -44,6 +44,7 @@ const fetchAgencyPage = async (q: string, page: number) => {
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        signal,
     });
     const { data, total: rawTotal } = removeEmbedded(result ?? {});
     const rows = (data ?? []) as Array<Record<string, any>>;
@@ -62,13 +63,20 @@ const toHit = (agency: Record<string, any>): InviteAgencyHit => ({
 });
 
 // `q` also matches topic names; an older AgencyService ignores `excludeDeleted`, so deleted agencies are
-// filtered here too. The server cannot filter by Träger, so a filtered page reads ahead until it has hits.
-export const searchInviteAgencies = async (query: string, tenantId?: number, page = 1): Promise<InviteAgencyPage> => {
+// filtered here too. The server cannot filter by Träger, so a filtered page reads ahead until it has hits;
+// `signal` stops that read-ahead once the picker has moved on to a newer query.
+export const searchInviteAgencies = async (
+    query: string,
+    tenantId?: number,
+    page = 1,
+    signal?: AbortSignal,
+): Promise<InviteAgencyPage> => {
     const q = query.trim() === '' ? '*' : query.trim();
     let current = page;
     for (;;) {
+        signal?.throwIfAborted();
         // eslint-disable-next-line no-await-in-loop -- each page decides whether the next is needed
-        const { rows, total } = await fetchAgencyPage(q, current);
+        const { rows, total } = await fetchAgencyPage(q, current, signal);
         const hits = rows
             // AgencyService sends an unset deleteDate as the string "null".
             .filter((agency) => agency?.id != null && isActiveDeleteDate(agency.deleteDate))

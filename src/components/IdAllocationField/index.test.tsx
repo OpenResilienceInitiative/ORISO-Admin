@@ -223,7 +223,7 @@ describe('IdAllocationField', () => {
 
         await user.click(screen.getByRole('option', { name: 'Weitere anzeigen (10 von 12)' }));
         const last = await screen.findByRole('option', { name: /Beratungsstelle 112/ });
-        expect(searchUnits).toHaveBeenLastCalledWith('', 2);
+        expect(searchUnits).toHaveBeenLastCalledWith('', 2, expect.any(AbortSignal));
         // The first page stays, the "more" entry is gone once the server has nothing left.
         expect(screen.getByRole('option', { name: /Beratungsstelle 101/ })).toBeInTheDocument();
         expect(screen.queryByRole('option', { name: /Weitere anzeigen/ })).not.toBeInTheDocument();
@@ -248,6 +248,25 @@ describe('IdAllocationField', () => {
         await user.type(input, 'sucht');
         await screen.findByRole('option', { name: /sucht Seite 1/ });
         expect(screen.queryByRole('option', { name: /Seite 2/ })).not.toBeInTheDocument();
+    });
+
+    // A slow search may still be reading ahead; the next keystroke must stop it.
+    it('aborts the previous search when the query changes', async () => {
+        const signals: AbortSignal[] = [];
+        const searchUnits = vi.fn((_query: string, _page?: number, signal?: AbortSignal) => {
+            if (signal) signals.push(signal);
+            return new Promise<never>(() => {});
+        });
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocationState()} searchUnits={searchUnits} />);
+
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await waitFor(() => expect(signals).toHaveLength(1));
+        await user.type(input, 's');
+        await waitFor(() => expect(signals).toHaveLength(2));
+        expect(signals[0].aborted).toBe(true);
+        expect(signals[1].aborted).toBe(false);
     });
 
     it('selects the active entry with the keyboard', async () => {

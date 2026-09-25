@@ -36,7 +36,10 @@ export interface InviteClients {
     agencyIdAllocation?: IdAllocationClient;
     searchTenants?: IdUnitSearch;
     /** Receives the chosen Träger so results can be scoped to it. */
-    searchAgencies?: (query: string, context: { tenantId?: number; page?: number }) => ReturnType<IdUnitSearch>;
+    searchAgencies?: (
+        query: string,
+        context: { tenantId?: number; page?: number; signal?: AbortSignal },
+    ) => ReturnType<IdUnitSearch>;
     /** `null` = no such unit. */
     resolveTenant?: (id: number) => Promise<IdUnitOption | null>;
     resolveAgency?: (id: number) => Promise<IdUnitOption | null>;
@@ -212,7 +215,8 @@ export const useInviteDraft = ({
     const tenantId = tenantAllocation.value;
     const { searchAgencies } = clients;
     const searchAgenciesInTenant = useCallback(
-        (query: string, page?: number) => (searchAgencies ? searchAgencies(query, { tenantId, page }) : []),
+        (query: string, page?: number, signal?: AbortSignal) =>
+            searchAgencies ? searchAgencies(query, { tenantId, page, signal }) : [],
         [searchAgencies, tenantId],
     );
 
