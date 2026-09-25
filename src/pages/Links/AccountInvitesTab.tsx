@@ -84,6 +84,8 @@ const findInviteAgency = async (agencyId: number): Promise<IdUnitOption | null> 
         return {
             id: Number(agency.id),
             name: agency.name ?? undefined,
+            tenantId: agency.tenantId != null ? Number(agency.tenantId) : undefined,
+            tenantName: agency.tenantName ?? undefined,
             topicPermission: agencyTopicPermission(agency),
         };
     } catch (error) {
