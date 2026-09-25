@@ -142,11 +142,12 @@
  * Steps become fixed columns — bead on top, "25.09., 14:30" below — and the
  * connector runs from bead centre to bead centre.
  */
+
 .trackDated {
     align-items: flex-start;
 
     .phase {
-        width: 72px;
+        width: 88px;
         flex-direction: column;
         align-items: center;
         gap: 2px;
@@ -157,7 +158,7 @@
         position: absolute;
         top: 9px;
         right: calc(50% + 12px);
-        width: 48px;
+        width: 64px;
     }
 }
 

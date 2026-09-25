@@ -615,7 +615,7 @@ export const RoleChipMenu: Story = {
 /** Tracker: 4 dated steps when the invite waited for a new unit, otherwise 3; the full timestamp is in the tooltip. */
 export const DatedTracker: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
-    render: () => <RoleBoard />,
+    render: () => <RoleBoard onRoleChange={() => {}} onRoleAdd={() => {}} />,
     play: async ({ canvasElement }) => {
         const steps = (email: string) => within(rowOf(canvasElement, email).getByRole('list')).getAllByRole('listitem');
         await expect(steps('anke.roth@example.org')).toHaveLength(4);
