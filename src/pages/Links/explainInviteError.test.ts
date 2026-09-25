@@ -86,10 +86,17 @@ describe('explainInviteError', () => {
 
     it.each([
         ['create', 'Einladung konnte nicht angelegt werden.'],
-        ['resend', 'Invite konnte nicht erneut gesendet werden'],
+        ['resend', 'Die Einladung konnte nicht erneut gesendet werden.'],
         ['selfAssign', 'Eintragen hat nicht geklappt. Bitte erneut versuchen.'],
     ] as const)('falls back to a plain %s failure', async (action, message) => {
         expect((await explainInviteError(new Error('boom'), { ...create, action })).message).toBe(message);
+    });
+
+    it('writes Berater:innen in the bodyless 403 fallback, like the rest of the module', async () => {
+        const forbidden = new Response(null, { status: 403 });
+        expect((await explainInviteError(forbidden, { ...create, role: 'COUNSELLOR' })).message).toBe(
+            'Ihre Rolle ist nicht berechtigt, Berater:innen einzuladen.',
+        );
     });
 
     describe('role change and role addition (ORISO-UserService#1260)', () => {

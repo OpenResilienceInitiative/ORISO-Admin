@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +67,8 @@ interface ImportRow {
     inviteId?: number;
     /** `failed`: short chip label and the full explanation under it. */
     failure?: { label: string; message?: string };
+    /** `failed` by an SMTP 502 on its own create call, which may have stored the invite anyway. */
+    mayBeStored?: boolean;
 }
 
 export interface InviteCsvImportModalProps {
@@ -200,6 +202,14 @@ export const InviteCsvImportModal = ({
                 line,
             );
         }
+        // The backend cannot infer the Träger of a new Beratungsstelle, and this file has no Träger column.
+        if (!isTenantId && !ownTenantKnown && role !== 'TENANT_ADMIN' && row.target !== 'EXISTING') {
+            return t(
+                'links.csvImport.issue.newAgencyNeedsTenant',
+                'Eine neue Beratungsstelle braucht einen Träger. Ohne eigenen Träger laden Sie hier nur in bestehende Beratungsstellen ein (Ziel „bestehend“) (Zeile {{line}}).',
+                line,
+            );
+        }
         // A counsellor never founds a Beratungsstelle; "Neu" without a number could never match its BST-Admin row.
         if (!isTenantId && role === 'COUNSELLOR' && row.target !== 'EXISTING' && row.explicitId == null) {
             return t(
@@ -231,28 +241,29 @@ export const InviteCsvImportModal = ({
             }),
     );
 
-    const importableRows = useMemo(
-        () => rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line)),
-        // issueByLine is derived from rows + the tab's stable context.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [rows, tabRole, viewerScope, templates, idKind],
-    );
+    const importableRows = rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line));
 
     // Effective id per line. Träger tab: the explicit file value, else the next free
     // id of the batch sequence — deleting a row re-packs the autos, created rows are
     // frozen via `explicitId`. Agency tab: only the explicit value; an empty cell
     // stays empty because AgencyService, not the browser, picks the free agency id.
-    const idByLine = useMemo(() => {
-        if (idKind === 'tenant') {
-            return assignBatchTenantIds(
-                importableRows.map((row) => ({ line: row.line, id: row.explicitId })),
-                takenTenantIds ?? new Set<number>(),
-            );
-        }
-        return new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
-    }, [idKind, importableRows, takenTenantIds]);
+    const idByLine =
+        idKind === 'tenant'
+            ? assignBatchTenantIds(
+                  importableRows.map((row) => ({ line: row.line, id: row.explicitId })),
+                  takenTenantIds ?? new Set<number>(),
+              )
+            : new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
 
-    const pendingRows = importableRows.filter((row) => row.state === 'pending' || row.state === 'failed');
+    // The reloaded list tells whether a 502 row's invite exists; a retry would then only collide with it.
+    const storedInvite = (row: ImportRow) =>
+        row.state === 'failed' && row.mayBeStored
+            ? invites?.find((invite) => invite.recipientEmail.trim().toLowerCase() === row.email.trim().toLowerCase())
+            : undefined;
+
+    const pendingRows = importableRows.filter(
+        (row) => row.state === 'pending' || (row.state === 'failed' && storedInvite(row) == null),
+    );
 
     const patchRow = (line: number, patch: Partial<ImportRow>) => {
         setRows((current) => current.map((row) => (row.line === line ? { ...row, ...patch } : row)));
@@ -277,7 +288,7 @@ export const InviteCsvImportModal = ({
             const row = queue[i];
             const id = assigned.get(row.line);
             const role = row.role ?? tabRole;
-            patchRow(row.line, { state: 'creating', failure: undefined });
+            patchRow(row.line, { state: 'creating', failure: undefined, mayBeStored: false });
             try {
                 const outcome: InviteCsvCreateOutcome =
                     // eslint-disable-next-line no-await-in-loop -- sequential on purpose (see above)
@@ -310,7 +321,7 @@ export const InviteCsvImportModal = ({
                     label: explained.label,
                     message: explained.stopsBatch ? undefined : explained.message,
                 };
-                patchRow(row.line, { state: 'failed', failure });
+                patchRow(row.line, { state: 'failed', failure, mayBeStored: explained.smtp });
                 if (explained.stopsBatch) {
                     // An SMTP 502 fails every further row the same way: mark them and stop.
                     firstStop = explained.message;
@@ -324,7 +335,8 @@ export const InviteCsvImportModal = ({
 
         setRunning(false);
         if (firstStop) message.error(firstStop);
-        if (created > 0) {
+        // After an SMTP stop the invite may exist without a success reply: reload to find out.
+        if (created > 0 || firstStop) {
             onCreated();
         }
         if (failed === 0 && created > 0) {
@@ -340,7 +352,7 @@ export const InviteCsvImportModal = ({
         }
     };
 
-    // A created row follows its invite in the tab's list, so a later admin row clears "Kein BST-Admin".
+    // A created row follows its invite in the tab's list, so a later admin row clears "Keine BST-Admin".
     const liveQueueState = (row: ImportRow) => {
         const live = row.inviteId != null ? invites?.find((invite) => invite.id === row.inviteId) : undefined;
         if (!live) return { waiting: row.waiting, noUnitAdmin: row.noUnitAdmin };
@@ -423,7 +435,7 @@ export const InviteCsvImportModal = ({
                                 {noUnitAdmin
                                     ? t(
                                           'links.csvImport.status.waitingNoAdmin',
-                                          'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                                          'Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
                                       )
                                     : t(
                                           'links.csvImport.status.waitingHint',
@@ -436,6 +448,21 @@ export const InviteCsvImportModal = ({
                 return <Tag color="green">{t('links.csvImport.status.created', 'Angelegt')}</Tag>;
             }
             case 'failed':
+                if (storedInvite(row)) {
+                    return (
+                        <span className={styles.rejection}>
+                            <Tag color="orange">
+                                {t('links.csvImport.status.storedNotSent', 'Angelegt, nicht versendet')}
+                            </Tag>
+                            <span className={styles.rejectionReason}>
+                                {t(
+                                    'links.csvImport.status.storedNotSentHint',
+                                    'Die Einladung ist gespeichert. Senden Sie sie aus der Liste erneut, sobald der E-Mail-Versand funktioniert.',
+                                )}
+                            </span>
+                        </span>
+                    );
+                }
                 return (
                     <span className={styles.rejection}>
                         <Tag color="red">

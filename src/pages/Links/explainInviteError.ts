@@ -73,7 +73,7 @@ const SMTP_FALLBACK: Key = [
 const ACTION_FALLBACKS: Record<InviteErrorContext['action'], Key> = {
     create: ['links.accountInvites.createFailed', 'Einladung konnte nicht angelegt werden.'],
     send: ['links.accountInvites.sendFailed', 'Einladung konnte nicht versendet werden.'],
-    resend: ['links.accountInvites.resendFailed', 'Invite konnte nicht erneut gesendet werden'],
+    resend: ['links.accountInvites.resendFailed', 'Die Einladung konnte nicht erneut gesendet werden.'],
     selfAssign: ['links.selfAssign.failed', 'Eintragen hat nicht geklappt. Bitte erneut versuchen.'],
     topicPermission: [
         'links.accountInvites.topicPermissionFailed',
@@ -102,7 +102,7 @@ const forbiddenFallback = ({ action, role }: InviteErrorContext): Key => {
     if (role === 'AGENCY_ADMIN') {
         return ['links.accountInvites.forbiddenAgencyAdmin', 'Ihre Rolle ist nicht berechtigt, BST-Admins einzuladen.'];
     }
-    return ['links.accountInvites.forbiddenCounsellor', 'Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.'];
+    return ['links.accountInvites.forbiddenCounsellor', 'Ihre Rolle ist nicht berechtigt, Berater:innen einzuladen.'];
 };
 
 const statusOf = (error: unknown): number | undefined => {
