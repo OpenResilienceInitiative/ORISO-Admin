@@ -64,6 +64,9 @@ export const INVITE_CSV_COLUMN_ORDER: ColumnKey[] = [
     'alsoCounsellor',
 ];
 
+/** E-Mail, Vorname, Name, ID: the columns an old file may label freely. */
+const LEGACY_COLUMN_COUNT = 4;
+
 /** Recognised header labels per column (lower-cased, trimmed). */
 const HEADER_LABELS: Record<Exclude<ColumnKey, 'email'>, string[]> = {
     firstName: ['vorname', 'first name', 'firstname', 'first_name'],
@@ -334,7 +337,8 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         recognised.forEach((key, index) => {
             if (key && columnIndex[key] == null) columnIndex[key] = index;
         });
-        recognised.forEach((key, index) => {
+        // The fallback serves the legacy four-column file only; a later unknown column is ignored, never guessed.
+        recognised.slice(0, LEGACY_COLUMN_COUNT).forEach((key, index) => {
             const fallback = INVITE_CSV_COLUMN_ORDER[index];
             if (index > 0 && !key && fallback && columnIndex[fallback] == null) columnIndex[fallback] = index;
         });

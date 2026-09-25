@@ -320,12 +320,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 const created = await createAccountInvite(request);
                 rememberGeneratedLink(created);
                 if (created?.inviteStatus === 'WAITING_FOR_UNIT') {
-                    // Stored, not sent: say when it will go out.
+                    // Stored, not sent: say when it will go out, naming the unit it waits for.
                     message.info(
-                        t(
-                            'links.accountInvites.createdWaiting',
-                            'Einladung vorgemerkt: Sie geht automatisch raus, sobald die Beratungsstelle angelegt ist.',
-                        ),
+                        created.waitingForUnit === 'TENANT'
+                            ? t(
+                                  'links.accountInvites.createdWaitingTenant',
+                                  'Einladung vorgemerkt: Sie geht automatisch raus, sobald der Träger angelegt ist.',
+                              )
+                            : t(
+                                  'links.accountInvites.createdWaiting',
+                                  'Einladung vorgemerkt: Sie geht automatisch raus, sobald die Beratungsstelle angelegt ist.',
+                              ),
                     );
                 } else {
                     message.success(

@@ -271,6 +271,21 @@ describe('CounsellorOnboarding', () => {
             expect(await screen.findByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeInTheDocument();
         });
 
+        it('SELECT_EXISTING without agency topics says so, even when the Träger has other topics', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    topics: [],
+                    topicPermission: 'SELECT_EXISTING',
+                    availableTopics: [{ id: 30, name: 'Suchtberatung' }],
+                }),
+            });
+            renderFlow(client);
+
+            expect(await screen.findByTestId('wizard-topics-none')).toBeInTheDocument();
+            expect(screen.queryByTestId('wizard-agency-topics')).not.toBeInTheDocument();
+        });
+
         it('SELECT_EXISTING offers only the agency topics as toggles — no "+"', async () => {
             const client = createClient({
                 getOnboardingInvite: vi.fn().mockResolvedValue({

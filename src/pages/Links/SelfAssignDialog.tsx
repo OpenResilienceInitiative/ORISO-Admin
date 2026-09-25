@@ -71,9 +71,14 @@ export const SelfAssignDialog = ({
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        // A late answer after closing, or from an older loader, must not overwrite the current one.
+        let cancelled = false;
         loadAssignments()
-            .then(setAssignments)
-            .catch(() => setAssignments(null));
+            .then((loaded) => !cancelled && setAssignments(loaded))
+            .catch(() => !cancelled && setAssignments(null));
+        return () => {
+            cancelled = true;
+        };
     }, [loadAssignments]);
 
     useEffect(() => {
@@ -98,7 +103,10 @@ export const SelfAssignDialog = ({
     const roleLabel = (value: SelfAssignmentRole) => t(...ROLE_LABEL_KEYS[value]);
     const needsTopics = role === 'COUNSELLOR' && (topics?.length ?? 0) > 1;
     const alreadyThere = agencyId != null && assignments?.counsellorAgencyIds.includes(agencyId);
-    const canSubmit = agencyId != null && !submitting && !alreadyThere && (!needsTopics || topicIds.length > 0);
+    // Until the topics are loaded, their count is unknown: a multi-topic agency would be sent without topicIds.
+    const topicsLoading = agencyId != null && topics === null;
+    const canSubmit =
+        agencyId != null && !submitting && !alreadyThere && !topicsLoading && (!needsTopics || topicIds.length > 0);
 
     const assignmentSummary = useMemo(() => {
         if (!assignments) return null;

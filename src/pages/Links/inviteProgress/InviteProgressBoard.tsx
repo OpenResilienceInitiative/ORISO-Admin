@@ -637,7 +637,11 @@ export const InviteProgressBoard = ({
                                         <span
                                             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
                                             tabIndex={0}
-                                            className={styles.problemChip}
+                                            className={classNames(
+                                                styles.statusChip,
+                                                styles.statusChipDead,
+                                                styles.problemChip,
+                                            )}
                                             data-testid="queue-problem-badge"
                                         >
                                             {queueProblemCopy(invite, t).badge}
