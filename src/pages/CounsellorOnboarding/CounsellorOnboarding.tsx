@@ -202,8 +202,10 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const agencyTopicsOnly = topicPermission !== 'CREATE';
     const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
     const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
+    // Emptiness is judged on the list this mode renders: without CREATE, only the agency's own topics.
+    const renderedTopicCount = agencyTopicsOnly ? topics.length : selectableTopics.length;
     let topicHintKey: string | undefined;
-    if (selectableTopics.length === 0) {
+    if (renderedTopicCount === 0) {
         // No hint over an empty row — the alert below carries the explanation.
         topicHintKey = undefined;
     } else if (singleAgencyTopic) {
@@ -403,7 +405,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             {counselling && (
                 <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
-                    {selectableTopics.length === 0 ? (
+                    {renderedTopicCount === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
                         // submit that can never be enabled.
                         <Typography
