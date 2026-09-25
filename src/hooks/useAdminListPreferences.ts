@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import { adminListPreferencesEndpoint } from '../appConfig';
@@ -45,22 +45,49 @@ export const useAdminListPreferences = ({ enabled = true }: { enabled?: boolean 
         refetchOnWindowFocus: false,
     });
 
-/** Saves a tab's sort in the background and keeps the cached preferences in step. */
+export const SAVE_SORT_DELAY_MS = 500;
+
+const putSort = (tab: string, sort: AdminListSort) =>
+    fetchData({
+        url: `${adminListPreferencesEndpoint}/sorts/${tab}`,
+        method: FETCH_METHODS.PUT,
+        bodyData: JSON.stringify(sort),
+        skipAuth: false,
+        responseHandling: QUIET,
+    }).catch(() => undefined);
+
+/**
+ * Saves a tab's sort in the background and keeps the cached preferences in step.
+ * Quick changes send one PUT with the last sort, so a slow earlier PUT cannot win.
+ */
 export const useSaveAdminListSort = () => {
     const queryClient = useQueryClient();
+    const pending = useRef(new Map<string, { sort: AdminListSort; timer: ReturnType<typeof setTimeout> }>());
+
+    // Leaving the tab sends what is still waiting.
+    useEffect(() => {
+        const waiting = pending.current;
+        return () => {
+            waiting.forEach(({ sort, timer }, tab) => {
+                clearTimeout(timer);
+                putSort(tab, sort);
+            });
+            waiting.clear();
+        };
+    }, []);
+
     return useCallback(
         (tab: string, sort: AdminListSort) => {
             if (!hasSavedSort(tab)) return;
             queryClient.setQueryData<AdminListPreferences>([ADMIN_LIST_PREFERENCES_KEY], (current) => ({
                 sorts: { ...current?.sorts, [tab]: sort },
             }));
-            fetchData({
-                url: `${adminListPreferencesEndpoint}/sorts/${tab}`,
-                method: FETCH_METHODS.PUT,
-                bodyData: JSON.stringify(sort),
-                skipAuth: false,
-                responseHandling: QUIET,
-            }).catch(() => undefined);
+            clearTimeout(pending.current.get(tab)?.timer);
+            const timer = setTimeout(() => {
+                pending.current.delete(tab);
+                putSort(tab, sort);
+            }, SAVE_SORT_DELAY_MS);
+            pending.current.set(tab, { sort, timer });
         },
         [queryClient],
     );

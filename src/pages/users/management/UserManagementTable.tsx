@@ -1,7 +1,7 @@
 import { Alert, Button, Grid, Popover, notification } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
@@ -29,7 +29,7 @@ import { CounselorData } from '../../../types/counselor';
 import { TenantData } from '../../../types/tenant';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
-import type { UserSearchFilters } from '../../../utils/userSearchFilters';
+import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
@@ -85,22 +85,10 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         order: config.defaultSort.order,
         pageSize: 10,
     });
-    // Kept per tab, so the first render after a tab switch never searches with the old tab's state.
-    const [picked, setPicked] = useState<{ tab: string; sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
-    const [filterState, setFilterState] = useState<{ tab: string; filters: UserSearchFilters } | null>(null);
-    const pickedSort = picked?.tab === sectionId ? picked : null;
-    const filters = filterState?.tab === sectionId ? filterState.filters : NO_FILTERS;
+    // The page remounts this table per tab (keyed by tab), so plain state is already per tab.
+    const [pickedSort, setPickedSort] = useState<{ sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
+    const [filters, setFilters] = useState<UserSearchFilters>(NO_FILTERS);
     const scopeFilters = useScopeFilterAvailability(sectionId);
-
-    useEffect(() => {
-        setTableState({
-            current: 1,
-            sortBy: config.defaultSort.field,
-            order: config.defaultSort.order,
-            pageSize: 10,
-        });
-        setSearch('');
-    }, [sectionId, config.defaultSort.field, config.defaultSort.order]);
 
     // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
     const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
@@ -246,20 +234,17 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const onUserSortChange = useCallback(
         (sortBy: string, order: 'ASC' | 'DESC') => {
-            setPicked({ tab: sectionId, sortBy, order });
+            setPickedSort({ sortBy, order });
             setTableState((prev) => ({ ...prev, current: 1 }));
             saveSort(sectionId, { field: sortBy, order });
         },
         [saveSort, sectionId],
     );
 
-    const onFiltersChange = useCallback(
-        (next: UserSearchFilters) => {
-            setFilterState({ tab: sectionId, filters: next });
-            setTableState((prev) => ({ ...prev, current: 1 }));
-        },
-        [sectionId],
-    );
+    const onFiltersChange = useCallback((next: UserSearchFilters) => {
+        setFilters(next);
+        setTableState((prev) => ({ ...prev, current: 1 }));
+    }, []);
 
     // Links only invites counsellors, and Träger (with their admin) for a platform admin.
     const canInvite =
@@ -282,8 +267,19 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [responseList?.total, tableState.current, tableState.pageSize],
     );
 
-    const consultantCount = responseList?.total ?? 0;
-    const atConsultantLimit = isConsultants && allowedNumberOfUsers > 0 && consultantCount >= allowedNumberOfUsers;
+    const countLicences = isConsultants && allowedNumberOfUsers > 0;
+    const narrowed = !!search || hasUserSearchFilters(filters);
+    // The licence counts every counsellor, not the searched or filtered list.
+    const unfilteredCount = useConsultantsOrAdminsData({
+        typeOfUser: TypeOfUser.Consultants,
+        current: 1,
+        pageSize: 1,
+        sortBy: USER_TABLE_API_SAFE_SORT,
+        order: USER_TABLE_API_SAFE_ORDER,
+        enabled: countLicences && narrowed,
+    });
+    const consultantCount = narrowed ? unfilteredCount.data?.total : responseList?.total;
+    const atConsultantLimit = countLicences && consultantCount != null && consultantCount >= allowedNumberOfUsers;
 
     const createButton = useMemo(() => {
         if (isTenants) {
@@ -387,7 +383,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                             </div>
                         )}
                     </GlobalSearchBar>
-                    {isConsultants && allowedNumberOfUsers > 0 && (
+                    {countLicences && consultantCount != null && (
                         <span className={styles.sectionCount}>
                             {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
                         </span>

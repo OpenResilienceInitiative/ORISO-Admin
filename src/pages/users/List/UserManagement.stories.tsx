@@ -1,4 +1,5 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
@@ -6,7 +7,8 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { encodeUsername } from '../../../utils/encryptionHelpers';
-import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
+import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
+import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { UsersList } from './index';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
@@ -89,10 +91,10 @@ const meta = {
     // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
-        (Story) => {
+        (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            return withAdminProviders(Story);
+            return withSeededAdminProviders(Story, parameters.seedQueries);
         },
     ],
 } satisfies Meta<typeof UsersList>;
@@ -565,6 +567,39 @@ export const SortNameByEmail: Story = {
         await expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
         await expect(within(nameHeader).getByRole('button', { name: /Name nach E-Mail/ })).toBeVisible();
         await waitFor(() => expect(canvas.getAllByRole('row')[1]).toHaveTextContent('Ben Beispiel'));
+    },
+};
+
+// Three counsellors on the server; the search narrows the list to one.
+const LICENSED = [...CONSULTANTS, { ...CONSULTANTS[1], id: 'c-3', key: 'c-3', firstname: 'Clara', lastname: 'Dritte' }];
+const licensedSearch = http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+    const params = new URL(request.url).searchParams;
+    const query = params.get('query') ?? '*';
+    const hits = query === '*' ? LICENSED : LICENSED.filter((person) => person.lastname.includes(query));
+    return HttpResponse.json({ total: hits.length, _embedded: hits.slice(0, Number(params.get('perPage') ?? 10)) });
+});
+
+/** The licence counts every counsellor: a search does not lower "3/3" or unlock "Neu" at the limit. */
+export const LicenceLimitIgnoresSearch: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: { handlers: withDefaults([licensedSearch]) },
+        seedQueries: (client: QueryClient) => {
+            client.setQueryDefaults([TENANT_DATA_KEY], { staleTime: Infinity });
+            client.setQueryData([TENANT_DATA_KEY, 0], { id: 1, licensing: { allowedNumberOfUsers: 3 } });
+        },
+    },
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await rowOf(canvasElement, 'Dritte');
+        await expect(canvas.getByText(/^3\/3 Berater/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
+
+        await user.click(canvas.getByRole('button', { name: 'Suche ausklappen' }));
+        await user.type(await canvas.findByPlaceholderText(/Suche nach E-Mail-Adresse/), 'Muster');
+        await waitFor(() => expect(canvas.queryByText('Ben Beispiel')).toBeNull());
+        await expect(await canvas.findByText(/^3\/3 Berater/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
     },
 };
 
@@ -1130,6 +1165,24 @@ export const SortChangeIsSaved: Story = {
             expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'ASC' } }]),
         );
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'ascending');
+    },
+};
+
+/** Two quick sort changes save once, with the last order. */
+export const QuickSortChangesSaveOnce: Story = {
+    ...SortChangeIsSaved,
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await rowOf(canvasElement, 'Muster');
+        const sortName = () =>
+            user.click(within(canvas.getByRole('columnheader', { name: /^Name/ })).getAllByRole('button')[0]);
+        await sortName();
+        await sortName();
+        await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
+        await new Promise((resolve) => {
+            setTimeout(resolve, 900);
+        });
+        await expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]);
     },
 };
 
