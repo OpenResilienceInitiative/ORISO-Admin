@@ -29,6 +29,7 @@ const CONSULTANTS: CounselorData[] = [
         status: 'CREATED',
         tenantId: '1',
         tenantName: 'Demo-Mandant',
+        updateDate: '2026-09-22T08:15:00',
     },
     {
         id: 'c-2',
@@ -48,6 +49,7 @@ const CONSULTANTS: CounselorData[] = [
         status: 'CREATED',
         tenantId: '1',
         tenantName: 'Demo-Mandant',
+        updateDate: '2026-06-03T14:40:00',
     },
 ];
 
