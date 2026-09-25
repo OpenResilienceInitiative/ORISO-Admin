@@ -224,6 +224,8 @@ export interface MuiSelectFieldProps {
     name: FieldName;
     /** i18n key for the visible label. */
     label?: string;
+    /** Interpolation values for `label`. */
+    labelValues?: Record<string, unknown>;
     /** i18n key for the placeholder / empty text. */
     placeholder?: string;
     /** i18n key for static helper text below the field. */
@@ -259,6 +261,7 @@ export interface MuiSelectFieldProps {
 export const MuiSelectField = ({
     name,
     label,
+    labelValues,
     placeholder,
     help,
     options,
@@ -298,7 +301,7 @@ export const MuiSelectField = ({
         >
             <MuiSelectControl
                 fieldName={name}
-                label={label ? t(label) : undefined}
+                label={label ? t(label, labelValues) : undefined}
                 placeholder={placeholder ? t(placeholder) : undefined}
                 helpText={help ? t(help) : undefined}
                 resolvedOptions={resolvedOptions}

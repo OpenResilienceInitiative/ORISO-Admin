@@ -59,4 +59,6 @@ export interface CounselorData {
     updateDate?: string;
     topics?: TopicData[];
     topicIds?: Array<{ value: string; label: string }> | string[];
+    /** #1264: topics per centre; an entry without agencyId is legacy and valid at every centre. */
+    topicsByAgency?: Array<{ agencyId?: number | null; topicIds?: number[] }>;
 }
