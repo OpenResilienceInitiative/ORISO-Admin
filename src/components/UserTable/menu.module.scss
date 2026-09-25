@@ -18,6 +18,12 @@
     outline-offset: -2px;
 }
 
+/* Neutral state layer instead of MUI's default blue selection tint. */
+.item:global(.Mui-selected),
+.item:global(.Mui-selected:hover) {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%)) !important;
+}
+
 .error {
     color: var(--m3-error, #b1005e) !important;
 }
