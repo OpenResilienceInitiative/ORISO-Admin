@@ -2192,6 +2192,7 @@
     "links.csvImport.issue.alsoCounsellorOnlyAgencyAdmin": "“Also counsels” only applies to agency admins — please leave it empty (line {{line}}).",
     "links.csvImport.issue.tenantAdminNeedsTenantTab": "As platform admin, invite Träger admins on the “Träger invites” tab (target “existing” with the Träger ID) (line {{line}}).",
     "links.csvImport.issue.counsellorNeedsAgencyNumber": "Counsellors for a new Beratungsstelle need its number — the same as in the agency admin’s row (line {{line}}).",
+    "links.csvImport.issue.newAgencyNeedsTenant": "A new agency needs a tenant. Without an own tenant you can only invite into existing agencies here (target “existing”) (line {{line}}).",
     "links.csvImport.status.noPendingUnitAdmin": "No agency admin for this new Beratungsstelle",
     "links.csvImport.reason.invalidAlsoCounsellor": "Unknown value in “Also counsels” — allowed are yes, no, true or false (line {{line}})",
     "links.csvImport.status.waiting": "Queued",

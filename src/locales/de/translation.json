@@ -2192,6 +2192,7 @@
     "links.csvImport.issue.alsoCounsellorOnlyAgencyAdmin": "„Berät auch“ gilt nur für BST-Admins — bitte leer lassen (Zeile {{line}}).",
     "links.csvImport.issue.tenantAdminNeedsTenantTab": "Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Invites“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).",
     "links.csvImport.issue.counsellorNeedsAgencyNumber": "Berater:innen für eine neue Beratungsstelle brauchen deren Nummer — dieselbe wie in der Zeile der BST-Admin (Zeile {{line}}).",
+    "links.csvImport.issue.newAgencyNeedsTenant": "Eine neue Beratungsstelle braucht einen Träger. Ohne eigenen Träger laden Sie hier nur in bestehende Beratungsstellen ein (Ziel „bestehend“) (Zeile {{line}}).",
     "links.csvImport.status.noPendingUnitAdmin": "Keine BST-Admin für diese neue Beratungsstelle",
     "links.csvImport.reason.invalidAlsoCounsellor": "Unbekannter Wert bei „Berät auch“ — erlaubt sind ja, nein, true oder false (Zeile {{line}})",
     "links.csvImport.status.waiting": "Vorgemerkt",
