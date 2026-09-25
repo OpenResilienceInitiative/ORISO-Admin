@@ -33,37 +33,40 @@ export const ScopeFilter = ({ kind, options, value, onChange, multiple, disabled
     const selected = value.map((id) => options.find((option) => option.id === id) ?? { id, name: id });
 
     return (
-        <Autocomplete<ScopeFilterOption, boolean>
-            className={styles.filter}
-            multiple={multiple}
-            limitTags={1}
-            size="small"
-            disabled={disabled}
-            loading={loading}
-            options={options}
-            value={multiple ? selected : selected[0] ?? null}
-            onChange={(_, next) => {
-                const list = Array.isArray(next) ? next : next ? [next] : [];
-                onChange(list.map((option) => option.id));
-            }}
-            getOptionLabel={(option) => option.name}
-            isOptionEqualToValue={(option, current) => option.id === current.id}
-            filterOptions={(list, { inputValue }) => {
-                const needle = inputValue.trim().toLowerCase();
-                return needle
-                    ? list.filter((option) => `${option.name} ${option.detail ?? ''}`.toLowerCase().includes(needle))
-                    : list;
-            }}
-            renderOption={({ key, ...props }, option) => (
-                <li key={key} {...props}>
-                    <span className={styles.option}>
-                        <span>{option.name}</span>
-                        {option.detail && <span className={styles.detail}>{option.detail}</span>}
-                    </span>
-                </li>
-            )}
-            renderInput={(params) => <TextField {...params} label={label} />}
-            sx={muiFieldSx(disabled)}
-        />
+        <div className={styles.filter}>
+            <Autocomplete<ScopeFilterOption, boolean>
+                multiple={multiple}
+                limitTags={1}
+                size="small"
+                disabled={disabled}
+                loading={loading}
+                options={options}
+                value={multiple ? selected : selected[0] ?? null}
+                onChange={(_, next) => {
+                    const list = Array.isArray(next) ? next : [next];
+                    onChange(list.filter(Boolean).map((option) => (option as ScopeFilterOption).id));
+                }}
+                getOptionLabel={(option) => option.name}
+                isOptionEqualToValue={(option, current) => option.id === current.id}
+                filterOptions={(list, { inputValue }) => {
+                    const needle = inputValue.trim().toLowerCase();
+                    return needle
+                        ? list.filter((option) =>
+                              `${option.name} ${option.detail ?? ''}`.toLowerCase().includes(needle),
+                          )
+                        : list;
+                }}
+                renderOption={({ key, ...props }, option) => (
+                    <li key={key} {...props}>
+                        <span className={styles.option}>
+                            <span>{option.name}</span>
+                            {option.detail && <span className={styles.detail}>{option.detail}</span>}
+                        </span>
+                    </li>
+                )}
+                renderInput={(params) => <TextField {...params} label={label} />}
+                sx={muiFieldSx(disabled)}
+            />
+        </div>
     );
 };
