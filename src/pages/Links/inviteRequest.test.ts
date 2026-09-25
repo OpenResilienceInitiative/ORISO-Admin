@@ -130,6 +130,23 @@ describe('toCreateInviteRequest from a CSV row', () => {
         ).toBeUndefined();
     });
 
+    // Same rule as the bar: "Berät auch" belongs to an agency admin, topics to a counsellor.
+    it('sends "Berät auch" only for an agency-admin row and topics only for a counsellor row', () => {
+        const counsellor = toCreateInviteRequest(
+            { ...row, alsoCounsellor: false, topicPermission: 'CREATE' },
+            counsellorTab,
+        );
+        expect(counsellor).toMatchObject({ topicPermission: 'CREATE' });
+        expect(counsellor.alsoCounsellor).toBeUndefined();
+
+        const agencyAdmin = toCreateInviteRequest(
+            { ...row, role: 'AGENCY_ADMIN', alsoCounsellor: false, topicPermission: 'CREATE' },
+            counsellorTab,
+        );
+        expect(agencyAdmin).toMatchObject({ alsoCounsellor: false });
+        expect(agencyAdmin.topicPermission).toBeUndefined();
+    });
+
     it('omits an empty topic cell so the server decides', () => {
         expect(toCreateInviteRequest(row, counsellorTab)).not.toHaveProperty('topicPermission', expect.anything());
     });

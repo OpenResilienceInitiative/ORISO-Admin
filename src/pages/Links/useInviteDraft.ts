@@ -36,7 +36,10 @@ export interface InviteClients {
     agencyIdAllocation?: IdAllocationClient;
     searchTenants?: IdUnitSearch;
     /** Receives the chosen Träger so results can be scoped to it. */
-    searchAgencies?: (query: string, context: { tenantId?: number; page?: number }) => ReturnType<IdUnitSearch>;
+    searchAgencies?: (
+        query: string,
+        context: { tenantId?: number; page?: number; signal?: AbortSignal },
+    ) => ReturnType<IdUnitSearch>;
     /** `null` = no such unit. */
     resolveTenant?: (id: number) => Promise<IdUnitOption | null>;
     resolveAgency?: (id: number) => Promise<IdUnitOption | null>;
@@ -183,8 +186,15 @@ export const useInviteDraft = ({
     // The chosen agency's default prefills the chip; the admin may still change it.
     const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     const { loadAgencyTopicPermission } = clients;
+    const hadPickedAgency = useRef(false);
     useEffect(() => {
-        if (!pickedAgency) return undefined;
+        if (!pickedAgency) {
+            // Leaving a chosen agency ("Neu") must not keep that agency's default.
+            if (hadPickedAgency.current) setTopicPermission(DEFAULT_TOPIC_PERMISSION);
+            hadPickedAgency.current = false;
+            return undefined;
+        }
+        hadPickedAgency.current = true;
         if (pickedAgency.topicPermission) {
             setTopicPermission(pickedAgency.topicPermission);
             return undefined;
@@ -205,7 +215,8 @@ export const useInviteDraft = ({
     const tenantId = tenantAllocation.value;
     const { searchAgencies } = clients;
     const searchAgenciesInTenant = useCallback(
-        (query: string, page?: number) => (searchAgencies ? searchAgencies(query, { tenantId, page }) : []),
+        (query: string, page?: number, signal?: AbortSignal) =>
+            searchAgencies ? searchAgencies(query, { tenantId, page, signal }) : [],
         [searchAgencies, tenantId],
     );
 
@@ -453,9 +464,8 @@ export const useInviteDraft = ({
     };
 
     return {
-        rootRef,
-        handleRowFocus,
-        tab,
+        /** The bar's root and its focus handler, which folds open select pills once focus moves on. */
+        row: { ref: rootRef, onFocus: handleRowFocus },
         fields,
         email: {
             value: recipientEmail,
@@ -466,9 +476,7 @@ export const useInviteDraft = ({
         },
         firstName: { value: firstName, set: setFirstName },
         lastName: { value: lastName, set: setLastName },
-        role,
-        setRole,
-        roleOptions,
+        role: { value: role, set: setRole, options: roleOptions },
         tenant: {
             allocation: tenantAllocation,
             locked: tenantLocked,
@@ -483,27 +491,22 @@ export const useInviteDraft = ({
             search: searchAgencies ? searchAgenciesInTenant : undefined,
             picked: pickedAgency,
         },
-        topicPermission,
-        setTopicPermission,
-        alsoCounsellor,
-        setAlsoCounsellor,
-        activeTemplates,
-        selectedTemplate,
-        isCollapsed,
-        collapse,
-        collapseIfValid,
-        expand,
-        openSelect,
-        setOpenSelect,
-        sendMode,
-        sendAndNext,
-        chooseSendMode,
-        isValid,
-        blockReason,
-        offerAgencyAdminSwitch,
-        switchToAgencyAdmin,
-        sendLabel,
-        send,
+        topics: { value: topicPermission, set: setTopicPermission },
+        alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
+        /** Which fields show as pills, and which select menu is open. */
+        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect },
+        submit: {
+            mode: sendMode,
+            andNext: sendAndNext,
+            chooseMode: chooseSendMode,
+            isValid,
+            label: sendLabel,
+            send,
+            /** Why send is off; `undefined` while it can fire. */
+            blockReason,
+            offerAgencyAdminSwitch,
+            switchToAgencyAdmin,
+        },
     };
 };
 

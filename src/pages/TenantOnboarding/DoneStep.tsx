@@ -11,7 +11,7 @@ import styles from './styles.module.scss';
 
 interface DoneStepProps {
     /** The tenant ID the reservation was consumed for — the number the platform operator refers to. */
-    tenantId: number;
+    tenantId?: number;
     /**
      * The DPA signature was forwarded to an authorised signatory (#723) —
      * the completion additionally says an e-mail will follow once it arrives.
@@ -47,10 +47,12 @@ export const DoneStep = ({ tenantId, forwarded = false, joinedExisting = false }
                 {joinedExisting ? t('tenantOnboarding.done.joinDescription') : t('tenantOnboarding.done.description')}
             </Typography>
 
-            <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
-                <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
-                <dd>{tenantId}</dd>
-            </dl>
+            {tenantId != null && (
+                <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
+                    <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
+                    <dd>{tenantId}</dd>
+                </dl>
+            )}
 
             <ul className={styles.doneNext}>
                 {forwarded && (

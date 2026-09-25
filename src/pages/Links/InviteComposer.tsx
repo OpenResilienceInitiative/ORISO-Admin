@@ -76,21 +76,21 @@ export const InviteComposer = ({
             className={className}
             csv={csv}
             hint={<InviteSendHint draft={draft} hintId={hintId} />}
-            rootRef={draft.rootRef}
+            rootRef={draft.row.ref}
             search={search}
             send={
                 <InviteSendButton draft={draft} hintId={hintId} submitting={submitting} onSelfAssign={onSelfAssign} />
             }
-            sendMode={draft.sendMode}
+            sendMode={draft.submit.mode}
             submitting={submitting}
             tab={tab}
             templatePill={{
-                collapsed: draft.isCollapsed('template'),
-                onExpand: () => draft.expand('template'),
-                onPicked: () => draft.collapse('template'),
+                collapsed: draft.pills.isCollapsed('template'),
+                onExpand: () => draft.pills.expand('template'),
+                onPicked: () => draft.pills.collapse('template'),
             }}
             templates={templates}
-            onFocus={draft.handleRowFocus}
+            onFocus={draft.row.onFocus}
         >
             <InviteBarFields clients={clients} draft={draft} />
         </InviteToolbar>

@@ -289,9 +289,9 @@ export const InviteCsvImportModal = ({
                         target: row.target ?? 'NEW',
                         role,
                         templateId: row.template != null ? findTemplate(row.template)?.id : undefined,
-                        // An empty cell is omitted: the server applies its own default.
-                        topicPermission: role === 'COUNSELLOR' ? row.topicPermission : undefined,
-                        alsoCounsellor: role === 'AGENCY_ADMIN' ? row.alsoCounsellor : undefined,
+                        // An empty cell stays undefined: the server applies its own default.
+                        topicPermission: row.topicPermission,
+                        alsoCounsellor: row.alsoCounsellor,
                     })) as InviteCsvCreateOutcome | undefined) ?? {};
                 created += 1;
                 patchRow(row.line, {
@@ -312,7 +312,7 @@ export const InviteCsvImportModal = ({
                 };
                 patchRow(row.line, { state: 'failed', failure });
                 if (explained.stopsBatch) {
-                    // 403 and 502 fail every further row the same way: mark them and stop.
+                    // An SMTP 502 fails every further row the same way: mark them and stop.
                     firstStop = explained.message;
                     const remaining = queue.slice(i + 1);
                     failed += remaining.length;

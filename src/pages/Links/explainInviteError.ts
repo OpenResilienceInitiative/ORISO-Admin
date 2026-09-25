@@ -28,7 +28,7 @@ export interface InviteErrorExplanation {
     reason?: string;
     emailTaken: boolean;
     smtp: boolean;
-    /** 403 and 502 fail every further row the same way. */
+    /** An SMTP 502 fails every further row the same way. */
     stopsBatch: boolean;
 }
 
@@ -164,10 +164,10 @@ export const explainInviteError = async (
             };
         }
     }
+    // A 403 can be one row's foreign unit, so it fails only that row.
     if (status === 403) {
         return {
             ...base,
-            stopsBatch: true,
             label: say(['links.csvImport.status.forbidden', 'Nicht berechtigt']),
             message: (await extractApiErrorMessageOrNull(error)) ?? say(forbiddenFallback(context)),
         };

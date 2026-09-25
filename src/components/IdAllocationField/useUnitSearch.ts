@@ -11,8 +11,12 @@ export interface IdUnitSearchPage {
 
 type IdUnitSearchResult = IdUnitOption[] | IdUnitSearchPage;
 
-/** A plain list is final; a page with `hasMore` makes the menu offer "Weitere anzeigen". */
-export type IdUnitSearch = (query: string, page?: number) => Promise<IdUnitSearchResult> | IdUnitSearchResult;
+/** A plain list is final; a page with `hasMore` makes the menu offer "Weitere anzeigen". `signal` aborts on a newer query. */
+export type IdUnitSearch = (
+    query: string,
+    page?: number,
+    signal?: AbortSignal,
+) => Promise<IdUnitSearchResult> | IdUnitSearchResult;
 
 const asPage = (result: IdUnitSearchResult): IdUnitSearchPage =>
     Array.isArray(result) ? { units: result, hasMore: false } : result;
@@ -52,6 +56,7 @@ export const useUnitSearch = ({
 
     // Every new query or close bumps the token; a reply only lands while its token is current.
     const searchToken = useRef(0);
+    const searchAbort = useRef<AbortController | null>(null);
     const loadingMore = useRef(false);
     const lookupToken = useRef(0);
 
@@ -63,8 +68,10 @@ export const useUnitSearch = ({
         searchToken.current += 1;
         const token = searchToken.current;
         loadingMore.current = false;
+        const controller = new AbortController();
+        searchAbort.current = controller;
         const timer = window.setTimeout(() => {
-            Promise.resolve(searchUnits(trimmed, 1))
+            Promise.resolve(searchUnits(trimmed, 1, controller.signal))
                 .then((found) => {
                     if (token !== searchToken.current) return;
                     const first = asPage(found);
@@ -83,6 +90,7 @@ export const useUnitSearch = ({
         return () => {
             searchToken.current += 1;
             window.clearTimeout(timer);
+            controller.abort();
         };
     }, [open, trimmed, searchUnits]);
 
@@ -91,7 +99,7 @@ export const useUnitSearch = ({
         loadingMore.current = true;
         const token = searchToken.current;
         const nextPage = page + 1;
-        Promise.resolve(searchUnits(trimmed, nextPage))
+        Promise.resolve(searchUnits(trimmed, nextPage, searchAbort.current?.signal))
             .then((found) => {
                 if (token !== searchToken.current) return;
                 const next = asPage(found);

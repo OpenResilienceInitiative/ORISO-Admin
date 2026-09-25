@@ -855,6 +855,37 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         });
     });
 
+    it('drops the agency default again when the admin switches to a new agency', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.searchInviteAgencies.mockResolvedValue({
+            hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+        });
+        mocks.getAgencyDataById.mockResolvedValue({
+            _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
+        });
+        const user = await fill('Diak');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
+
+        const agencyField = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.clear(agencyField);
+        await user.type(agencyField, '900');
+        await user.keyboard('{Escape}');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            agencyId: 900,
+            agencyIdAllocationMode: 'MANUAL',
+            topicPermission: 'NONE',
+        });
+    });
+
     it.each([
         [
             '400',

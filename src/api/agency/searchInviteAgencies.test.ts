@@ -93,6 +93,28 @@ describe('searchInviteAgencies', () => {
         expect(fetchData).toHaveBeenCalledTimes(2);
     });
 
+    it('reads ahead at most 20 pages, then hands back the empty page with more to come', async () => {
+        fetchData.mockResolvedValue({
+            total: 1000,
+            _embedded: Array.from({ length: 10 }, (_, index) => hit(index + 1, { tenantId: 1 })),
+        });
+        const result = await searchInviteAgencies('', 40, 3);
+        expect(fetchData).toHaveBeenCalledTimes(20);
+        expect(fetchData.mock.calls[19][0].url).toContain('&page=22&');
+        expect(result).toMatchObject({ hits: [], hasMore: true, page: 22 });
+    });
+
+    it('stops reading ahead once its signal is aborted', async () => {
+        const controller = new AbortController();
+        fetchData.mockImplementation(async () => {
+            controller.abort();
+            return { total: 1000, _embedded: [hit(1, { tenantId: 1 })] };
+        });
+        await expect(searchInviteAgencies('', 40, 1, controller.signal)).rejects.toThrow();
+        expect(fetchData).toHaveBeenCalledTimes(1);
+        expect(fetchData.mock.calls[0][0].signal).toBe(controller.signal);
+    });
+
     it('stops reading ahead when the server has nothing more', async () => {
         fetchData.mockResolvedValue({ total: 10, _embedded: [hit(1, { tenantId: 1 })] });
         const result = await searchInviteAgencies('', 40, 1);
