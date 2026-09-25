@@ -2199,5 +2199,10 @@
     "legal.draftSnackbar.local": "Draft from this browser ({{savedAt}}) – not saved yet. Save it to make it available on all devices.",
     "legal.draftSnackbar.discard": "Discard",
     "legal.draftSnackbar.close": "Close notice",
-    "agency.form.registrationSettings.onlineNeedsConsultant": "Select at least one counsellor before making this counselling centre visible in registration. The selection is assigned when you save."
+    "agency.form.registrationSettings.onlineNeedsConsultant": "Select at least one counsellor before making this counselling centre visible in registration. The selection is assigned when you save.",
+    "globalSettings.oneTopicPerAgency.title": "Topics",
+    "globalSettings.oneTopicPerAgency.switch": "One topic per counselling centre",
+    "globalSettings.oneTopicPerAgency.help": "Applies to the whole platform. Counselling centres that already have several topics keep them but cannot add another.",
+    "agency.form.settings.oneTopicPerAgency.help": "On this platform every counselling centre has exactly one topic.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one is allowed on this platform: you can remove topics but not add one."
 }

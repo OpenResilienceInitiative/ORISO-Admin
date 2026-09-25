@@ -2199,5 +2199,10 @@
     "legal.draftSnackbar.local": "Entwurf aus diesem Browser vom {{savedAt}} – noch nicht gespeichert. Speichern Sie ihn, damit er auf allen Geräten verfügbar ist.",
     "legal.draftSnackbar.discard": "Verwerfen",
     "legal.draftSnackbar.close": "Hinweis schließen",
-    "agency.form.registrationSettings.onlineNeedsConsultant": "Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen. Die Auswahl wird beim Speichern zugewiesen."
+    "agency.form.registrationSettings.onlineNeedsConsultant": "Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen. Die Auswahl wird beim Speichern zugewiesen.",
+    "globalSettings.oneTopicPerAgency.title": "Fachbereiche",
+    "globalSettings.oneTopicPerAgency.switch": "Eine Beratungsstelle hat genau einen Fachbereich",
+    "globalSettings.oneTopicPerAgency.help": "Gilt für die ganze Plattform. Beratungsstellen, die schon mehrere Fachbereiche haben, behalten sie, können aber keinen weiteren hinzufügen.",
+    "agency.form.settings.oneTopicPerAgency.help": "Auf dieser Plattform hat jede Beratungsstelle genau einen Fachbereich.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "Diese Beratungsstelle hat noch {{count}} Fachbereiche. Auf dieser Plattform ist nur einer erlaubt: Sie können Fachbereiche entfernen, aber keinen hinzufügen."
 }

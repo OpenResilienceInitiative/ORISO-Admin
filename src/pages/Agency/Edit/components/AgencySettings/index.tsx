@@ -16,6 +16,8 @@ import { ReleaseToggle } from '../../../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../../../hooks/useReleasesToggle.hook';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { searchTenantData } from '../../../../../api/tenant/searchTenantData';
+import { useAppConfigContext } from '../../../../../context/useAppConfig';
+import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 
 interface AgencySettingsProps {
     isEditMode: boolean;
@@ -44,6 +46,15 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
     const { data: topics, isLoading: isLoadingTopics } = useTenantTopics(true);
+    // ADR-014 amendment 2026-09-25: with the global switch on, the picker is single-select. An agency
+    // that already holds several topics keeps showing them and may shed some, but cannot gain one.
+    const { settings } = useAppConfigContext();
+    const oneTopicPerAgency = settings.oneTopicPerAgencyEnabled === true;
+    const selectedTopicIds = normalizeTopicIds(Form.useWatch('topicIds'));
+    const hasLegacyTopics = oneTopicPerAgency && selectedTopicIds.length > 1;
+    const topicOptions = convertToOptions(topics ?? [], 'name', 'id').map((option) =>
+        hasLegacyTopics && !selectedTopicIds.includes(String(option.value)) ? { ...option, disabled: true } : option,
+    );
     const gendersForList = Object.values(Gender).filter((name) => !genders.find(({ value }) => value === `${name}`));
     const counsellingRelationsForList = Object.values(CounsellingRelation).filter(
         (relation) => !counsellingRelations.find(({ value }) => value === `${relation}`),
@@ -89,15 +100,27 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                 // ADR-014: one Beratungsstelle hosts several Fachbereiche. A department is still the
                 // unique (agency × topic) pairing — an agency simply carries more than one of them,
                 // each with its own Impressum and Datenschutzerklärung.
-                <MuiSelectField
-                    label="topics.title"
-                    name="topicIds"
-                    isMulti
-                    labelInValue
-                    allowClear
-                    placeholder="plsSelect"
-                    options={convertToOptions(topics, 'name', 'id')}
-                />
+                <>
+                    <MuiSelectField
+                        label="topics.title"
+                        name="topicIds"
+                        isMulti={!oneTopicPerAgency || hasLegacyTopics}
+                        labelInValue
+                        allowClear
+                        placeholder="plsSelect"
+                        help={oneTopicPerAgency ? 'agency.form.settings.oneTopicPerAgency.help' : undefined}
+                        options={topicOptions}
+                    />
+                    {hasLegacyTopics && (
+                        <Alert
+                            className={styles.warning}
+                            type="warning"
+                            description={t('agency.form.settings.oneTopicPerAgency.legacyNotice', {
+                                count: selectedTopicIds.length,
+                            })}
+                        />
+                    )}
+                </>
             )}
 
             {isEnabled(FeatureFlag.Demographics) && (
