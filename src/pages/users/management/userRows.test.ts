@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import type { CounselorData } from '../../../types/counselor';
-import { hasOtherIdentityFor, nameFieldOf, sortColumnOf, topicsAtCentre } from './userRows';
+import { appendPage, hasOtherIdentityFor, nameFieldOf, sortColumnOf, topicsAtCentre } from './userRows';
 
 const person = (row: Partial<CounselorData>) => row as CounselorData;
 
@@ -60,5 +60,21 @@ describe('sort mapping', () => {
         expect(nameFieldOf('EMAIL')).toBe('email');
         expect(nameFieldOf('FIRSTNAME')).toBe('firstname');
         expect(nameFieldOf('UPDATE_DATE')).toBeUndefined();
+    });
+});
+
+describe('appendPage', () => {
+    const a = person({ id: 'a' });
+    const b = person({ id: 'b' });
+    const c = person({ id: 'c' });
+
+    it('adds the next page and skips people already shown', () => {
+        expect(appendPage([a, b], [b, c]).map((row) => row.id)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('returns the same list when nothing is new, so state does not churn', () => {
+        const shown = [a, b];
+        expect(appendPage(shown, [b])).toBe(shown);
+        expect(appendPage(shown, [])).toBe(shown);
     });
 });

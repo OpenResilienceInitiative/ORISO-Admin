@@ -36,3 +36,10 @@ export const hasOtherIdentityFor = (sectionId: TypeOfUser, row: CounselorData) =
     sectionId === TypeOfUser.Consultants
         ? (row.otherIdentityTypes ?? []).includes('TENANT_ADMIN')
         : !!row.hasOtherIdentity;
+
+/** Next server page under the rows already shown; a person the server repeats is skipped. */
+export const appendPage = (shown: CounselorData[], next: CounselorData[]): CounselorData[] => {
+    const ids = new Set(shown.map((row) => row.id));
+    const fresh = next.filter((row) => !ids.has(row.id));
+    return fresh.length ? [...shown, ...fresh] : shown;
+};
