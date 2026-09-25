@@ -183,8 +183,15 @@ export const useInviteDraft = ({
     // The chosen agency's default prefills the chip; the admin may still change it.
     const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     const { loadAgencyTopicPermission } = clients;
+    const hadPickedAgency = useRef(false);
     useEffect(() => {
-        if (!pickedAgency) return undefined;
+        if (!pickedAgency) {
+            // Leaving a chosen agency ("Neu") must not keep that agency's default.
+            if (hadPickedAgency.current) setTopicPermission(DEFAULT_TOPIC_PERMISSION);
+            hadPickedAgency.current = false;
+            return undefined;
+        }
+        hadPickedAgency.current = true;
         if (pickedAgency.topicPermission) {
             setTopicPermission(pickedAgency.topicPermission);
             return undefined;
