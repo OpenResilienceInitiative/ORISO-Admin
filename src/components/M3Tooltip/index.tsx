@@ -64,27 +64,40 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
         return () => document.removeEventListener('keydown', onEscape);
     }, [open, dismissed]);
 
+    const measure = () => {
+        if (!portal || !wrapperRef.current) return;
+        const rect = wrapperRef.current.getBoundingClientRect();
+        setAnchor(
+            placement === 'bottom'
+                ? { position: 'fixed', left: rect.left + rect.width / 2, top: rect.bottom + 4 }
+                : {
+                      position: 'fixed',
+                      left: rect.left + rect.width / 2,
+                      bottom: window.innerHeight - rect.top + 4,
+                  },
+        );
+    };
+
+    // Fixed coordinates go stale when the row scrolls, so re-measure while the bubble is up.
+    const visible = open && !dismissed;
+    useEffect(() => {
+        if (!portal || !visible) return undefined;
+        window.addEventListener('scroll', measure, true);
+        window.addEventListener('resize', measure);
+        return () => {
+            window.removeEventListener('scroll', measure, true);
+            window.removeEventListener('resize', measure);
+        };
+    }, [portal, visible, placement]); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (!text || !isValidElement(children)) {
         return children;
     }
 
-    const visible = open && !dismissed;
-
     const show = () => {
         setDismissed(false);
         setOpen(true);
-        if (portal && wrapperRef.current) {
-            const rect = wrapperRef.current.getBoundingClientRect();
-            setAnchor(
-                placement === 'bottom'
-                    ? { position: 'fixed', left: rect.left + rect.width / 2, top: rect.bottom + 4 }
-                    : {
-                          position: 'fixed',
-                          left: rect.left + rect.width / 2,
-                          bottom: window.innerHeight - rect.top + 4,
-                      },
-            );
-        }
+        measure();
     };
 
     const bubble = (
