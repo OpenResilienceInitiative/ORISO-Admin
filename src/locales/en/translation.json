@@ -2212,6 +2212,7 @@
     "idAllocationField.noUnitWithNumber": "No unit with no. {{id}}",
     "links.composer.blocked.tenant": "Pick a tenant first: an existing one, a free number or “Create new”.",
     "links.composer.blocked.agency": "Pick an agency first: an existing one, a free number or “Create new”.",
+    "links.composer.blocked.agencyOtherTenant": "This agency belongs to a different tenant. Change the tenant or choose an agency of this tenant.",
     "links.composer.blocked.ownAgency": "Pick one of your agencies.",
     "links.composer.newWithNumber": "New, no. {{id}}",
     "links.composer.role": "Role",

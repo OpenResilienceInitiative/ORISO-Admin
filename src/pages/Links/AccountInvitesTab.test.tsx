@@ -561,7 +561,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
 
         const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         expect(
-            await screen.findByText(/Eine neue Beratungsstelle legt nur eine BST-Admin an/, undefined, {
+            await screen.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an\./, undefined, {
                 timeout: 10_000,
             }),
         ).toBeInTheDocument();
@@ -827,6 +827,36 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             'title',
             expect.stringContaining('79'),
         );
+    });
+
+    it('blocks sending an agency of another Träger than the one chosen', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.findInviteTenant.mockImplementation(async (id: number) =>
+            id === 40 ? { id: 40, name: 'Caritas Springfield' } : null,
+        );
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        await user.type(tenant, '40');
+        await user.tab();
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Springfield · 40'));
+
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), '275');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 10_000 }));
+
+        expect(
+            await screen.findByText(/Diese Beratungsstelle gehört zu einem anderen Träger/, undefined, {
+                timeout: 10_000,
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Einladen' })).toBeDisabled();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
     });
 
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {

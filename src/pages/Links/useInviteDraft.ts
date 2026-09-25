@@ -237,12 +237,27 @@ export const useInviteDraft = ({
         ? agencyAllocation.canSubmit || agencyJoinsPendingUnit
         : agencyAllocation.mode === 'existing';
     const agencyIdValid = !fields.agency || agencyPicked;
+    // The agency is resolved by number alone, so it can belong to another Träger than the one chosen.
+    const chosenTenantId =
+        tenantAllocation.mode === 'existing' || tenantAllocation.mode === 'manual' ? tenantAllocation.value : undefined;
+    const agencyInOtherTenant =
+        fields.agency &&
+        pickedAgency?.tenantId != null &&
+        chosenTenantId != null &&
+        pickedAgency.tenantId !== chosenTenantId;
     const needsUnitAdmin = agencyIsNew && counsellorNeedsUnitAdmin(role, agencyAllocation);
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     // A counsellor account cannot be provisioned without names.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
     const isValid =
-        emailValid && !emailTaken && tenantIdValid && agencyIdValid && !needsUnitAdmin && templateValid && namesValid;
+        emailValid &&
+        !emailTaken &&
+        tenantIdValid &&
+        agencyIdValid &&
+        !agencyInOtherTenant &&
+        !needsUnitAdmin &&
+        templateValid &&
+        namesValid;
     const showEmailError = emailTouched && recipientEmail.length > 0 && !emailValid;
 
     const fieldValid: Record<CollapsibleKey, boolean> = {
@@ -328,10 +343,16 @@ export const useInviteDraft = ({
                 'Bitte eine Beratungsstelle wählen: bestehend, freie Nummer oder „Neu anlegen“.',
             );
         }
+        if (agencyInOtherTenant) {
+            return t(
+                'links.composer.blocked.agencyOtherTenant',
+                'Diese Beratungsstelle gehört zu einem anderen Träger. Bitte den Träger ändern oder eine Beratungsstelle dieses Trägers wählen.',
+            );
+        }
         if (needsUnitAdmin) {
             return t(
                 'links.composer.blocked.counsellorNeedsUnitAdmin',
-                'Eine neue Beratungsstelle legt nur eine BST-Admin an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.',
+                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.',
             );
         }
         if (!templateValid) return t('links.composer.blocked.template', 'Bitte zuerst eine E-Mail-Vorlage auswählen.');

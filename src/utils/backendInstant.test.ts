@@ -24,4 +24,31 @@ describe('withUtcInstants', () => {
             }),
         ).toEqual({ id: 1, createDate: '2026-09-21T17:26:02Z', rows: [{ at: '2026-09-21T08:00:00Z' }], n: null });
     });
+
+    it('leaves date-shaped text in fields that are no timestamps', () => {
+        expect(
+            withUtcInstants({
+                createDate: '2026-09-21T17:26',
+                notes: '2026-09-21T17:26',
+                rows: [{ label: '2026-09-21T08:00' }],
+            }),
+        ).toEqual({
+            createDate: '2026-09-21T17:26Z',
+            notes: '2026-09-21T17:26',
+            rows: [{ label: '2026-09-21T08:00' }],
+        });
+    });
+
+    it.each([
+        'createDate',
+        'updateDate',
+        'eventDate',
+        'expiresAt',
+        'createdAt',
+        'lastActivityAt',
+        'sentAt',
+        'timestamp',
+    ])('reads the %s field as UTC', (key) => {
+        expect(withUtcInstants({ [key]: '2026-09-21T17:26:02' })).toEqual({ [key]: '2026-09-21T17:26:02Z' });
+    });
 });
