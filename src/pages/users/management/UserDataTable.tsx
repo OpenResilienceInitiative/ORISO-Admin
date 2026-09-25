@@ -131,10 +131,12 @@ export const UserDataTable = ({
         agency: t('agency'),
     };
     const contextKeys = Object.keys(contextLabels).filter(has);
+    // Narrow widths fold every context column (Träger, subdomain, centres) into one.
+    const foldedContext: DataTableColumn[] = contextKeys.length
+        ? [{ key: 'context', label: contextKeys.map((key) => contextLabels[key]).join(' · ') }]
+        : [];
     const contextColumns: DataTableColumn[] = narrow
-        ? contextKeys.length > 0
-            ? [{ key: 'context', label: contextKeys.map((key) => contextLabels[key]).join(' · ') }]
-            : []
+        ? foldedContext
         : contextKeys.map((key) => ({ key, label: contextLabels[key] }));
 
     const actionsWidth = { wide: 140, compact: config.showAgencyExpand ? 136 : 104, tablet: 64, phone: 0 }[layout];
