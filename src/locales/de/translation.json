@@ -2185,6 +2185,7 @@
     "links.composer.alsoCounsellor.label": "Berät auch",
     "links.composer.switchToAgencyAdmin": "Stattdessen als BST-Admin einladen",
     "links.accountInvites.createdWaiting": "Einladung vorgemerkt: Sie geht automatisch raus, sobald die Beratungsstelle angelegt ist.",
+    "links.accountInvites.createdWaitingTenant": "Einladung vorgemerkt: Sie geht automatisch raus, sobald der Träger angelegt ist.",
     "links.accountInvites.topicPermissionSaved": "Themen-Berechtigung gespeichert",
     "links.accountInvites.topicPermissionFailed": "Die Themen-Berechtigung konnte nicht geändert werden.",
     "links.csvImport.issue.roleOtherTab": "Die Rolle „{{role}}“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile {{line}}).",
