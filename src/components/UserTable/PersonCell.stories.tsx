@@ -109,3 +109,22 @@ export const InAutoTable: Story = {
         await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
     },
 };
+
+/** Tight but not tiny: the "Auch …" chip moves under the name instead of cutting it; @username stays readable. */
+export const TightColumn: Story = {
+    args: { alsoLabel: 'Auch Träger-Admin', username: 'amuster' },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 160 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvas }) => {
+        const name = canvas.getByText('Maria Huber');
+        await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+        await expect(canvas.getByText('Auch Träger-Admin')).toBeVisible();
+        const username = canvas.getByText('@amuster');
+        await expect(username.scrollWidth).toBeLessThanOrEqual(username.clientWidth);
+    },
+};
