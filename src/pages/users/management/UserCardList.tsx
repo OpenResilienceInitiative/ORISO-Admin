@@ -55,6 +55,7 @@ export const UserCardList = ({
                         key={row.id}
                         name={displayName(row)}
                         email={row.email}
+                        username={row.username}
                         status={resolveDisplayStatus(row)}
                         actionsDisabled={pending}
                         onEdit={onEdit && (() => onEdit(row))}

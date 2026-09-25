@@ -18,7 +18,8 @@ describe('useUserTableLayout', () => {
 
     it.each([
         [1440, 'wide'],
-        [1280, 'compact'],
+        [1280, 'wide'],
+        [1279, 'compact'],
         [1024, 'compact'],
         [834, 'tablet'],
         [768, 'tablet'],

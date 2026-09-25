@@ -67,7 +67,7 @@ export interface UserDataTableProps {
 
 /**
  * Users-hub table: one two-line row per person, arrows only where the server can sort.
- * Below 1440 Träger and Stellen share a column, below 1024 actions move into ⋯, below 768 cards.
+ * Below 1280 Träger and Stellen share a column, below 1024 actions move into ⋯, below 768 cards.
  */
 export const UserDataTable = ({
     sectionId,

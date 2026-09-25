@@ -60,7 +60,7 @@ const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
     parameters: { layout: 'fullscreen' },
-    // A4 layout from 1440 up; the narrower stories below pick their own width.
+    // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => {
@@ -480,7 +480,7 @@ export const SortNameByEmail: Story = {
     },
 };
 
-// ---- Narrower screens: 1024–1439 fold Träger and Stellen into one column, 834 folds actions into ⋯, 390 shows cards.
+// ---- Narrower screens: 1024–1279 fold Träger and Stellen into one column, 834 folds actions into ⋯, 390 shows cards.
 
 const WIDTHS = {
     viewport: {
@@ -522,9 +522,20 @@ export const ConsultantsTabAt1024: Story = {
     },
 };
 
+/** From 1280 up the full layout: Träger and Stellen in their own columns, actions as buttons. */
 export const ConsultantsTabAt1280: Story = {
     ...ConsultantsTabAt1024,
     globals: { viewport: { value: 'laptop', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(canvas.getByRole('columnheader', { name: 'Träger' })).toBeVisible();
+        await expect(canvas.getByRole('columnheader', { name: 'Beratungsstellen' })).toBeVisible();
+        await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).toBeVisible();
+        await expect(within(row).getByText('@amuster')).toBeVisible();
+        await expect(within(row).getByRole('button', { name: 'Anna Muster löschen' })).toBeVisible();
+        await noSideScroll(canvasElement);
+    },
 };
 
 export const ConsultantsTabAt834: Story = {
@@ -568,6 +579,60 @@ export const ConsultantsTabAt834: Story = {
     },
 };
 
+/** Träger-Admins at 1280: Träger and subdomain in their own columns, still no sideways scroll. */
+export const TenantAdminsTabAt1280: Story = {
+    render: onTab('tenant-admins'),
+    parameters: {
+        ...WIDTHS,
+        msw: {
+            handlers: [
+                http.get(TENANT_ADMINS_ENDPOINT, () =>
+                    consultantsResponse(
+                        TENANT_ADMINS.map((admin) => ({ ...admin, tenantSubdomain: 'caritas-hamburg-nord' })),
+                    ),
+                ),
+            ],
+        },
+    },
+    globals: { viewport: { value: 'laptop', isRotated: false } },
+    decorators: [withSidebarRail],
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(row).getByText('Auch Berater*in')).toBeVisible();
+        await expect(within(row).getByRole('button', { name: 'Anna Muster löschen' })).toBeVisible();
+        await noSideScroll(canvasElement);
+    },
+};
+
+/** Plattform-Admins get the same person cell, chips and width bands as every other tab. */
+export const PlatformAdminsTabAt1280: Story = {
+    render: onTab('platform-admins'),
+    parameters: {
+        ...WIDTHS,
+        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(PLATFORM_ADMINS))] },
+    },
+    globals: { viewport: { value: 'laptop', isRotated: false } },
+    decorators: [withSidebarRail],
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(row).getByText('@amuster')).toBeVisible();
+        await expect(row.querySelector('[data-status] svg')).not.toBeNull();
+        await expect(within(row).getByRole('button', { name: 'Anna Muster löschen' })).toBeVisible();
+        await noSideScroll(canvasElement);
+    },
+};
+
+export const PlatformAdminsTabAt834: Story = {
+    ...PlatformAdminsTabAt1280,
+    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(row).getByText('@amuster')).toBeVisible();
+        await expect(within(row).getByRole('button', { name: 'Weitere Aktionen für Anna Muster' })).toBeVisible();
+        await noSideScroll(canvasElement);
+    },
+};
+
 const CLARA: CounselorData = {
     ...CONSULTANTS[0],
     id: 'c-3',
@@ -605,6 +670,7 @@ export const ConsultantsTabAt390: Story = {
             await user.click(canvas.getByRole('button', { name: 'Details zu Anna Muster' }));
             const card = canvas.getByRole('article', { name: 'Anna Muster' });
             await expect(within(card).getByText('anna.muster@example.org')).toBeVisible();
+            await expect(within(card).getByText('@amuster')).toBeVisible();
             await expect(within(card).getByText('Beratungsstelle Nord')).toBeVisible();
             await expect(within(card).getByText('Zuletzt aktualisiert')).toBeVisible();
         });

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 
 /**
- * wide ≥1440 · compact 1024–1439 · tablet 768–1023 · phone <768 (same split as the bottom bar).
- * Wide starts at 1440: with the 128px sidebar the A4 columns need ~1040px, a 1280 screen leaves 982.
+ * wide ≥1280 · compact 1024–1279 · tablet 768–1023 · phone <768 (same split as the bottom bar).
+ * Wide fits 1280 since username and the "Auch …" mark live in the person cell.
  */
 export type UserTableLayout = 'wide' | 'compact' | 'tablet' | 'phone';
 
 const QUERIES: [UserTableLayout, string][] = [
     ['phone', '(max-width: 767px)'],
     ['tablet', '(max-width: 1023px)'],
-    ['compact', '(max-width: 1439px)'],
+    ['compact', '(max-width: 1279px)'],
 ];
 
 const read = (): UserTableLayout =>
