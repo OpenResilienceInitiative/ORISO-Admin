@@ -22,6 +22,14 @@ describe('M3RichTextEditor language control', () => {
         expect(control).toBeDisabled();
     });
 
+    it('stays visible but inert when the tenant has no active language', () => {
+        render(<M3RichTextEditor title="Datenschutz" languages={[]} language="de" />);
+
+        const control = screen.getByRole('button', { name: 'legal.m3Editor.chooseLanguage' });
+        expect(control).toBeInTheDocument();
+        expect(control).toBeDisabled();
+    });
+
     it('switches language when several are active', async () => {
         const user = userEvent.setup();
         const onLanguageChange = vi.fn();
