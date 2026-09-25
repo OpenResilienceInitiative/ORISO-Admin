@@ -183,7 +183,7 @@ export interface ParsedInviteRow {
     role?: InviteRole;
     /** "Vorlage" as written (name or number); the caller resolves it against its templates. */
     template?: string;
-    /** "Themen & Fachbereiche"; `undefined` = the default (NONE). */
+    /** "Themen & Fachbereiche"; `undefined` = omitted, the server applies SELECT_EXISTING (Q32). */
     topicPermission?: TopicPermission;
     /** "Berät auch" (agency admins); `undefined` = the backend default (yes). */
     alsoCounsellor?: boolean;
