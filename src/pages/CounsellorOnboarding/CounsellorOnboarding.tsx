@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Refresh from '@mui/icons-material/Refresh';
@@ -81,6 +81,7 @@ const Section = ({
  */
 export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardingProps) => {
     const { t } = useTranslation();
+    const alsoCounsellorId = useId();
     const navigate = useNavigate();
     const resolvedClient = useMemo(() => client ?? createHttpCounsellorOnboardingClient(), [client]);
     const {
@@ -272,10 +273,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     hintKey="counsellorOnboarding.alsoCounsellor.hint"
                 >
                     <div className={styles.switchRow}>
-                        <span className={styles.switchLabel} aria-hidden="true">
+                        {/* Clicking the text toggles the switch; the switch itself carries the accessible name. */}
+                        <label htmlFor={alsoCounsellorId} className={styles.switchLabel} aria-hidden="true">
                             {t('counsellorOnboarding.alsoCounsellor.label')}
-                        </span>
+                        </label>
                         <M3Switch
+                            id={alsoCounsellorId}
                             checked={data.alsoCounsellor}
                             disabled={busy}
                             label={t('counsellorOnboarding.alsoCounsellor.label')}

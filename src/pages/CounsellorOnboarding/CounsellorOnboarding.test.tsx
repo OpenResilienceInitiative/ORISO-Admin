@@ -476,6 +476,21 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 
+    it('toggles "Berät auch" when the visible label text is clicked', async () => {
+        const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue(AGENCY_ADMIN_INVITE) });
+        const user = userEvent.setup();
+        renderFlow(client);
+        await screen.findByText('counsellorOnboarding.agencyAdminTitle');
+
+        // The visible text is hidden from assistive tech (the switch carries the name), so find it by its node.
+        const visibleLabel = screen
+            .getAllByText('counsellorOnboarding.alsoCounsellor.label')
+            .find((node) => node.getAttribute('aria-hidden') === 'true') as HTMLElement;
+        await user.click(visibleLabel);
+
+        expect(alsoCounsellorSwitch()).toHaveAttribute('aria-checked', 'false');
+    });
+
     it('with "Berät auch" off: no topic step, no counsellor profile, registers as agency admin only', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({ ...AGENCY_ADMIN_INVITE, alsoCounsellor: false }),
