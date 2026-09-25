@@ -18,6 +18,9 @@ type FetchUserSearchParams = {
     rethrowOnFailure?: boolean;
 };
 
+/** `rejectedSort` is set when the server refused the requested order and the rows use the safe sort. */
+export type UserSearchResult = ResponseList<CounselorData> & { rejectedSort?: { field: string; order: string } };
+
 const emptyList = (): ResponseList<CounselorData> => ({
     data: [],
     total: 0,
@@ -29,7 +32,7 @@ export const fetchUserSearchWithSortFallback = async ({
     order,
     normalizeSortField,
     rethrowOnFailure = false,
-}: FetchUserSearchParams): Promise<ResponseList<CounselorData>> => {
+}: FetchUserSearchParams): Promise<UserSearchResult> => {
     const resolveField = normalizeSortField ?? ((field?: string) => field || USER_TABLE_API_SAFE_SORT);
     const field = resolveField(sortBy);
     const sortOrder = order || USER_TABLE_DEFAULT_ORDER;
@@ -52,7 +55,8 @@ export const fetchUserSearchWithSortFallback = async ({
             return emptyList();
         }
         try {
-            return await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
+            const safeList = await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
+            return { ...safeList, rejectedSort: { field, order: sortOrder } };
         } catch (fallbackError) {
             if (rethrowOnFailure) {
                 throw fallbackError;

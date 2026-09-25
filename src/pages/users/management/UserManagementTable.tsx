@@ -30,7 +30,12 @@ import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
-import { normalizeTenantAdminSortField } from '../../../constants/userTableSort';
+import {
+    normalizeTenantAdminSortField,
+    USER_TABLE_API_SAFE_ORDER,
+    USER_TABLE_API_SAFE_SORT,
+} from '../../../constants/userTableSort';
+import type { UserSearchResult } from '../../../utils/fetchUserSearchWithSortFallback';
 import styles from './UserManagementTable.module.scss';
 
 interface UserManagementTableProps {
@@ -120,6 +125,10 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         return consultantsQuery;
     })();
     const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
+    // When the server refused the chosen order, the arrow follows the rows it actually sent.
+    const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
+    const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : tableState.sortBy;
+    const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : tableState.order;
 
     const { mutate: deleteTenant } = useDeleteTenant({
         onSuccess: () => {
@@ -191,8 +200,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
         figmaTableHeader: figmaTableHeader && !isOrganizations,
         fixActionsColumn: !isMobile,
-        sortBy: tableState.sortBy,
-        order: tableState.order,
+        sortBy: shownSortBy,
+        order: shownOrder,
     }).filter((column) => column.key !== 'status' || config.showStatus);
 
     const updateSearch = useCallback((value: string) => {
@@ -381,6 +390,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     showIcon
                     style={{ marginBottom: 16 }}
                 />
+            )}
+            {rejectedSort && (
+                <p role="status" className={styles.sortNotice}>
+                    {t('users.table.sortRejected')}
+                </p>
             )}
             <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
                 <ResizeTable

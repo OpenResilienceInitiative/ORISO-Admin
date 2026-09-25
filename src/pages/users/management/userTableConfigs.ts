@@ -62,7 +62,8 @@ const baseIdentityColumns = (): UserTableColumnConfig[] => [
     col('lastname', true, true, 130),
     col('firstname', true, true, 120),
     col('email', true, true, 134),
-    col('username', true, true, 134),
+    // The search endpoints cannot sort by username, so no arrow here.
+    col('username', true, false, 134),
 ];
 
 const tenantAdminIdentityColumns = (): UserTableColumnConfig[] => [
