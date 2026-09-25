@@ -28,3 +28,20 @@ export const EmailOnly: Story = {
         await expect(canvas.getAllByText('maria.huber@caritas-berlin.de')).toHaveLength(1);
     },
 };
+
+/** In a narrow column the e-mail stays on one line and is cut with "…"; the full address is in the tooltip. */
+export const NarrowColumn: Story = {
+    args: { email: 'anna.muster@beratung-example.org' },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 140 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvas }) => {
+        const email = canvas.getByText('anna.muster@beratung-example.org');
+        await expect(email).toHaveAttribute('title', 'anna.muster@beratung-example.org');
+        await expect(email.getBoundingClientRect().height).toBeLessThanOrEqual(16);
+    },
+};

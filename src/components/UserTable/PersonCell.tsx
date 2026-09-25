@@ -9,6 +9,10 @@ export interface PersonCellProps {
 export const PersonCell = ({ name, email }: PersonCellProps) => (
     <div className={styles.person}>
         <span className={styles.name}>{name || email}</span>
-        {name && <span className={styles.email}>{email}</span>}
+        {name && (
+            <span className={styles.email} title={email}>
+                {email}
+            </span>
+        )}
     </div>
 );
