@@ -10,7 +10,7 @@ const atWidth = (width: number) =>
                 media: query,
                 addEventListener: vi.fn(),
                 removeEventListener: vi.fn(),
-            }) as unknown as MediaQueryList,
+            } as unknown as MediaQueryList),
     );
 
 describe('useUserTableLayout', () => {
@@ -18,7 +18,7 @@ describe('useUserTableLayout', () => {
 
     it.each([
         [1440, 'wide'],
-        [1280, 'wide'],
+        [1280, 'compact'],
         [1024, 'compact'],
         [834, 'tablet'],
         [768, 'tablet'],

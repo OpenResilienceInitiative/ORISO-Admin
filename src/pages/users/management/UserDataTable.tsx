@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import CheckIcon from '@mui/icons-material/Check';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -18,6 +19,7 @@ import {
 } from '../../../components/DataTable';
 import { IconButton } from '../../../components/IconButton';
 import { PersonCell } from '../../../components/UserTable/PersonCell';
+import { RowMenu, type RowMenuItem } from '../../../components/UserTable/RowMenu';
 import { RelativeTime } from '../../../components/UserTable/RelativeTime';
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
 import { SortPill, type NameSortField } from '../../../components/UserTable/SortPill';
@@ -29,6 +31,9 @@ import type { CounselorData } from '../../../types/counselor';
 import { resolveDisplayStatus } from '../../../types/userDisplayStatus';
 import { getDomain } from '../../../utils/getDomain';
 import { getLastUpdatedAt } from './formatLastUpdated';
+import { CentreList } from './CentreList';
+import { UserCardList } from './UserCardList';
+import { useUserTableLayout } from './useUserTableLayout';
 import { getVisibleColumns, USER_TABLE_CONFIGS } from './userTableConfigs';
 import {
     DATE_SORT_FIELD,
@@ -37,7 +42,6 @@ import {
     NAME_SORT_FIELD,
     nameFieldOf,
     sortColumnOf,
-    topicsAtCentre,
 } from './userRows';
 import styles from './userDataTable.module.scss';
 
@@ -62,39 +66,10 @@ export interface UserDataTableProps {
     ariaLabel?: string;
 }
 
-const CentreList = ({ row }: { row: CounselorData }) => {
-    const { t } = useTranslation();
-    return (
-        <ul
-            className={styles.centres}
-            aria-label={t('userTable.centres.of', 'Beratungsstellen von {{name}}', { name: displayName(row) })}
-        >
-            {row.agencies.map((centre) => {
-                const topics = topicsAtCentre(row, centre);
-                return (
-                    <li key={centre.id} className={styles.centre}>
-                        <ScopeChip
-                            kind="agency"
-                            id={centre.id ?? ''}
-                            name={centre.name ?? ''}
-                            postcode={centre.postcode}
-                            city={centre.city}
-                        />
-                        <span className={styles.centreName}>{centre.name}</span>
-                        {topics && (
-                            <span className={styles.topics}>
-                                {t('userTable.centres.topicsHere', 'Berät hier')}:{' '}
-                                {topics.length ? topics.join(', ') : '—'}
-                            </span>
-                        )}
-                    </li>
-                );
-            })}
-        </ul>
-    );
-};
-
-/** Users-hub table: one two-line row per person, arrows only where the server can sort. */
+/**
+ * Users-hub table: one two-line row per person, arrows only where the server can sort.
+ * Below 1440 Träger and Stellen share a column, below 1024 actions move into ⋯, below 768 cards.
+ */
 export const UserDataTable = ({
     sectionId,
     rows,
@@ -119,10 +94,16 @@ export const UserDataTable = ({
     const [openRows, setOpenRows] = useState<string[]>([]);
     const [pickedNameField, setPickedNameField] = useState<NameSortField>('lastname');
 
+    const layout = useUserTableLayout();
+    const narrow = layout === 'compact' || layout === 'tablet';
+
     const config = USER_TABLE_CONFIGS[sectionId];
     const configColumns = getVisibleColumns(sectionId, { showTenant, showSubdomain });
     const configColumn = (key: string) => configColumns.find((column) => column.key === key);
     const has = (key: string) => configColumn(key) != null;
+    const canEdit = canEditOrDelete && can(PermissionAction.Update, config.updateResource);
+    const canDelete = canEditOrDelete && can(PermissionAction.Delete, config.updateResource);
+    const canExpand = (row: CounselorData) => config.showAgencyExpand && (row.agencies?.length ?? 0) > 1;
 
     const activeColumn = sortColumnOf(sortBy);
     const nameField = nameFieldOf(sortBy) ?? pickedNameField;
@@ -145,6 +126,20 @@ export const UserDataTable = ({
         sectionId === TypeOfUser.Consultants ? 'users.table.alsoTenantAdmin' : 'users.table.alsoConsultant',
     );
 
+    const contextLabels: Record<string, string> = {
+        tenant: t('tenantName'),
+        subdomain: t('tenantAdmins.form.subdomain'),
+        agency: t('agency'),
+    };
+    const contextKeys = Object.keys(contextLabels).filter(has);
+    const contextColumns: DataTableColumn[] = narrow
+        ? contextKeys.length > 0
+            ? [{ key: 'context', label: contextKeys.map((key) => contextLabels[key]).join(' · ') }]
+            : []
+        : contextKeys.map((key) => ({ key, label: contextLabels[key] }));
+
+    const actionsWidth = { wide: 140, compact: config.showAgencyExpand ? 136 : 104, tablet: 64, phone: 0 }[layout];
+
     const columns: DataTableColumn[] = [
         {
             key: 'name',
@@ -152,32 +147,32 @@ export const UserDataTable = ({
             sortable: !!configColumn('lastname')?.sortable,
             addon: configColumn('lastname')?.sortable && (
                 <span className={styles.pill}>
-                    <SortPill value={nameField} onChange={pickNameField} />
+                    <SortPill value={nameField} onChange={pickNameField} compact={narrow} />
                 </span>
             ),
         },
-        ...(has('tenant') ? [{ key: 'tenant', label: t('tenantName') }] : []),
-        ...(has('subdomain') ? [{ key: 'subdomain', label: t('tenantAdmins.form.subdomain') }] : []),
-        ...(has('agency') ? [{ key: 'agency', label: t('agency') }] : []),
-        ...(has('status') && config.showStatus ? [{ key: 'status', label: t('status'), width: 150 }] : []),
-        ...(has('lastUpdated')
+        ...contextColumns,
+        ...(has('status') && config.showStatus
+            ? [{ key: 'status', label: t('status'), width: narrow ? 120 : 150 }]
+            : []),
+        ...(has('lastUpdated') && layout !== 'tablet'
             ? [
                   {
                       key: 'lastUpdated',
                       label: t('users.table.lastUpdated'),
                       sortable: !!configColumn('lastUpdated')?.sortable,
                       firstDirection: 'desc' as const,
-                      width: 190,
+                      width: narrow ? 132 : 190,
                   },
               ]
             : []),
-        ...(has('hasOtherIdentity') ? [{ key: 'hasOtherIdentity', label: identityLabel, width: 150 }] : []),
+        ...(has('hasOtherIdentity') && !narrow ? [{ key: 'hasOtherIdentity', label: identityLabel, width: 150 }] : []),
         {
             key: 'actions',
             label: '',
             ariaLabel: t('userTable.columns.actions', 'Aktionen'),
             align: 'right',
-            width: 140,
+            width: actionsWidth,
         },
     ];
 
@@ -225,12 +220,65 @@ export const UserDataTable = ({
                         <CheckIcon className={styles.check} aria-hidden />
                     </span>
                 ) : null;
+            case 'context':
+                return (
+                    <span className={styles.context}>
+                        {contextKeys.map((contextKey) => (
+                            <Fragment key={contextKey}>{renderCell(contextKey, row)}</Fragment>
+                        ))}
+                    </span>
+                );
             case 'actions': {
                 const isOpen = openRows.includes(row.id);
                 const pending = row.status === 'IN_DELETION';
+                if (layout === 'tablet') {
+                    const items: RowMenuItem[] = [
+                        ...(canExpand(row)
+                            ? [
+                                  {
+                                      key: 'centres',
+                                      label: isOpen
+                                          ? t('userTable.rowMenu.hideCentres', 'Beratungsstellen ausblenden')
+                                          : t('userTable.rowMenu.showCentres', 'Beratungsstellen zeigen'),
+                                      icon: isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />,
+                                      onSelect: () => toggleRow(row.id),
+                                  },
+                              ]
+                            : []),
+                        ...(canEdit
+                            ? [
+                                  {
+                                      key: 'edit',
+                                      label: t('edit'),
+                                      icon: <EditOutlinedIcon />,
+                                      disabled: pending,
+                                      onSelect: () => onEdit(row),
+                                  },
+                              ]
+                            : []),
+                        ...(canDelete
+                            ? [
+                                  {
+                                      key: 'delete',
+                                      label: t('delete'),
+                                      icon: <DeleteOutlinedIcon />,
+                                      tone: 'error' as const,
+                                      disabled: pending,
+                                      onSelect: () => onDelete(row),
+                                  },
+                              ]
+                            : []),
+                    ];
+                    return items.length > 0 ? (
+                        <RowMenu
+                            items={items}
+                            ariaLabel={t('userTable.rowMenu.label', 'Weitere Aktionen für {{name}}', { name })}
+                        />
+                    ) : null;
+                }
                 return (
                     <span className={styles.actions}>
-                        {config.showAgencyExpand && (row.agencies?.length ?? 0) > 1 && (
+                        {canExpand(row) && (
                             <IconButton
                                 icon={isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                                 ariaLabel={t('userTable.centres.of', 'Beratungsstellen von {{name}}', { name })}
@@ -238,7 +286,7 @@ export const UserDataTable = ({
                                 onClick={() => toggleRow(row.id)}
                             />
                         )}
-                        {canEditOrDelete && can(PermissionAction.Update, config.updateResource) && (
+                        {canEdit && (
                             <IconButton
                                 icon={<EditOutlinedIcon />}
                                 ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name })}
@@ -246,7 +294,7 @@ export const UserDataTable = ({
                                 onClick={() => onEdit(row)}
                             />
                         )}
-                        {canEditOrDelete && can(PermissionAction.Delete, config.updateResource) && (
+                        {canDelete && (
                             <IconButton
                                 icon={<DeleteOutlinedIcon />}
                                 ariaLabel={t('userTable.card.delete', '{{name}} löschen', { name })}
@@ -262,10 +310,48 @@ export const UserDataTable = ({
         }
     };
 
+    const cardFacts = (row: CounselorData) => {
+        const facts: [string, ReactNode][] = [
+            [t('tenantName'), has('tenant') ? renderCell('tenant', row) : null],
+            [t('tenantAdmins.form.subdomain'), has('subdomain') ? renderCell('subdomain', row) : null],
+            [t('agency'), has('agency') && row.agencies?.length ? <CentreList row={row} /> : null],
+            [t('users.table.lastUpdated'), has('lastUpdated') ? renderCell('lastUpdated', row) : null],
+            [identityLabel, has('hasOtherIdentity') && hasOtherIdentityFor(sectionId, row) ? t('yes') : null],
+        ];
+        return (
+            <dl className={styles.facts}>
+                {facts
+                    .filter(([, value]) => value != null)
+                    .map(([label, value]) => (
+                        <div key={label} className={styles.fact}>
+                            <dt>{label}</dt>
+                            <dd>{value}</dd>
+                        </div>
+                    ))}
+            </dl>
+        );
+    };
+
+    if (layout === 'phone') {
+        return (
+            <UserCardList
+                rows={rows}
+                loading={loading}
+                page={page}
+                total={total}
+                onLoadMore={() => onPageChange(page + 1)}
+                onEdit={canEdit ? onEdit : undefined}
+                onDelete={canDelete ? onDelete : undefined}
+                details={cardFacts}
+                ariaLabel={ariaLabel}
+            />
+        );
+    }
+
     return (
         <DataTable
             ariaLabel={ariaLabel}
-            className={styles.table}
+            className={classNames(styles.table, { [styles.narrow]: narrow })}
             header={<DataTableHeader columns={columns} sort={sort} onSortChange={handleSort} sortRequired />}
             loading={loading}
             skeletonColumns={columns.length}

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
@@ -59,6 +59,8 @@ const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
     parameters: { layout: 'fullscreen' },
+    // A4 layout from 1440 up; the narrower stories below pick their own width.
+    globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => {
             // Super-admin token so the create button + editable columns render.
@@ -443,5 +445,154 @@ export const SortNameByEmail: Story = {
         await expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
         await expect(within(nameHeader).getByRole('button', { name: /Name nach E-Mail/ })).toBeVisible();
         await waitFor(() => expect(canvas.getAllByRole('row')[1]).toHaveTextContent('Ben Beispiel'));
+    },
+};
+
+// ---- Narrower screens: 1024–1439 fold Träger and Stellen into one column, 834 folds actions into ⋯, 390 shows cards.
+
+const WIDTHS = {
+    viewport: {
+        options: {
+            laptop1024: { name: 'Laptop 1024', styles: { width: '1024px', height: '800px' } },
+            tablet834: { name: 'iPad portrait 834', styles: { width: '834px', height: '1112px' } },
+        },
+    },
+};
+
+// The app's sidebar rail takes 128px from 768px up; the story has no shell, so it leaves the room.
+const withSidebarRail: Decorator = (Story) => (
+    <div style={{ paddingLeft: 128 }}>
+        <Story />
+    </div>
+);
+
+// Neither the page nor the table itself may scroll sideways.
+const noSideScroll = async (canvasElement: HTMLElement) => {
+    const root = canvasElement.ownerDocument.documentElement;
+    await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
+    const scroller = canvasElement.querySelector('table')?.parentElement;
+    if (scroller) await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth);
+};
+
+export const ConsultantsTabAt1024: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        ...WIDTHS,
+        msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] },
+    },
+    globals: { viewport: { value: 'laptop1024', isRotated: false } },
+    decorators: [withSidebarRail],
+    play: async ({ canvasElement }) => {
+        const row = await rowOf(canvasElement, 'Muster');
+        await expect(within(canvasElement).getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).toBeVisible();
+        await expect(within(row).getByRole('button', { name: 'Anna Muster bearbeiten' })).toBeVisible();
+        await noSideScroll(canvasElement);
+    },
+};
+
+export const ConsultantsTabAt1280: Story = {
+    ...ConsultantsTabAt1024,
+    globals: { viewport: { value: 'laptop', isRotated: false } },
+};
+
+export const ConsultantsTabAt834: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        ...WIDTHS,
+        msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))] },
+    },
+    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    decorators: [withSidebarRail],
+    play: async ({ canvasElement, step, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const row = await rowOf(canvasElement, 'Muster');
+
+        await step('three columns plus the ⋯ menu', async () => {
+            const headers = canvas.getAllByRole('columnheader').map((header) => header.textContent ?? '');
+            await expect(headers.filter(Boolean)).toHaveLength(3);
+            await expect(canvas.queryByRole('columnheader', { name: /Zuletzt aktualisiert/ })).toBeNull();
+            await expect(within(row).getByText('20095 Hamburg')).toBeVisible();
+            await expect(within(row).getByText('Aktiv')).toBeVisible();
+            await noSideScroll(canvasElement);
+        });
+
+        await step('tab arrows scroll the account types; Beratende starts in view', async () => {
+            const left = canvas.getByRole('button', { name: 'Tabs nach links' });
+            const right = canvas.getByRole('button', { name: 'Tabs nach rechts' });
+            await waitFor(() => expect(right).toBeDisabled());
+            await user.click(left);
+            await waitFor(() => expect(right).toBeEnabled());
+        });
+
+        await step('⋯ opens the row menu; Bearbeiten goes where it always did', async () => {
+            await user.click(within(row).getByRole('button', { name: 'Weitere Aktionen für Anna Muster' }));
+            const menu = await body.findByRole('menu');
+            // The menu fades in.
+            await waitFor(() => expect(within(menu).getByRole('menuitem', { name: 'Löschen' })).toBeVisible());
+            await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }));
+            await expect(await canvas.findByTestId('edit-target')).toHaveTextContent('/admin/users/consultants/c-1');
+        });
+    },
+};
+
+const CLARA: CounselorData = {
+    ...CONSULTANTS[0],
+    id: 'c-3',
+    key: 'c-3',
+    firstname: 'Clara',
+    lastname: 'Dritte',
+    email: 'clara.dritte@example.org',
+    updateDate: '2026-05-01T09:00:00',
+};
+
+// Page 2 repeats Ben, as a server does when a row moves between two requests.
+const pagedConsultants = http.get(CONSULTANTS_ENDPOINT, ({ request }) =>
+    HttpResponse.json(
+        new URL(request.url).searchParams.get('page') === '2'
+            ? { total: 3, _embedded: [CONSULTANTS[1], CLARA] }
+            : { total: 3, _embedded: CONSULTANTS },
+    ),
+);
+
+export const ConsultantsTabAt390: Story = {
+    render: onTab('consultants'),
+    parameters: { msw: { handlers: [pagedConsultants] } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement, step, userEvent: user }) => {
+        const canvas = within(canvasElement);
+
+        await step('one card per person, no table', async () => {
+            await waitFor(() => expect(canvas.getAllByRole('article')).toHaveLength(2));
+            await expect(canvas.queryByRole('table')).toBeNull();
+            await expect(canvas.getByText('2 von 3')).toBeVisible();
+            await noSideScroll(canvasElement);
+        });
+
+        await step('expand shows the details', async () => {
+            await user.click(canvas.getByRole('button', { name: 'Details zu Anna Muster' }));
+            const card = canvas.getByRole('article', { name: 'Anna Muster' });
+            await expect(within(card).getByText('anna.muster@example.org')).toBeVisible();
+            await expect(within(card).getByText('Beratungsstelle Nord')).toBeVisible();
+            await expect(within(card).getByText('Zuletzt aktualisiert')).toBeVisible();
+        });
+
+        await step('"Weitere laden" appends page 2 without repeating Ben', async () => {
+            await user.click(canvas.getByRole('button', { name: 'Weitere laden' }));
+            await waitFor(() => expect(canvas.getAllByRole('article')).toHaveLength(3));
+            await expect(canvas.getAllByRole('article', { name: 'Ben Beispiel' })).toHaveLength(1);
+            await expect(canvas.getByRole('article', { name: 'Clara Dritte' })).toBeVisible();
+            await expect(canvas.getByText('3 von 3')).toBeVisible();
+            await expect(canvas.getByRole('button', { name: 'Weitere laden' })).toBeDisabled();
+        });
+    },
+};
+
+export const ConsultantsTabAt390Edit: Story = {
+    ...ConsultantsTabAt390,
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await user.click(await canvas.findByRole('button', { name: 'Anna Muster bearbeiten' }));
+        await expect(await canvas.findByTestId('edit-target')).toHaveTextContent('/admin/users/consultants/c-1');
     },
 };
