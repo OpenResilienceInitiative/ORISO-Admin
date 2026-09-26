@@ -95,10 +95,11 @@ export const LinksPage = () => {
                                         key={tab.key}
                                         text={t('links.tabs.platformOnly', 'Nur Plattform-Admins')}
                                     >
+                                        {/* A link role like its NavLink siblings, so aria-disabled is announced. */}
                                         <span
                                             aria-disabled="true"
                                             className={classNames(pageStyles.tab, styles.tabDisabled)}
-                                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger on a disabled tab
+                                            role="link"
                                             tabIndex={0}
                                         >
                                             <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
