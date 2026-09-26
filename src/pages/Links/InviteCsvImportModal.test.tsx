@@ -598,6 +598,28 @@ describe('InviteCsvImportModal', () => {
             expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
         });
 
+        it('re-checks the rows when the Träger context changes after opening', () => {
+            const props = {
+                createInvite,
+                idKind: 'agency' as const,
+                parseResult: parseResultOf({
+                    rows: [row(2, 'anna@x.de', { role: 'TENANT_ADMIN', id: undefined })] as never,
+                }),
+                tabRole: 'COUNSELLOR' as const,
+                templates: TEMPLATES,
+                onClose,
+                onCreated,
+            };
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            const { rerender } = render(<InviteCsvImportModal {...props} ownTenantKnown />);
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            rerender(<InviteCsvImportModal {...props} ownTenantKnown={false} />);
+
+            expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        });
+
         it('spells out parse-level rejections next to the chip', () => {
             renderModal(
                 parseResultOf({
