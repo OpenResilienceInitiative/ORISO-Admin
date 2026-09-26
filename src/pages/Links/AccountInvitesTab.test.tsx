@@ -1166,6 +1166,24 @@ describe('CSV import payload per tab', () => {
         expect(first).not.toHaveProperty('importBatchId');
     });
 
+    it('lists only the columns each tab imports in the CSV menu hint', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        const { unmount } = renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const tenantHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(tenantHint).not.toHaveTextContent('Themen & Fachbereiche');
+        expect(tenantHint).not.toHaveTextContent('Berät auch');
+        unmount();
+
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        render(<CounsellorInvitesTab />);
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const agencyHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(agencyHint).toHaveTextContent('Themen & Fachbereiche');
+        expect(agencyHint).toHaveTextContent('Berät auch');
+    });
+
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         renderTenantTab();

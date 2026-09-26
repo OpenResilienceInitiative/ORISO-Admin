@@ -10,7 +10,11 @@ import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
-import { downloadInviteCsvTemplate } from './csv/inviteCsvTemplate';
+import {
+    downloadInviteCsvTemplate,
+    inviteCsvColumnsForTab,
+    type InviteCsvTemplateLabels,
+} from './csv/inviteCsvTemplate';
 import { ROLE_LABEL_KEYS, type InviteSendMode } from './inviteModel';
 import type { InviteTab } from './inviteRules';
 import styles from './inviteComposer.module.scss';
@@ -126,6 +130,22 @@ export const InviteToolbar = ({
             : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
     const csvTargetLabel = t('links.csvImport.col.target', 'Ziel');
 
+    // One label set per tab for the menu hint and the template header, so the two cannot drift apart.
+    const allCsvLabels: Required<InviteCsvTemplateLabels> = {
+        email: t('links.accountInvites.email', 'E-Mail'),
+        firstName: t('links.accountInvites.firstName', 'Vorname'),
+        lastName: t('links.composer.lastName', 'Name'),
+        id: csvIdLabel,
+        target: csvTargetLabel,
+        role: t('links.composer.role', 'Rolle'),
+        template: t('links.composer.template', 'Vorlage'),
+        topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
+        alsoCounsellor: t('links.composer.alsoCounsellor.label', 'Berät auch'),
+    };
+    const csvColumns = Object.fromEntries(
+        inviteCsvColumnsForTab(tab === 'tenant' ? 'tenant' : 'counsellor').map((key) => [key, allCsvLabels[key]]),
+    ) as unknown as InviteCsvTemplateLabels;
+
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (csv) {
         const csvBlocked = csv.blockedReason != null;
@@ -148,16 +168,10 @@ export const InviteToolbar = ({
                     {/* The import expects a fixed column order, and this menu is the only place to learn it. */}
                     {csvLabel(
                         t('links.csvImport.columns', 'Spalten: {{columns}}', {
-                            columns: [
-                                t('links.accountInvites.email', 'E-Mail'),
-                                t('links.accountInvites.firstName', 'Vorname'),
-                                t('links.composer.lastName', 'Name'),
-                                `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
-                                csvTargetLabel,
-                                t('links.composer.role', 'Rolle'),
-                                t('links.composer.template', 'Vorlage'),
-                                t('links.composer.topics', 'Themen & Fachbereiche'),
-                            ].join(', '),
+                            columns: Object.values({
+                                ...csvColumns,
+                                id: `${csvIdLabel} ${t('links.csvImport.optional', '(optional)')}`,
+                            }).join(', '),
                         }),
                     )}
                 </Upload>
@@ -189,16 +203,7 @@ export const InviteToolbar = ({
             }
             if (key === 'csv-template') {
                 downloadInviteCsvTemplate(
-                    {
-                        email: t('links.accountInvites.email', 'E-Mail'),
-                        firstName: t('links.accountInvites.firstName', 'Vorname'),
-                        lastName: t('links.composer.lastName', 'Name'),
-                        id: csvIdLabel,
-                        target: csvTargetLabel,
-                        role: t('links.composer.role', 'Rolle'),
-                        template: t('links.composer.template', 'Vorlage'),
-                        topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
-                    },
+                    csvColumns,
                     t('links.csvImport.templateFileName', 'oriso-einladungen-vorlage.csv'),
                     // German column values on purpose: the parser accepts them in any UI language.
                     {
