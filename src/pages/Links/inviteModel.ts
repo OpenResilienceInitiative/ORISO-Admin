@@ -18,11 +18,7 @@ export const TOPIC_PERMISSIONS: TopicPermission[] = ['NONE', 'SELECT_EXISTING', 
 // The invite bar's preselection only; an empty CSV cell is omitted and the server applies SELECT_EXISTING (Q32).
 export const BAR_DEFAULT_TOPIC_PERMISSION: TopicPermission = 'NONE';
 
-export const INVITE_ROLES: InviteRole[] = ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN'];
-
-/** Roles a viewer may hand out ("a higher unit invites a lower one"). */
-export const rolesForViewer = (viewerScope: InviteViewerScope): InviteRole[] =>
-    viewerScope === 'agency' ? ['COUNSELLOR'] : INVITE_ROLES;
+// Which roles a viewer may invite lives in inviteRules (invitableRoles), the one copy of that rule.
 
 /** German default labels; call sites translate through `t(key, default)`. */
 export const ROLE_LABEL_KEYS: Record<InviteRole, [key: string, fallback: string]> = {
