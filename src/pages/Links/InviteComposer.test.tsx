@@ -138,6 +138,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     // The composer row is one row of controls: the template chooser must stand at the
     // same height as the send button beside it. The chooser's own default is the legal
     // editors' 40px pill, which left it visibly a size short here.
+    it('keeps browser autofill off the recipient address', async () => {
+        await renderTenantTab();
+
+        expect(await screen.findByLabelText('E-Mail')).toHaveAttribute('autocomplete', 'off');
+    });
+
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
