@@ -332,15 +332,16 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            // Like the backend: a non-counselling agency admin needs no topic; agency admins always get CREATE.
+            // Like the backend and the wizard: a topic is needed to counsel or to found an agency; agency admins get CREATE.
             const agencyAdmin = invite.targetRole === 'AGENCY_ADMIN';
             const counselling = !agencyAdmin || (request.alsoCounsellor ?? invite.alsoCounsellor ?? true);
+            const needsTopics = counselling || invite.agencyExists === false;
             // Like the backend: coverage plus — with CREATE only — every active tenant topic.
             const permission = agencyAdmin ? 'CREATE' : invite.topicPermission ?? 'CREATE';
             const selectable =
                 permission === 'CREATE' ? [...invite.topics, ...(invite.availableTopics ?? [])] : invite.topics;
             const coveredIds = new Set(selectable.map(({ id }) => id));
-            if ((counselling && request.topicIds.length === 0) || request.topicIds.some((id) => !coveredIds.has(id))) {
+            if ((needsTopics && request.topicIds.length === 0) || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
             }
             if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
