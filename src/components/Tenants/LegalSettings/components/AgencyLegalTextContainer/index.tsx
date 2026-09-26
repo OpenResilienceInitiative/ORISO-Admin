@@ -13,13 +13,15 @@ import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useAgencyLegalDraft } from '../../hooks/useAgencyLegalDraft';
+import { useLegalTextReadOnlyReason } from '../../hooks/useLegalTextReadOnlyReason';
+import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
 import { isLegalDocumentPayload } from '../../../../../types/dpp';
 import { LegalTextKind } from '../../../../../types/legalVersion';
 import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
-import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
+import { DepartmentDataProtectionCard, DepartmentPublicationStatus } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
 import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
@@ -69,7 +71,8 @@ export const AgencyLegalTextContainer = ({
     // #609: this editor used to have no permission check at all. It is the same
     // right the Träger-level cards ask for, one rung down the ladder.
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
-    const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    const readOnlyReason = useLegalTextReadOnlyReason();
+    const [chosen, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
     const [draftSource, setDraftSource] = useState<'local' | 'server'>();
     const [draftActionPending, setDraftActionPending] = useState(false);
     const draftActionPendingRef = useRef(false);
@@ -78,8 +81,6 @@ export const AgencyLegalTextContainer = ({
     const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
 
     const agencyId = Number(agencyData?.id);
-    const isDepartment = selected !== ALL_DEPARTMENTS;
-    const topicId = isDepartment ? (selected as number) : undefined;
 
     // Which Fachbereich has left the inherited text, per kind: the switcher marks it so an admin
     // editing the agency-wide text sees who will NOT receive the change (#583). Keyed by topicId
@@ -107,6 +108,11 @@ export const AgencyLegalTextContainer = ({
                 })),
         [agencyData?.topics, ownTextByTopic],
     );
+    // One Fachbereich (the Caritas case): it IS the choice, so it starts selected (#1066, H4).
+    // Derived rather than stored, because the topics arrive with the agency after the first render.
+    const selected = chosen === ALL_DEPARTMENTS && departments.length === 1 ? departments[0].id : chosen;
+    const isDepartment = selected !== ALL_DEPARTMENTS;
+    const topicId = isDepartment ? (selected as number) : undefined;
 
     // Tenant text is the root of the inheritance chain: Träger → Agentur → Fachbereich.
     const { data: tenantData } = useSingleTenantData({
@@ -138,13 +144,17 @@ export const AgencyLegalTextContainer = ({
     const departmentPublish = field === 'privacy' ? publishDpp : publishImprint;
 
     const agencyContentKey = AGENCY_CONTENT_KEY[field];
+    const traegerContent = tenantData?.content?.[agencyContentKey] as Record<string, string> | undefined;
+    const agencyOwnContent = agencyData?.content?.[agencyContentKey] as Record<string, string> | undefined;
     const agencyWideContent = useMemo<Record<string, string>>(
-        () => ({
-            ...((tenantData?.content?.[agencyContentKey] as Record<string, string>) || {}),
-            ...((agencyData?.content?.[agencyContentKey] as Record<string, string>) || {}),
-        }),
-        [tenantData, agencyData, agencyContentKey],
+        () => ({ ...(traegerContent || {}), ...(agencyOwnContent || {}) }),
+        [traegerContent, agencyOwnContent],
     );
+    // Which level the agency-wide text really comes from: "Veröffentlicht" belongs to a text this
+    // Beratungsstelle published itself, never to the Träger text it merely inherits (#1066, H3).
+    let agencyWideStatus: DepartmentPublicationStatus | undefined;
+    if (!isEmptyLegalContent(agencyOwnContent)) agencyWideStatus = 'PUBLISHED';
+    else if (!isEmptyLegalContent(traegerContent)) agencyWideStatus = 'INHERITED_FROM_TRAEGER';
 
     const { data: userData, isLoading: isUserLoading } = useUserData();
     const agencyDraftScope =
@@ -240,7 +250,10 @@ export const AgencyLegalTextContainer = ({
     }
     // Once a draft exists it is a complete snapshot. Do not merge published keys back into it:
     // an absent language or an explicit empty consent map may be a deliberate removal.
-    const agencyWideSeed = sourceChosen && selectedDraft ? selectedDraft.content : agencyWideContent;
+    // A draft without any text would hide the inherited text from its editor only; every role has
+    // to see the same card (#1066, H6), so an empty draft falls back to what is live.
+    const draftHasText = !!selectedDraft && !isEmptyLegalContent(selectedDraft.content);
+    const agencyWideSeed = sourceChosen && selectedDraft && draftHasText ? selectedDraft.content : agencyWideContent;
     let contentByLanguage = agencyWideSeed;
     if (isDepartment) {
         contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
@@ -493,10 +506,11 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
-    // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
-    const agencyWideStatus = Object.values(agencyWideContent).some((html) => html && html.trim() !== '')
-        ? ('PUBLISHED' as const)
-        : undefined;
+    // A Fachbereich without its own text shows the level above's, and says whose it is.
+    let departmentStatus: DepartmentPublicationStatus | undefined = departmentQuery.data?.publicationStatus;
+    if (!hasOwnText) {
+        departmentStatus = agencyWideStatus === 'PUBLISHED' ? 'INHERITED_FROM_AGENCY' : agencyWideStatus;
+    }
     const agencyDraftBlocked =
         !canEditLegalText || (!isDepartment && (serverDraft.isError || serverDraft.hasConflict || !sourceChosen));
     const discardAgencyWideDraft = async () => {
@@ -562,12 +576,11 @@ export const AgencyLegalTextContainer = ({
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
-            // "Alle Fachbereiche" is published as soon as it is saved; only an empty text has no status.
-            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : agencyWideStatus}
+            publicationStatus={isDepartment ? departmentStatus : agencyWideStatus}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
             readOnly={agencyDraftBlocked}
-            readOnlyReason={canEditLegalText ? undefined : t('tenants.legal.readOnly.managedByTraeger')}
+            readOnlyReason={canEditLegalText ? undefined : t(readOnlyReason.key)}
             onSave={onSave}
             saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}

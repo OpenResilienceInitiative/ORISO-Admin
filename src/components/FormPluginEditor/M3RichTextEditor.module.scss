@@ -59,8 +59,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
                 flex-direction: column;
             }
 
+            // The text scrolls inside; a fixed floor would push it over a wrapped function bar.
             .editor {
                 display: flex;
+                min-height: 0;
                 flex: 1;
                 flex-direction: column;
                 overflow: hidden;
@@ -1177,54 +1179,29 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .functionBar {
     display: flex;
     width: 100%;
-    max-width: 100%;
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
-    flex-wrap: nowrap;
-    gap: 12px;
+    // Wrap, never scroll: a scrolled-away version menu read as "cut off" (#1066).
+    flex-wrap: wrap;
     align-items: center;
-    // Spacer pushes controls right when they fit; shrinks away so overflow can
-    // scroll from the start (flex-end alone leaves left items unreachable).
-    justify-content: flex-start;
+    justify-content: flex-end;
     padding: 12px 16px 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--m3-outline, #747778) transparent;
-
-    &:before {
-        content: '';
-        flex: 1 1 0;
-        min-width: 0;
-    }
-
-    &::-webkit-scrollbar {
-        height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        border-radius: 2px;
-        background: var(--m3-outline, #747778);
-    }
+    gap: 8px 12px;
 
     > * {
-        flex-shrink: 0;
+        min-width: 0;
+        max-width: 100%;
+        flex-shrink: 1;
     }
 
     > .versionHistoryStatus {
-        min-width: 0;
-        flex-shrink: 1;
         white-space: normal;
     }
 
     @media (max-width: 599px) {
+        justify-content: flex-start;
         gap: 8px;
-
-        &:before {
-            display: none;
-        }
     }
 }
 

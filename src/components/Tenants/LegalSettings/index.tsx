@@ -38,8 +38,9 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
                 contentKey: 'privacy.confirmation.content',
-                cancelLabelKey: 'privacy.confirmation.confirm',
-                okLabelKey: 'privacy.confirmation.cancel',
+                // "Nein" = publish without informing, "Ja" = publish and inform (#1066).
+                cancelLabelKey: 'privacy.confirmation.cancel',
+                okLabelKey: 'privacy.confirmation.confirm',
                 field: ['content', 'confirmPrivacy'],
             }}
         />
@@ -104,8 +105,8 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 showConfirmationModal={{
                     titleKey: 'termsAndConditions.confirmation.title',
                     contentKey: 'termsAndConditions.confirmation.content',
-                    cancelLabelKey: 'termsAndConditions.confirmation.confirm',
-                    okLabelKey: 'termsAndConditions.confirmation.cancel',
+                    cancelLabelKey: 'termsAndConditions.confirmation.cancel',
+                    okLabelKey: 'termsAndConditions.confirmation.confirm',
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}

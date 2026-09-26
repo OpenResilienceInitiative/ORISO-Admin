@@ -516,11 +516,14 @@ export const AgencyFooterWithConsentTemplate: Story = {
         );
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-        // The bar scrolls instead of wrapping, and never shows a scrollbar: the
-        // scroll track occupies no layout space at all.
-        expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
-        expect(bar.offsetHeight - bar.clientHeight).toBe(0);
-        expect(window.getComputedStyle(bar).flexWrap).toBe('nowrap');
+        // #1066: the bar wraps instead of scrolling — every control lies inside it, none
+        // is pushed past the right edge where it read as cut off.
+        expect(window.getComputedStyle(bar).flexWrap).toBe('wrap');
+        expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+        const barRight = bar.getBoundingClientRect().right;
+        Array.from(bar.children).forEach((child) =>
+            expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
+        );
     },
 };
 

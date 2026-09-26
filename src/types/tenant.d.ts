@@ -164,5 +164,8 @@ export interface TenantData extends BasicTenantData {
         privacy: string | null;
         termsAndConditions: string | null;
         claim: string;
+        /** Stored language maps next to the resolved strings (TenantService `Content`). */
+        impressumLanguages?: Record<string, string> | null;
+        privacyLanguages?: Record<string, string> | null;
     };
 }
