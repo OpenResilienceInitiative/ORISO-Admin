@@ -42,6 +42,18 @@ describe('decodeHTML', () => {
         });
     });
 
+    it('knows every named entity, not a hand-picked few', () => {
+        expect(decodeHTML('Caf&eacute; &Ccedil;a &hellip; &mdash;')).toBe('Café Ça … —');
+    });
+
+    it('remaps the windows-1252 range as browsers do', () => {
+        expect(decodeHTML('&#128; &#x80; &#150;')).toBe('€ € –');
+    });
+
+    it('leaves names that only exist on Object.prototype unchanged', () => {
+        expect(decodeHTML('&constructor; &toString; &__proto__;')).toBe('&constructor; &toString; &__proto__;');
+    });
+
     it('decodes hex, German letters and apostrophes, and leaves unknown entities alone', () => {
         expect(decodeHTML('&#x2B;&auml;&Uuml;&szlig;&#39;&apos;&nbsp;&unknown;')).toBe("+äÜß''\u00a0&unknown;");
     });

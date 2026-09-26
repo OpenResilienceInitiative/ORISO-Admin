@@ -553,6 +553,12 @@ describe('CounsellorInvitesTab — invite wiring', () => {
                 timeout: 10_000,
             }),
         ).toBeInTheDocument();
+        // A founding BST-Admin may or may not counsel (Frank's decision): the hint sets no such condition.
+        expect(
+            screen.getByText(
+                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein, dann die Berater:innen mit derselben Nummer.',
+            ),
+        ).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
 
         await user.click(screen.getByRole('button', { name: 'Stattdessen als BST-Admin einladen' }));
@@ -927,6 +933,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(
             await screen.findByText(/für sie ist keine BST-Admin-Einladung offen/, undefined, { timeout: 10_000 }),
         ).toBeInTheDocument();
+        expect(screen.queryByText(/Berät auch/)).not.toBeInTheDocument();
         expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
