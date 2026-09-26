@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { withUtcInstants } from '../../../utils/backendInstant';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import {
     countInviteBuckets,
@@ -488,7 +489,7 @@ describe('derivePhases — waiting for a new unit', () => {
 });
 
 // Timestamps arrive as UTC (see withUtcInstants); these run in Europe/Berlin so an offset would show.
-describe('timestamps with a zone', () => {
+describe('timestamps read in Europe/Berlin', () => {
     const originalTz = process.env.TZ;
     beforeAll(() => {
         process.env.TZ = 'Europe/Berlin';
@@ -508,5 +509,11 @@ describe('timestamps with a zone', () => {
         expect(
             inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00Z' })),
         ).toBe('2026-09-21T17:30:00Z');
+    });
+
+    // The regression itself: a zoneless server instant is UTC, which Berlin reads two hours later.
+    it('reads a zoneless server instant as UTC once it came through withUtcInstants', () => {
+        const received = withUtcInstants({ createDate: '2026-09-21T17:26:02' });
+        expect(formatRelativeTime(received.createDate, 'de', now)).toBe('vor 16 Minuten');
     });
 });
