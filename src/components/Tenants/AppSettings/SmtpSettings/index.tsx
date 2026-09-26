@@ -176,7 +176,11 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                     >
                         <div className={styles.fieldGrid}>
                             {data?.settings?.smtpMode == null && (
-                                <Alert type="warning" showIcon message={t('tenants.appSettings.smtp.legacyModeMissing')} />
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    message={t('tenants.appSettings.smtp.legacyModeMissing')}
+                                />
                             )}
                             <MuiSwitchField
                                 className={styles.smtpSwitch}

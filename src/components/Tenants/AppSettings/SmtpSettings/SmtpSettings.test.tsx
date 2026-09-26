@@ -162,35 +162,35 @@ describe('SmtpSettings (write-only password, #730)', () => {
     });
 });
 
-describe('SmtpSettings (#903 parity with the platform card)', () => {
+describe('SmtpSettings (tenant mode is independent of platform SMTP)', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
         mocks.appSettings = { globalSmtpHost: 'global.example.org', globalSmtpFrom: 'platform@example.org' };
-        mocks.tenantData = { id: 1, settings: { smtp: { enabled: true, host: '', passwordSet: false } } };
+        mocks.tenantData = {
+            id: 1,
+            settings: { smtpMode: 'OWN', smtp: { enabled: true, host: '', passwordSet: false } },
+        };
     });
 
     const inputByName = (name: string) =>
         document.querySelector(`input[name="${name}"], input[id$="${name}"]`) as HTMLInputElement | null;
 
-    it('shows the platform value when the tenant has none of its own', () => {
+    it('does not copy platform SMTP values into tenant settings', () => {
         renderCard();
 
         const values = Array.from(document.querySelectorAll('input')).map((input) => input.value);
-        expect(values).toContain('global.example.org');
-        expect(values).toContain('platform@example.org');
+        expect(values).not.toContain('global.example.org');
+        expect(values).not.toContain('platform@example.org');
     });
 
-    it('locks the SMTP fields when the platform has SMTP turned off', () => {
+    it('keeps own-server fields editable when platform SMTP is disabled', () => {
         mocks.appSettings = { ...mocks.appSettings, globalSmtpEnabled: false };
         renderCard();
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
 
-        const host = Array.from(document.querySelectorAll('input')).find(
-            (input) => input.value === 'global.example.org',
-        );
-        expect(host).toBeDefined();
-        expect(host).toBeDisabled();
-        expect(passwordInput()).toBeDisabled();
+        const host = screen.getByRole('textbox', { name: 'tenants.appSettings.smtp.host' });
+        expect(host).not.toBeDisabled();
+        expect(passwordInput()).not.toBeDisabled();
     });
 
     it('explains every field and offers no test e-mail on the tenant side', () => {
