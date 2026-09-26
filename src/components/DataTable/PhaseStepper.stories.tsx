@@ -124,10 +124,13 @@ export const DatedTrackInPhoneCard: Story = {
         ),
     ],
     play: async ({ canvasElement }) => {
-        const track = canvasElement.querySelector('ol') as HTMLElement;
         const card = within(canvasElement).getByTestId('card');
+        const track = within(card).getByRole('list', { name: 'Onboarding-Fortschritt' });
         await expect(track.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right);
-        // Whatever does not fit must stay reachable: the track itself scrolls.
-        await expect(track.scrollWidth <= track.clientWidth || getComputedStyle(track).overflowX === 'auto').toBe(true);
+        // Six 88px steps (528px) really overflow the 320px card, and the track scrolls to reach them.
+        await expect(track.scrollWidth).toBeGreaterThanOrEqual(528);
+        await expect(track.scrollWidth).toBeGreaterThan(track.clientWidth);
+        // …and a person can scroll it (overflow hidden would clip the last steps out of reach).
+        await expect(['auto', 'scroll']).toContain(getComputedStyle(track).overflowX);
     },
 };
