@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { withUtcInstants } from '../utils/backendInstant';
 import { supervisorLogsEndpoint } from '../appConfig';
 import { SupervisorLogsResponse } from '../types/supervisorLogs';
 
@@ -17,7 +18,7 @@ export const useSupervisorLogsData = ({ page, perPage, ...options }: SupervisorL
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
                 responseHandling: [],
-            }),
+            }).then(withUtcInstants),
         ...(options as object),
         retry: false,
         refetchOnWindowFocus: false,

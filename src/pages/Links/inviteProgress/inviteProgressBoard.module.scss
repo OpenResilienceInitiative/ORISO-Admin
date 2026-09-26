@@ -90,11 +90,137 @@
     color: var(--m3-error, #b1005e);
 }
 
+/* Composed with .statusChip and .statusChipDead (same magenta as a dead invite): only the layout differs. */
+.problemChip {
+    display: flex;
+    width: fit-content;
+    margin-top: 4px;
+}
+
+/* Same height, border and type as `.roleChip`, so a counsellor row is no taller than any other. */
+.topicChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 2px 1px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 30px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 11px/16px var(--m3-body-font-family);
+    gap: 0;
+    letter-spacing: 0.5px;
+    transition: background-color 150ms ease;
+    white-space: nowrap;
+
+    &:hover,
+    &.topicChipOpen {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #b90013);
+        outline-offset: 2px;
+    }
+
+    &[aria-disabled='true'] {
+        background: transparent;
+        border-color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
+        cursor: not-allowed;
+    }
+}
+
+.topicChipAnchor {
+    display: inline-flex;
+}
+
+.topicChipIcon {
+    /* The glyph is 16px inside the 16px line box: the chip keeps its height. */
+    width: 16px !important;
+    height: 16px !important;
+    flex: none;
+}
+
+.topicChipOpen .topicChipIcon {
+    transform: rotate(180deg);
+}
+
+/* The M3 menu (surface-container, 12px radius): one option per level with a
+   leading check column, the title and a one-line description. */
+
+.topicMenu {
+    :global(.ant-dropdown-menu) {
+        /* margin-right is a transparent gutter: when the popup is shifted back
+           into a phone's viewport, the sheet keeps 16px off the screen edge. */
+        width: min(340px, calc(100vw - 32px));
+        padding: 8px 0;
+        margin-right: 16px;
+        border-radius: 12px;
+        background: var(--m3-surface-container, #f0eded);
+    }
+
+    :global(.ant-dropdown-menu-item) {
+        padding: 8px 16px 8px 12px;
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    /* Doubled class against antd's runtime-injected selected/hover rules (see
+       footerLanguageMenu.module.scss): the check carries "current", the row stays neutral. */
+    &#{&} :global(.ant-dropdown-menu-item-selected) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &#{&} :global(.ant-dropdown-menu-item:hover),
+    &#{&} :global(.ant-dropdown-menu-item-active) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    }
+}
+
+.topicOption {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.topicOptionCheck {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 18px;
+}
+
+.topicOptionText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    white-space: normal;
+}
+
+.topicOptionTitle {
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+.topicOptionDescription {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+}
+
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 .actions {
     display: inline-flex;
     gap: 2px;
     white-space: nowrap;
+}
+
+.disabledActionSlot {
+    display: inline-flex;
 }
 
 .revokeAction:not(:disabled) {

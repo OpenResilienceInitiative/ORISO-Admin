@@ -1,4 +1,14 @@
-import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement } from 'react';
+import {
+    cloneElement,
+    isValidElement,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    type CSSProperties,
+    type ReactElement,
+} from 'react';
+import { createPortal } from 'react-dom';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
 
@@ -19,6 +29,8 @@ export interface M3TooltipProps {
     children: ReactElement;
     /** Side the bubble grows to. `top` is the default M3 plain-tooltip anchor. */
     placement?: 'top' | 'bottom';
+    /** Render into `document.body` so a clipping container (a scrolling row) cannot cut the bubble off. */
+    portal?: boolean;
     className?: string;
 }
 
@@ -31,9 +43,11 @@ export interface M3TooltipProps {
  * its own palette and portal behaviour, and the surface it would sit on here is
  * a data table whose colours are M3 CSS variables only.
  */
-export const M3Tooltip = ({ text, children, placement = 'top', className }: M3TooltipProps) => {
+export const M3Tooltip = ({ text, children, placement = 'top', portal = false, className }: M3TooltipProps) => {
     const id = useId();
+    const wrapperRef = useRef<HTMLSpanElement>(null);
     const [open, setOpen] = useState(false);
+    const [anchor, setAnchor] = useState<CSSProperties | undefined>();
     const [dismissed, setDismissed] = useState(false);
 
     // WCAG 2.2 SC 1.4.13: Escape must close the bubble WITHOUT moving focus or
@@ -50,19 +64,56 @@ export const M3Tooltip = ({ text, children, placement = 'top', className }: M3To
         return () => document.removeEventListener('keydown', onEscape);
     }, [open, dismissed]);
 
+    const measure = () => {
+        if (!portal || !wrapperRef.current) return;
+        const rect = wrapperRef.current.getBoundingClientRect();
+        setAnchor(
+            placement === 'bottom'
+                ? { position: 'fixed', left: rect.left + rect.width / 2, top: rect.bottom + 4 }
+                : {
+                      position: 'fixed',
+                      left: rect.left + rect.width / 2,
+                      bottom: window.innerHeight - rect.top + 4,
+                  },
+        );
+    };
+
+    // Fixed coordinates go stale when the row scrolls, so re-measure while the bubble is up.
+    const visible = open && !dismissed;
+    useEffect(() => {
+        if (!portal || !visible) return undefined;
+        window.addEventListener('scroll', measure, true);
+        window.addEventListener('resize', measure);
+        return () => {
+            window.removeEventListener('scroll', measure, true);
+            window.removeEventListener('resize', measure);
+        };
+    }, [portal, visible, placement]); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (!text || !isValidElement(children)) {
         return children;
     }
 
-    const visible = open && !dismissed;
-
     const show = () => {
         setDismissed(false);
         setOpen(true);
+        measure();
     };
+
+    const bubble = (
+        <span
+            className={classNames(styles.bubble, portal ? styles.portal : styles[placement])}
+            id={id}
+            role="tooltip"
+            style={portal ? anchor : undefined}
+        >
+            {text}
+        </span>
+    );
 
     return (
         <span
+            ref={wrapperRef}
             className={classNames(styles.wrapper, className)}
             onBlur={() => setOpen(false)}
             onFocus={show}
@@ -72,11 +123,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', className }: M3To
             {cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, {
                 'aria-describedby': visible ? id : undefined,
             })}
-            {visible && (
-                <span className={classNames(styles.bubble, styles[placement])} id={id} role="tooltip">
-                    {text}
-                </span>
-            )}
+            {visible && (portal ? createPortal(bubble, document.body) : bubble)}
         </span>
     );
 };

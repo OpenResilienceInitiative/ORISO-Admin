@@ -419,3 +419,166 @@ describe('InviteProgressBoard', () => {
         expect(names).toEqual(['Bea Zeller', 'Nils Anders', 'Rita Meier']);
     });
 });
+
+describe('InviteProgressBoard — queue and topic permission', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const waiting = invite(10, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    });
+    const orphan = invite(11, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        queueProblem: 'NO_UNIT_ADMIN',
+        emailDeliveryStatus: null,
+    });
+    const accepted = invite(12, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-08-02T10:00:00Z',
+        topicPermission: 'SELECT_EXISTING',
+    });
+    const counsellorProps = (invites: AccountInviteDTO[], extra = {}) => ({
+        ...baseProps(),
+        invites,
+        targetRole: 'COUNSELLOR' as const,
+        ...extra,
+    });
+
+    it('names the missing Träger admin in the badge of an invite that waits for a new Träger', async () => {
+        const tenantOrphan = invite(13, {
+            targetRole: 'AGENCY_ADMIN',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'TENANT',
+            queueProblem: 'NO_UNIT_ADMIN',
+            emailDeliveryStatus: null,
+        });
+        render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
+
+        const badge = screen.getByTestId('queue-problem-badge');
+        expect(badge).toHaveTextContent('Keine Träger-Admin');
+        await userEvent.hover(badge);
+        expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
+    });
+
+    it('shows a waiting invite with the new first step, resend disabled but revoke possible', () => {
+        render(<InviteProgressBoard {...counsellorProps([waiting])} />);
+
+        const row = screen.getByText('person10@example.org').closest('tr') as HTMLElement;
+        expect(within(row).getByText('Beratungsstelle noch nicht angelegt')).toBeInTheDocument();
+        expect(within(row).getByText('Wartet')).toBeInTheDocument();
+        expect(within(row).getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladung widerrufen' })).toBeEnabled();
+        expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
+    });
+
+    it('marks a waiting invite without unit admin with the "Keine BST-Admin" badge', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Keine BST-Admin');
+        expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+    });
+
+    it('names the queue problem for screen readers instead of calling it a delivery problem', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        const row = screen.getByText('person11@example.org').closest('tr') as HTMLElement;
+        const progress = within(row).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        expect(progress).not.toHaveTextContent('Zustellproblem');
+        expect(progress).toHaveTextContent('Keine BST-Admin – Einladung wartet');
+    });
+
+    const topicChip = () => screen.getByRole('button', { name: /Themen für/ });
+
+    it('changes the topic permission of an accepted counsellor from the chip menu', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        await userEvent.click(topicChip());
+        const menu = await screen.findByRole('menu');
+        await userEvent.click(within(menu).getByText('Darf weitere Themen anlegen'));
+
+        expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
+    });
+
+    it('does not save when the current level is picked again', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        await userEvent.click(topicChip());
+        await userEvent.click(within(await screen.findByRole('menu')).getByText('Darf weitere Fachbereiche auswählen'));
+
+        expect(onTopicPermissionChange).not.toHaveBeenCalled();
+    });
+
+    it('shows the short topic label in the chip, the full title and description in a tooltip', async () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission: 'NONE' }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        expect(topicChip()).toHaveTextContent(/^Themen: Keine weiteren$/);
+        await userEvent.hover(topicChip());
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Keine weiteren Fachbereiche');
+        expect(tooltip).toHaveTextContent('Nur die vorausgewählten Fachbereiche.');
+    });
+
+    it.each([
+        ['SELECT_EXISTING', 'Auswählen'],
+        ['CREATE', 'Anlegen'],
+    ] as const)('labels %s as "Themen: %s" in the chip', (topicPermission, short) => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        expect(topicChip()).toHaveTextContent(new RegExp(`^Themen: ${short}$`));
+    });
+
+    it('lists every level with its title and description, the current one checked', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn() })} />);
+
+        await userEvent.click(topicChip());
+        const items = within(await screen.findByRole('menu')).getAllByRole('menuitem');
+        expect(items).toHaveLength(3);
+        const current = items.find((item) => item.textContent?.includes('Darf weitere Fachbereiche auswählen'));
+        expect(current).toHaveTextContent('Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.');
+        expect(current?.querySelector('svg')).not.toBeNull();
+        expect(items.filter((item) => item.querySelector('svg'))).toHaveLength(1);
+    });
+
+    it('keeps the chip visible but disabled, with the reason, when the viewer may not change it', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted])} />);
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(topicChip());
+        expect(screen.queryByRole('menu')).toBeNull();
+        await userEvent.hover(topicChip());
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('keine Berechtigung');
+    });
+
+    it('disables the chip while its row is saving', () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn(), topicPermissionSavingIds: [12] })}
+            />,
+        );
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('offers no topic select on the Träger tab, even for a counsellor row', () => {
+        render(<InviteProgressBoard {...baseProps()} invites={[accepted]} onTopicPermissionChange={vi.fn()} />);
+
+        expect(screen.queryByRole('button', { name: /Themen für/ })).toBeNull();
+    });
+});

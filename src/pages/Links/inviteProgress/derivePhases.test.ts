@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { withUtcInstants } from '../../../utils/backendInstant';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import {
     countInviteBuckets,
@@ -444,5 +445,75 @@ describe('matchesInviteQuery (A4)', () => {
     it('treats a blank query as no filter at all', () => {
         expect(matchesInviteQuery(invite(), '   ')).toBe(true);
         expect(matchesInviteQuery(invite(), '')).toBe(true);
+    });
+});
+
+describe('derivePhases — waiting for a new unit', () => {
+    const waiting = (overrides: Partial<AccountInviteDTO> = {}) =>
+        invite({
+            targetRole: 'COUNSELLOR',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'AGENCY',
+            emailDeliveryStatus: null,
+            expiresAt: null,
+            ...overrides,
+        });
+
+    it('puts "Beratungsstelle noch nicht angelegt" in front as the current step', () => {
+        expect(states(waiting())).toEqual([
+            'agencyUnitCreated:current',
+            'invited:pending',
+            'accountCreated:pending',
+            'completed:pending',
+        ]);
+    });
+
+    it('waits for the Träger when the unit is a new Träger', () => {
+        expect(states(waiting({ targetRole: 'AGENCY_ADMIN', waitingForUnit: 'TENANT' }))[0]).toBe(
+            'tenantUnitCreated:current',
+        );
+    });
+
+    it('turns the first step into a warning while no unit admin is pending', () => {
+        expect(states(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))[0]).toBe('agencyUnitCreated:warning');
+    });
+
+    it('files a waiting invite under "Eingeladen", and one without unit admin under "Problem"', () => {
+        expect(deriveInviteBucket(waiting())).toBe('invited');
+        expect(deriveInviteBucket(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))).toBe('problem');
+    });
+
+    it('drops the extra step once the invite has been released', () => {
+        expect(states(invite({ targetRole: 'COUNSELLOR', waitingForUnit: null }))[0]).toBe('invited:done');
+    });
+});
+
+// Timestamps arrive as UTC (see withUtcInstants); these run in Europe/Berlin so an offset would show.
+describe('timestamps read in Europe/Berlin', () => {
+    const originalTz = process.env.TZ;
+    beforeAll(() => {
+        process.env.TZ = 'Europe/Berlin';
+    });
+    afterAll(() => {
+        process.env.TZ = originalTz;
+    });
+    const now = new Date('2026-09-21T17:42:02Z');
+
+    it('keeps honouring an explicit zone or offset', () => {
+        expect(formatRelativeTime('2026-09-21T17:26:02Z', 'de', now)).toBe('vor 16 Minuten');
+        expect(formatRelativeTime('2026-09-21T19:26:02+02:00', 'de', now)).toBe('vor 16 Minuten');
+    });
+
+    it('orders timestamps by the instant they denote', () => {
+        // 17:30 UTC is later than 19:20+02:00 = 17:20 UTC.
+        expect(
+            inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00Z' })),
+        ).toBe('2026-09-21T17:30:00Z');
+    });
+
+    // The regression itself: a zoneless server instant is UTC, which Berlin reads two hours later.
+    it('reads a zoneless server instant as UTC once it came through withUtcInstants', () => {
+        const received = withUtcInstants({ createDate: '2026-09-21T17:26:02' });
+        expect(formatRelativeTime(received.createDate, 'de', now)).toBe('vor 16 Minuten');
     });
 });
