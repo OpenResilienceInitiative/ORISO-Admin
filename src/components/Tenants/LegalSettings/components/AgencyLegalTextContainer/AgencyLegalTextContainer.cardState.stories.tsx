@@ -118,7 +118,7 @@ export const PlatformAdminSeesTheSameCard: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Vom Träger übernommen', {}, { timeout: 8000 })).toBeVisible();
-        await expect(canvas.getByText('Datenschutzerklärung des Trägers')).toBeVisible();
+        await expect(canvas.getByRole('heading', { name: 'Datenschutzerklärung des Trägers' })).toBeVisible();
     },
 };
 
@@ -150,7 +150,7 @@ export const SingleFachbereichPreselected: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Schwangerschaftsberatung', {}, { timeout: 8000 })).toBeVisible();
         await expect(canvas.queryByText('Alle Fachbereiche')).not.toBeInTheDocument();
-        await expect(canvas.getByText('Vom Träger übernommen')).toBeVisible();
+        await expect(await canvas.findByText('Vom Träger übernommen', {}, { timeout: 8000 })).toBeVisible();
         await expectFunctionBarFits(canvasElement);
     },
 };

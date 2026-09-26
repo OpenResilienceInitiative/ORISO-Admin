@@ -145,7 +145,8 @@ export const InformAdviceSeekersQuestion: Story = {
         await typeIntoEditor(canvasElement, ' Ergänzt.');
         await userEvent.click(await canvas.findByRole('button', { name: /veröffentlichen/i }));
         const dialog = await page.findByRole('dialog');
-        await expect(within(dialog).getByText('Ratsuchende informieren?')).toBeVisible();
+        // The modal fades in; wait for the end of the transition before asserting visibility.
+        await waitFor(() => expect(within(dialog).getByText('Ratsuchende informieren?')).toBeVisible());
         await expect(within(dialog).getByRole('button', { name: 'Ja' })).toBeVisible();
         await expect(within(dialog).getByRole('button', { name: 'Nein' })).toBeVisible();
     },
