@@ -76,6 +76,19 @@ export const updateAgencyData = async (
         ...(formInput.settings ? { settings: stripAgencyAdminControls(formInput.settings) } : {}),
     };
 
+    // Assign picked counsellors BEFORE the PUT: AgencyService rejects offline=false for an
+    // agency without counsellors, so "first counsellor + visible" in one save needs them
+    // attached first (#1069). Absent-vs-empty applies: a narrow card patch carries no
+    // `consultantIds` and must leave assignments alone. Additive — empty means "nothing picked".
+    let consultantAssignmentFailed = false;
+    if (formInput.consultantIds?.length > 0) {
+        try {
+            await assignAgencyToConsultants(agencyId, formInput.consultantIds);
+        } catch {
+            consultantAssignmentFailed = true;
+        }
+    }
+
     return fetchData({
         url: `${agencyEndpointBase}/${agencyModel.id}`,
         method: FETCH_METHODS.PUT,
@@ -94,18 +107,7 @@ export const updateAgencyData = async (
         // eslint-disable-next-line no-underscore-dangle
         const updatedAgency = response?._embedded;
 
-        // Assign picked counsellors, as the create path does. Absent-vs-empty applies: a
-        // narrow card patch carries no `consultantIds` and must leave assignments alone.
-        // Additive — the picker is not pre-filled, so empty means "nothing picked here".
-        if (formInput.consultantIds?.length > 0) {
-            try {
-                await assignAgencyToConsultants(agencyId, formInput.consultantIds);
-            } catch {
-                // The agency is saved either way; the caller warns on this flag.
-                return { ...updatedAgency, consultantAssignmentFailed: true };
-            }
-        }
-
-        return updatedAgency;
+        // The agency is saved either way; the caller warns on this flag.
+        return consultantAssignmentFailed ? { ...updatedAgency, consultantAssignmentFailed: true } : updatedAgency;
     });
 };
