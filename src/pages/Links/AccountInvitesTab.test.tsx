@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
@@ -62,8 +62,14 @@ const mocks = vi.hoisted(() => ({
     resendAccountInvite: vi.fn(),
     revokeAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
+    updateAccountInviteTopicPermission: vi.fn(),
+    changeAccountInviteRole: vi.fn(),
+    addConsultantRole: vi.fn(),
     searchTenantData: vi.fn(),
     getAgencyDataById: vi.fn(),
+    searchInviteAgencies: vi.fn(),
+    findInviteTenant: vi.fn(),
+    superAdmin: false,
     parseUserAuthInfo: vi.fn(),
     acceptBaseUrlForRole: vi.fn(),
     checkTenantIdAvailability: vi.fn(),
@@ -80,10 +86,16 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     resendAccountInvite: mocks.resendAccountInvite,
     revokeAccountInvite: mocks.revokeAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
+    updateAccountInviteTopicPermission: mocks.updateAccountInviteTopicPermission,
     // E2: the editor's preview is rendered by the backend. Without this the real
     // fetch would run under jsdom — which is a load-dependent hang, not an
     // honest failure. (Same omission #751 had; see the preview mock there.)
     previewInviteEmailTemplateContent: mocks.previewInviteEmailTemplateContent,
+}));
+
+vi.mock('../../api/accountInvites/inviteRoles', () => ({
+    changeAccountInviteRole: mocks.changeAccountInviteRole,
+    addConsultantRole: mocks.addConsultantRole,
 }));
 
 vi.mock('../../api/tenant/searchTenantData', () => ({
@@ -95,6 +107,26 @@ vi.mock('../../api/tenant/searchTenantData', () => ({
 vi.mock('../../api/agency/getAgencyById', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/agency/getAgencyById')>()),
     default: mocks.getAgencyDataById,
+}));
+
+vi.mock('../../api/agency/searchInviteAgencies', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../api/agency/searchInviteAgencies')>()),
+    searchInviteAgencies: mocks.searchInviteAgencies,
+}));
+
+// Real role reading, except where a test makes the viewer the platform admin.
+vi.mock('../../hooks/useUserRoles.hook', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../hooks/useUserRoles.hook')>();
+    return {
+        useUserRoles: () =>
+            mocks.superAdmin
+                ? { ...actual.useUserRoles(), isSuperAdmin: true, hasRole: () => true }
+                : actual.useUserRoles(),
+    };
+});
+
+vi.mock('../../api/tenant/findInviteTenant', () => ({
+    findInviteTenant: mocks.findInviteTenant,
 }));
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
@@ -162,6 +194,11 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
 
 const renderTenantTab = () => render(<TenantInvitesTab />);
 
+// A plain flag survives vi.clearAllMocks(); reset it so no block inherits the platform-admin view.
+beforeEach(() => {
+    mocks.superAdmin = false;
+});
+
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -181,7 +218,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -204,8 +241,8 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
         renderTenantTab();
 
-        const field = await screen.findByLabelText('Träger-ID');
-        await waitFor(() => expect(field).toHaveValue('Auto'));
+        const field = await screen.findByRole('combobox', { name: 'Träger' });
+        await waitFor(() => expect(field).toHaveValue('Neu'));
         expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
     });
 
@@ -220,7 +257,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
         // Single active template is auto-selected by the tab; only e-mail is required on top.
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -229,14 +266,14 @@ describe('TenantInvitesTab Träger-ID field', () => {
                 expect.objectContaining({ targetRole: 'TENANT_ADMIN', recipientEmail: 'neu@example.org' }),
             ),
         );
-        expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
+        expect(await screen.findByText('Diese Träger-ID ist bereits vergeben.')).toBeInTheDocument();
     });
 
     it('does not auto-fill the Träger-ID on the counsellor tab', async () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         render(<CounsellorInvitesTab />);
 
-        const field = await screen.findByLabelText('Träger-ID');
+        const field = await screen.findByRole('combobox', { name: 'Träger' });
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
@@ -264,7 +301,7 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
         await renderTenantTab();
         const user = userEvent.setup();
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
@@ -280,7 +317,7 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
         await submitInvite();
 
         expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
-        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
     it('falls back to the translated role explanation on a bodyless 403', async () => {
@@ -291,7 +328,7 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
         expect(
             await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
     it('keeps the generic create-failed toast for non-403 failures', async () => {
@@ -299,7 +336,7 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
 
         await submitInvite();
 
-        expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+        expect(await screen.findByText('Einladung konnte nicht angelegt werden.')).toBeInTheDocument();
     });
 });
 
@@ -330,7 +367,7 @@ describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
         renderTenantTab();
         const user = userEvent.setup();
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
@@ -357,7 +394,7 @@ describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
 
         expect(await screen.findByText(expected)).toBeInTheDocument();
         // No generic toast stacked on top — that is what hid the cause.
-        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
         expect(screen.queryByText('Invite sent')).not.toBeInTheDocument();
     });
 
@@ -370,7 +407,7 @@ describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
         expect(
             await screen.findByText('E-Mail konnte nicht versendet werden. Bitte Plattform-Admin kontaktieren.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
     it('reloads the list so the row reflects what the backend kept', { timeout: 90_000 }, async () => {
@@ -388,7 +425,7 @@ describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
 
         await submitInvite();
 
-        expect(await screen.findByText('Could not create link')).toBeInTheDocument();
+        expect(await screen.findByText('Einladung konnte nicht angelegt werden.')).toBeInTheDocument();
     });
 
     it('leaves the 403 role surfacing intact (UserService#1006)', { timeout: 90_000 }, async () => {
@@ -432,7 +469,7 @@ describe('overlapping invite loads', () => {
     /** Fill the composer and send, which triggers the second (newer) load. */
     const sendOneInvite = async (user: ReturnType<typeof userEvent.setup>) => {
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
     };
@@ -492,23 +529,8 @@ describe('overlapping invite loads', () => {
     });
 });
 
-/*
- * Department routing on counsellor invites (#384): when the pinned
- * Beratungsstellen-ID resolves to an EXISTING agency, the invite adopts the
- * agency's single canonical topic as the department — after checking tenant
- * scope. A fresh reservation (the id resolves to nothing, TEN-INV-U2) carries
- * no department; provisioning assigns routing when the agency is created.
- * Every refusal must surface as a visible toast, not just a rejected promise.
- */
-describe('CounsellorInvitesTab department routing (#384)', () => {
-    const agencyPayload = (topics: { id: unknown; name: string }[], tenantId: number | string = 79) => ({
-        _embedded: {
-            id: '275',
-            tenantId,
-            topics,
-        },
-    });
-
+/* Viewer: tenant admin of Träger 79. Department routing is the backend's job, so no client-side agency lookup. */
+describe('CounsellorInvitesTab — invite wiring', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         window.localStorage.clear();
@@ -517,141 +539,678 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         mocks.createAccountInvite.mockResolvedValue(invite(99, 79, 'EMAIL_SENT'));
-        // The manual Beratungsstellen-ID only becomes submittable once the U2
-        // availability check confirms it (canSubmit gates the send button).
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'FREE' });
+        mocks.searchInviteAgencies.mockResolvedValue({ hits: [], total: 0, hasMore: false, page: 1 });
+        mocks.superAdmin = false;
     });
 
-    /** Fill the composer for a complete counsellor invite and press send. */
-    const fillAndSend = async () => {
+    /** Fill E-Mail, names and a manual Beratungsstellen-Nr. */
+    const fill = async (agencyNumber = '275') => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-
+        // Sample addresses use example.org, never a domain we really own.
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
-        await user.type(screen.getByLabelText('Beratungsstellen-ID'), '275');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
-        await waitFor(() => expect(sendButton).toBeEnabled());
-        await user.click(sendButton);
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), agencyNumber);
         return user;
     };
 
-    it('routes a counsellor invite to the agency single topic', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }]));
+    it('does not let a counsellor found a new agency and offers the BST-Admin invite instead', async () => {
+        const user = await fill();
 
-        await fillAndSend();
-
-        await waitFor(() =>
-            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    targetRole: 'COUNSELLOR',
-                    tenantId: 79,
-                    agencyId: 275,
-                    agencyIdAllocationMode: 'MANUAL',
-                    departmentId: 2,
-                    firstName: 'Lisa',
-                    lastName: 'Simpson',
-                    recipientEmail: 'lisa.simpson@example.org',
-                }),
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        expect(
+            await screen.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an\./, undefined, {
+                timeout: 10_000,
+            }),
+        ).toBeInTheDocument();
+        // A founding BST-Admin may or may not counsel (Frank's decision): the hint sets no such condition.
+        expect(
+            screen.getByText(
+                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein, dann die Berater:innen mit derselben Nummer.',
             ),
-        );
-        expect(mocks.getAgencyDataById).toHaveBeenCalledWith('275');
+        ).toBeInTheDocument();
+        expect(sendButton).toBeDisabled();
+
+        await user.click(screen.getByRole('button', { name: 'Stattdessen als BST-Admin einladen' }));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            targetRole: 'AGENCY_ADMIN',
+            alsoCounsellor: true,
+            tenantId: 79,
+            tenantIdAllocationMode: 'EXISTING',
+            agencyId: 275,
+            agencyIdAllocationMode: 'MANUAL',
+        });
+        expect(mocks.createAccountInvite.mock.calls[0][0].topicPermission).toBeUndefined();
+        expect(mocks.acceptBaseUrlForRole).toHaveBeenCalledWith('AGENCY_ADMIN');
+        expect(mocks.getAgencyDataById).not.toHaveBeenCalled();
     });
 
-    /*
-     * P3: the counsellor invite is the second invite kind and must be guarded the
-     * same way as the tenant invite — inline on the e-mail field, with the rest of
-     * the row (names, Beratungsstellen-ID) preserved.
-     */
-    it('shows the duplicate-address error inline for a counsellor invite (P3)', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }]));
+    it('resets Rolle to Berater:in after the guided BST-Admin invite went out', async () => {
+        const user = await fill();
+        await user.click(
+            await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+        );
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+
+        // The next person typed into the fresh bar is a counsellor again, not a second BST-Admin.
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
+        );
+        expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
+    });
+
+    it('starts a fresh page with every field expanded — no pills before anything was chosen', async () => {
+        render(<CounsellorInvitesTab />);
+
+        expect(await screen.findByRole('combobox', { name: 'Rolle' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Rolle bearbeiten/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Vorlage bearbeiten/ })).not.toBeInTheDocument();
+    });
+
+    // Each case types and sends a whole invite twice; the parallel CI runner exceeds the 30 s default.
+    describe('"Senden & nächste"', { timeout: 90_000 }, () => {
+        const chooseSendAndNext = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
+            await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
+            return screen.findByRole('button', { name: /& nächste$/ });
+        };
+
+        it('keeps Träger, Beratungsstelle, Vorlage and topics, clears the person and focuses E-Mail', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockResolvedValue({
+                ...invite(100, 79, 'WAITING_FOR_UNIT'),
+                targetRole: 'COUNSELLOR',
+                waitingForUnit: 'AGENCY',
+            });
+            const user = await fill('900');
+            // A deliberate pick of the topic level, so "kept" is observable. (Typing
+            // into the bar already folded the select fields into pills.)
+            await user.click(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
+            await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+                targetRole: 'COUNSELLOR',
+                agencyId: 900,
+                agencyIdAllocationMode: 'MANUAL',
+                topicPermission: 'SELECT_EXISTING',
+                templateId: 7,
+            });
+
+            const email = screen.getByLabelText('E-Mail');
+            await waitFor(() => expect(email).toHaveValue(''));
+            await waitFor(() => expect(email).toHaveFocus());
+            expect(screen.getByLabelText('Vorname')).toHaveValue('');
+            expect(screen.getByLabelText('Name')).toHaveValue('');
+            // The kept number is re-checked (it may just have been reserved), then folds back into its pill.
+            expect(
+                await screen.findByRole('button', { name: /^Beratungsstelle bearbeiten/ }, { timeout: 10_000 }),
+            ).toHaveAttribute('title', expect.stringContaining('900'));
+            expect(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).toHaveTextContent(
+                'Darf weitere Fachbereiche auswählen',
+            );
+            expect(screen.getByRole('button', { name: /^Vorlage bearbeiten/ })).toHaveTextContent('Standard');
+            expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
+
+            // The next person only needs their own fields.
+            await user.type(email, 'bart.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Bart');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            await waitFor(
+                () => expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeEnabled(),
+                {
+                    timeout: 10_000,
+                },
+            );
+            await user.click(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' }));
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                recipientEmail: 'bart.simpson@example.org',
+                agencyId: 900,
+                topicPermission: 'SELECT_EXISTING',
+            });
+        });
+
+        it('lets the next counsellor wait for the agency a "Neu" founding invite just reserved', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockResolvedValueOnce({
+                ...invite(100, 79, 'EMAIL_SENT'),
+                targetRole: 'AGENCY_ADMIN',
+                agencyId: 950,
+                agencyIdAllocationMode: 'AUTO',
+            });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+            await user.type(await screen.findByLabelText('E-Mail'), 'marge.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Marge');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            await user.click(
+                await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+            );
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+                targetRole: 'AGENCY_ADMIN',
+                agencyIdAllocationMode: 'AUTO',
+            });
+
+            await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+            await user.type(screen.getByLabelText('E-Mail'), 'lisa.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            const next = screen.getByRole('button', { name: /& nächste$/ });
+            await waitFor(() => expect(next).toBeEnabled(), { timeout: 10_000 });
+            await user.click(next);
+
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                targetRole: 'COUNSELLOR',
+                agencyId: 950,
+                agencyIdAllocationMode: 'MANUAL',
+            });
+        });
+
+        it('keeps saying whether the send creates the agency', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            const user = await fill('900');
+            await chooseSendAndNext(user);
+            expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
+        });
+
+        it('puts Rolle back to the default role for the next person', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            const user = await fill('900');
+            await user.click(screen.getByRole('button', { name: /^Rolle bearbeiten/ }));
+            await user.click(await screen.findByTitle('BST-Admin'));
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.createAccountInvite.mock.calls[0][0].targetRole).toBe('AGENCY_ADMIN');
+
+            await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+            await waitFor(() =>
+                expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
+            );
+        });
+
+        it('clears nothing when the send fails', async () => {
+            mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+            mocks.createAccountInvite.mockRejectedValue(new Response(null, { status: 500 }));
+            const user = await fill('900');
+
+            const send = await chooseSendAndNext(user);
+            await waitFor(() => expect(send).toBeEnabled(), { timeout: 10_000 });
+            await user.click(send);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+
+            expect(await screen.findByText('Einladung konnte nicht angelegt werden.')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /^E-Mail bearbeiten/ })).toHaveAttribute(
+                'title',
+                'lisa.simpson@example.org',
+            );
+            expect(screen.getByRole('button', { name: /^Vorname bearbeiten/ })).toHaveAttribute('title', 'Lisa');
+        });
+    });
+
+    it('pages the Träger search beyond the first 10', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.searchTenantData.mockImplementation(async ({ page }: { page: number }) => ({
+            total: 12,
+            data:
+                page === 1
+                    ? Array.from({ length: 10 }, (_, i) => ({ id: i + 1, name: `Träger ${i + 1}` }))
+                    : [
+                          { id: 11, name: 'Träger 11' },
+                          { id: 12, name: 'Träger 12' },
+                      ],
+        }));
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await user.click(await screen.findByRole('combobox', { name: 'Träger' }));
+        await user.click(await screen.findByRole('option', { name: 'Weitere anzeigen (10 von 12)' }));
+
+        expect(await screen.findByRole('option', { name: /Träger 12/ })).toBeInTheDocument();
+        expect(mocks.searchTenantData).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, perPage: 10 }));
+    });
+
+    it('takes a typed Träger number only when that Träger exists', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.findInviteTenant.mockImplementation(async (id: number) =>
+            id === 40 ? { id: 40, name: 'Caritas Springfield' } : null,
+        );
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        const tenant = await screen.findByRole('combobox', { name: 'Träger' });
+
+        await user.type(tenant, '999');
+        expect(await screen.findByText('Keine Einheit mit Nr. 999')).toBeInTheDocument();
+        await user.clear(tenant);
+        await user.type(tenant, '40');
+        await user.tab();
+
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Springfield · 40'));
+    });
+
+    it('offers the existing agency behind a taken number', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        await fill('275');
+
+        expect(
+            await screen.findByText(/Nr\. 275 ist „Diakonie Lahr“/, undefined, { timeout: 10_000 }),
+        ).toBeInTheDocument();
+    });
+
+    it('fills the Träger from an agency taken by its number', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        const user = await fill('275');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 10_000 }));
+
+        expect(await screen.findByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
+            'title',
+            expect.stringContaining('79'),
+        );
+    });
+
+    it('blocks sending an agency of another Träger than the one chosen', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        mocks.superAdmin = true;
+        mocks.findInviteTenant.mockImplementation(async (id: number) =>
+            id === 40 ? { id: 40, name: 'Caritas Springfield' } : null,
+        );
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'ASSIGNED' });
+        mocks.getAgencyDataById.mockResolvedValue({ _embedded: { id: 275, name: 'Diakonie Lahr', tenantId: 79 } });
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        await user.type(tenant, '40');
+        await user.tab();
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Springfield · 40'));
+
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), '275');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 10_000 }));
+
+        expect(
+            await screen.findByText(/Diese Beratungsstelle gehört zu einem anderen Träger/, undefined, {
+                timeout: 10_000,
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Einladen' })).toBeDisabled();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('prefills the topic permission from the chosen agency and sends the value shown', async () => {
+        mocks.searchInviteAgencies.mockResolvedValue({
+            hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+        });
+        mocks.getAgencyDataById.mockResolvedValue({
+            _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
+        });
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+
+        expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
+        const sendButton = screen.getByRole('button', { name: 'Einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            agencyId: 14,
+            agencyIdAllocationMode: 'EXISTING',
+            topicPermission: 'CREATE',
+        });
+    });
+
+    it('drops the agency default again when the admin switches to a new agency', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.searchInviteAgencies.mockResolvedValue({
+            hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+        });
+        mocks.getAgencyDataById.mockResolvedValue({
+            _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
+        });
+        const user = await fill('Diak');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
+
+        const agencyField = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.clear(agencyField);
+        await user.type(agencyField, '900');
+        await user.keyboard('{Escape}');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            agencyId: 900,
+            agencyIdAllocationMode: 'MANUAL',
+            topicPermission: 'NONE',
+        });
+    });
+
+    it.each([
+        [
+            '400',
+            new Response(JSON.stringify({ message: 'tenantId passt nicht zur Beratungsstelle' }), { status: 400 }),
+            'tenantId passt nicht zur Beratungsstelle',
+        ],
+        [
+            '404',
+            new Error('NO_MATCH'),
+            'Diese Beratungsstelle bzw. diesen Träger gibt es nicht (mehr). Bitte neu auswählen.',
+        ],
+    ])('explains a %s on create and keeps the row', async (_status, failure, text) => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.createAccountInvite.mockRejectedValue(failure);
+        const user = await fill('900');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        expect(await screen.findByText(text, undefined, { timeout: 10_000 })).toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
+    });
+
+    it('lets a counsellor wait for a new agency whose admin invite is open, and says so', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.createAccountInvite.mockResolvedValue({
+            ...invite(100, 79, 'WAITING_FOR_UNIT'),
+            targetRole: 'COUNSELLOR',
+            waitingForUnit: 'AGENCY',
+        });
+        const user = await fill('900');
+
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        expect(screen.getByText(/wird mit einer offenen Admin-Einladung angelegt/)).toBeInTheDocument();
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            targetRole: 'COUNSELLOR',
+            agencyId: 900,
+            agencyIdAllocationMode: 'MANUAL',
+            topicPermission: 'NONE',
+        });
+        expect(mocks.createAccountInvite.mock.calls[0][0].departmentId).toBeUndefined();
+        expect(await screen.findByText(/Einladung vorgemerkt/)).toBeInTheDocument();
+    });
+
+    it('names the Träger in the waiting toast when the invite waits for a new Träger', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.createAccountInvite.mockResolvedValue({
+            ...invite(101, 79, 'WAITING_FOR_UNIT'),
+            targetRole: 'COUNSELLOR',
+            waitingForUnit: 'TENANT',
+        });
+        const user = await fill('900');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        expect(await screen.findByText(/sobald der Träger angelegt ist/)).toBeInTheDocument();
+    });
+
+    it('explains 409 NO_PENDING_UNIT_ADMIN in German', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
+        mocks.createAccountInvite.mockRejectedValue(
+            new Response(null, { status: 409, headers: { 'X-Reason': 'NO_PENDING_UNIT_ADMIN' } }),
+        );
+        const user = await fill('900');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
+
+        expect(
+            await screen.findByText(/für sie ist keine BST-Admin-Einladung offen/, undefined, { timeout: 10_000 }),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/Berät auch/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
+    });
+
+    it('shows the duplicate-address error inline for a counsellor invite', async () => {
+        mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.createAccountInvite.mockRejectedValue(
             new Response(null, { status: 409, headers: { 'X-Reason': 'EMAIL_NOT_AVAILABLE' } }),
         );
-
-        await fillAndSend();
+        const user = await fill('900');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled(), { timeout: 10_000 });
+        await user.click(sendButton);
 
         expect(
             await screen.findAllByText(
                 'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
             ),
         ).toHaveLength(2);
-        expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
-        // Nothing the admin typed is lost — only the address needs correcting.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
-        expect(screen.getByLabelText('Vorname')).toHaveValue('Lisa');
-        await waitFor(() => expect(screen.getByRole('button', { name: 'Direkt Versenden' })).toBeDisabled());
+        expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
     });
 
-    it('refuses with a visible error when the agency has no topic', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([]));
+    it('does not pin the platform admin to "Träger 0"', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: '0' });
+        render(<CounsellorInvitesTab />);
 
-        await fillAndSend();
-
-        expect(
-            await screen.findByText('Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.'),
-        ).toBeInTheDocument();
-        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+        const tenant = await screen.findByRole('combobox', { name: 'Träger' });
+        expect(tenant).toHaveValue('');
     });
 
-    it('refuses with a visible error when the agency has multiple topics (no picker yet)', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(
-            agencyPayload([
-                { id: 2, name: 'U25 Suizidprävention' },
-                { id: 5, name: 'Angehörigenberatung' },
-            ]),
+    it('lists every invite that joins a unit, but not the Träger founders', async () => {
+        const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+        const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
+        const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+        const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
         );
 
-        await fillAndSend();
+        render(<CounsellorInvitesTab />);
 
-        expect(
-            await screen.findByText(
-                'Die Beratungsstelle hat mehrere Themen — die Einladung kann noch keinem Thema zugeordnet werden.',
-            ),
-        ).toBeInTheDocument();
-        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+        expect(screen.getByText('taken2@example.org')).toBeInTheDocument();
+        expect(screen.getByText('taken3@example.org')).toBeInTheDocument();
+        expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
+        expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
     });
 
-    it('refuses with a visible error when the agency belongs to another tenant', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 2, name: 'U25 Suizidprävention' }], 80));
+    it('changes a counsellor’s topic permission from the table', async () => {
+        const counsellorRow = {
+            ...invite(1, 79, 'ACCEPTED'),
+            targetRole: 'COUNSELLOR',
+            acceptedAt: '2026-08-02T10:00:00Z',
+            topicPermission: 'NONE',
+        };
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow]));
+        mocks.updateAccountInviteTopicPermission.mockResolvedValue({ ...counsellorRow, topicPermission: 'CREATE' });
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
 
-        await fillAndSend();
+        await user.click(await screen.findByRole('button', { name: /Themen für/ }));
+        await user.click(within(await screen.findByRole('menu')).getByText('Darf weitere Themen anlegen'));
 
-        expect(
-            await screen.findByText('Die Beratungsstelle gehört nicht zum Träger dieser Einladung.'),
-        ).toBeInTheDocument();
-        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+        await waitFor(() => expect(mocks.updateAccountInviteTopicPermission).toHaveBeenCalledWith(1, 'CREATE'));
+        expect(await screen.findByText('Themen-Berechtigung gespeichert')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Themen für/ })).toHaveTextContent('Themen: Anlegen');
     });
 
-    it('refuses with a visible error when the topic id is not numeric', async () => {
-        mocks.getAgencyDataById.mockResolvedValue(agencyPayload([{ id: 'not-a-number', name: 'Kaputt' }]));
-
-        await fillAndSend();
-
-        expect(
-            await screen.findByText('Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.'),
-        ).toBeInTheDocument();
-        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
-    });
-
-    it('keeps the reservation flow working: a free id resolves to no agency and submits without a department', async () => {
-        const { AgencyAccessError } = await import('../../api/agency/getAgencyById');
-        mocks.getAgencyDataById.mockRejectedValue(new AgencyAccessError());
-
-        await fillAndSend();
-
-        await waitFor(() =>
-            expect(mocks.createAccountInvite).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    targetRole: 'COUNSELLOR',
-                    tenantId: 79,
-                    agencyId: 275,
-                    agencyIdAllocationMode: 'MANUAL',
-                }),
-            ),
+    it('shows the new topic level at once and puts the old one back when the save fails', async () => {
+        const counsellorRow = {
+            ...invite(1, 79, 'ACCEPTED'),
+            targetRole: 'COUNSELLOR',
+            acceptedAt: '2026-08-02T10:00:00Z',
+            topicPermission: 'NONE',
+        };
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow]));
+        let reject: (reason: unknown) => void = () => {};
+        mocks.updateAccountInviteTopicPermission.mockReturnValue(
+            new Promise((_, rejectSave) => {
+                reject = rejectSave;
+            }),
         );
-        expect(mocks.createAccountInvite.mock.calls[0][0].departmentId).toBeUndefined();
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        const chip = await screen.findByRole('button', { name: /Themen für/ });
+        await user.click(chip);
+        await user.click(within(await screen.findByRole('menu')).getByText('Darf weitere Themen anlegen'));
+
+        await waitFor(() => expect(chip).toHaveTextContent('Themen: Anlegen'));
+        reject(new Error('network'));
+        await waitFor(() => expect(chip).toHaveTextContent('Themen: Keine weiteren'));
+        expect(await screen.findByText('Die Themen-Berechtigung konnte nicht geändert werden.')).toBeInTheDocument();
+    });
+
+    describe('role chip (ORISO-UserService#1260)', () => {
+        const sentRow = {
+            ...invite(5, 79, 'EMAIL_SENT'),
+            targetRole: 'COUNSELLOR',
+            firstName: 'Lena',
+            lastName: 'Vogt',
+            emailDeliveryStatus: 'SENT',
+            progressPhase: 'INVITED',
+        };
+        const acceptedRow = {
+            ...invite(6, 79, 'ACCEPTED'),
+            targetRole: 'COUNSELLOR',
+            firstName: 'Anke',
+            lastName: 'Roth',
+            agencyId: 12,
+            acceptedAt: '2026-08-02T10:00:00Z',
+            provisionedUserId: 'c-6',
+            progressPhase: 'ACCOUNT_CREATED',
+        };
+
+        beforeEach(() => {
+            mocks.superAdmin = true;
+        });
+
+        it('changes the role of a sent invite and offers to resend the mail that names the old role', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([sentRow]));
+            mocks.changeAccountInviteRole.mockResolvedValue({ ...sentRow, targetRole: 'AGENCY_ADMIN' });
+            mocks.resendAccountInvite.mockResolvedValue({ ...sentRow, id: 50 });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Lena Vogt/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('BST-Admin'));
+
+            await waitFor(() =>
+                expect(mocks.changeAccountInviteRole).toHaveBeenCalledWith(5, { targetRole: 'AGENCY_ADMIN' }),
+            );
+            expect(
+                await screen.findByText('Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.'),
+            ).toBeInTheDocument();
+            // No automatic resend: only the snackbar action sends the mail again.
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+            await user.click(screen.getByRole('button', { name: 'Erneut senden' }));
+            await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledWith(5, expect.anything()));
+        });
+
+        it('adds "auch BST-Admin" to an accepted counsellor in the agency of the invite', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([acceptedRow]));
+            mocks.addConsultantRole.mockResolvedValue({ consultantId: 'c-6', role: 'AGENCY_ADMIN', agencyIds: [12] });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Anke Roth/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('+ auch BST-Admin'));
+
+            await waitFor(() =>
+                expect(mocks.addConsultantRole).toHaveBeenCalledWith('c-6', { role: 'AGENCY_ADMIN', agencyId: 12 }),
+            );
+            expect(await screen.findByText('„auch BST-Admin“ hinzugefügt.')).toBeInTheDocument();
+            await waitFor(() =>
+                expect(screen.getByRole('button', { name: /^Rolle von Anke Roth/ })).toHaveTextContent(
+                    'Berater:in + BST-Admin',
+                ),
+            );
+        });
+
+        it('shows "+ BST-Admin" after a reload, read from the account roles the list carries', async () => {
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([{ ...acceptedRow, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }]),
+            );
+            render(<CounsellorInvitesTab />);
+
+            expect(await screen.findByRole('button', { name: /^Rolle von Anke Roth/ })).toHaveTextContent(
+                'Berater:in + BST-Admin',
+            );
+        });
+
+        it("asks for its own tab and counts the tiles from the server's totals over every page", async () => {
+            mocks.listAccountInvites.mockResolvedValue({
+                ...invitesPage([sentRow]),
+                totalElements: 27,
+                phaseCounts: { PREPARED: 24, INVITED: 1, ACCOUNT_CREATED: 0, DONE: 0, NEEDS_ACTION: 1, CLOSED: 1 },
+                phaseDetailCounts: {
+                    PREPARED: { DRAFT: 24 },
+                    INVITED: { EMAIL_SENT: 1 },
+                    NEEDS_ACTION: { EXPIRED: 1 },
+                    CLOSED: { SUPERSEDED: 1 },
+                },
+            });
+            render(<CounsellorInvitesTab />);
+
+            expect(await screen.findByRole('button', { name: /^24 Vorbereitet/ })).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: /^2 Braucht Aktion 1 Abgelaufen · 1 Ersetzt/ }),
+            ).toBeInTheDocument();
+            expect(mocks.listAccountInvites).toHaveBeenCalledWith(expect.objectContaining({ tab: 'UNIT' }));
+        });
+
+        it('explains a refused role change in German', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([sentRow]));
+            mocks.changeAccountInviteRole.mockRejectedValue(
+                new Response(null, { status: 409, headers: { 'X-Reason': 'ONLY_UNIT_ADMIN' } }),
+            );
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+
+            await user.click(await screen.findByRole('button', { name: /^Rolle von Lena Vogt/ }));
+            await user.click(within(await screen.findByRole('menu')).getByText('BST-Admin'));
+
+            expect(await screen.findByText(/einzige BST-Admin-Einladung/)).toBeInTheDocument();
+        });
     });
 });
 
@@ -680,7 +1239,7 @@ describe('CSV import payload per tab', () => {
         // silent null the day the menu changes, so assert it is really mounted.
         await screen.findByText('CSV-Datei importieren', undefined, slow);
         const fileInput = await waitFor(() => {
-            const input = document.querySelector<HTMLInputElement>('.ant-upload input[type="file"]');
+            const input = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv,text/csv"]');
             expect(input).not.toBeNull();
             return input as HTMLInputElement;
         }, slow);
@@ -700,36 +1259,61 @@ describe('CSV import payload per tab', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 7, 'EMAIL_SENT'));
     });
 
-    it('sends the counsellor id column as a pinned agency reservation, auto for empty cells', async () => {
+    it('sends each row on its own, with the own Träger as EXISTING and the row role, BST-Admin rows before counsellor rows', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
+        // Counsellor row first in the file: the BST-Admin row must still be sent first.
         await importCsv(
             user,
-            'E-Mail;Vorname;Name;Beratungsstellen-ID\r\npinned@example.org;Anna;Beispiel;42\r\nauto@example.org;Bernd;Muster;\r\n',
+            'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch\r\n' +
+                'pinned@example.org;Anna;Beispiel;42;neu;Berater:in;;true;\r\n' +
+                'auto@example.org;Bernd;Muster;;neu;BST-Admin;;;nein\r\n',
         );
 
         await user.click(await screen.findByRole('button', { name: '2 Empfänger anlegen' }));
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
 
-        // The admin's own tenant scopes both rows; the file only says which agency.
-        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+        // Admin rows go first, so a counsellor row for a new unit can wait for its admin.
+        const [adminCall, counsellorCall] = mocks.createAccountInvite.mock.calls.map(([body]) => body);
+        expect(counsellorCall).toMatchObject({
             targetRole: 'COUNSELLOR',
             recipientEmail: 'pinned@example.org',
             tenantId: 7,
+            tenantIdAllocationMode: 'EXISTING',
             agencyId: 42,
             agencyIdAllocationMode: 'MANUAL',
+            topicPermission: 'CREATE',
         });
-        expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+        expect(adminCall).toMatchObject({
+            targetRole: 'AGENCY_ADMIN',
             recipientEmail: 'auto@example.org',
             tenantId: 7,
             agencyIdAllocationMode: 'AUTO',
+            alsoCounsellor: false,
         });
-        expect(mocks.createAccountInvite.mock.calls[1][0].agencyId).toBeUndefined();
-        // A tenant allocation mode on a non-Träger invite is a 400 (UserService).
-        expect(mocks.createAccountInvite.mock.calls[0][0].tenantIdAllocationMode).toBeUndefined();
+        expect(adminCall.agencyId).toBeUndefined();
+        expect(counsellorCall).not.toHaveProperty('importBatchId');
+    });
+
+    it('lists only the columns each tab imports in the CSV menu hint', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        const { unmount } = renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const tenantHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(tenantHint).not.toHaveTextContent('Themen & Fachbereiche');
+        expect(tenantHint).not.toHaveTextContent('Berät auch');
+        unmount();
+
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        render(<CounsellorInvitesTab />);
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const agencyHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(agencyHint).toHaveTextContent('Themen & Fachbereiche');
+        expect(agencyHint).toHaveTextContent('Berät auch');
     });
 
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
@@ -747,8 +1331,67 @@ describe('CSV import payload per tab', () => {
             targetRole: 'TENANT_ADMIN',
             recipientEmail: 'tenant@example.org',
             tenantId: 42,
+            // A pinned number for a new Träger is MANUAL, as the bar sends it.
+            tenantIdAllocationMode: 'MANUAL',
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();
+    });
+});
+
+describe('CSV entries in the more-menu', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 7 });
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+    });
+
+    const openMenu = async () => {
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await screen.findByRole('button', { name: /Standard/ }, { timeout: 10_000 });
+        await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
+        return user;
+    };
+
+    it('lists the same nine columns in the menu hint as in the downloaded template', async () => {
+        const blobs: Blob[] = [];
+        const createObjectURL = vi.fn((blob: Blob) => {
+            blobs.push(blob);
+            return 'blob:template';
+        });
+        Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+        const user = await openMenu();
+
+        const entry = (await screen.findByText('CSV-Datei importieren')).closest('[role="menuitem"]') as HTMLElement;
+        expect(entry).toHaveTextContent('Berät auch');
+        await user.click(screen.getByText('CSV-Vorlage herunterladen'));
+
+        const text = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.readAsText(blobs[0]);
+        });
+        const header = text
+            .replace(/^\ufeff/, '')
+            .split('\r\n')[0]
+            .split(';');
+        expect(header).toHaveLength(9);
+        expect(header[8]).toBe('Berät auch');
+    });
+
+    it('opens the file picker when the menu item itself is activated, as the keyboard does', async () => {
+        const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+        await openMenu();
+
+        const entry = (await screen.findByText('CSV-Datei importieren')).closest('[role="menuitem"]') as HTMLElement;
+        fireEvent.click(entry);
+
+        const picker = click.mock.contexts.find((input) => (input as HTMLInputElement).type === 'file');
+        expect(picker).toHaveAttribute('accept', '.csv,text/csv');
+        click.mockRestore();
     });
 });

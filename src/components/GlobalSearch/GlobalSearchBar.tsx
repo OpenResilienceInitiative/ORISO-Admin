@@ -1,9 +1,13 @@
 import { ChangeEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Input, type InputRef } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowMenuOpenIcon } from '../../resources/img/svg/oriso/arrow_menu_open_24px.svg';
+import { IconButton } from '../IconButton';
+import { useRowScrollButtons } from './useRowScrollButtons';
 import styles from './globalSearchBar.module.scss';
 
 export interface GlobalSearchBarProps {
@@ -38,6 +42,13 @@ export interface GlobalSearchBarProps {
      * collapsed, raised off the bar surface with M3's inner shadow.
      */
     variant?: 'row' | 'pill';
+    /**
+     * `row` only: ‹ › buttons at both ends while the row overflows, for mice
+     * without sideways scrolling. Disabled at the ends, never hidden there.
+     */
+    scrollButtons?: boolean;
+    /** `row` only: below 600px the row wraps instead of scrolling, one control per line. */
+    stackOnPhone?: boolean;
 }
 
 /**
@@ -64,6 +75,8 @@ export const GlobalSearchBar = ({
     searchPlaceholder,
     value,
     variant = 'row',
+    scrollButtons = false,
+    stackOnPhone = false,
 }: GlobalSearchBarProps) => {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(defaultExpanded);
@@ -162,10 +175,26 @@ export const GlobalSearchBar = ({
         variant === 'pill' ? [magnifierButton, caretButton] : [caretButton, magnifierButton];
 
     const isPill = variant === 'pill';
+    const withButtons = scrollButtons && !isPill;
+    const { scrollerRef, rowRef, edges, scrollBy, revealFocused } = useRowScrollButtons(withButtons);
 
-    return (
-        <div className={classNames(styles.scroller, { [styles.pillScroller]: isPill }, className)}>
-            <div className={classNames(styles.row, { [styles.pillRow]: isPill })}>
+    const row = (
+        <div
+            ref={scrollerRef}
+            className={classNames(
+                styles.scroller,
+                { [styles.pillScroller]: isPill },
+                withButtons ? undefined : className,
+            )}
+            onFocus={withButtons ? revealFocused : undefined}
+        >
+            <div
+                ref={rowRef}
+                className={classNames(styles.row, {
+                    [styles.pillRow]: isPill,
+                    [styles.rowStacksOnPhone]: stackOnPhone && !isPill,
+                })}
+            >
                 {leading}
                 <div
                     className={classNames(styles.search, {
@@ -199,6 +228,35 @@ export const GlobalSearchBar = ({
                 </div>
                 {children}
             </div>
+        </div>
+    );
+
+    if (!withButtons) return row;
+
+    return (
+        <div className={classNames(styles.buttonFrame, className)}>
+            {edges.overflowing && (
+                // A mouse press keeps focus in the field being edited, so paging never collapses it.
+                <span className={styles.scrollButtonSlot} onMouseDownCapture={(event) => event.preventDefault()}>
+                    <IconButton
+                        ariaLabel={t('globalSearch.scrollStart', 'Nach links blättern')}
+                        disabled={!edges.canScrollStart}
+                        icon={<ChevronLeftIcon />}
+                        onClick={() => scrollBy('start')}
+                    />
+                </span>
+            )}
+            {row}
+            {edges.overflowing && (
+                <span className={styles.scrollButtonSlot} onMouseDownCapture={(event) => event.preventDefault()}>
+                    <IconButton
+                        ariaLabel={t('globalSearch.scrollEnd', 'Nach rechts blättern')}
+                        disabled={!edges.canScrollEnd}
+                        icon={<ChevronRightIcon />}
+                        onClick={() => scrollBy('end')}
+                    />
+                </span>
+            )}
         </div>
     );
 };
