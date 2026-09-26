@@ -77,6 +77,8 @@ const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
@@ -93,9 +95,9 @@ describe('TenantAdminOnboarding', () => {
         // The reader wrapper mounts with title/description first; TipTap then
         // applies the published HTML — wait for the body, not just the shell.
         await waitFor(() => expect(screen.getByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers'));
-        // Signer fields are prefilled from the invite.
-        expect(screen.getByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Erika Beispiel');
-        expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('admin@tenant.example');
+        // Signer fields start empty: the invited admin is not presumed to be the representative.
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('');
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('');
 
         await completeOrganisationStep(user);
 
@@ -139,6 +141,8 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
@@ -253,6 +257,8 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
         if (skip !== 'address') {
             await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         }
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     };

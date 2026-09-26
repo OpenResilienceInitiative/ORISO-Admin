@@ -153,7 +153,7 @@ export const OrganisationDpaForwardDialogMobile: Story = {
 
 /**
  * After confirming the forward the step flips to the calm on-hold state
- * (#723): success notice, "Weitergeleitet — wartet auf Unterschrift", no
+ * (#723): success notice, "Weitergeleitet — wartet auf Bestätigung", no
  * signer fields, no consent box — Continue works with the organisation data
  * alone.
  */
