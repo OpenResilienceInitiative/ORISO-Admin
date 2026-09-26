@@ -255,9 +255,11 @@ export const OrganisationDpaStep = ({
                     legalName: initialOrganisation?.legalName ?? '',
                     contactEmail: initialOrganisation?.contactEmail ?? '',
                     contactPhone: initialOrganisation?.contactPhone ?? '',
-                    signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
+                    // Never seeded from the invite: that would imply the admin is the authorised
+                    // representative (Frank, 2026-09-25).
+                    signerName: initialDpa?.signerName ?? '',
                     signerPosition: initialDpa?.signerPosition ?? '',
-                    signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
+                    signerEmail: initialDpa?.signerEmail ?? '',
                     // The slot is a free note now, not the organisation name — seeding it
                     // from the field three rows up is exactly the duplication that went.
                     signerOrganisation: initialDpa?.signerOrganisation ?? '',
