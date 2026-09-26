@@ -37,8 +37,9 @@ export const useTenantAdminDataMutation = ({
         enabled: shouldPrefetchTenantAdminData,
     });
 
-    // The base the last PUT was built on, so the cache is merged onto the same full tenant.
-    const writtenBaseRef = useRef<TenantAdminData | undefined>(undefined);
+    // The base each PUT was built on, keyed by that mutation's variables, so overlapping saves
+    // merge the cache onto their own read and never onto a later one.
+    const writtenBasesRef = useRef(new WeakMap<Partial<TenantAdminData>, TenantAdminData>());
 
     return useMutation({
         mutationFn: async (data: Partial<TenantAdminData>) => {
@@ -50,7 +51,7 @@ export const useTenantAdminDataMutation = ({
             if (mergeBase?.id == null) {
                 throw new Error('TENANT_READ_FAILED');
             }
-            writtenBaseRef.current = mergeBase;
+            writtenBasesRef.current.set(data, mergeBase);
 
             return fetchData({
                 url: `${tenantAdminEndpoint}/${id}`,
@@ -62,7 +63,8 @@ export const useTenantAdminDataMutation = ({
         },
         ...options,
         onSuccess: (responseData, updatedData, onMutateResult, context) => {
-            const mergeBase = writtenBaseRef.current ?? tenantAdminData ?? seedTenantAdminData;
+            const mergeBase = writtenBasesRef.current.get(updatedData) ?? tenantAdminData ?? seedTenantAdminData;
+            writtenBasesRef.current.delete(updatedData);
             const merged = mergeTenantAdminData(mergeBase, updatedData);
             queryClient.setQueryData([TENANT_ADMIN_DATA_KEY], merged);
             if (id != null && id !== '' && id !== 'add') {
