@@ -144,3 +144,38 @@ describe('AgencySettings team/single toggle', () => {
         expect(screen.queryByText('agency.form.settings.teamAdviceCenter.changeWarning')).not.toBeInTheDocument();
     });
 });
+
+describe('AgencySettings counsellor topic permission default', () => {
+    const TopicPermissionValue = () => {
+        const value = Form.useWatch(['settings', 'counsellorTopicPermission']);
+        return <span data-testid="form-topic-permission">{String(value)}</span>;
+    };
+    const renderWithPermission = (initialValues: Record<string, unknown>, isEditMode = true) =>
+        render(
+            <Form initialValues={initialValues}>
+                <AgencySettings isEditMode={isEditMode} asFields />
+                <TopicPermissionValue />
+            </Form>,
+        );
+
+    it('shows the stored agency default and changes it', async () => {
+        const user = userEvent.setup();
+        renderWithPermission({ settings: { counsellorTopicPermission: 'CREATE' } });
+
+        const field = screen.getByRole('combobox', { name: 'agency.form.settings.counsellorTopicPermission.title' });
+        expect(field).toHaveValue('links.composer.topics.create');
+
+        await user.click(field);
+        await user.click(await screen.findByRole('option', { name: 'links.composer.topics.selectExisting' }));
+
+        expect(screen.getByTestId('form-topic-permission')).toHaveTextContent('SELECT_EXISTING');
+    });
+
+    it('is not offered while creating an agency (new agencies start with NONE)', () => {
+        renderWithPermission({}, false);
+
+        expect(
+            screen.queryByRole('combobox', { name: 'agency.form.settings.counsellorTopicPermission.title' }),
+        ).not.toBeInTheDocument();
+    });
+});

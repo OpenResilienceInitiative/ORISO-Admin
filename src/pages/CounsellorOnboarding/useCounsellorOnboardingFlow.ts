@@ -4,6 +4,7 @@ import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
     CounsellorRegistrationRequest,
+    CounsellorTopicPermission,
     InviteLinkError,
     InviteLinkErrorReason,
     TwoFactorCodeInvalidError,
@@ -51,6 +52,8 @@ export interface CounsellorWizardData {
     topicIds: number[];
     /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
     agency: { name: string };
+    /** Agency-admin invites only: "Berät auch", prefilled with the inviter's proposal. */
+    alsoCounsellor: boolean;
 }
 
 const EMPTY_DATA: CounsellorWizardData = {
@@ -60,6 +63,34 @@ const EMPTY_DATA: CounsellorWizardData = {
     avatar: {},
     topicIds: [],
     agency: { name: '' },
+    alsoCounsellor: true,
+};
+
+/** An agency-admin invite runs this wizard with the "Berät auch" switch. */
+export const isAgencyAdminInvite = (invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole'> | null | undefined) =>
+    invite?.targetRole === 'AGENCY_ADMIN';
+
+/** Whether the invitee ends up counselling: always for a counsellor invite, by choice for an agency admin. */
+export const counsels = (
+    invite: CounsellorOnboardingInviteDTO | null,
+    data: Pick<CounsellorWizardData, 'alsoCounsellor'>,
+) => !isAgencyAdminInvite(invite) || data.alsoCounsellor;
+
+/** An agency admin always gets CREATE: they administer or found the agency and bring its topics. */
+export const effectiveTopicPermission = (
+    invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole' | 'topicPermission'>,
+): CounsellorTopicPermission => (invite.targetRole === 'AGENCY_ADMIN' ? 'CREATE' : invite.topicPermission ?? 'CREATE');
+
+/** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
+export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
+    const coverage = invite.topics.map((topic) => topic.id);
+    if (effectiveTopicPermission(invite) === 'CREATE') {
+        return coverage;
+    }
+    if (coverage.length === 1) {
+        return coverage;
+    }
+    return invite.departmentId != null && coverage.includes(invite.departmentId) ? [invite.departmentId] : [];
 };
 
 /** Single source: the shared consultant credential policy (also used by the admin form). */
@@ -115,7 +146,12 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 // The invite's coverage arrives preselected (owner decision
                 // 2026-09-17): the invitee removes chips or adds further tenant
                 // topics instead of starting from an empty selection.
-                setData({ ...EMPTY_DATA, topicIds: loaded.topics.map((topic) => topic.id) });
+                setData({
+                    ...EMPTY_DATA,
+                    topicIds: initialTopicSelection(loaded),
+                    // The inviter's proposal; the backend default is "also counsels".
+                    alsoCounsellor: loaded.alsoCounsellor ?? true,
+                });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
@@ -162,6 +198,10 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
     }, []);
 
+    const setAlsoCounsellor = useCallback((alsoCounsellor: boolean) => {
+        setData((current) => ({ ...current, alsoCounsellor }));
+    }, []);
+
     /** Replaces the whole selection — the multi-select reports its full value on every change. */
     const setTopics = useCallback((topicIds: number[]) => {
         setData((current) => ({ ...current, topicIds }));
@@ -192,23 +232,33 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setBusy(true);
         setSubmitError(null);
         try {
-            const { account, person, names, avatar, topicIds, agency } = dataRef.current;
+            const { account, person, names, avatar, topicIds, agency, alsoCounsellor } = dataRef.current;
+            const agencyAdmin = isAgencyAdminInvite(inviteRef.current);
+            // An agency admin who does not counsel gets a login only: no consultant profile, no topics.
+            const withProfile = !agencyAdmin || alsoCounsellor;
             // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
             const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
             const createsAgency = inviteRef.current?.agencyExists === false;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
-                person: {
-                    salutation: person.salutation,
-                    position: person.position.trim() || undefined,
-                    title: person.title.trim() || undefined,
-                },
-                names: {
-                    publicName: names.publicName.trim() || undefined,
-                    internalDisplayName: names.internalName.trim() || undefined,
-                },
-                ...(avatarKind ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } } : {}),
-                topicIds,
+                person: withProfile
+                    ? {
+                          salutation: person.salutation,
+                          position: person.position.trim() || undefined,
+                          title: person.title.trim() || undefined,
+                      }
+                    : {},
+                names: withProfile
+                    ? {
+                          publicName: names.publicName.trim() || undefined,
+                          internalDisplayName: names.internalName.trim() || undefined,
+                      }
+                    : {},
+                ...(withProfile && avatarKind
+                    ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } }
+                    : {}),
+                topicIds: withProfile ? topicIds : [],
+                ...(agencyAdmin ? { alsoCounsellor } : {}),
                 // Present only for a reserved (not yet existing) agency — the
                 // backend rejects the field for an existing one.
                 ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
@@ -270,6 +320,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         updateAgency,
         setTopics,
         toggleTopic,
+        setAlsoCounsellor,
         submitRegistration,
         submitTwoFactorCode,
     };

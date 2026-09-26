@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import classNames from 'classnames';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { M3Tooltip } from '../../components/M3Tooltip';
 import { Page } from '../../components/Page';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
@@ -34,10 +36,7 @@ const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string 
     },
 ];
 
-/**
- * Tabs the signed-in admin may see (platform admin: all; tenant admin: counsellor
- * invites only; agency admins: none — they never reach this page, see `linksAccess.ts`).
- */
+/** Tabs the signed-in admin may open (see `linksAccess.ts`). */
 const useVisibleLinkTabs = () => {
     const { isSuperAdmin, hasRole } = useUserRoles();
     return useMemo(() => {
@@ -84,12 +83,31 @@ export const LinksPage = () => {
                 {isDesktopLayout && (
                     <div className={styles.pageHeader}>
                         <div className={pageStyles.tabsContainer}>
-                            {navigableTabs.map((tab) => (
-                                <NavLink className={pageStyles.tab} to={tab.to} key={tab.key}>
-                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                </NavLink>
-                            ))}
+                            {LINK_TABS.map((tab) =>
+                                navigableTabs.includes(tab) ? (
+                                    <NavLink className={pageStyles.tab} to={tab.to} key={tab.key}>
+                                        <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
+                                        <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                    </NavLink>
+                                ) : (
+                                    // Disable, don't hide: the admin sees the tab and why it is closed.
+                                    <M3Tooltip
+                                        key={tab.key}
+                                        text={t('links.tabs.platformOnly', 'Nur Plattform-Admins')}
+                                    >
+                                        {/* A link role like its NavLink siblings, so aria-disabled is announced. */}
+                                        <span
+                                            aria-disabled="true"
+                                            className={classNames(pageStyles.tab, styles.tabDisabled)}
+                                            role="link"
+                                            tabIndex={0}
+                                        >
+                                            <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
+                                            <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
+                                        </span>
+                                    </M3Tooltip>
+                                ),
+                            )}
                         </div>
                     </div>
                 )}
@@ -99,7 +117,7 @@ export const LinksPage = () => {
     );
 };
 
-/** `/admin/links` lands on the first tab the admin may see (tenant admins: counsellor invites). */
+/** `/admin/links` lands on the first tab the admin may see. */
 export const LinksIndexRedirect = () => {
     const [firstTab] = useVisibleLinkTabs();
     return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;

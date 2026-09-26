@@ -1,0 +1,72 @@
+/* Same tonal as M3NumberField `filled`, so every confirmed value in the row looks alike. */
+.slot {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+}
+
+.pill {
+    position: relative;
+    display: inline-flex;
+    height: 56px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 20px 0 16px;
+    border: 0;
+    background: var(--m3-secondary-container, #646d78);
+    border-radius: 28px;
+    color: var(--m3-on-secondary-container, #e7effc);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family, 'Inter Variable', Inter, Arial, sans-serif);
+    gap: 8px;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+
+    /* M3 state layer. */
+    &:after {
+        position: absolute;
+        background: transparent;
+        border-radius: inherit;
+        content: '';
+        inset: 0;
+        pointer-events: none;
+        transition: background-color 150ms ease;
+    }
+
+    &:hover:after {
+        background: color-mix(in srgb, currentcolor 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline-offset: 2px;
+    }
+}
+
+.pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+
+    &:after {
+        display: none;
+    }
+}
+
+.check {
+    flex-shrink: 0;
+}
+
+.label {
+    /* A value pill ("✓ Carrier invite text only for …") truncates; the full value is the tooltip. */
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pill:after {
+        transition: none;
+    }
+}

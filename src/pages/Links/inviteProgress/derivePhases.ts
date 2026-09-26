@@ -20,6 +20,9 @@ import type {
 export type PhaseState = 'done' | 'current' | 'pending' | 'warning' | 'error';
 
 export type PhaseKey =
+    /** The new Beratungsstelle / Träger the invite waits for exists. */
+    | 'agencyUnitCreated'
+    | 'tenantUnitCreated'
     | 'invited'
     | 'registered'
     | 'tenantCreated'
@@ -54,6 +57,8 @@ export const COUNSELLOR_PHASE_KEYS: readonly PhaseKey[] = ['invited', 'accountCr
 
 /** German product wording; doubles as the i18n defaultValue for both locales. */
 export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
+    agencyUnitCreated: 'Beratungsstelle angelegt',
+    tenantUnitCreated: 'Träger angelegt',
     invited: 'Eingeladen',
     registered: 'Registriert',
     tenantCreated: 'Träger angelegt',
@@ -72,6 +77,8 @@ export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
  * waiting FOR.
  */
 export const PHASE_AWAITING_FALLBACKS: Record<PhaseKey, string> = {
+    agencyUnitCreated: 'Beratungsstelle noch nicht angelegt',
+    tenantUnitCreated: 'Träger noch nicht angelegt',
     invited: 'Wartet auf Versand',
     registered: 'Wartet auf Registrierung',
     tenantCreated: 'Wartet auf Träger-Anlage',
@@ -98,6 +105,8 @@ type PhaseFacts = Pick<
     | 'targetRole'
     | 'dpaForwardedAt'
     | 'dpaSignedAt'
+    | 'waitingForUnit'
+    | 'queueProblem'
 >;
 
 export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
@@ -106,6 +115,14 @@ export const isDeadInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): bo
 /** A draft has never been sent — no mail went out, nothing has happened yet. */
 export const isDraftInvite = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
     invite.inviteStatus === 'DRAFT';
+
+/** Stored, not sent: its unit does not exist yet; the mail goes out once the unit's first admin onboarded. */
+export const isWaitingForUnit = (invite: Pick<AccountInviteDTO, 'inviteStatus'>): boolean =>
+    invite.inviteStatus === 'WAITING_FOR_UNIT';
+
+/** A waiting invite without any pending admin invite that could create its unit. */
+export const hasQueueProblem = (invite: Pick<AccountInviteDTO, 'inviteStatus' | 'queueProblem'>): boolean =>
+    isWaitingForUnit(invite) && invite.queueProblem === 'NO_UNIT_ADMIN';
 
 const hasAccepted = (invite: PhaseFacts) => invite.acceptedAt != null || invite.inviteStatus === 'ACCEPTED';
 
@@ -165,7 +182,10 @@ export const phaseKeysForRole = (targetRole: AccountInviteTargetRole): readonly 
  * tenant never sees a permanently-idle forward bead.
  */
 const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
-    const keys = phaseKeysForRole(invite.targetRole);
+    const roleKeys = phaseKeysForRole(invite.targetRole);
+    const keys: readonly PhaseKey[] = isWaitingForUnit(invite)
+        ? [invite.waitingForUnit === 'TENANT' ? 'tenantUnitCreated' : 'agencyUnitCreated', ...roleKeys]
+        : roleKeys;
     if (invite.targetRole !== 'TENANT_ADMIN' || invite.dpaForwardedAt == null) {
         return keys;
     }
@@ -185,6 +205,13 @@ const phaseKeysForInvite = (invite: PhaseFacts): readonly PhaseKey[] => {
  *   is `error` (the magenta error role), later ones `pending`.
  */
 export const derivePhases = (invite: PhaseFacts): InvitePhase[] => {
+    // Only the wait for the unit has started: step one is current, or a warning while no unit admin is pending.
+    if (isWaitingForUnit(invite)) {
+        return phaseKeysForInvite(invite).map((key, index) => {
+            if (index > 0) return { key, state: 'pending' as const };
+            return { key, state: hasQueueProblem(invite) ? ('warning' as const) : ('current' as const) };
+        });
+    }
     // A DRAFT is truthfully empty: no mail went out, so neither a done bead nor
     // an active "Eingeladen" would be honest. Every bead stays neutral until the
     // send (owner request on #893). The accepted-guard is defensive only — an
@@ -223,7 +250,11 @@ export const deriveInviteBucket = (invite: PhaseFacts): InviteBucket => {
     // A delivery failure only means "problem" while it still blocks the invitee.
     // Once accepted, the bounce is history — the same reading `derivePhases`
     // takes — so a completed onboarding is never filed under "Abgelaufen / Problem".
-    if (isDeadInvite(invite) || (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite))) {
+    if (
+        isDeadInvite(invite) ||
+        hasQueueProblem(invite) ||
+        (invite.emailDeliveryStatus === 'FAILED' && !hasAccepted(invite))
+    ) {
         return 'problem';
     }
     // "Abgeschlossen" follows the stepper's final gate: a tenant invite is only

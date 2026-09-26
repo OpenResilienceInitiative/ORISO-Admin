@@ -71,7 +71,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
 
         expect(result.headerSkipped).toBe(false);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 1, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
         ]);
         expect(result.rows).toHaveLength(1);
@@ -106,7 +106,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('maria@example.org,Maria,Huber\nnot-an-email,Peter,Maier\n@broken,Ida,Klein');
 
         expect(result.rows).toHaveLength(1);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 2, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
             { line: 3, cells: ['@broken', 'Ida', 'Klein'], reason: 'invalidEmail' },
         ]);
@@ -126,8 +126,88 @@ describe('parseInviteCsv', () => {
     });
 
     it('returns empty results for an empty file', () => {
-        expect(parseInviteCsv('')).toEqual({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
+        expect(parseInviteCsv('')).toMatchObject({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
         expect(parseInviteCsv('\uFEFF\n\n').rows).toEqual([]);
+    });
+});
+
+describe('parseInviteCsv — Ziel, Rolle, Vorlage and Themen & Fachbereiche', () => {
+    const HEADER = 'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche';
+
+    it('reads all eight columns of the example file', () => {
+        const result = parseInviteCsv(
+            `${HEADER}\r\nanna@x.de;Anna;Beispiel;42;bestehend;Berater:in;Standard;SELECT_EXISTING\r\nbernd@x.de;Bernd;Muster;;neu;BST-Admin;;\r\n`,
+        );
+        expect(result.rejected).toEqual([]);
+        expect(result.rows[0]).toMatchObject({
+            id: 42,
+            target: 'EXISTING',
+            role: 'COUNSELLOR',
+            template: 'Standard',
+            topicPermission: 'SELECT_EXISTING',
+        });
+        expect(result.rows[1]).toMatchObject({ target: 'NEW', role: 'AGENCY_ADMIN' });
+        expect(result.rows[1].template).toBeUndefined();
+        expect(result.rows[1].topicPermission).toBeUndefined();
+    });
+
+    it.each([
+        ['true', 'CREATE'],
+        ['FALSE', 'NONE'],
+        ['ja', 'CREATE'],
+        ['nein', 'NONE'],
+        ['none', 'NONE'],
+        ['Select_Existing', 'SELECT_EXISTING'],
+        ['CREATE', 'CREATE'],
+    ])('accepts topic permission %s as %s', (raw, expected) => {
+        const result = parseInviteCsv(`a@x.de;A;B;;;;;${raw}`);
+        expect(result.rows[0].topicPermission).toBe(expected);
+    });
+
+    it.each([
+        ['a@x.de;A;B;;vielleicht', 'invalidMode'],
+        ['a@x.de;A;B;;bestehend', 'existingWithoutId'],
+        ['a@x.de;A;B;;;Chef', 'invalidRole'],
+        ['a@x.de;A;B;;;;;manchmal', 'invalidTopicPermission'],
+    ])('rejects %s with %s', (line, reason) => {
+        const result = parseInviteCsv(line);
+        expect(result.rows).toEqual([]);
+        expect(result.rejected[0]).toMatchObject({ line: 1, reason, email: 'a@x.de', firstName: 'A', lastName: 'B' });
+    });
+
+    it('matches columns by header, in any order and with columns left out', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Themen;Vorname\r\nc@x.de;Träger-Admin;false;Carla\r\n');
+        expect(result.columns).toEqual(['email', 'firstName', 'role', 'topicPermission']);
+        expect(result.rows[0]).toMatchObject({
+            firstName: 'Carla',
+            lastName: '',
+            role: 'TENANT_ADMIN',
+            topicPermission: 'NONE',
+        });
+        expect(result.rows[0].id).toBeUndefined();
+    });
+
+    it('keeps reading an old four-column file with a custom ID header by position', () => {
+        const result = parseInviteCsv('E-Mail;Vorname;Name;Träger-Nummer\r\nd@x.de;D;E;7\r\n');
+        expect(result.rows[0]).toMatchObject({ id: 7 });
+        expect(result.rows[0].target).toBeUndefined();
+    });
+
+    it('reads an unknown extra column as nothing, not by its position', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Vorname;Name;ID;Telefon;Ziel;Rolle;Bemerkung\r\nd@x.de;D;E;7;0170 1;bestehend;Berater:in;ja\r\n',
+        );
+        expect(result.rows[0]).toMatchObject({ id: 7, target: 'EXISTING' });
+        // "ja" in an unlabelled 8th column must not turn into "may create topics".
+        expect(result.rows[0].topicPermission).toBeUndefined();
+        expect(result.columns).not.toContain('topicPermission');
+    });
+
+    it('lets a recognised ID header win over an unknown header that sits in the ID position', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Vorname;Name;Bemerkung;Beratungsstellen-ID;Ziel\r\nd@x.de;D;E;99;7;bestehend\r\n',
+        );
+        expect(result.rows[0]).toMatchObject({ id: 7, target: 'EXISTING' });
     });
 });
 
@@ -167,5 +247,25 @@ describe('assignBatchTenantIds', () => {
 
         expect(assigned.get(1)).toBe(2);
         expect(assigned.get(2)).toBe(1);
+    });
+});
+
+describe('parseInviteCsv — "Berät auch"', () => {
+    it('reads ja/nein and true/false by header', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Rolle;Beratungsstellen-ID;Berät auch\r\na@x.de;BST-Admin;900;ja\r\nb@x.de;BST-Admin;901;false\r\nc@x.de;BST-Admin;902;\r\n',
+        );
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.map((row) => row.alsoCounsellor)).toEqual([true, false, undefined]);
+    });
+
+    it('rejects an unknown "Berät auch" value with its own reason', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Berät auch\r\na@x.de;BST-Admin;vielleicht\r\n');
+        expect(result.rejected[0].reason).toBe('invalidAlsoCounsellor');
+    });
+
+    it('reads the ninth column of a header-less file as "Berät auch"', () => {
+        const result = parseInviteCsv('a@x.de,Anna,A,900,neu,BST-Admin,,,nein\n');
+        expect(result.rows[0].alsoCounsellor).toBe(false);
     });
 });
