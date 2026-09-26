@@ -737,6 +737,9 @@ export const TenantTabValidDirect: Story = {
         await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
         await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), 'Maria');
         await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), 'Huber');
+
+        // A valid address plus names completes the row: the send action becomes ready.
+        await waitFor(() => expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled());
     },
 };
 
