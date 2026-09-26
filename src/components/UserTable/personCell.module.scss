@@ -1,0 +1,105 @@
+/* Typography mirrors the invite list's identity cell. The 0 minimum lets an
+   auto-layout table column shrink the cell (ellipsis) instead of growing. */
+
+.person {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.line {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+}
+
+.contact {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 8px;
+}
+
+.name,
+.email,
+.username {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.name {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 600 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+}
+
+.also {
+    display: inline-flex;
+    height: 22px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 11px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    white-space: nowrap;
+}
+
+.email,
+.username {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+}
+
+.username:before {
+    content: '· ';
+}
+
+.copy {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    margin: -6px -4px -6px -6px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+}
+
+.copy:hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.copy:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.copy svg {
+    width: 15px;
+    height: 15px;
+}
+
+/* The editor snackbar is absolute; this slot pins it to the viewport bottom. */
+.snackbarSlot {
+    position: fixed;
+    z-index: 1400;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+}

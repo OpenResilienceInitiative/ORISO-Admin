@@ -1,0 +1,24 @@
+/* Copy of .statusChip in inviteProgressBoard.module.scss, until the board adopts this block. */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border: 1px solid var(--admin-table-chip-border, #c4c7c8);
+    border-radius: 30px;
+    background: var(--admin-table-chip-surface, #e4e2e2);
+    color: var(--admin-table-chip-text, #444748);
+    font: 500 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+.chip:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.dead {
+    border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
+    background: color-mix(in srgb, var(--m3-error, #b1005e) 10%, var(--m3-surface-container-low, #f6f3f3));
+    color: var(--m3-error, #b1005e);
+}
