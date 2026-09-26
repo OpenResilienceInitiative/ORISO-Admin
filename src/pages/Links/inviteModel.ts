@@ -78,7 +78,7 @@ export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
 export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback: string]> = {
     NO_PENDING_UNIT_ADMIN: [
         'links.accountInvites.conflict.noPendingUnitAdmin',
-        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ (mit „Berät auch“) und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
+        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
     ],
     UNIT_NOT_CREATED: [
         'links.accountInvites.conflict.unitNotCreated',
