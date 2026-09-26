@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import type { TopicPermission } from '../inviteModel';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import { InviteProgressBoard } from './InviteProgressBoard';
 
@@ -248,4 +251,152 @@ export const Empty: Story = {
 export const Mobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
+};
+
+/* Oskar founds agency 900, Lena and Tom wait for it; Rita waits for 901, whose admin invite was revoked. */
+const queueInvite = (overrides: Partial<AccountInviteDTO>): AccountInviteDTO =>
+    tenantInvite({ targetRole: 'COUNSELLOR', tenantId: 40, expiresAt: null, ...overrides });
+
+const QUEUE_INVITES: AccountInviteDTO[] = [
+    queueInvite({
+        targetRole: 'AGENCY_ADMIN',
+        firstName: 'Oskar',
+        lastName: 'Brandt',
+        recipientEmail: 'oskar.brandt@example.org',
+        agencyId: 900,
+        agencyIdAllocationMode: 'MANUAL',
+        alsoCounsellor: true,
+        expiresAt: '2026-10-01T10:00:00Z',
+    }),
+    queueInvite({
+        firstName: 'Lena',
+        lastName: 'Vogt',
+        recipientEmail: 'lena.vogt@example.org',
+        agencyId: 900,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    }),
+    queueInvite({
+        firstName: 'Tom',
+        lastName: 'Keller',
+        recipientEmail: 'tom.keller@example.org',
+        agencyId: 900,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'SELECT_EXISTING',
+    }),
+    queueInvite({
+        firstName: 'Rita',
+        lastName: 'Sommer',
+        recipientEmail: 'rita.sommer@example.org',
+        agencyId: 901,
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        queueProblem: 'NO_UNIT_ADMIN',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    }),
+    queueInvite({
+        firstName: 'Anke',
+        lastName: 'Roth',
+        recipientEmail: 'anke.roth@example.org',
+        agencyId: 12,
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-09-20T10:00:00Z',
+        topicPermission: 'NONE',
+    }),
+];
+
+const QueueBoard = ({
+    onTopicPermissionChange,
+}: {
+    onTopicPermissionChange?: (invite: AccountInviteDTO, value: TopicPermission) => void;
+}) => {
+    const [invites, setInvites] = useState(QUEUE_INVITES);
+    return (
+        <InviteProgressBoard
+            invites={invites}
+            loading={false}
+            targetRole="COUNSELLOR"
+            selectedIds={[]}
+            onSelectionChange={() => {}}
+            isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
+            onResend={() => {}}
+            onCopyLink={() => {}}
+            onRevoke={() => {}}
+            onTopicPermissionChange={(invite, value) => {
+                onTopicPermissionChange?.(invite, value);
+                setInvites((current) =>
+                    current.map((row) => (row.id === invite.id ? { ...row, topicPermission: value } : row)),
+                );
+            }}
+        />
+    );
+};
+
+const rowOf = (canvasElement: HTMLElement, email: string) =>
+    within(within(canvasElement).getByText(email).closest('tr') as HTMLElement);
+
+/** Waiting invites get a new first step; manual resend is disabled with a tooltip, revoke stays possible. */
+export const QueueWaitingStep: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const lena = rowOf(canvasElement, 'lena.vogt@example.org');
+        await expect(
+            lena.getAllByText(/Beratungsstelle noch nicht angelegt|Beratungsstelle not created yet/).length,
+        ).toBeGreaterThan(0);
+        await expect(lena.getByRole('button', { name: /Erinnerung erneut senden|resend/i })).toBeDisabled();
+        await expect(lena.getByRole('button', { name: /Einladung widerrufen|revoke/i })).toBeEnabled();
+    },
+};
+
+/** A waiting invite whose unit has no admin invite any more: problem badge „Keine BST-Admin". */
+export const QueueProblemBadge: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const rita = rowOf(canvasElement, 'rita.sommer@example.org');
+        await expect(rita.getByText(/^(Keine BST-Admin|No agency admin)$/)).toBeInTheDocument();
+        await expect(
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Keine BST-Admin|No agency admin)$/),
+        ).toBeNull();
+    },
+};
+
+/** „Themen & Fachbereiche" per row — also for an accepted counsellor (the account follows). */
+export const TopicPermissionInTable: Story = {
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ args, canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const anke = rowOf(canvasElement, 'anke.roth@example.org');
+        await userEvent.click(anke.getByRole('combobox', { name: /Themen für Anke Roth|Topics for Anke Roth/ }));
+        await userEvent.click(await body.findByTitle(/Darf weitere Themen anlegen|may create/i));
+        await waitFor(() => expect(args.onTopicPermissionChange).toHaveBeenCalledWith(expect.anything(), 'CREATE'));
+    },
+};
+
+/** On a phone the topic select stacks into the card; its short label is all it says, so it must not be cut off. */
+export const QueueMobile: Story = {
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    args: { onTopicPermissionChange: fn() },
+    render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const selects = await canvas.findAllByRole('combobox', { name: /Themen für|Topics for/ });
+        await expect(selects.length).toBeGreaterThan(0);
+        selects.forEach((select) => {
+            const field = select.closest('.ant-select') as HTMLElement;
+            const label = field.querySelector<HTMLElement>('.ant-select-selection-item');
+            expect(label).not.toBeNull();
+            const shown = label as HTMLElement;
+            // Fully rendered: nothing clipped (scrollWidth fits) and the text is not cut short.
+            expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth + 1);
+            expect(shown.textContent).toMatch(/^(Themen|Topics): /);
+        });
+    },
 };

@@ -1,12 +1,7 @@
-/*
- * Dependency-free CSV parser for the invite import (#315, Figma 1165:17005
- * "Import CSV File"). Fixed column order per the Figma annotation:
- * Email, First Name, Name (last name), ID (optional 4th).
- *
- * The 4th column addresses whichever id space the importing tab owns — the
- * Träger-ID on the Träger tab, the Beratungsstellen-ID everywhere else — so it
- * is parsed as a bare `id` here and interpreted by the caller.
- */
+// A recognised header row matches columns by name, so an admin may reorder or leave them out.
+// Id, role and template stay raw here: only the caller knows the tab's id space and templates.
+
+import type { InviteRole, TopicPermission } from '../inviteModel';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -31,7 +26,151 @@ const RECOGNISED_HEADER_FIRST_CELLS = new Set([
     'recipients emails',
 ]);
 
-export type InviteCsvRejectionReason = 'invalidEmail' | 'invalidId';
+export type InviteCsvRejectionReason =
+    | 'invalidEmail'
+    | 'invalidId'
+    /** "Ziel" is neither neu/new nor bestehend/existing. */
+    | 'invalidMode'
+    /** "bestehend" names a unit by its number — without one there is nothing to invite into. */
+    | 'existingWithoutId'
+    | 'invalidRole'
+    | 'invalidTopicPermission'
+    /** "Berät auch" is neither yes nor no. */
+    | 'invalidAlsoCounsellor';
+
+/** "Ziel": a NEW unit (created with the invite) or an EXISTING one. */
+export type InviteCsvTarget = 'NEW' | 'EXISTING';
+
+type ColumnKey =
+    | 'email'
+    | 'firstName'
+    | 'lastName'
+    | 'id'
+    | 'target'
+    | 'role'
+    | 'template'
+    | 'topicPermission'
+    | 'alsoCounsellor';
+
+/** Column order of a header-less file (and of the downloadable example). */
+export const INVITE_CSV_COLUMN_ORDER: ColumnKey[] = [
+    'email',
+    'firstName',
+    'lastName',
+    'id',
+    'target',
+    'role',
+    'template',
+    'topicPermission',
+    'alsoCounsellor',
+];
+
+/** E-Mail, Vorname, Name, ID: the columns an old file may label freely. */
+const LEGACY_COLUMN_COUNT = 4;
+
+/** Recognised header labels per column (lower-cased, trimmed). */
+const HEADER_LABELS: Record<Exclude<ColumnKey, 'email'>, string[]> = {
+    firstName: ['vorname', 'first name', 'firstname', 'first_name'],
+    lastName: ['name', 'nachname', 'last name', 'lastname', 'last_name', 'surname'],
+    id: [
+        'id',
+        'nr',
+        'nummer',
+        'träger-id',
+        'traeger-id',
+        'träger id',
+        'beratungsstellen-id',
+        'beratungsstelle-id',
+        'bst-id',
+        'tenant id',
+        'tenant-id',
+        'tenantid',
+        'agency id',
+        'agency-id',
+        'agencyid',
+    ],
+    target: ['ziel', 'modus', 'mode', 'einheit', 'target', 'allocation mode', 'allocationmode'],
+    role: ['rolle', 'role'],
+    template: ['vorlage', 'e-mail-vorlage', 'template', 'email template'],
+    topicPermission: [
+        'themen & fachbereiche',
+        'themen und fachbereiche',
+        'themen',
+        'fachbereiche',
+        'themen selbst',
+        'topicpermission',
+        'topic permission',
+        'topic_permission',
+    ],
+    alsoCounsellor: [
+        'berät auch',
+        'beraet auch',
+        'auch berater:in',
+        'auch beraterin',
+        'also counsellor',
+        'also counselor',
+        'alsocounsellor',
+        'also_counsellor',
+    ],
+};
+
+const normalize = (value: string) => value.trim().toLowerCase();
+
+const TARGET_VALUES: Record<string, InviteCsvTarget> = {
+    neu: 'NEW',
+    new: 'NEW',
+    anlegen: 'NEW',
+    auto: 'NEW',
+    bestehend: 'EXISTING',
+    vorhanden: 'EXISTING',
+    existing: 'EXISTING',
+};
+
+const ROLE_VALUES: Record<string, InviteRole> = {
+    'berater:in': 'COUNSELLOR',
+    'berater*in': 'COUNSELLOR',
+    berater_in: 'COUNSELLOR',
+    beraterin: 'COUNSELLOR',
+    berater: 'COUNSELLOR',
+    counsellor: 'COUNSELLOR',
+    counselor: 'COUNSELLOR',
+    'bst-admin': 'AGENCY_ADMIN',
+    'beratungsstellen-admin': 'AGENCY_ADMIN',
+    agency_admin: 'AGENCY_ADMIN',
+    'agency admin': 'AGENCY_ADMIN',
+    'träger-admin': 'TENANT_ADMIN',
+    'traeger-admin': 'TENANT_ADMIN',
+    tenant_admin: 'TENANT_ADMIN',
+    'tenant admin': 'TENANT_ADMIN',
+};
+
+/** The backend enum, plain true/false and the German yes/no words a spreadsheet user types. */
+const TOPIC_PERMISSION_VALUES: Record<string, TopicPermission> = {
+    none: 'NONE',
+    select_existing: 'SELECT_EXISTING',
+    create: 'CREATE',
+    true: 'CREATE',
+    false: 'NONE',
+    ja: 'CREATE',
+    nein: 'NONE',
+    yes: 'CREATE',
+    no: 'NONE',
+    '1': 'CREATE',
+    '0': 'NONE',
+};
+
+/** "Berät auch" (agency admins, backend `alsoCounsellor`): the yes/no words a spreadsheet user types. */
+const YES_NO_VALUES: Record<string, boolean> = {
+    ja: true,
+    nein: false,
+    true: true,
+    false: false,
+    yes: true,
+    no: false,
+    '1': true,
+    '0': false,
+    x: true,
+};
 
 export interface ParsedInviteRow {
     /** 1-based physical line number of the record's first line in the file. */
@@ -39,8 +178,18 @@ export interface ParsedInviteRow {
     email: string;
     firstName: string;
     lastName: string;
-    /** Explicit id from the 4th column; `undefined` = allocated later. */
+    /** Explicit id from the ID column; `undefined` = allocated later. */
     id?: number;
+    /** "Ziel"; `undefined` = not given, i.e. a NEW unit. */
+    target?: InviteCsvTarget;
+    /** "Rolle"; `undefined` = the importing tab's role. */
+    role?: InviteRole;
+    /** "Vorlage" as written (name or number); the caller resolves it against its templates. */
+    template?: string;
+    /** "Themen & Fachbereiche"; `undefined` = omitted, the server applies SELECT_EXISTING (Q32). */
+    topicPermission?: TopicPermission;
+    /** "Berät auch" (agency admins); `undefined` = the backend default (yes). */
+    alsoCounsellor?: boolean;
     /** First and/or last name empty — still importable (owner decision), just flagged. */
     missingName: boolean;
 }
@@ -50,6 +199,10 @@ export interface RejectedInviteRow {
     line: number;
     /** Raw cells so the preview can still display what was in the file. */
     cells: string[];
+    /** The e-mail and name cells as the header mapped them (the raw cells may be reordered). */
+    email?: string;
+    firstName?: string;
+    lastName?: string;
     reason: InviteCsvRejectionReason;
 }
 
@@ -58,6 +211,8 @@ export interface ParseInviteCsvResult {
     rejected: RejectedInviteRow[];
     delimiter: ',' | ';';
     headerSkipped: boolean;
+    /** Header-matched files: the columns that were found (for the preview's hint). */
+    columns?: ColumnKey[];
 }
 
 const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
@@ -163,29 +318,96 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
 
     let headerSkipped = false;
     let dataRecords = records;
-    if (records.length > 0 && RECOGNISED_HEADER_FIRST_CELLS.has((records[0].cells[0] ?? '').trim().toLowerCase())) {
+    let columnIndex: Partial<Record<ColumnKey, number>> = Object.fromEntries(
+        INVITE_CSV_COLUMN_ORDER.map((key, index) => [key, index]),
+    );
+    if (records.length > 0 && RECOGNISED_HEADER_FIRST_CELLS.has(normalize(records[0].cells[0] ?? ''))) {
         headerSkipped = true;
         dataRecords = records.slice(1);
+        // An unrecognised header cell keeps its fixed position, so an old custom ID
+        // label ("Träger-Nummer") still reads its 4th column as the ID.
+        columnIndex = { email: 0 };
+        const recognised = records[0].cells.map((cell, index) => {
+            if (index === 0) return undefined;
+            const label = normalize(cell);
+            return (Object.keys(HEADER_LABELS) as Array<Exclude<ColumnKey, 'email'>>).find((candidate) =>
+                HEADER_LABELS[candidate].includes(label),
+            );
+        });
+        // Named columns claim first, so a positional fallback never steals a column that is labelled later on.
+        recognised.forEach((key, index) => {
+            if (key && columnIndex[key] == null) columnIndex[key] = index;
+        });
+        // The fallback serves the legacy four-column file only; a later unknown column is ignored, never guessed.
+        recognised.slice(0, LEGACY_COLUMN_COUNT).forEach((key, index) => {
+            const fallback = INVITE_CSV_COLUMN_ORDER[index];
+            if (index > 0 && !key && fallback && columnIndex[fallback] == null) columnIndex[fallback] = index;
+        });
     }
+    const columns = INVITE_CSV_COLUMN_ORDER.filter((key) => columnIndex[key] != null);
 
     const rows: ParsedInviteRow[] = [];
     const rejected: RejectedInviteRow[] = [];
 
     dataRecords.forEach((record) => {
-        const email = (record.cells[0] ?? '').trim();
-        const firstName = (record.cells[1] ?? '').trim();
-        const lastName = (record.cells[2] ?? '').trim();
-        const idRaw = (record.cells[3] ?? '').trim();
+        const cell = (key: ColumnKey) => {
+            const index = columnIndex[key];
+            return index == null ? '' : (record.cells[index] ?? '').trim();
+        };
+        const reject = (reason: InviteCsvRejectionReason) =>
+            rejected.push({
+                line: record.line,
+                cells: record.cells,
+                reason,
+                email: cell('email'),
+                firstName: cell('firstName'),
+                lastName: cell('lastName'),
+            });
+
+        const email = cell('email');
+        const firstName = cell('firstName');
+        const lastName = cell('lastName');
+        const idRaw = cell('id');
+        const targetRaw = normalize(cell('target'));
+        const roleRaw = normalize(cell('role'));
+        const template = cell('template');
+        const topicRaw = normalize(cell('topicPermission'));
+        const alsoCounsellorRaw = normalize(cell('alsoCounsellor'));
 
         if (!EMAIL_PATTERN.test(email)) {
-            rejected.push({ line: record.line, cells: record.cells, reason: 'invalidEmail' });
+            reject('invalidEmail');
             return;
         }
         const id = idRaw === '' ? undefined : Number(idRaw);
         // Positive *safe* integer only: `/^\d+$/` alone accepts huge values that
         // Number() turns into Infinity, which JSON-serialises to null downstream.
         if (idRaw !== '' && !(/^\d+$/.test(idRaw) && Number.isSafeInteger(id) && (id as number) >= 1)) {
-            rejected.push({ line: record.line, cells: record.cells, reason: 'invalidId' });
+            reject('invalidId');
+            return;
+        }
+        const target = targetRaw === '' ? undefined : TARGET_VALUES[targetRaw];
+        if (targetRaw !== '' && target == null) {
+            reject('invalidMode');
+            return;
+        }
+        if (target === 'EXISTING' && id == null) {
+            reject('existingWithoutId');
+            return;
+        }
+        const role = roleRaw === '' ? undefined : ROLE_VALUES[roleRaw];
+        if (roleRaw !== '' && role == null) {
+            reject('invalidRole');
+            return;
+        }
+        const topicPermission = topicRaw === '' ? undefined : TOPIC_PERMISSION_VALUES[topicRaw];
+        if (topicRaw !== '' && topicPermission == null) {
+            reject('invalidTopicPermission');
+            return;
+        }
+
+        const alsoCounsellor = alsoCounsellorRaw === '' ? undefined : YES_NO_VALUES[alsoCounsellorRaw];
+        if (alsoCounsellorRaw !== '' && alsoCounsellor == null) {
+            reject('invalidAlsoCounsellor');
             return;
         }
 
@@ -195,11 +417,16 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
             firstName,
             lastName,
             id,
+            target,
+            role,
+            template: template || undefined,
+            topicPermission,
+            alsoCounsellor,
             missingName: firstName === '' || lastName === '',
         });
     });
 
-    return { rows, rejected, delimiter, headerSkipped };
+    return { rows, rejected, delimiter, headerSkipped, columns };
 };
 
 export interface TenantIdAssignable {

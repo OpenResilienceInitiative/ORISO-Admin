@@ -73,7 +73,6 @@ describe('InviteCsvImportModal', () => {
         render(
             <InviteCsvImportModal
                 createInvite={createInvite}
-                forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                 idKind="tenant"
                 parseResult={parseResult}
                 takenTenantIds={new Set([1, 2, 4])}
@@ -153,12 +152,8 @@ describe('InviteCsvImportModal', () => {
         expect(await screen.findByText('1 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
     });
 
-    /*
-     * A 403 fails every row for the same ROLE reason (UserService#1006). The run
-     * must say so once — preferring the backend's own message — instead of
-     * reducing it to anonymous "Fehlgeschlagen" rows.
-     */
-    it('surfaces the backend role message once when rows fail with 403', async () => {
+    // A 403 is about its own row (UserService#1006): its reason stands under that row.
+    it("shows the backend's 403 reason under each row it hit", async () => {
         createInvite.mockImplementation(async () => {
             // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
             throw new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
@@ -176,15 +171,14 @@ describe('InviteCsvImportModal', () => {
 
         await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
 
-        expect(await rowCells('a@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        // The role rejection applies to every row — after the first 403 the run must
-        // NOT keep firing doomed requests; the rest is marked forbidden client-side.
-        expect(createInvite).toHaveBeenCalledTimes(1);
-        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
-        expect(roleToasts).toHaveLength(1);
-        // The count summary stays — the cause toast comes ON TOP of it.
         expect(await screen.findByText('0 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite).toHaveBeenCalledTimes(2);
+        ['a@example.org', 'b@example.org'].forEach((email) => {
+            expect(rowCells(email).getByText('Nicht berechtigt')).toBeInTheDocument();
+            expect(
+                rowCells(email).getByText('Only platform admins can create administrative accounts'),
+            ).toBeInTheDocument();
+        });
         expect(onCreated).not.toHaveBeenCalled();
         expect(onClose).not.toHaveBeenCalled();
     });
@@ -212,13 +206,13 @@ describe('InviteCsvImportModal', () => {
         expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('stops calling createInvite after the first role-level 403 and marks the rest forbidden', async () => {
+    // A row may name a unit the admin does not own, so a 403 is that row's failure, not the batch's.
+    it('keeps sending after a 403 on one row and marks only that row forbidden', async () => {
         createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
-            if (row.recipientEmail === 'a@example.org') {
-                return;
+            if (row.recipientEmail === 'b@example.org') {
+                // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
+                throw new Response(null, { status: 403 });
             }
-            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's FORBIDDEN_WITH_RESPONSE rejection (a raw Response)
-            throw new Response(null, { status: 403 });
         });
         renderModal(
             parseResultOf({
@@ -232,15 +226,43 @@ describe('InviteCsvImportModal', () => {
 
         await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
 
-        expect(await rowCells('a@example.org').findByText('Angelegt')).toBeInTheDocument();
-        expect(await rowCells('b@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        // Row c was never attempted — the 403 on row b already condemned it.
-        expect(await rowCells('c@example.org').findByText('Nicht berechtigt')).toBeInTheDocument();
-        expect(createInvite).toHaveBeenCalledTimes(2);
-        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
-        // The successful row still refreshes the table; the modal stays open for the report.
+        expect(await screen.findByText('2 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite.mock.calls.map(([row]) => row.recipientEmail)).toEqual([
+            'a@example.org',
+            'b@example.org',
+            'c@example.org',
+        ]);
+        expect(rowCells('a@example.org').getByText('Angelegt')).toBeInTheDocument();
+        expect(rowCells('b@example.org').getByText('Nicht berechtigt')).toBeInTheDocument();
+        expect(rowCells('c@example.org').getByText('Angelegt')).toBeInTheDocument();
         expect(onCreated).toHaveBeenCalledTimes(1);
         expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('stops the batch on an SMTP 502, which fails every further row the same way', async () => {
+        createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
+            if (row.recipientEmail === 'b@example.org') {
+                // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors fetchData's rejection (a raw Response)
+                throw new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' }), {
+                    status: 502,
+                });
+            }
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', missingName: false },
+                    { line: 3, email: 'c@example.org', firstName: 'C', lastName: 'Three', missingName: false },
+                ],
+            }),
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
+
+        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(createInvite).toHaveBeenCalledTimes(2);
+        expect(rowCells('c@example.org').getByText('Versand fehlgeschlagen')).toBeInTheDocument();
     });
 
     it('lists rejected rows read-only, supports removing rows and editing names', async () => {
@@ -272,7 +294,15 @@ describe('InviteCsvImportModal', () => {
         renderModal(
             parseResultOf({
                 rows: [
-                    { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    // Only a BST-Admin founds a new Beratungsstelle, so this row is an agency-admin row.
+                    {
+                        line: 1,
+                        email: 'a@example.org',
+                        firstName: 'A',
+                        lastName: 'One',
+                        role: 'AGENCY_ADMIN',
+                        missingName: false,
+                    },
                     { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', id: 42, missingName: false },
                 ],
             }),
@@ -350,5 +380,267 @@ describe('InviteCsvImportModal', () => {
 
         expect(screen.queryByText('a@example.org')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+    });
+
+    describe('Ziel, Rolle, Vorlage and Themen & Fachbereiche columns', () => {
+        const TEMPLATES = [
+            {
+                id: 11,
+                kind: 'COUNSELLOR_INVITE' as const,
+                name: 'Standard',
+                language: 'de',
+                subject: 'S',
+                body: 'B',
+                active: true,
+                createDate: '2026-07-01T00:00:00Z',
+                updateDate: null,
+            },
+        ];
+        // Default: a new Beratungsstelle with its number (a counsellor row must name it).
+        const row = (line: number, email: string, extra: Record<string, unknown> = {}) => ({
+            line,
+            email,
+            firstName: 'A',
+            lastName: 'B',
+            id: 900,
+            missingName: false,
+            ...extra,
+        });
+        const renderAgency = (rows: ReturnType<typeof row>[], props: Record<string, unknown> = {}) =>
+            renderModal(parseResultOf({ rows: rows as never }), {
+                idKind: 'agency',
+                tabRole: 'COUNSELLOR',
+                templates: TEMPLATES,
+                ...props,
+            });
+
+        it('sends an existing agency, the row template and the topic permission; an empty topic cell is omitted', async () => {
+            const user = userEvent.setup();
+            renderAgency([
+                row(2, 'anna@x.de', { id: 42, target: 'EXISTING', template: 'standard', topicPermission: 'CREATE' }),
+                row(3, 'bernd@x.de'),
+            ]);
+
+            await user.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(2));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({
+                recipientEmail: 'anna@x.de',
+                id: 42,
+                target: 'EXISTING',
+                role: 'COUNSELLOR',
+                templateId: 11,
+                topicPermission: 'CREATE',
+            });
+            expect(createInvite.mock.calls[1][0]).toMatchObject({
+                target: 'NEW',
+                role: 'COUNSELLOR',
+                templateId: undefined,
+            });
+            expect(createInvite.mock.calls[1][0]).not.toHaveProperty('topicPermission', expect.anything());
+        });
+
+        it('says what an empty topic cell means', () => {
+            renderAgency([row(2, 'anna@x.de')]);
+            expect(
+                rowCells('anna@x.de').getByText('Leere CSV-Zelle = Darf weitere Fachbereiche auswählen'),
+            ).toBeInTheDocument();
+        });
+
+        it('shows the new columns with readable values', () => {
+            renderAgency([row(2, 'anna@x.de', { id: 42, target: 'EXISTING', topicPermission: 'SELECT_EXISTING' })]);
+            const cells = rowCells('anna@x.de');
+            expect(cells.getByText('Bestehend')).toBeInTheDocument();
+            expect(cells.getByText('Berater:in')).toBeInTheDocument();
+            expect(cells.getByText('wie in der Leiste')).toBeInTheDocument();
+            expect(cells.getByText('Darf weitere Fachbereiche auswählen')).toBeInTheDocument();
+        });
+
+        it.each([
+            [
+                { template: 'Gibtsnicht' },
+                'Die Vorlage „Gibtsnicht“ gibt es hier nicht. Aktive Vorlagen: Standard (Zeile 2).',
+            ],
+            [
+                { id: undefined },
+                'Berater:innen für eine neue Beratungsstelle brauchen deren Nummer — dieselbe wie in der Zeile der BST-Admin (Zeile 2).',
+            ],
+            [
+                { role: 'COUNSELLOR', alsoCounsellor: false },
+                '„Berät auch“ gilt nur für BST-Admins — bitte leer lassen (Zeile 2).',
+            ],
+        ])('holds back a row with a context problem and says why in German (%o)', (extra, reason) => {
+            renderAgency([row(2, 'anna@x.de', extra), row(3, 'bernd@x.de')]);
+            expect(rowCells('anna@x.de').getByText('Abgelehnt')).toBeInTheDocument();
+            expect(rowCells('anna@x.de').getByText(reason)).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeInTheDocument();
+        });
+
+        it('refuses a role the viewer may not hand out', () => {
+            renderAgency([row(2, 'anna@x.de', { role: 'TENANT_ADMIN' })], { viewerScope: 'agency' });
+            expect(
+                rowCells('anna@x.de').getByText('Die Rolle „Träger-Admin“ dürfen Sie nicht vergeben (Zeile 2).'),
+            ).toBeInTheDocument();
+        });
+
+        it('rejects a topic permission for a non-counsellor role', () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { topicPermission: 'NONE' })] as never }));
+            expect(
+                rowCells('anna@x.de').getByText(
+                    '„Themen & Fachbereiche“ gilt nur für Berater:innen — bitte leer lassen (Zeile 2).',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('sends "bestehend" on the Träger tab as an existing Träger', async () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { id: 9, target: 'EXISTING' })] as never }));
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(1));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({ id: 9, target: 'EXISTING', role: 'TENANT_ADMIN' });
+        });
+
+        it('sends the founding BST-Admin row with "Berät auch" and every role the viewer may hand out', async () => {
+            renderAgency([
+                row(2, 'bernd@x.de', { role: 'AGENCY_ADMIN', alsoCounsellor: false }),
+                row(3, 'carla@x.de', { topicPermission: 'SELECT_EXISTING' }),
+            ]);
+            await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(2));
+            expect(createInvite.mock.calls[0][0]).toMatchObject({
+                id: 900,
+                role: 'AGENCY_ADMIN',
+                alsoCounsellor: false,
+                topicPermission: undefined,
+            });
+            expect(createInvite.mock.calls[1][0]).toMatchObject({
+                id: 900,
+                role: 'COUNSELLOR',
+                alsoCounsellor: undefined,
+                topicPermission: 'SELECT_EXISTING',
+            });
+        });
+
+        it('sends founding BST-Admin rows before the rows that wait for them', async () => {
+            renderAgency([
+                row(2, 'carla@x.de'),
+                row(3, 'bernd@x.de', { role: 'AGENCY_ADMIN' }),
+                row(4, 'dora@x.de', { id: 42, target: 'EXISTING' }),
+            ]);
+            await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
+            await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(3));
+            expect(createInvite.mock.calls.map(([sent]) => sent.recipientEmail)).toEqual([
+                'bernd@x.de',
+                'carla@x.de',
+                'dora@x.de',
+            ]);
+        });
+
+        it('refreshes a waiting row from the invite list once the rows are sent', async () => {
+            createInvite.mockResolvedValueOnce({ inviteId: 7, waiting: true, noUnitAdmin: true });
+            const { rerender } = renderAgency([row(2, 'carla@x.de')]);
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            expect(await rowCells('carla@x.de').findByText(/Keine BST-Admin/)).toBeInTheDocument();
+
+            rerender(
+                <InviteCsvImportModal
+                    createInvite={createInvite}
+                    idKind="agency"
+                    invites={[{ id: 7, inviteStatus: 'WAITING_FOR_UNIT', queueProblem: null } as never]}
+                    parseResult={parseResultOf({ rows: [row(2, 'carla@x.de')] as never })}
+                    tabRole="COUNSELLOR"
+                    templates={TEMPLATES}
+                    onClose={onClose}
+                    onCreated={onCreated}
+                />,
+            );
+
+            expect(rowCells('carla@x.de').queryByText(/Keine BST-Admin/)).not.toBeInTheDocument();
+            expect(
+                rowCells('carla@x.de').getByText('Geht raus, sobald die Beratungsstelle angelegt ist.'),
+            ).toBeInTheDocument();
+        });
+
+        it('marks a row the backend stored as waiting for its new Beratungsstelle', async () => {
+            createInvite.mockResolvedValueOnce({ waiting: true, noUnitAdmin: true });
+            renderAgency([row(2, 'carla@x.de')]);
+            await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+            expect(await rowCells('carla@x.de').findByText('Vorgemerkt')).toBeInTheDocument();
+            expect(
+                rowCells('carla@x.de').getByText(
+                    'Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('sends other roles to the Berater tab when the Träger tab only founds Träger', () => {
+            renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }), {
+                tabRoles: ['TENANT_ADMIN'],
+            });
+            expect(
+                rowCells('anna@x.de').getByText(
+                    'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('rejects a new Beratungsstelle when the viewer has no own Träger to found it in', () => {
+            renderAgency(
+                [
+                    row(2, 'anna@x.de', { role: 'AGENCY_ADMIN' }),
+                    row(3, 'ben@x.de'),
+                    row(4, 'carla@x.de', { id: 42, target: 'EXISTING' }),
+                ],
+                { ownTenantKnown: false },
+            );
+            const hint =
+                'Eine neue Beratungsstelle braucht einen Träger. Ohne eigenen Träger laden Sie hier nur in bestehende Beratungsstellen ein (Ziel „bestehend“) (Zeile {{line}}).';
+            expect(rowCells('anna@x.de').getByText(hint.replace('{{line}}', '2'))).toBeInTheDocument();
+            expect(rowCells('ben@x.de').getByText(hint.replace('{{line}}', '3'))).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+        });
+
+        it('re-checks the rows when the Träger context changes after opening', () => {
+            const props = {
+                createInvite,
+                idKind: 'agency' as const,
+                parseResult: parseResultOf({
+                    rows: [row(2, 'anna@x.de', { role: 'TENANT_ADMIN', id: undefined })] as never,
+                }),
+                tabRole: 'COUNSELLOR' as const,
+                templates: TEMPLATES,
+                onClose,
+                onCreated,
+            };
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            const { rerender } = render(<InviteCsvImportModal {...props} ownTenantKnown />);
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            rerender(<InviteCsvImportModal {...props} ownTenantKnown={false} />);
+
+            expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        });
+
+        it('spells out parse-level rejections next to the chip', () => {
+            renderModal(
+                parseResultOf({
+                    rejected: [
+                        {
+                            line: 4,
+                            cells: ['c@x.de'],
+                            reason: 'invalidTopicPermission',
+                            email: 'c@x.de',
+                            firstName: '',
+                            lastName: '',
+                        },
+                    ],
+                }),
+                { idKind: 'agency' },
+            );
+            expect(
+                screen.getByText(
+                    'Unbekannter Wert bei „Themen & Fachbereiche“ — erlaubt sind NONE, SELECT_EXISTING, CREATE, true oder false (Zeile 4)',
+                ),
+            ).toBeInTheDocument();
+        });
     });
 });

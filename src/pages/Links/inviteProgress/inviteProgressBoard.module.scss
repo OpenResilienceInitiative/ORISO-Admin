@@ -90,11 +90,30 @@
     color: var(--m3-error, #b1005e);
 }
 
+/* Composed with .statusChip and .statusChipDead (same magenta as a dead invite): only the layout differs. */
+.problemChip {
+    display: flex;
+    width: fit-content;
+    margin-top: 4px;
+}
+
+.topicSelect {
+    width: 100%;
+
+    /* Narrow enough that the recipient column does not push a 1440px table wide. */
+    max-width: 184px;
+    margin-top: 8px;
+}
+
 /* ── Actions ─────────────────────────────────────────────────────────────── */
 .actions {
     display: inline-flex;
     gap: 2px;
     white-space: nowrap;
+}
+
+.disabledActionSlot {
+    display: inline-flex;
 }
 
 .revokeAction:not(:disabled) {
@@ -158,6 +177,13 @@
 
     .identityCell {
         padding-right: 56px !important;
+    }
+
+    /* The short topic label is the select's only information; the card has the
+       room, so the desktop cap would only cut it off with an ellipsis. */
+
+    .topicSelect {
+        max-width: none;
     }
 
     .metaCell {
