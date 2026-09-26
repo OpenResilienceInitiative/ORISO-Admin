@@ -346,6 +346,26 @@ describe('IdAllocationField', () => {
         );
     });
 
+    it('drops an earlier pick when the typed number grows into one with no unit', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async (id: number) => (id === 9 ? { id: 9, name: 'Caritas Emmendingen' } : null));
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField label="Träger" allowCreate={false} allocation={allocation} resolveUnit={resolveUnit} />,
+        );
+        const input = screen.getByRole('combobox', { name: 'Träger' });
+
+        await user.type(input, '9');
+        await waitFor(() =>
+            expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 9, name: 'Caritas Emmendingen' }),
+        );
+        await user.type(input, '0');
+
+        expect(await screen.findByText('Keine Einheit mit Nr. 90')).toBeInTheDocument();
+        // No unit 90: the stale pick 9 must not stay submittable.
+        await waitFor(() => expect(allocation.resetToAuto).toHaveBeenCalled());
+    });
+
     it('refuses a typed number that belongs to no unit in an existing-only field', async () => {
         const allocation = allocationState();
         const resolveUnit = vi.fn(async () => null);

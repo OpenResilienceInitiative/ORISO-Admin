@@ -134,7 +134,9 @@ export const IdAllocationField = ({
             .then((found) => {
                 if (token !== lookupToken.current) return;
                 setResolved({ id, unit: found });
+                // A miss must not leave an earlier pick (9 before 90) selected and submittable.
                 if (found) allocation.selectExisting(found);
+                else allocation.resetToAuto();
             });
     };
     useEffect(() => {
