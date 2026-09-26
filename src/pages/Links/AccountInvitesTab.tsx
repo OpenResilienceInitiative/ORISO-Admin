@@ -14,22 +14,26 @@ import {
     resendAccountInvite,
     revokeAccountInvite,
     sendAccountInvite,
+    updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
-import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
+import type { AllocationMode } from '../../api/idAllocation/idAllocation';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
+import { findInviteTenant } from '../../api/tenant/findInviteTenant';
+import { isActiveDeleteDate } from '../../utils/deleteDate';
+import { agencyTopicPermission, searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import { Modal } from '../../components/Modal';
-import {
-    extractApiErrorMessageOrNull,
-    extractSmtpSendFailure,
-    type SmtpSendFailureDetail,
-} from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
-import { InviteCsvImportModal, type InviteCsvCreateRow } from './InviteCsvImportModal';
+import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
+import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
+import type { InviteRole, TopicPermission } from './inviteModel';
+import { explainInviteError, type InviteErrorContext } from './explainInviteError';
+import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
 interface AccountInvitesTabProps {
@@ -38,13 +42,58 @@ interface AccountInvitesTabProps {
     includeAgencyField?: boolean;
 }
 
-/**
- * Bulk actions (#316) only make sense while an invite can still change:
- * DRAFT can be sent, EMAIL_SENT can be resent, and both can be revoked.
- * Terminal states (ACCEPTED/EXPIRED/REVOKED/SUPERSEDED) are not selectable.
- */
+/** Agency allocation mode of one CSV row: an existing agency, a pinned new number, or the next free one. */
+const csvAgencyAllocationMode = (row: InviteCsvCreateRow): AllocationMode => {
+    if (row.target === 'EXISTING') return 'EXISTING';
+    return row.id != null ? 'MANUAL' : 'AUTO';
+};
+
+// Only a DRAFT or a sent invite can still be sent or revoked.
 const isBulkSelectable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
+
+/** Roles the invite tabs manage at all (the list endpoint may carry others, e.g. advice seekers). */
+const INVITE_TAB_ROLES: ReadonlySet<AccountInviteTargetRole> = new Set(['TENANT_ADMIN', 'AGENCY_ADMIN', 'COUNSELLOR']);
+
+/** The Träger tab keeps only Träger founders; invites that join an existing unit live on the counsellor tab. */
+const foundsTenant = (invite: AccountInviteDTO) =>
+    invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
+const belongsToTab = (invite: AccountInviteDTO, tenantTab: boolean) =>
+    INVITE_TAB_ROLES.has(invite.targetRole) && foundsTenant(invite) === tenantTab;
+
+/** Topics of an agency for the self-assignment dialog (AgencyService admin detail). */
+const loadAgencyDetail = async (agencyId: number) => {
+    const response = await getAgencyDataById(String(agencyId));
+    // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as removeEmbedded
+    return response?._embedded ?? response;
+};
+
+// A typed agency number counts only if that agency exists and is not deleted.
+const findInviteAgency = async (agencyId: number): Promise<IdUnitOption | null> => {
+    try {
+        const agency = await loadAgencyDetail(agencyId);
+        if (agency?.id == null || !isActiveDeleteDate(agency.deleteDate)) return null;
+        return {
+            id: Number(agency.id),
+            name: agency.name ?? undefined,
+            tenantId: agency.tenantId != null ? Number(agency.tenantId) : undefined,
+            tenantName: agency.tenantName ?? undefined,
+            topicPermission: agencyTopicPermission(agency),
+        };
+    } catch (error) {
+        if (error instanceof AgencyAccessError) return null;
+        throw error;
+    }
+};
+
+const loadAgencyTopicPermission = async (agencyId: number) => agencyTopicPermission(await loadAgencyDetail(agencyId));
+
+const loadAgencyTopics = async (agencyId: number): Promise<SelfAssignTopic[]> => {
+    const agency = await loadAgencyDetail(agencyId);
+    return (agency?.topics ?? [])
+        .map((topic: { id?: number | string; name?: string }) => ({ id: Number(topic?.id), name: topic?.name ?? '' }))
+        .filter((topic: SelfAssignTopic) => Number.isFinite(topic.id));
+};
 
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
     const { t } = useTranslation();
@@ -58,7 +107,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // "Neu aus „X"" (#746): source template the create view prefills from.
     const [createFromTemplateId, setCreateFromTemplateId] = useState<number | undefined>();
     // CSV import (#315): parse result + the send mode captured when the file was picked.
-    const [csvImport, setCsvImport] = useState<{ result: ParseInviteCsvResult; sendMode: InviteSendMode } | null>(null);
+    const [csvImport, setCsvImport] = useState<{
+        result: ParseInviteCsvResult;
+        sendMode: InviteSendMode;
+    } | null>(null);
+    // undefined = closed; `{}` = open without a preset agency.
+    const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
+    const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
     // Bulk selection (#316): checked row ids, the open/closed state of the
     // "Ausgewählte löschen" confirmation, and a guard while a batch runs.
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -71,7 +126,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // derived from.
     const [searchQuery, setSearchQuery] = useState('');
 
-    const currentTenantId = parseUserAuthInfo().tenantId || undefined;
+    // tenantId is a STRING in the JWT: "0" (platform admin) is truthy, so only > 0 is a real own Träger.
+    const jwtTenantId = Number(parseUserAuthInfo().tenantId);
+    const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
+    const { isSuperAdmin } = useUserRoles();
 
     // Client-side taken-id knowledge (existing tenants + still-active
     // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
@@ -160,9 +218,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             let totalPages = 1;
             while (page < totalPages) {
                 // Pagination is intentionally sequential because totalPages comes from the preceding response.
+                // The counsellor tab lists every role that joins a unit, so it loads unfiltered.
                 // eslint-disable-next-line no-await-in-loop
-                const response = await listAccountInvites({ page, size: 200, targetRole });
-                all.push(...(response.content ?? []));
+                const response = await listAccountInvites({
+                    page,
+                    size: 200,
+                    targetRole: isTenantInvite ? 'TENANT_ADMIN' : undefined,
+                });
+                all.push(...(response.content ?? []).filter((invite) => belongsToTab(invite, isTenantInvite)));
                 totalPages = response.totalPages ?? 0;
                 page += 1;
             }
@@ -175,7 +238,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             // A superseded run leaves `loading` to the run that overtook it.
             if (isLatest()) setLoading(false);
         }
-    }, [targetRole, t]);
+    }, [isTenantInvite, t]);
 
     const loadTemplates = useCallback(() => {
         listInviteEmailTemplates(templateKind)
@@ -237,219 +300,95 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         setGeneratedLinks((current) => ({ ...current, [invite.id]: invite.acceptUrl as string }));
     }, []);
 
-    // Role-aware fallback for a 403 without a usable backend message
-    // (UserService#1006): the same component serves the Träger-admin AND the
-    // counsellor tab, so the explanation must name the role that could not be
-    // invited instead of always talking about Träger-Admins.
-    const forbiddenFallbackFor = useCallback(
-        (role: AccountInviteTargetRole) =>
-            role === 'COUNSELLOR'
-                ? t(
-                      'links.accountInvites.forbiddenCounsellor',
-                      'Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.',
-                  )
-                : t(
-                      'links.accountInvites.forbiddenTenantAdmin',
-                      'Nur Plattform-Administratoren können Träger-Admins einladen.',
-                  ),
-        [t],
+    const explain = useCallback(
+        (error: unknown, action: InviteErrorContext['action'], role: AccountInviteTargetRole = targetRole) =>
+            explainInviteError(error, { t, action, role, idKind: isTenantInvite ? 'tenant' : 'agency' }),
+        [isTenantInvite, targetRole, t],
     );
 
-    /**
-     * ONE specific toast per mail-delivery cause (UserService#1160).
-     *
-     * A 502 `{"reason":"SMTP_SEND_FAILED","detail":...}` means the invite itself
-     * was fine and the MAIL could not be handed to SMTP. Before this the call
-     * fell into `CATCH_ALL` and the admin got two generic toasts, so a
-     * misconfigured platform looked like a flaky invite form and admins retried
-     * an action that can never succeed until a platform admin fixes SMTP.
-     * An unknown/absent category falls back to the neutral delivery message —
-     * never guess a cause the backend did not name.
-     */
-    const smtpFailureMessageFor = useCallback(
-        (detail: SmtpSendFailureDetail | null) => {
-            switch (detail) {
-                case 'SMTP_CREDENTIALS_MISSING':
-                    return t(
-                        'links.accountInvites.smtpCredentialsMissing',
-                        'E-Mail-Versand nicht konfiguriert: SMTP-Zugangsdaten fehlen. Bitte Plattform-Admin kontaktieren.',
-                    );
-                case 'SMTP_DISABLED_OR_INCOMPLETE':
-                    return t(
-                        'links.accountInvites.smtpDisabledOrIncomplete',
-                        'E-Mail-Versand ist deaktiviert oder unvollständig konfiguriert. Bitte Plattform-Admin kontaktieren.',
-                    );
-                case 'SMTP_SETTINGS_UNAVAILABLE':
-                    return t(
-                        'links.accountInvites.smtpSettingsUnavailable',
-                        'E-Mail-Einstellungen konnten nicht geladen werden. Bitte später erneut versuchen oder Plattform-Admin kontaktieren.',
-                    );
-                case 'SMTP_TRANSPORT_FAILED':
-                    return t(
-                        'links.accountInvites.smtpTransportFailed',
-                        'E-Mail-Server hat den Versand abgelehnt. Bitte Plattform-Admin kontaktieren.',
-                    );
-                default:
-                    return t(
-                        'links.accountInvites.smtpSendFailed',
-                        'E-Mail konnte nicht versendet werden. Bitte Plattform-Admin kontaktieren.',
-                    );
-            }
-        },
-        [t],
-    );
+    // The platform admin picks an existing Träger by name.
+    const searchTenantsForPicker = useCallback(async (query: string) => {
+        const response = await searchTenantData({ search: query, perPage: 10 });
+        return (response.data ?? [])
+            .filter((tenant) => tenant.id != null && Number(tenant.id) > 0)
+            .map((tenant) => ({ id: Number(tenant.id), name: tenant.name ?? undefined }));
+    }, []);
 
-    /**
-     * Shows the delivery toast and reports whether the error WAS a delivery
-     * failure, so each caller can skip its own generic toast instead of
-     * stacking a second, less informative one on top.
-     */
-    const reportSmtpFailure = useCallback(
-        async (error: unknown): Promise<boolean> => {
-            const failure = await extractSmtpSendFailure(error);
-            if (!failure) {
-                return false;
-            }
-            message.error(smtpFailureMessageFor(failure.detail));
-            return true;
-        },
-        [smtpFailureMessageFor],
+    const searchAgenciesForPicker = useCallback(
+        async (query: string, { tenantId }: { tenantId?: number }) =>
+            (await searchInviteAgencies(query, tenantId)).map(({ id, name, topics, topicPermission }) => ({
+                id,
+                name,
+                topics,
+                topicPermission,
+            })),
+        [],
     );
 
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
+            const inviteRole: InviteRole = values.role ?? (isTenantInvite ? 'TENANT_ADMIN' : 'COUNSELLOR');
             try {
-                // Department routing (#384): a counsellor must arrive with the
-                // routing a consultant needs before enquiries become visible —
-                // tenant, agency AND department/topic. When the pinned
-                // Beratungsstellen-ID resolves to an existing agency, the invite
-                // adopts that agency's single canonical topic as the department,
-                // after verifying the agency really belongs to the invite's
-                // tenant. A fresh reservation (AUTO, or a manual id the U2 check
-                // confirmed free) resolves to nothing — the agency does not
-                // exist yet, so there is no topic to route to and provisioning
-                // assigns routing when the agency is created on accept.
-                let departmentId: number | undefined;
-                if (targetRole === 'COUNSELLOR' && values.agencyId != null) {
-                    let agencyResponse = null;
-                    try {
-                        agencyResponse = await getAgencyDataById(String(values.agencyId));
-                    } catch (error) {
-                        if (!(error instanceof AgencyAccessError)) {
-                            // Network/5xx: getAgencyDataById already toasted the
-                            // cause; the outer catch adds the create-failed state.
-                            throw error;
-                        }
-                        // 404/403 = no existing (visible) agency behind the id —
-                        // the reservation case. Proceed without a department.
-                    }
-                    if (agencyResponse != null) {
-                        // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as removeEmbedded
-                        const agency = agencyResponse?._embedded ?? agencyResponse;
-                        if (values.tenantId != null && Number(agency?.tenantId) !== values.tenantId) {
-                            message.error(
-                                t(
-                                    'links.accountInvites.agencyTenantMismatch',
-                                    'Die Beratungsstelle gehört nicht zum Träger dieser Einladung.',
-                                ),
-                            );
-                            return false;
-                        }
-                        const topics = agency?.topics ?? [];
-                        if (topics.length > 1) {
-                            // Multi-topic agencies need an explicit department
-                            // choice the composer does not offer yet — refuse
-                            // instead of guessing a topic (#384 follow-up).
-                            message.error(
-                                t(
-                                    'links.accountInvites.agencyTopicAmbiguous',
-                                    'Die Beratungsstelle hat mehrere Themen — die Einladung kann noch keinem Thema zugeordnet werden.',
-                                ),
-                            );
-                            return false;
-                        }
-                        departmentId = Number(topics[0]?.id);
-                        if (topics.length === 0 || !Number.isFinite(departmentId)) {
-                            message.error(
-                                t(
-                                    'links.accountInvites.agencyTopicMissing',
-                                    'Die Beratungsstelle hat kein Thema — die Einladung kann nicht zugeordnet werden.',
-                                ),
-                            );
-                            return false;
-                        }
-                    }
-                }
+                // The backend routes the department: an existing agency adopts its only topic.
                 const created = await createAccountInvite({
                     // Role-aware target (TEN-INV U6/U8): tenant admins land on the
                     // public Admin onboarding route, everyone else on the app layer.
-                    acceptBaseUrl: acceptBaseUrlForRole(targetRole),
+                    acceptBaseUrl: acceptBaseUrlForRole(inviteRole),
                     agencyId: values.agencyId,
                     // Allocation contract (#569/#570): AUTO = backend assigns the
                     // smallest free id; MANUAL ids were pre-validated in the field
                     // and are re-checked authoritatively on create.
                     agencyIdAllocationMode: values.agencyIdAllocationMode,
                     tenantIdAllocationMode: values.tenantIdAllocationMode,
-                    departmentId,
                     expiresInDays: 30,
                     firstName: values.firstName,
                     lastName: values.lastName,
                     recipientEmail: values.recipientEmail,
-                    targetRole,
+                    targetRole: inviteRole,
+                    alsoCounsellor: values.alsoCounsellor,
+                    topicPermission: values.topicPermission,
                     // "Empfänger nur anlegen": the API creates without sending when
                     // templateId is omitted (JSON.stringify drops the undefined key).
                     templateId: values.sendMode === 'direct' ? values.templateId : undefined,
                     tenantId: values.tenantId,
                 });
                 rememberGeneratedLink(created);
-                message.success(
-                    values.sendMode === 'direct'
-                        ? t('links.accountInvites.created', 'Invite sent')
-                        : t('links.accountInvites.createdNoEmail', 'Recipient created without sending an email'),
-                );
+                if (created?.inviteStatus === 'WAITING_FOR_UNIT') {
+                    // Stored, not sent: say when it will go out, naming the unit it waits for.
+                    message.info(
+                        created.waitingForUnit === 'TENANT'
+                            ? t(
+                                  'links.accountInvites.createdWaitingTenant',
+                                  'Einladung vorgemerkt: Sie geht automatisch raus, sobald der Träger angelegt ist.',
+                              )
+                            : t(
+                                  'links.accountInvites.createdWaiting',
+                                  'Einladung vorgemerkt: Sie geht automatisch raus, sobald die Beratungsstelle angelegt ist.',
+                              ),
+                    );
+                } else {
+                    message.success(
+                        values.sendMode === 'direct'
+                            ? t('links.accountInvites.created', 'Invite sent')
+                            : t('links.accountInvites.createdNoEmail', 'Recipient created without sending an email'),
+                    );
+                }
                 await loadInvites();
                 return true;
             } catch (error) {
-                // The backend answers 409 for more than one reason (see
-                // createAccountInvite's CONFLICT_WITH_RESPONSE handling), so the typed
-                // X-Reason decides which specific message the admin gets.
-                if (error instanceof Response && error.status === 409) {
-                    // P3: the recipient address already belongs to a registered user.
-                    // This one belongs ON the e-mail field, not in a global toast —
-                    // the admin has to correct that exact input, and the rest of the
-                    // row must survive. The composer renders it inline.
-                    if (error.headers.get(FETCH_ERRORS.X_REASON) === X_REASON.EMAIL_NOT_AVAILABLE) {
-                        return 'emailTaken';
-                    }
-                    if (isTenantInvite) {
-                        message.error(t('links.accountInvites.tenantIdTaken', 'This tenant ID is already taken.'));
-                        return false;
-                    }
-                }
-                // 502 = the invite could not be MAILED (UserService#1160). The
-                // backend rolls the invite back when it knows nothing was sent and
-                // keeps it when delivery is uncertain, so reload rather than assume
-                // either — and never show the generic create-failed text on top.
-                if (await reportSmtpFailure(error)) {
-                    await loadInvites();
-                    return false;
-                }
-                // 403 = the admin's ROLE cannot create administrative accounts
-                // (UserService#1006). Prefer the backend's own explanation; fall back
-                // to a translated role hint. Never the generic create-failed text —
-                // that left the admin retrying an action their role can never perform.
-                if (error instanceof Response && error.status === 403) {
-                    message.error((await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(targetRole));
-                    return false;
-                }
-                message.error(t('links.error.createFailed', 'Could not create link'));
+                const explained = await explain(error, 'create', inviteRole);
+                // The composer marks a taken address inline and keeps the row.
+                if (explained.emailTaken) return 'emailTaken';
+                message.error(explained.message);
+                // A failed mail may or may not have kept the invite: reload rather than guess.
+                if (explained.smtp) await loadInvites();
                 return false;
             } finally {
                 setSubmitting(false);
             }
         },
-        [forbiddenFallbackFor, isTenantInvite, loadInvites, rememberGeneratedLink, reportSmtpFailure, targetRole, t],
+        [explain, isTenantInvite, loadInvites, rememberGeneratedLink, t],
     );
 
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
@@ -457,33 +396,70 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // resend), create-only = without. Rejections propagate — the modal marks the
     // row (409 = id collision) instead of aborting the batch.
     const createCsvInvite = useCallback(
-        async (row: InviteCsvCreateRow) => {
-            if (!csvImport) return;
-            await createAccountInvite({
-                acceptBaseUrl: acceptBaseUrlForRole(targetRole),
+        async (row: InviteCsvCreateRow): Promise<InviteCsvCreateOutcome | undefined> => {
+            if (!csvImport) return undefined;
+            // The Träger tab addresses the tenant id space; elsewhere the admin's own Träger goes out as EXISTING.
+            const ownTenant =
+                currentTenantId != null
+                    ? { tenantId: currentTenantId, tenantIdAllocationMode: 'EXISTING' as const }
+                    : {};
+            let unitFields: Pick<
+                Parameters<typeof createAccountInvite>[0],
+                'tenantId' | 'tenantIdAllocationMode' | 'agencyId' | 'agencyIdAllocationMode'
+            >;
+            if (isTenantInvite) {
+                // A new Träger with a pinned number is MANUAL, like the bar; an empty cell lets the server pick.
+                let tenantIdAllocationMode: 'EXISTING' | 'MANUAL' | 'AUTO' = row.id != null ? 'MANUAL' : 'AUTO';
+                if (row.target === 'EXISTING') tenantIdAllocationMode = 'EXISTING';
+                unitFields = { tenantId: row.id, tenantIdAllocationMode };
+            } else if (row.role === 'TENANT_ADMIN') {
+                unitFields = ownTenant;
+            } else {
+                // Agency id column: "bestehend" = existing (checked, not reserved),
+                // a number for "neu" is pinned MANUAL, an empty cell takes the next free one.
+                unitFields = { ...ownTenant, agencyId: row.id, agencyIdAllocationMode: csvAgencyAllocationMode(row) };
+            }
+            const created = await createAccountInvite({
+                acceptBaseUrl: acceptBaseUrlForRole(row.role),
                 expiresInDays: 30,
                 firstName: row.firstName,
                 lastName: row.lastName,
                 recipientEmail: row.recipientEmail,
-                targetRole,
-                templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
-                // The file's id column addresses the id space of this tab. On the Träger
-                // tab it IS the tenant id (batch-assigned in the preview). Every other tab
-                // invites into the admin's own tenant, and its id column addresses the
-                // agency space, which exists only as a reservation (TEN-INV-U2): an
-                // explicit id is pinned MANUAL and answered with 409 when taken, an empty
-                // cell asks AgencyService for the smallest free one. No tenant allocation
-                // mode here — UserService rejects it on non-Träger invites with a 400.
-                ...(isTenantInvite
-                    ? { tenantId: row.id }
-                    : {
-                          tenantId: currentTenantId,
-                          agencyId: row.id,
-                          agencyIdAllocationMode: row.id != null ? 'MANUAL' : 'AUTO',
-                      }),
+                targetRole: row.role,
+                alsoCounsellor: row.alsoCounsellor,
+                topicPermission: row.topicPermission,
+                // A row may name its own template; empty means the bar's.
+                templateId:
+                    csvImport.sendMode === 'direct'
+                        ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
+                        : undefined,
+                ...unitFields,
             });
+            return {
+                inviteId: created?.id,
+                waiting: created?.inviteStatus === 'WAITING_FOR_UNIT',
+                noUnitAdmin: created?.queueProblem === 'NO_UNIT_ADMIN',
+            };
         },
-        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId, targetRole],
+        [activeTemplates, csvImport, currentTenantId, isTenantInvite, selectedTemplateId],
+    );
+
+    const onTopicPermissionChange = useCallback(
+        async (invite: AccountInviteDTO, topicPermission: TopicPermission) => {
+            setTopicSavingIds((ids) => [...ids, invite.id]);
+            try {
+                const updated = await updateAccountInviteTopicPermission(invite.id, topicPermission);
+                setInvites((current) =>
+                    current.map((row) => (row.id === invite.id ? { ...row, ...updated, topicPermission } : row)),
+                );
+                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'));
+            } catch (error) {
+                message.error((await explain(error, 'topicPermission', invite.targetRole)).message);
+            } finally {
+                setTopicSavingIds((ids) => ids.filter((id) => id !== invite.id));
+            }
+        },
+        [explain, t],
     );
 
     const onResend = useCallback(
@@ -502,32 +478,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
                 await loadInvites();
             } catch (error) {
-                // Mail delivery failed (UserService#1160): the invite is untouched —
-                // the backend writes EMAIL_SENT only after SMTP confirms — so the row
-                // stays as it was and the admin can retry once SMTP is fixed.
-                if (await reportSmtpFailure(error)) {
-                    await loadInvites();
-                    return;
-                }
-                // Same role surfacing as onCreate (UserService#1006).
-                if (error instanceof Response && error.status === 403) {
-                    message.error(
-                        (await extractApiErrorMessageOrNull(error)) ?? forbiddenFallbackFor(invite.targetRole),
-                    );
-                    return;
-                }
-                message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
+                const explained = await explain(error, 'resend', invite.targetRole);
+                message.error(explained.message);
+                if (explained.smtp) await loadInvites();
             }
         },
-        [
-            activeTemplates,
-            forbiddenFallbackFor,
-            loadInvites,
-            rememberGeneratedLink,
-            reportSmtpFailure,
-            selectedTemplateId,
-            t,
-        ],
+        [activeTemplates, explain, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
     const onRevoke = useCallback(
@@ -614,12 +570,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         if (targets.length === 0) return;
         setBulkRunning(true);
         const failed: AccountInviteDTO[] = [];
-        // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
-        // the first one so the admin gets the cause once, on top of the count summary.
-        let firstForbidden: Response | null = null;
-        // Same for a 502 SMTP failure (UserService#1160): mail is misconfigured for
-        // the whole platform, so every remaining row would fail identically.
-        let firstSmtpFailure: Response | null = null;
+        // The first explained cause is shown once, above the count summary.
+        let firstCause: string | null = null;
         for (let i = 0; i < targets.length; i += 1) {
             try {
                 const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
@@ -631,32 +583,21 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 rememberGeneratedLink(delivered);
             } catch (error) {
                 failed.push(targets[i]);
-                if (error instanceof Response && error.status === 502) {
-                    firstSmtpFailure ??= error;
-                    failed.push(...targets.slice(i + 1));
-                    break;
-                }
-                if (error instanceof Response && error.status === 403) {
-                    // A role-level 403 fails EVERY remaining row the same way
-                    // (UserService#1006) — mark them failed and stop, instead of
-                    // firing one doomed request per row. Same early-stop as the
-                    // CSV import.
-                    firstForbidden ??= error;
+                // eslint-disable-next-line no-await-in-loop -- reads the failed response body
+                const explained = await explain(
+                    error,
+                    targets[i].inviteStatus === 'DRAFT' ? 'send' : 'resend',
+                    targets[i].targetRole,
+                );
+                if (explained.status != null) firstCause ??= explained.message;
+                if (explained.stopsBatch) {
                     failed.push(...targets.slice(i + 1));
                     break;
                 }
             }
         }
         setBulkRunning(false);
-        if (firstForbidden) {
-            message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallbackFor(targetRole));
-        }
-        // The delivery cause first, then the count summary below: the admin needs
-        // to know WHY before deciding whether a retry can ever work. Selected rows
-        // stay DRAFT, so retrying after SMTP is fixed sends exactly these again.
-        if (firstSmtpFailure) {
-            await reportSmtpFailure(firstSmtpFailure);
-        }
+        if (firstCause) message.error(firstCause);
         if (failed.length === 0) {
             message.success(
                 t('links.bulk.sendSummaryAll', '{{count}} Einladungen gesendet', { count: targets.length }),
@@ -673,16 +614,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [
-        forbiddenFallbackFor,
-        loadInvites,
-        rememberGeneratedLink,
-        reportSmtpFailure,
-        selectedInvites,
-        selectedTemplateId,
-        targetRole,
-        t,
-    ]);
+    }, [explain, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, t]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.
@@ -697,7 +629,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     return (
         <div ref={composerRef}>
             <InviteComposer
+                // The Träger tab is platform-admin only and founds new Träger.
+                defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                allowedRoles={isTenantInvite ? ['TENANT_ADMIN'] : undefined}
+                searchAgencies={includeAgencyField ? searchAgenciesForPicker : undefined}
+                loadAgencyTopicPermission={loadAgencyTopicPermission}
+                searchTenants={!isTenantInvite && isSuperAdmin ? searchTenantsForPicker : undefined}
+                resolveTenant={findInviteTenant}
+                resolveAgency={findInviteAgency}
+                onSelfAssign={isTenantInvite ? undefined : (agency) => setSelfAssign({ agency })}
                 includeAgencyField={includeAgencyField}
+                ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}
+                viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
@@ -743,7 +686,18 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
                 onRevoke={onRevoke}
                 onInviteCta={focusComposer}
+                onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
+                topicPermissionSavingIds={topicSavingIds}
             />
+            {selfAssign && (
+                <SelfAssignDialog
+                    initialAgency={selfAssign.agency}
+                    searchAgencies={(query) => searchAgenciesForPicker(query, { tenantId: currentTenantId })}
+                    loadAgencyTopics={loadAgencyTopics}
+                    onClose={() => setSelfAssign(undefined)}
+                    onAssigned={() => loadInvites()}
+                />
+            )}
             {bulkDeleteConfirmOpen && (
                 <Modal
                     titleKey="links.bulk.deleteConfirmTitle"
@@ -759,8 +713,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {csvImport && (
                 <InviteCsvImportModal
                     createInvite={createCsvInvite}
-                    forbiddenFallback={forbiddenFallbackFor(targetRole)}
+                    invites={invites}
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
+                    tabRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                    templates={activeTemplates}
+                    viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
+                    tabRoles={isTenantInvite ? ['TENANT_ADMIN'] : undefined}
+                    ownTenantKnown={currentTenantId != null}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}

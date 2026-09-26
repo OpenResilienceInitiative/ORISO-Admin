@@ -26,17 +26,26 @@ import { IconButton } from '../../../components/IconButton';
 import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
+import { FloatingLabelSelect } from '../../../components/FloatingLabelSelect';
+import {
+    TOPIC_PERMISSION_LABEL_KEYS,
+    TOPIC_PERMISSION_SHORT_LABEL_KEYS,
+    TOPIC_PERMISSIONS,
+    type TopicPermission,
+} from '../inviteModel';
 import {
     countInviteBuckets,
     deriveInviteBucket,
     derivePhases,
     isDraftInvite,
     formatRelativeTime,
+    hasQueueProblem,
     INVITE_BUCKETS,
     InviteBucket,
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    isWaitingForUnit,
     matchesInviteQuery,
     PHASE_AWAITING_FALLBACKS,
     PHASE_LABEL_FALLBACKS,
@@ -50,6 +59,7 @@ import styles from './inviteProgressBoard.module.scss';
  * as the i18n defaults for both locale files.
  */
 export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
+    WAITING_FOR_UNIT: 'Wartet',
     DRAFT: 'Draft',
     EMAIL_SENT: 'Gesendet',
     ACCEPTED: 'Angenommen',
@@ -66,6 +76,8 @@ export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> 
  * themselves, the fallbacks double as the German i18n defaults.
  */
 export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> = {
+    WAITING_FOR_UNIT:
+        'Vorgemerkt, aber noch nicht versendet: die Beratungsstelle bzw. der Träger ist noch nicht angelegt. Die E-Mail geht automatisch raus, sobald die Admin-Person ihr Onboarding abgeschlossen hat.',
     DRAFT: 'Angelegt, aber noch nicht versendet — es ist keine E-Mail herausgegangen.',
     EMAIL_SENT: 'Die Einladungs-E-Mail wurde versendet und wartet darauf, angenommen zu werden.',
     ACCEPTED: 'Die Einladung wurde angenommen — das Konto besteht, der Link ist verbraucht.',
@@ -75,6 +87,7 @@ export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> =
 };
 
 const STATUS_FILTER_ORDER: AccountInviteStatus[] = [
+    'WAITING_FOR_UNIT',
     'DRAFT',
     'EMAIL_SENT',
     'ACCEPTED',
@@ -103,6 +116,33 @@ const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) =>
 /** An invite still able to change can be resent/revoked (terminal states cannot). */
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
+
+/** A waiting invite has no link yet: it can be revoked, not sent or copied. */
+const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
+
+/** The topic permission only exists for counsellors, and stays editable after the account exists. */
+type Translate = (key: string, fallback: string) => string;
+
+/** Badge and tooltip of a queue problem, naming the unit the invite waits for. */
+const queueProblemCopy = (invite: Pick<AccountInviteDTO, 'waitingForUnit'>, t: Translate) =>
+    invite.waitingForUnit === 'TENANT'
+        ? {
+              badge: t('links.inviteProgress.queueProblemTenant', 'Keine Träger-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemTenantHint',
+                  'Für diesen neuen Träger ist keine Träger-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine Träger-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+          }
+        : {
+              badge: t('links.inviteProgress.queueProblem', 'Keine BST-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemHint',
+                  'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+          };
+
+const hasEditableTopicPermission = (invite: AccountInviteDTO) =>
+    invite.targetRole === 'COUNSELLOR' && !isDeadInvite(invite);
 
 /** Sent without a delivery receipt — the badge and its hint must both say so. */
 const isDeliveryUnconfirmed = (invite: AccountInviteDTO) =>
@@ -140,6 +180,10 @@ export interface InviteProgressBoardProps {
     onRevoke: (invite: AccountInviteDTO) => void;
     /** Wired to the invite composer above the board (empty-state CTA). */
     onInviteCta?: () => void;
+    /** Also works after the account exists; omit to hide the column. */
+    onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
+    /** Invite ids whose topic permission is being saved right now (the select is disabled meanwhile). */
+    topicPermissionSavingIds?: number[];
 }
 
 /**
@@ -160,6 +204,8 @@ export const InviteProgressBoard = ({
     onCopyLink,
     onRevoke,
     onInviteCta,
+    onTopicPermissionChange,
+    topicPermissionSavingIds = [],
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
@@ -252,6 +298,11 @@ export const InviteProgressBoard = ({
     useEffect(() => {
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
+
+    // The topic permission sits in the recipient cell: its own column pushed the actions out of a 1440px table.
+    const showTopicPermission = onTopicPermissionChange != null && targetRole !== 'TENANT_ADMIN';
+    const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
+    const topicShort = (value: TopicPermission) => t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
 
     const columns = useMemo(
         () => [
@@ -384,7 +435,7 @@ export const InviteProgressBoard = ({
                         // what the row waits FOR ("Wartet auf Registrierung")
                         // instead of printing the reached-state word.
                         label:
-                            phase.state === 'current'
+                            phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
                                 ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
                                 : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
                     }));
@@ -422,6 +473,29 @@ export const InviteProgressBoard = ({
                                             </span>
                                         )}
                                     </span>
+                                    {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                        <FloatingLabelSelect<TopicPermission>
+                                            className={styles.topicSelect}
+                                            disabled={topicPermissionSavingIds.includes(invite.id)}
+                                            label={t('links.inviteProgress.topicsFor', 'Themen für {{name}}', {
+                                                name: displayName,
+                                            })}
+                                            // The closed select shows the short label; the menu the full one.
+                                            labelRender={({ value }) => topicShort(value as TopicPermission)}
+                                            options={TOPIC_PERMISSIONS.map((option) => ({
+                                                value: option,
+                                                label: topicTitle(option),
+                                            }))}
+                                            popupMatchSelectWidth={false}
+                                            // Invites without a value (older ones) behave as CREATE.
+                                            value={invite.topicPermission ?? 'CREATE'}
+                                            onChange={(next) => {
+                                                if (next !== (invite.topicPermission ?? 'CREATE')) {
+                                                    onTopicPermissionChange?.(invite, next);
+                                                }
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             </DataTableCell>
                             <DataTableCell className={styles.progressCell}>
@@ -475,15 +549,58 @@ export const InviteProgressBoard = ({
                                               )}
                                     </span>
                                 </M3Tooltip>
+                                {hasQueueProblem(invite) && (
+                                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
+                                        <span
+                                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
+                                            tabIndex={0}
+                                            className={classNames(
+                                                styles.statusChip,
+                                                styles.statusChipDead,
+                                                styles.problemChip,
+                                            )}
+                                            data-testid="queue-problem-badge"
+                                        >
+                                            {queueProblemCopy(invite, t).badge}
+                                        </span>
+                                    </M3Tooltip>
+                                )}
                             </DataTableCell>
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
-                                    <IconButton
-                                        icon={<ForwardToInboxOutlinedIcon />}
-                                        ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
-                                        disabled={!actionable}
-                                        onClick={() => onResend(invite)}
-                                    />
+                                    {isWaitingForUnit(invite) ? (
+                                        // Disable, don't hide: a manual send answers 409
+                                        // UNIT_NOT_CREATED until the unit exists.
+                                        <M3Tooltip
+                                            text={t(
+                                                'links.inviteProgress.action.resendWaiting',
+                                                'Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.',
+                                            )}
+                                        >
+                                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                                            <span tabIndex={0} className={styles.disabledActionSlot}>
+                                                <IconButton
+                                                    icon={<ForwardToInboxOutlinedIcon />}
+                                                    ariaLabel={t(
+                                                        'links.inviteProgress.action.resend',
+                                                        'Erinnerung erneut senden',
+                                                    )}
+                                                    disabled
+                                                    onClick={() => onResend(invite)}
+                                                />
+                                            </span>
+                                        </M3Tooltip>
+                                    ) : (
+                                        <IconButton
+                                            icon={<ForwardToInboxOutlinedIcon />}
+                                            ariaLabel={t(
+                                                'links.inviteProgress.action.resend',
+                                                'Erinnerung erneut senden',
+                                            )}
+                                            disabled={!actionable}
+                                            onClick={() => onResend(invite)}
+                                        />
+                                    )}
                                     {/* C5: the copy icon used to stay live between
                                         two disabled neighbours, and pressing it in a
                                         terminal state only produced the "link only
@@ -499,7 +616,7 @@ export const InviteProgressBoard = ({
                                     <IconButton
                                         icon={<BlockOutlinedIcon />}
                                         ariaLabel={t('links.inviteProgress.action.revoke', 'Einladung widerrufen')}
-                                        disabled={!actionable}
+                                        disabled={!isRevocable(invite)}
                                         className={styles.revokeAction}
                                         onClick={() => onRevoke(invite)}
                                     />

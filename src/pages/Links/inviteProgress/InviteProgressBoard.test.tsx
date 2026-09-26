@@ -419,3 +419,92 @@ describe('InviteProgressBoard', () => {
         expect(names).toEqual(['Bea Zeller', 'Nils Anders', 'Rita Meier']);
     });
 });
+
+describe('InviteProgressBoard — queue and topic permission', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const waiting = invite(10, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    });
+    const orphan = invite(11, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        queueProblem: 'NO_UNIT_ADMIN',
+        emailDeliveryStatus: null,
+    });
+    const accepted = invite(12, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-08-02T10:00:00Z',
+        topicPermission: 'SELECT_EXISTING',
+    });
+    const counsellorProps = (invites: AccountInviteDTO[], extra = {}) => ({
+        ...baseProps(),
+        invites,
+        targetRole: 'COUNSELLOR' as const,
+        ...extra,
+    });
+
+    it('names the missing Träger admin in the badge of an invite that waits for a new Träger', async () => {
+        const tenantOrphan = invite(13, {
+            targetRole: 'AGENCY_ADMIN',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'TENANT',
+            queueProblem: 'NO_UNIT_ADMIN',
+            emailDeliveryStatus: null,
+        });
+        render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
+
+        const badge = screen.getByTestId('queue-problem-badge');
+        expect(badge).toHaveTextContent('Keine Träger-Admin');
+        await userEvent.hover(badge);
+        expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
+    });
+
+    it('shows a waiting invite with the new first step, resend disabled but revoke possible', () => {
+        render(<InviteProgressBoard {...counsellorProps([waiting])} />);
+
+        const row = screen.getByText('person10@example.org').closest('tr') as HTMLElement;
+        expect(within(row).getByText('Beratungsstelle noch nicht angelegt')).toBeInTheDocument();
+        expect(within(row).getByText('Wartet')).toBeInTheDocument();
+        expect(within(row).getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladung widerrufen' })).toBeEnabled();
+        expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
+    });
+
+    it('marks a waiting invite without unit admin with the "Keine BST-Admin" badge', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Keine BST-Admin');
+        expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+    });
+
+    it('changes the topic permission of an accepted counsellor in the table', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        const select = screen.getByRole('combobox', { name: /Themen für/ });
+        await userEvent.click(select);
+        await userEvent.click(await screen.findByTitle('Darf weitere Themen anlegen'));
+
+        expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
+    });
+
+    it('offers no topic select on the Träger tab, even for a counsellor row', () => {
+        render(<InviteProgressBoard {...baseProps()} invites={[accepted]} onTopicPermissionChange={vi.fn()} />);
+
+        expect(screen.queryByRole('combobox', { name: /Themen für/ })).toBeNull();
+    });
+
+    it('offers no topic select without a change handler', () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted])} />);
+
+        expect(screen.queryByRole('combobox', { name: /Themen für/ })).toBeNull();
+    });
+});
