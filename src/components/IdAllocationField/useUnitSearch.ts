@@ -55,6 +55,8 @@ export const useUnitSearch = ({
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
     const [total, setTotal] = useState<number | undefined>();
+    // True from a new query until its first page lands, so the field shows neither stale pages nor "no match".
+    const [searching, setSearching] = useState(false);
     const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null } | undefined>();
 
     // Every new query or close bumps the token; a reply only lands while its token is current.
@@ -71,6 +73,12 @@ export const useUnitSearch = ({
         searchToken.current += 1;
         const token = searchToken.current;
         loadingMore.current = false;
+        // The old query's pages must go now: "more" would otherwise ask the new query for a later page.
+        setResults([]);
+        setPage(1);
+        setHasMore(false);
+        setTotal(undefined);
+        setSearching(true);
         const controller = new AbortController();
         searchAbort.current = controller;
         const timer = window.setTimeout(() => {
@@ -82,12 +90,14 @@ export const useUnitSearch = ({
                     setPage(first.page ?? 1);
                     setHasMore(first.hasMore);
                     setTotal(first.total);
+                    setSearching(false);
                 })
                 .catch(() => {
                     if (token !== searchToken.current) return;
                     setResults([]);
                     setHasMore(false);
                     setTotal(undefined);
+                    setSearching(false);
                 });
         }, SEARCH_DEBOUNCE_MS);
         return () => {
@@ -98,7 +108,8 @@ export const useUnitSearch = ({
     }, [open, trimmed, searchUnits]);
 
     const loadMore = () => {
-        if (!searchUnits || loadingMore.current) return;
+        // Nothing to add while the first page of a new query is pending, or when the server said "no more".
+        if (!searchUnits || loadingMore.current || searching || !hasMore) return;
         loadingMore.current = true;
         const token = searchToken.current;
         const nextPage = page + 1;
@@ -166,6 +177,7 @@ export const useUnitSearch = ({
         results,
         hasMore,
         total,
+        searching,
         loadMore,
         typedId,
         typedUnit: resolvedFor(typedId),
