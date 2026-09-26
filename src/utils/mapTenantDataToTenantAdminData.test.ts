@@ -106,4 +106,39 @@ describe('mapTenantDataToTenantAdminData', () => {
 
         expect(mapped.content.privacyConsent).toEqual({});
     });
+    // #1066: GET /service/tenant/{id} resolves `impressum`/`privacy` to ONE language (the request's
+    // language context). Seeding the legal editor from that string filed it under `de` and made
+    // every other stored language vanish from the card and from the next publish.
+    it('prefers the stored legal language maps over the resolved single-language strings', () => {
+        const mapped = mapTenantDataToTenantAdminData({
+            ...baseTenantData(),
+            content: {
+                ...baseTenantData().content,
+                impressum: '<p>Impressum EN</p>',
+                impressumLanguages: { de: '<p>Impressum DE</p>', en: '<p>Impressum EN</p>' },
+                privacy: '<p>Privacy DE</p>',
+                privacyLanguages: {
+                    de: '<p>Privacy DE</p>',
+                    en: '<p>Privacy EN</p>',
+                    en__meta: '{"mt":true,"src":"de"}',
+                },
+            } as unknown as TenantData['content'],
+        });
+
+        expect(mapped.content.impressum).toEqual({ de: '<p>Impressum DE</p>', en: '<p>Impressum EN</p>' });
+        expect(mapped.content.privacy).toEqual({
+            de: '<p>Privacy DE</p>',
+            en: '<p>Privacy EN</p>',
+            en__meta: '{"mt":true,"src":"de"}',
+        });
+    });
+
+    it('falls back to the resolved string when no language map is served', () => {
+        const mapped = mapTenantDataToTenantAdminData({
+            ...baseTenantData(),
+            content: { ...baseTenantData().content, impressumLanguages: null } as unknown as TenantData['content'],
+        });
+
+        expect(mapped.content.impressum).toEqual({ de: 'Impressum text' });
+    });
 });

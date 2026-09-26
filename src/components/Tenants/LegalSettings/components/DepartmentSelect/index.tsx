@@ -61,6 +61,30 @@ export const DepartmentSelect = ({ departments, value, onChange, disabled = fals
     // How many will NOT receive a change to the agency-wide text. Shown on the
     // "Alle Fachbereiche" entry, where that number is the actual decision input.
     const withOwnText = departments.filter(({ hasOwnText }) => hasOwnText).length;
+    // One Fachbereich: the agency-wide text and that Fachbereich are the same choice (#1066, H4),
+    // so the container preselects it and the menu does not offer the redundant entry.
+    const allEntries =
+        departments.length > 1
+            ? [
+                  {
+                      key: ALL_DEPARTMENTS,
+                      label: (
+                          <span className={styles.entry}>
+                              <span>{allLabel}</span>
+                              {withOwnText > 0 && (
+                                  <span className={styles.excludedHint} data-testid="departments-with-own-text">
+                                      {t('agency.legal.department.notInheriting', {
+                                          count: withOwnText,
+                                          defaultValue: '{{count}} mit eigenem Text',
+                                      })}
+                                  </span>
+                              )}
+                          </span>
+                      ),
+                  },
+                  { type: 'divider' as const },
+              ]
+            : [];
 
     return (
         <SplitDropdown
@@ -83,26 +107,7 @@ export const DepartmentSelect = ({ departments, value, onChange, disabled = fals
                         type: 'group' as const,
                         label: t('agency.legal.department.menuHeader', 'Fachbereich auswählen'),
                         children: [
-                            {
-                                key: ALL_DEPARTMENTS,
-                                label: (
-                                    <span className={styles.entry}>
-                                        <span>{allLabel}</span>
-                                        {withOwnText > 0 && (
-                                            <span
-                                                className={styles.excludedHint}
-                                                data-testid="departments-with-own-text"
-                                            >
-                                                {t('agency.legal.department.notInheriting', {
-                                                    count: withOwnText,
-                                                    defaultValue: '{{count}} mit eigenem Text',
-                                                })}
-                                            </span>
-                                        )}
-                                    </span>
-                                ),
-                            },
-                            { type: 'divider' as const },
+                            ...allEntries,
                             ...departments.map(({ id, name, hasOwnText }) => ({
                                 key: String(id),
                                 label: (
