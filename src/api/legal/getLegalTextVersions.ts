@@ -13,10 +13,8 @@ export type LegalTextVersionsResult = { state: 'available'; versions: LegalTextV
  * rather than by a path segment per document. This module is deliberately the ONLY
  * place that knows the URLs.
  *
- * The Träger level is NOT covered by that contract — #256 states levels 1-2 live in
- * ORISO-TenantService and their history has yet to be built there (its known gap 2).
- * The tenant URL below therefore still anticipates a shape rather than matching one,
- * and until it exists the request 404s and the hook degrades to "no history".
+ * The Träger and platform levels are served by TenantService in the same shape
+ * (`/tenantadmin/{id}/legal-versions`, id 0 = platform; ORISO-Admin#270, #1070).
  */
 export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
     switch (scope.level) {
@@ -40,9 +38,9 @@ export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
  * admin answering "which policy was in force in March" must not be told "none"
  * because a 403 or a 500 was swallowed.
  *
- * TenantService has no tenant collection yet, so its 404 is unsupported rather than
- * "never published". Other owners' 404s remain failures: a routing/deployment error
- * must not be guessed to be an empty or unsupported history.
+ * A TenantService older than #1070 has no tenant collection, so its 404 is
+ * "unsupported" rather than "never published". Other owners' 404s remain failures:
+ * a routing/deployment error must not be guessed to be an empty or unsupported history.
  */
 export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTextVersionsResult> =>
     (

@@ -19,3 +19,8 @@
     padding: 0 24px;
     margin-bottom: 8px;
 }
+
+/* #1070: the left/right compare needs more than the single-editor reading width. */
+.card:has([data-legal-compare-open='true']) {
+    max-width: none;
+}

@@ -25,7 +25,8 @@ export const legalTextVersionsKey = (scope: LegalVersionScope) => [
 ];
 
 const hasUsableIds = (scope: LegalVersionScope): boolean => {
-    if (scope.level === 'tenant') return Number.isFinite(scope.tenantId) && scope.tenantId > 0;
+    // Tenant 0 is the platform's own history (#1070).
+    if (scope.level === 'tenant') return Number.isFinite(scope.tenantId) && scope.tenantId >= 0;
     if (scope.level === 'agency') return Number.isFinite(scope.agencyId) && scope.agencyId > 0;
     return Number.isFinite(scope.agencyId) && scope.agencyId > 0 && Number.isFinite(scope.topicId) && scope.topicId > 0;
 };

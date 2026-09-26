@@ -15,6 +15,7 @@ import { ConsultantPicker, ConsultantOption } from '../../../../ConsultantPicker
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { Modal } from '../../../../Modal';
 import { RadioButton } from '../../../../radioButton/RadioButton';
+import { formatLegalDateTime } from '../../utils/legalDateTime';
 import styles from './styles.module.scss';
 
 /**
@@ -94,12 +95,11 @@ export const SendLegalTemplateDialog = ({
         queryFn: () => loadRecipients(level),
     });
 
-    const savedAtLabel = useMemo(() => {
-        const date = new Date(draftSavedAt);
-        return Number.isNaN(date.getTime())
-            ? draftSavedAt
-            : new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-    }, [draftSavedAt, i18n.language]);
+    // Zoneless server times are UTC; admins read them in Berlin time.
+    const savedAtLabel = useMemo(
+        () => formatLegalDateTime(draftSavedAt, i18n.language?.split('-')[0] || 'de'),
+        [draftSavedAt, i18n.language],
+    );
 
     const noneSelected = audience === 'SELECTED' && selectedIds.length === 0;
     const selectedNumbers = selectedIds.map(Number);
@@ -137,6 +137,9 @@ export const SendLegalTemplateDialog = ({
             let messageKey = 'legal.template.send.error';
             if (code === 'CONFLICT') messageKey = 'legal.template.send.conflict';
             else if (code === 'NO_MATCH') messageKey = 'legal.template.send.missing';
+            else if (code === 'BAD_REQUEST' && level === 'agencies')
+                messageKey = 'legal.template.send.agencies.noAgencies';
+            else if (code === 'FORBIDDEN') messageKey = 'legal.template.send.forbidden';
             notification.error({ message: t(messageKey), duration: 8 });
         } finally {
             setSending(false);
@@ -150,7 +153,7 @@ export const SendLegalTemplateDialog = ({
             titleKey={`legal.template.send.${level}.title.${documentKey}`}
             description={t(`legal.template.send.${level}.description`, { savedAt: savedAtLabel })}
             icon={kind === 'IMPRINT' ? <ImprintIcon /> : <GdprIcon />}
-            okLabelKey="legal.template.send.confirm"
+            okLabelKey={level === 'agencies' ? 'legal.template.send.agencies.confirm' : 'legal.template.send.confirm'}
             cancelLabelKey="cancel"
             onConfirm={send}
             onClose={onClose}

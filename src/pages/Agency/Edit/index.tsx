@@ -1,5 +1,5 @@
 import { Alert, Button, Form, notification } from 'antd';
-import { useCallback, useState } from 'react';
+import { ReactElement, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -35,7 +35,9 @@ import { useTraegerDataProtectionOfficer } from '../../../hooks/useTraegerDataPr
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
-import { AgencyLegalTextContainer } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer';
+import { AgencyLegalTextWithTemplates } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer/AgencyLegalTextWithTemplates';
+import { LegalTemplateUnreadMarker } from '../../../components/Tenants/LegalSettings/components/LegalTemplateCompare/LegalTemplateUnreadMarker';
+import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSettings/hooks/useLegalProposalInbox';
 import pageStyles from '../../../components/Page/styles.module.scss';
 import styles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
@@ -106,6 +108,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
     const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
+    const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
+    let legalTabIcon: ReactElement | null = null;
+    if (legalDataMissing) legalTabIcon = <ErrorOutlinedIcon color="error" />;
+    else if (hasNewLegalTemplate) legalTabIcon = <LegalTemplateUnreadMarker />;
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
     const agencySettingsTabs = isAgencyInaccessible
@@ -121,7 +127,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                   titleKey: 'settings.subhead.legal',
                   to: `${routePathNames.agency}/${id}/legal-settings`,
                   iconName: 'legal',
-                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+                  icon: legalTabIcon,
               },
               isEditing && {
                   titleKey: 'settings.subhead.functionAccess',
@@ -571,7 +577,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
                         Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
                         with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
-                    <AgencyLegalTextContainer
+                    <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -579,7 +585,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.documentEditorItem}>
-                    <AgencyLegalTextContainer
+                    <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}

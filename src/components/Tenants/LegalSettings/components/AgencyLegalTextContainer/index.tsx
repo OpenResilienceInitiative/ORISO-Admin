@@ -21,6 +21,9 @@ import { AgencyData } from '../../../../../types/agency';
 import { isLegalDocumentPayload } from '../../../../../types/dpp';
 import { LegalTextKind } from '../../../../../types/legalVersion';
 import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
+import type { LegalProposalAdoptionMode } from '../../../../../api/tenant/legalProposals';
+import type { AgencyTemplateInbox } from '../../hooks/useLegalProposalInbox';
+import { LegalTemplateCompare } from '../LegalTemplateCompare';
 import { DepartmentDataProtectionCard, DepartmentPublicationStatus } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
@@ -32,12 +35,14 @@ import styles from './styles.module.scss';
 
 type LegalField = 'privacy' | 'imprint';
 
-interface AgencyLegalTextContainerProps {
+export interface AgencyLegalTextContainerProps {
     agencyData?: AgencyData;
     field: LegalField;
     /** Persists the agency-wide text (the "Alle Fachbereiche" entry). */
     onSaveAgencyWide: <T>(formData: T) => Promise<unknown>;
     saving?: boolean;
+    /** Templates this Beratungsstelle's Träger forwarded (#1070): shown beside the own draft. */
+    templateInbox?: AgencyTemplateInbox;
 }
 
 /** The agency-level content key differs from the department wording ("imprint" vs "impressum"). */
@@ -65,6 +70,7 @@ export const AgencyLegalTextContainer = ({
     field,
     onSaveAgencyWide,
     saving,
+    templateInbox,
 }: AgencyLegalTextContainerProps) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
@@ -72,7 +78,14 @@ export const AgencyLegalTextContainer = ({
     // right the Träger-level cards ask for, one rung down the ladder.
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const readOnlyReason = useLegalTextReadOnlyReason();
-    const [chosen, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    const [chosen, setChosen] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    // After adopting a template the agency-wide draft is what changed, so it is shown even where a
+    // single Fachbereich is otherwise preselected; any explicit choice lifts that again.
+    const [pinAgencyWide, setPinAgencyWide] = useState(false);
+    const setSelected = (value: number | typeof ALL_DEPARTMENTS) => {
+        setPinAgencyWide(false);
+        setChosen(value);
+    };
     const [draftSource, setDraftSource] = useState<'local' | 'server'>();
     const [draftActionPending, setDraftActionPending] = useState(false);
     const draftActionPendingRef = useRef(false);
@@ -110,7 +123,8 @@ export const AgencyLegalTextContainer = ({
     );
     // One Fachbereich (the Caritas case): it IS the choice, so it starts selected (#1066, H4).
     // Derived rather than stored, because the topics arrive with the agency after the first render.
-    const selected = chosen === ALL_DEPARTMENTS && departments.length === 1 ? departments[0].id : chosen;
+    const selected =
+        chosen === ALL_DEPARTMENTS && departments.length === 1 && !pinAgencyWide ? departments[0].id : chosen;
     const isDepartment = selected !== ALL_DEPARTMENTS;
     const topicId = isDepartment ? (selected as number) : undefined;
 
@@ -166,8 +180,12 @@ export const AgencyLegalTextContainer = ({
         savedAt: localDraftSavedAt,
         discardDraft: discardAgencyDraft,
     } = useLegalDraft(field, agencyDraftScope);
+    // An open template needs the agency-wide draft even while a Fachbereich is shown: adopting writes it.
     const agencyDraftEnabled =
-        canEditLegalText && !isDepartment && agencyData !== undefined && Number.isFinite(agencyId);
+        canEditLegalText &&
+        (!isDepartment || !!templateInbox?.current) &&
+        agencyData !== undefined &&
+        Number.isFinite(agencyId);
     const serverDraft = useAgencyLegalDraft(agencyId, VERSION_KIND[field], agencyDraftEnabled);
     const draftContextIdentity = `${agencyId}:${field}:${userData?.id ?? ''}`;
     // One object per agency × document × user session: an A→B→A switch restores the same string but
@@ -553,6 +571,95 @@ export const AgencyLegalTextContainer = ({
             conflict: serverDraft.hasConflict,
         });
 
+    // Replacing never loses the device-local draft: it is saved to the server first, so the archive
+    // the adoption writes holds it.
+    const onAdoptTemplate = async (mode: LegalProposalAdoptionMode) => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal || draftActionPendingRef.current) return;
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        try {
+            let draftRevision = serverBase.revision;
+            const localFirst = !!agencyDraft && (draftSource === 'local' || !serverBase.draft);
+            if (mode === 'ARCHIVE_AND_REPLACE' && localFirst && agencyDraft) {
+                const saved = await serverDraft.save({
+                    content: { ...agencyDraft.content },
+                    ...(field === 'privacy' ? { consentText: { ...(agencyDraft.consent ?? {}) } } : {}),
+                    ...(serverBase.revision ? { revision: serverBase.revision } : {}),
+                });
+                draftRevision = saved.revision;
+            }
+            const adopted = await templateInbox.adopt(
+                proposal,
+                mode,
+                mode === 'ARCHIVE_AND_REPLACE' ? draftRevision : undefined,
+            );
+            discardAgencyDraft();
+            setServerBaseState({ identity: draftContextIdentity, draft: adopted, revision: adopted.revision });
+            setDraftSource('server');
+            setActionPending(false);
+            setChosen(ALL_DEPARTMENTS);
+            setPinAgencyWide(true);
+            setAgencyEditorGeneration((current) => current + 1);
+            notification.success({ message: t('legal.proposal.adopted'), duration: 5 });
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            notification.error({
+                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'),
+                duration: 8,
+            });
+            // A draft appeared elsewhere meanwhile: re-read it, the next attempt then asks to replace it.
+            if (conflict && mode === 'CREATE_IF_EMPTY') {
+                await serverDraft.retry();
+                setServerBaseState({ identity: draftContextIdentity, draft: undefined, revision: undefined });
+            }
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
+    };
+
+    const onDismissTemplate = async () => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal) return;
+        try {
+            await templateInbox.dismiss(proposal);
+            notification.success({ message: t('legal.proposal.dismissed'), duration: 4 });
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            notification.error({
+                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'),
+                duration: 8,
+            });
+        }
+    };
+
+    const withTemplates = (node: React.ReactElement) =>
+        templateInbox ? (
+            <LegalTemplateCompare
+                proposal={templateInbox.current}
+                source="traeger"
+                documentType={field}
+                language={languages[0] ?? 'de'}
+                hasDraft={!!serverBase.draft || !!agencyDraft}
+                readOnly={!canEditLegalText}
+                readOnlyReason={canEditLegalText ? undefined : t(readOnlyReason.key)}
+                adoptBlockedReason={
+                    serverDraft.isError ||
+                    serverDraft.hasConflict ||
+                    // Unanswered "browser or server draft?": replacing now would drop one of them.
+                    (!!agencyDraft && !!serverBase.draft && draftSource === undefined)
+                        ? t('legal.proposal.adoptBlocked.draftChoice')
+                        : undefined
+                }
+                archives={canEditLegalText ? templateInbox.archives : undefined}
+                onAdopt={onAdoptTemplate}
+                onDismiss={onDismissTemplate}
+            >
+                {node}
+            </LegalTemplateCompare>
+        ) : (
+            node
+        );
+
     const card = (
         <DepartmentDataProtectionCard
             // Remount when the source changes, so the editor resets to it instead of keeping the
@@ -616,7 +723,7 @@ export const AgencyLegalTextContainer = ({
             }
         />
     );
-    if (isDepartment || !canEditLegalText) return card;
+    if (isDepartment || !canEditLegalText) return withTemplates(card);
     if (!agencyDraftEnabled || serverDraft.isLoading || isUserLoading) {
         return (
             <div className={styles.fallbackCard}>
@@ -676,7 +783,7 @@ export const AgencyLegalTextContainer = ({
                 pending={draftActionPending}
                 showInfo={false}
             />
-            {card}
+            {withTemplates(card)}
         </>
     );
 };

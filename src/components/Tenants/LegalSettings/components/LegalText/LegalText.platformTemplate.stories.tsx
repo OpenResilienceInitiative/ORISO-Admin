@@ -490,8 +490,7 @@ export const TraegerSeesNoTemplateAction: Story = {
 
 /* ------------------------------------------------------------------------------------ */
 /* Träger → Beratungsstellen: the same dialog one rung down (ORISO-AgencyService#303).   */
-/* The server side does not exist yet; `offerTemplatesToAgencies` is off in the app and  */
-/* on here, so the UX can be agreed before the endpoint is built.                        */
+/* In the app `TraegerLegalText` switches `offerTemplatesToAgencies` on (#1070).          */
 /* ------------------------------------------------------------------------------------ */
 
 const TRAEGER_ID = 7;
@@ -511,6 +510,7 @@ const traegerHandlers = [
     http.get('*/service/agencyadmin/agencies', () =>
         HttpResponse.json({ _embedded: agencies.map((agency) => ({ _embedded: agency })), total: agencies.length }),
     ),
+    http.get('*/service/agencyadmin/legal-proposal-distributions', () => HttpResponse.json([])),
     http.post('*/service/agencyadmin/legal-proposal-distributions', async ({ request }) => {
         const body = (await request.json()) as DistributeAgencyLegalProposal;
         sentToAgencies.push(body);
@@ -518,6 +518,13 @@ const traegerHandlers = [
         return HttpResponse.json({ requestKey: body.requestKey, recipientAgencyIds }, { status: 201 });
     }),
 ];
+
+const FORWARD_ACTION = { name: /An Beratungsstellen weiterreichen|Forward to counselling centres/ };
+
+const enabledForwardButton = async (canvas: ReturnType<typeof within>) => {
+    await waitFor(() => expect(canvas.getByRole('button', FORWARD_ACTION)).toBeEnabled(), LOAD);
+    return canvas.getByRole('button', FORWARD_ACTION);
+};
 
 const asTraeger = (Story: () => ReactElement) => {
     setStoryAuth([UserRole.TenantAdmin], TRAEGER_ID);
@@ -533,18 +540,18 @@ export const TraegerSendsTemplateToSelectedAgencies: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await enabledTemplateButton(canvas));
+        await userEvent.click(await enabledForwardButton(canvas));
         const dialog = await page.findByRole('dialog');
         await expect(
             within(dialog).getByText(
-                /Impressum-Vorlage an Beratungsstellen senden|Send imprint template to counselling centres/,
+                /Impressum an Beratungsstellen weiterreichen|Forward imprint to counselling centres/,
             ),
         ).toBeInTheDocument();
         await userEvent.click(
             within(dialog).getByLabelText(/Ausgewählte Beratungsstellen|Selected counselling centres/),
         );
         await userEvent.click(await within(dialog).findByText('Beratungsstelle Nordlicht Süd'));
-        const send = within(dialog).getByRole('button', { name: /^(Senden|Send)$/ });
+        const send = within(dialog).getByRole('button', { name: /^(Weiterreichen|Forward)$/ });
         await waitFor(() => expect(send).toBeEnabled());
         await userEvent.click(send);
         await waitFor(() => expect(sentToAgencies).toHaveLength(1));
@@ -555,7 +562,7 @@ export const TraegerSendsTemplateToSelectedAgencies: Story = {
             agencyIds: [102],
         });
         await expect(
-            await page.findByText(/an 1 Beratungsstelle gesendet|sent to 1 counselling centre/),
+            await page.findByText(/an 1 Beratungsstelle weitergereicht|forwarded to 1 counselling centre/),
         ).toBeInTheDocument();
     },
 };
@@ -568,13 +575,13 @@ export const TraegerSendsTemplateToAllAgencies: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await enabledTemplateButton(canvas));
+        await userEvent.click(await enabledForwardButton(canvas));
         const dialog = await page.findByRole('dialog');
-        await userEvent.click(within(dialog).getByRole('button', { name: /^(Senden|Send)$/ }));
+        await userEvent.click(within(dialog).getByRole('button', { name: /^(Weiterreichen|Forward)$/ }));
         await waitFor(() => expect(sentToAgencies).toHaveLength(1));
         await expect(sentToAgencies[0]).toMatchObject({ audience: 'ALL', sourceRevision: '41:3' });
         await expect(
-            await page.findByText(/an 2 Beratungsstellen gesendet|sent to 2 counselling centres/),
+            await page.findByText(/an 2 Beratungsstellen weitergereicht|forwarded to 2 counselling centres/),
         ).toBeInTheDocument();
     },
 };
