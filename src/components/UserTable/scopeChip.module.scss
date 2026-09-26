@@ -1,0 +1,77 @@
+/* Outlined grey chip, the same for Träger and BST; card = M3 menu surface. */
+.chip {
+    display: inline-flex;
+    max-width: 100%;
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 4px 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    margin: 0;
+    background: transparent;
+    border-radius: 8px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: inherit;
+    gap: 1px;
+    text-align: left;
+}
+
+button.chip {
+    cursor: pointer;
+}
+
+button.chip:hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.chip:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.kind {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 12px/16px var(--m3-body-font-family);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+.place {
+    max-width: 100%;
+    overflow: hidden;
+    font: 500 14px/20px var(--m3-body-font-family);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card {
+    position: fixed;
+    z-index: 1300;
+    display: flex;
+    width: 280px;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 14px 16px;
+    background: var(--m3-surface-container-lowest, #fcf9f9);
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgb(0 0 0 / 14%), 0 1px 3px rgb(0 0 0 / 20%);
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: 6px;
+}
+
+.cardId {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    font-variant-numeric: tabular-nums;
+}
+
+.cardName {
+    font: 600 15px/21px var(--m3-body-font-family);
+    overflow-wrap: anywhere;
+}
+
+.cardAddress {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 13px/19px var(--m3-body-font-family);
+}
