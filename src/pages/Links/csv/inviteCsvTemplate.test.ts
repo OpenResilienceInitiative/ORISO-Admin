@@ -30,3 +30,37 @@ describe('buildInviteCsvTemplate', () => {
         expect(csv).toContain('E-Mail;Vorname;Name;Träger-ID');
     });
 });
+
+describe('buildInviteCsvTemplate — extended columns', () => {
+    const FULL = {
+        email: 'E-Mail',
+        firstName: 'Vorname',
+        lastName: 'Name',
+        id: 'Beratungsstellen-ID',
+        target: 'Ziel',
+        role: 'Rolle',
+        template: 'Vorlage',
+        topicPermission: 'Themen & Fachbereiche',
+    };
+
+    it('the agency example imports cleanly with every new column', () => {
+        const csv = buildInviteCsvTemplate(FULL, { role: 'Berater:in', idKind: 'agency' });
+        expect(csv).toContain('E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche');
+        const result = parseInviteCsv(csv);
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.map((row) => [row.target, row.role, row.topicPermission])).toEqual([
+            ['EXISTING', 'COUNSELLOR', 'NONE'],
+            ['NEW', 'COUNSELLOR', 'SELECT_EXISTING'],
+            ['EXISTING', 'COUNSELLOR', 'CREATE'],
+        ]);
+    });
+
+    it('the Träger example creates new Träger only and leaves the topic column empty', () => {
+        const result = parseInviteCsv(
+            buildInviteCsvTemplate({ ...FULL, id: 'Träger-ID' }, { role: 'Träger-Admin', idKind: 'tenant' }),
+        );
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.every((row) => row.target === 'NEW' && row.role === 'TENANT_ADMIN')).toBe(true);
+        expect(result.rows.every((row) => row.topicPermission === undefined)).toBe(true);
+    });
+});

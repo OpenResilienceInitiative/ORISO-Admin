@@ -178,8 +178,8 @@ const normalizeAllocatedId = (
     id: number | undefined,
 ): number | undefined => {
     if (mode === 'AUTO') return undefined;
-    if (mode === 'MANUAL' && id == null) {
-        throw new TypeError(`${field} is required when allocation mode is MANUAL`);
+    if ((mode === 'MANUAL' || mode === 'EXISTING') && id == null) {
+        throw new TypeError(`${field} is required when allocation mode is ${mode}`);
     }
     return id;
 };

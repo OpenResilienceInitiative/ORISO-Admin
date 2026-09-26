@@ -28,7 +28,8 @@ export { agencyIdNextFreeEndpoint, idAllocationValidationEndpoint, tenantIdNextF
 /** FREE = assignable · RESERVED = held by an open invite · ASSIGNED = consumed by a real entity. */
 export type IdAllocationState = 'FREE' | 'RESERVED' | 'ASSIGNED';
 
-export type AllocationMode = 'AUTO' | 'MANUAL';
+/** `EXISTING` reserves nothing; the tenant id space still answers it with 400. */
+export type AllocationMode = 'AUTO' | 'MANUAL' | 'EXISTING';
 
 export type NextFreeIdDirection = 'up' | 'down';
 

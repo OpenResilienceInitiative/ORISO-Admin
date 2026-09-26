@@ -17,7 +17,9 @@ import {
 } from '../../api/accountInvites/accountInvites';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
+import type { AllocationMode } from '../../api/idAllocation/idAllocation';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
+import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import { Modal } from '../../components/Modal';
 import {
     extractApiErrorMessageOrNull,
@@ -25,6 +27,7 @@ import {
     type SmtpSendFailureDetail,
 } from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, InviteComposerValues, InviteSendMode, InviteSubmitOutcome } from './InviteComposer';
@@ -38,11 +41,13 @@ interface AccountInvitesTabProps {
     includeAgencyField?: boolean;
 }
 
-/**
- * Bulk actions (#316) only make sense while an invite can still change:
- * DRAFT can be sent, EMAIL_SENT can be resent, and both can be revoked.
- * Terminal states (ACCEPTED/EXPIRED/REVOKED/SUPERSEDED) are not selectable.
- */
+/** Agency allocation mode of one CSV row: an existing agency, a pinned new number, or the next free one. */
+const csvAgencyAllocationMode = (row: InviteCsvCreateRow): AllocationMode => {
+    if (row.target === 'EXISTING') return 'EXISTING';
+    return row.id != null ? 'MANUAL' : 'AUTO';
+};
+
+// Only a DRAFT or a sent invite can still be sent or revoked.
 const isBulkSelectable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
@@ -72,6 +77,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [searchQuery, setSearchQuery] = useState('');
 
     const currentTenantId = parseUserAuthInfo().tenantId || undefined;
+    const { isSuperAdmin } = useUserRoles();
 
     // Client-side taken-id knowledge (existing tenants + still-active
     // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
@@ -316,6 +322,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [smtpFailureMessageFor],
     );
 
+    const searchAgenciesForPicker = useCallback(
+        async (query: string, { tenantId }: { tenantId?: number }) =>
+            (await searchInviteAgencies(query, tenantId)).map(({ id, name, topics }) => ({ id, name, topics })),
+        [],
+    );
+
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -331,7 +343,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 // exist yet, so there is no topic to route to and provisioning
                 // assigns routing when the agency is created on accept.
                 let departmentId: number | undefined;
-                if (targetRole === 'COUNSELLOR' && values.agencyId != null) {
+                // The backend checks an EXISTING agency itself and adopts its only topic.
+                if (
+                    targetRole === 'COUNSELLOR' &&
+                    values.agencyId != null &&
+                    values.agencyIdAllocationMode !== 'EXISTING'
+                ) {
                     let agencyResponse = null;
                     try {
                         agencyResponse = await getAgencyDataById(String(values.agencyId));
@@ -466,7 +483,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 lastName: row.lastName,
                 recipientEmail: row.recipientEmail,
                 targetRole,
-                templateId: csvImport.sendMode === 'direct' ? selectedTemplateId ?? activeTemplates[0]?.id : undefined,
+                // A row may name its own template; empty means the bar's.
+                templateId:
+                    csvImport.sendMode === 'direct'
+                        ? row.templateId ?? selectedTemplateId ?? activeTemplates[0]?.id
+                        : undefined,
+                // `row.role` and `row.topicPermission` are validated but not sent: the backend lacks them.
                 // The file's id column addresses the id space of this tab. On the Träger
                 // tab it IS the tenant id (batch-assigned in the preview). Every other tab
                 // invites into the admin's own tenant, and its id column addresses the
@@ -479,7 +501,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     : {
                           tenantId: currentTenantId,
                           agencyId: row.id,
-                          agencyIdAllocationMode: row.id != null ? 'MANUAL' : 'AUTO',
+                          // "bestehend" invites into the agency with that id: checked, not reserved.
+                          agencyIdAllocationMode: csvAgencyAllocationMode(row),
                       }),
             });
         },
@@ -697,7 +720,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     return (
         <div ref={composerRef}>
             <InviteComposer
+                // The Träger tab is platform-admin only; elsewhere a tenant admin is pinned to their Träger.
+                defaultRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                // No Träger search: inviting into an existing Träger is not supported yet.
+                searchAgencies={includeAgencyField ? searchAgenciesForPicker : undefined}
                 includeAgencyField={includeAgencyField}
+                ownTenant={currentTenantId != null ? { id: currentTenantId } : undefined}
+                viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
                 initialTenantId={isTenantInvite ? undefined : currentTenantId}
                 persistKey={targetRole}
                 requireNames={targetRole === 'COUNSELLOR'}
@@ -761,6 +790,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     createInvite={createCsvInvite}
                     forbiddenFallback={forbiddenFallbackFor(targetRole)}
                     idKind={isTenantInvite ? 'tenant' : 'agency'}
+                    tabRole={targetRole === 'TENANT_ADMIN' ? 'TENANT_ADMIN' : 'COUNSELLOR'}
+                    templates={activeTemplates}
+                    viewerScope={isTenantInvite || isSuperAdmin ? 'platform' : 'tenant'}
                     parseResult={csvImport.result}
                     takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
                     onClose={() => setCsvImport(null)}

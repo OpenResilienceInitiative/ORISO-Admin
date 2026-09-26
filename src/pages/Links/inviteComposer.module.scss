@@ -130,3 +130,47 @@
     width: 18px;
     height: 18px;
 }
+
+/* A disabled control swallows hover and focus, so the tooltip hangs off a wrapper span. */
+.placeholderSlot {
+    display: inline-flex;
+    flex: 0 0 auto;
+    border-radius: 4px;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.roleField {
+    width: 176px;
+}
+
+/* "Themen & Fachbereiche": wide enough for the longest option title. */
+.topicsField {
+    width: 280px;
+}
+
+/* Option with a one-line explanation below its title. */
+.optionWithHint {
+    /* Inline, so the select's selected-check (a ::before on the option) stays beside the title. */
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: top;
+    white-space: normal;
+}
+
+.optionTitle {
+    font-weight: 500;
+}
+
+.optionHint {
+    /* Inherits the option colour (white on the selected pill), a step quieter. */
+    color: inherit;
+    font-weight: 400;
+    opacity: 0.8;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}

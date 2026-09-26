@@ -268,7 +268,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(await screen.findByText('2 Einladungen gesendet')).toBeInTheDocument();
         await waitFor(() => expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument());
         // Back in single-create mode once nothing is selected.
-        expect(await screen.findByRole('button', { name: 'Direkt Versenden' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Anlegen & einladen' })).toBeInTheDocument();
     });
     // A3 / B3 / B4: the counter is the ONLY send affordance in multi-select, so
     // a dead one has to look dead. Tonal is reserved for "this can fire now".

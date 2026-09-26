@@ -181,7 +181,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -204,8 +204,8 @@ describe('TenantInvitesTab Träger-ID field', () => {
 
         renderTenantTab();
 
-        const field = await screen.findByLabelText('Träger-ID');
-        await waitFor(() => expect(field).toHaveValue('Auto'));
+        const field = await screen.findByRole('combobox', { name: 'Träger' });
+        await waitFor(() => expect(field).toHaveValue('Neu'));
         expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
     });
 
@@ -220,7 +220,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
         // Single active template is auto-selected by the tab; only e-mail is required on top.
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -236,7 +236,7 @@ describe('TenantInvitesTab Träger-ID field', () => {
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         render(<CounsellorInvitesTab />);
 
-        const field = await screen.findByLabelText('Träger-ID');
+        const field = await screen.findByRole('combobox', { name: 'Träger' });
         await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
         expect(field).toHaveValue('');
         expect(mocks.searchTenantData).not.toHaveBeenCalled();
@@ -264,7 +264,7 @@ describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
         await renderTenantTab();
         const user = userEvent.setup();
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
@@ -330,7 +330,7 @@ describe('TenantInvitesTab SMTP delivery failures (UserService#1160)', () => {
         renderTenantTab();
         const user = userEvent.setup();
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalled());
@@ -432,7 +432,7 @@ describe('overlapping invite loads', () => {
     /** Fill the composer and send, which triggers the second (newer) load. */
     const sendOneInvite = async (user: ReturnType<typeof userEvent.setup>) => {
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
     };
@@ -530,8 +530,8 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
-        await user.type(screen.getByLabelText('Beratungsstellen-ID'), '275');
-        const sendButton = screen.getByRole('button', { name: 'Direkt Versenden' });
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), '275');
+        const sendButton = screen.getByRole('button', { name: 'Anlegen & einladen' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
         return user;
@@ -580,8 +580,9 @@ describe('CounsellorInvitesTab department routing (#384)', () => {
         expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
         // Nothing the admin typed is lost — only the address needs correcting.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('lisa.simpson@example.org');
-        expect(screen.getByLabelText('Vorname')).toHaveValue('Lisa');
-        await waitFor(() => expect(screen.getByRole('button', { name: 'Direkt Versenden' })).toBeDisabled());
+        // The valid name field rests collapsed; the pill reads its value out.
+        expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeDisabled());
     });
 
     it('refuses with a visible error when the agency has no topic', async () => {
