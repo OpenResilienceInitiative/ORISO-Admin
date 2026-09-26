@@ -93,7 +93,8 @@ export const PlaceholderMenu: Story = {
         await expect(canvas.queryByTestId('m3-editor-token-row')).toBeNull();
         await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
         const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
-        await expect(within(menu).getByText('Datenschutzbeauftragte:r')).toBeVisible();
+        // The MUI menu grows in; wait for the end of the transition before asserting visibility.
+        await waitFor(() => expect(within(menu).getByText('Datenschutzbeauftragte:r')).toBeVisible());
     },
 };
 
@@ -108,7 +109,9 @@ export const PlaceholderMenuPlatform: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
         const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
-        await expect(within(menu).getByText(/zuständig für die Plattform, nicht für Beratungsstellen/)).toBeVisible();
+        await waitFor(() =>
+            expect(within(menu).getByText(/zuständig für die Plattform, nicht für Beratungsstellen/)).toBeVisible(),
+        );
     },
 };
 
