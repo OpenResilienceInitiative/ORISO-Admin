@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     tenantData: undefined as any,
     appSettings: {} as any,
+    sendTenantSmtpTestEmail: vi.fn(),
 }));
 
 const t = (key: string) => key;
@@ -24,6 +25,9 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
 }));
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
     useTenantAdminDataMutation: () => ({ mutate: mocks.mutate }),
+}));
+vi.mock('../../../../api/tenant/sendTenantSmtpTestEmail', () => ({
+    sendTenantSmtpTestEmail: mocks.sendTenantSmtpTestEmail,
 }));
 
 // eslint-disable-next-line import/first
@@ -43,6 +47,7 @@ const passwordInput = () => document.querySelector('input[type="password"]') as 
 describe('SmtpSettings (write-only password, #730)', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.sendTenantSmtpTestEmail.mockReset().mockResolvedValue({ status: 204 });
         mocks.appSettings = {
             globalSmtpHost: 'global.example.org',
             globalSmtpUsername: 'global-user',
@@ -76,6 +81,20 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.passwordStored')).toBeInTheDocument();
+    });
+
+    it('tests only the saved own server without sending a recipient or SMTP secret from the form', async () => {
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' }));
+        await waitFor(() => expect(mocks.sendTenantSmtpTestEmail).toHaveBeenCalledWith('1'));
+        expect(mocks.sendTenantSmtpTestEmail.mock.calls[0]).toHaveLength(1);
+    });
+
+    it('does not offer a test for platform mode or an unsaved own server', () => {
+        mocks.tenantData.settings.smtpMode = 'PLATFORM';
+        renderCard();
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
+        expect(mocks.sendTenantSmtpTestEmail).not.toHaveBeenCalled();
     });
 
     it('shows the not-set indicator when no password is stored', () => {
@@ -201,7 +220,7 @@ describe('SmtpSettings (tenant mode is independent of platform SMTP)', () => {
         expect(screen.getByText('tenants.appSettings.smtp.host.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.from.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.passwordNotSet')).toBeInTheDocument();
-        expect(document.body.innerHTML).not.toContain('smtp.test');
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
         expect(inputByName('recipientEmail')).toBeNull();
     });
 });

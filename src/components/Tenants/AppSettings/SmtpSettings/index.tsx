@@ -1,10 +1,12 @@
-import { Alert, Form, Modal } from 'antd';
+import { Alert, Button, Form, message, Modal } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { CardDeck } from '../../../CardDeck';
+import { Card } from '../../../Card';
 import { CardEditable } from '../../../CardEditable';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../../mui/MuiFormField';
 import { MuiSwitchField } from '../../../mui/MuiSwitchField/index';
@@ -15,6 +17,7 @@ import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData, TENANT_QUERY_KEY } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { TENANT_ADMIN_DATA_KEY } from '../../../../hooks/useTenantAdminData.hook';
+import { sendTenantSmtpTestEmail } from '../../../../api/tenant/sendTenantSmtpTestEmail';
 import styles from './styles.module.scss';
 
 const DEFAULT_SMTP_SETTINGS = {
@@ -46,6 +49,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
+    const [testSending, setTestSending] = useState(false);
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
@@ -83,6 +87,32 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         // that still return the password value itself without ever displaying it.
         return Boolean(tenantSmtpSettings.passwordSet ?? !isBlank(tenantSmtpSettings.password));
     }, [data]);
+    const canTestStoredOwnServer =
+        data?.settings?.smtpMode === 'OWN' &&
+        tenantSmtpPasswordSet &&
+        !isBlank(data?.settings?.smtp?.host) &&
+        !isBlank(data?.settings?.smtp?.from) &&
+        !isBlank(data?.settings?.smtp?.username) &&
+        Number(data?.settings?.smtp?.port) >= 1;
+    const sendTest = async () => {
+        setTestSending(true);
+        try {
+            await sendTenantSmtpTestEmail(tenantId);
+            message.success(t('tenants.appSettings.smtp.test.success'));
+        } catch (error) {
+            const status = error instanceof Response ? error.status : 0;
+            const keys: Record<number, string> = {
+                403: 'tenants.appSettings.smtp.test.errorVerifiedEmail',
+                422: 'tenants.appSettings.smtp.test.errorConfiguration',
+                429: 'tenants.appSettings.smtp.test.errorCooldown',
+                502: 'tenants.appSettings.smtp.test.errorDelivery',
+            };
+            const key = keys[status] ?? 'tenants.appSettings.smtp.test.error';
+            message.error(t(key));
+        } finally {
+            setTestSending(false);
+        }
+    };
     const initialValues = useMemo(() => {
         const tenantSettings = data?.settings ?? {};
         const tenantSmtpSettings = tenantSettings.smtp ?? {};
@@ -312,6 +342,22 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             />
                         </div>
                     </CardEditable>
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.smtpCardSlot}>
+                    <Card
+                        className={styles.smtpCard}
+                        variant="dialog"
+                        headerIcon={<SendOutlinedIcon />}
+                        titleKey="tenants.appSettings.smtp.test.title"
+                        subTitleKey="tenants.appSettings.smtp.test.description"
+                    >
+                        {!canTestStoredOwnServer && (
+                            <Alert type="info" message={t('tenants.appSettings.smtp.test.saveOwnServerFirst')} />
+                        )}
+                        <Button loading={testSending} disabled={!canTestStoredOwnServer} onClick={sendTest}>
+                            {t('tenants.appSettings.smtp.test.button')}
+                        </Button>
+                    </Card>
                 </CardDeck.Item>
             </CardDeck>
         </ThemeProvider>
