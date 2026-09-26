@@ -1,0 +1,51 @@
+/* Tonal chip (owner call: chips are tonal, no traffic lights). The icon only
+   repeats the word, which carries the meaning. */
+
+.badge {
+    display: inline-flex;
+    height: 28px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 12px 0 8px;
+    border-radius: 14px;
+    font: 500 13px/16px var(--m3-body-font-family);
+    gap: 6px;
+    letter-spacing: 0.25px;
+    white-space: nowrap;
+}
+
+.active {
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
+}
+
+.pending {
+    background: var(--m3-tertiary-container);
+    color: var(--m3-on-tertiary-container);
+}
+
+.ended {
+    background: var(--m3-secondary-container);
+    color: var(--m3-on-secondary-container);
+}
+
+.icon {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0;
+}
+
+.link {
+    padding-right: 10px;
+    text-decoration: none;
+}
+
+.link:hover {
+    background: color-mix(in srgb, var(--m3-on-tertiary-container) 8%, var(--m3-tertiary-container));
+    color: var(--m3-on-tertiary-container);
+}
+
+.link:focus-visible {
+    outline: 2px solid var(--m3-primary);
+    outline-offset: 2px;
+}
