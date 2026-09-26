@@ -25,6 +25,7 @@ import { useTenantsData } from '../../hooks/useTenantsData';
 import { convertToOptions } from '../../utils/convertToOptions';
 import { MuiSwitch } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
+import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
 
@@ -123,6 +124,22 @@ export const EmailTemplatesDialog = ({
         [visibleKindsKey],
     );
     const canEdit = canEditSharedTemplates({ isSuperAdmin, hasRole });
+    const sharedTemplateLockReason = t(
+        'links.templates.platformAdminOnly',
+        'Nur Plattform-Admins können geteilte Vorlagen ändern',
+    );
+    const noPermissionLockReason = t(
+        'links.templates.noPermission',
+        'Sie haben keine Berechtigung, diese Vorlage zu ändern',
+    );
+    // `editable: false` alone does not say why; only an unowned row is the platform's shared one.
+    const lockReasonFor = useCallback(
+        (template: InviteEmailTemplateDTO) =>
+            template.tenantId == null && !isSuperAdmin ? sharedTemplateLockReason : noPermissionLockReason,
+        [isSuperAdmin, noPermissionLockReason, sharedTemplateLockReason],
+    );
+    // The server answers per row; the role rule covers a server without `editable`.
+    const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
     const {
@@ -448,10 +465,19 @@ export const EmailTemplatesDialog = ({
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
                     <div className={listingTableStyles.actionGroup}>
-                        {canEdit && (
+                        {mayEditTemplate(template) ? (
                             <Button size="small" onClick={() => openEditForm(template)}>
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
+                        ) : (
+                            <M3Tooltip text={lockReasonFor(template)}>
+                                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                                <span tabIndex={0}>
+                                    <Button disabled size="small">
+                                        {t('links.templates.edit', 'Edit')}
+                                    </Button>
+                                </span>
+                            </M3Tooltip>
                         )}
                         {/* The backend exposes no DELETE for invite-email-templates yet
                             (AccountInviteController: POST/PUT/GET only), so per #314 the
@@ -468,7 +494,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [canEdit, isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
+        [isSelectable, kindLabel, lockReasonFor, mayEditTemplate, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
@@ -657,7 +683,11 @@ export const EmailTemplatesDialog = ({
                                 // Picking a template opens it for editing, and save writes it back.
                                 // Without the right to edit shared templates, the pick starts a new
                                 // template from it instead, as "Neu aus …" does.
-                                guardDraft(() => (canEdit ? openEditForm(template) : openCreateFromTemplate(template)));
+                                guardDraft(() =>
+                                    mayEditTemplate(template)
+                                        ? openEditForm(template)
+                                        : openCreateFromTemplate(template),
+                                );
                             }
                         }}
                     />
@@ -712,7 +742,7 @@ export const EmailTemplatesDialog = ({
                         : undefined,
                     // Manager-only mode: without picking, a row click is free
                     // for the edit shortcut — for whoever may edit at all.
-                    onDoubleClick: onSelect || !canEdit ? undefined : () => openEditForm(template),
+                    onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
                 })}
             />
         </Modal>

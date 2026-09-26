@@ -674,6 +674,8 @@
     "links.templates.new": "New template",
     "links.templates.newTitle": "New template",
     "links.templates.editTitle": "Edit template",
+    "links.templates.platformAdminOnly": "Only platform admins can change shared templates",
+    "links.templates.noPermission": "You do not have permission to change this template",
     "links.templates.edit": "Edit",
     "links.templates.delete": "Delete",
     "links.templates.pickHint": "Click a template to use it for sending — or create a new one.",

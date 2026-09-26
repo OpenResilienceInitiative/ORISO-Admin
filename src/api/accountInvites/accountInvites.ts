@@ -99,6 +99,10 @@ export interface ListAccountInvitesParams {
 
 export interface InviteEmailTemplateDTO {
     id: number;
+    /** Owning Träger; `null` = a platform template every Träger may use. */
+    tenantId?: number | null;
+    /** The server's per-row edit right; absent on an older server (role rule applies). */
+    editable?: boolean;
     kind: InviteEmailTemplateKind;
     name: string;
     language: string | null;

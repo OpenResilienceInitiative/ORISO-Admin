@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { http, HttpResponse, delay } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import { UserRole } from '../../enums/UserRole';
+import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -127,6 +131,13 @@ const meta = {
         templateKind: 'TENANT_INVITE',
         onClose: () => {},
     },
+    decorators: [
+        // `setStoryAuth` writes a shared store, so each story sets its own role.
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
+            return <Story />;
+        },
+    ],
 } satisfies Meta<typeof DialogHarness>;
 
 export default meta;
@@ -183,5 +194,56 @@ export const Loading: Story = {
 export const Error: Story = {
     parameters: {
         msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
+    },
+};
+
+/** A Träger admin may create templates and edit their own; the platform's stays disabled. */
+export const TraegerAdminOwnAndPlatformTemplates: Story = {
+    args: { templateKind: 'COUNSELLOR_INVITE' },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, () =>
+                    HttpResponse.json([
+                        {
+                            ...TEMPLATES[3],
+                            id: 31,
+                            name: 'Unsere eigene Berater-Einladung',
+                            tenantId: 1,
+                            editable: true,
+                        },
+                        {
+                            ...TEMPLATES[3],
+                            id: 32,
+                            name: 'Berater-Willkommen (Plattform)',
+                            tenantId: null,
+                            editable: false,
+                        },
+                    ]),
+                ),
+                createdTemplate,
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const body = within(canvasElement.ownerDocument.body);
+        // By name: the list sorts by kind and date.
+        await body.findByText('Unsere eigene Berater-Einladung');
+        // No `new Error()`: this file's `Error` story shadows the global.
+        const editButtonInRowOf = (name: string) =>
+            within(body.getByText(name).closest('tr') as HTMLElement).getByRole('button', {
+                name: /Bearbeiten|Edit/,
+            });
+        await expect(editButtonInRowOf('Unsere eigene Berater-Einladung')).toBeEnabled();
+        await expect(editButtonInRowOf('Berater-Willkommen (Plattform)')).toBeDisabled();
+        await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
     },
 };
