@@ -66,6 +66,10 @@ export const X_REASON = {
     CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE:
         'CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE',
     PASSWORD_NOT_VALID: 'PASSWORD_NOT_VALID',
+    // AgencyService 409: the global one-topic-per-agency switch rejected the save (UserService#1264).
+    ONE_TOPIC_PER_AGENCY: 'ONE_TOPIC_PER_AGENCY',
+    // AgencyService 503: the switch could not be read, so a topic-adding save is refused; retry helps.
+    SETTINGS_UNAVAILABLE: 'SETTINGS_UNAVAILABLE',
 };
 
 export const FETCH_SUCCESS = {

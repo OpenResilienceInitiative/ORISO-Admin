@@ -27,6 +27,7 @@ import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRe
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
+import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -80,6 +81,11 @@ export const GlobalLoginSettingsPage = () => {
                                     </p>
                                 </div>
                             </CardEditable>
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <OneTopicPerAgencySettingsCardContainer />
                         </ThemeProvider>
                     </section>
                     <section className={styles.translationCardSlot}>
