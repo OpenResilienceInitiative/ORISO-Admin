@@ -210,12 +210,12 @@ describe('InviteProgressBoard', () => {
 
         const row = within(screen.getByText('person7@example.org').closest('tr') as HTMLElement);
         // The signature is the awaited step.
-        expect(row.getByText(/^Wartet auf Vertragsunterschrift – aktueller Schritt/)).toBeInTheDocument();
+        expect(row.getByText(/^Wartet auf Vertragsbestätigung – aktueller Schritt/)).toBeInTheDocument();
         // The forwarded bead is done, dated, and announced as such.
         expect(row.getByText(/^Vertragsunterlagen weitergeleitet – abgeschlossen, 03\.08\.2026/)).toBeInTheDocument();
         // The track must NOT claim completion anywhere in this row.
         expect(row.queryByText(/^Fertig – abgeschlossen/)).not.toBeInTheDocument();
-        expect(row.queryByText(/^Vertrag unterschrieben – abgeschlossen/)).not.toBeInTheDocument();
+        expect(row.queryByText(/^Vertrag bestätigt – abgeschlossen/)).not.toBeInTheDocument();
     });
 
     it('completes the track only once the signature landed', () => {
@@ -235,7 +235,7 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person8@example.org').closest('tr') as HTMLElement);
-        expect(row.getByText(/^Vertrag unterschrieben – abgeschlossen, 04\.08\.2026/)).toBeInTheDocument();
+        expect(row.getByText(/^Vertrag bestätigt – abgeschlossen, 04\.08\.2026/)).toBeInTheDocument();
         expect(row.getByText(/^Fertig – abgeschlossen/)).toBeInTheDocument();
     });
 
@@ -845,7 +845,7 @@ describe('InviteProgressBoard — dated tracker', () => {
             expect.stringMatching(/^Registriert – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
             expect.stringMatching(/^Träger angelegt – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
             expect.stringMatching(/^2FA aktiv – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
-            expect.stringMatching(/^Wartet auf Vertragsunterschrift – aktueller Schritt$/),
+            expect.stringMatching(/^Wartet auf Vertragsbestätigung – aktueller Schritt$/),
             expect.stringMatching(/^Fertig – ausstehend$/),
         ]);
     });
