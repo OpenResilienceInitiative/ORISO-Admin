@@ -397,7 +397,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
         // Selection is lifted to the tab and the field folds into its pill…
-        expect(await screen.findByTitle('Zweite Vorlage')).toBeInTheDocument();
+        // (a collapsed field is a button whose title is its value; a leftover menu item is no button)
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('button', { name: /bearbeiten/ }).map((pill) => pill.getAttribute('title')),
+            ).toContain('Zweite Vorlage'),
+        );
 
         // …and the send call uses exactly that template.
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
