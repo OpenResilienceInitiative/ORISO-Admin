@@ -461,7 +461,7 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
 
         const badge = screen.getByTestId('queue-problem-badge');
-        expect(badge).toHaveTextContent('Kein Träger-Admin');
+        expect(badge).toHaveTextContent('Keine Träger-Admin');
         await userEvent.hover(badge);
         expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
     });
@@ -478,10 +478,10 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
     });
 
-    it('marks a waiting invite without unit admin with the "Kein BST-Admin" badge', () => {
+    it('marks a waiting invite without unit admin with the "Keine BST-Admin" badge', () => {
         render(<InviteProgressBoard {...counsellorProps([orphan])} />);
 
-        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Kein BST-Admin');
+        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Keine BST-Admin');
         expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
     });
 

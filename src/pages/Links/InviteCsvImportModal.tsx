@@ -379,7 +379,7 @@ export const InviteCsvImportModal = ({
         }
     };
 
-    // A created row follows its invite in the tab's list, so a later admin row clears "Kein BST-Admin".
+    // A created row follows its invite in the tab's list, so a later admin row clears "Keine BST-Admin".
     const liveQueueState = (row: ImportRow) => {
         const live = row.inviteId != null ? invites?.find((invite) => invite.id === row.inviteId) : undefined;
         if (!live) return { waiting: row.waiting, noUnitAdmin: row.noUnitAdmin };
@@ -462,7 +462,7 @@ export const InviteCsvImportModal = ({
                                 {noUnitAdmin
                                     ? t(
                                           'links.csvImport.status.waitingNoAdmin',
-                                          'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                                          'Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
                                       )
                                     : t(
                                           'links.csvImport.status.waitingHint',

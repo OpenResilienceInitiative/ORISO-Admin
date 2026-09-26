@@ -127,14 +127,14 @@ type Translate = (key: string, fallback: string) => string;
 const queueProblemCopy = (invite: Pick<AccountInviteDTO, 'waitingForUnit'>, t: Translate) =>
     invite.waitingForUnit === 'TENANT'
         ? {
-              badge: t('links.inviteProgress.queueProblemTenant', 'Kein Träger-Admin'),
+              badge: t('links.inviteProgress.queueProblemTenant', 'Keine Träger-Admin'),
               hint: t(
                   'links.inviteProgress.queueProblemTenantHint',
                   'Für diesen neuen Träger ist keine Träger-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine Träger-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
               ),
           }
         : {
-              badge: t('links.inviteProgress.queueProblem', 'Kein BST-Admin'),
+              badge: t('links.inviteProgress.queueProblem', 'Keine BST-Admin'),
               hint: t(
                   'links.inviteProgress.queueProblemHint',
                   'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
