@@ -34,6 +34,9 @@ export interface CounsellorTopicOption {
     name: string | null;
 }
 
+/** CREATE: "+" adds Träger topics. SELECT_EXISTING: agency topics only. NONE: assigned one, else exactly one. */
+export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
+
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
     recipientEmail: string;
@@ -57,6 +60,8 @@ export interface CounsellorOnboardingInviteDTO {
      * coverage is selectable.
      */
     availableTopics?: CounsellorTopicOption[];
+    /** Absent (older backend) means `CREATE`. */
+    topicPermission?: CounsellorTopicPermission;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -188,7 +193,12 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
                 });
-                return { ...invite, topics: invite.topics ?? [], availableTopics: invite.availableTopics ?? [] };
+                return {
+                    ...invite,
+                    topics: invite.topics ?? [],
+                    availableTopics: invite.availableTopics ?? [],
+                    topicPermission: invite.topicPermission ?? 'CREATE',
+                };
             }),
 
         registerCounsellor: (inviteToken, request) =>
@@ -316,10 +326,16 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            // Like the backend: coverage plus every active tenant topic is selectable.
-            const coveredIds = new Set([...invite.topics, ...(invite.availableTopics ?? [])].map(({ id }) => id));
+            // Like the backend: coverage plus — with CREATE only — every active tenant topic.
+            const permission = invite.topicPermission ?? 'CREATE';
+            const selectable =
+                permission === 'CREATE' ? [...invite.topics, ...(invite.availableTopics ?? [])] : invite.topics;
+            const coveredIds = new Set(selectable.map(({ id }) => id));
             if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
+            }
+            if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
+                throw new Error('EXACTLY_ONE_TOPIC');
             }
             if (invite.agencyExists === false && !request.agency?.name?.trim()) {
                 throw new Error('AGENCY_NAME_MISSING');

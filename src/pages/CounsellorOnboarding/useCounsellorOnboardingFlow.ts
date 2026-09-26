@@ -62,6 +62,18 @@ const EMPTY_DATA: CounsellorWizardData = {
     agency: { name: '' },
 };
 
+/** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
+export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
+    const coverage = invite.topics.map((topic) => topic.id);
+    if ((invite.topicPermission ?? 'CREATE') === 'CREATE') {
+        return coverage;
+    }
+    if (coverage.length === 1) {
+        return coverage;
+    }
+    return invite.departmentId != null && coverage.includes(invite.departmentId) ? [invite.departmentId] : [];
+};
+
 /** Single source: the shared consultant credential policy (also used by the admin form). */
 export { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from '../../utils/consultantCredentialRules';
 
@@ -115,7 +127,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 // The invite's coverage arrives preselected (owner decision
                 // 2026-09-17): the invitee removes chips or adds further tenant
                 // topics instead of starting from an empty selection.
-                setData({ ...EMPTY_DATA, topicIds: loaded.topics.map((topic) => topic.id) });
+                setData({ ...EMPTY_DATA, topicIds: initialTopicSelection(loaded) });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
