@@ -178,10 +178,13 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         titleKey="tenants.appSettings.smtp.title"
                         subTitleKey="tenants.appSettings.smtp.description"
                         onSave={(formData, options) => {
-                            const save = () =>
-                                mutate(prepareTenantSettings(formData), {
+                            const save = (confirmed = false) => {
+                                const prepared = prepareTenantSettings(formData);
+                                if (confirmed) prepared.settings.smtp.nonstandardTransportConfirmed = true;
+                                mutate(prepared, {
                                     onError: () => options?.onError?.(),
                                 });
+                            };
                             const mode = form.getFieldValue(['settings', 'smtpMode']);
                             const port = form.getFieldValue(['settings', 'smtp', 'port']);
                             const secure = form.getFieldValue(['settings', 'smtp', 'secure']);
@@ -194,7 +197,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 content: t('tenants.appSettings.smtp.transportMismatchExplanation'),
                                 okText: t('tenants.appSettings.smtp.transportMismatchConfirm'),
                                 cancelText: t('tenants.appSettings.smtp.transportMismatchCancel'),
-                                onOk: save,
+                                onOk: () => save(true),
                                 onCancel: () => options?.onError?.(),
                             });
                         }}

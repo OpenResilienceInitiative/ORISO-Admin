@@ -235,6 +235,7 @@ describe('SmtpSettings (SMTP transport confirmation, #1061)', () => {
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         expect(confirm).not.toHaveBeenCalled();
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp.nonstandardTransportConfirmed).toBeUndefined();
         confirm.mockRestore();
     });
 
@@ -259,7 +260,11 @@ describe('SmtpSettings (SMTP transport confirmation, #1061)', () => {
         const choice = confirm.mock.calls[0][0];
         choice.onOk?.();
         expect(mocks.mutate).toHaveBeenCalledTimes(1);
-        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toMatchObject({ port, secure });
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toMatchObject({
+            port,
+            secure,
+            nonstandardTransportConfirmed: true,
+        });
         confirm.mockRestore();
     });
 
