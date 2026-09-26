@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, Input, message, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -239,26 +239,20 @@ export const InviteCsvImportModal = ({
             }),
     );
 
-    const importableRows = useMemo(
-        () => rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line)),
-        // issueByLine is derived from rows + the tab's stable context.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [rows, tabRole, viewerScope, templates, idKind],
-    );
+    // Plain derivations: a memo with a hand-written dependency list went stale when the context changed.
+    const importableRows = rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line));
 
     // Effective id per line. Träger tab: the explicit file value, else the next free
     // id of the batch sequence — deleting a row re-packs the autos, created rows are
     // frozen via `explicitId`. Agency tab: only the explicit value; an empty cell
     // stays empty because AgencyService, not the browser, picks the free agency id.
-    const idByLine = useMemo(() => {
-        if (idKind === 'tenant') {
-            return assignBatchTenantIds(
-                importableRows.map((row) => ({ line: row.line, id: row.explicitId })),
-                takenTenantIds ?? new Set<number>(),
-            );
-        }
-        return new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
-    }, [idKind, importableRows, takenTenantIds]);
+    const idByLine =
+        idKind === 'tenant'
+            ? assignBatchTenantIds(
+                  importableRows.map((row) => ({ line: row.line, id: row.explicitId })),
+                  takenTenantIds ?? new Set<number>(),
+              )
+            : new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
 
     const pendingRows = importableRows.filter((row) => row.state === 'pending' || row.state === 'failed');
 
@@ -348,7 +342,7 @@ export const InviteCsvImportModal = ({
         }
     };
 
-    // A created row follows its invite in the tab's list, so a later admin row clears "Kein BST-Admin".
+    // A created row follows its invite in the tab's list, so a later admin row clears "Keine BST-Admin".
     const liveQueueState = (row: ImportRow) => {
         const live = row.inviteId != null ? invites?.find((invite) => invite.id === row.inviteId) : undefined;
         if (!live) return { waiting: row.waiting, noUnitAdmin: row.noUnitAdmin };
@@ -431,7 +425,7 @@ export const InviteCsvImportModal = ({
                                 {noUnitAdmin
                                     ? t(
                                           'links.csvImport.status.waitingNoAdmin',
-                                          'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                                          'Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
                                       )
                                     : t(
                                           'links.csvImport.status.waitingHint',

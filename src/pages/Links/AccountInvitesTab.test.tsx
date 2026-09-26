@@ -1127,7 +1127,7 @@ describe('CSV import payload per tab', () => {
         mocks.createAccountInvite.mockResolvedValue(invite(1, 7, 'EMAIL_SENT'));
     });
 
-    it('sends every row of a file with one import batch id, the own Träger as EXISTING and the row role', async () => {
+    it('sends each row on its own, with the own Träger as EXISTING and the row role', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
@@ -1181,6 +1181,8 @@ describe('CSV import payload per tab', () => {
             targetRole: 'TENANT_ADMIN',
             recipientEmail: 'tenant@example.org',
             tenantId: 42,
+            // A pinned number for a new Träger is MANUAL, as the bar sends it.
+            tenantIdAllocationMode: 'MANUAL',
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();

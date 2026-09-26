@@ -117,7 +117,11 @@ describe('toCreateInviteRequest from a CSV row', () => {
         });
         const founding = toCreateInviteRequest({ ...row, role: 'TENANT_ADMIN', id: 21 }, tenantTab);
         expect(founding.tenantId).toBe(21);
-        expect(founding.tenantIdAllocationMode).toBeUndefined();
+        // A pinned number for a new Träger is MANUAL, as the bar sends it; an empty cell is AUTO.
+        expect(founding.tenantIdAllocationMode).toBe('MANUAL');
+        const auto = toCreateInviteRequest({ ...row, role: 'TENANT_ADMIN', id: undefined }, tenantTab);
+        expect(auto).toMatchObject({ tenantIdAllocationMode: 'AUTO' });
+        expect(auto.tenantId).toBeUndefined();
     });
 
     it('uses the row template, else the bar template, and none when only creating', () => {

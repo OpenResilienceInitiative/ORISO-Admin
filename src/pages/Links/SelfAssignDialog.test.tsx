@@ -65,4 +65,20 @@ describe('SelfAssignDialog', () => {
         });
         expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeEnabled();
     });
+
+    it('says the topics could not be loaded and keeps "Eintragen" off', async () => {
+        render(
+            <SelfAssignDialog
+                initialAgency={AGENCY}
+                loadAgencyTopics={() => Promise.reject(new Error('503'))}
+                loadAssignments={async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] })}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(
+            await screen.findByText(/Themen dieser Beratungsstelle konnten nicht geladen werden/),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeDisabled();
+    });
 });

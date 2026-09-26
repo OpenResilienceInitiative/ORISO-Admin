@@ -538,7 +538,7 @@ describe('InviteCsvImportModal', () => {
             createInvite.mockResolvedValueOnce({ inviteId: 7, waiting: true, noUnitAdmin: true });
             const { rerender } = renderAgency([row(2, 'carla@x.de')]);
             await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
-            expect(await rowCells('carla@x.de').findByText(/Kein BST-Admin/)).toBeInTheDocument();
+            expect(await rowCells('carla@x.de').findByText(/Keine BST-Admin/)).toBeInTheDocument();
 
             rerender(
                 <InviteCsvImportModal
@@ -553,7 +553,7 @@ describe('InviteCsvImportModal', () => {
                 />,
             );
 
-            expect(rowCells('carla@x.de').queryByText(/Kein BST-Admin/)).not.toBeInTheDocument();
+            expect(rowCells('carla@x.de').queryByText(/Keine BST-Admin/)).not.toBeInTheDocument();
             expect(
                 rowCells('carla@x.de').getByText('Geht raus, sobald die Beratungsstelle angelegt ist.'),
             ).toBeInTheDocument();
@@ -566,7 +566,7 @@ describe('InviteCsvImportModal', () => {
             expect(await rowCells('carla@x.de').findByText('Vorgemerkt')).toBeInTheDocument();
             expect(
                 rowCells('carla@x.de').getByText(
-                    'Kein BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
+                    'Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.',
                 ),
             ).toBeInTheDocument();
         });
@@ -595,6 +595,28 @@ describe('InviteCsvImportModal', () => {
             expect(rowCells('anna@x.de').getByText(hint.replace('{{line}}', '2'))).toBeInTheDocument();
             expect(rowCells('ben@x.de').getByText(hint.replace('{{line}}', '3'))).toBeInTheDocument();
             expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+        });
+
+        it('re-checks the rows when the Träger context changes after opening', () => {
+            const props = {
+                createInvite,
+                idKind: 'agency' as const,
+                parseResult: parseResultOf({
+                    rows: [row(2, 'anna@x.de', { role: 'TENANT_ADMIN', id: undefined })] as never,
+                }),
+                tabRole: 'COUNSELLOR' as const,
+                templates: TEMPLATES,
+                onClose,
+                onCreated,
+            };
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            const { rerender } = render(<InviteCsvImportModal {...props} ownTenantKnown />);
+            expect(screen.getByRole('button', { name: '1 Empfänger anlegen' })).toBeEnabled();
+
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            rerender(<InviteCsvImportModal {...props} ownTenantKnown={false} />);
+
+            expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
         });
 
         it('spells out parse-level rejections next to the chip', () => {

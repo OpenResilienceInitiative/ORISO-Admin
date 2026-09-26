@@ -361,15 +361,15 @@ export const QueueWaitingStep: Story = {
     },
 };
 
-/** A waiting invite whose unit has no admin invite any more: problem badge „Kein BST-Admin". */
+/** A waiting invite whose unit has no admin invite any more: problem badge „Keine BST-Admin". */
 export const QueueProblemBadge: Story = {
     args: { onTopicPermissionChange: fn() },
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ canvasElement }) => {
         const rita = rowOf(canvasElement, 'rita.sommer@example.org');
-        await expect(rita.getByText(/^(Kein BST-Admin|No agency admin)$/)).toBeInTheDocument();
+        await expect(rita.getByText(/^(Keine BST-Admin|No agency admin)$/)).toBeInTheDocument();
         await expect(
-            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Kein BST-Admin|No agency admin)$/),
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Keine BST-Admin|No agency admin)$/),
         ).toBeNull();
     },
 };

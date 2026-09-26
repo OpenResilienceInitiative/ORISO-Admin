@@ -300,6 +300,27 @@ describe('IdAllocationField', () => {
         expect(allocation.step).not.toHaveBeenCalled();
     });
 
+    it('opens the menu on an arrow key while it is closed, and never steps over a pick', async () => {
+        const allocation = allocationState({
+            mode: 'existing',
+            value: 101,
+            unit: { id: 101, name: 'Caritas Freiburg' },
+            validation: 'existing',
+        });
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocation} />);
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await user.keyboard('{Escape}');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+
+        await user.keyboard('{ArrowDown}');
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        await user.keyboard('{Escape}{ArrowUp}');
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        expect(allocation.step).not.toHaveBeenCalled();
+    });
+
     it('shows an existing unit by name and number, filled like a confirmed id', () => {
         render(
             <IdAllocationField
