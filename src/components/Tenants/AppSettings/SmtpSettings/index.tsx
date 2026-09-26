@@ -1,4 +1,4 @@
-import { Alert, Form } from 'antd';
+import { Alert, Form, Modal } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo } from 'react';
@@ -37,6 +37,9 @@ const isBlank = (value?: string | number | boolean | null) =>
 const inheritBoolean = (value: boolean | null | undefined, inheritedValue: boolean) =>
     value === undefined || value === null ? inheritedValue : value;
 
+const needsTransportConfirmation = (port: number | undefined, secure: boolean | undefined) =>
+    port != null && !((port === 465 && secure === true) || (port === 587 && secure === false));
+
 export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     const { t } = useTranslation();
     const { settings } = useAppConfigContext();
@@ -56,6 +59,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     });
     const systemEmailsAllowed = settings.globalFeatureSystemNotificationEmailsEnabled !== false;
     const ownServerSelected = Form.useWatch(['settings', 'smtpMode'], form) === 'OWN';
+    const smtpPort = Form.useWatch(['settings', 'smtp', 'port'], form);
+    const smtpSecure = Form.useWatch(['settings', 'smtp', 'secure'], form);
     const prepareTenantSettings = useCallback(
         (formData) => ({
             ...formData,
@@ -172,7 +177,27 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         initialValues={initialValues}
                         titleKey="tenants.appSettings.smtp.title"
                         subTitleKey="tenants.appSettings.smtp.description"
-                        onSave={(formData) => mutate(prepareTenantSettings(formData))}
+                        onSave={(formData, options) => {
+                            const save = () =>
+                                mutate(prepareTenantSettings(formData), {
+                                    onError: () => options?.onError?.(),
+                                });
+                            const mode = form.getFieldValue(['settings', 'smtpMode']);
+                            const port = form.getFieldValue(['settings', 'smtp', 'port']);
+                            const secure = form.getFieldValue(['settings', 'smtp', 'secure']);
+                            if (mode !== 'OWN' || !needsTransportConfirmation(port, secure)) {
+                                save();
+                                return;
+                            }
+                            Modal.confirm({
+                                title: t('tenants.appSettings.smtp.transportMismatchTitle'),
+                                content: t('tenants.appSettings.smtp.transportMismatchExplanation'),
+                                okText: t('tenants.appSettings.smtp.transportMismatchConfirm'),
+                                cancelText: t('tenants.appSettings.smtp.transportMismatchCancel'),
+                                onOk: save,
+                                onCancel: () => options?.onError?.(),
+                            });
+                        }}
                     >
                         <div className={styles.fieldGrid}>
                             {data?.settings?.smtpMode == null && (
@@ -206,6 +231,14 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                     {t('tenants.appSettings.smtp.ownMode')}
                                 </MuiRadioGroupField.Radio>
                             </MuiRadioGroupField>
+
+                            {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    message={t('tenants.appSettings.smtp.transportMismatchHint')}
+                                />
+                            )}
 
                             <MuiFormField
                                 label={t('tenants.appSettings.smtp.host')}

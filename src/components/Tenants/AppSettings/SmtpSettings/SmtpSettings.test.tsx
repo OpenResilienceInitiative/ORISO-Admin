@@ -1,7 +1,8 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Modal } from 'antd';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
@@ -202,5 +203,88 @@ describe('SmtpSettings (tenant mode is independent of platform SMTP)', () => {
         expect(screen.getByText('tenants.appSettings.smtp.passwordNotSet')).toBeInTheDocument();
         expect(document.body.innerHTML).not.toContain('smtp.test');
         expect(inputByName('recipientEmail')).toBeNull();
+    });
+});
+
+describe('SmtpSettings (SMTP transport confirmation, #1061)', () => {
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.appSettings = {};
+        mocks.tenantData = {
+            id: 1,
+            settings: {
+                smtpMode: 'OWN',
+                smtp: {
+                    enabled: true,
+                    host: 'smtp.tenant.org',
+                    port: 587,
+                    secure: false,
+                    username: 'tenant-user',
+                    from: 'tenant@example.org',
+                    passwordSet: true,
+                },
+            },
+        };
+    });
+
+    it('saves the standard 587/STARTTLS pair without asking for an override', async () => {
+        const confirm = vi.spyOn(Modal, 'confirm');
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(confirm).not.toHaveBeenCalled();
+        confirm.mockRestore();
+    });
+
+    it.each([
+        [465, false],
+        [587, true],
+        [2525, false],
+    ])('requires an explicit choice before saving port %i with secure=%s', async (port, secure) => {
+        mocks.tenantData.settings.smtp.port = port;
+        mocks.tenantData.settings.smtp.secure = secure;
+        const confirm = vi.spyOn(Modal, 'confirm').mockImplementation(() => ({
+            destroy: vi.fn(),
+            update: vi.fn(),
+        }));
+        renderCard();
+        expect(screen.getByText('tenants.appSettings.smtp.transportMismatchHint')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        const choice = confirm.mock.calls[0][0];
+        choice.onOk?.();
+        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toMatchObject({ port, secure });
+        confirm.mockRestore();
+    });
+
+    it('keeps the form open when the user declines a changed transport combination', async () => {
+        const confirm = vi.spyOn(Modal, 'confirm').mockImplementation(() => ({
+            destroy: vi.fn(),
+            update: vi.fn(),
+        }));
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' }), {
+            target: { value: '465' },
+        });
+
+        expect(await screen.findByText('tenants.appSettings.smtp.transportMismatchHint')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('card.edit.save'));
+        await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+        act(() => {
+            confirm.mock.calls[0][0].onCancel?.();
+        });
+
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        await waitFor(() =>
+            expect(screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' })).not.toBeDisabled(),
+        );
+        confirm.mockRestore();
     });
 });
