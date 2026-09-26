@@ -40,3 +40,14 @@
 .columnStack {
     width: 100%;
 }
+
+.dialogActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.dialogHint {
+    color: var(--m3-on-surface-variant, #444748);
+}
