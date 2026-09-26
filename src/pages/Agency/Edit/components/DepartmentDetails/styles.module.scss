@@ -1,0 +1,5 @@
+/* Keeps the jump button at its label width; the dialog card stretches children. */
+.addDepartment {
+    display: flex;
+    justify-content: flex-start;
+}

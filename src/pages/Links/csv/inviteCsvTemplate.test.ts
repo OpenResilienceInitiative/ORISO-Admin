@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildInviteCsvTemplate } from './inviteCsvTemplate';
+import { buildInviteCsvTemplate, inviteCsvColumnsForTab } from './inviteCsvTemplate';
 import { detectInviteCsvDelimiter, parseInviteCsv } from './parseInviteCsv';
 
 const LABELS = { email: 'E-Mail', firstName: 'Vorname', lastName: 'Name', id: 'Träger-ID' };
@@ -69,5 +69,37 @@ describe('buildInviteCsvTemplate — extended columns', () => {
         expect(result.rejected).toHaveLength(0);
         expect(result.rows.every((row) => row.target === 'NEW' && row.role === 'TENANT_ADMIN')).toBe(true);
         expect(result.rows.every((row) => row.topicPermission === undefined)).toBe(true);
+    });
+
+    it('offers each tab only the columns its import accepts', () => {
+        expect(inviteCsvColumnsForTab('tenant')).toEqual([
+            'email',
+            'firstName',
+            'lastName',
+            'id',
+            'target',
+            'role',
+            'template',
+        ]);
+        expect(inviteCsvColumnsForTab('counsellor')).toEqual([
+            'email',
+            'firstName',
+            'lastName',
+            'id',
+            'target',
+            'role',
+            'template',
+            'topicPermission',
+            'alsoCounsellor',
+        ]);
+    });
+
+    it('leaves out the columns a tab does not take', () => {
+        const { topicPermission, alsoCounsellor, ...tenantLabels } = { ...FULL, id: 'Träger-ID' };
+        const csv = buildInviteCsvTemplate(tenantLabels, { role: 'Träger-Admin', idKind: 'tenant' });
+        expect(csv).toContain('E-Mail;Vorname;Name;Träger-ID;Ziel;Rolle;Vorlage\r\n');
+        expect(csv).not.toContain(topicPermission);
+        expect(csv).not.toContain(alsoCounsellor);
+        expect(parseInviteCsv(csv).rejected).toHaveLength(0);
     });
 });

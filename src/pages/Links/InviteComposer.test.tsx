@@ -138,6 +138,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     // The composer row is one row of controls: the template chooser must stand at the
     // same height as the send button beside it. The chooser's own default is the legal
     // editors' 40px pill, which left it visibly a size short here.
+    it('keeps browser autofill off the recipient address', async () => {
+        await renderTenantTab();
+
+        expect(await screen.findByLabelText('E-Mail')).toHaveAttribute('autocomplete', 'off');
+    });
+
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
@@ -395,7 +401,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
         // Selection is lifted to the tab and the field folds into its pill…
-        expect(await screen.findByTitle('Zweite Vorlage')).toBeInTheDocument();
+        // (a collapsed field is a button whose title is its value; a leftover menu item is no button)
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('button', { name: /bearbeiten/ }).map((pill) => pill.getAttribute('title')),
+            ).toContain('Zweite Vorlage'),
+        );
 
         // …and the send call uses exactly that template.
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');

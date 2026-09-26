@@ -70,9 +70,10 @@ const draftUnits = (draft: InviteDraft, { tab, viewer }: InviteRequestContext): 
 
 const csvUnits = (row: InviteCsvCreateRow, { tab, ownTenantId }: InviteRequestContext): UnitFields => {
     if (tab === 'tenant') {
-        return row.target === 'EXISTING'
-            ? { tenantId: row.id, tenantIdAllocationMode: 'EXISTING' }
-            : { tenantId: row.id };
+        // A new Träger with a pinned number is MANUAL, like the bar; an empty cell lets the server pick.
+        let tenantIdAllocationMode: UnitFields['tenantIdAllocationMode'] = row.id != null ? 'MANUAL' : 'AUTO';
+        if (row.target === 'EXISTING') tenantIdAllocationMode = 'EXISTING';
+        return { tenantId: row.id, tenantIdAllocationMode };
     }
     const ownTenant: UnitFields =
         ownTenantId != null ? { tenantId: ownTenantId, tenantIdAllocationMode: 'EXISTING' } : {};

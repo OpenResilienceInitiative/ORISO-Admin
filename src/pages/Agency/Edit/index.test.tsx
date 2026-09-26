@@ -73,6 +73,7 @@ const translations: Record<string, string> = {
     'agency.form.registrationSettings.noTopicConfirm.cancel': 'Abbrechen',
     'agency.form.registrationSettings.noTopicConfirm.confirm': 'Trotzdem aktivieren',
     'topics.title': 'Themen',
+    'agency.edit.settings.departments': 'Fachbereich(e)',
     'agency.form.registrationSettings.postCodeTitle': 'Für welches Gebiet ist die Beratungsstelle sichtbar?',
     'agency.form.registrationSettings.allPostCode': 'Für alle PLZ-Gebiete',
     'agency.form.registrationSettings.onlySelectedPostCodes': 'PLZ-Gebiete definieren',
@@ -223,6 +224,11 @@ vi.mock('../../../hooks/useAgencyUpdate', () => ({
 
 vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
     useAgencyLegalDataMissing: () => false,
+}));
+
+vi.mock('../../../hooks/useAgencyConsultants', () => ({
+    AGENCY_CONSULTANTS_KEY: 'AGENCY_CONSULTANTS',
+    useAgencyConsultants: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
@@ -668,7 +674,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         const user = setupUser();
         await goLiveWithTopicsAvailable(user);
 
-        await user.click(screen.getByRole('combobox', { name: /Themen/ }));
+        await user.click(screen.getByRole('combobox', { name: /Fachbereich/ }));
         await user.click(await screen.findByRole('option', { name: 'Debt counselling' }));
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 

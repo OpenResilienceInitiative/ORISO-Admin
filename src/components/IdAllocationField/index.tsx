@@ -115,6 +115,7 @@ export const IdAllocationField = ({
         acceptTypedIds,
         assignedId,
         onTypedUnit: allocation.selectExisting,
+        onTypedMiss: allocation.resetToAuto,
     });
 
     const trimmed = query.trim();
@@ -239,7 +240,8 @@ export const IdAllocationField = ({
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
         if (!open) {
-            if (event.key === 'Enter') {
+            // Combobox pattern: the arrows open the list; only the ⌄/^ buttons step the number.
+            if (event.key === 'Enter' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 openMenu();
             }

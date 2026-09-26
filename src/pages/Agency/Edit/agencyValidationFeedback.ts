@@ -20,7 +20,7 @@ export const AGENCY_FIELD_LABEL_KEYS: Record<string, string> = {
     postcode: 'agency.edit.general.address.postcode',
     city: 'agency.edit.general.address.city',
     tenantId: 'agency.edit.general.more_settings.tenant.title',
-    topicIds: 'topics.title',
+    topicIds: 'agency.edit.settings.departments',
     'demographics.genders': 'agency.gender',
     counsellingRelations: 'agency.relation',
 };

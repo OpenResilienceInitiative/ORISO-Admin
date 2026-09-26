@@ -10,7 +10,11 @@ import { GlobalSearchBar, GlobalSearchMenu } from '../../components/GlobalSearch
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
-import { downloadInviteCsvTemplate, type InviteCsvTemplateLabels } from './csv/inviteCsvTemplate';
+import {
+    downloadInviteCsvTemplate,
+    inviteCsvColumnsForTab,
+    type InviteCsvTemplateLabels,
+} from './csv/inviteCsvTemplate';
 import { ROLE_LABEL_KEYS, type InviteSendMode } from './inviteModel';
 import type { InviteTab } from './inviteRules';
 import styles from './inviteComposer.module.scss';
@@ -130,8 +134,8 @@ export const InviteToolbar = ({
         tab === 'tenant'
             ? t('links.accountInvites.tenantId', 'Träger-ID')
             : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
-    // One label set for the menu hint and the template header, so the two cannot drift apart.
-    const csvColumns: Required<InviteCsvTemplateLabels> = {
+    // One label set per tab for the menu hint and the template header, so the two cannot drift apart.
+    const allCsvLabels: Required<InviteCsvTemplateLabels> = {
         email: t('links.accountInvites.email', 'E-Mail'),
         firstName: t('links.accountInvites.firstName', 'Vorname'),
         lastName: t('links.composer.lastName', 'Name'),
@@ -142,6 +146,9 @@ export const InviteToolbar = ({
         topicPermission: t('links.composer.topics', 'Themen & Fachbereiche'),
         alsoCounsellor: t('links.composer.alsoCounsellor.label', 'Berät auch'),
     };
+    const csvColumns = Object.fromEntries(
+        inviteCsvColumnsForTab(tab === 'tenant' ? 'tenant' : 'counsellor').map((key) => [key, allCsvLabels[key]]),
+    ) as unknown as InviteCsvTemplateLabels;
 
     const moreMenuItems: NonNullable<MenuProps['items']> = [];
     if (csv) {

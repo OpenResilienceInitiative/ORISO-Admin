@@ -35,6 +35,8 @@ interface UseUnitSearchOptions {
     /** A number the allocation check called taken: look it up so the menu can offer that unit. */
     assignedId?: number;
     onTypedUnit: (unit: IdUnitOption) => void;
+    /** A typed number with no unit behind it: an earlier pick must not stay selected (9 before 90). */
+    onTypedMiss?: () => void;
 }
 
 // The ID field's paged search and number lookups; `typedUnit`/`assignedUnit`: undefined = not looked up, null = none.
@@ -47,6 +49,7 @@ export const useUnitSearch = ({
     acceptTypedIds,
     assignedId,
     onTypedUnit,
+    onTypedMiss,
 }: UseUnitSearchOptions) => {
     const [results, setResults] = useState<IdUnitOption[]>([]);
     const [page, setPage] = useState(1);
@@ -129,6 +132,7 @@ export const useUnitSearch = ({
                 if (token !== lookupToken.current) return;
                 setResolved({ id, unit: found });
                 if (found) onTypedUnit(found);
+                else onTypedMiss?.();
             });
     };
 

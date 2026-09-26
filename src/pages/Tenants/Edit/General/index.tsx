@@ -30,6 +30,7 @@ import {
 } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { TraegerSenderFields } from '../../../../components/Tenants/TraegerSenderFields';
+import { TraegerDpoFields } from '../../../../components/Tenants/TraegerDpoFields';
 
 // Module level, so React does not see a new component type on every render.
 const wrapInFieldGroup = (field: ReactNode, name: string) => (
@@ -206,6 +207,7 @@ export const GeneralTenantSettings = () => {
                                     placeholder={t('tenants.add.form.description.placeholder')}
                                 />
                             </div>
+                            <TraegerDpoFields wrapField={wrapInFieldGroup} />
                         </CardEditable>
                     </CardDeck.Item>
                 </CardDeck>
