@@ -23,6 +23,7 @@ import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
+import { OpenDepartmentFieldOnRequest } from './components/DepartmentDetails/OpenDepartmentFieldOnRequest';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
@@ -83,6 +84,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
         formData: Record<string, unknown>;
         options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] };
@@ -459,15 +461,32 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
                             >
-                                <AgencySettings
-                                    isEditMode={isEditing}
-                                    asFields
-                                    persistedTeamAgency={initialValues.teamAgency}
-                                />
+                                {({ form: cardForm, startEditing }) => (
+                                    <>
+                                        <OpenDepartmentFieldOnRequest
+                                            request={departmentFieldRequest}
+                                            startEditing={startEditing}
+                                            form={cardForm}
+                                        />
+                                        <AgencySettings
+                                            isEditMode={isEditing}
+                                            asFields
+                                            persistedTeamAgency={initialValues.teamAgency}
+                                        />
+                                    </>
+                                )}
                             </CardEditable>
                         </CardDeck.Item>
                         <CardDeck.Item>
-                            <AgencyDepartmentDetails agencyData={agencyData} />
+                            <AgencyDepartmentDetails
+                                agencyData={agencyData}
+                                // The Fachbereich field only renders when the tenant offers topics.
+                                onAddDepartment={
+                                    tenantTopics?.length > 0
+                                        ? () => setDepartmentFieldRequest((request) => request + 1)
+                                        : undefined
+                                }
+                            />
                         </CardDeck.Item>
                     </CardDeck>
                 </ThemeProvider>

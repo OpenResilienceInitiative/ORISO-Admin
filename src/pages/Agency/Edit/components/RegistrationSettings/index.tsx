@@ -9,6 +9,7 @@ import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { TypeOfUser } from '../../../../../enums/TypeOfUser';
 import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsultants';
 import { useAgencyData } from '../../../../../hooks/useAgencyData';
+import { useAgencyConsultants } from '../../../../../hooks/useAgencyConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
@@ -19,6 +20,7 @@ import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 import { isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
+import { AssignedConsultants } from './AssignedConsultants';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -53,6 +55,8 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         pageSize: 1000,
         enabled: showConsultantAssignment,
     });
+    // Same query key as the assigned list below, so this costs no extra request.
+    const { data: assignedConsultants } = useAgencyConsultants({ id, enabled: hasPersistedAgency });
     // Superadmins pick the tenant in the form; tenant admins carry it in their token.
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     const consultantOptions = useMemo(() => {
@@ -60,14 +64,17 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         // cross-tenant agency assignment without rejecting it, so scope the list to the
         // agency's tenant. An unknown tenant leaves it unfiltered rather than emptying
         // the picker — same rule as the supervisor picker in users/Edit.
+        // Already assigned people are listed as chips above the picker, not offered again.
+        const assignedIds = new Set((assignedConsultants || []).map(({ id: consultantId }) => String(consultantId)));
         const assignable = (consultants?.data || []).filter(
             (consultant) =>
                 isActiveRecord(consultant) &&
+                !assignedIds.has(String(consultant.id)) &&
                 (consultantTenantId === undefined || String(consultant.tenantId) === String(consultantTenantId)),
         );
 
         return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
-    }, [consultants?.data, consultantTenantId]);
+    }, [assignedConsultants, consultants?.data, consultantTenantId]);
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
@@ -129,6 +136,7 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
             )}
             {showConsultantAssignment && (
                 <>
+                    {hasPersistedAgency && <AssignedConsultants agencyId={id} editing={Boolean(editing)} />}
                     <MuiSelectField
                         name="consultantIds"
                         label="agency.form.registrationSettings.consultants.label"

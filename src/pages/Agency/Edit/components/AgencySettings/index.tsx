@@ -90,7 +90,7 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                 // unique (agency × topic) pairing — an agency simply carries more than one of them,
                 // each with its own Impressum and Datenschutzerklärung.
                 <MuiSelectField
-                    label="topics.title"
+                    label="agency.edit.settings.departments"
                     name="topicIds"
                     isMulti
                     labelInValue

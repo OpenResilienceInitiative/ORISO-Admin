@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, fn } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
 import { DepartmentDetailsCard } from './index';
@@ -54,11 +56,19 @@ export const Inheriting: Story = {
     },
 };
 
-/** No departments assigned: the card stays visible with a hint (disable, not hide). */
+/**
+ * No departments assigned: the card stays visible, names the card and field where a
+ * Fachbereich is added, and jumps there (#1069).
+ */
 export const NoDepartments: Story = {
     args: {
         departments: [],
         selected: undefined,
+        onAddDepartment: fn(),
+    },
+    play: async ({ args, canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('button', { name: /Fachbereich hinzufügen|Add department/ }));
+        await expect(args.onAddDepartment).toHaveBeenCalledTimes(1);
     },
 };
 
