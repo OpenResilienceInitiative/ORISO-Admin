@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
     createStubTenantAdminOnboardingClient,
     InviteLinkError,
@@ -78,6 +78,8 @@ const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+    await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     await user.click(screen.getByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' }));
@@ -94,9 +96,9 @@ describe('TenantAdminOnboarding', () => {
         // The reader wrapper mounts with title/description first; TipTap then
         // applies the published HTML — wait for the body, not just the shell.
         await waitFor(() => expect(screen.getByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers'));
-        // Signer fields are prefilled from the invite.
-        expect(screen.getByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('Erika Beispiel');
-        expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('admin@tenant.example');
+        // Signer fields start empty: the invited admin is not presumed to be the representative.
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerName')).toHaveValue('');
+        expect(screen.getByLabelText('tenantOnboarding.dpa.signerEmail')).toHaveValue('');
 
         await completeOrganisationStep(user);
 
@@ -140,6 +142,8 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
@@ -161,8 +165,33 @@ describe('TenantAdminOnboarding', () => {
         renderFlow(client);
 
         expect(await screen.findByTestId(testId)).toBeInTheDocument();
-        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        // A used link belongs to an existing account — its only action is the login (#1065).
+        const buttons = screen.queryAllByRole('button').map((button) => button.textContent);
+        expect(buttons).toEqual(reason === 'CONSUMED' ? ['tenantOnboarding.linkError.consumed.toLogin'] : []);
         expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    });
+
+    it('offers the way to the login on a used invite link (#1065)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockRejectedValue(new InviteLinkError('CONSUMED')),
+        });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/admin/tenant-onboarding/raw-token']}>
+                <Routes>
+                    <Route
+                        path="/admin/tenant-onboarding/:token"
+                        element={<TenantAdminOnboarding inviteToken="raw-token" client={client} />}
+                    />
+                    <Route path="/admin/login" element={<p>login page</p>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByText('tenantOnboarding.linkError.consumed.loginHint')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.linkError.consumed.toLogin' }));
+
+        expect(await screen.findByText('login page')).toBeInTheDocument();
     });
 
     it('drops into the CONSUMED error state when the registration loses the race — nothing can be resubmitted', async () => {
@@ -178,7 +207,9 @@ describe('TenantAdminOnboarding', () => {
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         expect(await screen.findByTestId('link-error-consumed')).toBeInTheDocument();
-        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.queryAllByRole('button').map((button) => button.textContent)).toEqual([
+            'tenantOnboarding.linkError.consumed.toLogin',
+        ]);
         expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1);
     });
 
@@ -254,6 +285,8 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
         if (skip !== 'address') {
             await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         }
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerPosition'), 'Geschäftsführung');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     };
@@ -629,5 +662,102 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
             address: 'Musterstraße 1',
             contactPhone: '+49 30 123456',
         });
+    });
+});
+
+describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)', () => {
+    const fillOrganisationOnly = async (user: ReturnType<typeof userEvent.setup>) => {
+        await screen.findByLabelText('tenantOnboarding.organisation.name');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
+    };
+
+    const registerWithPassword = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+    };
+
+    it('forwarded → reload shows the waiting view, never the consent step', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaForwardedAt: '2026-09-24T16:05:30' }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', createForwardClient());
+
+        expect(await screen.findByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
+        expect(screen.getByTestId('dpa-forwarded-notice')).toBeInTheDocument();
+        expect(screen.queryByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' })).not.toBeInTheDocument();
+        // The recipient is not stored server-side, so no "sent to" line is invented.
+        expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
+
+        await fillOrganisationOnly(user);
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+        await registerWithPassword(user);
+
+        await waitFor(() =>
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ dpa: expect.objectContaining({ accepted: false }) }),
+            ),
+        );
+    });
+
+    it('confirmed → shows the confirmed state and continues straight to the account step', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                dpaForwardedAt: '2026-09-24T16:05:30',
+                dpaSignedAt: '2026-09-25T09:12:00',
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client, 'raw-token', createForwardClient());
+
+        const confirmed = await screen.findByTestId('dpa-confirmed-notice');
+        expect(confirmed).toHaveTextContent('tenantOnboarding.dpa.confirmed.title');
+        expect(confirmed).toHaveTextContent('tenantOnboarding.dpa.confirmed.description');
+        // No consent block, no forward action, no waiting view.
+        expect(screen.queryByRole('checkbox', { name: 'tenantOnboarding.dpa.accept' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /dpaForward.action.notAuthorised/ })).not.toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-forwarded-onhold')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.dpa.signerName')).not.toBeInTheDocument();
+
+        await fillOrganisationOnly(user);
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+        await registerWithPassword(user);
+
+        await waitFor(() =>
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({
+                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                    dpa: expect.objectContaining({ accepted: false }),
+                }),
+            ),
+        );
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        // Already confirmed: no "we will mail you once it is confirmed" promise.
+        expect(screen.queryByText('tenantOnboarding.done.next.signature')).not.toBeInTheDocument();
+    });
+
+    it('confirmed → still requires the organisation fields', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaSignedAt: '2026-09-25T09:12:00' }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await screen.findByTestId('dpa-confirmed-notice');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
+
+        expect(await screen.findByTestId('onboarding-submit-error')).toHaveTextContent(
+            'tenantOnboarding.validation.incomplete',
+        );
+        expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
     });
 });

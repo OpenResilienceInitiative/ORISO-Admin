@@ -40,7 +40,7 @@ export interface InvitePhase {
 /**
  * Träger onboarding (#725, owner model): Eingeladen → Registriert → Träger
  * angelegt → 2FA aktiv → [Vertragsunterlagen weitergeleitet, only when a
- * forward happened] → Vertrag unterschrieben → Abgeschlossen. The signature is
+ * forward happened] → Vertrag bestätigt → Abgeschlossen. The signature is
  * the FINAL gate: the track may never read complete while it is outstanding.
  */
 export const TENANT_PHASE_KEYS: readonly PhaseKey[] = [
@@ -64,7 +64,7 @@ export const PHASE_LABEL_FALLBACKS: Record<PhaseKey, string> = {
     tenantCreated: 'Träger angelegt',
     twoFactorActive: '2FA aktiv',
     dpaForwarded: 'Vertragsunterlagen weitergeleitet',
-    dpaSigned: 'Vertrag unterschrieben',
+    dpaSigned: 'Vertrag bestätigt',
     accountCreated: 'Konto angelegt',
     completed: 'Abgeschlossen',
 };
@@ -84,7 +84,7 @@ export const PHASE_AWAITING_FALLBACKS: Record<PhaseKey, string> = {
     tenantCreated: 'Wartet auf Träger-Anlage',
     twoFactorActive: 'Wartet auf 2FA-Einrichtung',
     dpaForwarded: 'Wartet auf Weiterleitung',
-    dpaSigned: 'Wartet auf Vertragsunterschrift',
+    dpaSigned: 'Wartet auf Vertragsbestätigung',
     accountCreated: 'Wartet auf Kontoanlage',
     completed: 'Wartet auf Abschluss',
 };

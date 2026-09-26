@@ -57,7 +57,8 @@ export type TenantAdminOnboardingSubmitError = 'registration' | 'two-factor-code
  * solely because its own `dpa_forwarded_at` is set — never on a client claim).
  */
 export interface WizardDpaForwardState {
-    signUrl: string;
+    /** Null when restored from the server after a reload — the link itself is never re-sent. */
+    signUrl: string | null;
     expiresAt: string | null;
     /** Recipient of the forward mail; null when the link was shared manually. */
     recipientEmail: string | null;
@@ -66,10 +67,10 @@ export interface WizardDpaForwardState {
 }
 
 /**
- * The DPA payload of a forwarded registration: no consent, no signer identity
- * — the signature arrives later through the public sign link.
+ * The DPA payload without an own consent act (forwarded or already confirmed):
+ * no signer identity — the signature comes through the public sign link.
  */
-const FORWARDED_DPA: DpaAcceptanceData = {
+const NO_OWN_CONSENT_DPA: DpaAcceptanceData = {
     accepted: false,
     signerName: '',
     signerPosition: '',
@@ -87,6 +88,8 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     const [organisation, setOrganisation] = useState<OrganisationData | null>(null);
     const [dpa, setDpa] = useState<DpaAcceptanceData | null>(null);
     const [dpaForward, setDpaForward] = useState<WizardDpaForwardState | null>(null);
+    // The representative already confirmed (server-side `dpaSignedAt`, #1065).
+    const [dpaConfirmed, setDpaConfirmed] = useState(false);
     const [submitError, setSubmitError] = useState<TenantAdminOnboardingSubmitError>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
@@ -136,6 +139,11 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     setState({ phase: 'link-error', reason: 'INVALID' });
                     return;
                 }
+                // The forward/confirmation lives on the invite, not in this tab (#1065).
+                setDpaConfirmed(Boolean(loaded.dpaSignedAt));
+                if (!loaded.dpaSignedAt && loaded.dpaForwardedAt) {
+                    setDpaForward({ signUrl: null, expiresAt: null, recipientEmail: null });
+                }
                 setState({ phase: 'organisation' });
             })
             .catch((error: unknown) => {
@@ -177,6 +185,8 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
 
     const dpaForwardRef = useRef(dpaForward);
     dpaForwardRef.current = dpaForward;
+    const dpaConfirmedRef = useRef(dpaConfirmed);
+    dpaConfirmedRef.current = dpaConfirmed;
 
     const submitOrganisationDpa = useCallback(
         (organisationData: OrganisationData, dpaData: DpaAcceptanceData | null) => {
@@ -184,8 +194,8 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 return;
             }
             // Without a consent act the step is only complete when the signature
-            // was explicitly forwarded — never silently.
-            if (!dpaData && !dpaForwardRef.current) {
+            // was explicitly forwarded or already confirmed — never silently.
+            if (!dpaData && !dpaForwardRef.current && !dpaConfirmedRef.current) {
                 return;
             }
             setOrganisation(organisationData);
@@ -218,7 +228,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 return;
             }
             const joins = invite.joinsExistingTenant === true;
-            if (!joins && (!organisation || (!dpa && !dpaForward))) {
+            if (!joins && (!organisation || (!dpa && !dpaForward && !dpaConfirmed))) {
                 return;
             }
             busyRef.current = true;
@@ -232,9 +242,9 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                           { account: { password } }
                         : {
                               organisation: organisation as OrganisationData,
-                              // The forwarded case sends `accepted: false` without a signer; the
-                              // server authorises that against its own record of the forward.
-                              dpa: dpa ?? FORWARDED_DPA,
+                              // No own consent act (forwarded or already confirmed): `accepted: false`
+                              // without a signer; the server checks its own record (#723, #1065).
+                              dpa: dpa ?? NO_OWN_CONSENT_DPA,
                               account: { password },
                               // Checked on load: a new-Träger invite without both is a link error.
                               reservedTenantId: invite.reservedTenantId as number,
@@ -256,7 +266,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 setBusy(false);
             }
         },
-        [client, inviteToken, invite, organisation, dpa, dpaForward],
+        [client, inviteToken, invite, organisation, dpa, dpaForward, dpaConfirmed],
     );
 
     const submitTwoFactorCode = useCallback(
@@ -291,6 +301,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         organisation,
         dpa,
         dpaForward,
+        dpaConfirmed,
         submitError,
         busy,
         retryLoad,

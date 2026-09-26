@@ -112,6 +112,16 @@ export interface TenantAdminOnboardingInviteDTO {
      * 2FA step then renders the verify-only variant.
      */
     twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
+    /**
+     * When step 1 forwarded the contract documents (ISO local date-time).
+     * Recorded on the invite, so a reload restores the waiting view (#1065).
+     */
+    dpaForwardedAt?: string | null;
+    /**
+     * When the authorised representative's confirmation landed (ISO local
+     * date-time). Set = no consent step; the wizard continues to the account.
+     */
+    dpaSignedAt?: string | null;
 }
 
 export interface OrganisationData {
@@ -469,8 +479,8 @@ export const createStubTenantAdminOnboardingClient = (
                 throw new InviteLinkError('INVALID');
             }
             // Mirrors the server rule: `accepted: false` passes only when THIS
-            // invite forwarded the DPA beforehand — never on a client claim.
-            if (!request.dpa.accepted && !forwarded) {
+            // invite forwarded (or got confirmed) beforehand — never on a client claim.
+            if (!request.dpa.accepted && !forwarded && !invite.dpaForwardedAt && !invite.dpaSignedAt) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;
