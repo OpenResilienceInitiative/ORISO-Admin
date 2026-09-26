@@ -213,6 +213,50 @@ describe('useTenantAdminDataMutation', () => {
         expect(body.content.erstantwortResponseDeadlineDays).toBe(2);
     });
 
+    it('merges each overlapping save onto its own fresh read', async () => {
+        const firstRead = { ...seedTenantAdminData, name: 'Read for the first save' };
+        const secondRead = { ...seedTenantAdminData, name: 'Read for the second save' };
+        getSingleTenantDataMock.mockResolvedValueOnce(firstRead).mockResolvedValueOnce(secondRead);
+        let finishFirstPut: (value: unknown) => void = () => undefined;
+        vi.mocked(fetchData)
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        finishFirstPut = resolve;
+                    }),
+            )
+            .mockImplementationOnce(
+                () =>
+                    new Promise(() => {
+                        // The second PUT never answers: only the first one may write the cache.
+                    }),
+            );
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(
+            () =>
+                useTenantAdminDataMutation({
+                    id: '1',
+                    seedTenantAdminData,
+                    prefetchTenantAdminData: false,
+                    successMessageKey: null,
+                }),
+            { wrapper },
+        );
+
+        const first = result.current.mutateAsync({ content: { impressum: { de: '<p>Eins</p>' } } });
+        result.current.mutate({ content: { privacy: { de: '<p>Zwei</p>' } } });
+        await waitFor(() => expect(fetchData).toHaveBeenCalledTimes(2));
+        finishFirstPut({});
+        await first;
+
+        const cached = client.getQueryData<TenantAdminData>([TENANT_QUERY_KEY, 1]);
+        expect(cached?.name).toBe('Read for the first save');
+        expect(cached?.content.impressum).toEqual({ de: '<p>Eins</p>' });
+    });
+
     it('writes nothing when the fresh tenant read fails', async () => {
         getSingleTenantDataMock.mockRejectedValue(new Error('CATCH_ALL'));
         const { result } = renderHook(

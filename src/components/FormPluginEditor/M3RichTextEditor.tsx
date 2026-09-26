@@ -1128,7 +1128,10 @@ export const M3RichTextEditor = ({
                     <div className={styles.contentInset}>{editorSlot}</div>
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
-                        <div className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}>
+                        <div
+                            className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}
+                            data-testid="m3-editor-surface"
+                        >
                             {/* Reading mode: the text viewport is the named
                                 landmark. It only becomes a tab stop when it
                                 actually scrolls — a keyboard user must be able

@@ -1134,7 +1134,7 @@ describe('LegalText — publish confirmation and publication state (#1066)', () 
         render(
             <LegalText
                 tenantId="1"
-                fieldName={['content', 'imprint']}
+                fieldName={['content', 'privacy']}
                 titleKey="privacy.title"
                 legalType="privacy"
                 placeHolderKey="settings.privacy.placeholder"
@@ -1215,6 +1215,8 @@ describe('LegalText — publish confirmation and publication state (#1066)', () 
 
         await waitFor(() => expect(mocks.updateTenant).toHaveBeenCalledTimes(1));
         expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({ content: { confirmPrivacy: true } });
+        expect(mocks.updateTenant.mock.calls[0][0].content).toHaveProperty('privacy');
+        expect(mocks.updateTenant.mock.calls[0][0].content).not.toHaveProperty('imprint');
     });
 
     it('"Nein" publishes without informing anyone', async () => {

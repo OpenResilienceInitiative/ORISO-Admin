@@ -69,7 +69,10 @@ const LockedPlatform = ({ children }: { children: ReactNode }): ReactNode => {
     return ready ? children : null;
 };
 
-/** Every control of the lower function bar lies inside it; none is pushed past its right edge. */
+/**
+ * Every control of the lower function bar lies inside it; none is pushed past its right edge,
+ * and the white text surface ends above the bar even when the bar wraps onto a second row.
+ */
 const expectFunctionBarFits = async (canvasElement: HTMLElement) => {
     const canvas = within(canvasElement);
     const bar = await canvas.findByTestId('m3-editor-function-bar', {}, { timeout: 8000 });
@@ -78,6 +81,8 @@ const expectFunctionBarFits = async (canvasElement: HTMLElement) => {
     Array.from(bar.children).forEach((child) =>
         expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
     );
+    const surface = canvas.getByTestId('m3-editor-surface');
+    await expect(surface.getBoundingClientRect().bottom).toBeLessThanOrEqual(bar.getBoundingClientRect().top + 0.5);
 };
 
 const meta = {
@@ -158,8 +163,10 @@ export const SingleFachbereichPreselected: Story = {
 /** Same card at 390px (mobile): the function bar wraps, every control stays inside the card. */
 export const SingleFachbereichMobile: Story = {
     ...SingleFachbereichPreselected,
-    // 16px gutter + 358px card + 16px gutter = a 390px phone.
+    // 16px gutter + 358px card + 16px gutter = a 390px phone. The viewport must be the phone too:
+    // the card switches to its fluid mobile layout on the window width, not on its own width.
     parameters: { layout: 'fullscreen' },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [
         (Story) => (
             <div style={{ width: 358 }}>
