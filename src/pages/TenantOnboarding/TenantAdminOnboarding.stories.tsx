@@ -188,9 +188,59 @@ export const OrganisationDpaForwardedOnHoldMobile: Story = {
     play: OrganisationDpaForwardedOnHold.play,
 };
 
-/** A consumed link: distinct terminal state, no form, nothing resubmittable. */
+/**
+ * Reopened after a forward (#1065): the server recorded the forward, so the
+ * waiting view comes back on reload instead of the consent step.
+ */
+export const OrganisationDpaForwardedAfterReload: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { dpaForwardedAt: '2026-09-24T16:05:30' },
+        }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('dpa-forwarded-onhold')).toBeVisible();
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+    },
+};
+
+/**
+ * Reopened after the representative confirmed (#1065): "Vertragsunterlagen
+ * bestätigt", no consent block, Continue goes straight to the account step.
+ */
+export const OrganisationDpaConfirmed: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { dpaForwardedAt: '2026-09-24T16:05:30', dpaSignedAt: '2026-09-25T09:12:00' },
+        }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('dpa-confirmed-notice')).toBeVisible();
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+        await expect(canvas.queryByTestId('dpa-forwarded-onhold')).toBeNull();
+    },
+};
+
+/** The confirmed state at 390×844. */
+export const OrganisationDpaConfirmedMobile: Story = {
+    args: OrganisationDpaConfirmed.args,
+    ...PHONE_390,
+    play: OrganisationDpaConfirmed.play,
+};
+
+/** A consumed link: distinct terminal state, no form — only the way to the login (#1065). */
 export const LinkConsumed: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'CONSUMED' }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('button', { name: /Zum Login|Go to login/ })).toBeVisible();
+    },
 };
 
 /** A revoked link. */
