@@ -1,14 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { message } from 'antd';
 import type { SelfAssignments } from '../../api/accountInvites/selfAssignments';
 import { SelfAssignDialog } from './SelfAssignDialog';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key: string, fallback?: unknown, options: Record<string, unknown> = {}) =>
-            typeof fallback === 'string'
-                ? fallback.replace(/{{(\w+)}}/g, (_, name: string) => String(options[name] ?? ''))
-                : key,
+        // One key answers in English, so a hard-coded German fallback in its place shows up.
+        t: (key: string, fallback?: unknown, options: Record<string, unknown> = {}) => {
+            const text = key === 'idAllocationField.unitNumber' ? 'No. {{id}}' : fallback;
+            return typeof text === 'string'
+                ? text.replace(/{{(\w+)}}/g, (_, name: string) => String(options[name] ?? ''))
+                : key;
+        },
     }),
 }));
 
@@ -64,5 +69,44 @@ describe('SelfAssignDialog', () => {
             await topics.promise;
         });
         expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeEnabled();
+    });
+
+    it('says the topics could not be loaded and keeps "Eintragen" off', async () => {
+        render(
+            <SelfAssignDialog
+                initialAgency={AGENCY}
+                loadAgencyTopics={() => Promise.reject(new Error('503'))}
+                loadAssignments={async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] })}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(
+            await screen.findByText(/Themen dieser Beratungsstelle konnten nicht geladen werden/),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeDisabled();
+    });
+
+    it('names an agency without a name by its translated number', async () => {
+        const success = vi.spyOn(message, 'success').mockImplementation(() => undefined as never);
+        render(
+            <SelfAssignDialog
+                initialAgency={{ id: 12 }}
+                loadAgencyTopics={async () => [{ id: 2, name: 'Sucht' }]}
+                loadAssignments={async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] })}
+                assign={async ({ role, agencyId }) => ({
+                    role,
+                    agencyId,
+                    userId: 'u-1',
+                    consultantIdentityCreated: true,
+                })}
+                onClose={vi.fn()}
+            />,
+        );
+        const confirm = screen.getByRole('button', { name: 'links.selfAssign.confirm' });
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+
+        await waitFor(() => expect(success).toHaveBeenCalledWith(expect.stringContaining('„No. 12“')));
     });
 });

@@ -119,7 +119,8 @@ export const InviteBarFields = ({ draft, clients }: { draft: InviteDraftState; c
                 onExpand={() => pills.expand('email')}
             >
                 <FloatingLabelInput
-                    autoComplete="email"
+                    // A third person's address: the browser must not offer the admin's own saved ones.
+                    autoComplete="off"
                     className={styles.emailField}
                     error={email.showError || email.taken}
                     // Text, not `type="email"`: only text inputs take the caret at the end after expanding.

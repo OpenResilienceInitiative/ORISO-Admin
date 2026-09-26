@@ -18,11 +18,7 @@ export const TOPIC_PERMISSIONS: TopicPermission[] = ['NONE', 'SELECT_EXISTING', 
 // The invite bar's preselection only; an empty CSV cell is omitted and the server applies SELECT_EXISTING (Q32).
 export const BAR_DEFAULT_TOPIC_PERMISSION: TopicPermission = 'NONE';
 
-export const INVITE_ROLES: InviteRole[] = ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN'];
-
-/** Roles a viewer may hand out ("a higher unit invites a lower one"). */
-export const rolesForViewer = (viewerScope: InviteViewerScope): InviteRole[] =>
-    viewerScope === 'agency' ? ['COUNSELLOR'] : INVITE_ROLES;
+// Which roles a viewer may invite lives in inviteRules (invitableRoles), the one copy of that rule.
 
 /** German default labels; call sites translate through `t(key, default)`. */
 export const ROLE_LABEL_KEYS: Record<InviteRole, [key: string, fallback: string]> = {
@@ -81,7 +77,7 @@ export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
 export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback: string]> = {
     NO_PENDING_UNIT_ADMIN: [
         'links.accountInvites.conflict.noPendingUnitAdmin',
-        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ (mit „Berät auch“) und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
+        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
     ],
     UNIT_NOT_CREATED: [
         'links.accountInvites.conflict.unitNotCreated',

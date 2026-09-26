@@ -65,6 +65,8 @@ export const SelfAssignDialog = ({
     });
     const agencyId = agency.mode === 'existing' ? agency.value : undefined;
     const [topics, setTopics] = useState<SelfAssignTopic[] | null>(null);
+    // A failed load is its own state: read as "no topics" it would enable "Eintragen" and get a 400.
+    const [topicsFailed, setTopicsFailed] = useState(false);
     const [topicIds, setTopicIds] = useState<number[]>([]);
     const [assignments, setAssignments] = useState<SelfAssignments | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -83,6 +85,7 @@ export const SelfAssignDialog = ({
 
     useEffect(() => {
         setTopics(null);
+        setTopicsFailed(false);
         setTopicIds([]);
         setError(null);
         if (agencyId == null) return undefined;
@@ -94,7 +97,7 @@ export const SelfAssignDialog = ({
                 // One topic: it is the only possible choice, the backend takes it anyway.
                 if (loaded.length === 1) setTopicIds([loaded[0].id]);
             })
-            .catch(() => !cancelled && setTopics([]));
+            .catch(() => !cancelled && setTopicsFailed(true));
         return () => {
             cancelled = true;
         };
@@ -104,9 +107,14 @@ export const SelfAssignDialog = ({
     const needsTopics = role === 'COUNSELLOR' && (topics?.length ?? 0) > 1;
     const alreadyThere = agencyId != null && assignments?.counsellorAgencyIds.includes(agencyId);
     // Until the topics are loaded, their count is unknown: a multi-topic agency would be sent without topicIds.
-    const topicsLoading = agencyId != null && topics === null;
+    const topicsLoading = agencyId != null && topics === null && !topicsFailed;
     const canSubmit =
-        agencyId != null && !submitting && !alreadyThere && !topicsLoading && (!needsTopics || topicIds.length > 0);
+        agencyId != null &&
+        !submitting &&
+        !alreadyThere &&
+        !topicsLoading &&
+        !topicsFailed &&
+        (!needsTopics || topicIds.length > 0);
 
     const assignmentSummary = useMemo(() => {
         if (!assignments) return null;
@@ -143,7 +151,7 @@ export const SelfAssignDialog = ({
             message.success(
                 t('links.selfAssign.success', 'Sie sind jetzt als {{role}} in „{{agency}}“ eingetragen.', {
                     role: roleLabel(role),
-                    agency: agency.unit?.name ?? `Nr. ${agencyId}`,
+                    agency: agency.unit?.name ?? t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: agencyId }),
                 }),
             );
             onAssigned?.(result);
@@ -206,6 +214,12 @@ export const SelfAssignDialog = ({
                         }
                         if (alreadyThere)
                             return t(...(inviteConflictReasonKey('SELF_ASSIGNMENT_ALREADY_EXISTS') ?? ['', '']));
+                        if (topicsFailed) {
+                            return t(
+                                'links.selfAssign.topicsFailed',
+                                'Die Themen dieser Beratungsstelle konnten nicht geladen werden. Bitte später erneut versuchen.',
+                            );
+                        }
                         if (needsTopics && topicIds.length === 0) {
                             return t(
                                 'links.selfAssign.pickTopics',
@@ -215,7 +229,11 @@ export const SelfAssignDialog = ({
                         return assignmentSummary;
                     })()}
                 </p>
-                {(error || alreadyThere || agencyId == null || (needsTopics && topicIds.length === 0)) &&
+                {(error ||
+                    alreadyThere ||
+                    agencyId == null ||
+                    topicsFailed ||
+                    (needsTopics && topicIds.length === 0)) &&
                     assignmentSummary && <p className={styles.current}>{assignmentSummary}</p>}
             </div>
         </Modal>

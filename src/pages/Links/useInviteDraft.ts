@@ -352,7 +352,7 @@ export const useInviteDraft = ({
         if (needsUnitAdmin) {
             return t(
                 'links.composer.blocked.counsellorNeedsUnitAdmin',
-                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein (Rolle „BST-Admin“, „Berät auch“), dann die Berater:innen mit derselben Nummer.',
+                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein, dann die Berater:innen mit derselben Nummer.',
             );
         }
         if (!templateValid) return t('links.composer.blocked.template', 'Bitte zuerst eine E-Mail-Vorlage auswählen.');

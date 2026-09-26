@@ -300,6 +300,27 @@ describe('IdAllocationField', () => {
         expect(allocation.step).not.toHaveBeenCalled();
     });
 
+    it('opens the menu on an arrow key while it is closed, and never steps over a pick', async () => {
+        const allocation = allocationState({
+            mode: 'existing',
+            value: 101,
+            unit: { id: 101, name: 'Caritas Freiburg' },
+            validation: 'existing',
+        });
+        const user = userEvent.setup();
+        render(<IdAllocationField label="Beratungsstelle" allocation={allocation} />);
+        const input = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await user.keyboard('{Escape}');
+        expect(input).toHaveAttribute('aria-expanded', 'false');
+
+        await user.keyboard('{ArrowDown}');
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        await user.keyboard('{Escape}{ArrowUp}');
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+        expect(allocation.step).not.toHaveBeenCalled();
+    });
+
     it('shows an existing unit by name and number, filled like a confirmed id', () => {
         render(
             <IdAllocationField
@@ -397,6 +418,26 @@ describe('IdAllocationField', () => {
         await waitFor(() =>
             expect(allocation.selectExisting).toHaveBeenLastCalledWith({ id: 40, name: 'Caritas Emmendingen' }),
         );
+    });
+
+    it('drops an earlier pick when the typed number grows into one with no unit', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async (id: number) => (id === 9 ? { id: 9, name: 'Caritas Emmendingen' } : null));
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField label="Träger" allowCreate={false} allocation={allocation} resolveUnit={resolveUnit} />,
+        );
+        const input = screen.getByRole('combobox', { name: 'Träger' });
+
+        await user.type(input, '9');
+        await waitFor(() =>
+            expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 9, name: 'Caritas Emmendingen' }),
+        );
+        await user.type(input, '0');
+
+        expect(await screen.findByText('Keine Einheit mit Nr. 90')).toBeInTheDocument();
+        // No unit 90: the stale pick 9 must not stay submittable.
+        await waitFor(() => expect(allocation.resetToAuto).toHaveBeenCalled());
     });
 
     it('refuses a typed number that belongs to no unit in an existing-only field', async () => {

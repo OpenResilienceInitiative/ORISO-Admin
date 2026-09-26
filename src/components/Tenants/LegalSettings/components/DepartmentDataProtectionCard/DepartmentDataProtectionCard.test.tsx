@@ -358,6 +358,16 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
     });
 
+    // #1066 (H3): inherited text is marked as such, never as "Veröffentlicht".
+    it.each([
+        ['INHERITED_FROM_TRAEGER', 'tenants.legal.departmentDataProtection.status.inheritedFromTraeger'],
+        ['INHERITED_FROM_AGENCY', 'tenants.legal.departmentDataProtection.status.inheritedFromAgency'],
+    ] as const)('tags %s text with a neutral inherited badge', (status, label) => {
+        render(<DepartmentDataProtectionCard publicationStatus={status} onSave={() => undefined} />);
+        expect(screen.getByTestId('legal-publication-status')).toHaveTextContent(label);
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.published')).not.toBeInTheDocument();
+    });
+
     it('renders the department name when provided', () => {
         render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();

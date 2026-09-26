@@ -565,6 +565,12 @@ describe('CounsellorInvitesTab — invite wiring', () => {
                 timeout: 10_000,
             }),
         ).toBeInTheDocument();
+        // A founding BST-Admin may or may not counsel (Frank's decision): the hint sets no such condition.
+        expect(
+            screen.getByText(
+                'Nur eine BST-Admin legt eine neue Beratungsstelle an. Laden Sie zuerst die BST-Admin ein, dann die Berater:innen mit derselben Nummer.',
+            ),
+        ).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
 
         await user.click(screen.getByRole('button', { name: 'Stattdessen als BST-Admin einladen' }));
@@ -998,6 +1004,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(
             await screen.findByText(/für sie ist keine BST-Admin-Einladung offen/, undefined, { timeout: 10_000 }),
         ).toBeInTheDocument();
+        expect(screen.queryByText(/Berät auch/)).not.toBeInTheDocument();
         expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
     });
 
@@ -1291,6 +1298,24 @@ describe('CSV import payload per tab', () => {
         expect(counsellorCall).not.toHaveProperty('importBatchId');
     });
 
+    it('lists only the columns each tab imports in the CSV menu hint', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        const { unmount } = renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const tenantHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(tenantHint).not.toHaveTextContent('Themen & Fachbereiche');
+        expect(tenantHint).not.toHaveTextContent('Berät auch');
+        unmount();
+
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        render(<CounsellorInvitesTab />);
+        await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }, { timeout: 10_000 }));
+        const agencyHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
+        expect(agencyHint).toHaveTextContent('Themen & Fachbereiche');
+        expect(agencyHint).toHaveTextContent('Berät auch');
+    });
+
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         renderTenantTab();
@@ -1306,6 +1331,8 @@ describe('CSV import payload per tab', () => {
             targetRole: 'TENANT_ADMIN',
             recipientEmail: 'tenant@example.org',
             tenantId: 42,
+            // A pinned number for a new Träger is MANUAL, as the bar sends it.
+            tenantIdAllocationMode: 'MANUAL',
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();

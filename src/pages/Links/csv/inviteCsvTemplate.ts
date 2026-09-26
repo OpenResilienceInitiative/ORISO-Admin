@@ -15,6 +15,20 @@ export interface InviteCsvTemplateLabels {
     alsoCounsellor?: string;
 }
 
+/** The columns each tab imports: topics and "Berät auch" exist only for agency invites. */
+export const inviteCsvColumnsForTab = (tab: 'tenant' | 'counsellor'): Array<keyof InviteCsvTemplateLabels> => {
+    const shared: Array<keyof InviteCsvTemplateLabels> = [
+        'email',
+        'firstName',
+        'lastName',
+        'id',
+        'target',
+        'role',
+        'template',
+    ];
+    return tab === 'tenant' ? shared : [...shared, 'topicPermission', 'alsoCounsellor'];
+};
+
 /** Sample cell values; they depend on the importing tab. */
 export interface InviteCsvTemplateSamples {
     /** The tab's role as the file spells it, e.g. "Berater:in". */
@@ -34,13 +48,10 @@ export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?
             ['bernd.muster@traeger.de', 'Bernd', 'Muster', ''],
         ];
     } else {
-        header.push(
-            labels.target ?? '',
-            labels.role ?? '',
-            labels.template ?? '',
-            labels.topicPermission ?? '',
-            labels.alsoCounsellor ?? '',
-        );
+        header.push(labels.target ?? '', labels.role ?? '', labels.template ?? '');
+        // Only the columns the tab takes; a missing label drops its cells too.
+        const optional = [labels.topicPermission, labels.alsoCounsellor];
+        optional.forEach((label) => label != null && header.push(label));
         // A new Beratungsstelle is founded by its BST-Admin row; counsellor rows with the same number wait for it.
         rows =
             samples.idKind === 'agency'
@@ -55,7 +66,10 @@ export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?
                       ['bernd.muster@traeger.de', 'Bernd', 'Muster', '', 'neu', samples.role, '', '', ''],
                   ];
     }
-    return `\ufeff${[header, ...rows].map((cells) => cells.join(';')).join('\r\n')}\r\n`;
+    const width = header.length;
+    return `\ufeff${[header, ...rows.map((cells) => cells.slice(0, width))]
+        .map((cells) => cells.join(';'))
+        .join('\r\n')}\r\n`;
 };
 
 /** Triggers the browser download without touching the DOM the app renders. */

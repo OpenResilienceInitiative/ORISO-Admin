@@ -5,6 +5,7 @@ import { updateAgencyData } from '../api/agency/updateAgencyData';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { AgencyData } from '../types/agency';
 import { useAgencyData } from './useAgencyData';
+import { AGENCY_CONSULTANTS_KEY } from './useAgencyConsultants';
 
 export const useAgencyUpdate = (id: string) => {
     const queryClient = useQueryClient();
@@ -68,6 +69,7 @@ export const useAgencyUpdate = (id: string) => {
 
             if ((variables as Partial<AgencyData>)?.consultantIds?.length > 0) {
                 queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
+                queryClient.invalidateQueries({ queryKey: [AGENCY_CONSULTANTS_KEY, id] });
                 queryClient.invalidateQueries({ queryKey: [TypeOfUser.Consultants.toUpperCase()] });
             }
         },

@@ -216,4 +216,39 @@ describe('updateAgencyData — counsellor assignment on the edit path', () => {
 
         expect(result).toMatchObject({ id: '55', consultantAssignmentFailed: true });
     });
+
+    it('assigns the counsellors before the PUT, so the first counsellor + "visible" saves in one go', async () => {
+        // #1069: AgencyService's AgencyOfflineStatusValidator rejects offline=false while the
+        // agency has no counsellor (AGENCY_CONTAINS_NO_CONSULTANTS). Assigning after the PUT
+        // meant the very save that picks the first counsellor could never switch visibility on.
+        const order: string[] = [];
+        mocks.assignAgencyToConsultants.mockImplementation(async () => {
+            order.push('assign');
+        });
+        mocks.fetchData.mockImplementation(async () => {
+            order.push('put');
+            return { _embedded: { id: '55' } };
+        });
+
+        await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            online: true,
+            consultantIds: [{ value: '7' }],
+        } as any);
+
+        expect(order).toEqual(['assign', 'put']);
+        expect(sentBody().offline).toBe(false);
+    });
+
+    it('still saves the agency when the early assignment fails', async () => {
+        mocks.assignAgencyToConsultants.mockRejectedValue(new Error('consultant service down'));
+
+        const result = await updateAgencyData(agencyModel, {
+            ...agencyModel,
+            consultantIds: [{ value: '7' }],
+        } as any);
+
+        expect(mocks.fetchData).toHaveBeenCalledTimes(1);
+        expect(result).toMatchObject({ id: '55', consultantAssignmentFailed: true });
+    });
 });

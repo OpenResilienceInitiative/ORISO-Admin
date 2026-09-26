@@ -172,4 +172,20 @@ describe('DepartmentSelect — who still inherits', () => {
 
         expect(onChange).toHaveBeenCalledWith(3);
     });
+    // #1066 / H4: at Caritas a Beratungsstelle has exactly one Fachbereich; offering
+    // "Alle Fachbereiche" next to it is a choice without a difference.
+    it('offers no "Alle Fachbereiche" entry when there is exactly one Fachbereich', async () => {
+        render(<DepartmentSelect departments={[departments[0]]} value={3} onChange={vi.fn()} />);
+        await openMenu();
+
+        expect(await screen.findByRole('menuitem', { name: /U25 Suizidprävention/ })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: /Alle Fachbereiche/ })).not.toBeInTheDocument();
+    });
+
+    it('keeps "Alle Fachbereiche" when there are several Fachbereiche', async () => {
+        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
+        await openMenu();
+
+        expect(await screen.findByRole('menuitem', { name: /Alle Fachbereiche/ })).toBeInTheDocument();
+    });
 });
