@@ -1,7 +1,9 @@
 import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { getSingleTenantData } from '../api/tenant/getSingleTenantData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
 import { mergeTenantAdminData, serializeTenantAdminDataUpdate } from '../utils/mergeTenantAdminData';
@@ -14,7 +16,7 @@ interface TenantAdminDataOptions
     id: string | number;
     /** `null` suppresses the success toast for callers that confirm the outcome themselves. */
     successMessageKey?: string | null;
-    /** Skip GET /service/tenantadmin/{id} and use this payload as the PUT merge base instead. */
+    /** Skip the GET /service/tenantadmin/{id} prefetch; the PUT itself always reads the tenant fresh. */
     seedTenantAdminData?: TenantAdminData;
     prefetchTenantAdminData?: boolean;
 }
@@ -35,9 +37,20 @@ export const useTenantAdminDataMutation = ({
         enabled: shouldPrefetchTenantAdminData,
     });
 
+    // The base the last PUT was built on, so the cache is merged onto the same full tenant.
+    const writtenBaseRef = useRef<TenantAdminData | undefined>(undefined);
+
     return useMutation({
-        mutationFn: (data: Partial<TenantAdminData>) => {
-            const mergeBase = tenantAdminData ?? seedTenantAdminData;
+        mutationFn: async (data: Partial<TenantAdminData>) => {
+            // TenantService replaces every tenant field on PUT. A cached or /service/tenant-seeded base
+            // lacks fields (Erstantwort texts, other `claim` languages), and a PUT built on it wipes
+            // them (#1066). So every write rests on a fresh, full read; if that fails, nothing is written.
+            const mergeBase = await getSingleTenantData(id, { silent: true });
+            // getSingleTenantData always adds `name`; only a real tenant has an id.
+            if (mergeBase?.id == null) {
+                throw new Error('TENANT_READ_FAILED');
+            }
+            writtenBaseRef.current = mergeBase;
 
             return fetchData({
                 url: `${tenantAdminEndpoint}/${id}`,
@@ -49,7 +62,7 @@ export const useTenantAdminDataMutation = ({
         },
         ...options,
         onSuccess: (responseData, updatedData, onMutateResult, context) => {
-            const mergeBase = tenantAdminData ?? seedTenantAdminData;
+            const mergeBase = writtenBaseRef.current ?? tenantAdminData ?? seedTenantAdminData;
             const merged = mergeTenantAdminData(mergeBase, updatedData);
             queryClient.setQueryData([TENANT_ADMIN_DATA_KEY], merged);
             if (id != null && id !== '' && id !== 'add') {
