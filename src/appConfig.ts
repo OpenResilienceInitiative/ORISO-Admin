@@ -79,6 +79,7 @@ export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/pas
 // convention and get verified against the UserService wiring chunks.
 export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
+export const globalSmtpPlatformSettingsEndpoint = `${userServiceURL}/service/users/system-notification-emails/platform-settings`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${userServiceURL}/service/users/supervisors/logs`;
