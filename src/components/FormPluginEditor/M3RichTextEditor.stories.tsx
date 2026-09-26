@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Tune from '@mui/icons-material/Tune';
 import { TemplateSplitButton } from '../PlaceholderTemplate';
+import { legalTextTokensFor, PlaceholderTokenDef } from '../PlaceholderTemplate/placeholderTokens';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { M3RichTextEditor } from './M3RichTextEditor';
 import { SplitDropdown } from './SplitDropdown';
@@ -68,6 +69,49 @@ export const GDPR: Story = {
         value: '',
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
+    },
+};
+
+const toEditorTokens = (tokens: PlaceholderTokenDef[]) =>
+    tokens.map((token) => ({ key: token.key, label: token.labelFallback, sample: token.sample }));
+
+/**
+ * Admin#1067: the placeholders sit behind one toolbar button ("Platzhalter einfügen") instead of a
+ * chip row above the text. Träger / Beratungsstelle Datenschutz: incl. the inherited DPO.
+ */
+export const PlaceholderMenu: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Datenschutz',
+        value: '<p>Verantwortlich ist die {{Beratungsstelle}}, {{Adresse}}.</p><p>Datenschutzbeauftragte:r: </p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        textTokens: toEditorTokens(legalTextTokensFor('privacy', 'traeger')),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.queryByTestId('m3-editor-token-row')).toBeNull();
+        await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
+        const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
+        // The MUI menu grows in; wait for the end of the transition before asserting visibility.
+        await waitFor(() => expect(within(menu).getByText('Datenschutzbeauftragte:r')).toBeVisible());
+    },
+};
+
+/** Platform Datenschutz card: only the platform-labelled DPO, never the inherited one. */
+export const PlaceholderMenuPlatform: Story = {
+    ...PlaceholderMenu,
+    args: {
+        ...PlaceholderMenu.args,
+        textTokens: toEditorTokens(legalTextTokensFor('privacy', 'platform')),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
+        const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
+        await waitFor(() =>
+            expect(within(menu).getByText(/zuständig für die Plattform, nicht für Beratungsstellen/)).toBeVisible(),
+        );
     },
 };
 
@@ -472,11 +516,14 @@ export const AgencyFooterWithConsentTemplate: Story = {
         );
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-        // The bar scrolls instead of wrapping, and never shows a scrollbar: the
-        // scroll track occupies no layout space at all.
-        expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
-        expect(bar.offsetHeight - bar.clientHeight).toBe(0);
-        expect(window.getComputedStyle(bar).flexWrap).toBe('nowrap');
+        // #1066: the bar wraps instead of scrolling — every control lies inside it, none
+        // is pushed past the right edge where it read as cut off.
+        expect(window.getComputedStyle(bar).flexWrap).toBe('wrap');
+        expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+        const barRight = bar.getBoundingClientRect().right;
+        Array.from(bar.children).forEach((child) =>
+            expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
+        );
     },
 };
 

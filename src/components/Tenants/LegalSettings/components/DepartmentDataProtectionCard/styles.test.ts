@@ -28,4 +28,11 @@ describe('DepartmentDataProtectionCard responsive contract', () => {
         expect(mobileRule).toMatch(/&::-webkit-scrollbar\s*{[\s\S]*height:\s*4px/);
         expect(mobileRule).toMatch(/&::-webkit-scrollbar-thumb\s*{[\s\S]*background:/);
     });
+
+    // #1066: at 390px the "Vom Träger übernommen" tag was cut at the card edge.
+    it('wraps the Fachbereich name and status tag instead of clipping the tag', () => {
+        const headerRule = cardStyles.match(/\.header\s*{([^}]*)}/s)?.[1] ?? '';
+
+        expect(headerRule).toMatch(/flex-wrap:\s*wrap/);
+    });
 });

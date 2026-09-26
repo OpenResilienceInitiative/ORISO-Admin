@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
-import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -21,7 +21,15 @@ import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
-export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED';
+/** `INHERITED_*`: no own text at this level; the card shows the level above's (#1066). */
+export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED' | 'INHERITED_FROM_TRAEGER' | 'INHERITED_FROM_AGENCY';
+
+const STATUS_LABEL_KEYS: Record<DepartmentPublicationStatus, string> = {
+    DRAFT: 'tenants.legal.departmentDataProtection.status.draft',
+    PUBLISHED: 'tenants.legal.departmentDataProtection.status.published',
+    INHERITED_FROM_TRAEGER: 'tenants.legal.departmentDataProtection.status.inheritedFromTraeger',
+    INHERITED_FROM_AGENCY: 'tenants.legal.departmentDataProtection.status.inheritedFromAgency',
+};
 
 interface DepartmentDataProtectionCardProps {
     /** Name of the Fachbereich (topic) this data privacy policy belongs to — shown in the header. */
@@ -221,12 +229,12 @@ export const DepartmentDataProtectionCard = ({
 
     const legalTextTokens = useMemo(
         () =>
-            LEGAL_TEXT_TOKENS.map((token) => ({
+            legalTextTokensFor(documentType, 'agency').map((token) => ({
                 key: token.key,
                 label: t(token.labelKey, token.labelFallback),
                 sample: token.sample,
             })),
-        [t],
+        [t, documentType],
     );
 
     const editorVersions = useMemo(
@@ -368,10 +376,8 @@ export const DepartmentDataProtectionCard = ({
                                 saved, so it carries "Veröffentlicht" too. Without a tag there, a
                                 published text read as a bug next to a tagged Fachbereich. */}
                             {publicationStatus && (
-                                <Tag color={published ? 'green' : 'default'}>
-                                    {published
-                                        ? t('tenants.legal.departmentDataProtection.status.published')
-                                        : t('tenants.legal.departmentDataProtection.status.draft')}
+                                <Tag color={published ? 'green' : 'default'} data-testid="legal-publication-status">
+                                    {t(STATUS_LABEL_KEYS[publicationStatus])}
                                 </Tag>
                             )}
                         </div>
