@@ -5,6 +5,8 @@ import styles from './statTile.module.scss';
 export interface StatTileProps {
     label: string;
     value: ReactNode;
+    /** One quiet line under the label, e.g. the breakdown of the count. */
+    supportingText?: string;
     /** `error` renders the value in the magenta error role. */
     tone?: 'default' | 'error';
     /** Toggled state when the tile acts as a filter (`aria-pressed`). */
@@ -27,6 +29,7 @@ export interface StatTileProps {
 export const StatTile = ({
     label,
     value,
+    supportingText,
     tone = 'default',
     active = false,
     onClick,
@@ -37,6 +40,12 @@ export const StatTile = ({
         <>
             <span className={classNames(styles.value, { [styles.valueError]: tone === 'error' })}>{value}</span>
             <span className={styles.label}>{label}</span>
+            {/* A long breakdown ends in "…" on one line; the title shows it whole. */}
+            {supportingText && (
+                <span className={styles.supportingText} title={supportingText}>
+                    {supportingText}
+                </span>
+            )}
         </>
     );
 

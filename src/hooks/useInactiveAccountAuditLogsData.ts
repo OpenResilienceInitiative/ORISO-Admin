@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { withUtcInstants } from '../utils/backendInstant';
 import { inactiveAccountAuditLogsEndpoint } from '../appConfig';
 import { InactiveAccountAuditLogsResponse } from '../types/inactiveAccountAuditLogs';
 
@@ -38,7 +39,7 @@ export const useInactiveAccountAuditLogsData = ({
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
                 responseHandling: [],
-            }),
+            }).then(withUtcInstants),
         ...(options as object),
         retry: false,
         refetchOnWindowFocus: false,

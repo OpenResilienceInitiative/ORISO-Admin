@@ -4,6 +4,7 @@
 
 .stepper {
     display: inline-flex;
+    max-width: 100%;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
@@ -134,5 +135,43 @@
     width: 1px;
     height: 1px;
     clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/*
+ * Dated track (#1026, Frank 25 Sept): each step shows when it was reached.
+ * Steps become fixed columns — bead on top, "25.09., 14:30" below — and the
+ * connector runs from bead centre to bead centre.
+ */
+
+/* Six dated steps need 528px; in a phone card the track scrolls instead of spilling out. Focusing a bead scrolls it into view. */
+.trackDated {
+    max-width: 100%;
+    align-items: flex-start;
+    overflow-x: auto;
+
+    .phase {
+        width: 88px;
+        flex: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    /* Bead = 3px + 14px dot + 3px: its centre is 10px down, the 2px line starts at 9px. */
+    .phase + .phase:before {
+        position: absolute;
+        top: 9px;
+        right: calc(50% + 12px);
+        width: 64px;
+    }
+}
+
+.stamp {
+    min-height: 16px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 11px/16px var(--m3-body-font-family);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
     white-space: nowrap;
 }

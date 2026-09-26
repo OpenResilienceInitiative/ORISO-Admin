@@ -1,14 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { withUtcInstants } from '../../../utils/backendInstant';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import {
-    countInviteBuckets,
-    deriveInviteBucket,
+    countLifecyclePhases,
     derivePhases,
     formatRelativeTime,
+    formatStepTime,
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    lifecycleOf,
     matchesInviteQuery,
+    phaseReachedAt,
+    tileCountsFromServer,
 } from './derivePhases';
 
 const invite = (overrides: Partial<AccountInviteDTO> = {}): AccountInviteDTO => ({
@@ -256,112 +260,68 @@ describe('derivePhases — Berater (COUNSELLOR)', () => {
     });
 });
 
-describe('deriveInviteBucket', () => {
-    it('buckets live unaccepted invites as invited', () => {
-        expect(deriveInviteBucket(invite())).toBe('invited');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'DRAFT', emailDeliveryStatus: null }))).toBe('invited');
+describe('lifecycleOf (the five tiles, phase from the server)', () => {
+    const read = (overrides: Partial<AccountInviteDTO>) => lifecycleOf(invite(overrides));
+
+    it.each([
+        ['PREPARED', 'prepared'],
+        ['INVITED', 'invited'],
+        ['ACCOUNT_CREATED', 'accountCreated'],
+        ['DONE', 'done'],
+        ['NEEDS_ACTION', 'needsAction'],
+    ] as const)('files the server phase %s under the %s tile', (progressPhase, phase) => {
+        expect(read({ progressPhase })?.phase).toBe(phase);
     });
 
-    it('buckets accepted-but-not-ready invites as inProgress', () => {
-        expect(deriveInviteBucket(invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }))).toBe(
-            'inProgress',
-        );
+    it('files revoked and replaced invites (server CLOSED) under "Braucht Aktion", as Frank decided', () => {
+        expect(read({ progressPhase: 'CLOSED', inviteStatus: 'REVOKED' })).toEqual({
+            phase: 'needsAction',
+            detail: 'REVOKED',
+        });
+        expect(read({ progressPhase: 'CLOSED', inviteStatus: 'SUPERSEDED' })?.detail).toBe('SUPERSEDED');
     });
 
-    it('keeps a READY tenant invite in progress while the DPA signature is outstanding', () => {
-        // The tile must not contradict the stepper: gate READY without a landed
-        // signature is "waiting on the signature", never "Abgeschlossen".
-        expect(
-            deriveInviteBucket(
-                invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z', accessGateStatus: 'READY' }),
-            ),
-        ).toBe('inProgress');
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaForwardedAt: '2026-08-03T10:00:00Z',
-                }),
-            ),
-        ).toBe('inProgress');
+    it('never guesses a phase the server did not send', () => {
+        expect(read({ progressPhase: undefined })).toBeUndefined();
+        expect(read({ progressPhase: null })).toBeUndefined();
     });
 
-    it('buckets a READY tenant invite as completed once the signature landed', () => {
+    it('names why an invite needs action when its raw status alone would not say it', () => {
+        expect(read({ progressPhase: 'NEEDS_ACTION', emailDeliveryStatus: 'FAILED' })?.detail).toBe('DELIVERY_FAILED');
+        expect(read({ progressPhase: 'NEEDS_ACTION' })?.detail).toBe('LINK_EXPIRED');
         expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
-            ),
-        ).toBe('completed');
+            read({ progressPhase: 'NEEDS_ACTION', inviteStatus: 'WAITING_FOR_UNIT', queueProblem: 'NO_UNIT_ADMIN' })
+                ?.detail,
+        ).toBe('NO_UNIT_ADMIN');
+        expect(read({ progressPhase: 'NEEDS_ACTION', inviteStatus: 'ACCEPTED' })?.detail).toBe('PROVISIONING_FAILED');
+        expect(read({ progressPhase: 'NEEDS_ACTION', inviteStatus: 'EXPIRED' })?.detail).toBe('EXPIRED');
     });
 
-    it('buckets READY counsellor invites as completed — no DPA gate on that track', () => {
-        expect(
-            deriveInviteBucket(
-                invite({
-                    targetRole: 'COUNSELLOR',
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                }),
-            ),
-        ).toBe('completed');
+    it('keeps the raw status as the detail everywhere else', () => {
+        expect(read({ progressPhase: 'PREPARED', inviteStatus: 'WAITING_FOR_UNIT' })?.detail).toBe('WAITING_FOR_UNIT');
+        expect(read({ progressPhase: 'DONE', inviteStatus: 'ACCEPTED' })?.detail).toBe('ACCEPTED');
     });
 
-    it('buckets dead invites and failed deliveries as problem', () => {
-        expect(deriveInviteBucket(invite({ inviteStatus: 'EXPIRED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'REVOKED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ inviteStatus: 'SUPERSEDED' }))).toBe('problem');
-        expect(deriveInviteBucket(invite({ emailDeliveryStatus: 'FAILED' }))).toBe('problem');
-    });
-
-    it('stops calling a bounce a problem once the invite was accepted', () => {
-        // A historical FAILED delivery on a finished onboarding must not land the
-        // row under "Abgelaufen / Problem" while its stepper shows all-done —
-        // the bucket now reads the bounce the same way derivePhases does.
+    it('counts each tile with its breakdown, and leaves rows without a phase out', () => {
         expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    emailDeliveryStatus: 'FAILED',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
-            ),
-        ).toBe('completed');
-        expect(
-            deriveInviteBucket(
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    emailDeliveryStatus: 'FAILED',
-                }),
-            ),
-        ).toBe('inProgress');
-    });
-
-    it('counts every bucket over a list', () => {
-        expect(
-            countInviteBuckets([
-                invite(),
-                invite({ inviteStatus: 'ACCEPTED', acceptedAt: '2026-08-02T10:00:00Z' }),
-                invite({
-                    inviteStatus: 'ACCEPTED',
-                    acceptedAt: '2026-08-02T10:00:00Z',
-                    accessGateStatus: 'READY',
-                    dpaSignedAt: '2026-08-04T10:00:00Z',
-                }),
-                invite({ inviteStatus: 'EXPIRED' }),
-                invite({ inviteStatus: 'EXPIRED' }),
+            countLifecyclePhases([
+                invite({ progressPhase: 'PREPARED', inviteStatus: 'DRAFT' }),
+                invite({ progressPhase: 'PREPARED', inviteStatus: 'DRAFT' }),
+                invite({ progressPhase: 'PREPARED', inviteStatus: 'WAITING_FOR_UNIT' }),
+                invite({ progressPhase: 'INVITED' }),
+                invite({ progressPhase: 'ACCOUNT_CREATED', inviteStatus: 'ACCEPTED' }),
+                invite({ progressPhase: 'NEEDS_ACTION', inviteStatus: 'EXPIRED' }),
+                invite({ progressPhase: 'CLOSED', inviteStatus: 'REVOKED' }),
+                invite({ progressPhase: 'NEEDS_ACTION', emailDeliveryStatus: 'FAILED' }),
+                invite({ progressPhase: undefined }),
             ]),
-        ).toEqual({ invited: 1, inProgress: 1, completed: 1, problem: 2 });
+        ).toEqual({
+            prepared: { total: 3, details: { DRAFT: 2, WAITING_FOR_UNIT: 1 } },
+            invited: { total: 1, details: { EMAIL_SENT: 1 } },
+            accountCreated: { total: 1, details: { ACCEPTED: 1 } },
+            done: { total: 0, details: {} },
+            needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, DELIVERY_FAILED: 1 } },
+        });
     });
 });
 
@@ -444,5 +404,201 @@ describe('matchesInviteQuery (A4)', () => {
     it('treats a blank query as no filter at all', () => {
         expect(matchesInviteQuery(invite(), '   ')).toBe(true);
         expect(matchesInviteQuery(invite(), '')).toBe(true);
+    });
+});
+
+describe('derivePhases — waiting for a new unit', () => {
+    const waiting = (overrides: Partial<AccountInviteDTO> = {}) =>
+        invite({
+            targetRole: 'COUNSELLOR',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'AGENCY',
+            emailDeliveryStatus: null,
+            expiresAt: null,
+            ...overrides,
+        });
+
+    it('puts "Beratungsstelle noch nicht angelegt" in front as the current step', () => {
+        expect(states(waiting())).toEqual([
+            'agencyUnitCreated:current',
+            'invited:pending',
+            'accountCreated:pending',
+            'completed:pending',
+        ]);
+    });
+
+    it('waits for the Träger when the unit is a new Träger', () => {
+        expect(states(waiting({ targetRole: 'AGENCY_ADMIN', waitingForUnit: 'TENANT' }))[0]).toBe(
+            'tenantUnitCreated:current',
+        );
+    });
+
+    it('turns the first step into a warning while no unit admin is pending', () => {
+        expect(states(waiting({ queueProblem: 'NO_UNIT_ADMIN' }))[0]).toBe('agencyUnitCreated:warning');
+    });
+
+    it('never adds the unit step to an invite that never waited', () => {
+        expect(states(invite({ targetRole: 'COUNSELLOR', waitingForUnit: null }))[0]).toBe('invited:done');
+    });
+
+    // Frank, 25 Sept: 4 steps when the invite waited for a new unit, otherwise 3.
+    it('keeps the unit step, done, once the unit exists and the invite went out', () => {
+        expect(
+            states(invite({ targetRole: 'COUNSELLOR', waitingForUnit: null, unitCreatedAt: '2026-09-24T09:00:00Z' })),
+        ).toEqual(['agencyUnitCreated:done', 'invited:done', 'accountCreated:current', 'completed:pending']);
+    });
+
+    it("names a released agency admin's unit step after the new Träger it waited for", () => {
+        expect(
+            states(
+                invite({
+                    targetRole: 'AGENCY_ADMIN',
+                    tenantIdAllocationMode: 'AUTO',
+                    waitingForUnit: null,
+                    unitCreatedAt: '2026-09-24T09:00:00Z',
+                }),
+            )[0],
+        ).toBe('tenantUnitCreated:done');
+    });
+});
+
+describe('phaseReachedAt (the date under each step)', () => {
+    const dated = invite({
+        targetRole: 'COUNSELLOR',
+        unitCreatedAt: '2026-09-24T09:00:00Z',
+        sentAt: '2026-09-24T09:01:00Z',
+        accountCreatedAt: '2026-09-25T12:30:12Z',
+        completedAt: null,
+        dpaSignedAt: '2026-09-26T10:00:00Z',
+        dpaForwardedAt: '2026-09-25T10:00:00Z',
+        twoFactorDoneAt: '2026-09-25T12:40:00Z',
+    });
+
+    it.each([
+        ['agencyUnitCreated', '2026-09-24T09:00:00Z'],
+        ['tenantUnitCreated', '2026-09-24T09:00:00Z'],
+        ['invited', '2026-09-24T09:01:00Z'],
+        ['accountCreated', '2026-09-25T12:30:12Z'],
+        ['registered', '2026-09-25T12:30:12Z'],
+        ['dpaForwarded', '2026-09-25T10:00:00Z'],
+        ['dpaSigned', '2026-09-26T10:00:00Z'],
+        ['completed', null],
+        ['tenantCreated', '2026-09-24T09:00:00Z'],
+        ['twoFactorActive', '2026-09-25T12:40:00Z'],
+    ] as const)('dates %s with %s', (key, expected) => {
+        expect(phaseReachedAt(key, dated)).toBe(expected);
+    });
+});
+
+describe('formatStepTime', () => {
+    const originalTz = process.env.TZ;
+    beforeAll(() => {
+        process.env.TZ = 'Europe/Berlin';
+    });
+    afterAll(() => {
+        process.env.TZ = originalTz;
+    });
+
+    it('shows day, month and time under the step, the full timestamp in the tooltip', () => {
+        expect(formatStepTime('2026-09-25T12:30:12Z', 'de')).toEqual({
+            short: '25.09., 14:30',
+            full: '25.09.2026, 14:30:12',
+        });
+    });
+
+    it('reads a zoneless backend timestamp as UTC', () => {
+        expect(formatStepTime('2026-09-25T12:30:12', 'de').short).toBe('25.09., 14:30');
+    });
+});
+
+// Timestamps arrive as UTC (see withUtcInstants); these run in Europe/Berlin so an offset would show.
+describe('timestamps read in Europe/Berlin', () => {
+    const originalTz = process.env.TZ;
+    beforeAll(() => {
+        process.env.TZ = 'Europe/Berlin';
+    });
+    afterAll(() => {
+        process.env.TZ = originalTz;
+    });
+    const now = new Date('2026-09-21T17:42:02Z');
+
+    it('keeps honouring an explicit zone or offset', () => {
+        expect(formatRelativeTime('2026-09-21T17:26:02Z', 'de', now)).toBe('vor 16 Minuten');
+        expect(formatRelativeTime('2026-09-21T19:26:02+02:00', 'de', now)).toBe('vor 16 Minuten');
+    });
+
+    it('orders timestamps by the instant they denote', () => {
+        // 17:30 UTC is later than 19:20+02:00 = 17:20 UTC.
+        expect(
+            inviteLastActivity(invite({ createDate: '2026-09-21T19:20:00+02:00', revokedAt: '2026-09-21T17:30:00Z' })),
+        ).toBe('2026-09-21T17:30:00Z');
+    });
+
+    // The regression itself: a zoneless server instant is UTC, which Berlin reads two hours later.
+    it('reads a zoneless server instant as UTC once it came through withUtcInstants', () => {
+        const received = withUtcInstants({ createDate: '2026-09-21T17:26:02' });
+        expect(formatRelativeTime(received.createDate, 'de', now)).toBe('vor 16 Minuten');
+    });
+});
+
+describe('derivePhases — the Träger tab dates its own steps', () => {
+    const founding = (overrides: Partial<AccountInviteDTO> = {}) =>
+        invite({ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'MANUAL', ...overrides });
+
+    it('keeps its own steps when the invite created the Träger itself', () => {
+        expect(
+            states(
+                founding({
+                    inviteStatus: 'ACCEPTED',
+                    acceptedAt: '2026-09-25T12:30:00Z',
+                    accountCreatedAt: '2026-09-25T12:30:00Z',
+                    unitCreatedAt: '2026-09-25T12:30:00Z',
+                }),
+            ),
+        ).toEqual([
+            'invited:done',
+            'registered:done',
+            'tenantCreated:done',
+            'twoFactorActive:current',
+            'dpaSigned:pending',
+            'completed:pending',
+        ]);
+    });
+
+    it('puts "Träger angelegt" first after the invite when a co-founder created the Träger', () => {
+        expect(states(founding({ unitCreatedAt: '2026-09-24T09:00:00Z' }))).toEqual([
+            'invited:done',
+            'tenantCreated:done',
+            'registered:current',
+            'twoFactorActive:pending',
+            'dpaSigned:pending',
+            'completed:pending',
+        ]);
+    });
+});
+
+describe('tileCountsFromServer (the tiles count every page of the tab)', () => {
+    it('reads the totals and the breakdown, with revoked and replaced under "Braucht Aktion"', () => {
+        expect(
+            tileCountsFromServer(
+                { PREPARED: 24, INVITED: 0, ACCOUNT_CREATED: 0, DONE: 3, NEEDS_ACTION: 1, CLOSED: 2 },
+                {
+                    PREPARED: { DRAFT: 23, WAITING_FOR_UNIT: 1 },
+                    DONE: { ACCEPTED: 3 },
+                    NEEDS_ACTION: { EXPIRED: 1 },
+                    CLOSED: { REVOKED: 1, SUPERSEDED: 1 },
+                },
+            ),
+        ).toEqual({
+            prepared: { total: 24, details: { DRAFT: 23, WAITING_FOR_UNIT: 1 } },
+            invited: { total: 0, details: {} },
+            accountCreated: { total: 0, details: {} },
+            done: { total: 3, details: { ACCEPTED: 3 } },
+            needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, SUPERSEDED: 1 } },
+        });
+    });
+
+    it('gives nothing while the server sends no counts', () => {
+        expect(tileCountsFromServer(undefined, undefined)).toBeUndefined();
     });
 });

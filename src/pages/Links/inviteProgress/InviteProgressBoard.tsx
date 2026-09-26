@@ -17,31 +17,45 @@ import {
     DataTablePagination,
     DataTableRow,
     DataTableSort,
-    DataTableToolbar,
     PhaseStepper,
     StatTile,
 } from '../../../components/DataTable';
-import { FilterChip } from '../../../components/FilterChip';
 import { IconButton } from '../../../components/IconButton';
 import { M3Tooltip } from '../../../components/M3Tooltip';
 import { M3Button } from '../../../components/M3Button';
 import { M3Checkbox } from '../../../components/M3Checkbox';
 import {
-    countInviteBuckets,
-    deriveInviteBucket,
+    TOPIC_PERMISSION_LABEL_KEYS,
+    TOPIC_PERMISSION_SHORT_LABEL_KEYS,
+    TOPIC_PERMISSIONS,
+    type InviteRole,
+    type InviteViewerScope,
+    type TopicPermission,
+} from '../inviteModel';
+import { RoleChip } from './RoleChip';
+import { RowChipMenu } from './RowChipMenu';
+import {
+    countLifecyclePhases,
     derivePhases,
     isDraftInvite,
     formatRelativeTime,
-    INVITE_BUCKETS,
-    InviteBucket,
+    formatStepTime,
+    hasQueueProblem,
     inviteDisplayName,
     inviteLastActivity,
     isDeadInvite,
+    isWaitingForUnit,
+    lifecycleOf,
+    LIFECYCLE_PHASES,
+    type LifecycleCounts,
+    type LifecycleDetail,
+    type LifecyclePhase,
     matchesInviteQuery,
     PHASE_AWAITING_FALLBACKS,
     PHASE_LABEL_FALLBACKS,
     phaseAwaitingLabelKey,
     phaseLabelKey,
+    phaseReachedAt,
 } from './derivePhases';
 import styles from './inviteProgressBoard.module.scss';
 
@@ -50,6 +64,7 @@ import styles from './inviteProgressBoard.module.scss';
  * as the i18n defaults for both locale files.
  */
 export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> = {
+    WAITING_FOR_UNIT: 'Wartet',
     DRAFT: 'Draft',
     EMAIL_SENT: 'Gesendet',
     ACCEPTED: 'Angenommen',
@@ -66,6 +81,8 @@ export const INVITE_STATUS_FALLBACK_LABELS: Record<AccountInviteStatus, string> 
  * themselves, the fallbacks double as the German i18n defaults.
  */
 export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> = {
+    WAITING_FOR_UNIT:
+        'Vorgemerkt, aber noch nicht versendet: die Beratungsstelle bzw. der Träger ist noch nicht angelegt. Die E-Mail geht automatisch raus, sobald die Admin-Person ihr Onboarding abgeschlossen hat.',
     DRAFT: 'Angelegt, aber noch nicht versendet — es ist keine E-Mail herausgegangen.',
     EMAIL_SENT: 'Die Einladungs-E-Mail wurde versendet und wartet darauf, angenommen zu werden.',
     ACCEPTED: 'Die Einladung wurde angenommen — das Konto besteht, der Link ist verbraucht.',
@@ -74,35 +91,78 @@ export const INVITE_STATUS_FALLBACK_HINTS: Record<AccountInviteStatus, string> =
     SUPERSEDED: 'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
 };
 
-const STATUS_FILTER_ORDER: AccountInviteStatus[] = [
+const PHASE_FALLBACK_LABELS: Record<LifecyclePhase, string> = {
+    prepared: 'Vorbereitet',
+    invited: 'Eingeladen',
+    accountCreated: 'Konto angelegt',
+    done: 'Fertig',
+    needsAction: 'Braucht Aktion',
+};
+
+/** Breakdown order inside a tile; the two problems without a status of their own come last. */
+const DETAIL_ORDER: LifecycleDetail[] = [
     'DRAFT',
+    'WAITING_FOR_UNIT',
     'EMAIL_SENT',
     'ACCEPTED',
     'EXPIRED',
     'REVOKED',
     'SUPERSEDED',
+    'LINK_EXPIRED',
+    'DELIVERY_FAILED',
+    'PROVISIONING_FAILED',
+    'NO_UNIT_ADMIN',
 ];
 
-const BUCKET_FALLBACK_LABELS: Record<InviteBucket, string> = {
-    invited: 'Eingeladen',
-    inProgress: 'In Bearbeitung',
-    completed: 'Abgeschlossen',
-    problem: 'Abgelaufen / Problem',
+const DETAIL_FALLBACK_LABELS: Record<Exclude<LifecycleDetail, AccountInviteStatus>, [key: string, fallback: string]> = {
+    DELIVERY_FAILED: ['links.inviteProgress.detail.deliveryFailed', 'Versand fehlgeschlagen'],
+    NO_UNIT_ADMIN: ['links.inviteProgress.queueProblem', 'Keine BST-Admin'],
+    LINK_EXPIRED: ['links.inviteProgress.detail.linkExpired', 'Link abgelaufen'],
+    PROVISIONING_FAILED: ['links.inviteProgress.detail.provisioningFailed', 'Kontoanlage fehlgeschlagen'],
 };
 
-/** One active filter at a time: a summary tile (bucket) or a status chip. */
-type InviteFilter = { kind: 'bucket'; bucket: InviteBucket } | { kind: 'status'; status: AccountInviteStatus };
+type Translate = (key: string, fallback: string) => string;
+
+/** Badge, tooltip and step label of a queue problem, naming the unit the invite waits for. */
+const queueProblemCopy = (invite: Pick<AccountInviteDTO, 'waitingForUnit'>, t: Translate) =>
+    invite.waitingForUnit === 'TENANT'
+        ? {
+              badge: t('links.inviteProgress.queueProblemTenant', 'Keine Träger-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemTenantHint',
+                  'Für diesen neuen Träger ist keine Träger-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine Träger-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+              state: t('links.inviteProgress.queueProblemTenantState', 'Keine Träger-Admin – Einladung wartet'),
+          }
+        : {
+              badge: t('links.inviteProgress.queueProblem', 'Keine BST-Admin'),
+              hint: t(
+                  'links.inviteProgress.queueProblemHint',
+                  'Für diese neue Beratungsstelle ist keine BST-Admin-Einladung mehr offen (abgelaufen oder widerrufen). Laden Sie eine BST-Admin mit derselben Nummer ein — dann rückt diese Einladung automatisch nach.',
+              ),
+              state: t('links.inviteProgress.queueProblemState', 'Keine BST-Admin – Einladung wartet'),
+          };
+
+/** The tile is the board's only filter; `null` shows everything. */
+type InviteFilter = LifecyclePhase | null;
 
 /** The single predicate behind both the rendered rows and the selection pruning. */
-const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter | null) => {
-    if (!filter) return true;
-    if (filter.kind === 'status') return invite.inviteStatus === filter.status;
-    return deriveInviteBucket(invite) === filter.bucket;
-};
+const matchesFilter = (invite: AccountInviteDTO, filter: InviteFilter) =>
+    filter == null || lifecycleOf(invite)?.phase === filter;
+
+const isInviteRole = (role: AccountInviteDTO['targetRole']): role is InviteRole =>
+    role === 'COUNSELLOR' || role === 'AGENCY_ADMIN' || role === 'TENANT_ADMIN';
 
 /** An invite still able to change can be resent/revoked (terminal states cannot). */
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
+
+/** A waiting invite has no link yet: it can be revoked, not sent or copied. */
+const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
+
+/** The topic permission only exists for counsellors, and stays editable after the account exists. */
+const hasEditableTopicPermission = (invite: AccountInviteDTO) =>
+    invite.targetRole === 'COUNSELLOR' && !isDeadInvite(invite);
 
 /** Sent without a delivery receipt — the badge and its hint must both say so. */
 const isDeliveryUnconfirmed = (invite: AccountInviteDTO) =>
@@ -140,7 +200,58 @@ export interface InviteProgressBoardProps {
     onRevoke: (invite: AccountInviteDTO) => void;
     /** Wired to the invite composer above the board (empty-state CTA). */
     onInviteCta?: () => void;
+    /** Changes a counsellor's topic permission, also after the account exists; without it the chip is disabled. */
+    onTopicPermissionChange?: (invite: AccountInviteDTO, topicPermission: TopicPermission) => void;
+    /** Invite ids whose topic permission is being saved right now (the chip is disabled meanwhile). */
+    topicPermissionSavingIds?: number[];
+    /** Who looks at the board: decides which roles the role chip may hand out. */
+    viewerScope?: InviteViewerScope;
+    /** Changes the role of an invite not accepted yet; without it those entries stay disabled. */
+    onRoleChange?: (invite: AccountInviteDTO, role: InviteRole) => void;
+    /** Adds a role to an existing account ("+ auch BST-Admin"). */
+    onRoleAdd?: (invite: AccountInviteDTO, role: InviteRole) => void;
+    /** Invite ids whose role is being saved right now. */
+    roleSavingIds?: number[];
+    /** The server's tile counts over every page of the tab; without them the board counts its rows. */
+    tileCounts?: LifecycleCounts;
 }
+
+/** Per-row topic permission as a chip in the role chip's line; picking a level saves at once. */
+const TopicPermissionChip = ({
+    value,
+    displayName,
+    disabled,
+    disabledReason,
+    onChange,
+}: {
+    value: TopicPermission;
+    displayName: string;
+    disabled: boolean;
+    /** Tooltip text while disabled; the level's title and description otherwise. */
+    disabledReason?: string;
+    onChange: (next: TopicPermission) => void;
+}) => {
+    const { t } = useTranslation();
+    const title = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].title);
+    const description = (option: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[option].description);
+    const short = t(...TOPIC_PERMISSION_SHORT_LABEL_KEYS[value]);
+
+    return (
+        <RowChipMenu
+            label={t('links.inviteProgress.topicsChip', 'Themen: {{value}}', { value: short })}
+            ariaLabel={`${t('links.inviteProgress.topicsFor', 'Themen für {{name}}', { name: displayName })}: ${short}`}
+            tooltip={disabled && disabledReason ? disabledReason : `${title(value)} – ${description(value)}`}
+            disabled={disabled}
+            options={TOPIC_PERMISSIONS.map((option) => ({
+                key: option,
+                title: title(option),
+                description: description(option),
+                checked: option === value,
+            }))}
+            onSelect={(key) => onChange(key as TopicPermission)}
+        />
+    );
+};
 
 /**
  * The "Onboarding" tracking board (Links page): summary tiles that filter,
@@ -160,11 +271,28 @@ export const InviteProgressBoard = ({
     onCopyLink,
     onRevoke,
     onInviteCta,
+    onTopicPermissionChange,
+    topicPermissionSavingIds = [],
+    viewerScope = 'platform',
+    onRoleChange,
+    onRoleAdd,
+    roleSavingIds = [],
+    tileCounts,
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
-    const [filter, setFilter] = useState<InviteFilter | null>(null);
+    const [filter, setFilter] = useState<InviteFilter>(null);
     const [sort, setSort] = useState<DataTableSort | null>(null);
+
+    const detailLabel = (detail: LifecycleDetail) =>
+        detail in DETAIL_FALLBACK_LABELS
+            ? t(...DETAIL_FALLBACK_LABELS[detail as keyof typeof DETAIL_FALLBACK_LABELS])
+            : t(`links.accountInvites.status.${detail}`, INVITE_STATUS_FALLBACK_LABELS[detail as AccountInviteStatus]);
+    // "2 Draft · 1 Wartet": which raw statuses make up a tile's count.
+    const detailBreakdown = (details: Partial<Record<LifecycleDetail, number>>) =>
+        DETAIL_ORDER.filter((detail) => (details[detail] ?? 0) > 0)
+            .map((detail) => `${details[detail]} ${detailLabel(detail)}`)
+            .join(' · ') || t('links.inviteProgress.detail.none', 'keine');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
 
@@ -178,28 +306,24 @@ export const InviteProgressBoard = ({
     // overview the search is run against, and a "3 Abgeschlossen" that silently
     // meant "3 among the rows matching fisch" would be a different number every
     // keystroke.
-    const bucketCounts = useMemo(() => countInviteBuckets(invites), [invites]);
+    const phaseCounts = useMemo(() => tileCounts ?? countLifecyclePhases(invites), [tileCounts, invites]);
 
     const searched = useMemo(
         () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
         [invites, searchQuery],
     );
 
-    const filtered = useMemo(() => {
-        if (!filter) return searched;
-        if (filter.kind === 'status') return searched.filter((invite) => invite.inviteStatus === filter.status);
-        return searched.filter((invite) => deriveInviteBucket(invite) === filter.bucket);
-    }, [searched, filter]);
+    const filtered = useMemo(() => searched.filter((invite) => matchesFilter(invite, filter)), [searched, filter]);
 
     /**
-     * Switching a tile or a chip also prunes the selection down to the rows the
+     * Switching a tile also prunes the selection down to the rows the
      * new filter still shows. The bulk actions above the board act on the
      * selection, NOT on what is on screen — a row hidden by a filter would
      * otherwise stay silently checked and get resent or revoked without the
      * admin ever seeing it. Complementary to the `searched`-based effect below,
      * which covers the search-query dimension.
      */
-    const applyFilter = (next: InviteFilter | null) => {
+    const applyFilter = (next: InviteFilter) => {
         setFilter(next);
         if (selectedIds.length === 0) return;
         const stillVisible = selectedIds.filter((id) =>
@@ -253,6 +377,13 @@ export const InviteProgressBoard = ({
         if (page > pageCount) setPage(pageCount);
     }, [page, pageCount]);
 
+    // A chip beside the role chip: a column pushed the actions out of 1440px, a select made rows taller.
+    const showTopicPermission = targetRole !== 'TENANT_ADMIN';
+    const topicPermissionLockedReason = t(
+        'links.inviteProgress.topicsLocked',
+        'Sie haben keine Berechtigung, die Themen-Berechtigung dieser Person zu ändern.',
+    );
+
     const columns = useMemo(
         () => [
             { key: 'select', ariaLabel: t('links.inviteProgress.col.select', 'Auswahl'), width: 48 },
@@ -289,36 +420,19 @@ export const InviteProgressBoard = ({
                 role="group"
                 aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
             >
-                {INVITE_BUCKETS.map((bucket) => (
+                {LIFECYCLE_PHASES.map((phase) => (
                     <StatTile
-                        key={bucket}
+                        key={phase}
                         className={styles.summaryTile}
-                        label={t(`links.inviteProgress.summary.${bucket}`, BUCKET_FALLBACK_LABELS[bucket])}
-                        value={bucketCounts[bucket]}
-                        tone={bucket === 'problem' ? 'error' : 'default'}
-                        active={filter?.kind === 'bucket' && filter.bucket === bucket}
-                        onClick={() =>
-                            applyFilter(
-                                filter?.kind === 'bucket' && filter.bucket === bucket
-                                    ? null
-                                    : { kind: 'bucket', bucket },
-                            )
-                        }
+                        label={t(`links.inviteProgress.phaseTile.${phase}`, PHASE_FALLBACK_LABELS[phase])}
+                        value={phaseCounts[phase].total}
+                        supportingText={detailBreakdown(phaseCounts[phase].details)}
+                        tone={phase === 'needsAction' ? 'error' : 'default'}
+                        active={filter === phase}
+                        onClick={() => applyFilter(filter === phase ? null : phase)}
                     />
                 ))}
             </div>
-
-            <DataTableToolbar
-                filters={STATUS_FILTER_ORDER.map((status) => (
-                    <FilterChip
-                        key={status}
-                        label={t(`links.accountInvites.status.${status}`, INVITE_STATUS_FALLBACK_LABELS[status])}
-                        tooltip={t(`links.accountInvites.statusHint.${status}`, INVITE_STATUS_FALLBACK_HINTS[status])}
-                        selected={filter?.kind === 'status' && filter.status === status}
-                        onChange={(next) => applyFilter(next ? { kind: 'status', status } : null)}
-                    />
-                ))}
-            />
 
             <DataTable
                 ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}
@@ -377,17 +491,33 @@ export const InviteProgressBoard = ({
                     const hasName = displayName !== invite.recipientEmail;
                     const lastActivity = inviteLastActivity(invite);
                     const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
-                    const phases = derivePhases(invite).map((phase) => ({
-                        key: phase.key,
-                        state: phase.state,
-                        // A CURRENT phase is awaited, not reached: its label says
-                        // what the row waits FOR ("Wartet auf Registrierung")
-                        // instead of printing the reached-state word.
-                        label:
-                            phase.state === 'current'
-                                ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
-                                : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
-                    }));
+                    // A waiting invite without a unit admin was never mailed: its
+                    // warning bead is the queue problem, not a delivery problem.
+                    const queueProblem = hasQueueProblem(invite);
+                    const phases = derivePhases(invite).map((phase) => {
+                        const reachedAt = phaseReachedAt(phase.key, invite);
+                        return {
+                            key: phase.key,
+                            state: phase.state,
+                            ...(reachedAt ? { at: formatStepTime(reachedAt, locale) } : {}),
+                            ...(queueProblem && phase.state === 'warning'
+                                ? {
+                                      stateLabel: queueProblemCopy(invite, t).state,
+                                      stateHint: t(
+                                          'links.inviteProgress.queueProblemStateHint',
+                                          'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
+                                      ),
+                                  }
+                                : {}),
+                            // A CURRENT phase is awaited, not reached: its label says
+                            // what the row waits FOR ("Wartet auf Registrierung")
+                            // instead of printing the reached-state word.
+                            label:
+                                phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
+                                    ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
+                                    : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
+                        };
+                    });
 
                     return (
                         <DataTableRow
@@ -411,15 +541,42 @@ export const InviteProgressBoard = ({
                                     <span className={styles.identityName}>{displayName}</span>
                                     {hasName && <span className={styles.identityEmail}>{invite.recipientEmail}</span>}
                                     <span className={styles.identityMeta}>
-                                        <span className={styles.roleChip}>
-                                            {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
-                                        </span>
+                                        {isInviteRole(invite.targetRole) ? (
+                                            <RoleChip
+                                                invite={invite}
+                                                displayName={displayName}
+                                                viewer={viewerScope}
+                                                tab={targetRole === 'TENANT_ADMIN' ? 'tenant' : 'counsellor'}
+                                                saving={roleSavingIds.includes(invite.id)}
+                                                onChangeRole={onRoleChange && ((role) => onRoleChange(invite, role))}
+                                                onAddRole={onRoleAdd && ((role) => onRoleAdd(invite, role))}
+                                            />
+                                        ) : (
+                                            <span className={styles.roleChip}>
+                                                {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
+                                            </span>
+                                        )}
                                         {targetRole === 'TENANT_ADMIN' && invite.tenantId != null && (
                                             <span className={styles.idHint}>
                                                 {t('links.inviteProgress.tenantIdShort', 'Träger-ID {{id}}', {
                                                     id: invite.tenantId,
                                                 })}
                                             </span>
+                                        )}
+                                        {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                            <TopicPermissionChip
+                                                disabled={
+                                                    !onTopicPermissionChange ||
+                                                    topicPermissionSavingIds.includes(invite.id)
+                                                }
+                                                disabledReason={
+                                                    onTopicPermissionChange ? undefined : topicPermissionLockedReason
+                                                }
+                                                displayName={displayName}
+                                                // Older invites carry no value: they behave as CREATE.
+                                                value={invite.topicPermission ?? 'CREATE'}
+                                                onChange={(next) => onTopicPermissionChange?.(invite, next)}
+                                            />
                                         )}
                                     </span>
                                 </div>
@@ -475,15 +632,58 @@ export const InviteProgressBoard = ({
                                               )}
                                     </span>
                                 </M3Tooltip>
+                                {hasQueueProblem(invite) && (
+                                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
+                                        <span
+                                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
+                                            tabIndex={0}
+                                            className={classNames(
+                                                styles.statusChip,
+                                                styles.statusChipDead,
+                                                styles.problemChip,
+                                            )}
+                                            data-testid="queue-problem-badge"
+                                        >
+                                            {queueProblemCopy(invite, t).badge}
+                                        </span>
+                                    </M3Tooltip>
+                                )}
                             </DataTableCell>
                             <DataTableCell align="right" className={styles.actionsCell}>
                                 <div className={styles.actions}>
-                                    <IconButton
-                                        icon={<ForwardToInboxOutlinedIcon />}
-                                        ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
-                                        disabled={!actionable}
-                                        onClick={() => onResend(invite)}
-                                    />
+                                    {isWaitingForUnit(invite) ? (
+                                        // Disable, don't hide: a manual send answers 409
+                                        // UNIT_NOT_CREATED until the unit exists.
+                                        <M3Tooltip
+                                            text={t(
+                                                'links.inviteProgress.action.resendWaiting',
+                                                'Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.',
+                                            )}
+                                        >
+                                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                                            <span tabIndex={0} className={styles.disabledActionSlot}>
+                                                <IconButton
+                                                    icon={<ForwardToInboxOutlinedIcon />}
+                                                    ariaLabel={t(
+                                                        'links.inviteProgress.action.resend',
+                                                        'Erinnerung erneut senden',
+                                                    )}
+                                                    disabled
+                                                    onClick={() => onResend(invite)}
+                                                />
+                                            </span>
+                                        </M3Tooltip>
+                                    ) : (
+                                        <IconButton
+                                            icon={<ForwardToInboxOutlinedIcon />}
+                                            ariaLabel={t(
+                                                'links.inviteProgress.action.resend',
+                                                'Erinnerung erneut senden',
+                                            )}
+                                            disabled={!actionable}
+                                            onClick={() => onResend(invite)}
+                                        />
+                                    )}
                                     {/* C5: the copy icon used to stay live between
                                         two disabled neighbours, and pressing it in a
                                         terminal state only produced the "link only
@@ -499,7 +699,7 @@ export const InviteProgressBoard = ({
                                     <IconButton
                                         icon={<BlockOutlinedIcon />}
                                         ariaLabel={t('links.inviteProgress.action.revoke', 'Einladung widerrufen')}
-                                        disabled={!actionable}
+                                        disabled={!isRevocable(invite)}
                                         className={styles.revokeAction}
                                         onClick={() => onRevoke(invite)}
                                     />

@@ -4,6 +4,7 @@ import { hasRoleFor } from '../components/Layout/adminNavFixtures';
 import {
     canEditSharedTemplates,
     canSeeLinksSection,
+    resolveInviteViewerScope,
     resolveVisibleLinksTabs,
     resolveVisibleTemplateKinds,
 } from './linksAccess';
@@ -24,11 +25,41 @@ describe('linksAccess', () => {
     it.each([
         ['agency admin', [UserRole.AgencyAdmin, UserRole.UserAdmin]],
         ['restricted agency admin', [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]],
-        ['no roles', []],
-    ])('%s sees no Links section', (_label, roles) => {
+    ])('%s sees only counsellor invites', (_label, roles) => {
         const context = { isSuperAdmin: false, hasRole: hasRoleFor(...roles) };
+        expect(resolveVisibleLinksTabs(context)).toEqual(['counsellor']);
+        expect(canSeeLinksSection(context)).toBe(true);
+    });
+
+    it('an account without admin roles sees no Links section', () => {
+        const context = { isSuperAdmin: false, hasRole: hasRoleFor() };
         expect(resolveVisibleLinksTabs(context)).toEqual([]);
         expect(canSeeLinksSection(context)).toBe(false);
+    });
+
+    it.each([
+        [
+            'platform admin',
+            'platform',
+            { isSuperAdmin: true, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) },
+        ],
+        [
+            'tenant admin',
+            'tenant',
+            { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) },
+        ],
+        [
+            'agency admin',
+            'agency',
+            { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin) },
+        ],
+        [
+            'restricted agency admin',
+            'agency',
+            { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin) },
+        ],
+    ] as const)('the %s invites with viewer scope "%s"', (_label, scope, context) => {
+        expect(resolveInviteViewerScope(context)).toBe(scope);
     });
 });
 
@@ -58,8 +89,15 @@ describe('linksAccess — invite e-mail templates', () => {
         expect(resolveVisibleTemplateKinds(tenantAdmin)).toEqual(['COUNSELLOR_INVITE']);
     });
 
-    it('shows an agency admin nothing', () => {
-        expect(resolveVisibleTemplateKinds(agencyAdmin)).toEqual([]);
+    it('shows a Beratungsstellen admin the counsellor invite too', () => {
+        // Whoever may send invites may also write templates for them.
+        expect(resolveVisibleTemplateKinds(agencyAdmin)).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('still lets no Links admin see the platform operator’s kinds', () => {
+        // Creating tenants and forwarding contracts stay the platform operator's work.
+        expect(resolveVisibleTemplateKinds(tenantAdmin)).not.toContain('TENANT_INVITE');
+        expect(resolveVisibleTemplateKinds(agencyAdmin)).not.toContain('DPA_FORWARD');
     });
 
     it('lets only the platform admin change a shared template', () => {

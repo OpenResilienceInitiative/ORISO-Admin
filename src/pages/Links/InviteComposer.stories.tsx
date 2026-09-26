@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { useEffect, useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
-import { userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
     accountInviteAcceptBaseUrl,
     createAccountInvite,
@@ -10,10 +10,17 @@ import {
     type InviteEmailTemplateDTO,
 } from '../../api/accountInvites/accountInvites';
 import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
+import type { IdUnitOption } from '../../components/IdAllocationField';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { InviteComposer, sendModeStorageKey } from './InviteComposer';
+import {
+    InviteComposer,
+    sendModeStorageKey,
+    type InviteClients,
+    type InviteComposerProps,
+    type InviteViewerScope,
+} from './InviteComposer';
 
 const INVITES_ENDPOINT = '*/service/useradmin/account-invites';
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -43,6 +50,10 @@ const TEMPLATES: InviteEmailTemplateDTO[] = [
     },
 ];
 
+const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
+    { ...TEMPLATES[0], id: 11, kind: 'COUNSELLOR_INVITE', name: 'Berater:innen-Willkommen' },
+];
+
 const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     const kind = new URL(request.url).searchParams.get('kind');
     return HttpResponse.json(TEMPLATES.filter((template) => !kind || template.kind === kind));
@@ -51,27 +62,53 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
 /**
  * Stubbed allocation client (#570 worked example): ids 1–20 assigned, 30–35
  * reserved. Auto adopts 21, stepping skips the taken ranges, typing 30 blocks.
- * The real endpoints are built in parallel (TenantService U1); the wiring
- * chunk (U3/U6) replaces this stub with MSW handlers on the real paths.
  */
-const TAKEN_IDS = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
+const TAKEN_TENANT_IDS = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
+// Agencies: 1–140 exist, 150–152 are held by open invites — the next free agency number is 141.
+const TAKEN_AGENCY_IDS = new Set<number>([...Array.from({ length: 140 }, (_, i) => i + 1), 150, 151, 152]);
 
-const idStateOf = (id: number): IdAllocationState => {
-    if (!TAKEN_IDS.has(id)) return 'FREE';
-    return id >= 30 && id <= 35 ? 'RESERVED' : 'ASSIGNED';
-};
-
-const stubbedTenantIdAllocation: IdAllocationClient = {
-    checkIdAvailability: async (id) => ({ id, state: idStateOf(id) }),
+const stubbedAllocation = (taken: Set<number>, reserved: (id: number) => boolean): IdAllocationClient => ({
+    checkIdAvailability: async (id) => {
+        let state: IdAllocationState = 'FREE';
+        if (taken.has(id)) state = reserved(id) ? 'RESERVED' : 'ASSIGNED';
+        return { id, state };
+    },
     nextFreeId: async ({ from, direction }) => {
         let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
         while (candidate >= 1 && candidate <= 999) {
-            if (!TAKEN_IDS.has(candidate)) return { id: candidate };
+            if (!taken.has(candidate)) return { id: candidate };
             candidate += direction === 'up' ? 1 : -1;
         }
         return { id: null };
     },
-};
+});
+
+const stubbedTenantIdAllocation = stubbedAllocation(TAKEN_TENANT_IDS, (id) => id >= 30 && id <= 35);
+const stubbedAgencyIdAllocation = stubbedAllocation(TAKEN_AGENCY_IDS, (id) => id >= 150 && id <= 152);
+
+const TENANTS: IdUnitOption[] = [
+    { id: 7, name: 'Caritas Südbaden' },
+    { id: 12, name: 'Diakonie Ortenau' },
+    { id: 15, name: 'AWO Freiburg' },
+];
+
+const AGENCIES: Array<IdUnitOption & { tenantId: number }> = [
+    { id: 101, tenantId: 7, name: 'Caritas Suchtberatung Freiburg', topics: ['Sucht', 'Glücksspiel'] },
+    { id: 102, tenantId: 7, name: 'Caritas Schuldnerberatung Lörrach', topics: ['Schulden'] },
+    { id: 118, tenantId: 12, name: 'Diakonie Jugendberatung Offenburg', topics: ['U25', 'Familie'] },
+    { id: 130, tenantId: 15, name: 'AWO Migrationsberatung', topics: ['Migration'] },
+];
+
+const matches = (unit: IdUnitOption, query: string) =>
+    query === '' ||
+    `${unit.id} ${unit.name ?? ''} ${(unit.topics ?? []).join(' ')}`.toLowerCase().includes(query.toLowerCase());
+
+const searchTenants = async (query: string) => TENANTS.filter((tenant) => matches(tenant, query));
+
+const searchAgencies = async (query: string, { tenantId }: { tenantId?: number }) =>
+    AGENCIES.filter((agency) => (tenantId == null || agency.tenantId === tenantId) && matches(agency, query)).map(
+        ({ tenantId: _tenantId, ...agency }) => agency,
+    );
 
 const defaultHandlers = [
     templatesByKind,
@@ -79,6 +116,39 @@ const defaultHandlers = [
         HttpResponse.json({ id: 99, acceptUrl: 'https://admin.example/account-invite/token' }, { status: 201 }),
     ),
 ];
+
+// The whole invite bar in field order: E-Mail · Vorname · Name · Rolle · Träger · Beratungsstelle · Themen · Vorlage · Senden.
+interface InviteBarArgs extends Partial<InviteComposerProps> {
+    viewerScope?: InviteViewerScope;
+    ownTenant?: IdUnitOption;
+    ownAgency?: IdUnitOption;
+    searchAgencies?: InviteClients['searchAgencies'];
+}
+
+const InviteBar = ({
+    viewerScope = 'platform',
+    ownTenant,
+    ownAgency,
+    searchAgencies: agencySearch = searchAgencies,
+    ...props
+}: InviteBarArgs) => (
+    <div style={{ padding: 24 }}>
+        <InviteComposer
+            tab="counsellor"
+            persistKey="INVITE_BAR_1026"
+            viewer={{ scope: viewerScope, ownTenant, ownAgency }}
+            clients={{
+                agencyIdAllocation: stubbedAgencyIdAllocation,
+                tenantIdAllocation: stubbedTenantIdAllocation,
+                searchAgencies: agencySearch,
+                searchTenants,
+            }}
+            templates={{ list: COUNSELLOR_TEMPLATES, selectedId: 11, onManage: () => {} }}
+            onSubmit={() => true}
+            {...props}
+        />
+    </div>
+);
 
 /**
  * Wires the composer the same way AccountInvitesTab does: templates come from the
@@ -101,26 +171,20 @@ const ComposerHarness = () => {
     return (
         <div style={{ padding: 24 }}>
             <InviteComposer
+                tab="tenant"
                 persistKey="TENANT_ADMIN"
-                requireTenantId
+                viewer={{ scope: 'platform' }}
+                clients={{ tenantIdAllocation: stubbedTenantIdAllocation }}
                 submitting={submitting}
-                templateId={templateId}
-                tenantIdAllocation={stubbedTenantIdAllocation}
-                templates={templates}
-                onManageTemplates={(intent) => setDialogView(intent === 'create' ? 'create' : 'list')}
-                onSubmit={async (values) => {
+                templates={{
+                    list: templates,
+                    selectedId: templateId,
+                    onManage: (intent) => setDialogView(intent === 'create' ? 'create' : 'list'),
+                }}
+                onSubmit={async (request) => {
                     setSubmitting(true);
                     try {
-                        await createAccountInvite({
-                            acceptBaseUrl: accountInviteAcceptBaseUrl,
-                            expiresInDays: 30,
-                            firstName: values.firstName,
-                            lastName: values.lastName,
-                            recipientEmail: values.recipientEmail,
-                            targetRole: 'TENANT_ADMIN',
-                            templateId: values.templateId,
-                            tenantId: values.tenantId,
-                        });
+                        await createAccountInvite({ ...request, acceptBaseUrl: accountInviteAcceptBaseUrl });
                         return true;
                     } catch {
                         return false;
@@ -147,8 +211,8 @@ const ComposerHarness = () => {
 
 const meta = {
     title: 'Organisms/Pages/Links/InviteComposer',
-    component: ComposerHarness,
-    parameters: { layout: 'fullscreen', msw: { handlers: defaultHandlers } },
+    component: InviteBar,
+    parameters: { layout: 'fullscreen' },
     decorators: [
         withAdminProviders,
         // antd flips a dropdown upwards when its trigger sits at the very top of
@@ -157,38 +221,763 @@ const meta = {
         (Story) => <div style={{ paddingTop: 96 }}>{Story()}</div>,
         (Story) => {
             setStoryAuth([UserRole.TenantAdmin]);
-            return <Story />;
-        },
-    ],
-} satisfies Meta<typeof ComposerHarness>;
-
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-/**
- * Nothing filled yet: template preselected, Träger-ID visibly on `Auto` (#570 —
- * no browser-pinned id, the backend assigns the smallest free one), but the
- * missing recipient e-mail keeps the send split button in its outlined,
- * disabled resting state. Its chevron menu stays reachable so the send mode
- * can be switched at any time.
- */
-export const Empty: Story = {
-    decorators: [
-        (Story) => {
+            window.localStorage.removeItem(sendModeStorageKey('INVITE_BAR_1026'));
             window.localStorage.removeItem(sendModeStorageKey('TENANT_ADMIN'));
             return <Story />;
         },
     ],
+} satisfies Meta<typeof InviteBar>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+// The Storybook i18n resolves the browser language, so queries accept de and en.
+const either = (de: string, en: string) => new RegExp(`^(${de}|${en})`);
+const PILL = {
+    email: either('E-Mail bearbeiten', 'Edit E-mail'),
+    firstName: either('Vorname bearbeiten', 'Edit First name'),
+    lastName: either('Name bearbeiten', 'Edit Name'),
+    tenant: either('Träger bearbeiten', 'Edit Tenant'),
+    agency: either('Beratungsstelle bearbeiten', 'Edit Agency'),
+    role: either('Rolle bearbeiten', 'Edit Role'),
+    topics: either('Themen & Fachbereiche bearbeiten', 'Edit Topics & departments'),
+    alsoCounsellor: either('Berät auch bearbeiten', 'Edit Also counsels'),
+    template: either('Vorlage bearbeiten', 'Edit Template'),
+};
+const FIELD = {
+    email: /^(E-Mail|E-mail)$/,
+    firstName: /^(Vorname|First name)$/,
+    tenant: /^(Träger|Tenant)$/,
+    agency: /^(Beratungsstelle|Agency)$/,
+    role: /^(Rolle|Role)$/,
+    topics: /^(Themen & Fachbereiche|Topics & departments)$/,
+};
+const SEND = {
+    invite: either('Einladen', 'Invite'),
+    sendAndNext: /^((Anlegen, einladen|Einladen) & nächste|(Create, invite|Invite) & next)$/,
+    createAndInvite: either('Anlegen & einladen', 'Create & invite'),
 };
 
-/** A valid e-mail completes the form — the send button turns primary ("Direkt Versenden"). */
-export const ValidDirect: Story = {
-    decorators: Empty.decorators,
+const PREFILLED = {
+    recipientEmail: 'maria.huber@example.org',
+    firstName: 'Maria',
+    lastName: 'Huber',
+    tenant: TENANTS[0],
+    agency: { id: 101, name: 'Caritas Suchtberatung Freiburg', topics: ['Sucht', 'Glücksspiel'] },
+};
+
+// Person and Träger done, the rest still open: the phone checklist mixes done rows and open fields.
+const PARTLY_FILLED_FOR_CHECKLIST = {
+    recipientEmail: PREFILLED.recipientEmail,
+    firstName: PREFILLED.firstName,
+    lastName: PREFILLED.lastName,
+    tenant: TENANTS[0],
+};
+
+/** Nothing filled: Träger and Beratungsstelle rest on "Neu"; sending stays off until e-mail and names are there. */
+export const Empty: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.type(await canvas.findByLabelText('E-Mail'), 'maria.huber@example.org');
-        await userEvent.type(canvas.getByLabelText('Vorname'), 'Maria');
-        await userEvent.type(canvas.getByLabelText('Name'), 'Huber');
+        await expect(await canvas.findByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: FIELD.tenant })).toBeEnabled();
+        // A fresh page starts expanded; pills only exist after „Senden & nächste".
+        await expect(canvas.getByRole('combobox', { name: FIELD.role })).toBeInTheDocument();
+        await expect(canvas.getByRole('combobox', { name: FIELD.topics })).toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: PILL.role })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: PILL.template })).not.toBeInTheDocument();
+    },
+};
+
+/** Picking a role after filling the names keeps every value and the same DOM (no remount). */
+export const RoleSelectKeepsValues: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const bar = canvasElement.querySelector('[class*="composer"]');
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
+        await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), PREFILLED.lastName);
+        await userEvent.tab();
+
+        await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
+        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
+
+        const pill = await canvas.findByRole('button', { name: PILL.role });
+        await expect(pill).toHaveTextContent(/BST-Admin|Agency admin/);
+        await expect(canvasElement.querySelector('[class*="composer"]')).toBe(bar);
+        const values = [...canvasElement.querySelectorAll<HTMLInputElement>('input[name]')].map((input) => input.value);
+        await expect(values).toEqual([PREFILLED.recipientEmail, PREFILLED.firstName, PREFILLED.lastName]);
+        await expect(canvas.getByRole('button', { name: PILL.email })).toHaveAccessibleName(
+            new RegExp(PREFILLED.recipientEmail.replace('.', '\\.')),
+        );
+    },
+};
+
+/** A row scrolled right gives the scroll back when fields collapse, so their pills stay visible. */
+export const RowScrollSettlesAfterCollapse: Story = {
+    decorators: [
+        // 1000, not 900: the scroll buttons take 88px, and the focused Träger field must stay whole.
+        (Story) => (
+            <div style={{ width: 1000 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
+        await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), PREFILLED.lastName);
+        const scroller = canvasElement.querySelector<HTMLElement>('[class*="scroller"]') as HTMLElement;
+        // The row sits scrolled to the right while focus is still in Name.
+        scroller.scrollLeft = 400;
+        await expect(scroller.scrollLeft).toBeGreaterThan(0);
+        await userEvent.click(canvas.getByRole('combobox', { name: FIELD.tenant }));
+        await userEvent.keyboard('{Escape}');
+
+        const emailPill = await canvas.findByRole('button', { name: PILL.email });
+        await waitFor(() =>
+            expect(emailPill.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+                scroller.getBoundingClientRect().left - 1,
+            ),
+        );
+    },
+};
+
+const SCROLL = {
+    start: /^(Nach links blättern|Scroll left)$/,
+    end: /^(Nach rechts blättern|Scroll right)$/,
+};
+
+const frameOf = (width: number) => {
+    const Frame: NonNullable<Meta<typeof InviteBar>['decorators']> = (Story) => (
+        <div style={{ width }}>
+            <Story />
+        </div>
+    );
+    return Frame;
+};
+
+const rowScroller = (canvasElement: HTMLElement) =>
+    canvasElement.querySelector<HTMLElement>('[class*="scroller"]') as HTMLElement;
+
+/**
+ * A row wider than its frame gets ‹ › buttons at both ends (Windows mice have no sideways scroll).
+ * Back is off at the start, forward is off at the end — disabled, never hidden.
+ */
+export const ScrollButtonsOnOverflow: Story = {
+    decorators: [frameOf(900)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        const back = await canvas.findByRole('button', { name: SCROLL.start });
+        const forward = canvas.getByRole('button', { name: SCROLL.end });
+        await expect(back).toBeDisabled();
+        await expect(forward).toBeEnabled();
+
+        await userEvent.click(forward);
+        await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(0));
+        await waitFor(() => expect(back).toBeEnabled());
+
+        // Keyboard: the button is a real button, Enter scrolls on.
+        forward.focus();
+        const beforeKey = scroller.scrollLeft;
+        await userEvent.keyboard('{Enter}');
+        await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(beforeKey + 1));
+
+        for (let press = 0; press < 12 && !(forward as HTMLButtonElement).disabled; press += 1) {
+            const before = scroller.scrollLeft;
+            // eslint-disable-next-line no-await-in-loop -- each press depends on where the last one landed
+            await userEvent.click(forward);
+            // eslint-disable-next-line no-await-in-loop
+            await waitFor(() => expect(scroller.scrollLeft).toBeGreaterThan(before + 1));
+        }
+        await waitFor(() => expect(forward).toBeDisabled(), { timeout: 4000 });
+        await expect(forward).toBeVisible();
+        await expect(scroller.scrollLeft).toBeGreaterThanOrEqual(scroller.scrollWidth - scroller.clientWidth - 1);
+        // The send button, the row's last control, is whole at the end.
+        const send = canvas.getByRole('button', { name: SEND.createAndInvite });
+        await expect(send.getBoundingClientRect().right).toBeLessThanOrEqual(
+            scroller.getBoundingClientRect().right + 1,
+        );
+
+        await userEvent.click(back);
+        await waitFor(() => expect(forward).toBeEnabled());
+    },
+};
+
+/** Nothing to scroll: a row that fits shows no scroll buttons at all. */
+export const ScrollButtonsOnlyWhenOverflowing: Story = {
+    // A Träger admin has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
+    args: { initialValues: { ...PREFILLED, role: 'TENANT_ADMIN' } },
+    decorators: [frameOf(1400)],
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('button', { name: PILL.email });
+        const scroller = rowScroller(canvasElement);
+        await waitFor(() => expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1));
+        await expect(canvas.queryByRole('button', { name: SCROLL.start })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: SCROLL.end })).not.toBeInTheDocument();
+    },
+};
+
+/** Focus on a field outside the window scrolls the row until that whole field is visible. */
+export const FocusRevealsHiddenField: Story = {
+    decorators: [frameOf(900)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        // The Beratungsstelle field is a group (number input plus its mode controls): all of it must show.
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        const slot = agency.closest<HTMLElement>('[data-field-key]') as HTMLElement;
+        // Half of the field sticks out at the right edge — the case the browser's own focus scroll leaves alone.
+        const slotBox = slot.getBoundingClientRect();
+        const viewBox = scroller.getBoundingClientRect();
+        scroller.scrollLeft += slotBox.right - slotBox.width / 2 - viewBox.right;
+        await waitFor(() =>
+            expect(slot.getBoundingClientRect().right).toBeGreaterThan(scroller.getBoundingClientRect().right + 20),
+        );
+
+        agency.focus();
+        await waitFor(() => {
+            const box = slot.getBoundingClientRect();
+            const view = scroller.getBoundingClientRect();
+            expect(box.left).toBeGreaterThanOrEqual(view.left - 1);
+            expect(box.right).toBeLessThanOrEqual(view.right + 1);
+        });
+    },
+};
+
+/**
+ * Phone (390px): no sideways row. Each field is a checklist row — label, value and ✓ —
+ * and tapping a row opens that field in place, full width.
+ */
+export const ChecklistOnPhone: Story = {
+    args: { initialValues: PARTLY_FILLED_FOR_CHECKLIST },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const scroller = rowScroller(canvasElement);
+        const rows = await Promise.all(
+            [PILL.email, PILL.firstName, PILL.lastName, PILL.tenant].map((pill) =>
+                canvas.findByRole('button', { name: pill }),
+            ),
+        );
+        const width = scroller.clientWidth;
+        rows.forEach((row) => expect(row.getBoundingClientRect().width).toBeGreaterThanOrEqual(width - 2));
+        const tops = rows.map((row) => row.getBoundingClientRect().top);
+        tops.slice(1).forEach((top, index) => expect(top).toBeGreaterThan(tops[index]));
+
+        // innerText skips hidden text: the row really shows label and value, and its ✓.
+        await expect(rows[0].innerText).toMatch(/E-Mail|E-mail/);
+        await expect(rows[0].innerText).toContain(PARTLY_FILLED_FOR_CHECKLIST.recipientEmail);
+        await expect(rows[3].innerText).toContain('Caritas Südbaden');
+        await expect(rows[0].querySelector('svg')).toBeVisible();
+
+        await expect(scroller.scrollWidth).toBeLessThanOrEqual(scroller.clientWidth + 1);
+        await expect(canvas.queryByRole('button', { name: SCROLL.end })).not.toBeInTheDocument();
+
+        await userEvent.click(rows[0]);
+        const input = await canvas.findByRole('textbox', { name: FIELD.email });
+        await waitFor(() => expect(input).toHaveFocus());
+        await waitFor(() => expect(input.getBoundingClientRect().width).toBeGreaterThanOrEqual(width - 2));
+    },
+};
+
+/** „Themen & Fachbereiche" open; a new invite defaults to „Keine weiteren Fachbereiche". */
+export const TopicSelectOpen: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.topics }));
+        await body.findByText(/Wählt selbst aus den vorhandenen Fachbereichen/);
+        await body.findByText(/Darf neue Themen anlegen/);
+    },
+};
+
+/** Type → blur → "✓ E-Mail" pill → click → field back, caret at the end → blur collapses again. */
+export const PartiallyCollapsed: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const email = await canvas.findByRole('textbox', { name: FIELD.email });
+        await userEvent.type(email, PREFILLED.recipientEmail);
+        await userEvent.tab();
+
+        const emailPill = await canvas.findByRole('button', { name: PILL.email });
+        await expect(emailPill).toHaveTextContent(/E-Mail|E-mail/);
+        await expect(canvas.queryByRole('textbox', { name: FIELD.email })).not.toBeInTheDocument();
+
+        await userEvent.click(emailPill);
+        const expanded = await canvas.findByRole('textbox', { name: FIELD.email });
+        await waitFor(() => expect(expanded).toHaveFocus());
+        await expect(expanded).toHaveValue(PREFILLED.recipientEmail);
+        await expect((expanded as HTMLInputElement).selectionStart).toBe(PREFILLED.recipientEmail.length);
+
+        await userEvent.click(canvas.getByRole('textbox', { name: FIELD.firstName }));
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), PREFILLED.firstName);
+        await userEvent.tab();
+        const collapsedEmail = await canvas.findByRole('button', { name: PILL.email });
+        await canvas.findByRole('button', { name: PILL.firstName });
+        // Re-collapsing mid-animation must not leave the slot frozen at the field's width.
+        const slot = collapsedEmail.parentElement as HTMLElement;
+        await waitFor(() =>
+            expect(slot.getBoundingClientRect().width).toBeLessThanOrEqual(
+                collapsedEmail.getBoundingClientRect().width + 1,
+            ),
+        );
+    },
+};
+
+/** Everything valid: every field is a ✓ pill, existing units picked, the send button reads „Einladen". */
+export const AllValid: Story = {
+    args: { initialValues: PREFILLED },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // All eight fields, Rolle, Themen & Fachbereiche and Vorlage included, are pills.
+        // („Berät auch" belongs to the BST-Admin role only.)
+        await Promise.all(
+            Object.entries(PILL)
+                .filter(([key]) => key !== 'alsoCounsellor')
+                .map(([, pill]) => canvas.findByRole('button', { name: pill })),
+        );
+        await expect(canvas.getByRole('button', { name: SEND.invite })).toBeEnabled();
+    },
+};
+
+/** Invalid input never collapses: a malformed address or a taken number keeps its field open. */
+export const ErrorState: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), 'maria.huber@');
+        await userEvent.tab();
+        await expect(canvas.getByRole('textbox', { name: FIELD.email })).toHaveAttribute('aria-invalid', 'true');
+        await expect(canvas.queryByRole('button', { name: PILL.email })).not.toBeInTheDocument();
+
+        const agency = canvas.getByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, '140');
+        await canvas.findByText(/bereits vergeben|already taken/);
+        await userEvent.keyboard('{Escape}');
+        await userEvent.tab();
+        await expect(canvas.queryByRole('button', { name: PILL.agency })).not.toBeInTheDocument();
+    },
+};
+
+/** "sucht" finds an EXISTING Beratungsstelle by topic; picking it makes the label „Einladen". */
+export const ExistingAgencySelected: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await expect(agency).toHaveAttribute('aria-expanded', 'true');
+        await userEvent.type(agency, 'sucht');
+        await userEvent.click(await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ }));
+
+        await expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101');
+        await expect(canvas.getByRole('button', { name: SEND.invite })).toBeEnabled();
+    },
+};
+
+/** „＋ Neu anlegen" comes first, then the Träger's agencies; typing narrows by name or topic. */
+export const TypeAheadOpen: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.agency }));
+        await body.findByRole('option', { name: /141/ });
+        await body.findByRole('option', { name: /Caritas Schuldnerberatung Lörrach/ });
+        // Scoped to the chosen Träger: the Diakonie agency of another Träger is not offered.
+        await expect(body.queryByRole('option', { name: /Diakonie/ })).not.toBeInTheDocument();
+    },
+};
+
+/** A new Beratungsstelle is founded by a BST-Admin: the bar offers the switch, then „Anlegen & einladen". */
+export const NewAgencyNumber: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        // The Beratungsstelle is the last ID field in the row, so its ^ is the last one.
+        const agencyUp = canvas.getAllByRole('button', { name: /Wert erhöhen|Increase value/ }).at(-1) as HTMLElement;
+        await userEvent.click(agencyUp);
+        await waitFor(() => expect(agency).toHaveValue('141'));
+        await expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
+        await canvas.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an|Only an agency admin creates/);
+
+        await userEvent.click(
+            canvas.getByRole('button', { name: /Stattdessen als BST-Admin einladen|Invite as agency admin instead/ }),
+        );
+        await expect(await canvas.findByRole('button', { name: PILL.role })).toHaveTextContent(
+            /BST-Admin|Agency admin/,
+        );
+        await expect(canvas.getByRole('button', { name: PILL.alsoCounsellor })).toHaveTextContent(
+            /Berät auch|Also counsels/,
+        );
+        await waitFor(() => expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled());
+    },
+};
+
+/** Number 150 is reserved by an open BST-Admin invite: the counsellor joins it and waits, no collision. */
+export const CounsellorJoinsPendingAgency: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+        onSubmit: fn(() => true),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, '150');
+        await canvas.findByText(
+            /wird mit einer offenen Admin-Einladung angelegt|being created by an open admin invite/,
+        );
+        await userEvent.keyboard('{Escape}');
+        const send = canvas.getByRole('button', { name: SEND.createAndInvite });
+        await waitFor(() => expect(send).toBeEnabled());
+        await userEvent.click(send);
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'COUNSELLOR',
+                    agencyId: 150,
+                    agencyIdAllocationMode: 'MANUAL',
+                    tenantIdAllocationMode: 'EXISTING',
+                    tenantId: TENANTS[0].id,
+                    topicPermission: 'NONE',
+                }),
+            ),
+        );
+        // After a successful send the bar starts over: no type-ahead is left open over it.
+        await waitFor(() => expect(canvas.getByRole('combobox', { name: FIELD.agency })).not.toHaveFocus());
+        await expect(within(canvasElement.ownerDocument.body).queryByRole('listbox')).toBeNull();
+    },
+};
+
+/** „BST-Admin" adds „Berät auch" (default on); „Nur Verwaltung" is what the submit then carries. */
+export const AgencyAdminAlsoCounsellor: Story = {
+    args: { initialValues: { ...PREFILLED, role: 'AGENCY_ADMIN' }, onSubmit: fn(() => true) },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const pill = await canvas.findByRole('button', { name: PILL.alsoCounsellor });
+        await expect(pill).toHaveTextContent(/Berät auch|Also counsels/);
+        await expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument();
+        await userEvent.click(pill);
+        await userEvent.click(await body.findByTitle(/Nur Verwaltung|Administration only/));
+        await userEvent.click(canvas.getByRole('button', { name: SEND.invite }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    targetRole: 'AGENCY_ADMIN',
+                    alsoCounsellor: false,
+                    agencyId: 101,
+                    agencyIdAllocationMode: 'EXISTING',
+                }),
+            ),
+        );
+    },
+};
+
+/** Pressing „Einladen" right after picking a Beratungsstelle sends: the press must not move focus. */
+export const SendRightAfterPickingAgency: Story = {
+    args: {
+        initialValues: {
+            recipientEmail: PREFILLED.recipientEmail,
+            firstName: PREFILLED.firstName,
+            lastName: PREFILLED.lastName,
+            tenant: TENANTS[0],
+        },
+        // Keeps the request pending, so the bar is observed as the click left it.
+        onSubmit: fn(() => new Promise<boolean>(() => {})),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const agency = await canvas.findByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, 'sucht');
+        await userEvent.click(await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ }));
+        await expect(agency).toHaveFocus();
+        const send = canvas.getByRole('button', { name: SEND.invite });
+        await expect(send).toBeEnabled();
+        await userEvent.click(send);
+        // Focus stayed in the field: it did not collapse under the pointer.
+        await expect(agency).toHaveFocus();
+        await expect(canvas.queryByRole('button', { name: PILL.agency })).not.toBeInTheDocument();
+        await waitFor(() => expect(args.onSubmit).toHaveBeenCalledWith(expect.objectContaining({ agencyId: 101 })));
+    },
+};
+
+/** „Mich selbst eintragen" sits in the send menu and hands over the Beratungsstelle chosen in the bar. */
+export const SelfAssignMenuEntry: Story = {
+    args: { initialValues: PREFILLED, onSelfAssign: fn() },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByText(/Mich selbst eintragen|Add myself/));
+        await expect(args.onSelfAssign).toHaveBeenCalledWith(expect.objectContaining({ id: 101 }));
+    },
+};
+
+/** „Senden & nächste" keeps unit, template and topics as pills, clears the person and focuses E-Mail. */
+export const SendAndNext: Story = {
+    args: { initialValues: { ...PREFILLED, topicPermission: 'SELECT_EXISTING' }, onSubmit: fn(() => true) },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /Senden & nächste|Send & next/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: SEND.sendAndNext }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    recipientEmail: PREFILLED.recipientEmail,
+                    templateId: 11,
+                    agencyId: 101,
+                }),
+            ),
+        );
+
+        const email = await canvas.findByRole('textbox', { name: FIELD.email });
+        await waitFor(() => expect(email).toHaveFocus());
+        await expect(email).toHaveValue('');
+        await expect(canvas.getByRole('textbox', { name: FIELD.firstName })).toHaveValue('');
+        await expect(canvas.getByRole('button', { name: PILL.tenant })).toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: PILL.agency })).toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: PILL.template })).toHaveTextContent(/Berater:innen-Willkommen/);
+        await expect(canvas.getByRole('button', { name: PILL.topics })).toHaveTextContent(
+            /Darf weitere Fachbereiche auswählen|may select/i,
+        );
+        await expect(canvas.getByRole('button', { name: PILL.role })).toHaveTextContent(/Berater:in|Counsellor/);
+        // The mode holds for the next person of this session.
+        await expect(canvas.getByRole('button', { name: SEND.sendAndNext })).toBeInTheDocument();
+    },
+};
+
+/** An existing Beratungsstelle picked before any Träger fills in its Träger; „Senden & nächste" keeps both. */
+export const AgencyPickFillsTraeger: Story = {
+    args: {
+        initialValues: { recipientEmail: PREFILLED.recipientEmail, firstName: 'Maria', lastName: 'Huber' },
+        searchAgencies: async (query: string) =>
+            AGENCIES.filter((agency) => matches(agency, query)).map((agency) => ({
+                ...agency,
+                tenantName: TENANTS.find((tenant) => tenant.id === agency.tenantId)?.name,
+            })),
+        onSubmit: fn(() => true),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await canvas.findByRole('combobox', { name: FIELD.tenant })).toHaveValue('');
+        const agency = canvas.getByRole('combobox', { name: FIELD.agency });
+        await userEvent.click(agency);
+        await userEvent.type(agency, 'sucht');
+        await userEvent.click(await body.findByRole('option', { name: /Caritas Suchtberatung Freiburg/ }));
+        await expect(await canvas.findByRole('button', { name: PILL.tenant })).toHaveAttribute(
+            'title',
+            'Caritas Südbaden (7)',
+        );
+
+        await userEvent.click(canvas.getByRole('button', { name: /Sendeoptionen|Send options/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /Senden & nächste|Send & next/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: SEND.sendAndNext }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({ tenantId: 7, tenantIdAllocationMode: 'EXISTING', agencyId: 101 }),
+            ),
+        );
+        await waitFor(() => expect(canvas.getByRole('textbox', { name: FIELD.email })).toHaveValue(''));
+        await expect(canvas.getByRole('button', { name: PILL.tenant })).toHaveAttribute(
+            'title',
+            'Caritas Südbaden (7)',
+        );
+        await expect(canvas.getByRole('button', { name: PILL.agency })).toBeInTheDocument();
+    },
+};
+
+/** Tenant admin: the Träger is pinned to their own (visible, disabled); roles stay open. */
+export const TenantAdminLocked: Story = {
+    args: { viewerScope: 'tenant', ownTenant: TENANTS[0] },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const tenant = await canvas.findByRole('combobox', { name: FIELD.tenant });
+        await expect(tenant).toBeDisabled();
+        await expect(tenant).toHaveValue('Caritas Südbaden · 7');
+        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeEnabled();
+    },
+};
+
+/** Agency admin: Träger AND Beratungsstelle pinned, only „Berater:in" on offer — the invite goes into the own unit. */
+export const AgencyAdminLocked: Story = {
+    args: { viewerScope: 'agency', ownTenant: TENANTS[0], ownAgency: PREFILLED.agency },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('combobox', { name: FIELD.tenant })).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toHaveValue(
+            'Caritas Suchtberatung Freiburg · 101',
+        );
+        // Only one role on offer: „Rolle" is fixed on „Berater:in".
+        const role = canvas.getByRole('combobox', { name: FIELD.role });
+        await expect(role.closest('.ant-select')).toHaveTextContent(/Berater:in|Counsellor/);
+        await expect(role).toBeDisabled();
+        await expect(canvas.getByRole('button', { name: SEND.invite })).toBeInTheDocument();
+    },
+};
+
+/** Role switch: „Träger-Admin" hides the Beratungsstelle (and „Themen & Fachbereiche"); „BST-Admin" hides only the topics. */
+export const RoleHidesFields: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.role }));
+        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
+        await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
+        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
+
+        await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
+        await userEvent.click(await body.findByTitle(/Träger-Admin|Tenant admin/));
+        await waitFor(() => expect(canvas.queryByRole('combobox', { name: FIELD.agency })).not.toBeInTheDocument());
+    },
+};
+
+/** The Träger tab only founds NEW Träger: „Rolle" is fixed on „Träger-Admin" there. */
+export const TraegerTabRoleFixed: Story = {
+    args: { tab: 'tenant' },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const role = await canvas.findByRole('combobox', { name: FIELD.role });
+        await expect(role.closest('.ant-select')).toHaveTextContent(/Träger-Admin|Tenant admin/);
+        await expect(role).toBeDisabled();
+    },
+};
+
+const phoneFrame = (width: number) => {
+    const PhoneFrame: NonNullable<Meta<typeof InviteBar>['decorators']> = (Story) => (
+        <div style={{ width, maxWidth: '100%', boxSizing: 'border-box', outline: '1px dashed #c4c7c8' }}>
+            <Story />
+        </div>
+    );
+    return PhoneFrame;
+};
+
+const PARTLY_FILLED = {
+    recipientEmail: PREFILLED.recipientEmail,
+    firstName: PREFILLED.firstName,
+    lastName: PREFILLED.lastName,
+    tenant: TENANTS[0],
+};
+
+// Tapping a pill must bring the field back inside the frame, and the frame must not scroll sideways.
+const playTapPillOnPhone: Story['play'] = async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const frame = canvasElement.firstElementChild as HTMLElement;
+    await Promise.all(
+        [PILL.email, PILL.firstName, PILL.lastName, PILL.tenant].map((pill) =>
+            canvas.findByRole('button', { name: pill }),
+        ),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: PILL.lastName }));
+    const expanded = await canvas.findByRole('textbox', { name: /^(Name|Last name)$/ });
+    await waitFor(() => expect(expanded).toHaveFocus());
+    await expect(expanded).toHaveValue(PREFILLED.lastName);
+    const frameBox = frame.getBoundingClientRect();
+    await waitFor(() => {
+        const box = expanded.getBoundingClientRect();
+        expect(box.left).toBeGreaterThanOrEqual(frameBox.left - 1);
+        expect(box.right).toBeLessThanOrEqual(frameBox.right + 1);
+    });
+    await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth + 1);
+};
+
+/** 412px phone: filled fields are pills, and a tapped pill opens inside the screen. */
+export const Mobile412: Story = {
+    args: { initialValues: PARTLY_FILLED },
+    decorators: phoneFrame(412),
+    parameters: {
+        viewport: { options: { phone412: { name: 'Phone 412', styles: { width: '412px', height: '915px' } } } },
+    },
+    globals: { viewport: { value: 'phone412', isRotated: false } },
+    play: playTapPillOnPhone,
+};
+
+/** 320px, the smallest supported phone: same behaviour. */
+export const Mobile320: Story = {
+    args: { initialValues: PARTLY_FILLED },
+    decorators: phoneFrame(320),
+    parameters: {
+        viewport: { options: { phone320: { name: 'Phone 320', styles: { width: '320px', height: '640px' } } } },
+    },
+    globals: { viewport: { value: 'phone320', isRotated: false } },
+    play: playTapPillOnPhone,
+};
+
+/** Send is wired: pressing „Einladen" hands the composed values (incl. role and target) to `onSubmit`. */
+export const SubmitsComposedValues: Story = {
+    args: { initialValues: PREFILLED, onSubmit: fn(() => true) },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: SEND.invite }));
+        await waitFor(() =>
+            expect(args.onSubmit).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    recipientEmail: PREFILLED.recipientEmail,
+                    targetRole: 'COUNSELLOR',
+                    tenantId: 7,
+                    tenantIdAllocationMode: 'EXISTING',
+                    agencyId: 101,
+                    agencyIdAllocationMode: 'EXISTING',
+                    topicPermission: 'NONE',
+                    templateId: 11,
+                }),
+            ),
+        );
+    },
+};
+
+/** Träger tab as the app wires it: a valid e-mail completes the form — „Anlegen & einladen". */
+export const TenantTabValidDirect: Story = {
+    render: () => <ComposerHarness />,
+    parameters: { msw: { handlers: defaultHandlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.firstName }), 'Maria');
+        await userEvent.type(canvas.getByRole('textbox', { name: /^Name$/ }), 'Huber');
+
+        // A valid address plus names completes the row: the send action becomes ready.
+        await waitFor(() => expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled());
     },
 };
 
@@ -197,7 +986,9 @@ export const ValidDirect: Story = {
  * survives reloads via localStorage until the admin switches back. Submitting in
  * this mode posts without a templateId (create without sending).
  */
-export const CreateOnlyMode: Story = {
+export const TenantTabCreateOnlyMode: Story = {
+    render: () => <ComposerHarness />,
+    parameters: { msw: { handlers: defaultHandlers } },
     decorators: [
         (Story) => {
             window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
@@ -206,7 +997,7 @@ export const CreateOnlyMode: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.type(await canvas.findByLabelText('E-Mail'), 'maria.huber@example.org');
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
     },
 };
 
@@ -214,27 +1005,28 @@ export const CreateOnlyMode: Story = {
  * Clicking the template pill opens EmailTemplatesDialog in list/picker view.
  * Create stays inside the dialog; picking a row selects it and closes.
  */
-export const TemplateDialogOpen: Story = {
-    decorators: Empty.decorators,
+export const TenantTabTemplateDialogOpen: Story = {
+    render: () => <ComposerHarness />,
+    parameters: { msw: { handlers: defaultHandlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const templatePill = await canvas.findByRole('button', { name: /Träger-Willkommen/ });
-        await userEvent.click(templatePill);
+        // A fresh bar shows the template split button expanded; its main segment opens the dialog.
+        await userEvent.click(await canvas.findByRole('button', { name: /Träger-Willkommen/ }));
     },
 };
 
 /**
  * Manual mode with a blocking state (#570): typing 30 hits an id reserved by an
  * open invite — error state on the field, helper text explains, sending stays
- * blocked until the id is free or the visible Auto toggle resets the field.
+ * blocked until the id is free or „＋ Neu anlegen" resets the field.
  */
-export const ReservedIdBlocksSending: Story = {
-    decorators: Empty.decorators,
+export const TenantTabReservedIdBlocksSending: Story = {
+    render: () => <ComposerHarness />,
+    parameters: { msw: { handlers: defaultHandlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // Locale-agnostic queries: the Storybook i18n may resolve de or en.
-        await userEvent.type(await canvas.findByLabelText(/E-Mail/i), 'maria.huber@example.org');
-        await userEvent.type(canvas.getByRole('textbox', { name: /Träger-ID|Tenant ID/ }), '30');
+        await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await userEvent.type(canvas.getByRole('combobox', { name: FIELD.tenant }), '30');
         await canvas.findByText(/durch eine offene Einladung reserviert|reserved by an open invite/);
     },
 };

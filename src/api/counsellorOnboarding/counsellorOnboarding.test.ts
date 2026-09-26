@@ -51,6 +51,22 @@ describe('createStubCounsellorOnboardingClient', () => {
         );
     });
 
+    it('requires a topic when an agency admin founds an agency without counselling, like the wizard', async () => {
+        const client = createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: { targetRole: 'AGENCY_ADMIN', agencyExists: false, alsoCounsellor: false },
+        });
+        await client.getOnboardingInvite('raw-token');
+
+        await expect(
+            client.registerCounsellor('raw-token', {
+                ...registration([]),
+                alsoCounsellor: false,
+                agency: { name: 'Neue Beratungsstelle' },
+            }),
+        ).rejects.toThrow('TOPICS_OUTSIDE_COVERAGE');
+    });
+
     it('consumes the link atomically: the second registration fails with CONSUMED', async () => {
         const client = createStubCounsellorOnboardingClient({ latencyMs: 0 });
         const invite = await client.getOnboardingInvite('raw-token');
