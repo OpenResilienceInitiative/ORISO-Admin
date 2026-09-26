@@ -28,8 +28,8 @@
 
     @include glyph.recolour-to-current-color;
 
-    /* The 24x24 source art carries its own margin, so 65% is what reads as a
-       motif at every size the app uses. */
+    /* The source art is cropped to its own bounds (no built-in margin), so
+       65% of the circle is the glyph itself — large, yet clear of the edge. */
 
     svg {
         width: 65%;

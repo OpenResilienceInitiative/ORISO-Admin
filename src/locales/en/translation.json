@@ -1133,7 +1133,7 @@
     "counselor.avatar": "Avatar shown to advice seekers",
     "counselor.avatar.hint": "Initials or a motif – both appear in your organisation's colours.",
     "counselor.avatar.initials": "Initials {{initials}}",
-    "counselor.avatar.initials.empty": "Initials",
+    "counselor.avatar.initials.empty": "Initials – shown once a name is entered",
     "counselor.avatar.motif": "Motif {{motif}}",
     "counselor.avatar.scrollUp": "Scroll up one row",
     "counselor.avatar.scrollDown": "Scroll down one row",

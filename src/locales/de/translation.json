@@ -872,7 +872,7 @@
     "counselor.avatar": "Avatar für Ratsuchende",
     "counselor.avatar.hint": "Initialen oder ein Symbol – beides erscheint in den Farben Ihrer Einrichtung.",
     "counselor.avatar.initials": "Initialen {{initials}}",
-    "counselor.avatar.initials.empty": "Initialen",
+    "counselor.avatar.initials.empty": "Initialen – erscheinen, sobald ein Name eingetragen ist",
     "counselor.avatar.motif": "Symbol {{motif}}",
     "counselor.avatar.scrollUp": "Eine Zeile nach oben",
     "counselor.avatar.scrollDown": "Eine Zeile nach unten",
