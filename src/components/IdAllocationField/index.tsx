@@ -115,6 +115,7 @@ export const IdAllocationField = ({
         acceptTypedIds,
         assignedId,
         onTypedUnit: allocation.selectExisting,
+        onTypedMiss: allocation.resetToAuto,
     });
 
     const trimmed = query.trim();

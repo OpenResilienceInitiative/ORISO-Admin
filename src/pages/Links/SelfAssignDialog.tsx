@@ -151,7 +151,7 @@ export const SelfAssignDialog = ({
             message.success(
                 t('links.selfAssign.success', 'Sie sind jetzt als {{role}} in „{{agency}}“ eingetragen.', {
                     role: roleLabel(role),
-                    agency: agency.unit?.name ?? `Nr. ${agencyId}`,
+                    agency: agency.unit?.name ?? t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: agencyId }),
                 }),
             );
             onAssigned?.(result);
