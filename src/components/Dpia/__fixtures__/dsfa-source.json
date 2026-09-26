@@ -1,0 +1,476 @@
+{
+    "source": "dsfa-page-v2.html",
+    "sha256": "ce56f8597e9a07d2b344e263e04bdebeaa2a35544420be2b101afa158a70418d",
+    "chapters": {
+        "1": "<section id=\"kap1\">\n        <span class=\"chapter-no\">Kapitel 1</span>\n        <h2>Einleitung, Scope und Stammdaten</h2>\n        <p class=\"lede\">Die Plattform ist ein Angebot des Betreibers und seiner angeschlossenen Träger.\n        Die Verarbeitung erfolgt in gemeinsamer Verantwortlichkeit\n        (<span class=\"norm\"><span class=\"n-kdg\">§ 28 KDG</span><span class=\"n-dsgvo\">Art. 26 DSGVO</span></span>).\n        Gegenstand dieser DSFA ist ausschließlich die Verarbeitung durch den Plattformbetreiber:\n        Bereitstellung und technischer Betrieb der Online-Beratungsplattform (nachfolgend „Plattform\").</p>\n\n        <h3>1.1 Verantwortlicher</h3>\n        <table class=\"kv\">\n          <tbody><tr><th>Verantwortlicher</th><td><span class=\"dyn\" title=\"aus Admin-Panel Global Settings: operator.legalName\">Sunflower CARE gGmbH</span></td></tr>\n          <tr><th>Anschrift</th><td><span class=\"dyn\" title=\"aus Admin-Panel Global Settings: operator.address\">Musterstraße 12, 79104 Freiburg</span></td></tr>\n          <tr><th>Kontakt</th><td><span class=\"dyn\" title=\"aus Admin-Panel Global Settings: operator.contact\">datenschutz@sunflower-care.org · 0761&nbsp;000-0</span></td></tr>\n          <tr><th>Datenschutzbeauftragte:r</th><td><span class=\"dyn\" title=\"aus Admin-Panel Global Settings: operator.dpoName\">Dr. N. N., datenschutz nord GmbH</span></td></tr>\n          <tr><th>Zuständige Aufsicht</th><td><span class=\"norm\"><span class=\"n-kdg\">Diözesandatenschutzbeauftragte:r</span><span class=\"n-dsgvo\">Landesbeauftragte:r für Datenschutz</span></span>\n            — <span class=\"dyn\" title=\"aus Admin-Panel Global Settings: legal.supervisoryAuthority\">Name &amp; Anschrift der Aufsicht</span></td></tr>\n        </tbody></table>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Dynamik</span>\n          Alle Zellen dieses Blocks sind Global-Settings-Felder (Template-Felder 1–8 der Strukturanalyse).\n          Die Aufsichtsbehörde hängt zusätzlich am Compliance-Preset — kirchliche Aufsicht (KDG)\n          vs. Landesdatenschutzbehörde (DSGVO), siehe Kapitel 8.\n        </div>\n\n        <h3>1.2 Anlagen</h3>\n        <p>Anlage 1 — Risikoanalyse (Auszug in <a class=\"link-quiet\" href=\"#kap10\">Kapitel 10</a>) ·\n           Anlage 2 — Löschkonzept\n           <span class=\"muted\">(beide Anlagen werden als eigenständige, gleichartig versionierte Teildokumente geführt; Stand dieser Fassung: in Vorbereitung)</span></p>\n\n        <h3>1.3 Wiederholung</h3>\n        <p>Diese DSFA wird routinemäßig überprüft, nächster Termin:\n        <strong><span class=\"dyn\" title=\"aus Admin-Panel Global Settings: document.nextReviewDate\">14.08.2027</span></strong>.\n        Die Überprüfungshistorie entspricht der Dokumentenhistorie (siehe Versionsblock); jede Version\n        bleibt unter ihrer Versions-URL abrufbar, <em>latest</em> verweist auf den aktuellen Stand.</p>\n      </section>",
+        "2": "<section id=\"kap2\">\n        <span class=\"chapter-no\">Kapitel 2</span>\n        <h2>Schwellwertanalyse</h2>\n        <p>Die Pflicht zur Durchführung einer DSFA wurde gemäß\n          <span class=\"norm\"><span class=\"n-kdg\">§ 35 KDG</span><span class=\"n-dsgvo\">Art. 35 DSGVO</span></span> geprüft.</p>\n\n        <details class=\"threshold\">\n          <summary>\n            <span class=\"sum-kicker\">Ergebnis</span>\n            <span>DSFA erforderlich — durchgeführt <svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-task_alt\"></use></svg></span>\n            <span class=\"expander\" aria-hidden=\"true\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-expand_more\"></use></svg></span>\n          </summary>\n          <div class=\"threshold-body\">\n            <div class=\"checklist\">\n              <div class=\"cl-head\">Vorfragen</div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span>\n                <span>Verarbeitung auf der Muss-Liste der zuständigen Aufsicht\n                  (<span class=\"norm\"><span class=\"n-kdg\">§ 35 Abs. 5 KDG</span><span class=\"n-dsgvo\">Art. 35 Abs. 4 DSGVO</span></span>)?</span>\n                <span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box\"></use></svg></span>\n                <span>Regelbeispiel erfüllt\n                  (<span class=\"norm\"><span class=\"n-kdg\">§ 35 Abs. 4 KDG</span><span class=\"n-dsgvo\">Art. 35 Abs. 3 DSGVO</span></span>)?</span>\n                <span class=\"cl-answer\">Ja</span></div>\n            </div>\n            <div class=\"checklist\">\n              <div class=\"cl-head\">Prüffragen (WP-248-Kriterien) — DSFA erforderlich, wenn zwei oder mehr bejaht werden</div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Bewerten oder Einstufen (Scoring)?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Automatisierte Entscheidungen mit Rechtswirkung?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Systematische Überwachung?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box\"></use></svg></span><span>Vertrauliche oder höchstpersönliche Daten (Beratungsinhalte, Gesundheitsdaten)?</span><span class=\"cl-answer\">Ja</span></div>\n              <div class=\"cl-row\"><span class=\"cbx\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box\"></use></svg></span><span>Datenverarbeitung in großem Umfang?</span><span class=\"cl-answer\">Ja</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Abgleich oder Zusammenführung von Datensätzen?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box\"></use></svg></span><span>Mehrere Verantwortliche / schutzbedürftige Betroffene?</span><span class=\"cl-answer\">Ja</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Innovative Nutzung neuer Technologien?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Ausschluss von der Ausübung eines Rechts?</span><span class=\"cl-answer nein\">Nein</span></div>\n              <div class=\"cl-row\"><span class=\"cbx empty\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check_box_outline_blank\"></use></svg></span><span>Verarbeitung an öffentlich zugänglichen Orten?</span><span class=\"cl-answer nein\">Nein</span></div>\n            </div>\n            <p style=\"margin:12px 0 14px\">Eine DSFA <strong>ist durchzuführen</strong>: Es sind besondere Kategorien\n            personenbezogener Daten (<span class=\"norm\"><span class=\"n-kdg\">§ 11 KDG</span><span class=\"n-dsgvo\">Art. 9 DSGVO</span></span>)\n            zu erwarten, die Plattform richtet sich an eine große Zahl teils besonders schutzbedürftiger\n            Ratsuchender, und mehrere Verantwortliche wirken zusammen.</p>\n          </div>\n        </details>\n\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Preset</span>\n          Antworten kommen künftig aus <code>thresholdAnalysis.answers</code> (Checkbox-Set im Admin-Panel).\n          Materieller Preset-Unterschied: Unter DSGVO landet eine Online-Krisenberatung mit hoher\n          Wahrscheinlichkeit direkt auf der Muss-Liste der Landesbehörde — der Herleitungspfad („Vorfragen\")\n          wechselt mit dem Preset, das Ergebnis bleibt gleich.\n        </div>\n      </section>",
+        "5": "<section id=\"kap5\">\n        <span class=\"chapter-no\">Kapitel 5</span>\n        <h2>Verfahren und Technik</h2>\n\n        <h3>5.1 Zweck</h3>\n        <p>Zweck der Verarbeitung ist die Bereitstellung und der Betrieb einer Online-Beratungsplattform.\n        Beratungsinhalte werden Ende-zu-Ende-verschlüsselt übertragen und gespeichert; Betreiber und\n        Dienstleister können sie technisch nicht einsehen (im Einzelnen: Abschnitt 5.3).</p>\n\n        <h3>5.2 Beratungsarten</h3>\n        <div class=\"cards\">\n          <div class=\"card\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-chat\"></use></svg><h4>1:1-Chat</h4><p>Synchrone und asynchrone Beratung für registrierte Ratsuchende. Zugriff weiterer Beratender ausschließlich über das protokollierte Übergabeverfahren (Abschnitt 5.7).</p></div>\n          <div class=\"card\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-bolt\"></use></svg><h4>Live-Einzelchat (anonym)</h4><p>Ohne Registrierung nutzbar; systemgenerierter, pseudonymer Benutzername; auch hier Ende-zu-Ende-verschlüsselt. Anonyme Konten werden nach kurzer Frist automatisiert deaktiviert und gelöscht.</p></div>\n          <div class=\"card\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-groups\"></use></svg><h4>Gruppenchat</h4><p>Moderierte n:n-Beratung mit Terminangeboten je Gruppe; Ende-zu-Ende-verschlüsselt.</p></div>\n          <div class=\"card\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-videocam\"></use></svg><h4>Video-Beratung</h4><p>Browserbasiert (Element Call auf LiveKit-Infrastruktur) mit Medien-Ende-zu-Ende-Verschlüsselung; es ist keine Aufzeichnung konfiguriert.<button class=\"ev\" data-ev=\"livekit\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p></div>\n          <div class=\"card\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-mic\"></use></svg><h4>Sprachnachrichten</h4><p>Kurze Audionachrichten in allen Chat-Formen, je Träger und Chat-Typ abschaltbar; Details und Schutzmaßnahmen in Abschnitt 5.5.</p></div>\n\n          <div class=\"card card-planned\"><svg class=\"ico ico-card\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-event\"></use></svg><h4>Terminverwaltung<span class=\"badge-planned\">in Planung</span></h4><p>Nicht Bestandteil des aktuellen Leistungsumfangs. Geplant sind terminierte Kontakte, Einladungen und ein gemeinsamer Kontaktkalender nach ADR-020 (Status „Accepted“, 12.08.2026); ausgeliefert ist davon bisher nichts.</p></div>\n        </div>\n        <div class=\"planbox\">\n          <div class=\"pb-title\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-event\"></use></svg> Termine — in Planung, noch nicht ausgeliefert</div>\n          <p>Eine Terminverwaltung (Kalender-/Buchungsmodul) ist <strong>nicht Bestandteil des aktuellen\n          Leistungsumfangs</strong>. ADR-020 („Scheduled calls, secure invitations, and a unified contact\n          calendar“, Status <em>Accepted</em> vom 12.08.2026) beschreibt den geplanten Zuschnitt: Termin,\n          Call-Session und Call-Einladung werden getrennt; der Zugang zu einem Anruf ist eine\n          Träger-Richtlinie, die der Server durchsetzt (Voreinstellung: nur registrierte Teilnehmende).\n          Eingeladene erhalten Mitgliedschaft ausschließlich im Anrufraum, nie im Beratungsfall.\n          Diese DSFA bewertet die geplante Funktion noch nicht — sie wird bei Auslieferung ergänzt.</p>\n        </div>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Gap</span>\n          Das Vorgängersystem hatte ein Terminmodul (appointmentService + cal.com). ORISO deployt keins\n          (<code>FEATURE_APPOINTMENT_ENABLED: \"false\"</code>, kein Helm-Template; nur tote Fork-Reste).\n          Entscheidung „dauerhaft entfallen vs. geplant\" vor DSFA-Finalisierung festhalten (fehlende ADR).\n        </div>\n\n        <h3>5.3 Ende-zu-Ende-Verschlüsselung (Schichtenmodell)</h3>\n\n        <div class=\"measures\">\n          <span class=\"measure\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-lock\"></use></svg> E2EE Olm / Megolm</span>\n          <span class=\"measure\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-shield\"></use></svg> TLS-Transportverschlüsselung</span>\n          <span class=\"measure\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-verified_user\"></use></svg> 2FA für Beratende</span>\n          <span class=\"measure\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-auto_delete\"></use></svg> Anonyme Konten zeitgesteuert gelöscht</span>\n        </div>\n        <p>Die Plattform basiert auf dem offenen Kommunikationsprotokoll <strong>Matrix</strong>.\n        Nachrichteninhalte werden auf dem Endgerät erstellt und Ende-zu-Ende verschlüsselt versendet\n        (Verfahren Olm für Einzel-, Megolm für Gruppenkommunikation<button class=\"ev\" data-ev=\"megolm\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>);\n        auf dem Server liegen Inhalte ausschließlich verschlüsselt. Die zur Entschlüsselung nötigen\n        Schlüssel werden nur zwischen den Endgeräten der berechtigten Raumteilnehmer geteilt. Ergänzend\n        ist jede Verbindung transportverschlüsselt (TLS). Die eingesetzte Verschlüsselungs­implementierung\n        (vodozemac) wurde extern auditiert.<button class=\"ev\" data-ev=\"vodozemac\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p>Alle Beratungsräume werden serverseitig verpflichtend mit aktivierter Ende-zu-Ende-Verschlüsselung\n        angelegt; ein unverschlüsselter Sendepfad existiert nicht.<button class=\"ev\" data-ev=\"e2ee-enforced\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Dateianhänge werden zusätzlich clientseitig mit einem einmaligen AES-256-Schlüssel verschlüsselt,\n        bevor sie das Endgerät verlassen; der Server erhält weder Dateinamen noch Inhaltstyp, sondern nur\n        einen nicht entschlüsselbaren Datenblock.<button class=\"ev\" data-ev=\"attachment\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Eine Föderation mit fremden Matrix-Servern ist bewusst deaktiviert: Es verlassen keine Daten den\n        Homeserver der Plattform.<button class=\"ev\" data-ev=\"federation\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p>Zur Wiederherstellung nach Geräteverlust wird ein serverseitiges, seinerseits verschlüsseltes\n        Schlüssel-Backup geführt (Secret Storage mit Wiederherstellungsschlüssel beim Nutzer); der Server\n        kann die gesicherten Schlüssel nicht lesen.</p>\n        <p><strong>Ehrliche Abgrenzung.</strong> Innerhalb einer Beratungsstelle ist die maßgebliche\n        Vertraulichkeitsgrenze nicht die Verschlüsselung, sondern die anwendungsseitige Zugriffskontrolle\n        (Sichtbarkeits- und Berechtigungssteuerung mit protokolliertem Übergabeverfahren, Abschnitt 5.7);\n        der Plattformbetrieb verfügt zudem über administrative Serverfunktionen. Ein kryptografischer\n        Ausschluss jeder denkbaren Betreiberhandlung wird daher nicht zugesichert; zugesichert wird, dass\n        Beratungsinhalte den Server ausschließlich verschlüsselt erreichen und verlassen.</p>\n        <p><strong>Verbesserung gegenüber dem Vorgängersystem.</strong> Im Vorgängersystem\n        (Rocket.Chat-basiert) war die Ende-zu-Ende-Verschlüsselung funktionsschaltergesteuert und besaß\n        einen serverseitigen Verschlüsselungspfad, in dem der Betreiber Inhalte technisch entschlüsseln\n        konnte; der anonyme Live-Chat war davon praktisch ausgenommen.<button class=\"ev\" data-ev=\"altsystem\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        In der vorliegenden Plattform ist die Ende-zu-Ende-Verschlüsselung dauerhaft aktiv, gilt für alle\n        Chat-Formen einschließlich des anonymen Live-Chats sowie für Dateien und Sprachnachrichten, und\n        ein serverseitiger Entschlüsselungspfad existiert nicht.</p>\n\n        <h3>5.4 Registrierung, Anonymität und Authentifizierung</h3>\n        <p>Die Registrierung erfolgt ohne Angabe identifizierender Daten: Ratsuchende erhalten einen\n        systemgenerierten, pseudonymen Benutzernamen (frei wählbare Klarnamen sind konstruktionsbedingt\n        ausgeschlossen); Pflichtangabe ist die Postleitzahl zur Zuordnung der Beratungsstelle. Eine\n        E-Mail-Adresse ist optional. Die Anmeldung erfolgt über ein zentrales Identitätsmanagement\n        (Keycloak, OpenID Connect, signierte Tokens); Passwörter werden ausschließlich als gesalzene\n        Hashes gespeichert. Für Ratsuchende steht eine Zwei-Faktor-Authentisierung optional zur Verfügung\n        (Authenticator-App oder E-Mail-Einmalcode); für Beratende ist die Einrichtung des zweiten Faktors\n        fester Bestandteil des Einladungsprozesses, eine Befreiung ist nur administrativ möglich und wird\n        personenbezogen dokumentiert.<button class=\"ev\" data-ev=\"otp\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Härtung</span>\n          Keycloak-Realm: <code>bruteForceProtected=false</code> (kein Lockout, dafür auch keine\n          Login-Failure-/IP-Speicherung) und Login-Events landen via <code>jboss-logging</code> mit IP im\n          Server-Log. Beides vor Finalisierung entscheiden bzw. härten; keine Rate-Limiting-Behauptung im\n          Trägertext, solange das offen ist.\n        </div>\n\n        <h3>5.5 Sprachnachrichten</h3>\n        <p>Die Plattform erlaubt optional das Versenden kurzer Sprachnachrichten (max. 3 Minuten) in allen\n        Beratungs-Chat-Formen. Die Funktion ist je Träger und je Chat-Typ (Einzelberatung, anonymer\n        Live-Chat, Gruppen, Supervision) im Administrationsbereich abschaltbar; sie ist standardmäßig\n        aktiviert und zusätzlich an die Freigabe des Medien-Uploads gekoppelt.<button class=\"ev\" data-ev=\"voiceflags\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p><strong>Besonderes Risiko:</strong> Die menschliche Stimme ist ein identifizierendes,\n        biometrienahes Merkmal. In einem pseudonymen Beratungssetting schwächt eine Sprachnachricht die\n        Pseudonymität der ratsuchenden Person gegenüber der beratenden Person — nicht jedoch gegenüber\n        Plattform- oder Serverbetreiber (siehe Schutzmaßnahmen). Ratsuchende geben ihre Stimme freiwillig\n        und aktiv preis (bewusste Aufnahme mit Vorschau- und Verwerfen-Möglichkeit); eine heimliche\n        Erhebung findet nicht statt.</p>\n        <p><strong>Schutzmaßnahmen:</strong> Sprachnachrichten werden ausschließlich\n        Ende-zu-Ende-verschlüsselt übertragen: Die Audiodatei wird clientseitig mit einem einmaligen\n        AES-256-Schlüssel verschlüsselt, bevor sie das Endgerät verlässt; der Schlüssel wird ausschließlich\n        innerhalb der Megolm-verschlüsselten Chat-Nachricht transportiert. Der Server speichert nur nicht\n        entschlüsselbares Chiffrat ohne Dateinamen oder Inhaltstyp; auch Aufnahmedauer und -zeitpunkt\n        liegen ausschließlich im verschlüsselten Nachrichteninhalt. Betreiber und Plattformanbieter können\n        Sprachnachrichten weder anhören noch inhaltlich auswerten. Systembedingt verbleibende Metadaten\n        beim Serverbetreiber sind: Raumzuordnung, pseudonyme Absenderkennung, Zeitstempel und Größe des\n        Chiffrats.</p>\n        <p><strong>Restrisiko / geplante Maßnahmen:</strong> Die Speicherdauer verschlüsselter\n        Mediendateien auf dem Server ist derzeit unbegrenzt; eine automatische Löschfrist (Media-Retention)\n        sowie die Umstellung auf authentifizierte Medien-Downloads sind als technische Härtungsmaßnahmen\n        vorgesehen.</p>\n\n        <h3>5.6 Umgang mit hochgeladenen Mediendateien</h3>\n        <p>Die Plattform erlaubt Bild-Uploads in Chats (einschließlich anonymer, registrierungsfreier\n        Live-Chats) sowie in redaktionellen Rechtstext-Editoren. Für redaktionelle Bilder besteht eine\n        serverseitige Formatvalidierung (Magic-Bytes-Whitelist PNG/JPEG/WebP, kein SVG, 2-MB-Limit,\n        authentifizierter Upload).</p>\n        <p>Für Chat-Medien existiert derzeit <strong>kein automatisierter Viren- oder Inhaltsscan</strong>.\n        Als risikomindernde Übergangsmaßnahme werden Bilder anonymer Gäste im Live-Chat den Beratenden\n        zunächst nur unkenntlich (unscharf) angezeigt und erst nach bewusster Einzelfreigabe durch die\n        beratende Person dargestellt; ein Blockieren-Verdikt kann nicht vom Absender manipuliert\n        werden.<button class=\"ev\" data-ev=\"blur\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button> Diese Prüfung ist\n        clientseitig durchgesetzt; die Datei selbst bleibt serverseitig abrufbar. Außerhalb des anonymen\n        Live-Chats erfolgt keine Vorprüfung der Anzeige.</p>\n        <p>Die Zielarchitektur ist per Architekturentscheidung ADR-019 festgelegt: ein fail-closed\n        Scan-Proxy (matrix-content-scanner mit Virenscan und optionaler KI-Bildprüfung), der ungeprüfte\n        oder beanstandete Dateien serverseitig unzugänglich hält. Die Implementierung liegt als geprüfter,\n        standardmäßig deaktivierter Proof of Concept vor, ist jedoch <strong>nicht produktiv\n        ausgerollt</strong>; die Inbetriebnahme wurde im Juli 2026 priorisierungsbedingt\n        zurückgestellt.<button class=\"ev\" data-ev=\"scannerpoc\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Vor Aktivierung der KI-Bildprüfung ist der Abschluss einer Auftragsverarbeitungs-/Sub-Prozessor-Vereinbarung\n        (Zero Retention) mit dem Anbieter erforderlich; der reine Virenscan ist davon unabhängig\n        aktivierbar. Restrisiko bis dahin: Schadsoftware- oder rechtswidrige Bildinhalte können technisch\n        übertragen und abgerufen werden; die Exposition ist durch die Blur-/Freigabemechanik und die\n        Formatvalidierung nur teilweise begrenzt.</p>\n\n        <h3>5.7 Kollegiale Fallkoordination (Team-Besprechung) und Fallübergabe (Case Handover)</h3>\n        <p><strong>(1) Team-Besprechung.</strong> Zur Koordination einer noch nicht angenommenen\n        Beratungsanfrage steht den Berater:innen der zuständigen Beratungsstelle ein separater,\n        technischer Besprechungsraum zur Verfügung (ADR-016). Der Raum ist ein eigenständiger Matrix-Raum;\n        die ratsuchende Person ist zu keinem Zeitpunkt Mitglied dieses Raums, kann ihn nicht einsehen und\n        nicht auffinden. Die Teilnahmeberechtigung ist deckungsgleich mit der Berechtigung, die Anfrage zu\n        sehen: ausschließlich Berater:innen mit aktiver Zuordnung zur Beratungsstelle des Falls; ein\n        Zugriff durch andere Beratungsstellen, den Träger oder Plattformbetreiber über die Anwendung ist\n        nicht vorgesehen (serverseitige Durchsetzung).<button class=\"ev\" data-ev=\"teamdisc\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Mit Annahme der Anfrage wird der Besprechungsraum automatisch und dauerhaft geschlossen; er bleibt\n        für die Berater:innen der Beratungsstelle ausschließlich lesend erreichbar (technisch erzwungen\n        über Matrix-Berechtigungsstufen). Anlage des Raums und Teilnahme der Berater:innen werden mit\n        Zeitstempel protokolliert; Nachrichteninhalte werden nicht protokolliert. Ein Zustimmungs- oder\n        Widerspruchsrecht der ratsuchenden Person besteht für die Team-Besprechung nicht; die Verarbeitung\n        stützt sich insoweit nicht auf eine Einwilligung, sondern ist als interne fachliche Koordination\n        ohne Offenlegung der Beratungsinhalte an zusätzliche Empfängerkreise ausgestaltet\n        <span class=\"muted\">[Rechtsgrundlagen-Einordnung durch den DSB]</span>.</p>\n        <p><strong>(2) Fallübergabe.</strong> Der Zugriff einer weiteren Beraterin / eines weiteren\n        Beraters auf einen bestehenden Beratungsfall (z.&nbsp;B. Vertretung im Krankheitsfall,\n        Urlaubsvertretung, kollegiale Beratung, Ausscheiden) erfolgt ausschließlich über ein\n        strukturiertes Übergabeverfahren. Antragsberechtigt sind nur Berater:innen derselben\n        Beratungsstelle. Jeder Antrag erfordert die Angabe eines katalogisierten Grundes sowie einer\n        Begründung. Je Grund ist festgelegt, ob die vorherige Zustimmung der ratsuchenden Person\n        erforderlich ist. Ist die Zustimmung erforderlich, verbleibt der Antrag im Status „ausstehend\";\n        die ratsuchende Person entscheidet selbst in der Anwendung über Annahme oder Ablehnung; erst\n        danach wird der Zugriff gewährt oder verweigert. Ist keine Zustimmung erforderlich (Standardfall\n        bei Krankheit, Urlaub, Notfall, Ausscheiden), wird die ratsuchende Person unmittelbar nach der\n        Übernahme durch eine Systemnachricht im Beratungsverlauf über die Übernahme und deren Grund\n        informiert.</p>\n        <p><strong>(3) Protokollierung.</strong> Jeder Übergabeantrag — einschließlich verweigerter\n        Anträge — wird revisionsfähig gespeichert (antragstellende und bisherige Fachkraft, Grund,\n        Ergebnis, Zustimmungserfordernis, maßgebliche Richtlinie, Zeitstempel). Beratungsinhalte sind\n        nicht Bestandteil der Protokolldaten. Die Einsichtnahme in die Protokolle ist rollenbasiert\n        beschränkt und mandanten- sowie beratungsstellen-scharf gefiltert; Administratorkonten ohne\n        Beratungsstellen-Zuordnung erhalten keinen Protokollzugriff\n        (Fail-closed-Prinzip).<button class=\"ev\" data-ev=\"handover\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p><strong>(4) Technische Vertraulichkeit.</strong> Beide Raumtypen werden serverseitig als\n        private, nicht auffindbare Matrix-Räume mit aktivierter Ende-zu-Ende-Verschlüsselung (Megolm)\n        angelegt. Die maßgebliche Vertraulichkeitsgrenze gegenüber nicht fallführenden Berater:innen\n        derselben Beratungsstelle ist jedoch nicht die Verschlüsselung, sondern die anwendungsseitige\n        Zugriffskontrolle (Sichtbarkeits- und Berechtigungssteuerung, beratungsstellen-scharfe Suche) in\n        Verbindung mit dem protokollierten Übergabeverfahren; gegenüber Dritten außerhalb der\n        Beratungsstelle besteht zusätzlich eine Trennung auf Ebene der Raum-Mitgliedschaft. Der\n        Plattformbetrieb verfügt über administrative Serverfunktionen; ein kryptografischer Ausschluss\n        des Betreibers wird nicht zugesichert (siehe Kapitel 10, Betreiberzugriff).</p>\n        <p><strong>(5) Konfigurierbarkeit.</strong> Die Team-Besprechung ist je Mandant (Träger) durch die\n        Plattformadministration aktivierbar bzw. deaktivierbar; zusätzlich besteht ein deployment-weiter\n        Schalter. Der Grundkatalog der Fallübergabe einschließlich Zustimmungserfordernis je Grund ist\n        plattformweit administrativ konfigurierbar.</p>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Gaps G1–G5</span>\n          Nicht behaupten: eine durchgängige Delegationskaskade bis auf Beratungsstellen-Ebene existiert\n          für Team-Besprechung/Case-Handover nicht (<code>PermissionToggleVisibility</code> deckt beide\n          nicht ab); Admin#655 (Policy-Speichern defekt) offen; <code>TENANT_ADMIN</code> kann die globale\n          Policy-Tabelle schreiben (SecurityConfig.java:400–403); das Pflicht-Freitextfeld\n          <code>explanation</code> landet im Admin-Log (UI-Hinweis oder Maskierung nötig); für die\n          Team-Besprechung werden nur Anlage + Joins protokolliert, keine Lese-/Archivzugriffe.\n        </div>\n\n        <h3>5.8 In-App-Benachrichtigungen (Zeitstrahl)</h3>\n        <p>Je Benachrichtigungsereignis wird serverseitig ein Datensatz gespeichert (mandantengetrennt):\n        Empfänger-Pseudonym, Ereignistyp, Erstell- und Lesezeitpunkt, Session-Referenz, ein\n        anwendungsinterner Verweis sowie Anzeigetexte und strukturierte Metadaten.\n        <strong>Inhalte der Beratungskommunikation werden nicht gespeichert:</strong> Nachrichtentexte aus\n        der Ende-zu-Ende-verschlüsselten Chat-Kommunikation erreichen die Benachrichtigungspipeline\n        konstruktionsbedingt nicht (verschlüsselte Ereignisse tragen keinen Nachrichtenkörper); der\n        konfigurierbare Vorschau-Modus ist fest auf „NONE\" gesetzt, sodass auch clientseitig übermittelte\n        Vorschautexte verworfen werden.<button class=\"ev\" data-ev=\"notif\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Gespeichert werden jedoch Kommunikations-<em>Metadaten</em> (wer hat wem wann in welcher Session\n        geschrieben, Ereignistyp, Anzeigenamen von Beratenden) sowie bei Fallübergaben derzeit auch der\n        von Beratenden verfasste Begründungs-Freitext, der im Einzelfall Rückschlüsse auf Beratungsinhalte\n        zulassen kann.</p>\n        <p>Der Zugriff ist auf den jeweiligen Empfänger beschränkt (kein administrativer Lesezugriff über\n        die API); Betroffene können ihren Feed selbst vollständig löschen. Eine automatische\n        Aufbewahrungsfrist besteht derzeit nicht. <strong>Geplante Abhilfemaßnahmen:</strong> Abschluss\n        der laufenden Migration auf rein clientseitig gerenderte Benachrichtigungstexte (wodurch die\n        serverseitigen Klartext-Anzeigetexte einschließlich des Fallübergabe-Freitexts entfallen),\n        Einführung einer Regel-Aufbewahrungsfrist mit automatischem Löschlauf und Anbindung an den\n        Konto-Löschworkflow sowie Reduktion des Lesezeitstempels auf ein Gelesen-Kennzeichen.</p>\n\n        <h3>5.9 Cookies, Endgeräte und Websitenutzungsdaten</h3>\n        <p>Die Plattform verzichtet vollständig auf Tracking, Analysedienste, Werbenetzwerke, externe\n        Schriftarten und Drittanbieter-Skripte; sämtliche Assets werden von der Plattform selbst\n        ausgeliefert.<button class=\"ev\" data-ev=\"notracking\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>\n        Zum Einsatz kommen ausschließlich technisch notwendige Cookies; ein Einwilligungsbanner ist\n        daher nicht erforderlich (Dokumentation in der Datenschutzerklärung). Auf Endgeräten verbleiben\n        Sitzungsdaten und verschlüsseltes Schlüsselmaterial; noch nicht versendete Nachrichtenentwürfe\n        werden bis zum Versand lokal auf dem Endgerät gespeichert. Die Absicherung des Endgeräts liegt in\n        der Verantwortung der Nutzer:innen; für Beratende gelten die organisatorischen Vorgaben ihres\n        Trägers (dienstliche bzw. freigegebene Geräte).</p>\n        <div class=\"scroll-hint\">Querformat-Tabelle — horizontal scrollbar im eigenen Container <svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-arrow_forward\"></use></svg></div>\n        <div class=\"table-scroll\">\n          <table class=\"data wide\">\n            <thead><tr><th>Cookie</th><th>Setzer</th><th>Zweck</th><th>Speicherdauer</th><th>Attribute</th></tr></thead>\n            <tbody>\n              <tr><td><code>keycloak</code></td><td>Anwendung</td><td>API-Authentifizierung (Access-Token)</td><td>Sitzung</td><td>SameSite=Strict, Secure</td></tr>\n              <tr><td><code>refreshToken</code></td><td>Anwendung</td><td>Erneuerung der Anmeldesitzung</td><td>Sitzung</td><td>SameSite=Strict, Secure</td></tr>\n              <tr><td><code>CSRF-TOKEN</code></td><td>Anwendung</td><td>Schutz vor Cross-Site-Request-Forgery</td><td>Sitzung</td><td>SameSite=Strict</td></tr>\n              <tr><td><code>lang</code></td><td>Anwendung</td><td>Sprachwahl</td><td>Sitzung</td><td>SameSite=Strict</td></tr>\n              <tr><td><code>useInformal</code></td><td>Anwendung</td><td>Du-/Sie-Präferenz</td><td>Sitzung</td><td>SameSite=Strict</td></tr>\n              <tr><td><code>tenantId</code></td><td>Anwendung</td><td>Mandanten-Zuordnung</td><td>Sitzung</td><td>SameSite=Strict</td></tr>\n              <tr><td><code>ui-version</code></td><td>Anwendung</td><td>Oberflächen-Versionswahl</td><td>befristet (Ablaufdatum)</td><td>SameSite=Lax</td></tr>\n              <tr><td><code>matrix_sso_*</code> (4 Cookies)</td><td>Anwendung</td><td>Übergabe der Chat-Sitzung beim Wechsel der Oberflächen-Version</td><td>Sitzung</td><td>SameSite=Lax, Secure</td></tr>\n              <tr><td><code>AUTH_SESSION_ID</code>, <code>KEYCLOAK_IDENTITY</code>, <code>KEYCLOAK_SESSION</code>, <code>KC_RESTART</code>, <code>KEYCLOAK_LOCALE</code></td><td>Identitätsmanagement (Keycloak)</td><td>Single-Sign-on-Sitzung</td><td>an Sitzungs-Lebensdauer des Realms gebunden</td><td>HttpOnly, Secure</td></tr>\n            </tbody>\n          </table>\n        </div>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Findings</span>\n          <code>keycloak</code>/<code>refreshToken</code> sind nicht HttpOnly und werden zusätzlich in\n          localStorage gespiegelt (Finding FE-H01, XSS-Exfiltrationsrisiko); der IndexedDB-Crypto-Store\n          wird beim Logout nicht gelöscht (Schlüsselmaterial bleibt auf Shared Devices);\n          Nachrichtenentwürfe liegen unverschlüsselt in <code>oriso.chatDrafts.v1</code>. Vor\n          Finalisierung härten oder als Restrisiko ausweisen.\n        </div>\n      </section>",
+        "6": "<section id=\"kap6\">\n        <span class=\"chapter-no\">Kapitel 6</span>\n        <h2>Statistische Auswertung</h2>\n        <p>Statistische Auswertungen erfolgen ausschließlich aggregiert und losgelöst von einzelnen\n        Beratungsfällen. Im Administrationsbereich steht ein Statistik-Dashboard zur Verfügung, das\n        ausschließlich Aggregatzahlen anzeigt (neue Beratungsanfragen, aktive Fälle, Themenverteilung,\n        Anzahl Beratender — je Träger bzw. Beratungsstelle, tages-/wochen-/monatsweise); Einzelpersonen\n        sind daraus nicht ablesbar. Zum Schutz vor Rückschlüssen aus kleinen Gruppen greift eine\n        Kleinstzellen-Unterdrückung: Aggregate werden erst ab mindestens fünf beitragenden Beratenden\n        ausgewiesen, andernfalls wird der Wert unterdrückt (fail-closed; in der Produktivumgebung\n        erzwungen).<button class=\"ev\" data-ev=\"suppression\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p>Für die Nachrichtenstatistik der Beratenden wird keine Klar-Kennung gespeichert: Die Zählung\n        erfolgt unter einem kryptografischen Pseudonym (HMAC-SHA256 über die Beraterkennung mit\n        serverseitig verwaltetem Geheimnis). Beratende können ausschließlich ihre eigenen Kennzahlen\n        einsehen; eine personenbezogene Leistungsauswertung durch Dritte findet über die Anwendung nicht\n        statt.<button class=\"ev\" data-ev=\"hmac\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></p>\n        <p>Im Browser der Nutzer:innen wird keinerlei Produkt- oder Fehler-Telemetrie erhoben (kein\n        Tracking-SDK, keine externen Dienste; vgl. Abschnitt 5.9).</p>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Offene Frage Statistik-Konsument</span>\n          Nicht ins Trägerdokument: Der UserService kann Statistik-<em>Events</em> an RabbitMQ\n          (<code>statistics.topic</code>) publizieren — das Registrierungs-Event enthielte\n          userId + Alter + Geschlecht + PLZ + Referer. <code>statistics.enabled=false</code> ist der\n          Repo-Default, aber: <strong>kein Konsument in den 6 gescannten Repos auffindbar</strong>,\n          Speicherort/Retention des Downstream-StatisticsService unbekannt, kein AMQP-TLS, kein\n          „Vergessens-Event\" bei Kontolöschung. Live-Zustand je Umgebung klären, bevor dieses Kapitel\n          finalisiert wird; ggf. Event-Payload minimieren (Quasi-Identifikator-Set).\n          Ebenfalls offen: <code>consultant_message_stat</code> ohne Retention und mit\n          <code>source_session_id</code> im Klartext neben dem HMAC (Re-Identifikation über Session-Join).\n        </div>\n      </section>",
+        "7": "<section id=\"kap7\">\n        <span class=\"chapter-no\">Kapitel 7</span>\n        <h2>Datenkategorien und Empfänger</h2>\n        <p>Löschfristen je Datenkategorie: siehe Anlage 2 — Löschkonzept <span class=\"muted\">(in Vorbereitung)</span>.\n        Empfänger und Auftragsverarbeiter: siehe Kapitel 4.</p>\n        <div class=\"scroll-hint\">Querformat-Tabelle — horizontal scrollbar im eigenen Container <svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-arrow_forward\"></use></svg></div>\n        <div class=\"table-scroll\">\n          <table class=\"data wide\">\n            <thead><tr><th>Betroffene</th><th>Quelle</th><th>Datenkategorien</th><th>Schutzklasse</th></tr></thead>\n            <tbody>\n              <tr>\n                <td>Ratsuchende<br><span class=\"muted\">mit Registrierung</span></td>\n                <td>Eigenangabe bei Registrierung und Nutzung</td>\n                <td><ul>\n                  <li>systemgenerierter, pseudonymer Benutzername; Passwort-Hash</li>\n                  <li>Postleitzahl (unverifiziert); je nach Fachbereich optionale Angaben (z.&nbsp;B. Alter, Anliegen)</li>\n                  <li>optional E-Mail-Adresse, 2FA-Merkmale</li>\n                  <li>Ende-zu-Ende-verschlüsselte Beratungsinhalte, Dateien und Sprachnachrichten</li>\n                  <li>Sitzungs- und Benachrichtigungs-Metadaten</li>\n                </ul></td>\n                <td>I–III <span class=\"muted\">je nach freiwilligen Angaben</span></td>\n              </tr>\n              <tr>\n                <td>Ratsuchende<br><span class=\"muted\">Live-Chat, ohne Registrierung</span></td>\n                <td>Systemgeneriert</td>\n                <td><ul><li>generierter, pseudonymer Benutzername</li><li>temporäre Sitzungsdaten; automatisierte Löschung nach kurzer Frist</li></ul></td>\n                <td>I–III</td>\n              </tr>\n              <tr>\n                <td>Beratende</td>\n                <td>Einladung durch Administrator:innen der Träger</td>\n                <td><ul><li>Name, dienstliche E-Mail-Adresse</li><li>Beratungsstelle, Rolle/Teamzuordnung, 2FA-Status</li><li>pseudonymisierte Tätigkeitsstatistik (HMAC)</li></ul></td>\n                <td>I</td>\n              </tr>\n              <tr>\n                <td>Träger-Vertreter:innen<br><span class=\"muted\">AVV-Unterzeichnung, keine App-Nutzer</span></td>\n                <td>Eigenangabe im Signaturprozess</td>\n                <td><ul><li>Name, Funktion, Organisation, E-Mail-Adresse</li><li>Signaturstatus und -zeitpunkt (Nachweiszweck, <span class=\"norm\"><span class=\"n-kdg\">§ 29 KDG</span><span class=\"n-dsgvo\">Art. 28 DSGVO</span></span>)</li></ul></td>\n                <td>I</td>\n              </tr>\n              <tr>\n                <td>Administrator:innen</td>\n                <td>Anlage durch Betreiber bzw. Träger</td>\n                <td><ul><li>Name, E-Mail-Adresse, Rolle, Mandanten-/Beratungsstellen-Zuordnung</li></ul></td>\n                <td>I</td>\n              </tr>\n            </tbody>\n          </table>\n        </div>\n      </section>",
+        "8": "<section id=\"kap8\">\n        <span class=\"chapter-no\">Kapitel 8</span>\n        <h2>Rechtsrahmen und Rechtsgrundlagen</h2>\n        <p style=\"display:flex;align-items:center;gap:14px;flex-wrap:wrap\">\n          <span class=\"seg\" role=\"group\" aria-label=\"Compliance-Preset\">\n            <label class=\"seg-kdg\" for=\"preset-dsgvo\">KDG</label>\n            <label class=\"seg-dsgvo\" for=\"preset-dsgvo\">DSGVO</label>\n          </span>\n          <span class=\"preset-note muted\" style=\"font-size:13px\">\n            Aktives Preset:\n            <strong><span class=\"p-kdg\">Kirchlicher Datenschutz (KDG)</span><span class=\"p-dsgvo\">DSGVO</span></strong>\n            — alle Normzitate im Dokument schalten mit um.\n          </span>\n        </p>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Preset</span>\n          <code>legal.framework = KDG | DSGVO</code> (bestehendes Compliance-Preset im Admin-Panel) steuert:\n          (a) sämtliche Norm-Badges via Mapping-Tabelle, (b) die Vorfragen der Schwellwertanalyse,\n          (c) den Abschnitt Rechtsgrundlage Beratende — einziger inhaltlich umzuschreibender Text, da\n          „kirchliches Interesse\" kein DSGVO-Pendant hat —, (d) den Aufsichtsbehörden-Block (1.1).\n          Der Rest des Dokuments ist preset-neutral.\n        </div>\n\n        <h3>8.1 Rechtsgrundlagen je Verarbeitungsschritt</h3>\n        <div class=\"table-scroll\">\n          <table class=\"data\">\n            <thead><tr><th>Verarbeitungsschritt</th><th>Rechtsgrundlage</th></tr></thead>\n            <tbody>\n              <tr><td>Technische Nutzungsdaten (Sitzung, Betrieb)</td>\n                  <td><span class=\"norm\"><span class=\"n-kdg\">§ 6 Abs. 1 lit. g KDG</span><span class=\"n-dsgvo\">Art. 6 Abs. 1 lit. f DSGVO</span></span> — berechtigtes Interesse</td></tr>\n              <tr><td>Registrierungsdaten der Ratsuchenden</td>\n                  <td><span class=\"norm\"><span class=\"n-kdg\">§ 6 Abs. 1 lit. b KDG</span><span class=\"n-dsgvo\">Art. 6 Abs. 1 lit. a DSGVO</span></span> — Einwilligung</td></tr>\n              <tr><td>Beratungsinhalte inkl. besonderer Kategorien</td>\n                  <td><span class=\"norm\"><span class=\"n-kdg\">§ 6 Abs. 1 lit. b i. V. m. § 11 KDG</span><span class=\"n-dsgvo\">Art. 9 Abs. 2 lit. a DSGVO</span></span> — ausdrückliche Einwilligung; E2EE als Schutzmaßnahme</td></tr>\n              <tr><td>Daten der Beratenden</td>\n                  <td><span class=\"norm\"><span class=\"n-kdg\">§ 6 Abs. 1 lit. g und lit. f KDG</span><span class=\"n-dsgvo\">Art. 6 Abs. 1 lit. b oder f DSGVO</span></span> <span class=\"muted\">— Textbaustein wechselt mit Preset</span></td></tr>\n              <tr><td>AVV-Signaturdaten der Träger-Vertreter:innen</td>\n                  <td><span class=\"norm\"><span class=\"n-kdg\">§ 6 Abs. 1 lit. g i. V. m. § 29 KDG</span><span class=\"n-dsgvo\">Art. 6 Abs. 1 lit. c i. V. m. Art. 28 DSGVO</span></span> — Nachweispflichten</td></tr>\n            </tbody>\n          </table>\n        </div>\n      </section>",
+        "9": "<section id=\"kap9\">\n        <span class=\"chapter-no\">Kapitel 9</span>\n        <h2>Betroffenenrechte</h2>\n        <p>Betroffenenrechte (<span class=\"norm\"><span class=\"n-kdg\">§§ 14 ff. KDG</span><span class=\"n-dsgvo\">Art. 12 ff. DSGVO</span></span>)\n        können bei jedem gemeinsam Verantwortlichen geltend gemacht werden. Wegen Datenminimierung und\n        Ende-zu-Ende-Verschlüsselung ist der Auskunftsumfang beim Betreiber technisch eng begrenzt —\n        je Recht ein Kurzfazit:</p>\n        <ul class=\"rights\">\n          <li><span>Auskunft <span class=\"norm\"><span class=\"n-kdg\">§ 17 KDG</span><span class=\"n-dsgvo\">Art. 15 DSGVO</span></span></span><span class=\"r-badge r-part\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-rule\"></use></svg>eingeschränkt — nur Registrierungs-/Systemdaten</span></li>\n          <li><span>Berichtigung <span class=\"norm\"><span class=\"n-kdg\">§ 18 KDG</span><span class=\"n-dsgvo\">Art. 16 DSGVO</span></span></span><span class=\"r-badge r-part\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-rule\"></use></svg>eingeschränkt — E-Mail selbst änderbar</span></li>\n          <li><span>Löschung <span class=\"norm\"><span class=\"n-kdg\">§ 19 KDG</span><span class=\"n-dsgvo\">Art. 17 DSGVO</span></span></span><span class=\"r-badge r-full\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check\"></use></svg>Selbstlöschung von Konto &amp; Nachrichten<button class=\"ev\" data-ev=\"delete\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button></span></li>\n          <li><span>Einschränkung <span class=\"norm\"><span class=\"n-kdg\">§ 20 KDG</span><span class=\"n-dsgvo\">Art. 18 DSGVO</span></span></span><span class=\"r-badge r-part\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-rule\"></use></svg>eingeschränkt — Sperrung oder Löschung</span></li>\n          <li><span>Datenübertragbarkeit <span class=\"norm\"><span class=\"n-kdg\">§ 22 KDG</span><span class=\"n-dsgvo\">Art. 20 DSGVO</span></span></span><span class=\"r-badge r-part\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-rule\"></use></svg>eingeschränkt — Registrierungsdaten exportierbar</span></li>\n          <li><span>Widerspruch <span class=\"norm\"><span class=\"n-kdg\">§ 23 KDG</span><span class=\"n-dsgvo\">Art. 21 DSGVO</span></span></span><span class=\"r-badge r-none\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-close\"></use></svg>praktisch nicht anwendbar</span></li>\n        </ul>\n        <p>Ratsuchende können einzelne Nachrichten und ihr gesamtes Konto selbstständig löschen. Die\n        Kontolöschung durchläuft ein kurzes Schutzfenster (48 Stunden, nur lesender Zugriff) und wird\n        dann automatisiert vollzogen: Identitätskonto, Chat-Konto (mit Löschkennzeichen), Beratungsräume\n        und Sitzungsdaten werden entfernt. Protokoll- und Nachweisdaten mit eigener Frist sind von der\n        Löschung ausgenommen.</p>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Lösch-Lücken</span>\n          Vom Konto-Löschworkflow derzeit NICHT erfasst (bestätigen bzw. schließen, bevor „vollständig\"\n          behauptet wird): <code>event_notification</code>, <code>draft_message</code>,\n          <code>consultant_message_stat</code>, <code>invite_email_delivery</code>,\n          <code>legacy_chat_identifier_archive</code>; <code>identity_tombstone</code> behält die volle\n          Subjekt-ID unbefristet. Zudem überleben gelöschte Daten bis 30 Tage in Matrix-Postgres-Backups.\n        </div>\n      </section>",
+        "10": "<section id=\"kap10\">\n        <span class=\"chapter-no\">Kapitel 10</span>\n        <h2>Risiken und Maßnahmen</h2>\n        <p>Risiken und Maßnahmen tragen stabile Kennungen (einmal vergeben, nie umnummeriert) und sind\n        dadurch in Vorgängen und Audits präzise referenzierbar. Vollständige Matrix: Anlage 1 —\n        Risikoanalyse <span class=\"muted\">(in Vorbereitung)</span>. Auszug des Ist-Stands:</p>\n        <div class=\"scroll-hint\">Tabelle horizontal scrollbar <svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-arrow_forward\"></use></svg></div>\n        <div class=\"table-scroll\">\n          <table class=\"data wide\">\n            <thead><tr><th>ID</th><th>Risiko</th><th>Bewertung</th><th>Maßnahmen (Ist-Zustand)</th><th>Restrisiko</th></tr></thead>\n            <tbody>\n              <tr>\n                <td><span class=\"rid\">R-001</span></td>\n                <td>Unbefugte Kenntnisnahme von Beratungsinhalten durch Betreiber oder Dienstleister</td>\n                <td><span class=\"sev hoch\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>hoch</span></td>\n                <td><span class=\"rid m\">M-001</span> Megolm-E2EE dauerhaft aktiv, kein unverschlüsselter Sendepfad ·\n                    <span class=\"rid m\">M-002</span> extern auditierte Implementierung (vodozemac) ·\n                    <span class=\"rid m\">M-003</span> AES-256-Dateiverschlüsselung ohne Metadaten-Upload ·\n                    <span class=\"rid m\">M-004</span> Föderation deaktiviert</td>\n                <td><span class=\"sev gering\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check\"></use></svg>gering</span> <span class=\"muted\">— administrative Serverfunktionen bestehen; Vertraulichkeitsgrenze innerhalb der Beratungsstelle ist Zugriffskontrolle (Abschnitt 5.3/5.7)</span></td>\n              </tr>\n              <tr>\n                <td><span class=\"rid\">R-002</span></td>\n                <td>Übertragung von Schadsoftware oder rechtswidrigen Bildinhalten über Medien-Uploads</td>\n                <td><span class=\"sev mittel\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>mittel</span></td>\n                <td><span class=\"rid m\">M-005</span> Blur + Click-to-Reveal im anonymen Live-Chat (fail-closed-Verdikt, Übergangsmaßnahme) ·\n                    <span class=\"rid m\">M-006</span> Formatvalidierung + Größenlimit redaktioneller Uploads ·\n                    <span class=\"rid m\">M-007</span> fail-closed-Scan-Proxy als beschlossene Zielarchitektur (ADR-019, nicht produktiv)</td>\n                <td><span class=\"sev mittel\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>mittel</span> <span class=\"muted\">— bis zur Scanner-Inbetriebnahme</span></td>\n              </tr>\n              <tr>\n                <td><span class=\"rid\">R-003</span></td>\n                <td>Kontoübernahme durch kompromittierte Anmeldedaten</td>\n                <td><span class=\"sev mittel\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>mittel</span></td>\n                <td><span class=\"rid m\">M-008</span> 2FA (Authenticator-App/E-Mail-Einmalcode); Einrichtung für Beratende im Einladungsprozess, Befreiung nur dokumentiert ·\n                    <span class=\"rid m\">M-009</span> zentrale, gehashte Passwortspeicherung (Keycloak)</td>\n                <td><span class=\"sev gering\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check\"></use></svg>gering</span></td>\n              </tr>\n              <tr>\n                <td><span class=\"rid\">R-004</span></td>\n                <td>Re-Identifizierung Einzelner aus statistischen Auswertungen</td>\n                <td><span class=\"sev mittel\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>mittel</span></td>\n                <td><span class=\"rid m\">M-010</span> ausschließlich Aggregatzahlen mit Kleinstzellen-Unterdrückung (min. 5, fail-closed) ·\n                    <span class=\"rid m\">M-011</span> HMAC-SHA256-Pseudonymisierung der Beraterstatistik</td>\n                <td><span class=\"sev gering\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check\"></use></svg>gering</span></td>\n              </tr>\n              <tr>\n                <td><span class=\"rid\">R-005</span></td>\n                <td>Verlust des Schlüsselmaterials der Nutzer:innen (Unlesbarkeit der eigenen Historie)</td>\n                <td><span class=\"sev mittel\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-warning\"></use></svg>mittel</span></td>\n                <td><span class=\"rid m\">M-012</span> serverseitiges, verschlüsseltes Schlüssel-Backup; Wiederherstellungsgeheimnis verbleibt beim Nutzer</td>\n                <td><span class=\"sev gering\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-check\"></use></svg>gering</span></td>\n              </tr>\n            </tbody>\n          </table>\n        </div>\n        <div class=\"internal-note\"><span class=\"tag\">Intern · Anlage 1</span>\n          Weitere Risiko-Kandidaten aus den Inventaren für die Vollmatrix: Ingress-Access-Logs mit\n          Client-IP (Frist undefiniert; Admin-Container loggt bereits IP-frei), Matrix-DB-Backup-Skripte\n          mit GitHub-Sync (Aktivierungsstatus klären — kritischster Einzelfund), Google-STUN in\n          <code>turn_uris</code> (IP-Abfluss Drittland), offene Synapse-Registrierung + unauthentifizierte\n          Medien, LLM-Übersetzung von Rechtstexten (Mistral/OpenRouter, Drittland), SMTP-Credentials\n          teils unverschlüsselt<button class=\"ev\" data-ev=\"tenantsettings\" title=\"Evidenz anzeigen\"><svg class=\"ico ico-ev\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-info\"></use></svg></button>.\n          Keine dieser Positionen ist im Trägertext behauptet oder verneint.\n        </div>\n      </section>",
+        "11": "<section id=\"kap11\">\n        <span class=\"chapter-no\">Kapitel 11</span>\n        <h2>Verhältnismäßigkeit und Ergebnis</h2>\n        <p>Die Verhältnismäßigkeit der Verarbeitung wird in vier Schritten geprüft:\n        <strong>legitimer Zweck</strong> (niedrigschwellige, vertrauliche, ortsunabhängige Beratung) →\n        <strong>Geeignetheit</strong> (eine zentrale, pseudonym nutzbare Plattform erreicht Personen, die\n        andernfalls keine Hilfe suchen) → <strong>Erforderlichkeit</strong> (kein milderes, gleich\n        geeignetes Mittel; dezentrale Einzellösungen würden Auffindbarkeit und kontinuierliche Beratung\n        schwächen) → <strong>Angemessenheit</strong> (Freiwilligkeit aller Angaben, Datenminimierung durch\n        pseudonyme Registrierung, anonyme Nutzbarkeit des Live-Chats, umfangreiche technische und\n        organisatorische Maßnahmen einschließlich durchgängiger Ende-zu-Ende-Verschlüsselung). Es findet\n        keine Profilbildung und kein Marketing statt.</p>\n        <div class=\"final-box\">\n          <div class=\"fb-title\"><svg class=\"ico\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#ms-task_alt\"></use></svg> Ergebnis der DSFA</div>\n          <p style=\"margin:0\">Die Verarbeitungstätigkeit kann wie beschrieben umgesetzt werden — unter\n          Beachtung der Maßnahmen aus der Risikoanalyse (Anlage&nbsp;1) und der in den Abschnitten 5.5,\n          5.6, 5.8 und 9 benannten geplanten Härtungsmaßnahmen. <span class=\"muted\">(Entwurfsfassung —\n          Freigabe durch Datenschutzbeauftragte:n steht aus.)</span></p>\n        </div>\n      </section>"
+    },
+    "evidence": {
+        "vodozemac": {
+            "title": "vodozemac ist extern auditiert",
+            "who": "Least Authority (unabhängiges Security-Audit), beauftragt von der Matrix.org Foundation",
+            "when": "Mai 2022; Nachaudit der Bezugsimplementierung libolm 2024 im gematik-Umfeld",
+            "what": "Öffentliches, unabhängiges Audit der Rust-Referenzimplementierung der Matrix-Ende-zu-Ende-Verschlüsselung (vodozemac: Olm/Megolm). Ergänzend existiert eine formale Analyse des Matrix-Kryptoprotokolls („The Matrix Reloaded“).",
+            "src": "",
+            "links": [
+                {
+                    "label": "Matrix.org: Independent public audit of vodozemac (2022)",
+                    "href": "https://matrix.org/blog/2022/05/16/independent-public-audit-of-vodozemac-a-native-rust-reference-implementation-of-matrix-end-to-end-encryption/"
+                },
+                {
+                    "label": "Formale Analyse: The Matrix Reloaded (arXiv 2408.12743)",
+                    "href": "https://arxiv.org/pdf/2408.12743"
+                }
+            ]
+        },
+        "megolm": {
+            "title": "Olm/Megolm sind offen spezifiziert",
+            "who": "Matrix.org Foundation (Spezifikationspflege)",
+            "when": "laufend versionierte Spezifikation",
+            "what": "Die eingesetzten Verschlüsselungsverfahren (m.megolm.v1.aes-sha2, Olm/Double-Ratchet-Familie) sind Teil der öffentlichen Matrix-Spezifikation — kein proprietäres Verfahren.",
+            "src": "",
+            "links": [
+                {
+                    "label": "Matrix-Spezifikation (spec.matrix.org)",
+                    "href": "https://spec.matrix.org/latest/"
+                },
+                {
+                    "label": "E2EE-Konzeptdokumentation (matrix.org)",
+                    "href": "https://matrix.org/docs/matrix-concepts/end-to-end-encryption/"
+                }
+            ]
+        },
+        "e2ee-enforced": {
+            "title": "E2EE wird serverseitig erzwungen",
+            "who": "ORISO-UserService + ORISO-Helm (Deployment-Wahrheit)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Jeder Beratungsraum wird mit m.room.encryption (m.megolm.v1.aes-sha2, preset private_chat) angelegt; das steuernde Flag steht im Deployment fest auf true. Client initialisiert Rust-Crypto unconditional.",
+            "src": "MatrixRoomClient.java:53–67, 100–111 · MatrixSynapseService.java:864–869 · ORISO-Helm values.yaml.default:258 (matrixEncryptionEnabled: \"true\") · matrixClientService.ts:154",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                },
+                {
+                    "label": "Code-Graph: ORISO-Helm",
+                    "href": "https://understand.oriso.org/#ORISO-Helm"
+                },
+                {
+                    "label": "Repository ORISO-UserService (GitHub)",
+                    "href": "https://github.com/OpenResilienceInitiative/ORISO-UserService"
+                }
+            ]
+        },
+        "attachment": {
+            "title": "Dateien: clientseitige AES-256-Verschlüsselung",
+            "who": "ORISO-Frontend",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Jeder Datei-Send läuft unkonditional durch encryptMatrixAttachment (AES-256-CTR, frischer Zufallsschlüssel + IV pro Datei, SHA-256-Hash, Matrix-EncryptedFile v2); Upload als application/octet-stream mit includeFilename:false — der Server erhält weder Dateinamen noch MIME-Typ. Ein unverschlüsselter Uploadpfad existiert nicht.",
+            "src": "src/utils/matrixEncryptedAttachment.ts · matrixClientService.ts:727–764 · buildMatrixFileMessageContent:48–64",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Frontend",
+                    "href": "https://understand.oriso.org/#ORISO-Frontend"
+                },
+                {
+                    "label": "Repository ORISO-Frontend (GitHub)",
+                    "href": "https://github.com/OpenResilienceInitiative/ORISO-Frontend"
+                }
+            ]
+        },
+        "federation": {
+            "title": "Matrix-Föderation ist deaktiviert",
+            "who": "Architekturentscheidung ADR-005 (ORISO Docs) + Helm-Konfiguration",
+            "when": "Accepted; Ist-Zustand 14.08.2026",
+            "what": "Der Homeserver föderiert nicht mit fremden Matrix-Servern; es bestehen keine Föderations-Datenflüsse. Konten entstehen ausschließlich über das Identitätsmanagement der Plattform.",
+            "src": "ADR-005 (0 - Docs) · ORISO-Helm templates/matrix/matrix-configmaps.yaml",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Helm (Matrix-Konfiguration)",
+                    "href": "https://understand.oriso.org/#ORISO-Helm"
+                }
+            ]
+        },
+        "altsystem": {
+            "title": "Vorgängersystem: serverseitiger Verschlüsselungspfad",
+            "who": "Code-Analyse der öffentlichen Repositories der Vorgängerplattform (GitHub-Org Onlineberatung)",
+            "when": "Analyse-Stand 13.08.2026 (main-Branches)",
+            "what": "Im Vorgängersystem wählte der Nachrichtentyp zwischen echtem E2EE (Rocket.Chat-Schema, flag-gesteuert) und serverseitiger AES-Verschlüsselung (MessageService, AES/ECB, Schlüsselfragmente auf dem Server) — im Standard-/Fallback-Pfad konnte der Betreiber technisch mitlesen; der anonyme Live-Chat fiel mangels Login-Passworts praktisch aus dem E2EE heraus.",
+            "src": "onlineBeratung-messageService EncryptionService.java (AES/ECB/PKCS5, masterKey) · RocketChatService.extractMessageText · frontend encryptionHelpers.ts (getTmpMasterKey = SHA-256(rcUserId))",
+            "links": [
+                {
+                    "label": "GitHub-Organisation Onlineberatung (Vorgängersystem)",
+                    "href": "https://github.com/Onlineberatung"
+                }
+            ]
+        },
+        "otp": {
+            "title": "2FA: vendored OTP-SPI + Einladungsprozess",
+            "who": "Architekturentscheidung ADR-013; ORISO-Keycloak (otp-config SPI); ORISO-UserService (Einladungsflow)",
+            "when": "Accepted / live; Ist-Zustand 14.08.2026",
+            "what": "TOTP (Authenticator-App) und E-Mail-Einmalcode über ein selbst gepflegtes Keycloak-SPI. Der Einladungsdatensatz für Beratende führt TOTP-Einrichtung und 2FA-Status; eine Befreiung wird personenbezogen als two_factor_waived_by dokumentiert.",
+            "src": "ADR-013 (0 - Docs) · AccountInvite.java (totp_pending_secret, two_factor_waived_by) · otp-config-spi (MailOtpCredentialModel)",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                },
+                {
+                    "label": "Code-Graph: ORISO-Keycloak",
+                    "href": "https://understand.oriso.org/#ORISO-Keycloak"
+                }
+            ]
+        },
+        "voiceflags": {
+            "title": "Sprachnachrichten: Flag-Familie + Kopplung an Medien-Upload",
+            "who": "ORISO-Frontend / ORISO-Admin (Flag-Familie nach ADR-015-Muster)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Eigene Flag-Familie featureVoiceMessages* (Master + 4 Chat-Typ-Varianten), im Admin-Panel je Träger schaltbar und über allowedPermissionToggles plattformseitig steuerbar; das Frontend-Gate prüft Master-Flag, Chat-Typ-Variante und die Medien-Upload-Freigabe. Aufnahme begrenzt auf 180 s.",
+            "src": "TenantDataInterface.ts:76–80 · messageSubmitInterfaceComponent.tsx:1990–2006, 2880 ff. · chatTypeCards.ts · permissionsSettingsUtils.ts:110–120",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Frontend",
+                    "href": "https://understand.oriso.org/#ORISO-Frontend"
+                },
+                {
+                    "label": "Code-Graph: ORISO-Admin",
+                    "href": "https://understand.oriso.org/#ORISO-Admin"
+                }
+            ]
+        },
+        "blur": {
+            "title": "Blur + Click-to-Reveal ist fail-closed",
+            "who": "ORISO-Frontend (Phase 1 des Media-Security-Epics, gemergt)",
+            "when": "Live seit Juli 2026; verifiziert 14.08.2026",
+            "what": "Bilder anonymer Gäste im Live-Chat durchlaufen das Zustandsmodell uploading → unchecked(blur) → safe/blocked/error; ein blocked-Verdikt wird ausschließlich fail-closed aus Event-Metadaten akzeptiert — Absender können sich nicht selbst als „sicher“ markieren.",
+            "src": "MessageAttachment.tsx:176 ff. · matrixTimelineEventFormatter · Frontend PR #547/#549",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Frontend",
+                    "href": "https://understand.oriso.org/#ORISO-Frontend"
+                },
+                {
+                    "label": "EPIC Admin#366 (Phasenstatus)",
+                    "href": "https://github.com/OpenResilienceInitiative/ORISO-Admin/issues/366"
+                }
+            ]
+        },
+        "scannerpoc": {
+            "title": "Scan-Proxy: beschlossen, gebaut, nicht deployed",
+            "who": "ADR-019 (fail-closed matrix-content-scanner); PoC-Chart auf Feature-Branch (ORISO-Helm)",
+            "when": "PoC Juli 2026; Infra-PRs #111/#112 am 29.07.2026 unmerged geschlossen; Status „On hold“",
+            "what": "Der fail-closed Scan-Proxy (ClamAV + optionale KI-Bildprüfung) existiert als standardmäßig deaktivierter Proof of Concept auf dem Branch feat/media-scanner-poc; origin/main enthält kein Scanner-Template. In keinem Environment produktiv.",
+            "src": "ORISO-Helm Branch feat/media-scanner-poc: templates/media-scanner/ · Issues Helm#98/#99 (On hold)",
+            "links": [
+                {
+                    "label": "Issue ORISO-Helm#98 (Scanner-PoC)",
+                    "href": "https://github.com/OpenResilienceInitiative/ORISO-Helm/issues/98"
+                },
+                {
+                    "label": "Code-Graph: ORISO-Helm",
+                    "href": "https://understand.oriso.org/#ORISO-Helm"
+                }
+            ]
+        },
+        "teamdisc": {
+            "title": "Team-Besprechung: Zugriff serverseitig erzwungen",
+            "who": "ORISO-UserService (TeamDiscussionFacade) + ADR-016",
+            "when": "Ist-Zustand, verifiziert 14.08.2026 (pre-dev HEAD 7471b852)",
+            "what": "requireEligibleConsultant lässt nur Berater:innen mit aktiver consultant_agency-Zuordnung der Fall-Beratungsstelle zu (sonst HTTP 403); die ratsuchende Person wird nie Raum-Mitglied. Bei Annahme der Anfrage: Status ARCHIVED + Matrix-PowerLevel events_default 50 → dauerhaft nur noch lesend.",
+            "src": "TeamDiscussionFacade.java:163–176 (Scoping), 30–37 (Designregel), 44, 273–302 (hard close) · SecurityConfig.java:299–301 · ADR-016",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "handover": {
+            "title": "Fallübergabe: lückenlose, inhaltsfreie Audit-Zeile",
+            "who": "ORISO-UserService (CaseHandoverService, CaseHandoverLogsService)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Jeder Antrag — auch abgelehnte — erzeugt eine Audit-Zeile (reason_code, status, audit_outcome, policy_authority, client_consent_required, Zeitstempel); Nachrichteninhalte werden nirgends geloggt. Admin-Einsicht ist mandanten- und beratungsstellen-scoped; Admins ohne Agency-Zuordnung sehen nichts (fail-closed).",
+            "src": "case_handover_request (Changeset 0057) · CaseHandoverService.java:55–61, 671–696 · CaseHandoverLogsService.java:33–109 (fail-closed 40–49)",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "notif": {
+            "title": "Benachrichtigungen: E2EE-Inhalte erreichen die Pipeline nicht",
+            "who": "ORISO-UserService (MatrixEventListenerService, EventNotificationService)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Der Matrix-Listener verarbeitet in verschlüsselten Räumen nur Metadaten (verschlüsselte Events tragen keinen Nachrichtenkörper). Der Vorschau-Modus privacy.notificationPreviewMode steht auf NONE; clientseitig übermittelte Vorschautexte werden verworfen.",
+            "src": "MatrixEventListenerService.java:430–437, 518–543 · EventNotificationService.java:784–829 · application.properties:358–359 (Default NONE)",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "notracking": {
+            "title": "Keine Browser-Telemetrie, keine Dritt-Ressourcen",
+            "who": "Code-Inventar Frontend/Admin (Volltext-Scan beider src/-Bäume + package.json)",
+            "when": "Scan-Stand 14.08.2026",
+            "what": "Kein Sentry-, PostHog-, Matomo-, Google-Analytics- oder vergleichbares SDK im Auslieferungscode; keine externen Font-/CDN-Loads — Assets werden self-hosted ausgeliefert; keine Laufzeit-Übersetzungsdienste im Browser.",
+            "src": "grep sentry|posthog|matomo|gtag|plausible über ORISO-Frontend + ORISO-Admin: 0 Treffer · public/static (self-hosted Assets)",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Frontend",
+                    "href": "https://understand.oriso.org/#ORISO-Frontend"
+                },
+                {
+                    "label": "Code-Graph: ORISO-Admin",
+                    "href": "https://understand.oriso.org/#ORISO-Admin"
+                }
+            ]
+        },
+        "suppression": {
+            "title": "Kleinstzellen-Unterdrückung (min. 5, fail-closed)",
+            "who": "ORISO-UserService (AdminDashboardStatisticsService)",
+            "when": "Ist-Zustand; in der Produktivkonfiguration erzwungen",
+            "what": "Das Admin-Statistik-Dashboard liefert ausschließlich Aggregatzählungen; Aggregate mit weniger als fünf beitragenden Beratenden werden unterdrückt (fail-closed). Agency-Admins sehen nur die eigenen Beratungsstellen.",
+            "src": "application.properties:241–244 · application-prod.properties:92 (erzwungen) · AdminDashboardStatisticsService.java:240–244, 495–509",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "hmac": {
+            "title": "Beraterstatistik: HMAC-SHA256-Pseudonymisierung",
+            "who": "ORISO-UserService (ConsultantIdentityHasher)",
+            "when": "Ist-Zustand; Privacy-Härtung ausgeliefert",
+            "what": "Die Nachrichtenzählung speichert statt der Beraterkennung ein HMAC-SHA256-Pseudonym (Geheimnis als Deployment-Secret). Beratende sehen über den Selbststatistik-Endpunkt nur eigene Zahlen (own-data-only).",
+            "src": "ConsultantIdentityHasher.java:23–46 · ConsultantMessageStat.java:30–54 · ConsultantStatisticsController.java:26",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "delete": {
+            "title": "Konto-Löschworkflow mit Matrix-erase",
+            "who": "ORISO-UserService (workflow/delete)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026; täglicher Lauf",
+            "what": "Kettenlöschung Keycloak → Matrix (Deaktivierung mit erase:true + Raum-Purge purge:true) → Sessions samt Zusatzdaten → Zuordnungen → Konto-Zeile. Read-Only-Schutzfenster 48 h; anonyme Live-Chat-Konten werden nach ~47 h automatisiert gelöscht.",
+            "src": "DeleteUserAccountService.java:47–106 · MatrixSynapseService.java:636–705 (erase/purge) · application.properties:79–86",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-UserService",
+                    "href": "https://understand.oriso.org/#ORISO-UserService"
+                }
+            ]
+        },
+        "tenantsettings": {
+            "title": "Träger-Einstellungen: Klartext-Spalte, zugriffsgeprüft",
+            "who": "ORISO-TenantService (TenantEntity, TenantFacadeAuthorisationService)",
+            "when": "Ist-Zustand, verifiziert 16.08.2026 gegen den Code-Graph",
+            "what": "Die Träger-Einstellungen — darunter die SMTP-Zugangsdaten — liegen als ein einziges JSON-Feld settings in einer unverschlüsselten Datenbankspalte. Vertraulich bleiben sie allein durch die Zugriffsprüfung: assertUserIsAuthorizedToAccessTenant lässt einen Single-Tenant-Admin nur an die eigene Träger-ID; jede andere ID endet in AccessDenied. Eine Verschlüsselung auf Feldebene besteht nicht — deshalb steht der Punkt als offener Kandidat in der Risiko-Vollmatrix.",
+            "src": "TenantEntity.java:102–103 (@Column settings, kein Krypto) · TenantFacadeAuthorisationService.java:48 ff. (assertUserIsAuthorizedToAccessTenant)",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-TenantService",
+                    "href": "https://understand.oriso.org/#ORISO-TenantService"
+                }
+            ]
+        },
+        "livekit": {
+            "title": "Video: Media-E2EE, keine Aufzeichnung konfiguriert",
+            "who": "ORISO-Livekit / ORISO-ElementCall (Deployment-Konfiguration)",
+            "when": "Ist-Zustand, verifiziert 14.08.2026",
+            "what": "Element Call läuft gegen die eigene LiveKit-SFU der Plattform; in der LiveKit-Konfiguration ist kein Egress-/Recording-Block vorhanden — es existiert kein Aufzeichnungspfad. Raum-/Teilnehmer-Metadaten werden nur flüchtig (in-memory) gehalten. Die Element-Call-Auslieferung enthält keine Telemetrie (kein PostHog/Rageshake/Sentry in der deployten Config).",
+            "src": "ORISO-Livekit/livekit.yaml (kein egress-Block; empty_timeout 300 s) · ORISO-Helm templates/element-call/element-call-configmap.yaml",
+            "links": [
+                {
+                    "label": "Code-Graph: ORISO-Livekit",
+                    "href": "https://understand.oriso.org/#ORISO-Livekit"
+                },
+                {
+                    "label": "Code-Graph: ORISO-ElementCall",
+                    "href": "https://understand.oriso.org/#ORISO-ElementCall"
+                }
+            ]
+        }
+    },
+    "code": {
+        "e2ee-enforced": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/adapters/matrix/MatrixRoomClient.java",
+                "from": 112,
+                "to": 123,
+                "label": "Raumanlage: m.room.encryption"
+            },
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/adapters/matrix/MatrixRoomClient.java",
+                "from": 33,
+                "to": 34,
+                "label": "Megolm-Algorithmus"
+            },
+            {
+                "slug": "helm",
+                "path": "templates/userservice/userservice-configmap-env.yaml",
+                "from": 142,
+                "to": 142,
+                "label": "Deployment-Flag"
+            }
+        ],
+        "attachment": [
+            {
+                "slug": "frontend",
+                "path": "src/utils/matrixEncryptedAttachment.ts",
+                "from": 73,
+                "to": 100,
+                "label": "AES-256-CTR je Datei"
+            },
+            {
+                "slug": "frontend",
+                "path": "src/services/matrixClientService.ts",
+                "from": 884,
+                "to": 900,
+                "label": "Upload ohne Name/MIME"
+            }
+        ],
+        "federation": [
+            {
+                "slug": "helm",
+                "path": "templates/matrix/matrix-configmaps.yaml",
+                "from": 112,
+                "to": 117,
+                "label": "Synapse: keine Föderation"
+            }
+        ],
+        "otp": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/model/AccountInvite.java",
+                "from": 130,
+                "to": 143,
+                "label": "TOTP + Befreiungsnachweis"
+            }
+        ],
+        "voiceflags": [
+            {
+                "slug": "frontend",
+                "path": "src/globalState/interfaces/TenantDataInterface.ts",
+                "from": 90,
+                "to": 94,
+                "label": "Flag-Familie"
+            }
+        ],
+        "blur": [
+            {
+                "slug": "frontend",
+                "path": "src/components/message/MessageAttachment.tsx",
+                "from": 22,
+                "to": 30,
+                "label": "Zustandsmodell"
+            },
+            {
+                "slug": "frontend",
+                "path": "src/components/message/MessageAttachment.tsx",
+                "from": 258,
+                "to": 295,
+                "label": "Fail-closed + Blur"
+            }
+        ],
+        "teamdisc": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/facade/TeamDiscussionFacade.java",
+                "from": 163,
+                "to": 177,
+                "label": "Zugriffsprüfung (403)"
+            }
+        ],
+        "handover": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/CaseHandoverService.java",
+                "from": 683,
+                "to": 707,
+                "label": "Audit-Zeile auch bei Ablehnung"
+            },
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/CaseHandoverLogsService.java",
+                "from": 38,
+                "to": 49,
+                "label": "Fail-closed Admin-Einsicht"
+            }
+        ],
+        "notif": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/matrix/MatrixEventListenerService.java",
+                "from": 441,
+                "to": 450,
+                "label": "Nur Metadaten bei m.room.encrypted"
+            }
+        ],
+        "suppression": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/statistics/AdminDashboardStatisticsService.java",
+                "from": 38,
+                "to": 48,
+                "label": "Kleinstzellen-Schwelle 5"
+            },
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/statistics/AdminDashboardStatisticsService.java",
+                "from": 60,
+                "to": 65,
+                "label": "in prod erzwungen"
+            }
+        ],
+        "hmac": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/service/statistics/ConsultantIdentityHasher.java",
+                "from": 21,
+                "to": 46,
+                "label": "HMAC-SHA256-Pseudonym"
+            }
+        ],
+        "delete": [
+            {
+                "slug": "user-service",
+                "path": "src/main/java/de/caritas/cob/userservice/api/workflow/delete/service/DeleteUserAccountService.java",
+                "from": 66,
+                "to": 82,
+                "label": "Löschkette"
+            }
+        ],
+        "tenantsettings": [
+            {
+                "slug": "tenant-service",
+                "path": "src/main/java/com/vi/tenantservice/api/model/TenantEntity.java",
+                "from": 100,
+                "to": 104,
+                "label": "settings als Klartext-Spalte"
+            },
+            {
+                "slug": "tenant-service",
+                "path": "src/main/java/com/vi/tenantservice/api/facade/TenantFacadeAuthorisationService.java",
+                "from": 48,
+                "to": 70,
+                "label": "Zugriffsprüfung je Träger"
+            }
+        ]
+    }
+}
