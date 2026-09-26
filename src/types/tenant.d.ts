@@ -49,6 +49,8 @@ export interface TenantSettings {
     featureMediaAiScanGroupChatsEnabled?: boolean | null;
     featureMediaAiScanSupervisionChatsEnabled?: boolean | null;
     featureSystemNotificationEmailsEnabled?: boolean | null;
+    /** Missing on legacy tenants until their mail route has been audited. */
+    smtpMode?: 'PLATFORM' | 'OWN' | null;
     smtp?: {
         enabled?: boolean | null;
         host?: string | null;
