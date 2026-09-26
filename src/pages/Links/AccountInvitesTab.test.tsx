@@ -902,6 +902,8 @@ describe('CSV import payload per tab', () => {
             targetRole: 'TENANT_ADMIN',
             recipientEmail: 'tenant@example.org',
             tenantId: 42,
+            // A pinned number for a new Träger is MANUAL, as the bar sends it.
+            tenantIdAllocationMode: 'MANUAL',
         });
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyId).toBeUndefined();
         expect(mocks.createAccountInvite.mock.calls[0][0].agencyIdAllocationMode).toBeUndefined();

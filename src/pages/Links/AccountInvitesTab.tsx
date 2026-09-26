@@ -408,10 +408,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 'tenantId' | 'tenantIdAllocationMode' | 'agencyId' | 'agencyIdAllocationMode'
             >;
             if (isTenantInvite) {
-                unitFields =
-                    row.target === 'EXISTING'
-                        ? { tenantId: row.id, tenantIdAllocationMode: 'EXISTING' }
-                        : { tenantId: row.id };
+                // A new Träger with a pinned number is MANUAL, like the bar; an empty cell lets the server pick.
+                let tenantIdAllocationMode: 'EXISTING' | 'MANUAL' | 'AUTO' = row.id != null ? 'MANUAL' : 'AUTO';
+                if (row.target === 'EXISTING') tenantIdAllocationMode = 'EXISTING';
+                unitFields = { tenantId: row.id, tenantIdAllocationMode };
             } else if (row.role === 'TENANT_ADMIN') {
                 unitFields = ownTenant;
             } else {
