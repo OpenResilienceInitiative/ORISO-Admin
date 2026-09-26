@@ -41,6 +41,7 @@ import {
     ArrowDropDown,
     Fingerprint,
     TextFields,
+    LocalOffer,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import type { MenuProps } from 'antd';
@@ -229,11 +230,10 @@ export type M3RichTextEditorProps = {
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
     /**
-     * `{{key}}` tokens the backend fills per Beratungsstelle. Shown above the text as chips with a
-     * sample value; a click inserts the token at the cursor (owner call: sample values at the top
-     * of the editor, like the other template editors).
+     * `{{key}}` tokens the backend fills per Beratungsstelle. Offered by the toolbar's
+     * "Platzhalter einfügen" menu with a sample value each; a pick inserts the token at the cursor.
      */
-    textTokens?: { key: string; label: string; sample: string }[];
+    textTokens?: TextToken[];
     /**
      * Replaces the built-in toolbar + editor entirely (e.g. Form-bound TiptapEditors that
      * bring their own toolbar, placeholder plugin and anchor navigation). With an editorSlot
@@ -358,6 +358,65 @@ const MenuRow = ({ glyph, label, hint }: { glyph: React.ReactNode; label: React.
     </span>
 );
 
+type TextToken = { key: string; label: string; sample: string };
+
+/**
+ * "Platzhalter einfügen": one toolbar menu instead of a chip row above the text, so the
+ * placeholders cost no editor height (ORISO-Admin#1067). antd's menu brings role="menu",
+ * arrow-key navigation and Escape.
+ */
+const TextTokenMenu = ({ editor, tokens, disabled }: { editor: Editor; tokens: TextToken[]; disabled?: boolean }) => {
+    const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
+    const label = t('legal.m3Editor.tokens.button', 'Platzhalter einfügen');
+    return (
+        <Dropdown
+            trigger={['click']}
+            disabled={disabled}
+            open={open}
+            onOpenChange={setOpen}
+            menu={{
+                'aria-label': label,
+                items: tokens.map((token) => ({
+                    key: token.key,
+                    label: (
+                        <MenuRow
+                            glyph={<LocalOffer />}
+                            label={
+                                <span className={styles.tokenMenuText}>
+                                    {token.label}
+                                    <small>{token.sample}</small>
+                                </span>
+                            }
+                        />
+                    ),
+                })),
+                onClick: ({ key }) => {
+                    setOpen(false);
+                    editor.chain().focus().insertContent(`{{${key}}}`).run();
+                },
+            }}
+        >
+            <button
+                type="button"
+                className={`${styles.toolBtn} ${styles.menuBtn}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onKeyDown={(e) => {
+                    if (e.key === 'Escape' && open) setOpen(false);
+                }}
+                title={label}
+                aria-label={label}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                data-testid="m3-toolbar-placeholders"
+            >
+                <LocalOffer />
+                <ArrowDropDown className={styles.caret} />
+            </button>
+        </Dropdown>
+    );
+};
+
 type ToolbarProps = {
     editor: Editor;
     /** Read mode / version look-back: formatting stays visible but inert (Figma 1261-51137). */
@@ -371,6 +430,8 @@ type ToolbarProps = {
     onToggleAutoChapters?: (level: number) => void;
     /** Template placeholders (key -> i18n label key) inserted as literal `${key}` text. */
     placeholders?: { [key: string]: string };
+    /** `{{key}}` tokens with a sample value, offered by the "Platzhalter einfügen" menu. */
+    textTokens?: TextToken[];
     /** Opens the image file picker (upload to the tenant media endpoint). */
     onInsertImage?: () => void;
     /** Upload in flight: the image button shows busy state. */
@@ -385,6 +446,7 @@ const Toolbar = ({
     autoChapters,
     onToggleAutoChapters,
     placeholders,
+    textTokens,
     onInsertImage,
     imageUploading,
 }: ToolbarProps) => {
@@ -425,6 +487,16 @@ const Toolbar = ({
                             <Redo />
                         </ToolButton>
                     </div>
+                    {/* Early in the bar: the card is narrower than the toolbar, and the legal
+                        editors' placeholders must not hide behind the horizontal scroll. */}
+                    {textTokens && textTokens.length > 0 && (
+                        <>
+                            <span className={styles.vDivider} />
+                            <div className={styles.toolGroup}>
+                                <TextTokenMenu editor={editor} tokens={textTokens} disabled={disabled} />
+                            </div>
+                        </>
+                    )}
                     <span className={styles.vDivider} />
                     <div className={styles.toolGroup}>
                         <HeadingMenu
@@ -1071,6 +1143,7 @@ export const M3RichTextEditor = ({
                     autoChapters={autoChapters}
                     onToggleAutoChapters={toggleAutoChapters}
                     placeholders={placeholders}
+                    textTokens={textTokens}
                     onInsertImage={imageUpload.openImagePicker}
                     imageUploading={imageUpload.uploading}
                 />
@@ -1104,24 +1177,6 @@ export const M3RichTextEditor = ({
             )}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
-
-            {editorEditable && !editorSlot && textTokens && textTokens.length > 0 && (
-                <div className={`${styles.contentInset} ${styles.tokenRow}`} data-testid="m3-editor-token-row">
-                    <span className={styles.tokenRowLabel}>{t('legal.m3Editor.tokens.label')}</span>
-                    {textTokens.map((token) => (
-                        <button
-                            key={token.key}
-                            type="button"
-                            className={styles.tokenChip}
-                            title={t('legal.m3Editor.tokens.insert', { token: `{{${token.key}}}` })}
-                            onClick={() => editor.chain().focus().insertContent(`{{${token.key}}}`).run()}
-                        >
-                            <span className={styles.tokenChipName}>{token.label}</span>
-                            <span className={styles.tokenChipSample}>{token.sample}</span>
-                        </button>
-                    ))}
-                </div>
-            )}
 
             <div className={`${styles.editorRegion} ${anchorsEnabled && anchors.length > 0 ? styles.hasAnchors : ''}`}>
                 {editorSlot ? (

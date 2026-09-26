@@ -3,7 +3,7 @@ import { Alert, notification, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
-import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
@@ -98,7 +98,6 @@ interface LegalTextProps {
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
-    placeholders?: { [key: string]: string };
 }
 
 /**
@@ -120,7 +119,6 @@ export const LegalText = ({
     placeHolderKey,
     icon,
     showConfirmationModal,
-    placeholders,
 }: LegalTextProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
@@ -351,12 +349,12 @@ export const LegalText = ({
 
     const legalTextTokens = useMemo(
         () =>
-            LEGAL_TEXT_TOKENS.map((token) => ({
+            legalTextTokensFor(legalType, isPlatformDraft ? 'platform' : 'traeger').map((token) => ({
                 key: token.key,
                 label: t(token.labelKey, token.labelFallback),
                 sample: token.sample,
             })),
-        [t],
+        [t, legalType, isPlatformDraft],
     );
 
     const editorVersions = useMemo(
@@ -822,7 +820,6 @@ export const LegalText = ({
                 }
                 aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
-                placeholders={placeholders}
                 textTokens={legalTextTokens}
                 value={contentByLanguage[activeLanguage] ?? ''}
                 onChange={
