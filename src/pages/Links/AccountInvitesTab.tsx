@@ -311,6 +311,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [viewerScope],
     );
 
+    // Stable identity: the field restarts its search whenever this function changes.
+    const searchOwnTenantAgencies = useCallback(
+        (query: string, page?: number, signal?: AbortSignal) =>
+            searchAgenciesForPicker(query, { tenantId: currentTenantId, page, signal }),
+        [searchAgenciesForPicker, currentTenantId],
+    );
+
     const onCreate = useCallback(
         async (request: CreateAccountInviteRequest): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -528,9 +535,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             {selfAssign && (
                 <SelfAssignDialog
                     initialAgency={selfAssign.agency}
-                    searchAgencies={(query, page, signal) =>
-                        searchAgenciesForPicker(query, { tenantId: currentTenantId, page, signal })
-                    }
+                    searchAgencies={searchOwnTenantAgencies}
                     loadAgencyTopics={loadAgencyTopics}
                     onClose={() => setSelfAssign(undefined)}
                     onAssigned={() => loadInvites()}
