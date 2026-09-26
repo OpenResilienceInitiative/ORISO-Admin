@@ -1,0 +1,45 @@
+/* Copy of the identity-cell styles in inviteProgressBoard.module.scss, until the board adopts this block. */
+.identity {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.name {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    overflow-wrap: anywhere;
+}
+
+.email {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    overflow-wrap: anywhere;
+}
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 2px;
+    gap: 8px;
+}
+
+.roleChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 30px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 11px/16px var(--m3-body-font-family);
+    letter-spacing: 0.5px;
+}
+
+.idHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 11px/16px var(--m3-body-font-family);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+}

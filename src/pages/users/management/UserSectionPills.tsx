@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import routePathNames from '../../../appConfig';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../../components/AdminMobileNav/MobileNavContext';
+import { TabScroller } from '../../../components/UserTable/TabScroller';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { useIsDesktopLayout } from '../../../hooks/useIsDesktopLayout.hook';
@@ -113,5 +114,9 @@ export const UserSectionPills = () => {
         activeIcon: <AllUsersFilledIcon />,
     }));
 
-    return <AdminSegmentedTabs className={styles.container} items={tabItems} ariaLabel={t('users.allUsers')} />;
+    return (
+        <TabScroller>
+            <AdminSegmentedTabs className={styles.container} items={tabItems} ariaLabel={t('users.allUsers')} />
+        </TabScroller>
+    );
 };

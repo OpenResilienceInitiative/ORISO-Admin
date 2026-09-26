@@ -1,9 +1,5 @@
 import type { ReactNode } from 'react';
-import classNames from 'classnames';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import SwapVertIcon from '@mui/icons-material/SwapVert';
-import styles from './dataTableHeader.module.scss';
+import { SortHeaderCell } from './SortHeaderCell';
 
 export type DataTableSortDirection = 'asc' | 'desc';
 
@@ -20,6 +16,10 @@ export interface DataTableColumn {
     sortable?: boolean;
     align?: 'left' | 'center' | 'right';
     width?: string | number;
+    /** Direction of the first click, e.g. `desc` for "newest first" date columns. */
+    firstDirection?: DataTableSortDirection;
+    /** Control next to the label inside the header cell, e.g. a sort-field pill. */
+    addon?: ReactNode;
 }
 
 export interface DataTableHeaderProps {
@@ -31,44 +31,10 @@ export interface DataTableHeaderProps {
      * columns — without it they render as plain, non-sortable headers.
      */
     onSortChange?: (sort: DataTableSort | null) => void;
+    /** Server lists always have an order: clicks toggle asc ↔ desc, never back to unsorted. */
+    sortRequired?: boolean;
     className?: string;
 }
-
-const nextSort = (column: DataTableColumn, sort?: DataTableSort | null): DataTableSort | null => {
-    if (sort?.key !== column.key) {
-        return { key: column.key, direction: 'asc' };
-    }
-    return sort.direction === 'asc' ? { key: column.key, direction: 'desc' } : null;
-};
-
-/**
- * A column is only really sortable when a handler can act on the click. Without
- * `onSortChange` the button would be an affordance that does nothing, so such a
- * column degrades to a plain header (no button, no `aria-sort`).
- */
-const isSortable = (column: DataTableColumn, onSortChange?: DataTableHeaderProps['onSortChange']) =>
-    column.sortable === true && onSortChange != null;
-
-const ariaSortValue = (column: DataTableColumn, sortable: boolean, sort?: DataTableSort | null) => {
-    if (!sortable) {
-        return undefined;
-    }
-    if (sort?.key !== column.key) {
-        return 'none' as const;
-    }
-    return sort.direction === 'asc' ? ('ascending' as const) : ('descending' as const);
-};
-
-const SortIcon = ({ column, sort }: { column: DataTableColumn; sort?: DataTableSort | null }) => {
-    if (sort?.key !== column.key) {
-        return <SwapVertIcon className={classNames(styles.sortIcon, styles.sortIconIdle)} aria-hidden />;
-    }
-    return sort.direction === 'asc' ? (
-        <ArrowUpwardIcon className={styles.sortIcon} aria-hidden />
-    ) : (
-        <ArrowDownwardIcon className={styles.sortIcon} aria-hidden />
-    );
-};
 
 /**
  * M3 column header row for {@link import('./DataTable').DataTable}. Sortable
@@ -77,38 +43,18 @@ const SortIcon = ({ column, sort }: { column: DataTableColumn; sort?: DataTableS
  * column without an `onSortChange` handler is rendered as a plain column —
  * a sort button nobody listens to is worse than no button at all.
  */
-export const DataTableHeader = ({ columns, sort, onSortChange, className }: DataTableHeaderProps) => (
+export const DataTableHeader = ({ columns, sort, onSortChange, sortRequired, className }: DataTableHeaderProps) => (
     <thead className={className}>
         <tr>
-            {columns.map((column) => {
-                const sortable = isSortable(column, onSortChange);
-                return (
-                    <th
-                        key={column.key}
-                        scope="col"
-                        aria-sort={ariaSortValue(column, sortable, sort)}
-                        style={column.width != null ? { width: column.width } : undefined}
-                        className={classNames({
-                            [styles.alignCenter]: column.align === 'center',
-                            [styles.alignRight]: column.align === 'right',
-                        })}
-                    >
-                        {sortable ? (
-                            <button
-                                type="button"
-                                className={styles.sortButton}
-                                aria-label={column.ariaLabel}
-                                onClick={() => onSortChange?.(nextSort(column, sort))}
-                            >
-                                {column.label}
-                                <SortIcon column={column} sort={sort} />
-                            </button>
-                        ) : (
-                            <span aria-label={column.ariaLabel}>{column.label}</span>
-                        )}
-                    </th>
-                );
-            })}
+            {columns.map((column) => (
+                <SortHeaderCell
+                    key={column.key}
+                    column={column}
+                    sort={sort}
+                    onSortChange={onSortChange}
+                    sortRequired={sortRequired}
+                />
+            ))}
         </tr>
     </thead>
 );

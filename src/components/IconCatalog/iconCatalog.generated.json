@@ -2749,7 +2749,7 @@
         "fileName": "row_expand_200.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_200.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2762,7 +2762,7 @@
         "fileName": "row_expand_400.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_400.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2775,7 +2775,7 @@
         "fileName": "row_expand_filled.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_filled.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
