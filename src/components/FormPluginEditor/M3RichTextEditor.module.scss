@@ -974,46 +974,15 @@ $m3-state-active: rgb(39 50 112 / 12%);
     padding: 0 16px;
 }
 
-// Placeholder chips with sample values, above the text (Admin legal editors).
-.tokenRow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-}
+// "Platzhalter einfügen" menu: long names (the platform DPO) wrap instead of widening the menu.
+.tokenMenuText {
+    display: block;
+    max-width: 340px;
+    white-space: normal;
 
-.tokenRowLabel {
-    color: $m3-on-surface;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.tokenChip {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 4px 12px;
-    border: 1px solid $m3-outline-variant;
-    border-radius: 8px;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-
-    &:hover {
-        background: $m3-state-hover;
+    small {
+        max-width: none;
     }
-}
-
-.tokenChipName {
-    color: $m3-primary;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.tokenChipSample {
-    color: rgb(68 71 72 / 80%);
-    font-size: 12px;
 }
 
 .editor {

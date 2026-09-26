@@ -31,6 +31,7 @@ import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
+import { useTraegerDataProtectionOfficer } from '../../../hooks/useTraegerDataProtectionOfficer';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
@@ -106,6 +107,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
+    const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -559,7 +561,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.documentEditorItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
