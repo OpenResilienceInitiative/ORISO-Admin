@@ -4,6 +4,7 @@ const fetchDataMock = vi.fn();
 vi.mock('../api/fetchData', () => ({
     fetchData: (...args: unknown[]) => fetchDataMock(...args),
     FETCH_METHODS: { GET: 'GET' },
+    FETCH_ERRORS: { BAD_REQUEST: 'BAD_REQUEST' },
 }));
 // removeEmbedded just unwraps the HAL envelope; pass the list through.
 vi.mock('./removeEmbedded', () => ({ default: (r: unknown) => r }));
@@ -46,7 +47,33 @@ describe('fetchUserSearchWithSortFallback', () => {
 
         expect(fetchDataMock).toHaveBeenCalledTimes(2);
         expect(fetchDataMock.mock.calls[1][0].url).toContain('&order=ASC&field=FIRSTNAME');
+        // The caller must learn the real order, so the header arrow can follow the rows.
+        expect(result).toEqual({ ...list(['Bob']), rejectedSort: { field: 'UPDATE_DATE', order: 'DESC' } });
+    });
+
+    it('asks fetchData to report a 400 as BAD_REQUEST', async () => {
+        fetchDataMock.mockResolvedValueOnce(list(['Ada']));
+
+        await fetchUserSearchWithSortFallback({ url: 'https://api/users?query=*', sortBy: 'UPDATE_DATE' });
+
+        expect(fetchDataMock.mock.calls[0][0].responseHandling).toEqual(['BAD_REQUEST']);
+    });
+
+    it('retries the safe sort WITHOUT a rejected-sort notice when the primary failed for another reason', async () => {
+        fetchDataMock
+            .mockRejectedValueOnce(new Error('API call error: 500 Internal Server Error'))
+            .mockResolvedValueOnce(list(['Bob']));
+
+        const result = await fetchUserSearchWithSortFallback({
+            url: 'https://api/users?query=*&page=1&perPage=10',
+            sortBy: 'UPDATE_DATE',
+            order: 'DESC',
+        });
+
+        expect(fetchDataMock).toHaveBeenCalledTimes(2);
+        expect(fetchDataMock.mock.calls[1][0].url).toContain('&order=ASC&field=FIRSTNAME');
         expect(result).toEqual(list(['Bob']));
+        expect(result).not.toHaveProperty('rejectedSort');
     });
 
     it('returns an empty list (never hangs / throws) when even the safe fallback fails', async () => {

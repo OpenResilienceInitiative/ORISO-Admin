@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
@@ -146,4 +148,30 @@ export const Loading: Story = {
 /** Backend failure (500): the search helper degrades gracefully to an empty table. */
 export const Error: Story = {
     parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] } },
+};
+
+/**
+ * A server that cannot sort by "Zuletzt aktualisiert" answers 400; the rows then come sorted by
+ * first name. The arrow moves to "Vorname" and a notice says so, instead of a silent mismatch.
+ */
+export const SortRejectedByServer: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(CONSULTANTS_ENDPOINT, ({ request }) =>
+                    new URL(request.url).searchParams.get('field') === 'FIRSTNAME'
+                        ? consultantsResponse(CONSULTANTS)
+                        : new HttpResponse(null, { status: 400 }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('status')).toHaveTextContent('Vorname');
+        await expect(canvas.getByRole('columnheader', { name: /Vorname/ })).toHaveAttribute('aria-sort', 'ascending');
+        await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).not.toHaveAttribute(
+            'aria-sort',
+        );
+    },
 };

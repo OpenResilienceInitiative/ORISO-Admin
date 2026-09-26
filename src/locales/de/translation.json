@@ -376,6 +376,7 @@
     "users.table.lastUpdated": "Zuletzt aktualisiert",
     "users.table.expand": "Zeilen erweitern",
     "users.table.collapse": "Zeile einklappen",
+    "users.table.sortRejected": "Diese Sortierung kann der Server nicht. Die Liste ist nach Vorname A–Z sortiert.",
     "users.sectionPills.platformAdmins": "Plattform Admins",
     "users.sectionPills.tenantAdmins": "Träger Admins",
     "users.sectionPills.counsellorAdmins": "Beratungsstellen Admins",
