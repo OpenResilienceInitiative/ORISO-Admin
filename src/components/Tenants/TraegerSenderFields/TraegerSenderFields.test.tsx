@@ -38,11 +38,10 @@ describe('TraegerSenderFields', () => {
         expect(screen.getByLabelText('tenants.form.sender.contactPhone')).toHaveAttribute('maxlength', '64');
     });
 
-    it('explains where the values appear and what happens when they stay empty', () => {
+    it('shows no fallback help text under the fields', () => {
         renderFields();
 
-        expect(screen.getByText('tenants.form.sender.legalName.help')).toBeInTheDocument();
-        expect(screen.getByText('tenants.form.sender.contact.help')).toBeInTheDocument();
+        expect(screen.queryByText(/sender\.(legalName|contact)\.help/)).not.toBeInTheDocument();
     });
 
     it('is optional: an empty block submits', async () => {
@@ -86,10 +85,8 @@ describe('TraegerSenderFields', () => {
     it('has German and English texts for every key', () => {
         const keys = [
             'tenants.form.sender.legalName',
-            'tenants.form.sender.legalName.help',
             'tenants.form.sender.contactEmail',
             'tenants.form.sender.contactPhone',
-            'tenants.form.sender.contact.help',
         ];
         keys.forEach((key) => {
             expect(de[key as keyof typeof de], `de ${key}`).toBeTruthy();

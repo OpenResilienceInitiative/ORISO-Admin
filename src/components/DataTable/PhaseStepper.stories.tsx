@@ -25,7 +25,7 @@ const TENANT_TRACK = (states: ('done' | 'current' | 'pending' | 'warning' | 'err
         [
             { key: 'invited', label: 'Eingeladen' },
             { key: 'registered', label: 'Registriert' },
-            { key: 'dpaSigned', label: 'Vertrag unterschrieben' },
+            { key: 'dpaSigned', label: 'Vertrag bestätigt' },
             { key: 'twoFactorActive', label: '2FA aktiv' },
             { key: 'completed', label: 'Abgeschlossen' },
         ] as const
@@ -105,7 +105,7 @@ const DATED_TRAEGER_TRACK = [
     },
     {
         key: 'dpaSigned',
-        label: 'Vertrag unterschrieben',
+        label: 'Vertrag bestätigt',
         state: 'done',
         at: { short: '22.09., 14:30', full: '22.09.2026, 14:30 Uhr' },
     },
