@@ -13,3 +13,9 @@
     letter-spacing: 0.4px;
     line-height: 16px;
 }
+
+/* Persistent publication state above the help text, same padding as the help block (#1066). */
+.publicationStatus {
+    padding: 0 24px;
+    margin-bottom: 8px;
+}

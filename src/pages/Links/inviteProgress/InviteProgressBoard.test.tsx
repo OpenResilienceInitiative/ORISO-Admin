@@ -155,12 +155,12 @@ describe('InviteProgressBoard', () => {
 
         const row = within(screen.getByText('person7@example.org').closest('tr') as HTMLElement);
         // Compact label under the track: the signature is outstanding.
-        expect(row.getByText('Wartet auf Vertragsunterschrift')).toBeInTheDocument();
+        expect(row.getByText('Wartet auf Vertragsbestätigung')).toBeInTheDocument();
         // The forwarded bead is done and announced as such.
         expect(row.getByText('Vertragsunterlagen weitergeleitet – abgeschlossen')).toBeInTheDocument();
         // The track must NOT claim completion anywhere in this row.
         expect(row.queryByText('Abgeschlossen – abgeschlossen')).not.toBeInTheDocument();
-        expect(row.queryByText('Vertrag unterschrieben – abgeschlossen')).not.toBeInTheDocument();
+        expect(row.queryByText('Vertrag bestätigt – abgeschlossen')).not.toBeInTheDocument();
     });
 
     it('completes the track only once the signature landed', () => {
@@ -180,7 +180,7 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person8@example.org').closest('tr') as HTMLElement);
-        expect(row.getByText('Vertrag unterschrieben – abgeschlossen')).toBeInTheDocument();
+        expect(row.getByText('Vertrag bestätigt – abgeschlossen')).toBeInTheDocument();
         expect(row.getByText('Abgeschlossen – abgeschlossen')).toBeInTheDocument();
     });
 

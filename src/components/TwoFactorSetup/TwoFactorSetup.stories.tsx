@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, waitFor } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { TwoFactorSetup } from './TwoFactorSetup';
@@ -65,6 +67,49 @@ const APP_LINK = {
 /** Profile context, 2FA not yet active: the activation switch opens the stepped overlay wizard. */
 export const ProfileInactive: Story = {
     render: () => <TwoFactorSetup context="profile" />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/users/data', () =>
+                    HttpResponse.json(
+                        userData({
+                            isEnabled: true,
+                            isActive: false,
+                            isToEncourage: true,
+                            qrCode: '',
+                            secret: 'profile-secret',
+                            type: 'APP',
+                        }),
+                    ),
+                ),
+            ],
+        },
+    },
+};
+
+/**
+ * Mandatory setup (#891/#1068): what a new Träger or Beratungsstelle admin sees
+ * on first login — the stepped overlay opens by itself. M3 primary steps and
+ * button, admin font on the step labels.
+ */
+export const ProfileMandatoryOverlay: Story = {
+    render: () => <TwoFactorSetup context="profile" required />,
+    play: async () => {
+        // The overlay portals into #overlay, outside the story canvas.
+        const next = await waitFor(() => {
+            const button = document.querySelector<HTMLElement>('.twoFactorAuth__overlay .button__primary');
+            if (!button) throw new Error('2FA overlay not open yet');
+            return button;
+        });
+        const stepIcon = document.querySelector<HTMLElement>('.overlay__step--active .overlay__stepIcon');
+        const stepLabel = document.querySelector<HTMLElement>('.overlay__step .text');
+        const navy = 'rgb(39, 50, 112)';
+        const slate = 'rgb(76, 85, 95)';
+        await expect(getComputedStyle(next).backgroundColor).not.toBe(slate);
+        await expect(getComputedStyle(next).backgroundColor).toBe('rgb(165, 0, 10)');
+        await expect(getComputedStyle(stepIcon!).backgroundColor).not.toBe(navy);
+        await expect(getComputedStyle(stepLabel!).fontFamily).not.toMatch(/RobotoSlab/);
+    },
     parameters: {
         msw: {
             handlers: [

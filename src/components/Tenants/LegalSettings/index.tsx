@@ -10,8 +10,6 @@ import { LegalText } from './components/LegalText';
 import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
-import { FeatureFlag } from '../../../enums/FeatureFlag';
-import { useFeatureContext } from '../../../context/FeatureContext';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
 
 interface LegalSettingsProps {
@@ -26,7 +24,6 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
     const { isSuperAdmin } = useUserRoles();
     const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
-    const { isEnabled } = useFeatureContext();
     const { mutate } = useSettingsAdminMutation();
 
     const LegalTextElement = (
@@ -41,16 +38,11 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
                 contentKey: 'privacy.confirmation.content',
-                cancelLabelKey: 'privacy.confirmation.confirm',
-                okLabelKey: 'privacy.confirmation.cancel',
+                // "Nein" = publish without informing, "Ja" = publish and inform (#1066).
+                cancelLabelKey: 'privacy.confirmation.cancel',
+                okLabelKey: 'privacy.confirmation.confirm',
                 field: ['content', 'confirmPrivacy'],
             }}
-            placeholders={
-                isEnabled(FeatureFlag.CentralDataProtectionTemplate) && {
-                    responsible: 'editor.plugin.placeholder.option.responsible.label',
-                    dataProtectionOfficer: 'editor.plugin.placeholder.option.dataProtectionOfficer.label',
-                }
-            }
         />
     );
 
@@ -113,8 +105,8 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 showConfirmationModal={{
                     titleKey: 'termsAndConditions.confirmation.title',
                     contentKey: 'termsAndConditions.confirmation.content',
-                    cancelLabelKey: 'termsAndConditions.confirmation.confirm',
-                    okLabelKey: 'termsAndConditions.confirmation.cancel',
+                    cancelLabelKey: 'termsAndConditions.confirmation.cancel',
+                    okLabelKey: 'termsAndConditions.confirmation.confirm',
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}

@@ -1,14 +1,15 @@
 import set from 'lodash.set';
-import { Alert, notification, Spin } from 'antd';
+import { Alert, notification, Spin, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
-import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { useLegalTextReadOnlyReason } from '../../hooks/useLegalTextReadOnlyReason';
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { LegalConsentField } from '../LegalConsentField';
 import { LegalDraftNotice } from '../LegalDraftNotice';
@@ -37,6 +38,21 @@ const hintDismissedKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${t
 const hintSessionKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${type}.hint.closed`;
 
 const scopedKey = (key: string, scope: string) => `${key}.${scope}`;
+
+// Admins read publication times in the platform's legal time zone, not the browser's.
+const formatPublishedAt = (iso: string, locale: string) => {
+    const date = parseUtcTimestamp(iso);
+    return Number.isNaN(date.getTime())
+        ? iso
+        : new Intl.DateTimeFormat(locale, {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Europe/Berlin',
+          }).format(date);
+};
 
 const VERSION_HISTORY_STATUS_KEYS = {
     loading: 'legal.versions.loading',
@@ -98,7 +114,6 @@ interface LegalTextProps {
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
-    placeholders?: { [key: string]: string };
 }
 
 /**
@@ -120,13 +135,19 @@ export const LegalText = ({
     placeHolderKey,
     icon,
     showConfirmationModal,
-    placeholders,
 }: LegalTextProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
-    const { data, isLoading, mutateAsync: updateTenantAsync, isPending } = useTenantAppearanceFormData(`${tenantId}`);
+    const readOnlyReason = useLegalTextReadOnlyReason();
+    // The card confirms a publish itself ("Veröffentlicht"); the generic settings toast would be a second one.
+    const {
+        data,
+        isLoading,
+        mutateAsync: updateTenantAsync,
+        isPending,
+    } = useTenantAppearanceFormData(`${tenantId}`, { successMessageKey: null });
     const { data: userData, isLoading: isUserLoading } = useUserData();
     // Persist dismissal only once the opaque user id is known (same pattern as DPA).
     const dismissalScope = userData?.id ? `${tenantId}:${userData.id}` : undefined;
@@ -136,9 +157,16 @@ export const LegalText = ({
     // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
     const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
     const [consentBlockedClosed, setConsentBlockedClosed] = useState<string | undefined>();
-    const [pendingFormData, setPendingFormData] = useState<Record<string, unknown>>();
-    const [pendingDraftRevision, setPendingDraftRevision] = useState<string>();
     const [modalVisible, setModalVisible] = useState(false);
+    // What this session just published, until the tenant re-read replaces `data`: without it the
+    // card flipped back to the old text for a moment and read as "nothing was saved" (#1066).
+    const [justPublished, setJustPublished] = useState<{
+        identity: string;
+        at: string;
+        basis: unknown;
+        content: Record<string, string>;
+        consent?: Record<string, string>;
+    }>();
     const [hintHidden, setHintHidden] = useState(() =>
         legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false,
     );
@@ -183,8 +211,6 @@ export const LegalText = ({
     useEffect(() => {
         setEdits({});
         setConsentEdits({});
-        setPendingFormData(undefined);
-        setPendingDraftRevision(undefined);
         setModalVisible(false);
         setDraftSource(undefined);
         setDraftActionPending(false);
@@ -255,11 +281,14 @@ export const LegalText = ({
     // language split — keep it under the first configured language so it is shown and
     // preserved on publish (otherwise an untouched card would overwrite the stored
     // string with {}).
+    const publishedNow = justPublished?.identity === editorIdentity ? justPublished : undefined;
+    const bridgingPublish = publishedNow && publishedNow.basis === data ? publishedNow : undefined;
     const publishedByLanguage = useMemo<Record<string, string>>(() => {
+        if (bridgingPublish) return bridgingPublish.content;
         if (storedContent && typeof storedContent === 'object') return storedContent as Record<string, string>;
         if (typeof storedContent === 'string' && storedContent !== '') return { [languages[0]]: storedContent };
         return {};
-    }, [storedContent, languages]);
+    }, [bridgingPublish, storedContent, languages]);
     const contentByLanguage = useMemo<Record<string, string>>(() => {
         const base = publishedByLanguage;
         // A viewer who may not edit must never see unpublished local content: the
@@ -288,9 +317,12 @@ export const LegalText = ({
      */
     const storedConsent = (data?.content as Record<string, unknown> | undefined)?.privacyConsent;
     const consentEnabled = legalType === 'privacy' && storedConsent !== undefined;
+    const publishedConsent = useMemo<Record<string, string>>(() => {
+        if (bridgingPublish?.consent) return bridgingPublish.consent;
+        return storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
+    }, [bridgingPublish, storedConsent]);
     const consentByLanguage = useMemo<Record<string, string>>(() => {
-        const base =
-            storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
+        const base = publishedConsent;
         // Same rule as the policy body: a viewer who may not edit sees the published
         // sentence only — they can neither recognise nor discard a local draft.
         if (!canEditLegalText) {
@@ -309,7 +341,7 @@ export const LegalText = ({
             ...(sourceChosen ? selectedDraft?.privacyConsent ?? {} : {}),
             ...consentEdits,
         };
-    }, [canEditLegalText, storedConsent, sourceChosen, selectedDraft, draftSource, serverBase.draft, consentEdits]);
+    }, [canEditLegalText, publishedConsent, sourceChosen, selectedDraft, draftSource, serverBase.draft, consentEdits]);
     const blockedLanguages = useMemo(
         () => (consentEnabled ? consentPublicationBlockers(consentByLanguage) : []),
         [consentEnabled, consentByLanguage],
@@ -351,12 +383,12 @@ export const LegalText = ({
 
     const legalTextTokens = useMemo(
         () =>
-            LEGAL_TEXT_TOKENS.map((token) => ({
+            legalTextTokensFor(legalType, isPlatformDraft ? 'platform' : 'traeger').map((token) => ({
                 key: token.key,
                 label: t(token.labelKey, token.labelFallback),
                 sample: token.sample,
             })),
-        [t],
+        [t, legalType, isPlatformDraft],
     );
 
     const editorVersions = useMemo(
@@ -424,98 +456,111 @@ export const LegalText = ({
         [discardDraft, serverDraft, t, updateTenantAsync],
     );
 
-    const finishConfirmedPublish = useCallback(
-        async (confirmPrivacy: boolean) => {
-            if (!pendingFormData || !pendingDraftRevision || !showConfirmationModal) return;
-            const formData = set({ ...pendingFormData }, showConfirmationModal.field, confirmPrivacy);
-            setModalVisible(false);
+    const saveCurrentDraft = useCallback(
+        async ({ announce = true }: { announce?: boolean } = {}) => {
+            const saved = await serverDraft.save({
+                content: { ...contentByLanguage },
+                ...(consentEnabled ? { privacyConsent: { ...consentByLanguage } } : {}),
+                revision: serverBase.revision ?? 'new',
+            });
+            discardDraft();
+            if (editorIdentityRef.current === editorIdentity) {
+                setServerBaseState({ identity: editorIdentity, draft: saved, revision: saved.revision });
+                setDraftSource('server');
+                // Publishing saves first; there the "Veröffentlicht" toast is the one answer.
+                if (announce) notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
+            }
+            return saved;
+        },
+        [
+            consentByLanguage,
+            consentEnabled,
+            contentByLanguage,
+            discardDraft,
+            editorIdentity,
+            serverBase.revision,
+            serverDraft,
+            t,
+        ],
+    );
+
+    // Saves and publishes in one go. Runs only after the admin answered "Ratsuchende informieren?"
+    // (where asked): dismissing that question must leave nothing saved and nothing published.
+    const publishNow = useCallback(
+        async (confirmPrivacy?: boolean) => {
+            const operationIdentity = editorIdentity;
+            const basis = data;
             setDraftActionPending(true);
+            let saved;
             try {
-                await publishSavedDraft(formData, pendingDraftRevision, editorIdentity);
+                saved = await saveCurrentDraft({ announce: false });
+            } catch {
+                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                setDraftActionPending(false);
+                return;
+            }
+            if (editorIdentityRef.current !== operationIdentity) return;
+            // Publish exactly the normalized payload returned by the revision-checked
+            // draft write. This keeps the live text and the saved revision identical.
+            const formData = set({}, fieldName, { ...saved.content });
+            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
+            const publishedConsentMap = consentEnabled ? { ...(saved.privacyConsent ?? consentByLanguage) } : undefined;
+            if (publishedConsentMap) set(formData, ['content', 'privacyConsent'], publishedConsentMap);
+            if (showConfirmationModal && confirmPrivacy !== undefined) {
+                set(formData, showConfirmationModal.field, confirmPrivacy);
+            }
+            try {
+                await publishSavedDraft(formData, saved.revision, operationIdentity);
+                if (editorIdentityRef.current === operationIdentity) {
+                    setJustPublished({
+                        identity: operationIdentity,
+                        at: new Date().toISOString(),
+                        basis,
+                        content: { ...saved.content },
+                        consent: publishedConsentMap,
+                    });
+                    notification.success({ message: t('legal.published.toast'), duration: 4 });
+                }
             } catch {
                 notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
             } finally {
-                setDraftActionPending(false);
+                if (editorIdentityRef.current === operationIdentity) setDraftActionPending(false);
             }
         },
-        [pendingDraftRevision, pendingFormData, publishSavedDraft, showConfirmationModal, t],
+        [
+            consentByLanguage,
+            consentEnabled,
+            data,
+            editorIdentity,
+            fieldName,
+            publishSavedDraft,
+            saveCurrentDraft,
+            showConfirmationModal,
+            t,
+        ],
     );
 
-    const onConfirm = useCallback(() => finishConfirmedPublish(false), [finishConfirmedPublish]);
-    const onCancel = useCallback(() => finishConfirmedPublish(true), [finishConfirmedPublish]);
-
-    const saveCurrentDraft = useCallback(async () => {
-        const saved = await serverDraft.save({
-            content: { ...contentByLanguage },
-            ...(consentEnabled ? { privacyConsent: { ...consentByLanguage } } : {}),
-            revision: serverBase.revision ?? 'new',
-        });
-        discardDraft();
-        if (editorIdentityRef.current === editorIdentity) {
-            setServerBaseState({ identity: editorIdentity, draft: saved, revision: saved.revision });
-            setDraftSource('server');
-            notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
-        }
-        return saved;
-    }, [
-        consentByLanguage,
-        consentEnabled,
-        contentByLanguage,
-        discardDraft,
-        editorIdentity,
-        serverBase.revision,
-        serverDraft,
-        t,
-    ]);
-
-    const onPublish = useCallback(async () => {
+    const onPublish = useCallback(() => {
         // Refuse before the request: an authored consent sentence without
         // `{{legal_links}}` is rejected server-side (ADR-021 decision 2), and the
         // admin should learn that from the editor, not from a failed publish.
         if (blockedLanguages.length > 0) {
             return;
         }
-        setDraftActionPending(true);
-        let saved;
-        try {
-            saved = await saveCurrentDraft();
-        } catch {
-            notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
-            setDraftActionPending(false);
+        if (showConfirmationModal) {
+            setModalVisible(true);
             return;
         }
-        if (editorIdentityRef.current !== editorIdentity) return;
-        // Publish exactly the normalized payload returned by the revision-checked
-        // draft write. This keeps the live text and the saved revision identical.
-        const formData = set({}, fieldName, { ...saved.content });
-        if (consentEnabled) {
-            // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
-            set(formData, ['content', 'privacyConsent'], { ...(saved.privacyConsent ?? consentByLanguage) });
-        }
-        try {
-            if (showConfirmationModal) {
-                setPendingFormData(formData);
-                setPendingDraftRevision(saved.revision);
-                setModalVisible(true);
-                setDraftActionPending(false);
-            } else {
-                await publishSavedDraft(formData, saved.revision, editorIdentity);
-            }
-        } catch {
-            notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
-        } finally {
-            if (!showConfirmationModal) setDraftActionPending(false);
-        }
-    }, [
-        blockedLanguages,
-        consentByLanguage,
-        consentEnabled,
-        fieldName,
-        publishSavedDraft,
-        saveCurrentDraft,
-        showConfirmationModal,
-        t,
-    ]);
+        publishNow();
+    }, [blockedLanguages, publishNow, showConfirmationModal]);
+
+    const answerConfirmation = useCallback(
+        (confirmPrivacy: boolean) => {
+            setModalVisible(false);
+            publishNow(confirmPrivacy);
+        },
+        [publishNow],
+    );
 
     // The consent map travels with the draft: storing only the body while reporting
     // a successful save would silently drop the consent wording on the next reload.
@@ -550,8 +595,6 @@ export const LegalText = ({
             { content: savedServerDraft.content, consent: savedServerDraft.privacyConsent },
             { compareConsent: consentEnabled },
         );
-    const publishedConsent =
-        storedConsent && typeof storedConsent === 'object' ? (storedConsent as Record<string, string>) : {};
     // "Something new" is measured against what is live and what was last sent — the
     // footer only offers an action that would change something (owner decision 2026-09-21).
     const differsFromPublished = !isSameDraftContent(
@@ -587,6 +630,29 @@ export const LegalText = ({
             ? t('legal.template.disabled.consentToken', { token: `{{${MANDATORY_CONSENT_TOKEN}}}` })
             : undefined;
     const showLiveAction = canPublishLive && publishIntent !== 'template' && differsFromPublished;
+
+    // The card's persistent answer to "is this online?" (#1066): shown only while the screen holds
+    // exactly the live text. The date is known right after a publish or from the version history.
+    const isPublished = !differsFromPublished && !isEmptyLegalContent(publishedByLanguage);
+    const publishedAt =
+        publishedNow?.at ??
+        (historyState === 'available' ? versions?.find((version) => !version.supersededAt)?.publishedAt : undefined);
+    const publicationStatus = isPublished && (
+        <div className={styles.publicationStatus}>
+            <Tag color="green" data-testid="legal-publication-status">
+                {publishedAt ? (
+                    <>
+                        {t('legal.status.publishedAt')}{' '}
+                        <time dateTime={publishedAt}>{formatPublishedAt(publishedAt, locale)}</time>
+                    </>
+                ) : (
+                    t('legal.status.published')
+                )}
+            </Tag>
+        </div>
+    );
+    // A Träger admin blocked by the platform-wide switch learns that, and who can lift it.
+    const helpText = !canEditLegalText && readOnlyReason.platformLock ? t(readOnlyReason.key) : help.text;
 
     // Offering a template sends the SAVED revision, so unsaved work is saved first —
     // the same way "Veröffentlichen" saves before it publishes.
@@ -761,7 +827,12 @@ export const LegalText = ({
                 language={activeLanguage}
                 onLanguageChange={setActiveLanguage}
                 helpSlot={
-                    legalType && <EditorHelpText text={help.text} hint={showHintSnackbar ? undefined : help.hint} />
+                    legalType && (
+                        <>
+                            {publicationStatus}
+                            <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
+                        </>
+                    )
                 }
                 // Only hand over a slot when a message is actually showing: the editor reserves
                 // bottom space whenever the slot is set, and an empty queue must not leave a gap.
@@ -822,7 +893,6 @@ export const LegalText = ({
                 }
                 aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
                 placeholder={t(placeHolderKey)}
-                placeholders={placeholders}
                 textTokens={legalTextTokens}
                 value={contentByLanguage[activeLanguage] ?? ''}
                 onChange={
@@ -850,9 +920,18 @@ export const LegalText = ({
                         />
                     ) : undefined
                 }
+                // "Ja" informs, "Nein" publishes silently; Escape, X and a click outside answer
+                // neither, so they abort the publish instead of picking one (#1066).
                 belowSlot={
                     showConfirmationModal &&
-                    modalVisible && <Modal {...showConfirmationModal} onConfirm={onConfirm} onClose={onCancel} />
+                    modalVisible && (
+                        <Modal
+                            {...showConfirmationModal}
+                            onConfirm={() => answerConfirmation(true)}
+                            onClose={() => answerConfirmation(false)}
+                            onDismiss={() => setModalVisible(false)}
+                        />
+                    )
                 }
             />
             {templateDialogOpen && savedServerDraft && legalType && templateLevel && (

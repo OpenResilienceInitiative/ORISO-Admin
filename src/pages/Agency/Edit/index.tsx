@@ -23,6 +23,7 @@ import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
+import { OpenDepartmentFieldOnRequest } from './components/DepartmentDetails/OpenDepartmentFieldOnRequest';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
@@ -30,6 +31,7 @@ import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
+import { useTraegerDataProtectionOfficer } from '../../../hooks/useTraegerDataProtectionOfficer';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
@@ -80,6 +82,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
         formData: Record<string, unknown>;
         options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] };
@@ -104,6 +107,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const agencyTenantId = getEntityId(agencyData?.tenantId);
+    const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -451,15 +455,32 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
                             >
-                                <AgencySettings
-                                    isEditMode={isEditing}
-                                    asFields
-                                    persistedTeamAgency={initialValues.teamAgency}
-                                />
+                                {({ form: cardForm, startEditing }) => (
+                                    <>
+                                        <OpenDepartmentFieldOnRequest
+                                            request={departmentFieldRequest}
+                                            startEditing={startEditing}
+                                            form={cardForm}
+                                        />
+                                        <AgencySettings
+                                            isEditMode={isEditing}
+                                            asFields
+                                            persistedTeamAgency={initialValues.teamAgency}
+                                        />
+                                    </>
+                                )}
                             </CardEditable>
                         </CardDeck.Item>
                         <CardDeck.Item>
-                            <AgencyDepartmentDetails agencyData={agencyData} />
+                            <AgencyDepartmentDetails
+                                agencyData={agencyData}
+                                // The Fachbereich field only renders when the tenant offers topics.
+                                onAddDepartment={
+                                    tenantTopics?.length > 0
+                                        ? () => setDepartmentFieldRequest((request) => request + 1)
+                                        : undefined
+                                }
+                            />
                         </CardDeck.Item>
                     </CardDeck>
                 </ThemeProvider>
@@ -540,7 +561,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.documentEditorItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
