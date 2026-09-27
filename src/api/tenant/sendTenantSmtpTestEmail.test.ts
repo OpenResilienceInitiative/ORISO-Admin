@@ -5,7 +5,7 @@ vi.mock('../../appConfig', () => ({ tenantEndpoint: '/service/tenant/' }));
 vi.mock('../fetchData', () => ({
     fetchData: mocks.fetchData,
     FETCH_METHODS: { POST: 'POST' },
-    FETCH_ERRORS: { CATCH_ALL_SILENT: 'CATCH_ALL_SILENT' },
+    FETCH_ERRORS: { CATCH_ALL_SILENT: 'CATCH_ALL_SILENT', FORBIDDEN_WITH_RESPONSE: 'FORBIDDEN_WITH_RESPONSE' },
 }));
 
 import { sendTenantSmtpTestEmail } from './sendTenantSmtpTestEmail';
@@ -17,6 +17,6 @@ it('sends no recipient, SMTP settings or message body', async () => {
     expect(mocks.fetchData).toHaveBeenCalledWith({
         url: '/service/tenant/40/smtp-test-deliveries',
         method: 'POST',
-        responseHandling: ['CATCH_ALL_SILENT'],
+        responseHandling: ['CATCH_ALL_SILENT', 'FORBIDDEN_WITH_RESPONSE'],
     });
 });

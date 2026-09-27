@@ -5,5 +5,5 @@ export const sendTenantSmtpTestEmail = (tenantId: string) =>
     fetchData({
         url: `${tenantEndpoint}${encodeURIComponent(tenantId)}/smtp-test-deliveries`,
         method: FETCH_METHODS.POST,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
     });
