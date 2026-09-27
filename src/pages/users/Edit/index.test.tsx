@@ -460,6 +460,17 @@ describe('topic assignment on edit (#1026)', () => {
         mocks.counselorResult = { data: { id: 'consultant-1', topics: [{ id: 11, name: 'Sucht' }] }, isLoading: false };
     };
 
+    // ADR-003: a topic only saves when one of the consultant's agencies offers it.
+    const showTopicField = () => {
+        const agency = { id: 3, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id };
+        mocks.agenciesResult = {
+            data: { data: [{ ...agency, topics: [{ id: 11, name: 'Sucht' }] }] },
+            isLoading: false,
+        };
+        mocks.consultantsResult.data.data[0].agencies = [agency];
+        mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
+    };
+
     it('submits no topicIds when the topic field was never shown', async () => {
         // The tenant topic list came back empty, so the field stays hidden although the
         // consultant holds topics; the save must leave them alone.
@@ -475,14 +486,7 @@ describe('topic assignment on edit (#1026)', () => {
 
     it('submits the shown topics when the field was on screen', async () => {
         editConsultantWithTopics();
-        // ADR-003: a topic only saves when one of the consultant's agencies offers it.
-        const agency = { id: 3, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id };
-        mocks.agenciesResult = {
-            data: { data: [{ ...agency, topics: [{ id: 11, name: 'Sucht' }] }] },
-            isLoading: false,
-        };
-        mocks.consultantsResult.data.data[0].agencies = [agency];
-        mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
+        showTopicField();
         const user = userEvent.setup();
         renderForm();
 
@@ -490,6 +494,20 @@ describe('topic assignment on edit (#1026)', () => {
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
 
         expect((await submit(user)).topicIds).toEqual([expect.objectContaining({ value: '11' })]);
+    });
+
+    it('submits an emptied topic field as [], so a deliberate removal still reaches the backend', async () => {
+        editConsultantWithTopics();
+        showTopicField();
+        const user = userEvent.setup();
+        renderForm();
+
+        await screen.findByLabelText('Themen');
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Themen'));
+        await user.keyboard('{Backspace}');
+
+        expect((await submit(user)).topicIds).toEqual([]);
     });
 });
 
