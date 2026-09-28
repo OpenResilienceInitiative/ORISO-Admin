@@ -7,6 +7,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { LegalText } from './components/LegalText';
+import { TraegerLegalText } from './components/LegalText/TraegerLegalText';
 import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
@@ -21,13 +22,16 @@ interface LegalSettingsProps {
 export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
     const { mutate } = useSettingsAdminMutation();
+    // A Träger admin on its own texts receives platform templates and forwards to its Beratungsstellen.
+    const isTraegerLevel = !!isTenantScopedAdmin && String(draftTenantId ?? finalTenantId) !== '0';
+    const LegalTextCard = isTraegerLevel ? TraegerLegalText : LegalText;
 
     const LegalTextElement = (
-        <LegalText
+        <LegalTextCard
             tenantId={finalTenantId}
             draftTenantId={draftTenantId}
             fieldName={['content', 'privacy']}
@@ -86,7 +90,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
             <CardDeck.Item className={styles.documentEditorItem}>
-                <LegalText
+                <LegalTextCard
                     tenantId={finalTenantId}
                     draftTenantId={draftTenantId}
                     fieldName={['content', 'impressum']}

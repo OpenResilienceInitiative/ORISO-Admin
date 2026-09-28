@@ -32,6 +32,9 @@ import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import type { TenantLegalDraft } from '../../../../../api/tenant/legalDrafts';
+import type { LegalProposalAdoptionMode } from '../../../../../api/tenant/legalProposals';
+import { LegalTemplateCompare } from '../LegalTemplateCompare';
+import type { TenantTemplateInbox } from '../../hooks/useLegalProposalInbox';
 
 // Hint snackbar dismissal: "Nicht mehr anzeigen" persists; X is session-only.
 const hintDismissedKey = (type: 'privacy' | 'imprint') => `oriso-admin.legal.${type}.hint.dismissed`;
@@ -95,12 +98,15 @@ interface LegalTextProps {
      */
     draftTenantId?: string | number;
     /**
-     * Lets a Träger offer its saved draft to its own Beratungsstellen as a template — the
-     * rung below the platform's. Off until the AgencyService side exists
-     * (OpenResilienceInitiative/ORISO-AgencyService#303); the stories switch it on so the
-     * UX can be agreed first.
+     * Lets a Träger forward its saved draft to its own Beratungsstellen as a template — the
+     * rung below the platform's (OpenResilienceInitiative/ORISO-AgencyService#303).
      */
     offerTemplatesToAgencies?: boolean;
+    /**
+     * Templates the platform sent to this Träger (#1070). When set, a received template is
+     * shown read-only beside the own draft, with adopt and dismiss.
+     */
+    templateInbox?: TenantTemplateInbox;
     fieldName: string[];
     titleKey: string;
     /**
@@ -124,10 +130,13 @@ interface LegalTextProps {
  * mutation — untouched languages and unknown stored keys are never dropped.
  * The optional confirmation modal (privacy) stays in front of the save.
  */
+export type LegalTextComponentProps = LegalTextProps;
+
 export const LegalText = ({
     tenantId,
     draftTenantId,
     offerTemplatesToAgencies = false,
+    templateInbox,
     fieldName,
     titleKey,
     legalType,
@@ -181,10 +190,10 @@ export const LegalText = ({
         intent: 'template' | 'live';
     }>();
 
-    // Version look-back for the Träger-level text (ADR-021 decision 3). TenantService
-    // has not shipped this collection yet: that must not be phrased as "never
-    // published" or turn the persisted current body into an "Entwurf". A genuine
-    // failure (403, 500, network) remains separate from both states.
+    // Version look-back for the Träger/platform text (ADR-021 decision 3, #1070). A TenantService
+    // older than #1070 has no collection: that must not be phrased as "never published" or turn
+    // the persisted current body into an "Entwurf". A genuine failure (403, 500, network) remains
+    // separate from both states.
     const { data: versions, historyState } = useLegalTextVersions(
         { level: 'tenant', tenantId: Number(tenantId), kind: legalType === 'imprint' ? 'IMPRINT' : 'DPP' },
         !!legalType,
@@ -674,6 +683,63 @@ export const LegalText = ({
         setTemplateDialogOpen(true);
     };
 
+    // Replacing a draft must never lose typing: unsaved work is saved first, so the archive the
+    // server writes on ARCHIVE_AND_REPLACE holds it too.
+    const onAdoptTemplate = async (mode: LegalProposalAdoptionMode) => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal) return;
+        const operationIdentity = editorIdentity;
+        setDraftActionPending(true);
+        try {
+            let draftRevision = serverBase.draft ? serverBase.revision : undefined;
+            if (mode === 'ARCHIVE_AND_REPLACE' && (hasUnsavedChanges || !serverBase.draft)) {
+                draftRevision = (await saveCurrentDraft({ announce: false })).revision;
+            }
+            const adopted = await templateInbox.adopt(proposal, mode, draftRevision);
+            discardDraft();
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: operationIdentity, draft: adopted, revision: adopted.revision });
+                setDraftSource('server');
+                setEdits({});
+                setConsentEdits({});
+                notification.success({ message: t('legal.proposal.adopted'), duration: 5 });
+            }
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            notification.error({
+                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'),
+                duration: 8,
+            });
+            // A draft appeared elsewhere meanwhile: re-read it, the next attempt then asks to replace it.
+            if (conflict && mode === 'CREATE_IF_EMPTY' && editorIdentityRef.current === operationIdentity) {
+                await serverDraft.retry();
+                setServerBaseState({ identity: operationIdentity, draft: undefined, revision: undefined });
+            }
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setDraftActionPending(false);
+        }
+    };
+
+    const onDismissTemplate = async () => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal) return;
+        try {
+            await templateInbox.dismiss(proposal);
+            notification.success({ message: t('legal.proposal.dismissed'), duration: 4 });
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            notification.error({
+                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'),
+                duration: 8,
+            });
+        }
+    };
+
+    let adoptBlockedReason: string | undefined;
+    if (serverDraft.isError || serverDraft.hasConflict || !sourceChosen) {
+        adoptBlockedReason = t('legal.proposal.adoptBlocked.draftChoice');
+    }
+
     const documentKey = legalType ?? 'privacy';
     const liveLevelKey = isPlatformDraft ? 'platform' : 'traeger';
     const formatSentAt = (iso: string) => {
@@ -683,6 +749,10 @@ export const LegalText = ({
             : new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(date);
     };
     const templateSectionTitle = t(`legal.versionMenu.templates.${documentKey}`);
+    // A text published before the history existed has no entry; "nothing published" would be false.
+    const liveHistoryEmptyKey = isEmptyLegalContent(publishedByLanguage)
+        ? 'legal.m3Editor.versionEmpty'
+        : 'legal.versions.noneRecorded';
     const liveSectionTitle = t(`legal.versionMenu.live.${liveLevelKey}.${documentKey}`);
     let templateEmptyKey = 'legal.versionMenu.templatesUnavailable';
     if (templateHistory.state === 'available') templateEmptyKey = 'legal.versionMenu.templatesEmpty';
@@ -714,7 +784,7 @@ export const LegalText = ({
                       versions: editorVersions,
                       emptyLabel:
                           historyState === 'available'
-                              ? t('legal.m3Editor.versionEmpty')
+                              ? t(liveHistoryEmptyKey)
                               : t(VERSION_HISTORY_STATUS_KEYS[historyState]),
                       createLabel: t(`legal.versionMenu.newLive.${liveLevelKey}.${documentKey}`),
                       onCreate: () => setPublishIntent('live'),
@@ -742,6 +812,27 @@ export const LegalText = ({
             unavailable: serverDraft.isError,
             conflict: serverDraft.hasConflict,
         });
+
+    const wrapEditor = (editor: React.ReactElement) =>
+        templateInbox && legalType ? (
+            <LegalTemplateCompare
+                proposal={templateInbox.current}
+                source="platform"
+                documentType={legalType}
+                language={activeLanguage}
+                hasDraft={!!savedServerDraft || hasUnsavedChanges}
+                readOnly={!canEditLegalText}
+                readOnlyReason={!canEditLegalText ? t(readOnlyReason.key) : undefined}
+                adoptBlockedReason={adoptBlockedReason}
+                archives={canEditLegalText ? templateInbox.archives : undefined}
+                onAdopt={onAdoptTemplate}
+                onDismiss={onDismissTemplate}
+            >
+                {editor}
+            </LegalTemplateCompare>
+        ) : (
+            editor
+        );
 
     return (
         <div className={styles.card}>
@@ -792,148 +883,159 @@ export const LegalText = ({
             ) : (
                 canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
             )}
-            <M3RichTextEditor
-                title={t(titleKey)}
-                icon={icon}
-                readOnly={!canEditLegalText}
-                publishing={isPending || draftActionPending}
-                versionLabel={draftVersionLabel}
-                versions={editorVersions}
-                versionSections={versionSections}
-                versionHistoryState={historyState}
-                versionHistoryStatusLabel={
-                    historyState === 'available' ? undefined : t(VERSION_HISTORY_STATUS_KEYS[historyState])
-                }
-                // Restore = copy into the active language's draft; the published
-                // chain stays append-only.
-                onRestoreVersion={
-                    canEditLegalText
-                        ? (html) => {
-                              setEdits((current) => ({ ...current, [activeLanguage]: html }));
-                              // Restoring from a section also says what the draft is for.
-                              if (versionSections) setPublishIntent(viewedTemplateId ? 'template' : 'live');
-                          }
-                        : undefined
-                }
-                onViewVersionChange={(versionId) => {
-                    const isTemplate = !!versionId && versionId.startsWith('template:');
-                    setViewedTemplateId(isTemplate ? versionId : null);
-                    onViewVersionChange(isTemplate ? null : versionId);
-                }}
-                languages={languages.map((language) => ({
-                    value: language,
-                    label: t(`language.${language}`),
-                }))}
-                language={activeLanguage}
-                onLanguageChange={setActiveLanguage}
-                helpSlot={
-                    legalType && (
-                        <>
-                            {publicationStatus}
-                            <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
-                        </>
-                    )
-                }
-                // Only hand over a slot when a message is actually showing: the editor reserves
-                // bottom space whenever the slot is set, and an empty queue must not leave a gap.
-                snackbarSlot={
-                    ((blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
-                        showDraftSnackbar ||
-                        showHintSnackbar) && (
-                        <EditorSnackbarQueue
-                            items={[
-                                // A blocking error outranks the draft notice and the help hint.
-                                blockedLanguages.length > 0 &&
-                                    consentBlockedClosed !== blockedLanguageNames && {
-                                        key: `consent-blocked:${blockedLanguageNames}`,
+            {wrapEditor(
+                <M3RichTextEditor
+                    title={t(titleKey)}
+                    icon={icon}
+                    readOnly={!canEditLegalText}
+                    publishing={isPending || draftActionPending}
+                    versionLabel={draftVersionLabel}
+                    versions={editorVersions}
+                    versionSections={versionSections}
+                    versionHistoryState={historyState}
+                    versionHistoryStatusLabel={
+                        historyState === 'available' ? undefined : t(VERSION_HISTORY_STATUS_KEYS[historyState])
+                    }
+                    // Restore = copy into the active language's draft; the published
+                    // chain stays append-only.
+                    onRestoreVersion={
+                        canEditLegalText
+                            ? (html) => {
+                                  setEdits((current) => ({ ...current, [activeLanguage]: html }));
+                                  // Restoring from a section also says what the draft is for.
+                                  if (versionSections) setPublishIntent(viewedTemplateId ? 'template' : 'live');
+                              }
+                            : undefined
+                    }
+                    onViewVersionChange={(versionId) => {
+                        const isTemplate = !!versionId && versionId.startsWith('template:');
+                        setViewedTemplateId(isTemplate ? versionId : null);
+                        onViewVersionChange(isTemplate ? null : versionId);
+                    }}
+                    languages={languages.map((language) => ({
+                        value: language,
+                        label: t(`language.${language}`),
+                    }))}
+                    language={activeLanguage}
+                    onLanguageChange={setActiveLanguage}
+                    helpSlot={
+                        legalType && (
+                            <>
+                                {publicationStatus}
+                                <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
+                            </>
+                        )
+                    }
+                    // Only hand over a slot when a message is actually showing: the editor reserves
+                    // bottom space whenever the slot is set, and an empty queue must not leave a gap.
+                    snackbarSlot={
+                        ((blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
+                            showDraftSnackbar ||
+                            showHintSnackbar) && (
+                            <EditorSnackbarQueue
+                                items={[
+                                    // A blocking error outranks the draft notice and the help hint.
+                                    blockedLanguages.length > 0 &&
+                                        consentBlockedClosed !== blockedLanguageNames && {
+                                            key: `consent-blocked:${blockedLanguageNames}`,
+                                            node: (
+                                                <span data-testid="consent-publish-blocked">
+                                                    <EditorHintSnackbar
+                                                        tone="error"
+                                                        text={t('legal.consent.publishBlocked.description', {
+                                                            languages: blockedLanguageNames,
+                                                        })}
+                                                        onClose={() => setConsentBlockedClosed(blockedLanguageNames)}
+                                                    />
+                                                </span>
+                                            ),
+                                        },
+                                    showDraftSnackbar && {
+                                        key: draftSnackbarKey,
                                         node: (
-                                            <span data-testid="consent-publish-blocked">
-                                                <EditorHintSnackbar
-                                                    tone="error"
-                                                    text={t('legal.consent.publishBlocked.description', {
-                                                        languages: blockedLanguageNames,
-                                                    })}
-                                                    onClose={() => setConsentBlockedClosed(blockedLanguageNames)}
-                                                />
-                                            </span>
+                                            <DraftStatusSnackbar
+                                                savedAt={serverBase.draft?.updatedAt}
+                                                localSavedAt={savedAt}
+                                                onDiscard={discardDraftAndEdits}
+                                                onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
+                                            />
                                         ),
                                     },
-                                showDraftSnackbar && {
-                                    key: draftSnackbarKey,
-                                    node: (
-                                        <DraftStatusSnackbar
-                                            savedAt={serverBase.draft?.updatedAt}
-                                            localSavedAt={savedAt}
-                                            onDiscard={discardDraftAndEdits}
-                                            onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
-                                        />
-                                    ),
-                                },
-                                showHintSnackbar && {
-                                    key: 'help-hint',
-                                    node: (
-                                        <EditorHintSnackbar
-                                            text={help.hint}
-                                            onClose={() => {
-                                                if (legalType && dismissalScope)
-                                                    persistHintClosedForSession(legalType, dismissalScope);
-                                                setHintHidden(true);
-                                            }}
-                                            onDismiss={() => {
-                                                if (legalType && dismissalScope)
-                                                    persistHintDismissed(legalType, dismissalScope);
-                                                setHintHidden(true);
-                                            }}
-                                        />
-                                    ),
-                                },
-                            ]}
-                        />
-                    )
-                }
-                aboveEditorSlot={!legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined}
-                placeholder={t(placeHolderKey)}
-                textTokens={legalTextTokens}
-                value={contentByLanguage[activeLanguage] ?? ''}
-                onChange={
-                    canEditLegalText
-                        ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
-                        : undefined
-                }
-                onPublish={showLiveAction ? onPublish : undefined}
-                publishLabel={versionSections ? t(`legal.publishAction.${liveLevelKey}.${documentKey}`) : undefined}
-                dirty={hasUnsavedChanges}
-                onSaveDraft={
-                    canEditLegalText && legalType && !serverDraft.isError && !serverDraft.hasConflict && sourceChosen
-                        ? onSaveDraft
-                        : undefined
-                }
-                onPublishTemplate={showTemplateAction ? onPublishTemplate : undefined}
-                publishTemplateDisabledReason={showTemplateAction ? templateBlockedReason : undefined}
-                actionsLeading={
-                    consentEnabled ? (
-                        <LegalConsentField
-                            language={activeLanguage}
-                            readOnly={consentReadOnly}
-                            value={consentDisplay[activeLanguage] ?? ''}
-                            onChange={(next) => setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))}
-                        />
-                    ) : undefined
-                }
-                // "Ja" informs, "Nein" publishes silently; Escape, X and a click outside answer
-                // neither, so they abort the publish instead of picking one (#1066).
-                belowSlot={
-                    showConfirmationModal &&
-                    modalVisible && (
-                        <Modal
-                            {...showConfirmationModal}
-                            onConfirm={() => answerConfirmation(true)}
-                            onClose={() => answerConfirmation(false)}
-                            onDismiss={() => setModalVisible(false)}
-                        />
-                    )
-                }
-            />
+                                    showHintSnackbar && {
+                                        key: 'help-hint',
+                                        node: (
+                                            <EditorHintSnackbar
+                                                text={help.hint}
+                                                onClose={() => {
+                                                    if (legalType && dismissalScope)
+                                                        persistHintClosedForSession(legalType, dismissalScope);
+                                                    setHintHidden(true);
+                                                }}
+                                                onDismiss={() => {
+                                                    if (legalType && dismissalScope)
+                                                        persistHintDismissed(legalType, dismissalScope);
+                                                    setHintHidden(true);
+                                                }}
+                                            />
+                                        ),
+                                    },
+                                ]}
+                            />
+                        )
+                    }
+                    aboveEditorSlot={
+                        !legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined
+                    }
+                    placeholder={t(placeHolderKey)}
+                    textTokens={legalTextTokens}
+                    value={contentByLanguage[activeLanguage] ?? ''}
+                    onChange={
+                        canEditLegalText
+                            ? (html) => setEdits((current) => ({ ...current, [activeLanguage]: html }))
+                            : undefined
+                    }
+                    onPublish={showLiveAction ? onPublish : undefined}
+                    publishLabel={versionSections ? t(`legal.publishAction.${liveLevelKey}.${documentKey}`) : undefined}
+                    dirty={hasUnsavedChanges}
+                    onSaveDraft={
+                        canEditLegalText &&
+                        legalType &&
+                        !serverDraft.isError &&
+                        !serverDraft.hasConflict &&
+                        sourceChosen
+                            ? onSaveDraft
+                            : undefined
+                    }
+                    onPublishTemplate={showTemplateAction ? onPublishTemplate : undefined}
+                    publishTemplateLabel={templateLevel === 'agencies' ? t('legal.template.forward.action') : undefined}
+                    publishTemplateDisabledReason={showTemplateAction ? templateBlockedReason : undefined}
+                    actionsLeading={
+                        consentEnabled ? (
+                            <LegalConsentField
+                                language={activeLanguage}
+                                readOnly={consentReadOnly}
+                                value={consentDisplay[activeLanguage] ?? ''}
+                                onChange={(next) =>
+                                    setConsentEdits((current) => ({ ...current, [activeLanguage]: next }))
+                                }
+                            />
+                        ) : undefined
+                    }
+                    // "Ja" informs, "Nein" publishes silently; Escape, X and a click outside answer
+                    // neither, so they abort the publish instead of picking one (#1066).
+                    belowSlot={
+                        showConfirmationModal &&
+                        modalVisible && (
+                            <Modal
+                                {...showConfirmationModal}
+                                onConfirm={() => answerConfirmation(true)}
+                                onClose={() => answerConfirmation(false)}
+                                onDismiss={() => setModalVisible(false)}
+                            />
+                        )
+                    }
+                />,
+            )}
             {templateDialogOpen && savedServerDraft && legalType && templateLevel && (
                 <SendLegalTemplateDialog
                     level={templateLevel}

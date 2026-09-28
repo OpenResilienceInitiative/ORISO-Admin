@@ -22,11 +22,7 @@ export const supportedLanguages = [...SUPPORTED_LANGUAGE_CODES];
 
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
-/**
- * Träger → Beratungsstellen template distribution. Contract proposed in
- * OpenResilienceInitiative/ORISO-AgencyService#303; the server side does not exist yet,
- * so nothing in the app calls this until that lands (see `offerTemplatesToAgencies`).
- */
+/** Träger → Beratungsstellen template distribution (ORISO-AgencyService#303). */
 export const agencyLegalProposalDistributionsEndpoint = `${agencyServiceURL}/service/agencyadmin/legal-proposal-distributions`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
 // TEN-INV ID allocation (#569/#570), wired to the REAL backend contracts:

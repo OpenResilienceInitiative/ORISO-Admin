@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalText } from './index';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
@@ -10,6 +10,7 @@ import type {
     TenantLegalDraft,
     TenantLegalDraftKind,
 } from '../../../../../api/tenant/legalDrafts';
+import type { TenantTemplateInbox } from '../../hooks/useLegalProposalInbox';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
@@ -1322,5 +1323,136 @@ describe('LegalText — publish confirmation and publication state (#1066)', () 
         renderImprint();
 
         expect(screen.queryByText('tenants.legal.readOnly.lockedPlatformWide')).not.toBeInTheDocument();
+    });
+});
+
+// The template pane uses the canonical reader, a full TipTap card; a plain stand-in is enough here.
+vi.mock('../../../../DpaLegalForm/DpaLegalReader', () => ({
+    DpaLegalReader: ({ html, testId }: { html: string; testId?: string }) => (
+        <div data-testid={testId}>{html.replace(/<[^>]+>/g, '')}</div>
+    ),
+}));
+
+describe('LegalText — received platform template (#1070)', () => {
+    const proposal = {
+        id: 31,
+        status: 'PENDING' as const,
+        revision: '31:0',
+        createdAt: '2026-09-25T14:31:07',
+        content: { de: '<p>Muster-Impressum der Plattform</p>' },
+    };
+    const inbox = (overrides: Partial<TenantTemplateInbox> = {}): TenantTemplateInbox => ({
+        state: 'available',
+        current: proposal,
+        archives: [],
+        dismiss: vi.fn().mockResolvedValue(undefined),
+        adopt: vi.fn().mockResolvedValue({
+            kind: 'IMPRINT',
+            content: { de: '<p>Muster-Impressum der Plattform</p>' },
+            revision: 'adopted:1',
+            updatedAt: '2026-09-25T14:40:00',
+        }),
+        ...overrides,
+    });
+    const renderTraeger = (templateInbox: TenantTemplateInbox) =>
+        render(
+            <LegalText
+                tenantId="7"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+                templateInbox={templateInbox}
+            />,
+        );
+
+    it('adopts into an empty draft: the editor holds the template, nothing is published', async () => {
+        const user = userEvent.setup();
+        const templateInbox = inbox();
+        renderTraeger(templateInbox);
+        expect(screen.getByTestId('legal-template-reader')).toHaveTextContent('Muster-Impressum der Plattform');
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
+        await waitFor(() => expect(templateInbox.adopt).toHaveBeenCalledWith(proposal, 'CREATE_IF_EMPTY', undefined));
+        await waitFor(() =>
+            expect(screen.getByTestId('m3-editor')).toHaveAttribute(
+                'data-value',
+                '<p>Muster-Impressum der Plattform</p>',
+            ),
+        );
+        expect(mocks.updateTenant).not.toHaveBeenCalled();
+        expect(mocks.notifySuccess).toHaveBeenCalledWith(
+            expect.objectContaining({ message: 'legal.proposal.adopted' }),
+        );
+    });
+
+    it('over a saved draft it asks first, then archives and replaces with the pinned draft revision', async () => {
+        const user = userEvent.setup();
+        mocks.serverDrafts.IMPRINT = {
+            kind: 'IMPRINT',
+            content: { de: '<p>Eigener Entwurf</p>' },
+            revision: '12:3',
+            updatedAt: '2026-09-24T09:00:00Z',
+        };
+        const templateInbox = inbox();
+        renderTraeger(templateInbox);
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
+        expect(templateInbox.adopt).not.toHaveBeenCalled();
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText('legal.proposal.replace.content')).toBeInTheDocument();
+        await user.click(within(dialog).getByRole('button', { name: 'legal.proposal.replace.confirm' }));
+        await waitFor(() => expect(templateInbox.adopt).toHaveBeenCalledWith(proposal, 'ARCHIVE_AND_REPLACE', '12:3'));
+        expect(mocks.serverSave).not.toHaveBeenCalled();
+    });
+
+    it('saves unsaved typing first, so the archive keeps it', async () => {
+        const user = userEvent.setup();
+        const templateInbox = inbox();
+        renderTraeger(templateInbox);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
+        await user.click(
+            within(await screen.findByRole('dialog')).getByRole('button', { name: 'legal.proposal.replace.confirm' }),
+        );
+        await waitFor(() =>
+            expect(templateInbox.adopt).toHaveBeenCalledWith(proposal, 'ARCHIVE_AND_REPLACE', 'saved:1'),
+        );
+        expect(mocks.serverSave).toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.objectContaining({ de: '<p>edited</p>' }) }),
+        );
+    });
+
+    it('dismissing keeps the own work untouched', async () => {
+        const user = userEvent.setup();
+        const templateInbox = inbox();
+        renderTraeger(templateInbox);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.dismiss' }));
+        await waitFor(() => expect(templateInbox.dismiss).toHaveBeenCalledWith(proposal));
+        expect(templateInbox.adopt).not.toHaveBeenCalled();
+        expect(mocks.serverDiscard).not.toHaveBeenCalled();
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
+    });
+
+    it('read-only Träger admin: the template stays visible with the lock reason, adopting is disabled', () => {
+        mocks.canEdit = false;
+        mocks.readOnlyReason = { key: 'tenants.legal.readOnly.lockedPlatformWide', platformLock: true };
+        renderTraeger(inbox());
+        expect(screen.getByTestId('legal-template-reader')).toBeInTheDocument();
+        expect(screen.getAllByText('tenants.legal.readOnly.lockedPlatformWide').length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: 'legal.proposal.adopt' })).toBeDisabled();
+    });
+
+    it('without an inbox (platform level) there is no compare view', () => {
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                legalType="imprint"
+                placeHolderKey="settings.imprint.placeholder"
+            />,
+        );
+        expect(screen.queryByTestId('legal-template-reader')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'legal.proposal.adopt' })).toBeNull();
     });
 });
