@@ -19,6 +19,10 @@ concurrency:
 
 jobs:
     build:
+        # This job publishes to GHCR. The unit suite used to run inside it, so a
+        # red test blocked the publish; keep that guarantee now that the suite
+        # is its own job.
+        needs: unit-tests
         runs-on: ubuntu-latest
         timeout-minutes: 45
 
@@ -83,3 +87,34 @@ jobs:
                   ignore-unfixed: true
                   vuln-type: os,library
                   severity: CRITICAL,HIGH
+
+    # Split out of `build` and sharded: the suite is 407 jsdom files and was
+    # 20 of the 24 minutes of that job, most of it module import cost paid once
+    # per worker. Four shards run concurrently, so the wall clock is roughly a
+    # quarter and a failure names the shard that owns it.
+    unit-tests:
+        name: Unit tests (shard ${{ matrix.shard }}/4)
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2, 3, 4]
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+
+            - name: Install dependencies
+              # Same supply-chain hardening as .github/actions/node-build.
+              run: npm ci --ignore-scripts
+
+            - name: Run unit tests
+              run: npm run test:shard -- --shard=${{ matrix.shard }}/4
