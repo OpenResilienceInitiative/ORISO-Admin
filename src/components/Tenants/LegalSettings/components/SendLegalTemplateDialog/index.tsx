@@ -139,7 +139,7 @@ export const SendLegalTemplateDialog = ({
             else if (code === 'NO_MATCH') messageKey = 'legal.template.send.missing';
             else if (code === 'BAD_REQUEST' && level === 'agencies')
                 messageKey = 'legal.template.send.agencies.noAgencies';
-            else if (code === 'FORBIDDEN') messageKey = 'legal.template.send.forbidden';
+            else if (code === 'FORBIDDEN' && level === 'agencies') messageKey = 'legal.template.send.forbidden';
             notification.error({ message: t(messageKey), duration: 8 });
         } finally {
             setSending(false);
