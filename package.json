@@ -78,6 +78,7 @@
     "prebuild-storybook": "npm run generate:icon-catalog && npm run typecheck:storybook",
     "build-storybook": "storybook build",
     "test": "vitest run --project unit",
+    "test:shard": "vitest run --project unit --reporter=dot",
     "test:storybook": "vitest run --project storybook",
     "test:storybook:coverage": "vitest run --project storybook --coverage",
     "lint": "npm run lint:css && npm run lint:js && npm run lint:formatting",
