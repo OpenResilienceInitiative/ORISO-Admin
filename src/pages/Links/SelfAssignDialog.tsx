@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
@@ -69,15 +69,22 @@ export const SelfAssignDialog = ({
     const [topicsFailed, setTopicsFailed] = useState(false);
     const [topicIds, setTopicIds] = useState<number[]>([]);
     const [assignments, setAssignments] = useState<SelfAssignments | null>(null);
+    // Without the own assignments "already there" is unknown, so a failed load blocks "Eintragen" too.
+    const [assignmentsFailed, setAssignmentsFailed] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         // A late answer after closing, or from an older loader, must not overwrite the current one.
         let cancelled = false;
+        setAssignmentsFailed(false);
         loadAssignments()
             .then((loaded) => !cancelled && setAssignments(loaded))
-            .catch(() => !cancelled && setAssignments(null));
+            .catch(() => {
+                if (cancelled) return;
+                setAssignments(null);
+                setAssignmentsFailed(true);
+            });
         return () => {
             cancelled = true;
         };
@@ -114,6 +121,7 @@ export const SelfAssignDialog = ({
         !alreadyThere &&
         !topicsLoading &&
         !topicsFailed &&
+        assignments != null &&
         (!needsTopics || topicIds.length > 0);
 
     const assignmentSummary = useMemo(() => {
@@ -163,7 +171,8 @@ export const SelfAssignDialog = ({
         }
     };
 
-    const hintId = 'self-assign-hint';
+    // Unique per dialog, so the confirm button is described by its own status line.
+    const hintId = useId();
 
     return (
         <Modal
@@ -214,6 +223,12 @@ export const SelfAssignDialog = ({
                         }
                         if (alreadyThere)
                             return t(...(inviteConflictReasonKey('SELF_ASSIGNMENT_ALREADY_EXISTS') ?? ['', '']));
+                        if (assignmentsFailed) {
+                            return t(
+                                'links.selfAssign.assignmentsFailed',
+                                'Ihre bisherigen Einträge konnten nicht geladen werden. Bitte später erneut versuchen.',
+                            );
+                        }
                         if (topicsFailed) {
                             return t(
                                 'links.selfAssign.topicsFailed',

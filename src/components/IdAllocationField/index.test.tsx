@@ -440,6 +440,29 @@ describe('IdAllocationField', () => {
         await waitFor(() => expect(allocation.resetToAuto).toHaveBeenCalled());
     });
 
+    it('says a failed lookup could not be checked, not that there is no unit, and drops the earlier pick', async () => {
+        const allocation = allocationState();
+        const resolveUnit = vi.fn(async (id: number) => {
+            if (id === 9) return { id: 9, name: 'Caritas Emmendingen' };
+            throw new Error('503');
+        });
+        const user = userEvent.setup();
+        render(
+            <IdAllocationField label="Träger" allowCreate={false} allocation={allocation} resolveUnit={resolveUnit} />,
+        );
+        const input = screen.getByRole('combobox', { name: 'Träger' });
+
+        await user.type(input, '9');
+        await waitFor(() =>
+            expect(allocation.selectExisting).toHaveBeenCalledWith({ id: 9, name: 'Caritas Emmendingen' }),
+        );
+        await user.type(input, '0');
+
+        expect(await screen.findByText('Verfügbarkeit konnte nicht geprüft werden.')).toBeInTheDocument();
+        expect(screen.queryByText('Keine Einheit mit Nr. 90')).not.toBeInTheDocument();
+        await waitFor(() => expect(allocation.resetToAuto).toHaveBeenCalled());
+    });
+
     it('refuses a typed number that belongs to no unit in an existing-only field', async () => {
         const allocation = allocationState();
         const resolveUnit = vi.fn(async () => null);

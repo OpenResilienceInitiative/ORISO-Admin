@@ -103,3 +103,19 @@ describe('buildInviteCsvTemplate — extended columns', () => {
         expect(parseInviteCsv(csv).rejected).toHaveLength(0);
     });
 });
+
+describe('buildInviteCsvTemplate — header labels from translations', () => {
+    // A translated label with ; " or a line break must stay one cell, or every column after it shifts.
+    it('quotes a label that holds the separator, a quote or a line break, and the import still reads it', () => {
+        const csv = buildInviteCsvTemplate({
+            email: 'E-Mail',
+            firstName: 'Vorname; Rufname',
+            lastName: 'Name "Nachname"',
+            id: 'Beratungsstellen-ID\r\nNummer',
+        });
+        expect(csv).toContain('E-Mail;"Vorname; Rufname";"Name ""Nachname""";"Beratungsstellen-ID\r\nNummer"\r\n');
+        const result = parseInviteCsv(csv);
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.map((row) => row.email)).toEqual(['anna.beispiel@traeger.de', 'bernd.muster@traeger.de']);
+    });
+});

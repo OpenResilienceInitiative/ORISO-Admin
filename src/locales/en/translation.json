@@ -2255,6 +2255,7 @@
     "links.selfAssign.pickAgency": "Please choose an existing agency.",
     "links.selfAssign.pickTopics": "This agency has several topics — please choose at least one.",
     "links.selfAssign.topicsFailed": "The topics of this agency could not be loaded. Please try again later.",
+    "links.selfAssign.assignmentsFailed": "Your existing assignments could not be loaded. Please try again later.",
     "links.composer.alsoCounsellor.yesHint": "Manages the agency and counsels too (counsellor account).",
     "links.composer.alsoCounsellor.noHint": "Manages the agency, does not counsel.",
     "links.accountInvites.conflict.noPendingUnitAdmin": "This agency does not exist yet, and no agency-admin invite is open for it. First invite the person who creates it: role “Agency admin” and the same number. Counsellor invites then wait and go out automatically once the agency has been created.",

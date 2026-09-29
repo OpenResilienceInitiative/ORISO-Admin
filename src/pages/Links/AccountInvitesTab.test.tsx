@@ -885,6 +885,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     // Riccardo's #1036 review: a late agency default must not overwrite the admin's own choice.
+    // Lookups wait up to 10s like the rest of this file: the debounced search is slow on a shared runner.
+    const SLOW = { timeout: 10_000 };
     it('keeps a topic permission chosen while the agency default is still loading', async () => {
         mocks.searchInviteAgencies.mockResolvedValue({
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
@@ -901,24 +903,24 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         );
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(await screen.findByLabelText('E-Mail', undefined, SLOW), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
-        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalled());
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW));
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalled(), SLOW);
 
         const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
         await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
-        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW));
         await act(async () => {
             answerDefault({ _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } } });
         });
 
         const sendButton = screen.getByRole('button', { name: 'Einladen' });
-        await waitFor(() => expect(sendButton).toBeEnabled());
+        await waitFor(() => expect(sendButton).toBeEnabled(), SLOW);
         await user.click(sendButton);
-        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1), SLOW);
         expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({ topicPermission: 'SELECT_EXISTING' });
     });
 
@@ -936,27 +938,29 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         }));
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
         await user.type(agency, 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
-        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'));
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW));
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'), SLOW);
         const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
         await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
-        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW));
 
         const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
         if (agencyPill) await user.click(agencyPill);
-        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
         await user.clear(agencyField);
         await user.type(agencyField, 'Cari');
-        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }));
+        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW));
 
         // The new agency's default applies again: the earlier manual choice belonged to Diakonie Lahr.
-        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'));
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'), SLOW);
         expect(
-            await screen.findByRole('button', {
-                name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/,
-            }),
+            await screen.findByRole(
+                'button',
+                { name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/ },
+                SLOW,
+            ),
         ).toBeInTheDocument();
     });
 
