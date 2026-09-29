@@ -192,7 +192,7 @@ export const PlatformInspectsExistingTraeger: Story = {
         const canvas = within(canvasElement);
         const region = await canvas.findByRole(
             'region',
-            { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Legal notice/ },
+            { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Imprint/ },
             LOAD,
         );
         await expect(
