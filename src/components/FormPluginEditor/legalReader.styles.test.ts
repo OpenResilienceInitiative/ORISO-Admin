@@ -183,13 +183,14 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
 });
 
 describe('lower function bar — every control stays reachable (#1066)', () => {
-    // Measured in Storybook: language + consent + one Fachbereich + version cut the version
-    // menu off at the card's right edge, and the hidden scroll track gave no hint it was there.
+    // Wide cards can wrap. On narrow cards the owner wants a single swipable
+    // row with visible scroll controls so the version menu stays reachable.
     const bar = moduleStyles.match(/\n\.functionBar\s*{[\s\S]*?\n}/)?.[0] ?? '';
 
-    it('wraps onto a second row instead of scrolling controls out of view', () => {
+    it('wraps on wide cards and scrolls a single row on narrow cards', () => {
         expect(bar).toMatch(/flex-wrap:\s*wrap;/);
-        expect(bar).not.toMatch(/overflow-x:\s*auto;/);
+        expect(bar).toMatch(/@container \(max-width: 599px\)\s*{[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;/);
+        expect(moduleStyles).toMatch(/\.functionBarScrollCueRight\s*{/);
     });
 
     it('lets the text surface of the fixed 740px card give way to a wrapped bar', () => {

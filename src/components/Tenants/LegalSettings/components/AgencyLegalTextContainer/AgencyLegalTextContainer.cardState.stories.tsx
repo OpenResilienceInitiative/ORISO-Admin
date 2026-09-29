@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../../enums/UserRole';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
@@ -70,17 +70,23 @@ const LockedPlatform = ({ children }: { children: ReactNode }): ReactNode => {
 };
 
 /**
- * Every control of the lower function bar lies inside it; none is pushed past its right edge,
- * and the white text surface ends above the bar even when the bar wraps onto a second row.
+ * On wide cards the controls fit in the bar. Narrow cards expose the remaining
+ * controls by horizontal scrolling, and the white text surface ends above it.
  */
-const expectFunctionBarFits = async (canvasElement: HTMLElement) => {
+const expectFunctionBarFits = async (canvasElement: HTMLElement, scrollable = false) => {
     const canvas = within(canvasElement);
     const bar = await canvas.findByTestId('m3-editor-function-bar', {}, { timeout: 8000 });
     await waitFor(() => expect(canvas.getByRole('button', { name: 'Versionsverlauf' })).toBeVisible());
     const barRight = bar.getBoundingClientRect().right;
-    Array.from(bar.children).forEach((child) =>
-        expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
-    );
+    if (scrollable) {
+        await waitFor(() => expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth));
+        await userEvent.click(canvas.getByRole('button', { name: 'Weitere Steuerelemente rechts' }));
+        await waitFor(() => expect(bar.scrollLeft).toBeGreaterThan(0));
+    } else {
+        Array.from(bar.children).forEach((child) =>
+            expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
+        );
+    }
     const surface = canvas.getByTestId('m3-editor-surface');
     await expect(surface.getBoundingClientRect().bottom).toBeLessThanOrEqual(bar.getBoundingClientRect().top + 0.5);
 };
@@ -160,7 +166,7 @@ export const SingleFachbereichPreselected: Story = {
     },
 };
 
-/** Same card at 390px (mobile): the function bar wraps, every control stays inside the card. */
+/** Same card at 390px (mobile): the function bar scrolls to reveal every control. */
 export const SingleFachbereichMobile: Story = {
     ...SingleFachbereichPreselected,
     // 16px gutter + 358px card + 16px gutter = a 390px phone. The viewport must be the phone too:
@@ -175,6 +181,6 @@ export const SingleFachbereichMobile: Story = {
         ),
     ],
     play: async ({ canvasElement }) => {
-        await expectFunctionBarFits(canvasElement);
+        await expectFunctionBarFits(canvasElement, true);
     },
 };
