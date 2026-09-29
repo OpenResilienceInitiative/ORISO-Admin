@@ -2233,6 +2233,7 @@
     "legal.proposal.adopt": "Vorlage übernehmen",
     "legal.proposal.dismiss": "Verwerfen",
     "legal.proposal.show": "Erhaltene Vorlage anzeigen",
+    "legal.proposal.inspectionOnly": "Sie sehen die an diesen Träger gesendete Vorlage. Nur dessen Admin kann sie übernehmen oder verwerfen.",
     "legal.proposal.hide": "Vergleich schließen",
     "legal.proposal.collapse": "Vorlage einklappen",
     "legal.proposal.expand": "Vorlage ausklappen",

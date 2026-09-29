@@ -26,8 +26,8 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
     const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
     const { mutate } = useSettingsAdminMutation();
-    // A Träger admin on its own texts receives platform templates and forwards to its Beratungsstellen.
-    const isTraegerLevel = !!isTenantScopedAdmin && String(draftTenantId ?? finalTenantId) !== '0';
+    // A platform admin inspecting a Träger needs its inbox too; the own platform draft has owner 0.
+    const isTraegerLevel = (isTenantScopedAdmin || isSuperAdmin) && String(draftTenantId ?? finalTenantId) !== '0';
     const LegalTextCard = isTraegerLevel ? TraegerLegalText : LegalText;
 
     const LegalTextElement = (

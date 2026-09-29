@@ -2233,6 +2233,7 @@
     "legal.proposal.adopt": "Adopt template",
     "legal.proposal.dismiss": "Dismiss",
     "legal.proposal.show": "Show received template",
+    "legal.proposal.inspectionOnly": "You are viewing the template sent to this tenant. Only its admin can adopt or dismiss it.",
     "legal.proposal.hide": "Close comparison",
     "legal.proposal.collapse": "Collapse template",
     "legal.proposal.expand": "Expand template",
