@@ -201,7 +201,7 @@ export const PlatformInspectsExistingTraeger: Story = {
         await expect(within(region).getByRole('button', { name: /Vorlage übernehmen|Adopt template/ })).toBeDisabled();
         await expect(within(region).getByRole('button', { name: /Verwerfen|Dismiss/ })).toBeDisabled();
         await expect(
-            canvas.queryByRole('button', { name: 'An Beratungsstellen weiterreichen' }),
+            canvas.queryByRole('button', { name: /An Beratungsstellen weiterreichen|Forward to counselling centres/ }),
         ).not.toBeInTheDocument();
     },
 };
