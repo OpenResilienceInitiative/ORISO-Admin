@@ -109,4 +109,37 @@ describe('SelfAssignDialog', () => {
 
         await waitFor(() => expect(success).toHaveBeenCalledWith(expect.stringContaining('„No. 12“')));
     });
+
+    it('says the own assignments could not be loaded and keeps "Eintragen" off', async () => {
+        render(
+            <SelfAssignDialog
+                initialAgency={AGENCY}
+                loadAgencyTopics={async () => [{ id: 2, name: 'Sucht' }]}
+                loadAssignments={() => Promise.reject(new Error('503'))}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(await screen.findByText(/Ihre bisherigen Einträge konnten nicht geladen werden/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'links.selfAssign.confirm' })).toBeDisabled();
+    });
+
+    it('gives each open dialog its own status line to describe its confirm button', async () => {
+        const props = {
+            initialAgency: AGENCY,
+            loadAgencyTopics: async () => [{ id: 2, name: 'Sucht' }],
+            loadAssignments: async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] }),
+            onClose: vi.fn(),
+        };
+        render(
+            <>
+                <SelfAssignDialog {...props} />
+                <SelfAssignDialog {...props} />
+            </>,
+        );
+
+        const [first, second] = screen.getAllByRole('button', { name: 'links.selfAssign.confirm' });
+        expect(first.getAttribute('aria-describedby')).toBeTruthy();
+        expect(first.getAttribute('aria-describedby')).not.toBe(second.getAttribute('aria-describedby'));
+    });
 });

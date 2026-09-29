@@ -75,7 +75,8 @@ export const IdAllocationField = ({
     const [results, setResults] = useState<IdUnitOption[]>([]);
     const [nextFree, setNextFree] = useState<number | null | undefined>();
     // The last number looked up via `resolveUnit`; `unit: null` = no such unit.
-    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null } | undefined>();
+    // `failed`: the lookup itself failed, which is not the same as "no unit with this number".
+    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null; failed?: boolean } | undefined>();
     const [activeIndex, setActiveIndex] = useState(0);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; minWidth: number }>();
 
@@ -132,15 +133,20 @@ export const IdAllocationField = ({
         if (!resolveUnit) return;
         lookupToken.current += 1;
         const token = lookupToken.current;
-        resolveUnit(id)
-            .catch(() => null)
-            .then((found) => {
+        resolveUnit(id).then(
+            (found) => {
                 if (token !== lookupToken.current) return;
                 setResolved({ id, unit: found });
                 // A miss must not leave an earlier pick (9 before 90) selected and submittable.
                 if (found) allocation.selectExisting(found);
                 else allocation.resetToAuto();
-            });
+            },
+            () => {
+                if (token !== lookupToken.current) return;
+                setResolved({ id, unit: null, failed: true });
+                allocation.resetToAuto();
+            },
+        );
     };
     useEffect(() => {
         if (!open || allowCreate || typedId === undefined || !resolveUnit) return undefined;
@@ -201,7 +207,8 @@ export const IdAllocationField = ({
     if (offered && !results.some((option) => option.id === offered.id)) entries.push(unitEntry(offered));
     results.forEach((option) => entries.push(unitEntry(option)));
     const noMatches = searchUnits != null && trimmed !== '' && typedId === undefined && results.length === 0;
-    const noUnitWithNumber = !allowCreate && typedUnit === null;
+    const typedLookupFailed = typedId !== undefined && resolved?.id === typedId && resolved.failed === true;
+    const noUnitWithNumber = !allowCreate && typedUnit === null && !typedLookupFailed;
 
     const isSelected = (entry: MenuEntry) => {
         if (entry.kind === 'create') return mode === 'auto';
@@ -417,6 +424,11 @@ export const IdAllocationField = ({
                         {noMatches && (
                             <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
                                 {t('idAllocationField.noMatches', 'Keine Treffer')}
+                            </li>
+                        )}
+                        {!allowCreate && typedLookupFailed && (
+                            <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
+                                {t('idAllocationField.serviceError', 'Verfügbarkeit konnte nicht geprüft werden.')}
                             </li>
                         )}
                         {noUnitWithNumber && (
