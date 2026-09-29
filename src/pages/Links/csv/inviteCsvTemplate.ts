@@ -23,6 +23,9 @@ export interface InviteCsvTemplateSamples {
     idKind: 'tenant' | 'agency';
 }
 
+// Labels come from translations: one with ; " or a line break is quoted (RFC 4180) so the columns stay put.
+const csvCell = (value: string) => (/[;"\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+
 // Semicolon-separated with a BOM: German Excel opens that as a table, and the parser detects `;`.
 export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?: InviteCsvTemplateSamples): string => {
     const extended = samples != null && labels.target != null;
@@ -55,7 +58,7 @@ export const buildInviteCsvTemplate = (labels: InviteCsvTemplateLabels, samples?
                       ['bernd.muster@traeger.de', 'Bernd', 'Muster', '', 'neu', samples.role, '', '', ''],
                   ];
     }
-    return `\ufeff${[header, ...rows].map((cells) => cells.join(';')).join('\r\n')}\r\n`;
+    return `\ufeff${[header, ...rows].map((cells) => cells.map(csvCell).join(';')).join('\r\n')}\r\n`;
 };
 
 /** Triggers the browser download without touching the DOM the app renders. */
