@@ -373,7 +373,14 @@ export const InviteComposer = ({
     // The chosen agency's default prefills the chip; the admin may still change it.
     const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     const hadPickedAgency = useRef(false);
+    // An admin's own choice beats a default that answers late; a newly picked agency starts over.
+    const topicPermissionEdited = useRef(false);
+    const chooseTopicPermission = (value: TopicPermission) => {
+        topicPermissionEdited.current = true;
+        setTopicPermission(value);
+    };
     useEffect(() => {
+        topicPermissionEdited.current = false;
         if (!pickedAgency) {
             // Leaving a chosen agency ("Neu") must not keep that agency's default.
             if (hadPickedAgency.current) setTopicPermission(BAR_DEFAULT_TOPIC_PERMISSION);
@@ -389,7 +396,7 @@ export const InviteComposer = ({
         let cancelled = false;
         loadAgencyTopicPermission(pickedAgency.id)
             .then((agencyDefault) => {
-                if (!cancelled && agencyDefault) setTopicPermission(agencyDefault);
+                if (!cancelled && agencyDefault && !topicPermissionEdited.current) setTopicPermission(agencyDefault);
             })
             .catch(() => undefined);
         return () => {
@@ -1046,7 +1053,7 @@ export const InviteComposer = ({
                         })),
                         disabled: false,
                         className: styles.topicsField,
-                        onChange: setTopicPermission,
+                        onChange: chooseTopicPermission,
                     })}
                 {showAlsoCounsellor &&
                     renderSelectField<'yes' | 'no'>({
