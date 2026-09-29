@@ -470,7 +470,8 @@ export const EmailTemplatesDialog = ({
                                 {t('links.templates.edit', 'Edit')}
                             </Button>
                         ) : (
-                            <M3Tooltip text={lockReasonFor(template)}>
+                            // Portal: the table body scrolls and would clip the bubble on the first and last row.
+                            <M3Tooltip text={lockReasonFor(template)} portal>
                                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
                                 <span tabIndex={0}>
                                     <Button disabled size="small">

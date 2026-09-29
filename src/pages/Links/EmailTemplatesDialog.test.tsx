@@ -784,6 +784,20 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(trigger).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id);
     });
 
+    // The table body scrolls and clips; a bubble rendered inside it was cut off under the header.
+    it('renders the lock reason outside the table, so its scroll container cannot clip it', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const trigger = screen.getByRole('button', { name: 'Edit' }).closest('[tabindex="0"]') as HTMLElement;
+        act(() => trigger.focus());
+
+        const tooltip = screen.getByRole('tooltip');
+        expect(tooltip.closest('table')).toBeNull();
+        expect(tooltip.closest('.ant-table-body')).toBeNull();
+        expect(tooltip.parentElement).toBe(document.body);
+    });
+
     // `editable` is the server's per-row answer; the role rule is only the fallback.
     it('lets a Träger admin edit their own Träger’s template', async () => {
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>

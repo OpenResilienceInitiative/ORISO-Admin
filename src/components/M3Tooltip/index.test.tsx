@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- fixtures: a tooltip on non-interactive text is exactly what is under test */
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { M3Tooltip } from './index';
 
@@ -69,5 +69,31 @@ describe('M3Tooltip', () => {
         await user.hover(screen.getByText('Ersetzt'));
         expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
         expect(screen.getByText('Ersetzt')).not.toHaveAttribute('aria-describedby');
+    });
+
+    // A portal bubble sits at fixed coordinates, so it must follow its trigger when the row scrolls.
+    it('moves a portal bubble with its trigger on scroll, and stops listening once closed', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3Tooltip portal placement="bottom" text="Nr. 42 ist vergeben.">
+                <button type="button">42</button>
+            </M3Tooltip>,
+        );
+        const wrapper = screen.getByRole('button', { name: '42' }).parentElement as HTMLElement;
+        let left = 100;
+        wrapper.getBoundingClientRect = () => ({ left, width: 20, top: 10, bottom: 30 } as DOMRect);
+
+        await user.hover(wrapper);
+        expect(await screen.findByRole('tooltip')).toHaveStyle({ left: '110px', top: '34px' });
+
+        left = 200;
+        fireEvent.scroll(window);
+        expect(screen.getByRole('tooltip')).toHaveStyle({ left: '210px' });
+
+        await user.unhover(wrapper);
+        left = 300;
+        fireEvent.scroll(window);
+        await user.hover(wrapper);
+        expect(await screen.findByRole('tooltip')).toHaveStyle({ left: '310px' });
     });
 });

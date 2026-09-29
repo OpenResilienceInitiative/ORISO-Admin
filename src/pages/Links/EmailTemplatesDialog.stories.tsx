@@ -3,7 +3,7 @@ import { Button } from 'antd';
 import { useState } from 'react';
 import { http, HttpResponse, delay } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
@@ -245,5 +245,71 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
         await expect(editButtonInRowOf('Unsere eigene Berater-Einladung')).toBeEnabled();
         await expect(editButtonInRowOf('Berater-Willkommen (Plattform)')).toBeDisabled();
         await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
+    },
+};
+
+const lockedRow = (id: number, name: string): InviteEmailTemplateDTO => ({
+    ...TEMPLATES[3],
+    id,
+    name,
+    tenantId: null,
+    editable: false,
+});
+
+/**
+ * A Träger admin sees several shared templates: the lock reason on the first row (under the
+ * header) and on the last row must both be readable, not clipped by the scrolling table body.
+ */
+export const LockReasonReadableOnFirstAndLastRow: Story = {
+    args: { templateKind: 'COUNSELLOR_INVITE' },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, () =>
+                    HttpResponse.json(
+                        Array.from({ length: 8 }, (_, index) => lockedRow(40 + index, `Geteilte Vorlage ${index + 1}`)),
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        await body.findByText('Geteilte Vorlage 8');
+        // The dialog zooms in; measure the rows once it has settled.
+        await waitFor(() => expect(doc.querySelector('.ant-modal[class*="ant-zoom"]')).toBeNull());
+        const rows = doc.querySelectorAll<HTMLElement>('.ant-table-tbody tr.ant-table-row');
+        const expectReadableLockReason = async (row: HTMLElement) => {
+            const trigger = within(row)
+                .getByRole('button', { name: /Bearbeiten|Edit/ })
+                .closest('[tabindex="0"]');
+            await expect(trigger).not.toBeNull();
+            (trigger as HTMLElement).focus();
+            const tooltip = await body.findByRole('tooltip');
+            // Outside the scrolling body, fully inside the viewport, and stacked above the dialog.
+            await expect(tooltip.closest('.ant-table-body')).toBeNull();
+            const rect = tooltip.getBoundingClientRect();
+            const view = doc.defaultView as Window;
+            await expect(rect.top >= 0 && rect.left >= 0).toBe(true);
+            await expect(rect.bottom <= view.innerHeight && rect.right <= view.innerWidth).toBe(true);
+            // Anchored to its own button: centred over it, just above it.
+            const anchor = (trigger as HTMLElement).getBoundingClientRect();
+            await expect(Math.abs(rect.left + rect.width / 2 - (anchor.left + anchor.width / 2))).toBeLessThan(2);
+            await expect(Math.abs(anchor.top - rect.bottom - 4)).toBeLessThan(2);
+            const dialogLayer = Number(view.getComputedStyle(row.closest('.ant-modal-wrap') as Element).zIndex);
+            await expect(Number(view.getComputedStyle(tooltip).zIndex)).toBeGreaterThan(dialogLayer);
+            (trigger as HTMLElement).blur();
+        };
+        await expectReadableLockReason(rows[0]);
+        await expectReadableLockReason(rows[rows.length - 1]);
     },
 };
