@@ -969,6 +969,36 @@ export const M3RichTextEditor = ({
         }
     }, [editorContent, editor]);
 
+    const functionBarRef = useRef<HTMLDivElement>(null);
+    const [footerScroll, setFooterScroll] = useState({ left: false, right: false });
+    useEffect(() => {
+        const bar = functionBarRef.current;
+        if (!bar) return undefined;
+        const update = () => {
+            const left = bar.scrollLeft > 2;
+            const right = bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 2;
+            setFooterScroll((current) =>
+                current.left === left && current.right === right ? current : { left, right },
+            );
+        };
+        update();
+        bar.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+        observer?.observe(bar);
+        Array.from(bar.children).forEach((child) => observer?.observe(child));
+        return () => {
+            bar.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+            observer?.disconnect();
+        };
+    }, [versions.length, versionSections]);
+    const scrollFooter = (direction: -1 | 1) =>
+        functionBarRef.current?.scrollBy({
+            left: direction * functionBarRef.current.clientWidth * 0.7,
+            behavior: 'smooth',
+        });
+
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
@@ -1098,6 +1128,25 @@ export const M3RichTextEditor = ({
         ...versionSections.flatMap(sectionRows),
     ];
     const historyUnavailable = versionHistoryState !== 'available';
+    // Grouped history also contains sent templates. Only the live section can
+    // describe what is currently online; its newest entry is always first.
+    const liveVersions = versionSections
+        ? versionSections.find((section) => section.key === 'live')?.versions ?? []
+        : versions;
+    const versionName = (version: EditorVersion, list: EditorVersion[]) =>
+        version.name ?? t('legal.m3Editor.versionVariant', { n: list.length - list.indexOf(version) });
+    const latestOnline = liveVersions[0];
+    const selectedVersionList = viewingVersion
+        ? versionSections?.find((section) => section.versions.includes(viewingVersion))?.versions ?? versions
+        : versions;
+    const displayedVersion = viewingVersion ?? latestOnline;
+    const displayedVersionName = displayedVersion
+        ? versionName(displayedVersion, viewingVersion ? selectedVersionList : liveVersions)
+        : versionLabel;
+    const displayedVersionDate = displayedVersion && versionDate(displayedVersion);
+    const versionTooltip = displayedVersionDate
+        ? `${displayedVersionName} · ${formatVersionDate(displayedVersionDate)}`
+        : undefined;
     // A sectioned menu carries more than the published history (e.g. sent templates and the
     // "create" rows), so it stays even when that history is loading or missing — the host
     // then states the history's status inside its section.
@@ -1280,82 +1329,101 @@ export const M3RichTextEditor = ({
                 version history. Every one of them can be the only occupant, so
                 each has to hold the bar open on its own. */}
             {(languageControl || consentSlot || topicSlot || showVersionControl || historyUnavailable) && (
-                <div className={styles.functionBar} data-testid="m3-editor-function-bar">
-                    {languageControl}
-                    {consentSlot}
-                    {topicSlot}
-                    {historyUnavailable && !versionSections && versionHistoryStatusLabel && (
-                        <span className={`${styles.versionMenuHeader} ${styles.versionHistoryStatus}`} role="status">
-                            {versionHistoryStatusLabel}
-                        </span>
+                <div className={styles.functionBarShell}>
+                    <div ref={functionBarRef} className={styles.functionBar} data-testid="m3-editor-function-bar">
+                        {languageControl}
+                        {consentSlot}
+                        {topicSlot}
+                        {historyUnavailable && !versionSections && versionHistoryStatusLabel && (
+                            <span
+                                className={`${styles.versionMenuHeader} ${styles.versionHistoryStatus}`}
+                                role="status"
+                            >
+                                {versionHistoryStatusLabel}
+                            </span>
+                        )}
+                        {showVersionControl && (
+                            <SplitDropdown
+                                icon={<VersionHistoryIcon />}
+                                title={t('legal.m3Editor.versionHistory')}
+                                tooltip={versionTooltip}
+                                className={styles.versionHistoryControl}
+                                label={displayedVersionName}
+                                menu={{
+                                    selectable: true,
+                                    selectedKeys: [viewingVersionId ?? 'current'],
+                                    items:
+                                        sectionedMenuItems ??
+                                        (versions.length > 0
+                                            ? [
+                                                  {
+                                                      key: 'current',
+                                                      label: t('legal.m3Editor.versionCurrentDraft'),
+                                                  },
+                                                  { type: 'divider' as const },
+                                                  ...(onlineSinceDate
+                                                      ? [
+                                                            {
+                                                                key: 'onlineSince',
+                                                                disabled: true,
+                                                                label: (
+                                                                    <span className={styles.versionMenuHeader}>
+                                                                        {t('legal.m3Editor.versionOnlineSince', {
+                                                                            date: formatVersionDate(onlineSinceDate),
+                                                                        })}
+                                                                    </span>
+                                                                ),
+                                                            },
+                                                        ]
+                                                      : []),
+                                                  ...versions.map((v, index) => versionMenuItem(v, index, versions)),
+                                              ]
+                                            : // Never published: say so explicitly instead of
+                                              // offering a menu that looks broken (#768).
+                                              [
+                                                  {
+                                                      key: 'empty',
+                                                      disabled: true,
+                                                      label: (
+                                                          <span className={styles.versionMenuHeader}>
+                                                              {t('legal.m3Editor.versionEmpty')}
+                                                          </span>
+                                                      ),
+                                                  },
+                                                  { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                                              ]),
+                                    onClick: ({ key }) => {
+                                        if (key.startsWith('create:')) {
+                                            const section = versionSections?.find((s) => `create:${s.key}` === key);
+                                            viewVersion(null);
+                                            section?.onCreate?.();
+                                            return;
+                                        }
+                                        viewVersion(key === 'current' ? null : key);
+                                    },
+                                }}
+                            />
+                        )}
+                    </div>
+                    {footerScroll.left && (
+                        <button
+                            type="button"
+                            className={`${styles.functionBarScrollCue} ${styles.functionBarScrollCueLeft}`}
+                            aria-label={t('legal.m3Editor.scrollControlsBack', 'Weitere Steuerelemente links')}
+                            onClick={() => scrollFooter(-1)}
+                        >
+                            ‹
+                        </button>
                     )}
-                    {showVersionControl && (
-                        <SplitDropdown
-                            icon={<VersionHistoryIcon />}
-                            title={t('legal.m3Editor.versionHistory')}
-                            label={
-                                viewingVersion
-                                    ? viewingVersion.label
-                                    : // With sections the newest entry may be a template, not the live
-                                      // text — the host names the current draft itself.
-                                      [versionLabel, versionSections ? undefined : versions[0]?.label]
-                                          .filter(Boolean)
-                                          .join(' ')
-                            }
-                            menu={{
-                                selectable: true,
-                                selectedKeys: [viewingVersionId ?? 'current'],
-                                items:
-                                    sectionedMenuItems ??
-                                    (versions.length > 0
-                                        ? [
-                                              {
-                                                  key: 'current',
-                                                  label: t('legal.m3Editor.versionCurrentDraft'),
-                                              },
-                                              { type: 'divider' as const },
-                                              ...(onlineSinceDate
-                                                  ? [
-                                                        {
-                                                            key: 'onlineSince',
-                                                            disabled: true,
-                                                            label: (
-                                                                <span className={styles.versionMenuHeader}>
-                                                                    {t('legal.m3Editor.versionOnlineSince', {
-                                                                        date: formatVersionDate(onlineSinceDate),
-                                                                    })}
-                                                                </span>
-                                                            ),
-                                                        },
-                                                    ]
-                                                  : []),
-                                              ...versions.map((v, index) => versionMenuItem(v, index, versions)),
-                                          ]
-                                        : // Never published: say so explicitly instead of
-                                          // offering a menu that looks broken (#768).
-                                          [
-                                              {
-                                                  key: 'empty',
-                                                  disabled: true,
-                                                  label: (
-                                                      <span className={styles.versionMenuHeader}>
-                                                          {t('legal.m3Editor.versionEmpty')}
-                                                      </span>
-                                                  ),
-                                              },
-                                              { key: 'latest', label: t('legal.m3Editor.versionLatest') },
-                                          ]),
-                                onClick: ({ key }) => {
-                                    if (key.startsWith('create:')) {
-                                        const section = versionSections?.find((s) => `create:${s.key}` === key);
-                                        viewVersion(null);
-                                        section?.onCreate?.();
-                                        return;
-                                    }
-                                    viewVersion(key === 'current' ? null : key);
-                                },
-                            }}
-                        />
+                    {footerScroll.right && (
+                        <button
+                            type="button"
+                            className={`${styles.functionBarScrollCue} ${styles.functionBarScrollCueRight}`}
+                            aria-label={t('legal.m3Editor.scrollControlsForward', 'Weitere Steuerelemente rechts')}
+                            onClick={() => scrollFooter(1)}
+                        >
+                            ›
+                        </button>
                     )}
                 </div>
             )}

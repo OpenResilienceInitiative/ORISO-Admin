@@ -422,6 +422,51 @@ export const WithVersionSelect: Story = {
     },
 };
 
+export const VersionSelectMobile: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Auftragsdaten Verarbeitungsvertrag',
+        value: '<h2>Vertragsunterlagen</h2><p>Aktueller Entwurf.</p>',
+        versions: dpaVersions,
+        fluid: true,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(390px, calc(100vw - 32px))', height: 844, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const anchorBar = await waitFor(() => canvas.getByRole('navigation', { name: 'Sprungmarken' }));
+        expect(window.getComputedStyle(anchorBar).backgroundColor).toBe('rgb(255, 255, 255)');
+    },
+};
+
+export const VersionSelectMobileNarrowReader: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    globals: { viewport: { value: 'mobile1', isRotated: false } },
+    args: {
+        title: 'Auftragsdaten Verarbeitungsvertrag',
+        value: '<h2>Vertragsunterlagen</h2><p>Veröffentlichte Fassung.</p>',
+        versions: dpaVersions,
+        readOnly: true,
+        fluid: true,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(320px, calc(100vw - 32px))', height: 568, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
 // Read-only card (agency view): versions are browsable but never restorable.
 export const VersionSelectReadOnly: Story = {
     render: (args) => <ControlledEditor {...args} />,
@@ -443,8 +488,7 @@ const consentTemplates = [
 /**
  * The agency (Fachbereich) data-protection footer in full: language, consent
  * template, topic and version — the four-control bar of the owner's decision of
- * 2026-08-19. Framed at Mobile 390x844, where the bar has to scroll horizontally
- * WITHOUT showing a scrollbar.
+ * 2026-08-19. Framed at Mobile 390x844, where the bar scrolls horizontally.
  */
 const AgencyFooterEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
     const [value, setValue] = useState(args.value ?? '');
@@ -484,6 +528,7 @@ const AgencyFooterEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
 
 export const AgencyFooterWithConsentTemplate: Story = {
     render: (args) => <AgencyFooterEditor {...args} />,
+    globals: { viewport: { value: 'phone', isRotated: false } },
     args: {
         title: 'Datenschutzerklärung',
         value: '<h2>Datenschutzerklärung</h2><p>Aktueller Entwurf des Fachbereichs.</p>',
@@ -497,7 +542,7 @@ export const AgencyFooterWithConsentTemplate: Story = {
     },
     decorators: [
         (Story) => (
-            <div style={{ width: 390, height: 844, overflow: 'hidden' }}>
+            <div style={{ width: 'min(390px, calc(100vw - 32px))', height: 844, overflow: 'hidden' }}>
                 <Story />
             </div>
         ),
@@ -516,14 +561,17 @@ export const AgencyFooterWithConsentTemplate: Story = {
         );
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-        // #1066: the bar wraps instead of scrolling — every control lies inside it, none
-        // is pushed past the right edge where it read as cut off.
-        expect(window.getComputedStyle(bar).flexWrap).toBe('wrap');
-        expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
-        const barRight = bar.getBoundingClientRect().right;
-        Array.from(bar.children).forEach((child) =>
-            expect(child.getBoundingClientRect().right).toBeLessThanOrEqual(barRight + 0.5),
+        // The narrow bar keeps a single row and a visible scroll affordance.
+        expect(window.getComputedStyle(bar).flexWrap).toBe('nowrap');
+        expect(window.getComputedStyle(bar).overflowX).toBe('auto');
+        expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
+        const next = await waitFor(() => canvas.getByRole('button', { name: 'Weitere Steuerelemente rechts' }));
+        await userEvent.click(next);
+        await waitFor(() => expect(bar.scrollLeft).toBeGreaterThan(0));
+        await userEvent.click(
+            await waitFor(() => canvas.getByRole('button', { name: 'Weitere Steuerelemente links' })),
         );
+        await waitFor(() => expect(bar.scrollLeft).toBeLessThan(2));
     },
 };
 

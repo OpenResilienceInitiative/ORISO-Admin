@@ -38,8 +38,7 @@ const versions = [
 ];
 
 const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-    // The version control lives in the sub-actions row; its stable purpose is on the title attr.
-    const trigger = screen.getByTitle('legal.m3Editor.versionHistory');
+    const trigger = screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' });
     await user.click(trigger);
 };
 
@@ -87,6 +86,39 @@ describe('M3RichTextEditor — version dates from publishedAt (#812)', () => {
 });
 
 describe('M3RichTextEditor — version select (#268)', () => {
+    it('names the newest published variant and keeps its full publication time on hover', () => {
+        render(<M3RichTextEditor title="Impressum" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />);
+
+        const control = screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' });
+        expect(control).toHaveTextContent('legal.m3Editor.versionVariant:2');
+        expect(control).toHaveAttribute('title', expect.stringContaining('01.07.26'));
+        expect(control).toHaveAttribute('title', expect.stringContaining('10:00'));
+    });
+
+    it('uses the live section for the latest button when newer templates exist', () => {
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Entwurf</p>"
+                versionSections={[
+                    {
+                        key: 'templates',
+                        title: 'Vorlagen',
+                        versions: [
+                            { id: 'template:1', name: 'Vorlage 7', label: '29.09.26', content: '<p>Vorlage</p>' },
+                        ],
+                    },
+                    { key: 'live', title: 'Online', versions },
+                ]}
+                enableAnchors={false}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' })).toHaveTextContent(
+            'legal.m3Editor.versionVariant:2',
+        );
+    });
+
     it('shows an unsupported-history status instead of the never-published menu', () => {
         render(
             <M3RichTextEditor
@@ -99,7 +131,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         expect(screen.getByRole('status')).toHaveTextContent('Versionsverlauf nicht verfügbar');
-        expect(screen.queryByTitle('legal.m3Editor.versionHistory')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.versionHistory' })).not.toBeInTheDocument();
         expect(screen.queryByText('legal.m3Editor.versionEmpty')).not.toBeInTheDocument();
     });
 
@@ -119,7 +151,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         await openVersionMenu(user);
 
         await waitFor(() => {
-            expect(screen.getByText('legal.m3Editor.versionVariant:2')).toBeInTheDocument();
+            expect(screen.getAllByText('legal.m3Editor.versionVariant:2')[1]).toBeInTheDocument();
         });
         expect(screen.getByText('legal.m3Editor.versionVariant:1')).toBeInTheDocument();
         // A way back to the editable draft is always offered.
@@ -156,7 +188,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
 
         // The editor now renders the version content, read-only (contenteditable=false).
         await waitFor(() => {
@@ -181,7 +213,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i }));
 
         expect(onRestore).toHaveBeenCalledWith('<p>Fassung Mai</p>');
@@ -198,7 +230,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:2'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:2/ }));
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
 
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
@@ -225,7 +257,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
             />,
         );
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
         // Viewing works, but there is no "restore as draft" in a read-only card.
         expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
     });
@@ -250,7 +282,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
 
         // While viewing the version (read-only) the chips still render but lose
         // their remove "x", so there is no path to mutate/overwrite the draft.
