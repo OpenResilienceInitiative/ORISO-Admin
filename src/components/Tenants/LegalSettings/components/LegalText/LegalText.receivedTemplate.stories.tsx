@@ -190,10 +190,16 @@ export const PlatformInspectsExistingTraeger: Story = {
     parameters: { platformInspector: true, msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const region = await canvas.findByRole('region', { name: /Vorlage des Plattformbetreibers · Impressum/ }, LOAD);
-        await expect(within(region).getByText(/an diesen Träger gesendete Vorlage/)).toBeVisible();
-        await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeDisabled();
-        await expect(within(region).getByRole('button', { name: 'Verwerfen' })).toBeDisabled();
+        const region = await canvas.findByRole(
+            'region',
+            { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Legal notice/ },
+            LOAD,
+        );
+        await expect(
+            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this tenant/),
+        ).toBeVisible();
+        await expect(within(region).getByRole('button', { name: /Vorlage übernehmen|Adopt template/ })).toBeDisabled();
+        await expect(within(region).getByRole('button', { name: /Verwerfen|Dismiss/ })).toBeDisabled();
         await expect(
             canvas.queryByRole('button', { name: 'An Beratungsstellen weiterreichen' }),
         ).not.toBeInTheDocument();
