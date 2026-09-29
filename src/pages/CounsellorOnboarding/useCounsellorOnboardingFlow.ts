@@ -234,11 +234,14 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         try {
             const { account, person, names, avatar, topicIds, agency, alsoCounsellor } = dataRef.current;
             const agencyAdmin = isAgencyAdminInvite(inviteRef.current);
-            // An agency admin who does not counsel gets a login only: no consultant profile, no topics.
+            // An agency admin who does not counsel gets a login only: no consultant profile.
             const withProfile = !agencyAdmin || alsoCounsellor;
             // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
             const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
             const createsAgency = inviteRef.current?.agencyExists === false;
+            // A founding admin gives the new agency its topics even without counselling:
+            // the counsellors queued for it pick from them.
+            const withTopics = withProfile || createsAgency;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
                 person: withProfile
@@ -257,7 +260,7 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 ...(withProfile && avatarKind
                     ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } }
                     : {}),
-                topicIds: withProfile ? topicIds : [],
+                topicIds: withTopics ? topicIds : [],
                 ...(agencyAdmin ? { alsoCounsellor } : {}),
                 // Present only for a reserved (not yet existing) agency — the
                 // backend rejects the field for an existing one.
