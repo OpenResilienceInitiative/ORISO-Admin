@@ -1675,6 +1675,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
         color: $m3-primary;
     }
 
+    &.editActive {
+        background: $m3-state-hover;
+    }
+
     // Offering a template publishes nothing, so it shares the neutral colour of
     // "Save draft". Red stays reserved for the one action that goes live.
     &.publishTemplate {

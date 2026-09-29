@@ -39,7 +39,7 @@ export interface UseLegalDraftResult {
      * it, not an extra: a draft that stored only the body while reporting success
      * would lose the consent wording on the next reload.
      */
-    saveDraft: (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => void;
+    saveDraft: (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => boolean;
     /** Returns whether the draft is really gone — callers must not drop further state otherwise. */
     discardDraft: () => boolean;
 }
@@ -77,13 +77,13 @@ export const useLegalDraft = (
     const saveDraft = useCallback(
         (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => {
             if (!key) {
-                return;
+                return false;
             }
             if (!writeLegalDraft(key, contentByLanguage, baseVersionId, consentByLanguage)) {
                 // Quota exceeded or storage disabled: nothing was stored, so say so
                 // instead of confirming a save the admin would rely on.
                 notification.error({ message: t('legal.draft.saveError'), duration: 8 });
-                return;
+                return false;
             }
             setState((previous) => ({
                 ...previous,
@@ -91,6 +91,7 @@ export const useLegalDraft = (
                 savedBaseVersionId: baseVersionId,
             }));
             notification.success({ message: t('legal.draft.saved'), duration: 4 });
+            return true;
         },
         [baseVersionId, key, t],
     );
