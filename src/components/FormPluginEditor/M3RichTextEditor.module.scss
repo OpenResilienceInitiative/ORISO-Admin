@@ -145,6 +145,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .module.fluid:not(.inDialog) {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
 
     /* `clip` still clips to the 28px radius but — unlike `hidden` — does not
        make the card a scroll container, which would trap the sticky chip row. */
