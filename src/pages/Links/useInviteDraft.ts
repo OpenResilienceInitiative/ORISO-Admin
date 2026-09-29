@@ -187,7 +187,14 @@ export const useInviteDraft = ({
     const pickedAgency = agencyAllocation.mode === 'existing' ? agencyAllocation.unit : undefined;
     const { loadAgencyTopicPermission } = clients;
     const hadPickedAgency = useRef(false);
+    // An admin's own choice beats a default that answers late; a newly picked agency starts over.
+    const topicPermissionEdited = useRef(false);
+    const chooseTopicPermission = (value: TopicPermission) => {
+        topicPermissionEdited.current = true;
+        setTopicPermission(value);
+    };
     useEffect(() => {
+        topicPermissionEdited.current = false;
         if (!pickedAgency) {
             // Leaving a chosen agency ("Neu") must not keep that agency's default.
             if (hadPickedAgency.current) setTopicPermission(BAR_DEFAULT_TOPIC_PERMISSION);
@@ -203,7 +210,7 @@ export const useInviteDraft = ({
         let current = true;
         loadAgencyTopicPermission(pickedAgency.id)
             .then((agencyDefault) => {
-                if (current && agencyDefault) setTopicPermission(agencyDefault);
+                if (current && agencyDefault && !topicPermissionEdited.current) setTopicPermission(agencyDefault);
             })
             .catch(() => undefined);
         return () => {
@@ -512,7 +519,7 @@ export const useInviteDraft = ({
             search: searchAgencies ? searchAgenciesInTenant : undefined,
             picked: pickedAgency,
         },
-        topics: { value: topicPermission, set: setTopicPermission },
+        topics: { value: topicPermission, set: chooseTopicPermission },
         alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
         /** Which fields show as pills, and which select menu is open. */
         pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect },
