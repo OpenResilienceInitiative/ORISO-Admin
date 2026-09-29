@@ -884,6 +884,82 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         });
     });
 
+    // Riccardo's #1036 review: a late agency default must not overwrite the admin's own choice.
+    it('keeps a topic permission chosen while the agency default is still loading', async () => {
+        mocks.searchInviteAgencies.mockResolvedValue({
+            hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+        });
+        let answerDefault: (value: unknown) => void = () => {};
+        mocks.getAgencyDataById.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    answerDefault = resolve;
+                }),
+        );
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        await user.type(screen.getByLabelText('Name'), 'Simpson');
+        await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalled());
+
+        const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
+        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+        await act(async () => {
+            answerDefault({ _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } } });
+        });
+
+        const sendButton = screen.getByRole('button', { name: 'Einladen' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({ topicPermission: 'SELECT_EXISTING' });
+    });
+
+    it('applies the next agency’s default again after an earlier manual choice', async () => {
+        mocks.searchInviteAgencies.mockImplementation(async (query: string) => ({
+            hits: query.startsWith('Diak')
+                ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
+                : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+        }));
+        mocks.getAgencyDataById.mockImplementation(async (id: string) => ({
+            _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
+        }));
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        await user.type(agency, 'Diak');
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'));
+        const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
+        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen'));
+
+        const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        if (agencyPill) await user.click(agencyPill);
+        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        await user.clear(agencyField);
+        await user.type(agencyField, 'Cari');
+        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }));
+
+        // The new agency's default applies again: the earlier manual choice belonged to Diakonie Lahr.
+        await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'));
+        expect(
+            await screen.findByRole('button', {
+                name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/,
+            }),
+        ).toBeInTheDocument();
+    });
+
     it('drops the agency default again when the admin switches to a new agency', async () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
         mocks.searchInviteAgencies.mockResolvedValue({
