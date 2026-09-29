@@ -1976,6 +1976,19 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "ui-icon:oriso:save-draft:base",
+        "family": "save-draft",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "save_draft_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/save_draft_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:schedule:base",
         "family": "schedule",
         "state": "base",

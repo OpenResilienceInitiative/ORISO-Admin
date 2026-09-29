@@ -1609,6 +1609,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
     align-items: center;
     justify-content: flex-end;
     padding: 8px 16px 16px;
+
+    @media (max-width: 400px) {
+        gap: 4px;
+        padding-inline: 8px;
+    }
 }
 
 .actionsLeading {
@@ -1653,6 +1658,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 500;
     letter-spacing: 0.1px;
     cursor: pointer;
+
+    @media (max-width: 400px) {
+        gap: 4px;
+        padding-inline: 8px;
+    }
 
     > svg {
         flex-shrink: 0;

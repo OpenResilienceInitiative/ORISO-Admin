@@ -338,11 +338,7 @@ export const ResponsiveHintAndFunctionBar: Story = {
         const canvas = within(canvasElement);
         await waitFor(() => expect(canvas.getByRole('status')).toBeInTheDocument());
 
-        const textbox = canvas.getByRole('textbox');
-        let scrollContainer = textbox.parentElement;
-        while (scrollContainer && window.getComputedStyle(scrollContainer).overflowY !== 'auto') {
-            scrollContainer = scrollContainer.parentElement;
-        }
+        const scrollContainer = canvasElement.querySelector<HTMLElement>('[class*="editorContentScroll"]');
         expect(scrollContainer).not.toBeNull();
         expect(parseFloat(window.getComputedStyle(scrollContainer!).paddingBottom)).toBeGreaterThan(0);
         expect(canvas.getByRole('navigation')).toBeVisible();
