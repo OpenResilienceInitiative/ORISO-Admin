@@ -599,6 +599,11 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                     agency: { name: 'Suchtberatung Nord' },
                 }),
             );
+            // The topics are the agency's; the founder still gets no counsellor profile.
+            const request = (client.registerCounsellor as ReturnType<typeof vi.fn>).mock.calls[0][1];
+            expect(request.person).toEqual({});
+            expect(request.names).toEqual({});
+            expect(request.avatar).toBeUndefined();
         });
 
         it('asks before "Berät auch" goes off; "Doch selbst beraten" keeps it on', async () => {
