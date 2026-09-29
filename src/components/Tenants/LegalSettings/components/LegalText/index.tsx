@@ -107,6 +107,8 @@ interface LegalTextProps {
      * shown read-only beside the own draft, with adopt and dismiss.
      */
     templateInbox?: TenantTemplateInbox;
+    /** Platform admins may inspect a Träger offer, but only its admin may decide on it. */
+    templateCanManage?: boolean;
     fieldName: string[];
     titleKey: string;
     /**
@@ -137,6 +139,7 @@ export const LegalText = ({
     draftTenantId,
     offerTemplatesToAgencies = false,
     templateInbox,
+    templateCanManage = true,
     fieldName,
     titleKey,
     legalType,
@@ -813,6 +816,10 @@ export const LegalText = ({
             conflict: serverDraft.hasConflict,
         });
 
+    let templateReadOnlyReason: string | undefined;
+    if (!templateCanManage) templateReadOnlyReason = t('legal.proposal.inspectionOnly');
+    else if (!canEditLegalText) templateReadOnlyReason = t(readOnlyReason.key);
+
     const wrapEditor = (editor: React.ReactElement) =>
         templateInbox && legalType ? (
             <LegalTemplateCompare
@@ -821,8 +828,8 @@ export const LegalText = ({
                 documentType={legalType}
                 language={activeLanguage}
                 hasDraft={!!savedServerDraft || hasUnsavedChanges}
-                readOnly={!canEditLegalText}
-                readOnlyReason={!canEditLegalText ? t(readOnlyReason.key) : undefined}
+                readOnly={!canEditLegalText || !templateCanManage}
+                readOnlyReason={templateReadOnlyReason}
                 adoptBlockedReason={adoptBlockedReason}
                 archives={canEditLegalText ? templateInbox.archives : undefined}
                 onAdopt={onAdoptTemplate}

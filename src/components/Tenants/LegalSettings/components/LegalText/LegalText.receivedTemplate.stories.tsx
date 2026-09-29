@@ -144,8 +144,11 @@ const meta = {
     component: TraegerLegalText,
     parameters: { layout: 'fullscreen' },
     decorators: [
-        (Story) => {
-            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], TRAEGER_ID);
+        (Story, context) => {
+            setStoryAuth(
+                [UserRole.TenantAdmin, UserRole.AgencyAdmin],
+                context.parameters.platformInspector ? 0 : TRAEGER_ID,
+            );
             calls.adopt.length = 0;
             calls.dismiss.length = 0;
             calls.forward.length = 0;
@@ -179,6 +182,21 @@ export const TraegerWithNewTemplate: Story = {
         await expect(within(region).getByText('Neue Vorlage')).toBeVisible();
         await expect(within(region).getByText(/25\.09\.2026, 16:31/)).toBeVisible();
         await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeEnabled();
+    },
+};
+
+/** A platform admin looking into an existing Träger sees the offer without deciding for it. */
+export const PlatformInspectsExistingTraeger: Story = {
+    parameters: { platformInspector: true, msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const region = await canvas.findByRole('region', { name: /Vorlage des Plattformbetreibers · Impressum/ }, LOAD);
+        await expect(within(region).getByText(/an diesen Träger gesendete Vorlage/)).toBeVisible();
+        await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeDisabled();
+        await expect(within(region).getByRole('button', { name: 'Verwerfen' })).toBeDisabled();
+        await expect(
+            canvas.queryByRole('button', { name: 'An Beratungsstellen weiterreichen' }),
+        ).not.toBeInTheDocument();
     },
 };
 
