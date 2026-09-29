@@ -279,7 +279,7 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
-        // JSON.stringify drops undefined keys: an omitted topicPermission means the agency default.
+        // JSON.stringify drops undefined keys: UserService reads an omitted topicPermission as SELECT_EXISTING.
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,

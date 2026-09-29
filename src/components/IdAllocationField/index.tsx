@@ -106,18 +106,28 @@ export const IdAllocationField = ({
     }, [open, allowCreate]);
 
     const assignedId = mode === 'manual' && validation === 'assigned' ? value : undefined;
-    const { results, hasMore, total, searching, loadMore, typedId, typedUnit, assignedUnit, settleTyped } =
-        useUnitSearch({
-            searchUnits,
-            resolveUnit,
-            open,
-            query,
-            allowCreate,
-            acceptTypedIds,
-            assignedId,
-            onTypedUnit: allocation.selectExisting,
-            onTypedMiss: allocation.resetToAuto,
-        });
+    const {
+        results,
+        hasMore,
+        total,
+        searching,
+        loadMore,
+        typedId,
+        typedUnit,
+        typedLookupFailed,
+        assignedUnit,
+        settleTyped,
+    } = useUnitSearch({
+        searchUnits,
+        resolveUnit,
+        open,
+        query,
+        allowCreate,
+        acceptTypedIds,
+        assignedId,
+        onTypedUnit: allocation.selectExisting,
+        onTypedMiss: allocation.resetToAuto,
+    });
 
     const trimmed = query.trim();
     const entries: MenuEntry[] = [];
@@ -173,7 +183,7 @@ export const IdAllocationField = ({
         !searching &&
         results.length === 0 &&
         !hasMore;
-    const noUnitWithNumber = !allowCreate && typedUnit === null;
+    const noUnitWithNumber = !allowCreate && typedUnit === null && !typedLookupFailed;
 
     const isSelected = (entry: MenuEntry) => {
         if (entry.kind === 'more') return false;
@@ -395,6 +405,11 @@ export const IdAllocationField = ({
                         {noMatches && (
                             <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
                                 {t('idAllocationField.noMatches', 'Keine Treffer')}
+                            </li>
+                        )}
+                        {!allowCreate && typedLookupFailed && (
+                            <li aria-disabled className={styles.empty} role="option" aria-selected={false}>
+                                {t('idAllocationField.serviceError', 'Verfügbarkeit konnte nicht geprüft werden.')}
                             </li>
                         )}
                         {noUnitWithNumber && (

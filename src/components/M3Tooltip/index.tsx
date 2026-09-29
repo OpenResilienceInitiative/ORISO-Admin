@@ -47,6 +47,8 @@ export interface M3TooltipProps {
 /** Gap to the trigger and the least distance to the viewport edge, in px. */
 const GAP = 4;
 const EDGE = 8;
+/** Same as `.bubble` max-width; a portal bubble also never outgrows the space between both edges. */
+const BUBBLE_MAX_WIDTH = 260;
 // Measured at the top-left, invisible, so its width is not squeezed before it is placed.
 const UNPLACED: CSSProperties = { position: 'fixed', top: 0, left: 0, transform: 'none', visibility: 'hidden' };
 
@@ -127,7 +129,15 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
             id={id}
             ref={bubbleRef}
             role="tooltip"
-            style={portal ? anchor ?? UNPLACED : undefined}
+            style={
+                portal
+                    ? {
+                          ...(anchor ?? UNPLACED),
+                          boxSizing: 'border-box',
+                          maxWidth: Math.min(BUBBLE_MAX_WIDTH, window.innerWidth - 2 * EDGE),
+                      }
+                    : undefined
+            }
         >
             {text}
         </span>

@@ -57,7 +57,7 @@ export const useUnitSearch = ({
     const [total, setTotal] = useState<number | undefined>();
     // True from a new query until its first page lands, so the field shows neither stale pages nor "no match".
     const [searching, setSearching] = useState(false);
-    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null } | undefined>();
+    const [resolved, setResolved] = useState<{ id: number; unit: IdUnitOption | null; failed?: boolean } | undefined>();
 
     // Every new query or close bumps the token; a reply only lands while its token is current.
     const searchToken = useRef(0);
@@ -137,14 +137,20 @@ export const useUnitSearch = ({
         if (!resolveUnit) return;
         lookupToken.current += 1;
         const token = lookupToken.current;
-        resolveUnit(id)
-            .catch(() => null)
-            .then((found) => {
+        resolveUnit(id).then(
+            (found) => {
                 if (token !== lookupToken.current) return;
                 setResolved({ id, unit: found });
                 if (found) onTypedUnit(found);
                 else onTypedMiss?.();
-            });
+            },
+            () => {
+                // A failed lookup is not "no unit": say it could not be checked, and still drop an earlier pick.
+                if (token !== lookupToken.current) return;
+                setResolved({ id, unit: null, failed: true });
+                onTypedMiss?.();
+            },
+        );
     };
 
     useEffect(() => {
@@ -181,6 +187,7 @@ export const useUnitSearch = ({
         loadMore,
         typedId,
         typedUnit: resolvedFor(typedId),
+        typedLookupFailed: typedId !== undefined && resolved?.id === typedId && resolved.failed === true,
         assignedUnit: resolvedFor(assignedId) ?? null,
         /** Leaving the field right after typing a number must not drop its lookup. */
         settleTyped: () => {
