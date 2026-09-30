@@ -42,9 +42,11 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         adminRemarks,
         avatarKind,
         avatarId,
+        topicsByAgency,
     } = formData;
 
-    const topicIds = parseTopicIds(formData);
+    // null = keep the stored topics (the server treats a missing list as empty).
+    const topicIds = formData.topicIds === null ? null : parseTopicIds(formData);
 
     const strippedCounselor = {
         firstname,
@@ -62,6 +64,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         ...(isGroupchatConsultant !== undefined && { isGroupchatConsultant: !!isGroupchatConsultant }),
         isSupervisor: !!isSupervisor,
         topicIds,
+        // Only when the page knows the server stores topics per centre; older servers reject it.
+        ...(Array.isArray(topicsByAgency) && { topicsByAgency }),
         publicSlug,
         rejectPendingPublicSlug: !!rejectPendingPublicSlug,
         // Backend semantics: null/omitted leaves the stored value untouched, '' clears it.
