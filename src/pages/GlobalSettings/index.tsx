@@ -19,6 +19,8 @@ import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.h
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
 import { usePlatformSmtpSettings } from '../../hooks/usePlatformSmtpSettings';
+import { useSmtpSyncStatus } from '../../hooks/useSmtpSyncStatus';
+import { SmtpSyncStatus } from '../../api/settings/getSmtpSyncStatus';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
@@ -28,6 +30,13 @@ import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRe
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
+
+const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
+    UNKNOWN: 'globalSettings.smtp.sync.unknown',
+    SMTP_SYNC_PENDING: 'globalSettings.smtp.sync.pending',
+    APPLIED: 'globalSettings.smtp.sync.applied',
+    DISABLED_OR_INCOMPLETE: 'globalSettings.smtp.sync.disabled',
+};
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -127,6 +136,8 @@ export const GlobalSmtpSettingsPage = () => {
     const { data: userData } = useUserData();
     const { mutate, isPending } = useSettingsAdminMutation();
     const { data: platformSmtp, isLoading, isFetching, isError, refetch } = usePlatformSmtpSettings();
+    const { data: persistedSync, refetch: refetchSync } = useSmtpSyncStatus();
+    const [savedSync, setSavedSync] = useState<{ status: SmtpSyncStatus; revision: number | null } | null>(null);
     const [isTestSending, setIsTestSending] = useState(false);
     useEffect(() => {
         if (userData?.email && !testForm.getFieldValue('recipientEmail')) {
@@ -172,6 +183,12 @@ export const GlobalSmtpSettingsPage = () => {
     const hasUnsavedChanges = currentValues !== undefined && hasChangedSavedSettings(currentValues);
     const isSummaryLoading = isLoading || isFetching;
     const isTestBlocked = hasUnsavedChanges || isPending || isSummaryLoading || isError || !platformSmtp;
+    const syncStatus = useMemo(() => {
+        if (!savedSync) return persistedSync?.status;
+        if (savedSync.revision !== null && persistedSync && persistedSync.revision >= savedSync.revision)
+            return persistedSync.status;
+        return savedSync.status;
+    }, [persistedSync, savedSync]);
     const handleSave = useCallback(
         (formData: unknown, options?: { onError?: () => void }) => {
             const submittedValues = formData as typeof initialValues;
@@ -185,7 +202,21 @@ export const GlobalSmtpSettingsPage = () => {
                 },
                 {
                     ...options,
-                    onSuccess: async () => {
+                    onSuccess: async (responseData) => {
+                        const response = responseData instanceof Response ? responseData : null;
+                        const rawStatus = response?.headers.get('X-Smtp-Sync-Status');
+                        const rawRevision = response?.headers.get('X-Smtp-Revision');
+                        const parsedRevision = rawRevision && /^\d+$/.test(rawRevision) ? Number(rawRevision) : null;
+                        const revision =
+                            parsedRevision !== null && Number.isSafeInteger(parsedRevision) ? parsedRevision : null;
+                        const status: SmtpSyncStatus =
+                            revision !== null &&
+                            (rawStatus === 'SMTP_SYNC_PENDING' ||
+                                rawStatus === 'APPLIED' ||
+                                rawStatus === 'DISABLED_OR_INCOMPLETE')
+                                ? rawStatus
+                                : 'UNKNOWN';
+                        setSavedSync({ status, revision });
                         const acknowledgedValues = {
                             ...submittedValues,
                             globalSmtpUsername: '',
@@ -194,12 +225,12 @@ export const GlobalSmtpSettingsPage = () => {
                         form.setFieldsValue(acknowledgedValues);
                         setSavedValues(acknowledgedValues);
                         // Testing remains blocked until the saved snapshot has been refreshed.
-                        await refetch();
+                        await Promise.all([refetch(), refetchSync()]);
                     },
                 },
             );
         },
-        [form, mutate, refetch],
+        [form, mutate, refetch, refetchSync],
     );
     const handleSendTestEmail = useCallback(async () => {
         if (isTestBlocked) return;
@@ -378,6 +409,11 @@ export const GlobalSmtpSettingsPage = () => {
                                     </dd>
                                 </div>
                             </dl>
+                        )}
+                        {syncStatus && (
+                            <p className={styles.smtpReadStatus} role="status">
+                                {t(smtpSyncMessageKeys[syncStatus])}
+                            </p>
                         )}
                     </Card>
                 </CardDeck.Item>

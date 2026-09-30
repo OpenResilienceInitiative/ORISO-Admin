@@ -27,7 +27,11 @@ vi.mock('../../api/settings/sendGlobalSmtpTestEmail', () => ({
 }));
 
 import { GlobalSmtpSettingsPage } from './index';
-import { globalSmtpPlatformSettingsEndpoint, serverSettingsAdminEndpoint } from '../../appConfig';
+import {
+    globalSmtpPlatformSettingsEndpoint,
+    serverSettingsAdminEndpoint,
+    smtpSyncStatusEndpoint,
+} from '../../appConfig';
 
 const savedSummary = {
     host: 'smtp.saved.example',
@@ -81,6 +85,120 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         expect(screen.getByLabelText('globalSettings.smtp.host')).toHaveValue(savedSummary.host);
         expect(screen.getByLabelText('globalSettings.smtp.username')).toHaveValue('');
         expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue('');
+    });
+
+    it('shows persisted pending Keycloak synchronization without blocking a platform SMTP test', async () => {
+        mocks.fetchData.mockImplementation(({ url }) =>
+            Promise.resolve(
+                url === globalSmtpPlatformSettingsEndpoint
+                    ? savedSummary
+                    : url === smtpSyncStatusEndpoint
+                    ? { revision: 3, appliedRevision: 2, status: 'SMTP_SYNC_PENDING' }
+                    : {},
+            ),
+        );
+        renderPage();
+
+        expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeEnabled();
+    });
+
+    it('keeps the saved-but-pending notice when a status read still reports the previous revision', async () => {
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 3, appliedRevision: 3, status: 'APPLIED' });
+            if (url === serverSettingsAdminEndpoint)
+                return Promise.resolve(
+                    new Response(null, {
+                        status: 204,
+                        headers: { 'X-Smtp-Sync-Status': 'SMTP_SYNC_PENDING', 'X-Smtp-Revision': '4' },
+                    }),
+                );
+            return Promise.resolve({});
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), 'new-password-fixture');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+        expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeEnabled();
+        expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
+    });
+
+    it('shows applied only when the persisted status confirms the current revision', async () => {
+        mocks.fetchData.mockImplementation(({ url }) =>
+            Promise.resolve(
+                url === globalSmtpPlatformSettingsEndpoint
+                    ? savedSummary
+                    : url === smtpSyncStatusEndpoint
+                    ? { revision: 5, appliedRevision: 5, status: 'APPLIED' }
+                    : {},
+            ),
+        );
+        const page = renderPage();
+        expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
+
+        page.queryClient.setQueryData(['SMTP_SYNC_STATUS'], {
+            revision: 6,
+            appliedRevision: 5,
+            status: 'SMTP_SYNC_PENDING',
+        });
+        expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+        expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
+    });
+
+    it('shows a later pending revision instead of a previous applied save', async () => {
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 3, appliedRevision: 3, status: 'APPLIED' });
+            if (url === serverSettingsAdminEndpoint)
+                return Promise.resolve(
+                    new Response(null, {
+                        status: 204,
+                        headers: { 'X-Smtp-Sync-Status': 'APPLIED', 'X-Smtp-Revision': '4' },
+                    }),
+                );
+            return Promise.resolve({});
+        });
+        const user = userEvent.setup();
+        const page = renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
+
+        page.queryClient.setQueryData(['SMTP_SYNC_STATUS'], {
+            revision: 5,
+            appliedRevision: 4,
+            status: 'SMTP_SYNC_PENDING',
+        });
+        expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+    });
+
+    it('does not claim Keycloak synchronization when a successful save omits its revision header', async () => {
+        mocks.fetchData.mockImplementation(({ url }) =>
+            Promise.resolve(
+                url === globalSmtpPlatformSettingsEndpoint
+                    ? savedSummary
+                    : url === smtpSyncStatusEndpoint
+                    ? { revision: 2, appliedRevision: 2, status: 'APPLIED' }
+                    : new Response(null, { status: 204, headers: { 'X-Smtp-Sync-Status': 'APPLIED' } }),
+            ),
+        );
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText('globalSettings.smtp.sync.applied');
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        expect(await screen.findByText('globalSettings.smtp.sync.unknown')).toBeInTheDocument();
+        expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
     });
 
     it('keeps the independent notification switch editable without sending SMTP fields', async () => {

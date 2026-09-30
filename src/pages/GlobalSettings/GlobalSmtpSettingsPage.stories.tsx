@@ -25,8 +25,10 @@ const SavedSettingsExample = () => {
     return <GlobalSmtpSettingsPage />;
 };
 
-const savedSettingsHandlers = () => {
+const savedSettingsHandlers = (pendingAfterSave = false) => {
     let current = { ...savedSettings };
+    let revision = 1;
+    let appliedRevision = 1;
     return [
         http.get(userUrl, () => HttpResponse.json({ email: 'admin@example.org' })),
         http.get(summaryUrl, () =>
@@ -39,10 +41,25 @@ const savedSettingsHandlers = () => {
                 credentialsPresent: true,
             }),
         ),
+        http.get('*/service/settingsadmin/smtp-sync-status', () =>
+            HttpResponse.json({
+                revision,
+                appliedRevision,
+                status: revision === appliedRevision ? 'APPLIED' : 'SMTP_SYNC_PENDING',
+            }),
+        ),
         http.patch('*/service/settingsadmin', async ({ request }) => {
             const changes = (await request.json()) as Partial<typeof savedSettings>;
             current = { ...current, ...changes };
-            return new HttpResponse(null, { status: 204 });
+            revision += 1;
+            if (!pendingAfterSave) appliedRevision = revision;
+            return new HttpResponse(null, {
+                status: 204,
+                headers: {
+                    'X-Smtp-Sync-Status': pendingAfterSave ? 'SMTP_SYNC_PENDING' : 'APPLIED',
+                    'X-Smtp-Revision': String(revision),
+                },
+            });
         }),
         http.get('*/service/settings', () =>
             HttpResponse.json(
@@ -124,5 +141,26 @@ export const Unavailable: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('alert')).toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Test-E-Mail senden' })).toBeDisabled();
+    },
+};
+
+export const PendingAfterSave: Story = {
+    parameters: { msw: { handlers: savedSettingsHandlers(true) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('smtp.platform.example');
+        await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
+        const host = canvas.getByLabelText(/SMTP Host/i);
+        await userEvent.clear(host);
+        await userEvent.type(host, 'smtp.changed.example');
+        await userEvent.click(canvas.getByRole('button', { name: /Speichern|Save/ }));
+        await expect(
+            await canvas.findByText(
+                /Keycloak mail settings have not been applied yet|Übernahme für Keycloak-E-Mails steht noch aus/,
+            ),
+        ).toBeInTheDocument();
+        await waitFor(() =>
+            expect(canvas.getByRole('button', { name: /Test-E-Mail senden|Send test email/ })).toBeEnabled(),
+        );
     },
 };

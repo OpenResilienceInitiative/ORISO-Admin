@@ -53,6 +53,7 @@ export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin
 export const idAllocationValidationEndpoint = `${userServiceURL}/service/useradmin/id-allocation`;
 export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
 export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
+export const smtpSyncStatusEndpoint = `${serverSettingsAdminEndpoint}/smtp-sync-status`;
 export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;
 export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
 export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
