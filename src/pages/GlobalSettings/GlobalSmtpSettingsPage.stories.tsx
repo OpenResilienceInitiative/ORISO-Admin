@@ -86,6 +86,19 @@ export const Configured: Story = {
         await userEvent.click(canvas.getByRole('button', { name: 'Speichern' }));
         await waitFor(() => expect(testButton).toBeEnabled());
         await expect(canvas.getByText('smtp.changed.example')).toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        const port = canvas.getByRole('spinbutton', { name: 'SMTP Port' });
+        await userEvent.clear(port);
+        await userEvent.type(port, '587');
+        await expect(testButton).toBeEnabled();
+        await userEvent.click(testButton);
+        await expect(
+            await within(canvasElement.ownerDocument.body).findByText(
+                'Test-E-Mail wurde an admin@example.org gesendet.',
+            ),
+        ).toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Abbrechen' }));
+
         const password = canvas.getByLabelText('SMTP Passwort');
         const helpText = canvasElement.ownerDocument.getElementById(password.getAttribute('aria-describedby') || '');
         if (!helpText) throw new Error('The write-only password explanation must be associated with its field.');

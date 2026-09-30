@@ -303,4 +303,36 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
         expect(mocks.sendGlobalSmtpTestEmail).not.toHaveBeenCalled();
     });
+
+    it('tests saved settings without another save when the identical port is retyped', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const port = screen.getByRole('spinbutton', { name: 'globalSettings.smtp.port' });
+        await user.clear(port);
+        await user.type(port, '587');
+        const test = screen.getByRole('button', { name: 'globalSettings.smtp.test.button' });
+        expect(test).toBeEnabled();
+        await user.click(test);
+        await waitFor(() =>
+            expect(mocks.sendGlobalSmtpTestEmail).toHaveBeenCalledWith({ recipientEmail: 'admin@example.org' }),
+        );
+        expect(mocks.fetchData.mock.calls.some(([args]) => args.url === serverSettingsAdminEndpoint)).toBe(false);
+    });
+
+    it('keeps a cleared or genuinely changed port blocked until it is saved', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const port = screen.getByRole('spinbutton', { name: 'globalSettings.smtp.port' });
+        const test = screen.getByRole('button', { name: 'globalSettings.smtp.test.button' });
+        await user.clear(port);
+        expect(test).toBeDisabled();
+        await user.type(port, '588');
+        expect(test).toBeDisabled();
+        await user.click(test);
+        expect(mocks.sendGlobalSmtpTestEmail).not.toHaveBeenCalled();
+    });
 });

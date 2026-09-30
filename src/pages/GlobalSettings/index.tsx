@@ -158,8 +158,18 @@ export const GlobalSmtpSettingsPage = () => {
         }
     }, [form, initialValues]);
     const currentValues = Form.useWatch([], form);
-    const hasUnsavedChanges =
-        currentValues !== undefined && Object.entries(savedValues).some(([key, value]) => currentValues[key] !== value);
+    const hasChangedSavedSettings = useCallback(
+        (values: Record<string, unknown>) =>
+            Object.entries(savedValues).some(([name, savedValue]) => {
+                const currentValue = values[name];
+                // Settings store the port as text; the number field emits a number after editing.
+                return name === 'globalSmtpPort'
+                    ? String(currentValue ?? '') !== String(savedValue ?? '')
+                    : currentValue !== savedValue;
+            }),
+        [savedValues],
+    );
+    const hasUnsavedChanges = currentValues !== undefined && hasChangedSavedSettings(currentValues);
     const isSummaryLoading = isLoading || isFetching;
     const isTestBlocked = hasUnsavedChanges || isPending || isSummaryLoading || isError || !platformSmtp;
     const handleSave = useCallback(
@@ -195,7 +205,7 @@ export const GlobalSmtpSettingsPage = () => {
         if (isTestBlocked) return;
         const { recipientEmail } = await testForm.validateFields();
         // Check the live form too, so async validation cannot test a newly changed draft.
-        if (Object.entries(savedValues).some(([key, value]) => form.getFieldValue(key) !== value)) return;
+        if (hasChangedSavedSettings(form.getFieldsValue(true))) return;
         const cleanedRecipientEmail = (recipientEmail || '').trim();
         if (!cleanedRecipientEmail) {
             message.error(t('globalSettings.smtp.test.errorMissingRecipient'));
@@ -211,7 +221,7 @@ export const GlobalSmtpSettingsPage = () => {
         } finally {
             setIsTestSending(false);
         }
-    }, [form, isTestBlocked, savedValues, t, testForm]);
+    }, [form, hasChangedSavedSettings, isTestBlocked, t, testForm]);
     const renderSwitchLabel = useCallback(
         (titleKey: string, descriptionKey: string) => (
             <span className={styles.switchCopy}>
