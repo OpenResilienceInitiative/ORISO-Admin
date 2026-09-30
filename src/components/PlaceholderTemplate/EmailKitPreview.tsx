@@ -155,6 +155,12 @@ export const EmailKitPreview = ({
         // replace the frame itself. Keep the original mail markup and scrolling
         // while cancelling mouse, keyboard-generated clicks and form actions.
         const doc = ref.current?.contentDocument;
+        doc?.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]').forEach(
+            (control) => {
+                control.setAttribute('aria-disabled', 'true');
+                control.setAttribute('tabindex', '-1');
+            },
+        );
         ['click', 'auxclick', 'submit'].forEach((type) => {
             doc?.addEventListener(type, preventPreviewAction, true);
         });

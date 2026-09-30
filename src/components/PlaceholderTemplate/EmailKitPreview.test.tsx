@@ -48,6 +48,29 @@ afterEach(() => {
 });
 
 describe('EmailKitPreview', () => {
+    it('marks preview links and buttons disabled and skips them in keyboard navigation', async () => {
+        render(<EmailKitPreview body="x" previewLabel="E-Mail-Vorschau" subject="y" />);
+
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        await waitFor(() => expect(frameOf(preview)).toHaveAttribute('srcdoc', expect.stringContaining('RENDERED')));
+        const frame = frameOf(preview)!;
+        const doc = frame.contentDocument!;
+        const link = doc.createElement('a');
+        link.href = 'https://admin.example/tenant-onboarding/SAMPLE';
+        link.textContent = 'Accept invitation';
+        const button = doc.createElement('button');
+        button.textContent = 'Confirm';
+        doc.body.append(link, button);
+        fireEvent.load(frame);
+
+        expect(link).toHaveAttribute('aria-disabled', 'true');
+        expect(button).toHaveAttribute('aria-disabled', 'true');
+        expect(link.tabIndex).toBe(-1);
+        expect(button.tabIndex).toBe(-1);
+        expect(link).toHaveTextContent('Accept invitation');
+        expect(link).toHaveAttribute('href', 'https://admin.example/tenant-onboarding/SAMPLE');
+    });
+
     it.each(['click', 'auxclick', 'submit'])('prevents %s actions inside the preview document', async (type) => {
         render(<EmailKitPreview body="x" previewLabel="E-Mail-Vorschau" subject="y" />);
 
