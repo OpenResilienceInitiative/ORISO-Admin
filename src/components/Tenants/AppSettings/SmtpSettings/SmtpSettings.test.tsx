@@ -138,6 +138,45 @@ describe('SmtpSettings (write-only password, #730)', () => {
         expect(JSON.stringify(sent.settings)).not.toContain('global-user');
     });
 
+    it.each([0, 65536])('can select PLATFORM and save with a retained invalid OWN port of %i', async (port) => {
+        mocks.tenantData.settings.smtp.port = port;
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const portField = screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' });
+        expect(portField).toHaveValue(port);
+        fireEvent.click(screen.getByRole('radio', { name: 'tenants.appSettings.smtp.platformMode' }));
+        expect(portField).toBeDisabled();
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0].settings).toMatchObject({
+            smtpMode: 'PLATFORM',
+            smtp: { enabled: false, emailThemeColor: '#0f3b8f' },
+        });
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toEqual({
+            enabled: false,
+            emailThemeColor: '#0f3b8f',
+        });
+        expect(screen.queryByText('tenants.appSettings.smtp.port.invalid')).not.toBeInTheDocument();
+    });
+
+    it.each([0, 65536])('still rejects an OWN port of %i without sending a save', async (port) => {
+        mocks.tenantData.settings.smtp.port = port;
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const portField = screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' });
+        expect(portField).not.toBeDisabled();
+        expect(portField).toBeInvalid();
+        // Exercise registered Form rules as well as the native number constraint.
+        // A normal button click already stops at native min/max validation.
+        fireEvent.submit(portField.closest('form')!);
+
+        expect(await screen.findByText('tenants.appSettings.smtp.ownServerIncomplete')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
     it('refuses to save an incomplete own-server configuration', async () => {
         mocks.tenantData.settings.smtp = { enabled: true, host: 'smtp.tenant.org', passwordSet: false };
         renderCard();
