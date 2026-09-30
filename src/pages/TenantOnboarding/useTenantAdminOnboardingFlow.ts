@@ -14,7 +14,8 @@ import { TwoFactorCodeInvalidError } from '../../api/tenantOnboarding/TwoFactorC
  * not re-issue the setup material — the step then renders verify-only.
  */
 export interface TwoFactorStepData {
-    tenantId: number;
+    /** Unknown when a resumed invite names no Träger. */
+    tenantId?: number;
     twoFactor: { secret: string; qrCodeBase64: string | null } | null;
     /** True when the step was entered by resuming a consumed-but-2FA-pending link. */
     resumed: boolean;
@@ -43,7 +44,7 @@ export type TenantAdminOnboardingState =
     | { phase: 'organisation' }
     | { phase: 'account' }
     | { phase: 'two-factor'; result: TwoFactorStepData }
-    | { phase: 'done'; tenantId: number };
+    | { phase: 'done'; tenantId?: number };
 
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type TenantAdminOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
@@ -76,6 +77,10 @@ const NO_OWN_CONSENT_DPA: DpaAcceptanceData = {
     signerEmail: '',
     signerOrganisation: '',
 };
+
+/** The Träger the invite is about: the joined one or the reserved new one. */
+const invitedTenantId = (invite: TenantAdminOnboardingInviteDTO): number | undefined =>
+    (invite.joinsExistingTenant ? invite.tenantId : invite.reservedTenantId) ?? invite.tenantId;
 
 export const useTenantAdminOnboardingFlow = (inviteToken: string, client: TenantAdminOnboardingClient) => {
     const [state, setState] = useState<TenantAdminOnboardingState>({ phase: 'loading' });
@@ -117,11 +122,21 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     setState({
                         phase: 'two-factor',
                         result: {
-                            tenantId: loaded.reservedTenantId,
+                            tenantId: invitedTenantId(loaded),
                             twoFactor: loaded.twoFactor ?? null,
                             resumed: true,
                         },
                     });
+                    return;
+                }
+                // Joining an existing Träger skips organisation and DPA.
+                if (loaded.joinsExistingTenant) {
+                    setState({ phase: 'account' });
+                    return;
+                }
+                // A new Träger is registered against its reservation; without it the link cannot work.
+                if (loaded.reservedTenantId == null || !loaded.tenantIdReservationToken) {
+                    setState({ phase: 'link-error', reason: 'INVALID' });
                     return;
                 }
                 // The forward/confirmation lives on the invite, not in this tab (#1065).
@@ -192,12 +207,12 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     );
 
     const goBackToOrganisation = useCallback(() => {
-        if (stateRef.current.phase !== 'account' || busyRef.current) {
+        if (stateRef.current.phase !== 'account' || busyRef.current || invite?.joinsExistingTenant) {
             return;
         }
         setSubmitError(null);
         setState({ phase: 'organisation' });
-    }, []);
+    }, [invite]);
 
     const failFlow = (error: unknown, retryable: Exclude<TenantAdminOnboardingSubmitError, null>) => {
         if (error instanceof InviteLinkError) {
@@ -209,33 +224,40 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
 
     const submitAccount = useCallback(
         async (password: string) => {
-            if (
-                stateRef.current.phase !== 'account' ||
-                busyRef.current ||
-                !invite ||
-                !organisation ||
-                (!dpa && !dpaForward && !dpaConfirmed)
-            ) {
+            if (stateRef.current.phase !== 'account' || busyRef.current || !invite) {
+                return;
+            }
+            const joins = invite.joinsExistingTenant === true;
+            if (!joins && (!organisation || (!dpa && !dpaForward && !dpaConfirmed))) {
                 return;
             }
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
-                const result = await client.registerTenantAdmin(inviteToken, {
-                    organisation,
-                    // Unchanged request shape (#723 contract): the forwarded
-                    // case simply sends `accepted: false` with no signer
-                    // identity — the server authorises that against its own
-                    // record of the forward or the confirmation.
-                    dpa: dpa ?? NO_OWN_CONSENT_DPA,
-                    account: { password },
-                    reservedTenantId: invite.reservedTenantId,
-                    tenantIdReservationToken: invite.tenantIdReservationToken,
-                });
+                const result = await client.registerTenantAdmin(
+                    inviteToken,
+                    joins
+                        ? // The Träger, its organisation data and its DPA exist already.
+                          { account: { password } }
+                        : {
+                              organisation: organisation as OrganisationData,
+                              // No own consent act (forwarded or already confirmed): `accepted: false`
+                              // without a signer; the server checks its own record (#723, #1065).
+                              dpa: dpa ?? NO_OWN_CONSENT_DPA,
+                              account: { password },
+                              // Checked on load: a new-Träger invite without both is a link error.
+                              reservedTenantId: invite.reservedTenantId as number,
+                              tenantIdReservationToken: invite.tenantIdReservationToken as string,
+                          },
+                );
                 setState({
                     phase: 'two-factor',
-                    result: { tenantId: result.tenantId, twoFactor: result.twoFactor, resumed: false },
+                    result: {
+                        tenantId: result.tenantId ?? invitedTenantId(invite),
+                        twoFactor: result.twoFactor,
+                        resumed: false,
+                    },
                 });
             } catch (error) {
                 failFlow(error, 'registration');

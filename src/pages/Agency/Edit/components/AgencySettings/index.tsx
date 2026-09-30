@@ -16,6 +16,7 @@ import { ReleaseToggle } from '../../../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../../../hooks/useReleasesToggle.hook';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { searchTenantData } from '../../../../../api/tenant/searchTenantData';
+import { TOPIC_PERMISSION_LABEL_KEYS, TOPIC_PERMISSIONS } from '../../../../Links/inviteModel';
 
 interface AgencySettingsProps {
     isEditMode: boolean;
@@ -97,6 +98,19 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                     allowClear
                     placeholder="plsSelect"
                     options={convertToOptions(topics, 'name', 'id')}
+                />
+            )}
+
+            {isEditMode && (
+                // Only offered once the agency exists: new agencies start with NONE, existing ones read CREATE.
+                <MuiSelectField
+                    label="agency.form.settings.counsellorTopicPermission.title"
+                    help="agency.form.settings.counsellorTopicPermission.help"
+                    name={['settings', 'counsellorTopicPermission']}
+                    options={TOPIC_PERMISSIONS.map((value) => ({
+                        value,
+                        label: t(...TOPIC_PERMISSION_LABEL_KEYS[value].title),
+                    }))}
                 />
             )}
 
