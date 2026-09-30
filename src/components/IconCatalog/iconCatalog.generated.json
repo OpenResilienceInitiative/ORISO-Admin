@@ -2054,6 +2054,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:oriso:snackbar-close:base",
+        "family": "snackbar-close",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "snackbar_close_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/snackbar_close_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/FormPluginEditor/EditorHintSnackbar.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:switch-off:400",
         "family": "switch-off",
         "state": "400",
@@ -2929,6 +2942,7 @@
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
             "src/components/CustomIcons/EditorIcons.tsx",
             "src/components/CustomIcons/LegalIcons.tsx",
+            "src/components/FormPluginEditor/EditorHintSnackbar.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",

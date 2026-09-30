@@ -42,8 +42,10 @@ import {
     Fingerprint,
     TextFields,
     LocalOffer,
+    CompareArrows,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import DOMPurify from 'dompurify';
 import type { MenuProps } from 'antd';
 import { ResolvingImage } from './createResolvingImage';
 import {
@@ -62,6 +64,8 @@ import { ensureHeadingAnchorIds, HeadingAnchors } from './headingAnchors';
 import { TrailingParagraph } from './trailingParagraph';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
+import { EditorHintSnackbar } from './EditorHintSnackbar';
+import { EditorSnackbarQueue, editorSnackbarItems } from './EditorSnackbarQueue';
 import AnchorChips from './AnchorChips';
 import { useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
@@ -198,6 +202,16 @@ export type M3RichTextEditorProps = {
      * deliberately kept in the document flow so it never obscures legal text.
      */
     snackbarSlot?: React.ReactNode;
+    /** A read-only reference beside this editor's one editable text surface. */
+    comparison?: {
+        title: string;
+        html: string;
+        language?: string;
+        detail?: React.ReactNode;
+        actions?: React.ReactNode;
+        open?: boolean;
+        onOpenChange?: (open: boolean) => void;
+    };
     /**
      * Split button in the bottom function bar between language and topic — the
      * chooser for a template the document's consent sentence is loaded from
@@ -808,6 +822,7 @@ export const M3RichTextEditor = ({
     publishTemplateDisabledReason,
     helpSlot,
     snackbarSlot,
+    comparison,
     aboveEditorSlot,
     textTokens,
     editorSlot,
@@ -830,6 +845,17 @@ export const M3RichTextEditor = ({
     const publishTemplateReasonId = useId();
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    const [templateMaximized, setTemplateMaximized] = useState(false);
+    const [localComparisonOpen, setLocalComparisonOpen] = useState(false);
+    const comparisonOpen = comparison?.open ?? localComparisonOpen;
+    const setComparisonOpen = (open: boolean) => {
+        setLocalComparisonOpen(open);
+        if (!open) setTemplateMaximized(false);
+        comparison?.onOpenChange?.(open);
+    };
+    useEffect(() => {
+        if (!comparisonOpen) setTemplateMaximized(false);
+    }, [comparisonOpen]);
     const [editing, setEditing] = useState(dirty === true);
     const [localDirty, setLocalDirty] = useState(false);
     const [savingLocal, setSavingLocal] = useState(false);
@@ -862,6 +888,32 @@ export const M3RichTextEditor = ({
         onViewVersionChange?.(versionId);
     };
     const viewingVersion = versions.find((v) => v.id === viewingVersionId) ?? null;
+    const versionSnackbar = viewingVersion ? (
+        <EditorHintSnackbar
+            layout="long"
+            text={`${t('legal.m3Editor.viewingVersion')}: ${viewingVersion.label}`}
+            onClose={() => viewVersion(null)}
+            closeLabel={t('legal.m3Editor.closeVersionView')}
+            onDismiss={() => viewVersion(null)}
+            actionLabel={t('legal.m3Editor.backToDraft')}
+            secondaryAction={
+                !readOnly && onRestoreVersion && viewingVersion.restorable !== false
+                    ? {
+                          label: t('legal.m3Editor.restoreVersion'),
+                          onClick: () => {
+                              onRestoreVersion(viewingVersion.content);
+                              viewVersion(null);
+                          },
+                      }
+                    : undefined
+            }
+        />
+    ) : null;
+    const noticeItems = [
+        versionSnackbar && { key: `viewing-version:${viewingVersionId}`, node: versionSnackbar },
+        ...editorSnackbarItems(snackbarSlot, 'editor-hint'),
+    ];
+    const editorNotices = noticeItems.some(Boolean) ? <EditorSnackbarQueue items={noticeItems} /> : null;
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
     // Editable only when not read-only AND not looking at an old version.
@@ -880,6 +932,8 @@ export const M3RichTextEditor = ({
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
     const editorRef = useRef<Editor | null>(null);
+    const syncingContentRef = useRef(false);
+    const syncedVersionIdRef = useRef(viewingVersionId);
     const imageUpload = useEditorImageUpload(() => editorRef.current);
     const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
     uploadAndInsertRef.current = imageUpload.uploadAndInsert;
@@ -914,7 +968,7 @@ export const M3RichTextEditor = ({
             }),
         },
         onUpdate: ({ editor: e }) => {
-            if (e.isEditable) {
+            if (e.isEditable && !syncingContentRef.current) {
                 if (dirty === undefined && onSaveDraft) setLocalDirty(true);
                 onChange?.(e.isEmpty ? '' : e.getHTML());
             }
@@ -924,10 +978,6 @@ export const M3RichTextEditor = ({
     useEffect(() => {
         editorRef.current = editor;
     }, [editor]);
-
-    useEffect(() => {
-        editor?.setEditable(editorEditable);
-    }, [editor, editorEditable]);
 
     // If the viewed version disappears from `versions` (the list changed), drop
     // back to the editable draft rather than leaving a stale id selected.
@@ -984,9 +1034,20 @@ export const M3RichTextEditor = ({
         const incoming = editorContent || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
-            editor.commands.setContent(incoming, false);
+            // A published version is a read-only look-back. Sync it and the
+            // retained draft while edits are disabled, so neither transition
+            // can publish the viewed HTML through the controlled onChange.
+            syncingContentRef.current = true;
+            try {
+                if (syncedVersionIdRef.current !== viewingVersionId || !editorEditable) editor.setEditable(false);
+                editor.commands.setContent(incoming, false);
+            } finally {
+                syncingContentRef.current = false;
+            }
         }
-    }, [editorContent, editor]);
+        editor.setEditable(editorEditable);
+        syncedVersionIdRef.current = viewingVersionId;
+    }, [editorContent, editor, editorEditable, viewingVersionId]);
 
     const functionBarRef = useRef<HTMLDivElement>(null);
     const [footerScroll, setFooterScroll] = useState({ left: false, right: false });
@@ -1011,7 +1072,7 @@ export const M3RichTextEditor = ({
             window.removeEventListener('resize', update);
             observer?.disconnect();
         };
-    }, [versions.length, versionSections]);
+    }, [versions.length, versionSections, comparison]);
     const scrollFooter = (direction: -1 | 1) =>
         functionBarRef.current?.scrollBy({
             left: direction * functionBarRef.current.clientWidth * 0.7,
@@ -1180,9 +1241,9 @@ export const M3RichTextEditor = ({
 
     const card = (
         <div
-            className={`${styles.module} ${maximized ? styles.inDialog : ''} ${readMode ? styles.readMode : ''} ${
-                fluid ? styles.fluid : ''
-            }`}
+            className={`${styles.module} ${comparisonOpen && comparison ? styles.moduleComparing : ''} ${
+                maximized ? styles.inDialog : ''
+            } ${readMode ? styles.readMode : ''} ${fluid ? styles.fluid : ''}`}
             data-testid="m3-editor"
         >
             {!hideHeader && (
@@ -1219,40 +1280,53 @@ export const M3RichTextEditor = ({
                 <div className={styles.toolbar}>{maximizeButton}</div>
             )}
 
-            {viewingVersion && (
-                <div className={styles.versionBanner} role="status">
-                    <span>
-                        {t('legal.m3Editor.viewingVersion')}: {viewingVersion.label}
-                    </span>
-                    <div className={styles.versionBannerActions}>
-                        {!readOnly && onRestoreVersion && viewingVersion.restorable !== false && (
-                            <button
-                                type="button"
-                                className={styles.outlineBtn}
-                                onClick={() => {
-                                    onRestoreVersion(viewingVersion.content);
-                                    viewVersion(null);
-                                }}
-                            >
-                                {t('legal.m3Editor.restoreVersion')}
-                            </button>
-                        )}
-                        <button type="button" className={styles.outlineBtn} onClick={() => viewVersion(null)}>
-                            {t('legal.m3Editor.backToDraft')}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 
-            <div className={`${styles.editorRegion} ${anchorsEnabled && anchors.length > 0 ? styles.hasAnchors : ''}`}>
+            <div
+                className={`${styles.editorRegion} ${anchorsEnabled && anchors.length > 0 ? styles.hasAnchors : ''} ${
+                    comparisonOpen && comparison ? styles.comparisonOpen : ''
+                }`}
+            >
+                {comparisonOpen && comparison && (
+                    <aside className={styles.comparisonReference} aria-label={comparison.title}>
+                        <div className={styles.comparisonHeading}>
+                            <strong>{comparison.title}</strong>
+                            <button
+                                type="button"
+                                onClick={() => setComparisonOpen(false)}
+                                aria-label={t('legal.m3Editor.closeComparison')}
+                            >
+                                <Close fontSize="small" />
+                            </button>
+                        </div>
+                        {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
+                        <div
+                            className={styles.comparisonDocument}
+                            lang={comparison.language}
+                            // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
+                        />
+                        <div className={styles.comparisonFooter}>
+                            <button
+                                type="button"
+                                className={styles.templateMaximize}
+                                onClick={() => setTemplateMaximized(true)}
+                                title={t('legal.m3Editor.maximizeTemplate')}
+                                aria-label={t('legal.m3Editor.maximizeTemplate')}
+                                aria-haspopup="dialog"
+                            >
+                                <MaximizeContentIcon />
+                            </button>
+                            {comparison.actions && <div className={styles.comparisonActions}>{comparison.actions}</div>}
+                        </div>
+                    </aside>
+                )}
                 {editorSlot ? (
                     <div className={styles.contentInset}>{editorSlot}</div>
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
                         <div
-                            className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}
+                            className={`${styles.editor} ${editorNotices ? styles.hasSnackbar : ''}`}
                             data-testid="m3-editor-surface"
                         >
                             {/* Reading mode: the text viewport is the named
@@ -1280,7 +1354,7 @@ export const M3RichTextEditor = ({
                             </div>
                             {/* Blocker snackbar floats OVER the text area (Figma 1229-17864),
                                 anchored above the chapter chips. */}
-                            {snackbarSlot}
+                            {editorNotices}
                             {/* Anchor chips live at the bottom of the text surface, with
                                 overflow nav arrows (Figma 1261-48667 / 1280-73048). */}
                             {anchorsEnabled && (
@@ -1347,7 +1421,12 @@ export const M3RichTextEditor = ({
                 language, consent template (slot), topic/department (slot),
                 version history. Every one of them can be the only occupant, so
                 each has to hold the bar open on its own. */}
-            {(languageControl || consentSlot || topicSlot || showVersionControl || historyUnavailable) && (
+            {(languageControl ||
+                consentSlot ||
+                topicSlot ||
+                showVersionControl ||
+                historyUnavailable ||
+                comparison) && (
                 <div className={styles.functionBarShell}>
                     <div ref={functionBarRef} className={styles.functionBar} data-testid="m3-editor-function-bar">
                         {languageControl}
@@ -1422,6 +1501,21 @@ export const M3RichTextEditor = ({
                                     },
                                 }}
                             />
+                        )}
+                        {comparison && (
+                            <button
+                                type="button"
+                                className={styles.comparisonToggle}
+                                aria-pressed={comparisonOpen}
+                                onClick={() => setComparisonOpen(!comparisonOpen)}
+                            >
+                                <CompareArrows fontSize="small" />
+                                {t(
+                                    comparisonOpen
+                                        ? 'legal.m3Editor.closeComparison'
+                                        : 'legal.m3Editor.compareTemplate',
+                                )}
+                            </button>
                         )}
                     </div>
                     {footerScroll.left && (
@@ -1553,43 +1647,99 @@ export const M3RichTextEditor = ({
         </div>
     );
 
+    // Reuse the editor's modal layer, without mounting another editable editor
+    // or expanding the compact reference inside the comparison.
+    const templateDialog = comparisonOpen && comparison && (
+        <Modal
+            open={templateMaximized}
+            closable={false}
+            footer={null}
+            centered
+            width="min(1512px, calc(100vw - 96px))"
+            className={styles.dialogModal}
+            title={<span className={styles.templateDialogLabel}>{comparison.title}</span>}
+            zIndex={EDITOR_FULLSCREEN_Z_INDEX + 1}
+            onCancel={() => setTemplateMaximized(false)}
+            styles={{
+                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                header: { margin: 0, background: 'transparent' },
+            }}
+        >
+            <div className={styles.templateDialog}>
+                <div className={styles.templateDialogHeader}>
+                    <div>
+                        <h2>{comparison.title}</h2>
+                        {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
+                    </div>
+                    <button
+                        type="button"
+                        className={styles.templateDialogClose}
+                        aria-label={t('legal.m3Editor.closeDialog')}
+                        onClick={() => setTemplateMaximized(false)}
+                    >
+                        <Close />
+                    </button>
+                </div>
+                <div
+                    className={`${styles.comparisonDocument} ${styles.templateDialogDocument}`}
+                    role="region"
+                    aria-label={comparison.title}
+                    lang={comparison.language}
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the full scrollable template
+                    tabIndex={0}
+                    // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
+                />
+            </div>
+        </Modal>
+    );
+
     // Fullscreen mode is a real modal dialog (Figma 1007-27636): white 80%
     // scrim with backdrop blur, centered card, round close button beside the
     // top right corner. antd Modal provides focus trap + Escape handling.
     if (maximized) {
         return (
-            <Modal
-                open
-                closable={false}
-                footer={null}
-                centered
-                width="min(1512px, calc(100vw - 96px))"
-                className={styles.dialogModal}
-                // Above every application overlay — see EDITOR_FULLSCREEN_Z_INDEX.
-                zIndex={EDITOR_FULLSCREEN_Z_INDEX}
-                onCancel={() => setMaximized(false)}
-                styles={{
-                    mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
-                    content: { padding: 0, background: 'transparent', boxShadow: 'none' },
-                }}
-                aria-label={title}
-            >
-                <div className={styles.dialogLayout}>
-                    {card}
-                    <button
-                        type="button"
-                        className={styles.dialogClose}
-                        aria-label={t('legal.m3Editor.closeDialog')}
-                        onClick={() => setMaximized(false)}
-                    >
-                        <Close />
-                    </button>
-                </div>
-            </Modal>
+            <>
+                <Modal
+                    open
+                    closable={false}
+                    footer={null}
+                    centered
+                    width="min(1512px, calc(100vw - 96px))"
+                    className={styles.dialogModal}
+                    // Above every application overlay — see EDITOR_FULLSCREEN_Z_INDEX.
+                    zIndex={EDITOR_FULLSCREEN_Z_INDEX}
+                    onCancel={() => setMaximized(false)}
+                    styles={{
+                        mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                        content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                    }}
+                    aria-label={title}
+                >
+                    <div className={styles.dialogLayout}>
+                        {card}
+                        <button
+                            type="button"
+                            className={styles.dialogClose}
+                            aria-label={t('legal.m3Editor.closeDialog')}
+                            onClick={() => setMaximized(false)}
+                        >
+                            <Close />
+                        </button>
+                    </div>
+                </Modal>
+                {templateDialog}
+            </>
         );
     }
 
-    return card;
+    return (
+        <>
+            {card}
+            {templateDialog}
+        </>
+    );
 };
 
 export default M3RichTextEditor;

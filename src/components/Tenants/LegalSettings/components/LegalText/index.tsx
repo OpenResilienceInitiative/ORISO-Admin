@@ -1,5 +1,5 @@
 import set from 'lodash.set';
-import { Alert, notification, Spin, Tag } from 'antd';
+import { notification, Spin, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalProps } from '../../../../Modal';
@@ -185,6 +185,8 @@ export const LegalText = ({
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [draftSource, setDraftSource] = useState<'local' | 'server'>();
     const [draftActionPending, setDraftActionPending] = useState(false);
+    const [editorError, setEditorError] = useState<string>();
+    const [historyNoticeClosed, setHistoryNoticeClosed] = useState(false);
     // What the admin is preparing: a template for the level below, the live text, or —
     // until they say so in the version menu — either. Decides which publish action the
     // footer offers.
@@ -226,6 +228,8 @@ export const LegalText = ({
         setModalVisible(false);
         setDraftSource(undefined);
         setDraftActionPending(false);
+        setEditorError(undefined);
+        setHistoryNoticeClosed(false);
         setActiveLanguage('de');
         setPublishIntentState(undefined);
         resetViewedVersion();
@@ -252,6 +256,8 @@ export const LegalText = ({
     const { draft, savedAt, discardDraft } = useLegalDraft(
         legalType ?? 'privacy',
         legalType ? dismissalScope : undefined,
+        undefined,
+        setEditorError,
     );
     const serverDraft = useTenantLegalDraft(
         draftTenantId ?? tenantId,
@@ -430,7 +436,7 @@ export const LegalText = ({
             }
         } catch {
             if (editorIdentityRef.current === operationIdentity) {
-                notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.discardError'));
             }
         } finally {
             if (editorIdentityRef.current === operationIdentity) setDraftActionPending(false);
@@ -462,7 +468,7 @@ export const LegalText = ({
             } catch {
                 // Publication succeeded. Keep any concurrently-created newer draft and
                 // let the conflict notice offer the explicit reload/keep-editing choice.
-                notification.warning({ message: t('legal.serverDraft.cleanupError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.cleanupError'));
             }
         },
         [discardDraft, serverDraft, t, updateTenantAsync],
@@ -500,6 +506,7 @@ export const LegalText = ({
     // (where asked): dismissing that question must leave nothing saved and nothing published.
     const publishNow = useCallback(
         async (confirmPrivacy?: boolean) => {
+            setEditorError(undefined);
             const operationIdentity = editorIdentity;
             const basis = data;
             setDraftActionPending(true);
@@ -507,7 +514,7 @@ export const LegalText = ({
             try {
                 saved = await saveCurrentDraft({ announce: false });
             } catch {
-                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.saveError'));
                 setDraftActionPending(false);
                 return;
             }
@@ -534,7 +541,7 @@ export const LegalText = ({
                     notification.success({ message: t('legal.published.toast'), duration: 4 });
                 }
             } catch {
-                notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.publishError'));
             } finally {
                 if (editorIdentityRef.current === operationIdentity) setDraftActionPending(false);
             }
@@ -577,10 +584,11 @@ export const LegalText = ({
     // The consent map travels with the draft: storing only the body while reporting
     // a successful save would silently drop the consent wording on the next reload.
     const onSaveDraft = useCallback(async () => {
+        setEditorError(undefined);
         setDraftActionPending(true);
         await saveCurrentDraft()
             .catch(() => {
-                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.saveError'));
             })
             .finally(() => {
                 if (editorIdentityRef.current === editorIdentity) setDraftActionPending(false);
@@ -677,7 +685,7 @@ export const LegalText = ({
             try {
                 await saveCurrentDraft();
             } catch {
-                notification.error({ message: t('legal.serverDraft.saveError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.saveError'));
                 return;
             } finally {
                 setDraftActionPending(false);
@@ -709,10 +717,7 @@ export const LegalText = ({
             }
         } catch (error) {
             const conflict = error instanceof Error && error.message === 'CONFLICT';
-            notification.error({
-                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'),
-                duration: 8,
-            });
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'));
             // A draft appeared elsewhere meanwhile: re-read it, the next attempt then asks to replace it.
             if (conflict && mode === 'CREATE_IF_EMPTY' && editorIdentityRef.current === operationIdentity) {
                 await serverDraft.retry();
@@ -731,10 +736,7 @@ export const LegalText = ({
             notification.success({ message: t('legal.proposal.dismissed'), duration: 4 });
         } catch (error) {
             const conflict = error instanceof Error && error.message === 'CONFLICT';
-            notification.error({
-                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'),
-                duration: 8,
-            });
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'));
         }
     };
 
@@ -936,11 +938,41 @@ export const LegalText = ({
                     // Only hand over a slot when a message is actually showing: the editor reserves
                     // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                     snackbarSlot={
-                        ((blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
+                        (editorError ||
+                            (versionsUnavailable && !historyNoticeClosed) ||
+                            (blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
                             showDraftSnackbar ||
                             showHintSnackbar) && (
                             <EditorSnackbarQueue
                                 items={[
+                                    editorError && {
+                                        key: `editor-error:${editorError}`,
+                                        node: (
+                                            <EditorHintSnackbar
+                                                tone="error"
+                                                text={editorError}
+                                                onClose={() => setEditorError(undefined)}
+                                            />
+                                        ),
+                                    },
+                                    versionsUnavailable &&
+                                        !historyNoticeClosed && {
+                                            key: 'versions-unavailable',
+                                            node: (
+                                                <span data-testid="legal-versions-unavailable">
+                                                    <EditorHintSnackbar
+                                                        tone="error"
+                                                        text={
+                                                            <>
+                                                                <strong>{t('legal.versions.unavailable.title')}</strong>{' '}
+                                                                {t('legal.versions.unavailable.description')}
+                                                            </>
+                                                        }
+                                                        onClose={() => setHistoryNoticeClosed(true)}
+                                                    />
+                                                </span>
+                                            ),
+                                        },
                                     // A blocking error outranks the draft notice and the help hint.
                                     blockedLanguages.length > 0 &&
                                         consentBlockedClosed !== blockedLanguageNames && {
@@ -972,6 +1004,7 @@ export const LegalText = ({
                                         key: 'help-hint',
                                         node: (
                                             <EditorHintSnackbar
+                                                layout="long"
                                                 text={help.hint}
                                                 onClose={() => {
                                                     if (legalType && dismissalScope)
@@ -1050,18 +1083,6 @@ export const LegalText = ({
                     draftRevision={savedServerDraft.revision}
                     draftSavedAt={savedServerDraft.updatedAt}
                     onClose={() => setTemplateDialogOpen(false)}
-                />
-            )}
-            {/* A history that failed to load is not an empty history. Saying "no
-                version published yet" for a 403 or a 500 would be a false answer to
-                the exact question the look-back exists for. Editing stays possible. */}
-            {versionsUnavailable && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    data-testid="legal-versions-unavailable"
-                    message={t('legal.versions.unavailable.title')}
-                    description={t('legal.versions.unavailable.description')}
                 />
             )}
             {/* Shown while ANY authored language is affected, not only after a failed

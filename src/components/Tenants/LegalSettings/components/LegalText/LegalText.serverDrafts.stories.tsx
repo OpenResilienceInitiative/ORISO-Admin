@@ -204,26 +204,30 @@ export const ConflictRefresh: Story = {
     },
 };
 
-/**
- * One snackbar at a time (M3). The saved-draft status comes first; closing it lets the
- * help hint for the published imprint flip in — they never stack on top of each other.
- */
-export const DraftSnackbarGivesWayToHelpHint: Story = {
+/** Saved-draft status and help stay visible together; closing either preserves the other and the draft. */
+export const DraftAndHelpSnackbarsStack: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const draftSnackbar = await canvas.findByTestId('legal-draft-snackbar');
-        // Count snackbar roots only (CSS-module class `_hintSnackbar_…`), not their inner parts.
-        const snackbarRoots = () =>
-            [...canvasElement.querySelectorAll('div')].filter((element) =>
-                [...element.classList].some((name) => /^_?hintSnackbar_/.test(name)),
-            );
-        await expect(snackbarRoots()).toHaveLength(1);
+        const stack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
+        const helpAction = within(stack).getByRole('button', { name: 'Nicht mehr anzeigen' });
+        await expect(within(stack).getAllByRole('status')).toHaveLength(2);
+        await expect(helpAction).toBeVisible();
 
         await userEvent.click(within(draftSnackbar).getByRole('button', { name: 'Hinweis schließen' }));
 
         await waitFor(() => expect(canvas.queryByTestId('legal-draft-snackbar')).not.toBeInTheDocument());
-        await waitFor(() => expect(canvas.getByRole('button', { name: 'Nicht mehr anzeigen' })).toBeVisible());
-        await expect(snackbarRoots()).toHaveLength(1);
+        await expect(helpAction).toBeVisible();
+        await expect(within(stack).getAllByRole('status')).toHaveLength(1);
+        await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
+
+        await userEvent.click(within(stack).getByRole('button', { name: 'Hinweis ausblenden' }));
+        await waitFor(() =>
+            expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument(),
+        );
+        await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
     },
 };

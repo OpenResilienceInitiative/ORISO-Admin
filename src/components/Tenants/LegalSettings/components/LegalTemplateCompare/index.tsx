@@ -1,8 +1,13 @@
-import { ReactNode, useId, useMemo, useState } from 'react';
-import classNames from 'classnames';
+import { cloneElement, ReactElement, useMemo, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { useTranslation } from 'react-i18next';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import {
+    EditorSnackbarQueue,
+    EditorSnackbarQueueItem,
+    editorSnackbarItems,
+} from '../../../../FormPluginEditor/EditorSnackbarQueue';
+import type { M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { DpaLegalReader } from '../../../../DpaLegalForm/DpaLegalReader';
 import { M3Button } from '../../../../M3Button';
 import { Modal } from '../../../../Modal';
@@ -10,6 +15,8 @@ import type { LegalProposalAdoptionMode } from '../../../../../api/tenant/legalP
 import type { LegalTemplateArchive, LegalTemplateProposal } from '../../hooks/useLegalProposalInbox';
 import { formatLegalDateTime } from '../../utils/legalDateTime';
 import styles from './styles.module.scss';
+
+type ComparisonHostProps = Pick<M3RichTextEditorProps, 'comparison' | 'snackbarSlot'>;
 
 export interface LegalTemplateCompareProps {
     /** The newest adoptable template; absent = nothing to compare. */
@@ -29,7 +36,7 @@ export interface LegalTemplateCompareProps {
     onAdopt: (mode: LegalProposalAdoptionMode) => Promise<void> | void;
     onDismiss: () => Promise<void> | void;
     /** The own draft — the normal editor, unchanged. */
-    children: ReactNode;
+    children: ReactElement<ComparisonHostProps>;
 }
 
 const pickLanguage = (content: Record<string, string>, language: string) => {
@@ -60,17 +67,14 @@ export const LegalTemplateCompare = ({
 }: LegalTemplateCompareProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
-    const paneId = useId();
     const [openedId, setOpenedId] = useState<number>();
     const [closedId, setClosedId] = useState<number>();
-    const [collapsed, setCollapsed] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [pending, setPending] = useState<'adopt' | 'dismiss'>();
     const [archivesOpen, setArchivesOpen] = useState(false);
     const [archiveId, setArchiveId] = useState<number>();
 
     const isNew = proposal?.status === 'PENDING';
-    const open = !!proposal && ((isNew && closedId !== proposal.id) || openedId === proposal.id);
     const shown = useMemo(() => pickLanguage(proposal?.content ?? {}, language), [proposal?.content, language]);
     const safeHtml = useMemo(() => DOMPurify.sanitize(shown.html ?? ''), [shown.html]);
     const sourceLabel = t(`legal.proposal.source.${source}`);
@@ -135,140 +139,113 @@ export const LegalTemplateCompare = ({
         </Modal>
     );
 
-    if (!open) {
-        return (
-            <>
-                {(proposal || archives.length > 0) && (
-                    <div className={styles.bar}>
-                        {proposal && (
-                            <M3Button variant="text" onClick={() => setOpenedId(proposal.id)}>
-                                {t('legal.proposal.show')}
+    const impact = proposal?.departmentImpact;
+    // The editor owns the comparison layout. Add one read-only reference and one
+    // editor-local notice to either the tenant editor or the agency card that
+    // forwards these two props; neither route creates another editor instance.
+    if (proposal) {
+        const host = children;
+        const originalSlot = host.props.snackbarSlot;
+        const originalItems = editorSnackbarItems(originalSlot, 'existing-editor-notice');
+        const showNotice = isNew && closedId !== proposal.id && openedId !== proposal.id;
+        const notice: EditorSnackbarQueueItem | false = showNotice && {
+            key: `template:${source}:${proposal.id}`,
+            node: (
+                <EditorHintSnackbar
+                    layout="long"
+                    text={
+                        <>
+                            <strong>{t('legal.proposal.new')}</strong> · {sourceLabel}. {t('legal.proposal.sentAt')}{' '}
+                            {formatLegalDateTime(proposal.createdAt, locale)}. {t('legal.proposal.noticeDraftSafe')}
+                        </>
+                    }
+                    onClose={() => setClosedId(proposal.id)}
+                    onDismiss={readOnly ? undefined : () => run('dismiss', onDismiss)}
+                    actionDisabled={!!pending}
+                    actionLabel={readOnly ? undefined : t('legal.help.snackbar.dismiss')}
+                    secondaryAction={{ label: t('legal.proposal.preview'), onClick: () => setOpenedId(proposal.id) }}
+                />
+            ),
+        };
+        const injected = cloneElement(host, {
+            comparison: {
+                title: `${sourceLabel} · ${t(`legal.proposal.document.${documentType}`)}`,
+                html: safeHtml,
+                language: shown.language,
+                open: openedId === proposal.id,
+                onOpenChange: (next) => setOpenedId(next ? proposal.id : undefined),
+                detail: (
+                    <>
+                        {t('legal.proposal.sentAt')} {formatLegalDateTime(proposal.createdAt, locale)}
+                        {shown.language !== language && (
+                            <p>{t('legal.proposal.otherLanguage', { language: shown.language })}</p>
+                        )}
+                        {impact && (
+                            <p>
+                                {t('legal.proposal.departmentImpact', {
+                                    count: impact.affected,
+                                    notAffected: impact.notAffected,
+                                })}
+                            </p>
+                        )}
+                        {readOnly && readOnlyReason && <p role="note">{readOnlyReason}</p>}
+                        {adoptBlockedReason && <p role="note">{adoptBlockedReason}</p>}
+                    </>
+                ),
+                actions: (
+                    <>
+                        {archivesButton}
+                        {isNew && (
+                            <M3Button
+                                variant="outlined"
+                                disabled={readOnly || !!pending}
+                                loading={pending === 'dismiss'}
+                                onClick={() => run('dismiss', onDismiss)}
+                            >
+                                {t('legal.proposal.dismiss')}
                             </M3Button>
                         )}
-                        {archivesButton}
-                    </div>
+                        <M3Button
+                            variant="filled"
+                            disabled={adoptDisabled}
+                            loading={pending === 'adopt'}
+                            onClick={adopt}
+                        >
+                            {t('legal.proposal.adopt')}
+                        </M3Button>
+                    </>
+                ),
+            },
+            snackbarSlot:
+                notice || originalItems.length ? <EditorSnackbarQueue items={[notice, ...originalItems]} /> : undefined,
+        });
+        return (
+            <>
+                {injected}
+                {confirming && (
+                    <Modal
+                        titleKey="legal.proposal.replace.title"
+                        contentKey="legal.proposal.replace.content"
+                        okLabelKey="legal.proposal.replace.confirm"
+                        cancelLabelKey="cancel"
+                        onConfirm={() => {
+                            setConfirming(false);
+                            run('adopt', () => onAdopt('ARCHIVE_AND_REPLACE'));
+                        }}
+                        onClose={() => setConfirming(false)}
+                    />
                 )}
-                {children}
                 {archiveDialog}
             </>
         );
     }
 
-    const impact = proposal.departmentImpact;
-
     return (
-        <section
-            className={styles.compare}
-            aria-label={`${sourceLabel} · ${t(`legal.proposal.document.${documentType}`)}`}
-            data-legal-compare-open="true"
-        >
-            <header className={styles.header}>
-                <div className={styles.heading}>
-                    {isNew && (
-                        <span className={styles.marker}>
-                            <FiberManualRecordIcon className={styles.markerDot} fontSize="inherit" aria-hidden />
-                            {t('legal.proposal.new')}
-                        </span>
-                    )}
-                    <span className={styles.source}>{sourceLabel}</span>
-                    <span className={styles.sentAt}>
-                        {t('legal.proposal.sentAt')}{' '}
-                        <time dateTime={proposal.createdAt}>{formatLegalDateTime(proposal.createdAt, locale)}</time>
-                    </span>
-                </div>
-                <p className={styles.hint}>{t('legal.proposal.hint')}</p>
-                {impact && (
-                    <p className={styles.hint}>
-                        {t('legal.proposal.departmentImpact', {
-                            count: impact.affected,
-                            notAffected: impact.notAffected,
-                        })}
-                    </p>
-                )}
-                {readOnly && readOnlyReason && (
-                    <p className={styles.lock} role="note">
-                        {readOnlyReason}
-                    </p>
-                )}
-                {!readOnly && adoptBlockedReason && (
-                    <p className={styles.lock} role="note">
-                        {adoptBlockedReason}
-                    </p>
-                )}
-                <div className={styles.actions}>
-                    {archivesButton}
-                    {!isNew && (
-                        <M3Button
-                            variant="text"
-                            onClick={() => {
-                                setClosedId(proposal.id);
-                                setOpenedId(undefined);
-                            }}
-                        >
-                            {t('legal.proposal.hide')}
-                        </M3Button>
-                    )}
-                    {isNew && (
-                        <M3Button
-                            variant="outlined"
-                            disabled={readOnly || !!pending}
-                            loading={pending === 'dismiss'}
-                            onClick={() => run('dismiss', onDismiss)}
-                        >
-                            {t('legal.proposal.dismiss')}
-                        </M3Button>
-                    )}
-                    <M3Button variant="filled" disabled={adoptDisabled} loading={pending === 'adopt'} onClick={adopt}>
-                        {t('legal.proposal.adopt')}
-                    </M3Button>
-                </div>
-            </header>
-            <div className={classNames(styles.panes, { [styles.collapsed]: collapsed })}>
-                <div className={styles.templatePane}>
-                    <button
-                        type="button"
-                        className={styles.toggle}
-                        aria-expanded={!collapsed}
-                        aria-controls={paneId}
-                        onClick={() => setCollapsed((current) => !current)}
-                    >
-                        {t(collapsed ? 'legal.proposal.expand' : 'legal.proposal.collapse')}
-                    </button>
-                    {!collapsed && (
-                        <div id={paneId} className={styles.reader}>
-                            {shown.language !== language && shown.language && (
-                                <p className={styles.hint}>
-                                    {t('legal.proposal.otherLanguage', {
-                                        language: t(`language.${shown.language}`, shown.language.toUpperCase()),
-                                    })}
-                                </p>
-                            )}
-                            <DpaLegalReader
-                                html={safeHtml}
-                                label={sourceLabel}
-                                contentLanguage={shown.language}
-                                testId="legal-template-reader"
-                            />
-                        </div>
-                    )}
-                </div>
-                <div className={styles.draftPane}>{children}</div>
-            </div>
-            {confirming && (
-                <Modal
-                    titleKey="legal.proposal.replace.title"
-                    contentKey="legal.proposal.replace.content"
-                    okLabelKey="legal.proposal.replace.confirm"
-                    cancelLabelKey="cancel"
-                    onConfirm={() => {
-                        setConfirming(false);
-                        run('adopt', () => onAdopt('ARCHIVE_AND_REPLACE'));
-                    }}
-                    onClose={() => setConfirming(false)}
-                />
-            )}
+        <>
+            {archivesButton && <div className={styles.bar}>{archivesButton}</div>}
+            {children}
             {archiveDialog}
-        </section>
+        </>
     );
 };
 

@@ -453,6 +453,34 @@ describe('AgencyLegalTextContainer server drafts', () => {
         expect(cardProps().initialContentByLanguage).toEqual(baseOfNewVisit);
     });
 
+    it.each(['publish', 'cleanup'])('does not show a late %s error in another agency editor', async (phase) => {
+        let rejectOldOperation: (error: Error) => void = () => undefined;
+        const oldOperation = new Promise<void>((_, reject) => {
+            rejectOldOperation = reject;
+        });
+        h.serverSave.mockResolvedValue({
+            kind: 'DPP',
+            content: { de: '<p>saved A</p>' },
+            consentText: {},
+            revision: 'draft-id:20',
+            savedAt: '2026-09-30T10:00:00',
+        });
+        const boundary = phase === 'publish' ? h.onSaveAgencyWide : h.serverDiscard;
+        boundary.mockReturnValue(oldOperation);
+        const view = renderContainer();
+        const oldSave = cardProps().onSave({ de: '<p>old A</p>' }, true);
+        await waitFor(() => expect(boundary).toHaveBeenCalled());
+        const otherAgency = { ...agencyData, id: agencyData.id + 1 };
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={otherAgency} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        await act(async () => {
+            rejectOldOperation(new Error('late failure from agency A'));
+            await oldSave;
+        });
+        expect(cardProps().errorMessage).toBeUndefined();
+    });
+
     it('locks the Fachbereich switcher while a discard is in flight', async () => {
         let finishDiscard: () => void = () => undefined;
         h.server.draft = {

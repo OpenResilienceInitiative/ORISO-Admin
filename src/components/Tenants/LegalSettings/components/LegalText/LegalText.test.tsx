@@ -173,6 +173,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         aboveEditorSlot,
         actionsLeading,
         belowSlot,
+        comparison,
         ...rest
     }: {
         value?: string;
@@ -185,6 +186,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         aboveEditorSlot?: React.ReactNode;
         actionsLeading?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        comparison?: { open: boolean; html: string; detail?: React.ReactNode; actions?: React.ReactNode };
         [prop: string]: unknown;
     }) => (
         <div
@@ -199,6 +201,13 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         >
             {helpSlot}
             {snackbarSlot}
+            {comparison?.open && (
+                <aside>
+                    <div data-testid="legal-template-reader">{comparison.html.replace(/<[^>]+>/g, '')}</div>
+                    {comparison.detail}
+                    {comparison.actions}
+                </aside>
+            )}
             {aboveEditorSlot}
             {actionsLeading}
             {!readOnly && onChange && (
@@ -1370,6 +1379,7 @@ describe('LegalText — received platform template (#1070)', () => {
         const user = userEvent.setup();
         const templateInbox = inbox();
         renderTraeger(templateInbox);
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByTestId('legal-template-reader')).toHaveTextContent('Muster-Impressum der Plattform');
         await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         await waitFor(() => expect(templateInbox.adopt).toHaveBeenCalledWith(proposal, 'CREATE_IF_EMPTY', undefined));
@@ -1395,6 +1405,7 @@ describe('LegalText — received platform template (#1070)', () => {
         };
         const templateInbox = inbox();
         renderTraeger(templateInbox);
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         expect(templateInbox.adopt).not.toHaveBeenCalled();
         const dialog = await screen.findByRole('dialog');
@@ -1409,6 +1420,7 @@ describe('LegalText — received platform template (#1070)', () => {
         const templateInbox = inbox();
         renderTraeger(templateInbox);
         await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await user.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         await user.click(
             within(await screen.findByRole('dialog')).getByRole('button', { name: 'legal.proposal.replace.confirm' }),
@@ -1426,6 +1438,7 @@ describe('LegalText — received platform template (#1070)', () => {
         const templateInbox = inbox();
         renderTraeger(templateInbox);
         await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await user.click(screen.getByRole('button', { name: 'legal.proposal.dismiss' }));
         await waitFor(() => expect(templateInbox.dismiss).toHaveBeenCalledWith(proposal));
         expect(templateInbox.adopt).not.toHaveBeenCalled();
@@ -1433,10 +1446,11 @@ describe('LegalText — received platform template (#1070)', () => {
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>edited</p>');
     });
 
-    it('read-only Träger admin: the template stays visible with the lock reason, adopting is disabled', () => {
+    it('read-only Träger admin: the template stays visible with the lock reason, adopting is disabled', async () => {
         mocks.canEdit = false;
         mocks.readOnlyReason = { key: 'tenants.legal.readOnly.lockedPlatformWide', platformLock: true };
         renderTraeger(inbox());
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByTestId('legal-template-reader')).toBeInTheDocument();
         expect(screen.getAllByText('tenants.legal.readOnly.lockedPlatformWide').length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'legal.proposal.adopt' })).toBeDisabled();

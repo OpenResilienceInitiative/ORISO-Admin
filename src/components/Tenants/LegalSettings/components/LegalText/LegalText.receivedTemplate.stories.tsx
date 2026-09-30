@@ -9,7 +9,7 @@ import type { DistributeAgencyLegalProposal, TenantLegalProposal } from '../../.
 import { TraegerLegalText } from './TraegerLegalText';
 
 /**
- * #1070 — a Träger receives the platform's imprint template: marker, left/right compare
+ * #1070 — a Träger receives the platform's imprint template: editor notice and shared comparison
  * (template read-only on the left, own draft on the right), adopt / dismiss, and forwarding its
  * own draft to its Beratungsstellen. Real card and hooks, mocked HTTP (API note 1070-api.md).
  */
@@ -173,15 +173,20 @@ type Story = StoryObj<typeof meta>;
 
 const LOAD = { timeout: 10000 };
 
-/** The platform sent an imprint template: marker, source and Berlin send time, template left, draft right. */
+/** The platform sent an imprint template: editor notice opens the compact reference beside one text field. */
 export const TraegerWithNewTemplate: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const region = await canvas.findByRole('region', { name: /Vorlage des Plattformbetreibers · Impressum/ }, LOAD);
-        await expect(within(region).getByText('Neue Vorlage')).toBeVisible();
-        await expect(within(region).getByText(/25\.09\.2026, 16:31/)).toBeVisible();
-        await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeEnabled();
+        const preview = await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD);
+        await expect(canvas.getByText(/25\.09\.2026, 16:31/)).toBeVisible();
+        await userEvent.click(preview);
+        await expect(
+            canvas.getByRole('complementary', { name: /Vorlage des Plattformbetreibers · Impressum/ }),
+        ).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await expect(canvas.getByRole('button', { name: 'Vorlage übernehmen' })).toBeEnabled();
     },
 };
 
@@ -190,8 +195,9 @@ export const PlatformInspectsExistingTraeger: Story = {
     parameters: { platformInspector: true, msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Vorschau anzeigen|Show preview/ }, LOAD));
         const region = await canvas.findByRole(
-            'region',
+            'complementary',
             { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Imprint/ },
             LOAD,
         );
@@ -212,6 +218,7 @@ export const TraegerAdoptsIntoEmptyDraft: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -228,6 +235,7 @@ export const TraegerReplaceConfirmation: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -278,12 +286,22 @@ export const TraegerForwardResult: Story = {
     },
 };
 
-/** Phone 390: template on top (collapsible), own draft below. */
+/** Phone 390: preview keeps the received reference and the one editable draft in the shared surface. */
 export const TraegerMobile390: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     parameters: { msw: { handlers: handlers({ draft: ownDraft }) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('button', { name: 'Vorlage einklappen' }, LOAD)).toBeVisible();
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        const reference = await canvas.findByRole(
+            'complementary',
+            { name: /Vorlage des Plattformbetreibers · Impressum/ },
+            LOAD,
+        );
+        await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
+        await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
     },
 };

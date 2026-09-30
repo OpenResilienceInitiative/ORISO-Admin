@@ -116,7 +116,21 @@ vi.mock('../DepartmentDataProtectionCard', async () => {
             useEffect(() => {
                 h.cardMounts += 1;
             }, []);
-            return <div data-testid="legal-editor">{props.departmentSlot}</div>;
+            return (
+                <div data-testid="legal-editor">
+                    {props.comparison?.open && (
+                        <aside>
+                            <div data-testid="legal-template-reader">
+                                {props.comparison.html.replace(/<[^>]+>/g, '')}
+                            </div>
+                            {props.comparison.detail}
+                            {props.comparison.actions}
+                        </aside>
+                    )}
+                    {props.snackbarSlot}
+                    {props.departmentSlot}
+                </div>
+            );
         },
     };
 });
@@ -208,8 +222,9 @@ describe('AgencyLegalTextContainer — templates forwarded by the Träger (#1070
         h.readOnlyReason = { key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false };
     });
 
-    it('shows the template beside the card, with the Fachbereich impact, and reads the agency draft even for one Fachbereich', () => {
+    it('shows the template beside the card, with the Fachbereich impact, and reads the agency draft even for one Fachbereich', async () => {
         renderContainer(inbox());
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByTestId('legal-template-reader')).toHaveTextContent('Träger-Fassung');
         expect(screen.getByTestId('legal-editor')).toBeInTheDocument();
         expect(screen.getByText(/legal.proposal.departmentImpact/)).toHaveTextContent('"count":3');
@@ -220,6 +235,7 @@ describe('AgencyLegalTextContainer — templates forwarded by the Träger (#1070
     it('adopts into an empty agency draft and then shows the agency-wide text, publishing nothing', async () => {
         const templateInbox = inbox();
         renderContainer(templateInbox);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         await waitFor(() => expect(templateInbox.adopt).toHaveBeenCalledWith(proposal, 'CREATE_IF_EMPTY', undefined));
         await waitFor(() => expect(cardProps().documentScope).toBe('agency'));
@@ -234,6 +250,7 @@ describe('AgencyLegalTextContainer — templates forwarded by the Träger (#1070
         };
         const templateInbox = inbox();
         renderContainer(templateInbox);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         const dialog = await screen.findByRole('dialog');
         await userEvent.click(within(dialog).getByRole('button', { name: 'legal.proposal.replace.confirm' }));
@@ -248,6 +265,7 @@ describe('AgencyLegalTextContainer — templates forwarded by the Träger (#1070
         h.serverSave.mockResolvedValue({ ...adoptedDraft, revision: 'local-saved:1' });
         const templateInbox = inbox();
         renderContainer(templateInbox);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.adopt' }));
         await userEvent.click(
             within(await screen.findByRole('dialog')).getByRole('button', { name: 'legal.proposal.replace.confirm' }),
@@ -264,16 +282,18 @@ describe('AgencyLegalTextContainer — templates forwarded by the Träger (#1070
     it('dismissing leaves the draft alone', async () => {
         const templateInbox = inbox();
         renderContainer(templateInbox);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.dismiss' }));
         await waitFor(() => expect(templateInbox.dismiss).toHaveBeenCalledWith(proposal));
         expect(h.serverDiscard).not.toHaveBeenCalled();
         expect(h.localDiscard).not.toHaveBeenCalled();
     });
 
-    it('read-only (platform lock): the template is shown with the lock reason, adopting is disabled', () => {
+    it('read-only (platform lock): the template is shown with the lock reason, adopting is disabled', async () => {
         h.canEdit.mockReturnValue(false);
         h.readOnlyReason = { key: 'tenants.legal.readOnly.lockedPlatformWide', platformLock: true };
         renderContainer(inbox());
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByTestId('legal-template-reader')).toBeInTheDocument();
         expect(screen.getByText('tenants.legal.readOnly.lockedPlatformWide', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'legal.proposal.adopt' })).toBeDisabled();

@@ -90,6 +90,7 @@ export const AgencyLegalTextContainer = ({
     const [draftActionPending, setDraftActionPending] = useState(false);
     const draftActionPendingRef = useRef(false);
     const [agencyEditorGeneration, setAgencyEditorGeneration] = useState(0);
+    const [editorError, setEditorError] = useState<string>();
     // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
     const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
 
@@ -179,7 +180,7 @@ export const AgencyLegalTextContainer = ({
         draft: agencyDraft,
         savedAt: localDraftSavedAt,
         discardDraft: discardAgencyDraft,
-    } = useLegalDraft(field, agencyDraftScope);
+    } = useLegalDraft(field, agencyDraftScope, undefined, setEditorError);
     // An open template needs the agency-wide draft even while a Fachbereich is shown: adopting writes it.
     const agencyDraftEnabled =
         canEditLegalText &&
@@ -207,6 +208,7 @@ export const AgencyLegalTextContainer = ({
     useEffect(() => {
         draftActionPendingRef.current = false;
         setDraftActionPending(false);
+        setEditorError(undefined);
     }, [editorIdentity]);
     const [serverBaseState, setServerBaseState] = useState<{
         identity: string;
@@ -405,6 +407,7 @@ export const AgencyLegalTextContainer = ({
     };
 
     const onSave = async (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
+        setEditorError(undefined);
         if (isDepartment) {
             // Only the policy carries a consent sentence (decision 7), and the publish call omits
             // the property entirely when the card had none to give — a backend that does not know
@@ -420,7 +423,7 @@ export const AgencyLegalTextContainer = ({
                         message: t(publish ? 'legal.department.published' : 'legal.department.draftSaved'),
                         duration: 4,
                     }),
-                onError: () => notification.error({ message: t('legal.department.saveError'), duration: 6 }),
+                onError: () => setEditorError(t('legal.department.saveError')),
             };
             if (field === 'privacy') {
                 publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) }, feedback);
@@ -441,10 +444,7 @@ export const AgencyLegalTextContainer = ({
             if (editorIdentityRef.current === operationIdentity) {
                 // Publishing saves first; when that fails nothing goes live, and the admin has to
                 // learn that — a vanishing "draft not saved" toast read as "nothing happened".
-                notification.error({
-                    message: t(publish ? 'legal.serverDraft.publishSaveError' : 'legal.serverDraft.saveError'),
-                    duration: publish ? 0 : 8,
-                });
+                setEditorError(t(publish ? 'legal.serverDraft.publishSaveError' : 'legal.serverDraft.saveError'));
                 setActionPending(false);
             }
             return;
@@ -460,8 +460,10 @@ export const AgencyLegalTextContainer = ({
                 content: { [agencyContentKey]: { ...saved.content } },
             });
         } catch {
-            notification.error({ message: t('legal.serverDraft.publishError'), duration: 8 });
-            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+            if (editorIdentityRef.current === operationIdentity) {
+                setEditorError(t('legal.serverDraft.publishError'));
+                setActionPending(false);
+            }
             return;
         }
         try {
@@ -474,7 +476,7 @@ export const AgencyLegalTextContainer = ({
         } catch {
             // Publication is already live. A missing or concurrently replaced draft is retained
             // in the UI and the hook exposes a 409 for explicit conflict resolution.
-            notification.warning({ message: t('legal.serverDraft.cleanupError'), duration: 8 });
+            if (editorIdentityRef.current === operationIdentity) setEditorError(t('legal.serverDraft.cleanupError'));
         } finally {
             if (editorIdentityRef.current === operationIdentity) setActionPending(false);
         }
@@ -550,7 +552,7 @@ export const AgencyLegalTextContainer = ({
             }
         } catch {
             if (editorIdentityRef.current === operationIdentity) {
-                notification.error({ message: t('legal.serverDraft.discardError'), duration: 8 });
+                setEditorError(t('legal.serverDraft.discardError'));
             }
         } finally {
             if (editorIdentityRef.current === operationIdentity) setActionPending(false);
@@ -604,10 +606,7 @@ export const AgencyLegalTextContainer = ({
             notification.success({ message: t('legal.proposal.adopted'), duration: 5 });
         } catch (error) {
             const conflict = error instanceof Error && error.message === 'CONFLICT';
-            notification.error({
-                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'),
-                duration: 8,
-            });
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'));
             // A draft appeared elsewhere meanwhile: re-read it, the next attempt then asks to replace it.
             if (conflict && mode === 'CREATE_IF_EMPTY') {
                 await serverDraft.retry();
@@ -625,10 +624,7 @@ export const AgencyLegalTextContainer = ({
             notification.success({ message: t('legal.proposal.dismissed'), duration: 4 });
         } catch (error) {
             const conflict = error instanceof Error && error.message === 'CONFLICT';
-            notification.error({
-                message: t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'),
-                duration: 8,
-            });
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'));
         }
     };
 
@@ -721,6 +717,8 @@ export const AgencyLegalTextContainer = ({
                     />
                 )
             }
+            errorMessage={editorError}
+            onCloseError={() => setEditorError(undefined)}
         />
     );
     if (isDepartment || !canEditLegalText) return withTemplates(card);

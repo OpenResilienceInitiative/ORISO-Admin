@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -154,9 +154,10 @@ describe('AgencyLegalTextContainer — the Fachbereich save says what happened',
         await selectDepartment('U25 Suizidprävention');
         cardProps().onSave({ de: '<p>neu</p>' }, true, { de: 'neu {{legal_links}}' });
 
-        mutationCallbacks().onError();
+        act(() => mutationCallbacks().onError());
 
-        expect(h.notifyError).toHaveBeenCalledWith(expect.objectContaining({ message: 'legal.department.saveError' }));
+        await waitFor(() => expect(cardProps().errorMessage).toBe('legal.department.saveError'));
+        expect(h.notifyError).not.toHaveBeenCalled();
         expect(h.notifySuccess).not.toHaveBeenCalled();
     });
 });
