@@ -138,7 +138,7 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         mocks.fetchData.mockRejectedValue(new Error('unavailable'));
         renderPage();
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('globalSettings.smtp.deployment.error');
+        expect(await screen.findByRole('alert')).toHaveTextContent('globalSettings.smtp.saved.error');
         expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
     });
 

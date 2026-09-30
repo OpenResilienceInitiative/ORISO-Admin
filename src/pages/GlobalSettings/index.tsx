@@ -233,7 +233,7 @@ export const GlobalSmtpSettingsPage = () => {
     );
 
     const display = (value: string | number | null | undefined) =>
-        value == null || value === '' ? t('globalSettings.smtp.deployment.unavailable') : String(value);
+        value == null || value === '' ? t('globalSettings.smtp.saved.unavailable') : String(value);
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -311,23 +311,23 @@ export const GlobalSmtpSettingsPage = () => {
                         className={styles.smtpCard}
                         variant="dialog"
                         headerIcon={<EmailOutlinedIcon />}
-                        titleKey="globalSettings.smtp.deployment.title"
-                        subTitleKey="globalSettings.smtp.deployment.description"
+                        titleKey="globalSettings.smtp.saved.title"
+                        subTitleKey="globalSettings.smtp.saved.description"
                     >
                         {isSummaryLoading && (
                             <p className={styles.smtpReadStatus} role="status">
-                                {t('globalSettings.smtp.deployment.loading')}
+                                {t('globalSettings.smtp.saved.loading')}
                             </p>
                         )}
                         {!isSummaryLoading && (isError || !platformSmtp) && (
                             <div className={styles.smtpReadStatus} role="alert">
-                                <p>{t('globalSettings.smtp.deployment.error')}</p>
+                                <p>{t('globalSettings.smtp.saved.error')}</p>
                                 <Button
                                     onClick={() => {
                                         refetch();
                                     }}
                                 >
-                                    {t('globalSettings.smtp.deployment.retry')}
+                                    {t('globalSettings.smtp.saved.retry')}
                                 </Button>
                             </div>
                         )}
@@ -348,8 +348,8 @@ export const GlobalSmtpSettingsPage = () => {
                                             ? display(null)
                                             : t(
                                                   platformSmtp.secure
-                                                      ? 'globalSettings.smtp.deployment.yes'
-                                                      : 'globalSettings.smtp.deployment.no',
+                                                      ? 'globalSettings.smtp.saved.yes'
+                                                      : 'globalSettings.smtp.saved.no',
                                               )}
                                     </dd>
                                 </div>
@@ -358,22 +358,22 @@ export const GlobalSmtpSettingsPage = () => {
                                     <dd>{display(platformSmtp.from)}</dd>
                                 </div>
                                 <div>
-                                    <dt>{t('globalSettings.smtp.deployment.credentials')}</dt>
+                                    <dt>{t('globalSettings.smtp.saved.credentials')}</dt>
                                     <dd>
                                         {t(
                                             platformSmtp.credentialsPresent
-                                                ? 'globalSettings.smtp.deployment.yes'
-                                                : 'globalSettings.smtp.deployment.no',
+                                                ? 'globalSettings.smtp.saved.yes'
+                                                : 'globalSettings.smtp.saved.no',
                                         )}
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt>{t('globalSettings.smtp.deployment.configured')}</dt>
+                                    <dt>{t('globalSettings.smtp.saved.configured')}</dt>
                                     <dd>
                                         {t(
                                             platformSmtp.configured
-                                                ? 'globalSettings.smtp.deployment.yes'
-                                                : 'globalSettings.smtp.deployment.no',
+                                                ? 'globalSettings.smtp.saved.yes'
+                                                : 'globalSettings.smtp.saved.no',
                                         )}
                                     </dd>
                                 </div>
