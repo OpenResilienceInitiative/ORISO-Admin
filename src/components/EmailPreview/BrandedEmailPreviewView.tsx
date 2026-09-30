@@ -6,7 +6,6 @@ import { Card } from '../Card';
 import { M3Button } from '../M3Button';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import type { InviteEmailPreviewDTO } from '../../api/accountInvites/accountInvites';
-import type { EmailLogoFallbackReason } from './emailBrandingHint';
 import { EmailPreviewFrame } from './EmailPreviewFrame';
 import styles from './styles.module.scss';
 
@@ -15,11 +14,6 @@ export interface BrandedEmailPreviewViewProps {
     isLoading: boolean;
     isError: boolean;
     onRetry: () => void;
-    /**
-     * Why the mail shows the text wordmark instead of a logo, or `null` when a usable logo is
-     * configured. `undefined` = not applicable (platform-branding preview, no tenant selected).
-     */
-    logoFallbackReason?: EmailLogoFallbackReason | null;
 }
 
 /**
@@ -29,13 +23,7 @@ export interface BrandedEmailPreviewViewProps {
  * verbatim inside {@link EmailPreviewFrame}. This component owns nothing but the surrounding
  * loading / error / branding-hint states.
  */
-export const BrandedEmailPreviewView = ({
-    preview,
-    isLoading,
-    isError,
-    onRetry,
-    logoFallbackReason,
-}: BrandedEmailPreviewViewProps) => {
+export const BrandedEmailPreviewView = ({ preview, isLoading, isError, onRetry }: BrandedEmailPreviewViewProps) => {
     const { t } = useTranslation();
 
     return (
@@ -70,17 +58,19 @@ export const BrandedEmailPreviewView = ({
 
                     {!isError && preview && (
                         <>
-                            {logoFallbackReason && (
+                            {preview.branding?.logoRendering === 'TEXT_WORDMARK' && (
                                 <Alert severity="info">
-                                    {t(
-                                        logoFallbackReason === 'LOGO_NOT_REMOTE'
-                                            ? 'tenants.appSettings.emailPreview.branding.logoNotRemote'
-                                            : 'tenants.appSettings.emailPreview.branding.noLogo',
-                                    )}
+                                    {t('tenants.appSettings.emailPreview.branding.textWordmark')}
                                 </Alert>
                             )}
 
                             <dl className={styles.metaList}>
+                                {preview.branding && (
+                                    <>
+                                        <dt>{t('tenants.appSettings.emailPreview.meta.organisation')}</dt>
+                                        <dd>{preview.branding.brandName}</dd>
+                                    </>
+                                )}
                                 <dt>{t('tenants.appSettings.emailPreview.meta.subject')}</dt>
                                 <dd>{preview.subject}</dd>
                                 <dt>{t('tenants.appSettings.emailPreview.meta.sampleLink')}</dt>

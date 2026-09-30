@@ -1347,8 +1347,6 @@
     "tenants.appSettings.emailPreview.error": "The preview could not be loaded.",
     "tenants.appSettings.emailPreview.retry": "Try again",
     "tenants.appSettings.emailPreview.empty": "No preview is available for these settings.",
-    "tenants.appSettings.emailPreview.branding.noLogo": "No logo is configured for this tenant.",
-    "tenants.appSettings.emailPreview.branding.logoNotRemote": "A platform image address could not be determined for this logo. Uploaded PNG and JPEG logos are served by the platform for email.",
     "tenants.appSettings.smtp.smtpToggle.title": "Enable SMTP",
     "tenants.appSettings.smtp.systemEmailToggle.title": "System notifications by email",
     "tenants.appSettings.smtp.title": "SMTP & system emails",
@@ -2473,5 +2471,7 @@
     "legal.draftSnackbar.local": "Draft from this browser ({{savedAt}}) – not saved yet. Save it to make it available on all devices.",
     "legal.draftSnackbar.discard": "Discard",
     "legal.draftSnackbar.close": "Close notice",
-    "agency.form.registrationSettings.onlineNeedsConsultant": "Select at least one counsellor before making this counselling centre visible in registration. The selection is assigned when you save."
+    "agency.form.registrationSettings.onlineNeedsConsultant": "Select at least one counsellor before making this counselling centre visible in registration. The selection is assigned when you save.",
+    "tenants.appSettings.emailPreview.branding.textWordmark": "This preview uses the organisation name as a text wordmark instead of an image.",
+    "tenants.appSettings.emailPreview.meta.organisation": "Organisation"
 }
