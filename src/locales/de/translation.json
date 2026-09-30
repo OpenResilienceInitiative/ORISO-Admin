@@ -2458,5 +2458,17 @@
     "legal.draftSnackbar.local": "Entwurf aus diesem Browser vom {{savedAt}} – noch nicht gespeichert. Speichern Sie ihn, damit er auf allen Geräten verfügbar ist.",
     "legal.draftSnackbar.discard": "Verwerfen",
     "legal.draftSnackbar.close": "Hinweis schließen",
-    "agency.form.registrationSettings.onlineNeedsConsultant": "Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen. Die Auswahl wird beim Speichern zugewiesen."
+    "agency.form.registrationSettings.onlineNeedsConsultant": "Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen. Die Auswahl wird beim Speichern zugewiesen.",
+    "legal.dpa.deadline.publishTitle": "AVV veröffentlichen",
+    "legal.dpa.deadline.publishDescription": "Wählen Sie die Frist für die Unterschrift. Die Veröffentlichung erstellt eine neue AVV-Fassung.",
+    "legal.dpa.deadline.input": "Unterschriftsfrist (Europe/Berlin)",
+    "legal.dpa.deadline.zone": "Datum und Uhrzeit gelten in Europe/Berlin (MEZ/MESZ). Bei doppelten Uhrzeiten im Herbst gilt die erste Uhrzeit.",
+    "legal.dpa.deadline.invalid": "Bitte wählen Sie ein gültiges Datum und eine Uhrzeit in der Zukunft.",
+    "legal.dpa.deadline.label": "Unterschriftsfrist: {{deadline}} (Europe/Berlin)",
+    "legal.dpa.deadline.state.VALID": "Die aktuelle AVV-Fassung ist unterschrieben.",
+    "legal.dpa.deadline.state.UNSIGNED": "Die erste AVV-Fassung muss unterschrieben werden.",
+    "legal.dpa.deadline.state.OUTDATED": "Die neue AVV-Fassung muss erneut unterschrieben werden.",
+    "legal.dpa.deadline.blockedRenewal": "Neue Beratungen sind gesperrt. Laufende Beratungen und die Unterschrift bleiben zugänglich.",
+    "dpaBlocker.sign.staleVersion": "Die Vertragsfassung wurde inzwischen erneuert. Bitte laden Sie den aktuellen Vertrag neu, lesen Sie ihn und bestätigen Sie ihn erneut.",
+    "legal.dpa.deadline.grace": "Neue Beratungen sind während der Übergangsfrist erlaubt. Bitte unterschreiben Sie die neue AVV-Fassung rechtzeitig."
 }

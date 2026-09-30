@@ -6,6 +6,7 @@ import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaFormSection } from './DpaFormSection';
+import { DpaDeadlineInfo } from './DpaDeadlineInfo';
 import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { LONG_DPA_HTML, PHONE_390 } from './dpaStoryText';
 
@@ -14,7 +15,15 @@ const ReadingColumn = ({ children }: { children: ReactNode }) => (
     <div style={{ width: 'min(700px, 94vw)', padding: '16px 0' }}>{children}</div>
 );
 
-const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: boolean }) => {
+const InteractiveSection = ({
+    initiallyTouched = false,
+    deadlineMetadata,
+    hideTextHeader,
+}: {
+    initiallyTouched?: boolean;
+    deadlineMetadata?: ReactNode;
+    hideTextHeader?: boolean;
+}) => {
     const [accepted, setAccepted] = useState(false);
     const [touched, setTouched] = useState(initiallyTouched);
     const [form] = Form.useForm();
@@ -31,6 +40,8 @@ const InteractiveSection = ({ initiallyTouched = false }: { initiallyTouched?: b
                     dpaHtml={LONG_DPA_HTML}
                     textLabel="Vertragsunterlagen"
                     textDescription="Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie für Ihre Organisation."
+                    textMetadata={deadlineMetadata}
+                    hideTextHeader={hideTextHeader}
                     accepted={accepted}
                     acceptTouched={touched}
                     onAcceptedChange={(value) => {
@@ -66,6 +77,32 @@ export const Desktop: Story = {
             <InteractiveSection />
         </ReadingColumn>
     ),
+};
+
+/** Shared metadata also fits the signing reader's existing content inset on mobile. */
+export const SigningDeadlineMobile: Story = {
+    ...PHONE_390,
+    render: () => (
+        <ReadingColumn>
+            <InteractiveSection
+                hideTextHeader
+                deadlineMetadata={
+                    <DpaDeadlineInfo
+                        signingDeadlineAt="2020-01-01T12:00:00Z"
+                        status="OUTDATED"
+                        newCounsellingAllowed={false}
+                    />
+                }
+            />
+        </ReadingColumn>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const status = await canvas.findByRole('status');
+        await expect(within(status).getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+        await expect(within(status).getByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
+        await expect(status.scrollWidth).toBeLessThanOrEqual(status.clientWidth);
+    },
 };
 
 /** The signed state: consent given — the block switches to the primary tone. */

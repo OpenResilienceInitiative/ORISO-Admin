@@ -5,6 +5,9 @@ import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
 import { EditorVersion, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
+import { TenantDpaStatus } from '../../../../../types/dpa';
+import { DpaDeadlineInfo } from '../../../../DpaLegalForm/DpaDeadlineInfo';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -94,6 +97,12 @@ interface DataProcessingAgreementCardProps {
     readOnly?: boolean;
     /** Actual confirmation state; read-only alone does not mean the DPA was confirmed. */
     dpaSigned?: boolean;
+    signingDeadlineAt?: string | null;
+    dpaStatus?: TenantDpaStatus;
+    newCounsellingAllowed?: boolean;
+    renewalGraceActive?: boolean;
+    errorMessage?: string;
+    onCloseError?: () => void;
     /** Bypass the JWT role lookup for the help texts (Storybook/demo contexts). */
     helpRole?: LegalHelpRole;
     /** Tenant/account scope for dismissal persistence. */
@@ -130,6 +139,12 @@ export const DataProcessingAgreementCard = ({
     onTranslate,
     readOnly,
     dpaSigned,
+    signingDeadlineAt,
+    dpaStatus,
+    newCounsellingAllowed,
+    renewalGraceActive,
+    errorMessage,
+    onCloseError,
     helpRole,
     dismissalScope,
     onSaveDraft,
@@ -242,36 +257,67 @@ export const DataProcessingAgreementCard = ({
                         />
                     ) : undefined
                 }
-                helpSlot={<EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />}
+                helpSlot={
+                    <>
+                        <EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />
+                        <DpaDeadlineInfo
+                            signingDeadlineAt={signingDeadlineAt}
+                            status={dpaStatus}
+                            newCounsellingAllowed={newCounsellingAllowed}
+                            renewalGraceActive={renewalGraceActive}
+                        />
+                    </>
+                }
                 snackbarSlot={
-                    (showBlockerSnackbar && (
-                        <EditorHintSnackbar
-                            layout="long"
-                            text={help.hint}
-                            onClose={() => {
-                                if (dismissalScope) persistSnackbarClosedForSession('blocker', dismissalScope);
-                                setBlockerHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
-                                setBlockerHidden(true);
-                            }}
-                        />
-                    )) ||
-                    (showSignedSnackbar && (
-                        <EditorHintSnackbar
-                            tone="success"
-                            text={t('legal.dpa.sign.complete')}
-                            onClose={() => {
-                                if (dismissalScope) persistSnackbarClosedForSession('signed', dismissalScope);
-                                setSignedHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
-                                setSignedHidden(true);
-                            }}
-                        />
-                    ))
+                    <EditorSnackbarQueue
+                        items={[
+                            errorMessage && {
+                                key: 'publish-error',
+                                node: (
+                                    <EditorHintSnackbar
+                                        layout="long"
+                                        tone="error"
+                                        text={errorMessage}
+                                        onClose={onCloseError}
+                                    />
+                                ),
+                            },
+                            (showBlockerSnackbar || showSignedSnackbar) && {
+                                key: 'dpa-state',
+                                node:
+                                    (showBlockerSnackbar && (
+                                        <EditorHintSnackbar
+                                            layout="long"
+                                            text={help.hint}
+                                            onClose={() => {
+                                                if (dismissalScope)
+                                                    persistSnackbarClosedForSession('blocker', dismissalScope);
+                                                setBlockerHidden(true);
+                                            }}
+                                            onDismiss={() => {
+                                                if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
+                                                setBlockerHidden(true);
+                                            }}
+                                        />
+                                    )) ||
+                                    (showSignedSnackbar && (
+                                        <EditorHintSnackbar
+                                            tone="success"
+                                            text={t('legal.dpa.sign.complete')}
+                                            onClose={() => {
+                                                if (dismissalScope)
+                                                    persistSnackbarClosedForSession('signed', dismissalScope);
+                                                setSignedHidden(true);
+                                            }}
+                                            onDismiss={() => {
+                                                if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
+                                                setSignedHidden(true);
+                                            }}
+                                        />
+                                    )),
+                            },
+                        ]}
+                    />
                 }
                 aboveEditorSlot={
                     !readOnly &&
