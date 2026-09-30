@@ -53,6 +53,7 @@ export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin
 export const idAllocationValidationEndpoint = `${userServiceURL}/service/useradmin/id-allocation`;
 export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
 export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
+export const smtpSyncStatusEndpoint = `${serverSettingsAdminEndpoint}/smtp-sync-status`;
 export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;
 export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
 export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
@@ -75,6 +76,7 @@ export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/pas
 // convention and get verified against the UserService wiring chunks.
 export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
+export const globalSmtpPlatformSettingsEndpoint = `${userServiceURL}/service/users/system-notification-emails/platform-settings`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${userServiceURL}/service/users/supervisors/logs`;
