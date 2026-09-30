@@ -88,15 +88,12 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
     });
 
     it('shows persisted pending Keycloak synchronization without blocking a platform SMTP test', async () => {
-        mocks.fetchData.mockImplementation(({ url }) =>
-            Promise.resolve(
-                url === globalSmtpPlatformSettingsEndpoint
-                    ? savedSummary
-                    : url === smtpSyncStatusEndpoint
-                    ? { revision: 3, appliedRevision: 2, status: 'SMTP_SYNC_PENDING' }
-                    : {},
-            ),
-        );
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 3, appliedRevision: 2, status: 'SMTP_SYNC_PENDING' });
+            return Promise.resolve({});
+        });
         renderPage();
 
         expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
@@ -131,15 +128,12 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
     });
 
     it('shows applied only when the persisted status confirms the current revision', async () => {
-        mocks.fetchData.mockImplementation(({ url }) =>
-            Promise.resolve(
-                url === globalSmtpPlatformSettingsEndpoint
-                    ? savedSummary
-                    : url === smtpSyncStatusEndpoint
-                    ? { revision: 5, appliedRevision: 5, status: 'APPLIED' }
-                    : {},
-            ),
-        );
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 5, appliedRevision: 5, status: 'APPLIED' });
+            return Promise.resolve({});
+        });
         const page = renderPage();
         expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
 
@@ -153,15 +147,12 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
     });
 
     it('does not show applied for a malformed status array with an unconfirmed revision', async () => {
-        mocks.fetchData.mockImplementation(({ url }) =>
-            Promise.resolve(
-                url === globalSmtpPlatformSettingsEndpoint
-                    ? savedSummary
-                    : url === smtpSyncStatusEndpoint
-                    ? { revision: 6, appliedRevision: 5, status: ['APPLIED'] }
-                    : {},
-            ),
-        );
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 6, appliedRevision: 5, status: ['APPLIED'] });
+            return Promise.resolve({});
+        });
         const page = renderPage();
         await screen.findByText(savedSummary.host);
         await waitFor(() => expect(page.queryClient.getQueryState(['SMTP_SYNC_STATUS'])?.status).toBe('success'));
@@ -198,15 +189,12 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
     });
 
     it('does not claim Keycloak synchronization when a successful save omits its revision header', async () => {
-        mocks.fetchData.mockImplementation(({ url }) =>
-            Promise.resolve(
-                url === globalSmtpPlatformSettingsEndpoint
-                    ? savedSummary
-                    : url === smtpSyncStatusEndpoint
-                    ? { revision: 2, appliedRevision: 2, status: 'APPLIED' }
-                    : new Response(null, { status: 204, headers: { 'X-Smtp-Sync-Status': 'APPLIED' } }),
-            ),
-        );
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 2, appliedRevision: 2, status: 'APPLIED' });
+            return Promise.resolve(new Response(null, { status: 204, headers: { 'X-Smtp-Sync-Status': 'APPLIED' } }));
+        });
         const user = userEvent.setup();
         renderPage();
         await screen.findByText('globalSettings.smtp.sync.applied');
