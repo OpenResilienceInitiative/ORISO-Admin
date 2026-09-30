@@ -252,7 +252,8 @@ export const SingleTenantRecipientAfterExpiry: Story = {
         await userEvent.click(
             await body.findByRole('button', { name: String(i18n.t('dpaForward.dialog.linkCreate')) }),
         );
-        await expect(await body.findByDisplayValue('https://example.org/dpa?token=renewed-contract')).toBeVisible();
+        const link = await body.findByDisplayValue('https://example.org/dpa?token=renewed-contract');
+        await waitFor(() => expect(link).toBeVisible());
         await userEvent.click(body.getByRole('button', { name: String(i18n.t('dpaForward.dialog.confirm')) }));
         await expect(
             await canvas.findByRole('button', { name: String(i18n.t('legal.dpa.sign.openLink')) }),

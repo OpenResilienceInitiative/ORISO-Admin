@@ -192,6 +192,53 @@ it('reloads a changed governing version before showing its deadline beside the c
     }
 });
 
+it('does not show a previous signature-load error beside a different governing publication', async () => {
+    const initialTime = Date.parse('2026-10-01T10:00:00Z');
+    const now = vi.spyOn(Date, 'now').mockReturnValue(initialTime);
+    setStoryAuth([UserRole.SingleTenantAdmin], 7);
+    let renewed = false;
+    let reloadStarted = false;
+    let finishReload!: () => void;
+    const pending = new Promise<void>((resolve) => {
+        finishReload = resolve;
+    });
+    const nextVersion = '2026-09-30T12:00:00';
+    server.use(
+        http.get('*/service/tenantadmin/7/dpa/signatures', () =>
+            HttpResponse.json({ message: 'Unavailable' }, { status: 503 }),
+        ),
+        http.get('*/service/tenantadmin/7/dpa/gate', () =>
+            HttpResponse.json({
+                dpaPublished: true,
+                dpaSigned: true,
+                dpaStatus: 'VALID',
+                currentDpaVersion: renewed ? nextVersion : version,
+            }),
+        ),
+        http.get('*/service/tenantadmin/7/dpa/versions', async () => {
+            if (!renewed) return HttpResponse.json([snapshot]);
+            reloadStarted = true;
+            await pending;
+            return HttpResponse.json([{ ...snapshot, activationDate: nextVersion }]);
+        }),
+    );
+    renderLegal();
+    try {
+        expect(await screen.findByText(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
+        renewed = true;
+        now.mockReturnValue(initialTime + 31_000);
+        const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+        fireEvent(window, new Event('visibilitychange'));
+        visibility.mockReturnValue('visible');
+        fireEvent(window, new Event('visibilitychange'));
+        await waitFor(() => expect(reloadStarted).toBe(true));
+        expect(screen.getByText('Current contract')).toBeVisible();
+        expect(screen.queryByText(i18n.t('legal.dpa.sign.detailsLoadError'))).not.toBeInTheDocument();
+    } finally {
+        finishReload();
+    }
+});
+
 it('keeps a late invitation from the previous account out of the current forwarding dialog', async () => {
     const authenticate = (sub: string) => {
         const claims = btoa(

@@ -99,9 +99,13 @@ export const SigningDeadlineMobile: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const status = await canvas.findByRole('status');
-        await expect(within(status).getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+        const deadline = canvas.getByText(/Unterschriftsfrist:.*Europe\/Berlin/);
+        await expect(deadline).toBeVisible();
+        await expect(status).not.toContainElement(deadline);
         await expect(within(status).getByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
-        await expect(status.scrollWidth).toBeLessThanOrEqual(status.clientWidth);
+        await expect(deadline.getBoundingClientRect().right).toBeLessThanOrEqual(
+            canvasElement.getBoundingClientRect().right,
+        );
     },
 };
 

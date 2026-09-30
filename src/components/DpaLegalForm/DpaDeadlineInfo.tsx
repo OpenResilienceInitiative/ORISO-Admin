@@ -25,20 +25,22 @@ export const DpaDeadlineInfo = ({
     if (status === 'OUTDATED' && renewalGraceActive === true) hints.push(t('legal.dpa.deadline.grace'));
     if (status === 'OUTDATED' && newCounsellingAllowed === false) hints.push(t('legal.dpa.deadline.blockedRenewal'));
     return (
-        <div role="status">
+        <div>
             <EditorHelpText
                 text={t('legal.dpa.deadline.label', {
                     deadline: formatBerlinDateTime(signingDeadlineAt, i18n.language),
                 })}
                 hint={
-                    hints.length > 0
-                        ? hints.map((hint, index) => (
-                              <Fragment key={hint}>
-                                  {index > 0 && <br />}
-                                  <span>{hint}</span>
-                              </Fragment>
-                          ))
-                        : undefined
+                    hints.length > 0 ? (
+                        <span role="status">
+                            {hints.map((hint, index) => (
+                                <Fragment key={hint}>
+                                    {index > 0 && <br />}
+                                    <span>{hint}</span>
+                                </Fragment>
+                            ))}
+                        </span>
+                    ) : undefined
                 }
             />
         </div>

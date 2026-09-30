@@ -384,7 +384,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     )}
                 </>
             )}
-            {isDpaRecipient && dpaGate?.dpaSigned && dpaSignaturesError && (
+            {isDpaRecipient && gateForDocument?.dpaSigned && dpaSignaturesError && (
                 <Alert type="error" showIcon message={t('legal.dpa.sign.detailsLoadError')} />
             )}
         </>
