@@ -13,7 +13,8 @@ interface AccountStepProps {
     busy: boolean;
     /** Set when the registration failed technically (retryable). */
     showRegistrationError: boolean;
-    onBack: () => void;
+    /** Omitted when there is no previous step (joining an existing Träger). */
+    onBack?: () => void;
     onSubmit: (password: string) => void;
 }
 
@@ -33,7 +34,9 @@ export const AccountStep = ({ invite, busy, showRegistrationError, onBack, onSub
                 {t('tenantOnboarding.account.title')}
             </Typography>
             <Typography sx={{ mb: 2 }} color="text.secondary">
-                {t('tenantOnboarding.account.description')}
+                {invite.joinsExistingTenant
+                    ? t('tenantOnboarding.account.joinDescription')
+                    : t('tenantOnboarding.account.description')}
             </Typography>
             <Typography sx={{ mb: 2 }}>
                 {t('tenantOnboarding.account.email')}: <strong>{invite.recipientEmail}</strong>
@@ -80,9 +83,11 @@ export const AccountStep = ({ invite, busy, showRegistrationError, onBack, onSub
                 </Typography>
             )}
             <div className={styles.actions}>
-                <M3Button variant="outlined" onClick={onBack} disabled={busy}>
-                    {t('tenantOnboarding.back')}
-                </M3Button>
+                {onBack && (
+                    <M3Button variant="outlined" onClick={onBack} disabled={busy}>
+                        {t('tenantOnboarding.back')}
+                    </M3Button>
+                )}
                 <M3Button
                     type="submit"
                     variant="filled"

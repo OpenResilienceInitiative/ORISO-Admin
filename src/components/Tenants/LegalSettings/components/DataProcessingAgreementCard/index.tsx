@@ -103,7 +103,7 @@ interface DataProcessingAgreementCardProps {
      * action; publishing a DPA stamps a new version every tenant has to sign again, so
      * "save" and "publish" must stay two separate decisions.
      */
-    onSaveDraft?: (contentByLanguage: Record<string, string>) => void;
+    onSaveDraft?: (contentByLanguage: Record<string, string>) => boolean;
     /** When set, the editor is showing a restored draft saved at this time. */
     draftSavedAt?: string;
     /** A newer version was published after the restored draft was saved. */
@@ -246,6 +246,7 @@ export const DataProcessingAgreementCard = ({
                 snackbarSlot={
                     (showBlockerSnackbar && (
                         <EditorHintSnackbar
+                            layout="long"
                             text={help.hint}
                             onClose={() => {
                                 if (dismissalScope) persistSnackbarClosedForSession('blocker', dismissalScope);

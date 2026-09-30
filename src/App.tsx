@@ -144,7 +144,6 @@ export const App = () => {
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
-    // Platform admin: all Links tabs; tenant admin: counsellor invites only; agency admins: none.
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({

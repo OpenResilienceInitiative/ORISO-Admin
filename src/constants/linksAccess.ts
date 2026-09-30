@@ -1,6 +1,7 @@
 import { UserRole } from '../enums/UserRole';
 import type { InviteEmailTemplateKind } from '../api/accountInvites/accountInvites';
 import type { HasRoleFn } from './caseHandoverAccess';
+import type { InviteViewerScope } from '../pages/Links/inviteModel';
 
 /**
  * Which "Links" tabs an admin may see. The section hands out invite links, and each
@@ -8,10 +9,8 @@ import type { HasRoleFn } from './caseHandoverAccess';
  *
  * - "Träger-Invites" create whole tenants and "Externe Inbounds" configure
  *   platform-wide inbound links → platform admin only.
- * - "Berater-Invites" create counsellors inside the admin's own tenant → platform
- *   admin and tenant admin.
- * - Beratungsstellen-Admins (`agency-admin` / `restricted-agency-admin` without
- *   `tenant-admin`) invite nobody through links, so they get no "Links" section.
+ * - "Berater-Invites" create counsellors inside the admin's own unit → platform
+ *   admin, tenant admin and agency admin (counsellors into own agencies only).
  */
 export type LinksTabKey = 'tenants' | 'counsellor' | 'external-inbounds';
 
@@ -20,22 +19,31 @@ export interface LinksAccessContext {
     hasRole: HasRoleFn;
 }
 
+const isAgencyAdmin = (hasRole: HasRoleFn): boolean => hasRole([UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin]);
+
 export const resolveVisibleLinksTabs = ({ isSuperAdmin, hasRole }: LinksAccessContext): LinksTabKey[] => {
     if (isSuperAdmin) {
         return ['tenants', 'counsellor', 'external-inbounds'];
     }
-    if (hasRole(UserRole.TenantAdmin)) {
+    if (hasRole(UserRole.TenantAdmin) || isAgencyAdmin(hasRole)) {
         return ['counsellor'];
     }
     return [];
+};
+
+/** A tenant admin is pinned to their own Träger; an agency admin also to their own agencies. */
+export const resolveInviteViewerScope = ({ isSuperAdmin, hasRole }: LinksAccessContext): InviteViewerScope => {
+    if (isSuperAdmin) return 'platform';
+    if (!hasRole(UserRole.TenantAdmin) && isAgencyAdmin(hasRole)) return 'agency';
+    return 'tenant';
 };
 
 export const canSeeLinksSection = (context: LinksAccessContext): boolean => resolveVisibleLinksTabs(context).length > 0;
 
 /**
  * The invite e-mail template kinds each Links tab sends with. Tenant invites and
- * the contract forward both belong to the platform operator's work; a counsellor
- * invite is the one kind a tenant admin writes.
+ * the contract forward belong to the platform operator's work; the counsellor
+ * invite is the kind everyone else sends with.
  */
 const TEMPLATE_KINDS_BY_TAB: Record<LinksTabKey, InviteEmailTemplateKind[]> = {
     tenants: ['TENANT_INVITE', 'DPA_FORWARD'],
@@ -56,12 +64,11 @@ export const resolveVisibleTemplateKinds = (context: LinksAccessContext): Invite
     resolveVisibleLinksTabs(context).flatMap((tab) => TEMPLATE_KINDS_BY_TAB[tab]);
 
 /**
- * Whether an admin may change a stored template. Because a template is shared by
+ * Whether an admin may change a STORED template. Because a template is shared by
  * every tenant, an edit by one tenant admin changes the mail every other tenant
  * sends; only the platform operator, who owns that shared text, may make it.
  *
- * This is the UI's half. The server must refuse the same request (POST/PUT
- * /service/useradmin/invite-email-templates), or this only hides a door that is
- * still open.
+ * Creating one is not gated, on purpose: whoever may send invites may write a template.
+ * The server enforces the same rule (`AccountInviteAccessPolicy#authorizeTemplateUpdate`).
  */
 export const canEditSharedTemplates = ({ isSuperAdmin }: LinksAccessContext): boolean => isSuperAdmin;

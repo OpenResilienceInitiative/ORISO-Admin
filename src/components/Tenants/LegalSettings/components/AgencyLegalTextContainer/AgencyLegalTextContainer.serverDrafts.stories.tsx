@@ -142,7 +142,7 @@ export const PersistedServerDraft: Story = {
             await canvas.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
         ).toBeVisible();
         await expect(canvas.getByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
-        await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Bearbeiten' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
     },
 };
@@ -152,11 +152,11 @@ export const LocalAndServerCollision: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
         const localDraftContent = canvas.getAllByText('Lokaler Alt-Entwurf');
         await expect(localDraftContent[0]).toBeVisible();
-        await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Bearbeiten' })).toBeVisible();
     },
 };
 
@@ -167,7 +167,10 @@ export const ConflictRefresh: Story = {
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Entwurf speichern' }));
+        await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
+        await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
+        await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
         await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
         await waitFor(() => expect(canvas.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
@@ -205,6 +208,7 @@ export const PublishWithoutDraftStoreExplains: Story = {
         const page = within(canvasElement.ownerDocument.body);
         await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
         await expect(canvas.queryByText('Entwurf', { selector: '.ant-tag' })).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         // The card re-keys once the user id has loaded; re-query instead of holding references.
         await waitFor(
             () => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull(),

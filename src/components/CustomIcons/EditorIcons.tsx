@@ -10,6 +10,7 @@ import { ReactComponent as EditFilled } from '../../resources/img/svg/edit-fille
 import { ReactComponent as KeyboardArrowDown } from '../../resources/img/svg/keyboard-arrow-down.svg';
 import { ReactComponent as VersionHistory } from '../../resources/img/svg/clock-arrow-down.svg';
 import { ReactComponent as PublishTemplate } from '../../resources/img/svg/oriso/template_24px.svg';
+import { ReactComponent as SaveDraft } from '../../resources/img/svg/oriso/save_draft_24px.svg';
 
 /* eslint-disable react/jsx-props-no-spreading */
 
@@ -41,6 +42,7 @@ export const PublishTemplateIcon = (props: EditorIconProps) => (
 /** Edit pencil (outline + filled) — "Entwurf bearbeiten" and edit affordances. */
 export const EditIcon = (props: EditorIconProps) => <Icon component={EditOutline} {...decorative} {...props} />;
 export const EditFilledIcon = (props: EditorIconProps) => <Icon component={EditFilled} {...decorative} {...props} />;
+export const SaveDraftIcon = (props: EditorIconProps) => <Icon component={SaveDraft} {...decorative} {...props} />;
 /** "Insert cross reference" (Noun Project) — the anchor-link bubble trigger. */
 export const CrossReferenceIcon = (props: EditorIconProps) => (
     <Icon component={CrossReference} {...decorative} {...props} />

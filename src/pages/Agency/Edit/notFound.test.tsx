@@ -117,6 +117,11 @@ vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
     useAgencyLegalDataMissing: () => false,
 }));
 
+vi.mock('../../../hooks/useAgencyConsultants', () => ({
+    AGENCY_CONSULTANTS_KEY: 'AGENCY_CONSULTANTS',
+    useAgencyConsultants: () => ({ data: [], isLoading: false, isError: false }),
+}));
+
 vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
     useAgencyHasConsultants: () => ({ data: false, isLoading: false }),
 }));
