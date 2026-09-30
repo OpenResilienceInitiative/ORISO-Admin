@@ -246,6 +246,7 @@ export const DataProcessingAgreementCard = ({
                 snackbarSlot={
                     (showBlockerSnackbar && (
                         <EditorHintSnackbar
+                            layout="long"
                             text={help.hint}
                             onClose={() => {
                                 if (dismissalScope) persistSnackbarClosedForSession('blocker', dismissalScope);

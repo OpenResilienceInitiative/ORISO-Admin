@@ -6,6 +6,7 @@ import Tune from '@mui/icons-material/Tune';
 import { TemplateSplitButton } from '../PlaceholderTemplate';
 import { legalTextTokensFor, PlaceholderTokenDef } from '../PlaceholderTemplate/placeholderTokens';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
+import { EditorSnackbarQueue } from './EditorSnackbarQueue';
 import { M3RichTextEditor } from './M3RichTextEditor';
 import { SplitDropdown } from './SplitDropdown';
 
@@ -272,6 +273,264 @@ const ResponsiveHintEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
     );
 };
 
+const StackedNoticeEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
+    const [closed, setClosed] = useState<string[]>([]);
+    const [preview, setPreview] = useState(false);
+    const hide = (key: string) => setClosed((current) => [...current, key]);
+    return (
+        <ControlledEditor
+            {...args}
+            snackbarSlot={
+                <EditorSnackbarQueue
+                    items={[
+                        !closed.includes('template') && {
+                            key: 'template',
+                            node: (
+                                <EditorHintSnackbar
+                                    layout="long"
+                                    text="Eine neue Vorlage des Plattformbetreibers liegt vor. Ihr Entwurf bleibt erhalten, bis Sie die Vorlage übernehmen."
+                                    onClose={() => hide('template')}
+                                    closeLabel="Vorlagenhinweis schließen"
+                                    onDismiss={() => hide('template')}
+                                    secondaryAction={{
+                                        label: 'Vergleichsansicht öffnen',
+                                        onClick: () => setPreview(true),
+                                    }}
+                                />
+                            ),
+                        },
+                        !closed.includes('success') && {
+                            key: 'success',
+                            node: (
+                                <EditorHintSnackbar
+                                    layout="long"
+                                    tone="success"
+                                    text="Die Vertragsunterlagen wurden bestätigt. Beratungsstellen können jetzt angelegt werden."
+                                    onClose={() => hide('success')}
+                                    closeLabel="Erfolgshinweis schließen"
+                                    onDismiss={() => hide('success')}
+                                />
+                            ),
+                        },
+                    ]}
+                />
+            }
+            comparison={{
+                title: 'Vorlage des Plattformbetreibers',
+                html: '<h2>Muster-Impressum</h2><p>Angaben gemäß § 5 DDG.</p>',
+                open: preview,
+                onOpenChange: setPreview,
+            }}
+        />
+    );
+};
+
+/** Multiple editor-local notices, with preview and per-publication dismissal. */
+export const StackedTemplateNotices: Story = {
+    render: (args) => <StackedNoticeEditor {...args} />,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(800px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    args: {
+        title: 'Impressum',
+        value: '<p>Das aktuelle Impressum bleibt erhalten.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        readOnly: true,
+    },
+};
+
+/** Two actions in a half-width legal editor. */
+export const StackedTemplateNoticesSplit: Story = {
+    ...StackedTemplateNotices,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(390px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
+/** Two actions at the smallest supported editor width. */
+export const StackedTemplateNoticesMobile: Story = {
+    ...StackedTemplateNotices,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(320px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
+const SingleLongNoticeEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
+    const [closed, setClosed] = useState(false);
+    return (
+        <ControlledEditor
+            {...args}
+            snackbarSlot={
+                closed ? undefined : (
+                    <EditorHintSnackbar
+                        layout="long"
+                        text="Für Ihren Träger liegt eine neue rechtliche Vorlage vor. Ihr vorhandener Entwurf bleibt erhalten, bis Sie die Vorlage ausdrücklich übernehmen."
+                        onClose={() => setClosed(true)}
+                        onDismiss={() => setClosed(true)}
+                        actionLabel="Vorlage ansehen"
+                        closeLabel="Hinweis schließen"
+                    />
+                )
+            }
+        />
+    );
+};
+
+/** Figma 53977:34280: long text, one action and a 48px close affordance. */
+export const LongActionSnackbar: Story = {
+    render: (args) => <SingleLongNoticeEditor {...args} />,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(800px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    args: {
+        title: 'Impressum',
+        value: '<p>Der vorhandene Entwurf bleibt erhalten.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        readOnly: true,
+    },
+};
+
+/** One action at phone width. */
+export const LongActionSnackbarMobile: Story = {
+    ...LongActionSnackbar,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(390px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
+/** Long errors remain pink and use the 48px close target without an action. */
+export const LongErrorSnackbar: Story = {
+    render: (args) => (
+        <ControlledEditor
+            {...args}
+            snackbarSlot={
+                <EditorHintSnackbar
+                    layout="long"
+                    tone="error"
+                    text="Nicht veröffentlicht: Der Entwurf konnte vorher nicht gespeichert werden. Online bleibt die bisherige Fassung, Ihre Änderungen bleiben im Editor."
+                    onClose={() => undefined}
+                    closeLabel="Fehlerhinweis schließen"
+                />
+            }
+        />
+    ),
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(390px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    args: {
+        title: 'Impressum',
+        value: '<p>Der vorhandene Entwurf bleibt erhalten.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        readOnly: true,
+    },
+};
+
+/** One M3 editor instance with a compact read-only reference inside its surface. */
+export const InlineTemplateComparison: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Impressum für Beratungsstellen',
+        value: '<h2>Mein Entwurf</h2><p>Träger Nordlicht e. V., Kiel.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        comparison: {
+            title: 'Vorlage des Plattformbetreibers',
+            html: '<h2>Muster-Impressum</h2><p>Angaben gemäß § 5 DDG.</p><h3>Kontakt</h3><p>Telefon: [Nummer]</p>',
+            detail: 'Gesendet am 25.09.2026 · Vorlage nur lesen und kopieren',
+            language: 'de',
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlage vergleichen' }));
+        await expect(
+            canvas.getByRole('complementary', { name: 'Vorlage des Plattformbetreibers' }),
+        ).toBeInTheDocument();
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await userEvent.click(
+            within(canvas.getByRole('complementary', { name: 'Vorlage des Plattformbetreibers' })).getByRole('button', {
+                name: 'Vergleichsansicht schließen',
+            }),
+        );
+        await expect(canvas.queryByRole('complementary')).toBeNull();
+    },
+};
+
+const EditorErrorExample = (args: Parameters<typeof M3RichTextEditor>[0]) => {
+    const [closed, setClosed] = useState<string[]>([]);
+    return (
+        <ControlledEditor
+            {...args}
+            snackbarSlot={
+                <EditorSnackbarQueue
+                    items={[
+                        !closed.includes('save') && {
+                            key: 'save',
+                            node: (
+                                <EditorHintSnackbar
+                                    tone="error"
+                                    text="Nicht veröffentlicht: Der Entwurf konnte vorher nicht gespeichert werden. Online bleibt die bisherige Fassung; Ihre Änderungen bleiben im Editor."
+                                    onClose={() => setClosed((current) => [...current, 'save'])}
+                                    closeLabel="Speicherfehler schließen"
+                                />
+                            ),
+                        },
+                        !closed.includes('history') && {
+                            key: 'history',
+                            node: (
+                                <EditorHintSnackbar
+                                    tone="error"
+                                    text="Versionsverlauf konnte nicht geladen werden. Ältere Fassungen sind gerade nicht abrufbar; der aktuelle Text bleibt bearbeitbar."
+                                    onClose={() => setClosed((current) => [...current, 'history'])}
+                                    closeLabel="Verlaufsfehler schließen"
+                                />
+                            ),
+                        },
+                    ]}
+                />
+            }
+        />
+    );
+};
+
+/** Both errors stay inside their editor, with the pink M3 error tone. */
+export const EditorErrorSnackbars: Story = {
+    render: (args) => <EditorErrorExample {...args} />,
+    args: {
+        title: 'Datenschutzerklärung der Beratungsstelle',
+        value: '<p>Dieser Entwurf bleibt nach einem fehlgeschlagenen Speichern im Editor.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+};
+
 // Browser-level regression coverage for the narrow layout: the floating blocker
 // reserves scroll space, the chapter navigation remains available, and the first
 // function-bar control starts inside the viewport.
@@ -303,7 +562,11 @@ export const ResponsiveHintAndFunctionBar: Story = {
             scrollContainer = scrollContainer.parentElement;
         }
         expect(scrollContainer).not.toBeNull();
-        expect(parseFloat(window.getComputedStyle(scrollContainer!).paddingBottom)).toBeGreaterThan(0);
+        // The snackbar now reserves a flex row below the text rather than
+        // borrowing padding inside the scrollport.
+        expect(scrollContainer!.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+            canvas.getByRole('status').getBoundingClientRect().top,
+        );
         expect(canvas.getByRole('navigation')).toBeVisible();
 
         const languageControl = canvas.getByTitle('Sprache wählen');
@@ -397,7 +660,7 @@ const dpaVersions = [
 ];
 
 // #268: the version select lists saved versions; picking an older one shows it
-// read-only with a restore-as-draft (copy) + back-to-current banner.
+// read-only with a restore-as-draft (copy) + back-to-current snackbar.
 export const WithVersionSelect: Story = {
     render: (args) => {
         const ControlledWithVersions = (props: Parameters<typeof M3RichTextEditor>[0]) => {
@@ -422,28 +685,17 @@ export const WithVersionSelect: Story = {
     },
 };
 
+/** Narrow version of the same editor for checking both snackbar actions. */
 export const VersionSelectMobile: Story = {
-    render: (args) => <ControlledEditor {...args} />,
-    args: {
-        title: 'Auftragsdaten Verarbeitungsvertrag',
-        value: '<h2>Vertragsunterlagen</h2><p>Aktueller Entwurf.</p>',
-        versions: dpaVersions,
-        fluid: true,
-        languages: [{ value: 'de', label: 'Deutsch' }],
-        language: 'de',
-    },
+    ...WithVersionSelect,
+    args: { ...WithVersionSelect.args, fluid: true },
     decorators: [
         (Story) => (
-            <div style={{ width: 'min(390px, calc(100vw - 32px))', height: 844, overflow: 'hidden' }}>
+            <div style={{ width: 'min(390px, calc(100vw - 32px))' }}>
                 <Story />
             </div>
         ),
     ],
-    play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        const anchorBar = await waitFor(() => canvas.getByRole('navigation', { name: 'Sprungmarken' }));
-        expect(window.getComputedStyle(anchorBar).backgroundColor).toBe('rgb(255, 255, 255)');
-    },
 };
 
 export const VersionSelectMobileNarrowReader: Story = {
@@ -528,7 +780,6 @@ const AgencyFooterEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
 
 export const AgencyFooterWithConsentTemplate: Story = {
     render: (args) => <AgencyFooterEditor {...args} />,
-    globals: { viewport: { value: 'phone', isRotated: false } },
     args: {
         title: 'Datenschutzerklärung',
         value: '<h2>Datenschutzerklärung</h2><p>Aktueller Entwurf des Fachbereichs.</p>',
@@ -561,7 +812,7 @@ export const AgencyFooterWithConsentTemplate: Story = {
         );
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-        // The narrow bar keeps a single row and a visible scroll affordance.
+        // A narrow card inside a wide Storybook viewport still acts like mobile.
         expect(window.getComputedStyle(bar).flexWrap).toBe('nowrap');
         expect(window.getComputedStyle(bar).overflowX).toBe('auto');
         expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);

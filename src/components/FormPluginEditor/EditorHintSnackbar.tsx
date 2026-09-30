@@ -1,5 +1,6 @@
 import { Check, Close } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FigmaCloseIcon } from '../../resources/img/svg/oriso/snackbar_close_24px.svg';
 import styles from './M3RichTextEditor.module.scss';
 
 export type EditorHintSnackbarTone = 'blocker' | 'success' | 'error';
@@ -14,6 +15,8 @@ export type EditorHintSnackbarProps = {
      * call 2026-09-23: errors read better as a snackbar than as an alert box).
      */
     tone?: EditorHintSnackbarTone;
+    /** Figma 53977:34280: text above a separate action and close row. */
+    layout?: 'compact' | 'long';
     /** Hide for this session (the X / check affordance). */
     onClose: () => void;
     /**
@@ -24,6 +27,8 @@ export type EditorHintSnackbarProps = {
     onDismiss?: () => void;
     actionLabel?: string;
     actionDisabled?: boolean;
+    /** Optional second action, e.g. preview alongside "do not show again". */
+    secondaryAction?: { label: string; onClick: () => void; disabled?: boolean };
     /** Accessible name of the close affordance, when "close hint" is not the right word. */
     closeLabel?: string;
 };
@@ -37,10 +42,12 @@ export type EditorHintSnackbarProps = {
 export const EditorHintSnackbar = ({
     text,
     tone = 'blocker',
+    layout = 'compact',
     onClose,
     onDismiss,
     actionLabel,
     actionDisabled = false,
+    secondaryAction,
     closeLabel,
 }: EditorHintSnackbarProps) => {
     const { t } = useTranslation();
@@ -48,20 +55,37 @@ export const EditorHintSnackbar = ({
     const toneClass = `${isSuccess ? styles.hintSnackbarSuccess : ''} ${
         tone === 'error' ? styles.hintSnackbarError : ''
     }`;
+    let closeIcon = <Close />;
+    if (layout === 'long') closeIcon = <FigmaCloseIcon className={styles.hintSnackbarCloseIcon} aria-hidden="true" />;
+    if (isSuccess) closeIcon = <Check className={styles.hintSnackbarSuccessIcon} />;
     return (
-        <div className={`${styles.hintSnackbar} ${toneClass}`}>
+        <div className={`${styles.hintSnackbar} ${layout === 'long' ? styles.hintSnackbarLong : ''} ${toneClass}`}>
             <span className={styles.hintSnackbarText} role="status">
                 {text}
             </span>
-            {onDismiss && (
-                <button
-                    type="button"
-                    className={styles.hintSnackbarAction}
-                    onClick={onDismiss}
-                    disabled={actionDisabled}
-                >
-                    {actionLabel ?? t('legal.help.snackbar.dismiss')}
-                </button>
+            {(onDismiss || secondaryAction) && (
+                <div className={styles.hintSnackbarActions}>
+                    {secondaryAction && (
+                        <button
+                            type="button"
+                            className={styles.hintSnackbarAction}
+                            onClick={secondaryAction.onClick}
+                            disabled={secondaryAction.disabled}
+                        >
+                            {secondaryAction.label}
+                        </button>
+                    )}
+                    {onDismiss && (
+                        <button
+                            type="button"
+                            className={styles.hintSnackbarAction}
+                            onClick={onDismiss}
+                            disabled={actionDisabled}
+                        >
+                            {actionLabel ?? t('legal.help.snackbar.dismiss')}
+                        </button>
+                    )}
+                </div>
             )}
             <button
                 type="button"
@@ -71,7 +95,7 @@ export const EditorHintSnackbar = ({
                 }
                 onClick={onClose}
             >
-                {isSuccess ? <Check /> : <Close />}
+                {closeIcon}
             </button>
         </div>
     );

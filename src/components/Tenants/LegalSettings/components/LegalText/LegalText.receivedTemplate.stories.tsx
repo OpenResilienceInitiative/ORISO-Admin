@@ -173,15 +173,19 @@ type Story = StoryObj<typeof meta>;
 
 const LOAD = { timeout: 10000 };
 
-/** The platform sent an imprint template: marker, source and Berlin send time, template left, draft right. */
+/** The platform sent an imprint template: editor notice opens the compact reference beside one text field. */
 export const TraegerWithNewTemplate: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const region = await canvas.findByRole('region', { name: /Vorlage des Plattformbetreibers · Impressum/ }, LOAD);
-        await expect(within(region).getByText('Neue Vorlage')).toBeVisible();
-        await expect(within(region).getByText(/25\.09\.2026, 16:31/)).toBeVisible();
-        await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeEnabled();
+        const preview = await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD);
+        await expect(canvas.getByText(/25\.09\.2026, 16:31/)).toBeVisible();
+        await userEvent.click(preview);
+        await expect(
+            canvas.getByRole('complementary', { name: /Vorlage des Plattformbetreibers · Impressum/ }),
+        ).toBeVisible();
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await expect(canvas.getByRole('button', { name: 'Vorlage übernehmen' })).toBeEnabled();
     },
 };
 
@@ -190,8 +194,9 @@ export const PlatformInspectsExistingTraeger: Story = {
     parameters: { platformInspector: true, msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Vorschau anzeigen|Show preview/ }, LOAD));
         const region = await canvas.findByRole(
-            'region',
+            'complementary',
             { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Imprint/ },
             LOAD,
         );
@@ -212,6 +217,7 @@ export const TraegerAdoptsIntoEmptyDraft: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -228,6 +234,7 @@ export const TraegerReplaceConfirmation: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
