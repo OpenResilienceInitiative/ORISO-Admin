@@ -37,7 +37,7 @@ const renderCard = () => {
     );
 };
 
-const passwordInput = () => document.querySelector('input[type="password"]') as HTMLInputElement | null;
+const passwordInput = () => screen.getByLabelText<HTMLInputElement>('tenants.appSettings.smtp.passwordNew');
 
 describe('SmtpSettings (write-only password, #730)', () => {
     beforeEach(() => {
@@ -66,8 +66,8 @@ describe('SmtpSettings (write-only password, #730)', () => {
     it('renders the password field empty and never leaks a stored or global secret', () => {
         renderCard();
 
-        expect(passwordInput()).not.toBeNull();
-        expect(passwordInput()!.value).toBe('');
+        expect(passwordInput()).toBeInTheDocument();
+        expect(passwordInput().value).toBe('');
         expect(document.body.innerHTML).not.toContain('global-secret');
     });
 
@@ -93,7 +93,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.passwordStored')).toBeInTheDocument();
-        expect(passwordInput()!.value).toBe('');
+        expect(passwordInput().value).toBe('');
         expect(document.body.innerHTML).not.toContain('legacy-plaintext');
     });
 
@@ -113,7 +113,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
-        fireEvent.change(passwordInput()!, { target: { value: 'rotated-secret' } });
+        fireEvent.change(passwordInput(), { target: { value: 'rotated-secret' } });
         fireEvent.click(screen.getByText('card.edit.save'));
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
