@@ -1,38 +1,114 @@
-/*
- * IdAllocationField — Auto toggle chip inside the canonical M3NumberField's
- * trailing slot (ORISO-Admin#570). Colours come from the M3/OrisoScheme CSS
- * variables only; the field states themselves live in M3NumberField.
- */
-
-.autoToggle {
+/* Only the type-ahead menu lives here; the field itself is M3NumberField. */
+.anchor {
     display: inline-flex;
-    height: 32px;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.menu {
+    position: fixed;
+    z-index: 1100;
+    display: flex;
+    max-width: min(420px, calc(100vw - 16px));
+    max-height: 320px;
+    box-sizing: border-box;
+    flex-direction: column;
+    margin: 0;
+    padding: 6px;
+    animation: id-allocation-menu-in 140ms cubic-bezier(0.2, 0, 0, 1);
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px 3px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 20%);
+    font-family: var(--m3-body-font-family, 'Inter Variable', Inter, Arial, sans-serif);
+    gap: 2px;
+    list-style: none;
+    overflow-y: auto;
+    transform-origin: top left;
+}
+
+.option {
+    display: flex;
     align-items: center;
-    padding: 0 12px;
-    border: 1px solid var(--m3-outline-variant, #c4c7c8);
-    background: transparent;
-    border-radius: 16px;
-    color: inherit;
+    padding: 8px 12px;
+    border-radius: 8px;
+    color: var(--m3-secondary, #4c555f);
     cursor: pointer;
-    font-family: inherit;
+    font-size: 14px;
+    gap: 8px;
+    line-height: 20px;
+    transition: background-color 120ms ease;
+}
+
+.optionActive {
+    background: var(--m3-surface-container, #f0edee);
+}
+
+.optionSelected {
+    background: var(--m3-primary-fixed, #ffdad5);
+    color: var(--m3-primary, #a5000a);
+}
+
+.optionCreate {
+    font-weight: 500;
+}
+
+/* "Weitere anzeigen": an action at the end of the list, read like a text button. */
+.optionMore {
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+}
+
+.optionCheck {
+    flex-shrink: 0;
+}
+
+.optionText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.optionLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.optionSecondary {
+    overflow: hidden;
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
-    &:focus-visible {
-        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
-        outline-offset: 2px;
+.empty {
+    padding: 8px 12px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+@keyframes id-allocation-menu-in {
+    from {
+        opacity: 0;
+        transform: scaleY(0.9) translateY(-4px);
     }
 
-    &:disabled {
-        cursor: not-allowed;
-        opacity: 0.38;
+    to {
+        opacity: 1;
+        transform: scaleY(1) translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .menu {
+        animation: none;
     }
 
-    &[aria-pressed='true'] {
-        border-color: transparent;
-        background: var(--m3-secondary-container, #646d78);
-        color: var(--m3-on-secondary-container, #e7effc);
+    .option {
+        transition: none;
     }
 }

@@ -18,7 +18,19 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t, i18n: { language: 'de' } }),
 }));
 
+// What the server sends for each status (ORISO-UserService#1260); a finished onboarding overrides it with DONE.
+const SERVER_PHASE: Record<AccountInviteDTO['inviteStatus'], NonNullable<AccountInviteDTO['progressPhase']>> = {
+    WAITING_FOR_UNIT: 'PREPARED',
+    DRAFT: 'PREPARED',
+    EMAIL_SENT: 'INVITED',
+    ACCEPTED: 'ACCOUNT_CREATED',
+    EXPIRED: 'NEEDS_ACTION',
+    REVOKED: 'CLOSED',
+    SUPERSEDED: 'CLOSED',
+};
+
 const invite = (id: number, overrides: Partial<AccountInviteDTO> = {}): AccountInviteDTO => ({
+    progressPhase: SERVER_PHASE[overrides.inviteStatus ?? 'EMAIL_SENT'],
     id,
     targetRole: 'TENANT_ADMIN',
     tenantId: id,
@@ -52,6 +64,7 @@ const INVITES: AccountInviteDTO[] = [
         acceptedAt: '2026-08-02T10:00:00Z',
         accessGateStatus: 'READY',
         dpaSignedAt: '2026-08-04T10:00:00Z',
+        progressPhase: 'DONE',
     }),
     invite(4, { inviteStatus: 'EXPIRED' }),
 ];
@@ -72,13 +85,52 @@ const baseProps = () => ({
 describe('InviteProgressBoard', () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it('renders one summary tile per bucket with derived counts', () => {
-        render(<InviteProgressBoard {...baseProps()} />);
+    it('renders the five phase tiles with their counts and a breakdown by raw status', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    ...INVITES,
+                    invite(5, { inviteStatus: 'DRAFT', emailDeliveryStatus: null }),
+                    invite(6, { inviteStatus: 'REVOKED' }),
+                ]}
+            />,
+        );
 
-        expect(screen.getByRole('button', { name: '1 Eingeladen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 In Bearbeitung' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 Abgeschlossen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: '1 Abgelaufen / Problem' })).toBeInTheDocument();
+        const tiles = within(screen.getByRole('group', { name: 'Onboarding-Übersicht' })).getAllByRole('button');
+        expect(tiles.map((tile) => tile.textContent)).toEqual([
+            '1Vorbereitet1 Draft',
+            '1Eingeladen1 Gesendet',
+            '1Konto angelegt1 Angenommen',
+            '1Fertig1 Angenommen',
+            '2Braucht Aktion1 Abgelaufen · 1 Widerrufen',
+        ]);
+        // The tiles are the only filter: the status chip row is gone.
+        expect(screen.queryByRole('checkbox', { name: 'Angenommen' })).not.toBeInTheDocument();
+    });
+
+    it("counts the tiles from the server's tab totals, not from the rows it holds", () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                tileCounts={{
+                    prepared: { total: 24, details: { DRAFT: 24 } },
+                    invited: { total: 0, details: {} },
+                    accountCreated: { total: 0, details: {} },
+                    done: { total: 0, details: {} },
+                    needsAction: { total: 3, details: { EXPIRED: 1, REVOKED: 1, SUPERSEDED: 1 } },
+                }}
+            />,
+        );
+
+        const tiles = within(screen.getByRole('group', { name: 'Onboarding-Übersicht' })).getAllByRole('button');
+        expect(tiles[0]).toHaveTextContent('24Vorbereitet24 Draft');
+        expect(tiles[4]).toHaveTextContent('3Braucht Aktion1 Abgelaufen · 1 Widerrufen · 1 Ersetzt');
+    });
+
+    it('says "keine" on an empty tile instead of an empty breakdown', () => {
+        render(<InviteProgressBoard {...baseProps()} />);
+        expect(screen.getByRole('button', { name: '0 Vorbereitet keine' })).toBeInTheDocument();
     });
 
     it('renders a DRAFT row all-grey with the draft label instead of an active "Eingeladen"', () => {
@@ -102,7 +154,7 @@ describe('InviteProgressBoard', () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);
 
-        const problemTile = screen.getByRole('button', { name: '1 Abgelaufen / Problem' });
+        const problemTile = screen.getByRole('button', { name: /^1 Braucht Aktion/ });
         await user.click(problemTile);
 
         const table = within(screen.getByRole('table'));
@@ -114,17 +166,20 @@ describe('InviteProgressBoard', () => {
         expect(within(screen.getByRole('table')).getByText('person1@example.org')).toBeInTheDocument();
     });
 
-    it('filters by status chip (single-select)', async () => {
+    it('filters by one tile at a time; another tile replaces the filter', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);
 
-        await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
-
+        await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
         const table = within(screen.getByRole('table'));
         expect(table.getByText('person2@example.org')).toBeInTheDocument();
-        expect(table.queryByText('person1@example.org')).not.toBeInTheDocument();
+        expect(table.queryByText('person3@example.org')).not.toBeInTheDocument();
         // The count in the pagination footer follows the filter.
-        expect(screen.getByText('1–2 von 2')).toBeInTheDocument();
+        expect(screen.getByText('1–1 von 1')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /^1 Fertig/ }));
+        expect(within(screen.getByRole('table')).getByText('person3@example.org')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^1 Konto angelegt/ })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('shows the phase stepper per row (dead rows carry the error phase)', () => {
@@ -154,13 +209,13 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person7@example.org').closest('tr') as HTMLElement);
-        // Compact label under the track: the signature is outstanding.
-        expect(row.getByText('Wartet auf Vertragsbestätigung')).toBeInTheDocument();
-        // The forwarded bead is done and announced as such.
-        expect(row.getByText('Vertragsunterlagen weitergeleitet – abgeschlossen')).toBeInTheDocument();
+        // The signature is the awaited step.
+        expect(row.getByText(/^Wartet auf Vertragsbestätigung – aktueller Schritt/)).toBeInTheDocument();
+        // The forwarded bead is done, dated, and announced as such.
+        expect(row.getByText(/^Vertragsunterlagen weitergeleitet – abgeschlossen, 03\.08\.2026/)).toBeInTheDocument();
         // The track must NOT claim completion anywhere in this row.
-        expect(row.queryByText('Abgeschlossen – abgeschlossen')).not.toBeInTheDocument();
-        expect(row.queryByText('Vertrag bestätigt – abgeschlossen')).not.toBeInTheDocument();
+        expect(row.queryByText(/^Fertig – abgeschlossen/)).not.toBeInTheDocument();
+        expect(row.queryByText(/^Vertrag bestätigt – abgeschlossen/)).not.toBeInTheDocument();
     });
 
     it('completes the track only once the signature landed', () => {
@@ -180,8 +235,8 @@ describe('InviteProgressBoard', () => {
         );
 
         const row = within(screen.getByText('person8@example.org').closest('tr') as HTMLElement);
-        expect(row.getByText('Vertrag bestätigt – abgeschlossen')).toBeInTheDocument();
-        expect(row.getByText('Abgeschlossen – abgeschlossen')).toBeInTheDocument();
+        expect(row.getByText(/^Vertrag bestätigt – abgeschlossen, 04\.08\.2026/)).toBeInTheDocument();
+        expect(row.getByText(/^Fertig – abgeschlossen/)).toBeInTheDocument();
     });
 
     it('wires resend/copy/revoke and disables ALL THREE actions on terminal rows (C4/C5)', async () => {
@@ -233,17 +288,10 @@ describe('InviteProgressBoard', () => {
         expect((acceptedRow.getByText('Angenommen').closest('td') as HTMLElement).querySelector('a')).toBeNull();
     });
 
-    // C3: "Status ersetzt unklar" — broadened by the owner to every status, in
-    // both places it is shown: the filter chip and the row badge.
-    it('explains every status on hover, on the filter chip and on the row badge (C3)', async () => {
+    // C3: "Status ersetzt unklar" — broadened by the owner to every status; the row badge explains it.
+    it('explains every status on hover on the row badge (C3)', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} invites={[invite(9, { inviteStatus: 'SUPERSEDED' })]} />);
-
-        await user.hover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
-        expect(await screen.findByRole('tooltip')).toHaveTextContent(
-            'Diese Einladung wurde durch ein erneutes Versenden ersetzt — es gilt die neuere Einladung.',
-        );
-        await user.unhover(screen.getByRole('checkbox', { name: 'Ersetzt' }));
 
         const badge = within(screen.getByRole('table')).getByText('Ersetzt');
         await user.hover(badge);
@@ -254,13 +302,26 @@ describe('InviteProgressBoard', () => {
         expect(badge).toHaveAttribute('tabindex', '0');
     });
 
-    it('gives each of the six statuses its own explanation, not just Ersetzt (C3)', () => {
-        render(<InviteProgressBoard {...baseProps()} />);
-
-        // One chip per status, each carrying a distinct explanation.
-        const hints = ['Draft', 'Gesendet', 'Angenommen', 'Abgelaufen', 'Widerrufen', 'Ersetzt'].map(
-            (label) => screen.getByRole('checkbox', { name: label }).closest('span')?.textContent,
+    it('gives each of the six statuses its own explanation, not just Ersetzt (C3)', async () => {
+        const user = userEvent.setup();
+        const statuses = ['DRAFT', 'EMAIL_SENT', 'ACCEPTED', 'EXPIRED', 'REVOKED', 'SUPERSEDED'] as const;
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={statuses.map((inviteStatus, index) => invite(20 + index, { inviteStatus }))}
+            />,
         );
+
+        const labels = ['Draft', 'Gesendet', 'Angenommen', 'Abgelaufen', 'Widerrufen', 'Ersetzt'];
+        // One tooltip at a time: hover, read, leave.
+        const hints = await labels.reduce<Promise<string[]>>(async (previous, label) => {
+            const collected = await previous;
+            const badge = within(screen.getByRole('table')).getByText(label);
+            await user.hover(badge);
+            const hint = (await screen.findByRole('tooltip')).textContent ?? '';
+            await user.unhover(badge);
+            return [...collected, hint];
+        }, Promise.resolve([]));
         expect(new Set(hints).size).toBe(6);
     });
 
@@ -324,12 +385,12 @@ describe('InviteProgressBoard', () => {
             await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
             expect(props.onSelectionChange).toHaveBeenLastCalledWith([1]);
 
-            // person1 is EMAIL_SENT, so the "Angenommen" chip hides it.
-            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            // person1 is EMAIL_SENT, so the "Konto angelegt" tile hides it.
+            await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
             expect(props.onSelectionChange).toHaveBeenLastCalledWith([]);
 
             // Really deselected, not just reported: it comes back unchecked.
-            await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+            await user.click(screen.getByRole('button', { name: /^1 Konto angelegt/ }));
             expect(screen.getByRole('checkbox', { name: rowCheckbox })).not.toBeChecked();
         });
 
@@ -342,8 +403,8 @@ describe('InviteProgressBoard', () => {
             await user.click(screen.getByRole('checkbox', { name: rowCheckbox }));
             props.onSelectionChange.mockClear();
 
-            // The "Eingeladen" bucket contains person1 — nothing to prune.
-            await user.click(screen.getByRole('button', { name: '1 Eingeladen' }));
+            // The "Eingeladen" tile contains person1 — nothing to prune.
+            await user.click(screen.getByRole('button', { name: /^1 Eingeladen/ }));
             expect(props.onSelectionChange).not.toHaveBeenCalled();
             expect(screen.getByRole('checkbox', { name: rowCheckbox })).toBeChecked();
         });
@@ -363,7 +424,7 @@ describe('InviteProgressBoard', () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} invites={[invite(1)]} onInviteCta={vi.fn()} />);
 
-        await user.click(screen.getByRole('checkbox', { name: 'Angenommen' }));
+        await user.click(screen.getByRole('button', { name: /^0 Konto angelegt/ }));
         expect(screen.getByText('Keine Einladungen für diesen Filter.')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Erste Einladung senden' })).not.toBeInTheDocument();
     });
@@ -417,5 +478,384 @@ describe('InviteProgressBoard', () => {
             .slice(1)
             .map((row) => within(row).getByText(/Meier|Zeller|Anders/).textContent);
         expect(names).toEqual(['Bea Zeller', 'Nils Anders', 'Rita Meier']);
+    });
+});
+
+describe('InviteProgressBoard — queue and topic permission', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const waiting = invite(10, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        emailDeliveryStatus: null,
+        topicPermission: 'NONE',
+    });
+    const orphan = invite(11, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'WAITING_FOR_UNIT',
+        waitingForUnit: 'AGENCY',
+        queueProblem: 'NO_UNIT_ADMIN',
+        emailDeliveryStatus: null,
+        progressPhase: 'NEEDS_ACTION',
+    });
+    const accepted = invite(12, {
+        targetRole: 'COUNSELLOR',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-08-02T10:00:00Z',
+        topicPermission: 'SELECT_EXISTING',
+    });
+    const counsellorProps = (invites: AccountInviteDTO[], extra = {}) => ({
+        ...baseProps(),
+        invites,
+        targetRole: 'COUNSELLOR' as const,
+        ...extra,
+    });
+
+    it('shows a waiting invite with the new first step, resend disabled but revoke possible', () => {
+        render(<InviteProgressBoard {...counsellorProps([waiting])} />);
+
+        const row = screen.getByText('person10@example.org').closest('tr') as HTMLElement;
+        expect(within(row).getByText('Beratungsstelle noch nicht angelegt')).toBeInTheDocument();
+        expect(within(row).getByText('Wartet')).toBeInTheDocument();
+        expect(within(row).getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+        expect(within(row).getByRole('button', { name: 'Einladung widerrufen' })).toBeEnabled();
+        expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
+    });
+
+    it('marks a waiting invite without unit admin with the "Keine BST-Admin" badge', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        expect(screen.getByTestId('queue-problem-badge')).toHaveTextContent('Keine BST-Admin');
+        expect(screen.getByRole('button', { name: '1 Braucht Aktion 1 Keine BST-Admin' })).toBeInTheDocument();
+    });
+
+    it('names the missing Träger admin in the badge of an invite that waits for a new Träger', async () => {
+        const tenantOrphan = invite(13, {
+            targetRole: 'AGENCY_ADMIN',
+            inviteStatus: 'WAITING_FOR_UNIT',
+            waitingForUnit: 'TENANT',
+            queueProblem: 'NO_UNIT_ADMIN',
+            emailDeliveryStatus: null,
+            progressPhase: 'NEEDS_ACTION',
+        });
+        render(<InviteProgressBoard {...counsellorProps([tenantOrphan])} />);
+
+        const badge = screen.getByTestId('queue-problem-badge');
+        expect(badge).toHaveTextContent('Keine Träger-Admin');
+        await userEvent.hover(badge);
+        expect(await screen.findByText(/Laden Sie eine Träger-Admin mit derselben Nummer ein/)).toBeInTheDocument();
+    });
+
+    it('names the queue problem for screen readers instead of calling it a delivery problem', () => {
+        render(<InviteProgressBoard {...counsellorProps([orphan])} />);
+
+        const row = screen.getByText('person11@example.org').closest('tr') as HTMLElement;
+        const progress = within(row).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        expect(progress).not.toHaveTextContent('Zustellproblem');
+        expect(progress).toHaveTextContent('Keine BST-Admin – Einladung wartet');
+    });
+
+    const topicChip = () => screen.getByRole('button', { name: /Themen für/ });
+
+    it('changes the topic permission of an accepted counsellor from the chip menu', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        await userEvent.click(topicChip());
+        const menu = await screen.findByRole('menu');
+        await userEvent.click(within(menu).getByText('Darf weitere Themen anlegen'));
+
+        expect(onTopicPermissionChange).toHaveBeenCalledWith(accepted, 'CREATE');
+    });
+
+    it('does not save when the current level is picked again', async () => {
+        const onTopicPermissionChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange })} />);
+
+        await userEvent.click(topicChip());
+        await userEvent.click(within(await screen.findByRole('menu')).getByText('Darf weitere Fachbereiche auswählen'));
+
+        expect(onTopicPermissionChange).not.toHaveBeenCalled();
+    });
+
+    it('shows the short topic label in the chip, the full title and description in a tooltip', async () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission: 'NONE' }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        expect(topicChip()).toHaveTextContent(/^Themen: Keine weiteren$/);
+        await userEvent.hover(topicChip());
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Keine weiteren Fachbereiche');
+        expect(tooltip).toHaveTextContent('Nur die vorausgewählten Fachbereiche.');
+    });
+
+    it.each([
+        ['SELECT_EXISTING', 'Auswählen'],
+        ['CREATE', 'Anlegen'],
+    ] as const)('labels %s as "Themen: %s" in the chip', (topicPermission, short) => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, topicPermission }], { onTopicPermissionChange: vi.fn() })}
+            />,
+        );
+
+        expect(topicChip()).toHaveTextContent(new RegExp(`^Themen: ${short}$`));
+    });
+
+    it('lists every level with its title and description, the current one checked', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn() })} />);
+
+        await userEvent.click(topicChip());
+        const items = within(await screen.findByRole('menu')).getAllByRole('menuitem');
+        expect(items).toHaveLength(3);
+        const current = items.find((item) => item.textContent?.includes('Darf weitere Fachbereiche auswählen'));
+        expect(current).toHaveTextContent('Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.');
+        expect(current?.querySelector('svg')).not.toBeNull();
+        expect(items.filter((item) => item.querySelector('svg'))).toHaveLength(1);
+    });
+
+    it('keeps the chip visible but disabled, with the reason, when the viewer may not change it', async () => {
+        render(<InviteProgressBoard {...counsellorProps([accepted])} />);
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(topicChip());
+        expect(screen.queryByRole('menu')).toBeNull();
+        await userEvent.hover(topicChip());
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('keine Berechtigung');
+    });
+
+    it('disables the chip while its row is saving', () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([accepted], { onTopicPermissionChange: vi.fn(), topicPermissionSavingIds: [12] })}
+            />,
+        );
+
+        expect(topicChip()).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('offers no topic select on the Träger tab, even for a counsellor row', () => {
+        render(<InviteProgressBoard {...baseProps()} invites={[accepted]} onTopicPermissionChange={vi.fn()} />);
+
+        expect(screen.queryByRole('button', { name: /Themen für/ })).toBeNull();
+    });
+});
+
+describe('InviteProgressBoard — role chip', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const open = invite(30, { targetRole: 'COUNSELLOR', firstName: 'Lena', lastName: 'Vogt' });
+    const accepted = invite(31, {
+        targetRole: 'COUNSELLOR',
+        firstName: 'Anke',
+        lastName: 'Roth',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-08-02T10:00:00Z',
+        provisionedUserId: 'c-31',
+    });
+    const counsellorProps = (invites: AccountInviteDTO[], extra = {}) => ({
+        ...baseProps(),
+        invites,
+        targetRole: 'COUNSELLOR' as const,
+        viewerScope: 'tenant' as const,
+        ...extra,
+    });
+    const roleChip = (name: string) => screen.getByRole('button', { name: new RegExp(`^Rolle von ${name}`) });
+
+    it('changes the role of an invite that is not accepted yet', async () => {
+        const onRoleChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange, onRoleAdd: vi.fn() })} />);
+
+        expect(roleChip('Lena Vogt')).toHaveTextContent(/^Berater:in$/);
+        await userEvent.click(roleChip('Lena Vogt'));
+        const menu = await screen.findByRole('menu');
+        expect(within(menu).getAllByRole('menuitem')).toHaveLength(3);
+        await userEvent.click(within(menu).getByText('BST-Admin'));
+
+        expect(onRoleChange).toHaveBeenCalledWith(open, 'AGENCY_ADMIN');
+    });
+
+    it('explains on hover what the role means and what can be changed', async () => {
+        render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn() })} />);
+
+        await userEvent.hover(roleChip('Lena Vogt'));
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Berät Ratsuchende in ihrer Beratungsstelle.');
+        expect(tooltip).toHaveTextContent('Noch nicht angenommen: Die Rolle lässt sich hier ändern.');
+    });
+
+    it('only adds "auch BST-Admin" once the account exists, and points removal to the users area', async () => {
+        const onRoleAdd = vi.fn();
+        const onRoleChange = vi.fn();
+        render(<InviteProgressBoard {...counsellorProps([accepted], { onRoleAdd, onRoleChange })} />);
+
+        await userEvent.click(roleChip('Anke Roth'));
+        const menu = await screen.findByRole('menu');
+        const change = within(menu).getByText('BST-Admin').closest('li') as HTMLElement;
+        expect(change).toHaveAttribute('aria-disabled', 'true');
+        expect(change).toHaveTextContent('Das Konto besteht: im Bereich Benutzer ändern.');
+        expect(within(menu).getByRole('link', { name: 'Rolle entfernen: im Bereich Benutzer' })).toHaveAttribute(
+            'href',
+            '/admin/users/consultants',
+        );
+
+        await userEvent.click(within(menu).getByText('+ auch BST-Admin'));
+        expect(onRoleAdd).toHaveBeenCalledWith(accepted, 'AGENCY_ADMIN');
+        expect(onRoleChange).not.toHaveBeenCalled();
+    });
+
+    it('keeps the users-area link reachable when every role entry is locked', async () => {
+        const alsoAdmin = { ...accepted, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] } as AccountInviteDTO;
+        render(
+            <InviteProgressBoard {...counsellorProps([alsoAdmin], { onRoleAdd: vi.fn(), onRoleChange: vi.fn() })} />,
+        );
+
+        // "auch BST-Admin" is taken and the account exists: nothing to pick, but the removal link must still open.
+        expect(roleChip('Anke Roth')).not.toHaveAttribute('aria-disabled', 'true');
+        await userEvent.click(roleChip('Anke Roth'));
+        const menu = await screen.findByRole('menu');
+        expect(within(menu).getByRole('link', { name: 'Rolle entfernen: im Bereich Benutzer' })).toBeInTheDocument();
+    });
+
+    it('shows a role the viewer may not hand out, disabled with the reason', async () => {
+        render(<InviteProgressBoard {...counsellorProps([open], { viewerScope: 'agency', onRoleChange: vi.fn() })} />);
+
+        // Nothing is left to pick for an agency admin: the chip stays visible, locked, with the reason.
+        expect(roleChip('Lena Vogt')).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.hover(roleChip('Lena Vogt'));
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('keine Berechtigung');
+    });
+
+    it('names both roles once "auch BST-Admin" was added, and offers it no more', async () => {
+        render(
+            <InviteProgressBoard
+                {...counsellorProps([{ ...accepted, accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }], {
+                    onRoleAdd: vi.fn(),
+                })}
+            />,
+        );
+
+        expect(roleChip('Anke Roth')).toHaveTextContent(/^Berater:in \+ BST-Admin$/);
+        await userEvent.click(roleChip('Anke Roth'));
+        const menu = await screen.findByRole('menu');
+        expect(within(menu).getByText('+ auch BST-Admin').closest('li')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it.each([
+        ['has the role already', { accountRoles: ['COUNSELLOR', 'AGENCY_ADMIN'] }, 'Das Konto hat diese Rolle schon.'],
+        ['is still being created', { provisionedUserId: null }, 'Das Konto wird noch angelegt.'],
+    ])(
+        'says why a locked chip is locked when the account %s, not that permission is missing',
+        async (_, patch, why) => {
+            render(
+                <InviteProgressBoard
+                    {...counsellorProps([{ ...accepted, ...patch } as AccountInviteDTO], {
+                        onRoleAdd: vi.fn(),
+                        onRoleChange: vi.fn(),
+                    })}
+                />,
+            );
+
+            // Every entry is locked, yet the chip opens: its menu links to the users area.
+            expect(roleChip('Anke Roth')).not.toHaveAttribute('aria-disabled', 'true');
+            await userEvent.hover(roleChip('Anke Roth'));
+            const tooltip = await screen.findByRole('tooltip');
+            expect(tooltip).toHaveTextContent(why);
+            expect(tooltip).not.toHaveTextContent('keine Berechtigung');
+        },
+    );
+
+    it('explains that a Träger-Admin needs a new invite instead of a role change', async () => {
+        render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn() })} />);
+
+        await userEvent.click(roleChip('Lena Vogt'));
+        const tenantAdmin = within(await screen.findByRole('menu'))
+            .getByText('Träger-Admin')
+            .closest('li') as HTMLElement;
+        expect(tenantAdmin).toHaveAttribute('aria-disabled', 'true');
+        expect(tenantAdmin).toHaveTextContent('widerrufen und neu einladen');
+    });
+
+    it('keeps the chip visible but locked without a change handler', () => {
+        render(<InviteProgressBoard {...counsellorProps([open])} />);
+        expect(roleChip('Lena Vogt')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('disables the chip while its row is saving', () => {
+        render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn(), roleSavingIds: [30] })} />);
+        expect(roleChip('Lena Vogt')).toHaveAttribute('aria-disabled', 'true');
+    });
+});
+
+describe('InviteProgressBoard — dated tracker', () => {
+    const released = invite(40, {
+        targetRole: 'COUNSELLOR',
+        unitCreatedAt: '2026-09-24T09:00:00Z',
+        sentAt: '2026-09-24T09:01:00Z',
+        accountCreatedAt: '2026-09-25T12:30:12Z',
+        inviteStatus: 'ACCEPTED',
+        acceptedAt: '2026-09-25T12:30:12Z',
+    });
+    const counsellorBoard = (invites: AccountInviteDTO[]) => (
+        <InviteProgressBoard {...baseProps()} targetRole="COUNSELLOR" invites={invites} />
+    );
+
+    it('shows four steps with a date under each reached one when the invite waited for a new unit', () => {
+        render(counsellorBoard([released]));
+
+        const row = within(screen.getByText('person40@example.org').closest('tr') as HTMLElement);
+        const steps = within(row.getByRole('list', { name: 'Onboarding-Fortschritt' })).getAllByRole('listitem');
+        expect(steps).toHaveLength(4);
+        expect(steps.map((step) => step.textContent)).toEqual([
+            expect.stringMatching(/^Beratungsstelle angelegt – abgeschlossen, 24\.09\.2026, .*24\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Eingeladen – abgeschlossen, 24\.09\.2026, .*24\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Konto angelegt – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            'Wartet auf Abschluss – aktueller Schritt',
+        ]);
+    });
+
+    it('dates every reached step on the Träger tab too', () => {
+        render(
+            <InviteProgressBoard
+                {...baseProps()}
+                invites={[
+                    invite(42, {
+                        tenantIdAllocationMode: 'MANUAL',
+                        sentAt: '2026-09-24T09:01:00Z',
+                        inviteStatus: 'ACCEPTED',
+                        acceptedAt: '2026-09-25T12:30:12Z',
+                        accountCreatedAt: '2026-09-25T12:30:12Z',
+                        unitCreatedAt: '2026-09-25T12:30:12Z',
+                        twoFactorStatus: 'ACTIVE',
+                        twoFactorDoneAt: '2026-09-25T12:40:00Z',
+                    }),
+                ]}
+            />,
+        );
+
+        const row = within(screen.getByText('person42@example.org').closest('tr') as HTMLElement);
+        const steps = within(row.getByRole('list', { name: 'Onboarding-Fortschritt' })).getAllByRole('listitem');
+        expect(steps.map((step) => step.textContent)).toEqual([
+            expect.stringMatching(/^Eingeladen – abgeschlossen, 24\.09\.2026, .*24\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Registriert – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Träger angelegt – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^2FA aktiv – abgeschlossen, 25\.09\.2026, .*25\.09\., \d\d:\d\d$/),
+            expect.stringMatching(/^Wartet auf Vertragsbestätigung – aktueller Schritt$/),
+            expect.stringMatching(/^Fertig – ausstehend$/),
+        ]);
+    });
+
+    it('shows three steps when the invite never waited', () => {
+        render(counsellorBoard([invite(41, { targetRole: 'COUNSELLOR', sentAt: '2026-09-24T09:01:00Z' })]));
+
+        const row = within(screen.getByText('person41@example.org').closest('tr') as HTMLElement);
+        expect(within(row.getByRole('list', { name: 'Onboarding-Fortschritt' })).getAllByRole('listitem')).toHaveLength(
+            3,
+        );
     });
 });

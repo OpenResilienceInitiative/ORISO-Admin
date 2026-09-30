@@ -55,6 +55,7 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
+    SaveDraftIcon,
     PublishTemplateIcon,
     VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
@@ -280,14 +281,11 @@ export type M3RichTextEditorProps = {
     publishLabel?: string;
     /** Replaces "Vorlage veröffentlichen". */
     publishTemplateLabel?: string;
-    /**
-     * Whether there is anything to save. `false` hides "Entwurf speichern" — a save
-     * action that would store nothing new only raises the question what it is for.
-     * Left undefined, the action stays as before for hosts that do not track it.
-     */
+    /** Whether the host has unsaved changes. When omitted, the editor tracks its own changes. */
     dirty?: boolean;
     onPublish?: (html: string) => void;
-    onSaveDraft?: (html: string) => void;
+    /** Return false when storage failed; the edited draft then stays saveable. */
+    onSaveDraft?: (html: string) => void | boolean | Promise<void | boolean>;
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
@@ -853,6 +851,11 @@ export const M3RichTextEditor = ({
         setLocalComparisonOpen(open);
         comparison?.onOpenChange?.(open);
     };
+    const [editing, setEditing] = useState(dirty === true);
+    const [localDirty, setLocalDirty] = useState(false);
+    const [savingLocal, setSavingLocal] = useState(false);
+    const savingDraft = useRef(false);
+    const canSaveDraft = dirty ?? localDirty;
     // Whether the "link to section" chapter menu in the bubble is open (arrow flips up).
     const [crossRefOpen, setCrossRefOpen] = useState(false);
     // "19.07.26 | 12:34 Uhr" (Figma 1271-70892) — locale-aware, "Uhr" only in German.
@@ -909,7 +912,7 @@ export const M3RichTextEditor = ({
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
     // Editable only when not read-only AND not looking at an old version.
-    const editorEditable = !readOnly && !viewingVersion;
+    const editorEditable = !readOnly && !viewingVersion && (!onSaveDraft || editing || canSaveDraft);
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
     const anchorsEnabled = enableAnchors && !editorSlot;
@@ -950,9 +953,9 @@ export const M3RichTextEditor = ({
             ...(anchorsEnabled ? [HeadingAnchors] : []),
         ],
         content: editorContent,
-        editable: !readOnly,
+        editable: editorEditable,
         editorProps: {
-            attributes: editorSurfaceAttributes(readOnly, title),
+            attributes: editorSurfaceAttributes(!editorEditable, title),
             ...createImageDropPasteHandlers((files) => {
                 if (editorRef.current?.isEditable) {
                     uploadAndInsertRef.current(files);
@@ -960,7 +963,10 @@ export const M3RichTextEditor = ({
             }),
         },
         onUpdate: ({ editor: e }) => {
-            if (e.isEditable && !syncingContentRef.current) onChange?.(e.isEmpty ? '' : e.getHTML());
+            if (e.isEditable && !syncingContentRef.current) {
+                if (dirty === undefined && onSaveDraft) setLocalDirty(true);
+                onChange?.(e.isEmpty ? '' : e.getHTML());
+            }
         },
     });
 
@@ -985,7 +991,7 @@ export const M3RichTextEditor = ({
         // replaces editorProps wholesale.
         editor?.setOptions({
             editorProps: {
-                attributes: editorSurfaceAttributes(readOnly, title),
+                attributes: editorSurfaceAttributes(!editorEditable, title),
                 ...createImageDropPasteHandlers((files) => {
                     if (editorRef.current?.isEditable) {
                         uploadAndInsertRef.current(files);
@@ -993,7 +999,20 @@ export const M3RichTextEditor = ({
                 }),
             },
         });
-    }, [editor, title, readOnly]);
+    }, [editor, title, editorEditable]);
+
+    // A draft restored outside the editor (for example, an adopted template)
+    // must remain immediately editable and saveable.
+    useEffect(() => {
+        if (dirty) setEditing(true);
+    }, [dirty]);
+
+    useEffect(() => {
+        if (dirty === false && savingDraft.current) {
+            savingDraft.current = false;
+            setEditing(false);
+        }
+    }, [dirty]);
 
     useEffect(() => {
         if (editor && anchorsEnabled) {
@@ -1209,9 +1228,9 @@ export const M3RichTextEditor = ({
     const showVersionControl = versionSections
         ? !readOnly || versions.length > 0
         : !historyUnavailable && (!readOnly || versions.length > 0);
-    // Only offer a save when there is something new to keep (hosts that do not
-    // report `dirty` keep the action as before).
-    const showSaveDraft = !!onSaveDraft && dirty !== false;
+    const showEditSave = !!onSaveDraft;
+    const showActions =
+        !readOnly && !viewingVersion && (!fluid || onPublish || showEditSave || actionsLeading || onPublishTemplate);
     const publishText = publishLabel ?? t('legal.m3Editor.publish');
     const publishTemplateText = publishTemplateLabel ?? t('legal.m3Editor.publishTemplate');
 
@@ -1308,8 +1327,8 @@ export const M3RichTextEditor = ({
                             <div
                                 className={styles.editorContentScroll}
                                 lang={contentLanguage ?? language}
-                                {...(readOnly ? { role: 'region', 'aria-label': title } : {})}
-                                {...(readOnly && scrollsInternally
+                                {...(!editorEditable ? { role: 'region', 'aria-label': title } : {})}
+                                {...(!editorEditable && scrollsInternally
                                     ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                                       { tabIndex: 0 }
                                     : {})}
@@ -1509,7 +1528,7 @@ export const M3RichTextEditor = ({
                 card that shrinks whenever there is nothing to publish or save looks
                 broken (owner feedback 2026-09-21); the read-only footer does the same.
                 Fluid hosts grow with their content and keep the row only with actions. */}
-            {editorEditable && (!fluid || onPublish || showSaveDraft || actionsLeading || onPublishTemplate) && (
+            {showActions && (
                 <>
                     <hr className={styles.divider} />
 
@@ -1550,21 +1569,47 @@ export const M3RichTextEditor = ({
                                 <span className={styles.actionLabel}>{publishText}</span>
                             </button>
                         )}
-                        {showSaveDraft && onSaveDraft && (
+                        {showEditSave && onSaveDraft && (
                             <button
                                 type="button"
-                                className={`${styles.textBtn} ${styles.draft}`}
+                                className={`${styles.textBtn} ${styles.draft} ${editing ? styles.editActive : ''}`}
                                 // `publishing` means "a submit is in flight" for every consumer
                                 // of this shell (see LegalText/DataProcessingAgreement*/Dpia*),
                                 // not specifically "the publish button was clicked" — so it must
                                 // also block a second, overlapping draft save while one is
                                 // already pending, the same way it already blocks Publish.
-                                disabled={publishing || imageUpload.uploading}
-                                aria-busy={publishing || imageUpload.uploading}
-                                onClick={() => onSaveDraft(html())}
+                                disabled={publishing || savingLocal || imageUpload.uploading}
+                                aria-busy={publishing || savingLocal || imageUpload.uploading}
+                                aria-pressed={editing}
+                                onClick={async () => {
+                                    if (!canSaveDraft) {
+                                        setEditing(true);
+                                        editor?.commands.focus();
+                                        return;
+                                    }
+                                    savingDraft.current = true;
+                                    setSavingLocal(true);
+                                    try {
+                                        const result = await onSaveDraft(html());
+                                        if (result === false) {
+                                            savingDraft.current = false;
+                                            return;
+                                        }
+                                    } catch {
+                                        savingDraft.current = false;
+                                        return;
+                                    } finally {
+                                        setSavingLocal(false);
+                                    }
+                                    if (dirty === undefined) {
+                                        savingDraft.current = false;
+                                        setLocalDirty(false);
+                                        setEditing(false);
+                                    }
+                                }}
                             >
-                                <EditIcon />
-                                <span className={styles.actionLabel}>{t('legal.m3Editor.saveDraft')}</span>
+                                {canSaveDraft ? <SaveDraftIcon /> : <EditIcon />}
+                                <span className={styles.actionLabel}>{canSaveDraft ? t('save') : t('edit')}</span>
                             </button>
                         )}
                     </div>

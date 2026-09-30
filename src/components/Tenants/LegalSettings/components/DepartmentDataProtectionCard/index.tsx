@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor, M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { isSameDraftContent } from '../../utils/draftComparison';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
@@ -354,6 +355,13 @@ export const DepartmentDataProtectionCard = ({
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
+                dirty={
+                    !isSameDraftContent(
+                        { content: contentMapWithEdits, consent: consentMap },
+                        { content: initialContentByLanguage, consent: consentByLanguage },
+                        { compareConsent: consentEnabled },
+                    )
+                }
                 readOnly={readOnly}
                 onChange={readOnly ? undefined : handleEditorChange}
                 publishing={saving}

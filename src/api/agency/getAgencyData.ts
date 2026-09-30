@@ -1,6 +1,7 @@
 import { agencyEndpointBase } from '../../appConfig';
 
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { withUtcInstants } from '../../utils/backendInstant';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { AgencyData } from '../../types/agency';
 import { ResponseList } from '../../types/ResponseList';
@@ -41,7 +42,7 @@ const getAgencyData = (params: TableState & { search?: string }) => {
     })
         .then((result) => {
             // eslint-disable-next-line no-underscore-dangle
-            return removeEmbedded(result);
+            return removeEmbedded(withUtcInstants(result));
         })
         .then((result) => {
             return {

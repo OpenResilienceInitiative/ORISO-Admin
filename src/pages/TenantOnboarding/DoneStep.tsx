@@ -11,12 +11,14 @@ import styles from './styles.module.scss';
 
 interface DoneStepProps {
     /** The tenant ID the reservation was consumed for — the number the platform operator refers to. */
-    tenantId: number;
+    tenantId?: number;
     /**
      * The DPA signature was forwarded to an authorised signatory (#723) —
      * the completion additionally says an e-mail will follow once it arrives.
      */
     forwarded?: boolean;
+    /** The admin joined an existing Träger: nothing was created, nothing awaits activation. */
+    joinedExisting?: boolean;
 }
 
 /**
@@ -31,7 +33,7 @@ interface DoneStepProps {
  * gallery (Atoms/CustomIcons) in the product's secondary colour (#594.11) —
  * the green MUI check it replaced was a colour from outside the palette.
  */
-export const DoneStep = ({ tenantId, forwarded = false }: DoneStepProps) => {
+export const DoneStep = ({ tenantId, forwarded = false, joinedExisting = false }: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
@@ -42,13 +44,15 @@ export const DoneStep = ({ tenantId, forwarded = false }: DoneStepProps) => {
                 {t('tenantOnboarding.done.title')}
             </Typography>
             <Typography color="text.secondary" data-testid="onboarding-done-description">
-                {t('tenantOnboarding.done.description')}
+                {joinedExisting ? t('tenantOnboarding.done.joinDescription') : t('tenantOnboarding.done.description')}
             </Typography>
 
-            <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
-                <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
-                <dd>{tenantId}</dd>
-            </dl>
+            {tenantId != null && (
+                <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
+                    <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
+                    <dd>{tenantId}</dd>
+                </dl>
+            )}
 
             <ul className={styles.doneNext}>
                 {forwarded && (
@@ -57,10 +61,12 @@ export const DoneStep = ({ tenantId, forwarded = false }: DoneStepProps) => {
                         <span>{t('tenantOnboarding.done.next.signature')}</span>
                     </li>
                 )}
-                <li data-testid="onboarding-done-next-step">
-                    <HourglassTopRounded fontSize="small" aria-hidden />
-                    <span>{t('tenantOnboarding.done.next.activation')}</span>
-                </li>
+                {!joinedExisting && (
+                    <li data-testid="onboarding-done-next-step">
+                        <HourglassTopRounded fontSize="small" aria-hidden />
+                        <span>{t('tenantOnboarding.done.next.activation')}</span>
+                    </li>
+                )}
                 <li data-testid="onboarding-done-next-step">
                     <LoginRounded fontSize="small" aria-hidden />
                     <span>{t('tenantOnboarding.done.next.login')}</span>

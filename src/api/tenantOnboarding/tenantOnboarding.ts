@@ -69,15 +69,19 @@ export interface TenantAdminOnboardingInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
-    /** The tenant ID the invite reserved (TenantIdReservationDTO.tenantId). */
-    reservedTenantId: number;
+    /** TenantIdReservationDTO.tenantId; absent when the invite joins an existing Träger. */
+    reservedTenantId?: number;
     /**
      * TenantIdReservationDTO.token — proves ownership of the reservation and is
      * sent back on registration, where the backend forwards it as
      * MultilingualTenantDTO.tenantIdReservationToken so creation + consumption
      * happen atomically.
      */
-    tenantIdReservationToken: string;
+    tenantIdReservationToken?: string;
+    /** Joins an existing Träger (also a later admin of a just-created one): no reservation, password only. */
+    joinsExistingTenant?: boolean;
+    /** The joined Träger — set together with `joinsExistingTenant`. */
+    tenantId?: number | null;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -142,7 +146,18 @@ export interface DpaAcceptanceData {
     signerOrganisation: string;
 }
 
-export interface TenantAdminRegistrationRequest {
+/** A new Träger sends organisation, DPA and the reservation pair; joining an existing one sends only `account`. */
+export type TenantAdminRegistrationRequest =
+    | TenantAdminNewTenantRegistrationRequest
+    | TenantAdminJoinRegistrationRequest;
+
+export interface TenantAdminJoinRegistrationRequest {
+    account: {
+        password: string;
+    };
+}
+
+export interface TenantAdminNewTenantRegistrationRequest {
     organisation: OrganisationData;
     /**
      * The request shape is UNCHANGED by the forward flow (#723 contract).
@@ -161,8 +176,8 @@ export interface TenantAdminRegistrationRequest {
 }
 
 export interface TenantAdminRegistrationResultDTO {
-    /** The created (inactive) tenant — equals the reserved ID. */
-    tenantId: number;
+    /** The created (inactive) tenant — equals the reserved ID; absent for a join that names no Träger. */
+    tenantId?: number;
     twoFactor: {
         /** Base32 TOTP secret to show/link in the authenticator app. */
         secret: string;
@@ -446,7 +461,16 @@ export const createStubTenantAdminOnboardingClient = (
                 // happens via getOnboardingInvite's PENDING_2FA_ACTIVATION.
                 throw new InviteLinkError('CONSUMED');
             }
+            if (invite.joinsExistingTenant) {
+                // Joining an existing Träger needs the password alone.
+                if ('organisation' in request) {
+                    throw new Error('JOIN_TAKES_ACCOUNT_ONLY');
+                }
+                registered = true;
+                return { tenantId: invite.tenantId ?? undefined, twoFactor: STUB_TWO_FACTOR };
+            }
             if (
+                !('organisation' in request) ||
                 request.tenantIdReservationToken !== invite.tenantIdReservationToken ||
                 request.reservedTenantId !== invite.reservedTenantId
             ) {

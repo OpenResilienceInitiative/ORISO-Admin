@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
+    createStubTenantAdminOnboardingClient,
     InviteLinkError,
     TenantAdminOnboardingClient,
     TenantAdminOnboardingInviteDTO,
@@ -499,6 +500,113 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         expect(await screen.findByTestId('dpa-forwarded-onhold')).toBeInTheDocument();
         expect(screen.getByTestId('dpa-forwarded-mail-failed')).toBeInTheDocument();
         expect(screen.queryByTestId('dpa-forwarded-sent-to')).not.toBeInTheDocument();
+    });
+});
+
+describe('TenantAdminOnboarding — joining an existing Träger', () => {
+    const JOIN_INVITE = {
+        recipientEmail: 'second.admin@tenant.example',
+        firstName: 'Paula',
+        lastName: 'Zweite',
+        tenantId: 40,
+        joinsExistingTenant: true,
+        expiresAt: null,
+        dpaContent: null,
+    } as unknown as TenantAdminOnboardingInviteDTO;
+
+    it('asks only for the password and registers with account.password alone', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue(JOIN_INVITE),
+            registerTenantAdmin: vi.fn().mockResolvedValue({
+                tenantId: 40,
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        // Straight to the account: no organisation, no Träger, no DPA/AVV.
+        expect(await screen.findByLabelText('tenantOnboarding.account.password')).toBeInTheDocument();
+        expect(screen.getByText('tenantOnboarding.join.title')).toBeInTheDocument();
+        expect(screen.getByText('tenantOnboarding.account.joinDescription')).toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.organisation.name')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.dpa.signerPosition')).not.toBeInTheDocument();
+        // Nothing to go back to.
+        expect(screen.queryByRole('button', { name: 'tenantOnboarding.back' })).not.toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+
+        await waitFor(() => expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1));
+        expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
+            account: { password: 'SecurePass1!' },
+        });
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
+        expect(screen.getByTestId('onboarding-done-description')).toHaveTextContent(
+            'tenantOnboarding.done.joinDescription',
+        );
+        // The Träger exists already: no "waits for activation" promise.
+        expect(screen.queryByText('tenantOnboarding.done.next.activation')).not.toBeInTheDocument();
+    });
+
+    it('resumes a joined registration at the 2FA step with the joined tenant id', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...JOIN_INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done-tenant-id')).toHaveTextContent('40');
+    });
+
+    it('shows no Träger number after a fresh join whose invite carries none', async () => {
+        const client = createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { ...JOIN_INVITE, tenantId: undefined },
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done-tenant-id')).not.toBeInTheDocument();
+    });
+
+    // A resumed invite without any tenant id must not claim "Träger 0".
+    it('shows no Träger number when the resumed invite carries none', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...JOIN_INVITE,
+                tenantId: undefined,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done-tenant-id')).not.toBeInTheDocument();
+        expect(screen.queryByText('0')).not.toBeInTheDocument();
     });
 });
 

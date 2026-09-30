@@ -246,7 +246,7 @@ export const SmtpCredentialsMissing: Story = {
         // it on every attempt instead of holding a stale node.
         const enabledSendButton = await waitFor(
             async () => {
-                const button = await canvas.findByRole('button', { name: 'Direkt Versenden' });
+                const button = await canvas.findByRole('button', { name: /^(Anlegen & einladen|Create & invite)$/ });
                 await expect(button).toBeEnabled();
                 return button;
             },
