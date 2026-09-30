@@ -810,8 +810,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
         .comparisonHeading,
         .comparisonDetail,
-        .comparisonFooter,
-        .comparisonActions {
+        .comparisonFooter {
             flex-shrink: 0;
         }
 
@@ -873,6 +872,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .comparisonActions {
     display: flex;
+    flex: 1 1 0;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;

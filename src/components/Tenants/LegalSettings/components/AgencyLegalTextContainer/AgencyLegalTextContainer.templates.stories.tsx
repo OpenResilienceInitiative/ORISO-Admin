@@ -199,6 +199,10 @@ export const AgencyMobile390: Story = {
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const storyCanvas = canvasElement;
+        const originalWidth = storyCanvas.style.width;
+        // Phone width includes the story's 16px gutters on either side.
+        storyCanvas.style.width = '358px';
         await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const reference = await canvas.findByRole(
             'complementary',
@@ -206,9 +210,19 @@ export const AgencyMobile390: Story = {
             LOAD,
         );
         await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        await Promise.all(
+            within(reference)
+                .getAllByRole('button')
+                .map((action) =>
+                    expect(action.getBoundingClientRect().right).toBeLessThanOrEqual(
+                        reference.getBoundingClientRect().right,
+                    ),
+                ),
+        );
         await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
         await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
         await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
+        storyCanvas.style.width = originalWidth;
     },
 };
