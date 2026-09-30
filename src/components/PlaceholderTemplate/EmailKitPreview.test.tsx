@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EmailKitPreview } from './EmailKitPreview';
 
@@ -48,6 +48,29 @@ afterEach(() => {
 });
 
 describe('EmailKitPreview', () => {
+    it.each(['click', 'auxclick', 'submit'])('prevents %s actions inside the preview document', async (type) => {
+        render(<EmailKitPreview body="x" previewLabel="E-Mail-Vorschau" subject="y" />);
+
+        const preview = screen.getByRole('region', { name: 'E-Mail-Vorschau' });
+        await waitFor(() => expect(frameOf(preview)).toHaveAttribute('srcdoc', expect.stringContaining('RENDERED')));
+        const frame = frameOf(preview)!;
+        const doc = frame.contentDocument!;
+        const target = doc.createElement(type === 'submit' ? 'form' : 'a');
+        target.setAttribute('href', 'https://admin.example/tenant-onboarding/SAMPLE');
+        const label = doc.createElement('span');
+        label.textContent = 'Accept invitation';
+        target.append(label);
+        doc.body.append(target);
+        fireEvent.load(frame);
+
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        label.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(label).toHaveTextContent('Accept invitation');
+        expect(target).toHaveAttribute('href', 'https://admin.example/tenant-onboarding/SAMPLE');
+    });
+
     // The point of E2: the preview must be the send path's own output, not an
     // Admin-side re-implementation of the mail frame.
     it('renders the document the backend renderer returned, verbatim', async () => {
