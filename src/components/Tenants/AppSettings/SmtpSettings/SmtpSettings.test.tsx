@@ -1,12 +1,14 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Modal } from 'antd';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     tenantData: undefined as any,
     appSettings: {} as any,
+    sendTenantSmtpTestEmail: vi.fn(),
 }));
 
 const t = (key: string) => key;
@@ -23,6 +25,9 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
 }));
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
     useTenantAdminDataMutation: () => ({ mutate: mocks.mutate }),
+}));
+vi.mock('../../../../api/tenant/sendTenantSmtpTestEmail', () => ({
+    sendTenantSmtpTestEmail: mocks.sendTenantSmtpTestEmail,
 }));
 
 // eslint-disable-next-line import/first
@@ -42,6 +47,7 @@ const passwordInput = () => screen.getByLabelText<HTMLInputElement>('tenants.app
 describe('SmtpSettings (write-only password, #730)', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.sendTenantSmtpTestEmail.mockReset().mockResolvedValue({ status: 204 });
         mocks.appSettings = {
             globalSmtpHost: 'global.example.org',
             globalSmtpUsername: 'global-user',
@@ -75,6 +81,20 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.passwordStored')).toBeInTheDocument();
+    });
+
+    it('tests only the saved own server without sending a recipient or SMTP secret from the form', async () => {
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' }));
+        await waitFor(() => expect(mocks.sendTenantSmtpTestEmail).toHaveBeenCalledWith('1'));
+        expect(mocks.sendTenantSmtpTestEmail.mock.calls[0]).toHaveLength(1);
+    });
+
+    it('does not offer a test for platform mode or an unsaved own server', () => {
+        mocks.tenantData.settings.smtpMode = 'PLATFORM';
+        renderCard();
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
+        expect(mocks.sendTenantSmtpTestEmail).not.toHaveBeenCalled();
     });
 
     it('shows the not-set indicator when no password is stored', () => {
@@ -232,14 +252,102 @@ describe('SmtpSettings (tenant mode is independent of platform SMTP)', () => {
         expect(passwordInput()).not.toBeDisabled();
     });
 
-    it('explains every field and offers no test e-mail on the tenant side', () => {
+    it('explains every field and disables the stored-server test for an incomplete server', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.description')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.host.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.from.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.passwordNotSet')).toBeInTheDocument();
-        expect(document.body.innerHTML).not.toContain('smtp.test');
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
         expect(inputByName('recipientEmail')).toBeNull();
+    });
+});
+
+describe('SmtpSettings (SMTP transport confirmation, #1061)', () => {
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.appSettings = {};
+        mocks.tenantData = {
+            id: 1,
+            settings: {
+                smtpMode: 'OWN',
+                smtp: {
+                    enabled: true,
+                    host: 'smtp.tenant.org',
+                    port: 587,
+                    secure: false,
+                    username: 'tenant-user',
+                    from: 'tenant@example.org',
+                    passwordSet: true,
+                },
+            },
+        };
+    });
+
+    it('saves the standard 587/STARTTLS pair without asking for an override', async () => {
+        const confirm = vi.spyOn(Modal, 'confirm');
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(confirm).not.toHaveBeenCalled();
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp.nonstandardTransportConfirmed).toBeUndefined();
+        confirm.mockRestore();
+    });
+
+    it.each([
+        [465, false],
+        [587, true],
+        [2525, false],
+    ])('requires an explicit choice before saving port %i with secure=%s', async (port, secure) => {
+        mocks.tenantData.settings.smtp.port = port;
+        mocks.tenantData.settings.smtp.secure = secure;
+        const confirm = vi.spyOn(Modal, 'confirm').mockImplementation(() => ({
+            destroy: vi.fn(),
+            update: vi.fn(),
+        }));
+        renderCard();
+        expect(screen.getByText('tenants.appSettings.smtp.transportMismatchHint')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        const choice = confirm.mock.calls[0][0];
+        choice.onOk?.();
+        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toMatchObject({
+            port,
+            secure,
+            nonstandardTransportConfirmed: true,
+        });
+        confirm.mockRestore();
+    });
+
+    it('keeps the form open when the user declines a changed transport combination', async () => {
+        const confirm = vi.spyOn(Modal, 'confirm').mockImplementation(() => ({
+            destroy: vi.fn(),
+            update: vi.fn(),
+        }));
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.change(screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' }), {
+            target: { value: '465' },
+        });
+
+        expect(await screen.findByText('tenants.appSettings.smtp.transportMismatchHint')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('card.edit.save'));
+        await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+        act(() => {
+            confirm.mock.calls[0][0].onCancel?.();
+        });
+
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        await waitFor(() =>
+            expect(screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' })).not.toBeDisabled(),
+        );
+        confirm.mockRestore();
     });
 });
