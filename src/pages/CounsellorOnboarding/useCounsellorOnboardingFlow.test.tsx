@@ -213,6 +213,68 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.data.topicIds).toEqual([24]);
     });
 
+    it.each([null, { secret: 'TEST234567ABCDEFG', qrCodeBase64: null }])(
+        'resumes two-factor setup completed in another tab during a language change',
+        async (twoFactor) => {
+            const client = createClient({
+                getOnboardingInvite: vi
+                    .fn()
+                    .mockResolvedValueOnce(INVITE)
+                    .mockResolvedValueOnce({ ...INVITE, phase: 'PENDING_2FA_ACTIVATION', twoFactor }),
+            });
+            const { result, rerender } = renderHook(
+                ({ language }) => useCounsellorOnboardingFlow('raw-token', client, language),
+                { initialProps: { language: 'de' } },
+            );
+            await waitFor(() => expect(result.current.state.phase).toBe('form'));
+            act(() => result.current.updateNames({ publicName: 'Lena' }));
+            rerender({ language: 'en' });
+            await waitFor(() =>
+                expect(result.current.state).toEqual({
+                    phase: 'two-factor',
+                    result: { twoFactor, resumed: true },
+                }),
+            );
+            expect(result.current.data.names.publicName).toBe('Lena');
+            await act(async () => {
+                await result.current.submitRegistration();
+            });
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+            rerender({ language: 'de' });
+            expect(client.getOnboardingInvite).toHaveBeenCalledTimes(2);
+        },
+    );
+
+    it('does not resolve locale metadata while registration is in flight', async () => {
+        let completeRegistration!: (value: { consultantId: string; phase: 'PENDING_2FA_ACTIVATION' }) => void;
+        const client = createClient({
+            registerCounsellor: vi.fn().mockImplementation(
+                () =>
+                    new Promise((resolve) => {
+                        completeRegistration = resolve;
+                    }),
+            ),
+        });
+        const { result, rerender } = renderHook(
+            ({ language }) => useCounsellorOnboardingFlow('raw-token', client, language),
+            { initialProps: { language: 'de' } },
+        );
+        await waitFor(() => expect(result.current.state.phase).toBe('form'));
+        let submission!: Promise<void>;
+        act(() => {
+            submission = result.current.submitRegistration();
+        });
+        await waitFor(() => expect(result.current.busy).toBe(true));
+        rerender({ language: 'en' });
+        expect(client.getOnboardingInvite).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            completeRegistration({ consultantId: 'consultant-1', phase: 'PENDING_2FA_ACTIVATION' });
+            await submission;
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(client.getOnboardingInvite).toHaveBeenCalledTimes(1);
+    });
+
     it('does not resolve topics again when changing language in the two-factor step', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, phase: 'PENDING_2FA_ACTIVATION' }),

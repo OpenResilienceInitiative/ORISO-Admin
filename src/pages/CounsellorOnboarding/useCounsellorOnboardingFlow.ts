@@ -184,13 +184,15 @@ export const useCounsellorOnboardingFlow = (
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inviteToken, loadAttempt]);
 
-    // A locale change refreshes labels only. Re-running the initial resolve
+    // A locale change refreshes labels without resetting the form, while still
+    // honouring terminal/resumed invite states. Re-running the initial resolve
     // would erase the account, avatar, names and topic selection already entered.
     useEffect(() => {
         let cancelled = false;
         setTopicLanguageError(false);
         if (
             state.phase !== 'form' ||
+            busy ||
             loadedTopics.current?.token !== inviteToken ||
             loadedTopics.current.language === topicLanguage
         ) {
@@ -199,7 +201,14 @@ export const useCounsellorOnboardingFlow = (
         client
             .getOnboardingInvite(inviteToken)
             .then((localized) => {
-                if (cancelled || stateRef.current.phase !== 'form') return;
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
+                if (localized.phase === 'PENDING_2FA_ACTIVATION') {
+                    setState({
+                        phase: 'two-factor',
+                        result: { twoFactor: localized.twoFactor ?? null, resumed: true },
+                    });
+                    return;
+                }
                 const names = new Map(
                     [...localized.topics, ...(localized.availableTopics ?? [])].map((topic) => [topic.id, topic]),
                 );
@@ -218,7 +227,7 @@ export const useCounsellorOnboardingFlow = (
                 });
             })
             .catch((error: unknown) => {
-                if (cancelled || stateRef.current.phase !== 'form') return;
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
                 if (error instanceof InviteLinkError) {
                     setState({ phase: 'link-error', reason: error.reason });
                     return;
@@ -228,7 +237,7 @@ export const useCounsellorOnboardingFlow = (
         return () => {
             cancelled = true;
         };
-    }, [client, inviteToken, topicLanguage, topicNamesAttempt, state.phase]);
+    }, [client, inviteToken, topicLanguage, topicNamesAttempt, state.phase, busy]);
 
     const retryTopicNames = useCallback(() => {
         setTopicNamesAttempt((attempt) => attempt + 1);
