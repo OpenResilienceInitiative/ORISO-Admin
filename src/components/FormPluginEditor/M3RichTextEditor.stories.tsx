@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Tune from '@mui/icons-material/Tune';
 import { TemplateSplitButton } from '../PlaceholderTemplate';
+import { legalTextTokensFor, PlaceholderTokenDef } from '../PlaceholderTemplate/placeholderTokens';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { M3RichTextEditor } from './M3RichTextEditor';
 import { SplitDropdown } from './SplitDropdown';
@@ -68,6 +69,82 @@ export const GDPR: Story = {
         value: '',
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
+    },
+};
+
+const toEditorTokens = (tokens: PlaceholderTokenDef[]) =>
+    tokens.map((token) => ({ key: token.key, label: token.labelFallback, sample: token.sample }));
+
+/**
+ * Admin#1067: the placeholders sit behind one toolbar button ("Platzhalter einfügen") instead of a
+ * chip row above the text. Träger / Beratungsstelle Datenschutz: incl. the inherited DPO.
+ */
+export const PlaceholderMenu: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Datenschutz',
+        value: '<p>Verantwortlich ist die {{Beratungsstelle}}, {{Adresse}}.</p><p>Datenschutzbeauftragte:r: </p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+        textTokens: toEditorTokens(legalTextTokensFor('privacy', 'traeger')),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.queryByTestId('m3-editor-token-row')).toBeNull();
+        await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
+        const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
+        // The MUI menu grows in; wait for the end of the transition before asserting visibility.
+        await waitFor(() => expect(within(menu).getByText('Datenschutzbeauftragte:r')).toBeVisible());
+    },
+};
+
+/** Platform Datenschutz card: only the platform-labelled DPO, never the inherited one. */
+export const PlaceholderMenuPlatform: Story = {
+    ...PlaceholderMenu,
+    args: {
+        ...PlaceholderMenu.args,
+        textTokens: toEditorTokens(legalTextTokensFor('privacy', 'platform')),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
+        const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
+        await waitFor(() =>
+            expect(within(menu).getByText(/zuständig für die Plattform, nicht für Beratungsstellen/)).toBeVisible(),
+        );
+    },
+};
+
+// A missing tenant history endpoint must not imply that the current text was
+// never published. Editing and the separate draft/publish actions stay usable.
+export const TenantHistoryUnavailable: Story = {
+    ...Imprint,
+    args: {
+        ...Imprint.args,
+        versionHistoryState: 'unsupported',
+        versionHistoryStatusLabel: 'Versionsverlauf für diesen Träger ist noch nicht verfügbar.',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('status')).toHaveTextContent(
+            'Versionsverlauf für diesen Träger ist noch nicht verfügbar.',
+        );
+    },
+};
+
+export const TenantHistoryUnavailableEnglish: Story = {
+    ...TenantHistoryUnavailable,
+    args: {
+        ...TenantHistoryUnavailable.args,
+        title: 'Imprint',
+        value: '<p>The currently published imprint remains editable.</p>',
+        versionHistoryStatusLabel: 'Version history is not available for this tenant yet.',
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('status')).toHaveTextContent(
+            'Version history is not available for this tenant yet.',
+        );
     },
 };
 
@@ -345,6 +422,51 @@ export const WithVersionSelect: Story = {
     },
 };
 
+export const VersionSelectMobile: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Auftragsdaten Verarbeitungsvertrag',
+        value: '<h2>Vertragsunterlagen</h2><p>Aktueller Entwurf.</p>',
+        versions: dpaVersions,
+        fluid: true,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(390px, calc(100vw - 32px))', height: 844, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const anchorBar = await waitFor(() => canvas.getByRole('navigation', { name: 'Sprungmarken' }));
+        expect(window.getComputedStyle(anchorBar).backgroundColor).toBe('rgb(255, 255, 255)');
+    },
+};
+
+export const VersionSelectMobileNarrowReader: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    globals: { viewport: { value: 'mobile1', isRotated: false } },
+    args: {
+        title: 'Auftragsdaten Verarbeitungsvertrag',
+        value: '<h2>Vertragsunterlagen</h2><p>Veröffentlichte Fassung.</p>',
+        versions: dpaVersions,
+        readOnly: true,
+        fluid: true,
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(320px, calc(100vw - 32px))', height: 568, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
 // Read-only card (agency view): versions are browsable but never restorable.
 export const VersionSelectReadOnly: Story = {
     render: (args) => <ControlledEditor {...args} />,
@@ -366,8 +488,7 @@ const consentTemplates = [
 /**
  * The agency (Fachbereich) data-protection footer in full: language, consent
  * template, topic and version — the four-control bar of the owner's decision of
- * 2026-08-19. Framed at Mobile 390x844, where the bar has to scroll horizontally
- * WITHOUT showing a scrollbar.
+ * 2026-08-19. Framed at Mobile 390x844, where the bar scrolls horizontally.
  */
 const AgencyFooterEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
     const [value, setValue] = useState(args.value ?? '');
@@ -407,6 +528,7 @@ const AgencyFooterEditor = (args: Parameters<typeof M3RichTextEditor>[0]) => {
 
 export const AgencyFooterWithConsentTemplate: Story = {
     render: (args) => <AgencyFooterEditor {...args} />,
+    globals: { viewport: { value: 'phone', isRotated: false } },
     args: {
         title: 'Datenschutzerklärung',
         value: '<h2>Datenschutzerklärung</h2><p>Aktueller Entwurf des Fachbereichs.</p>',
@@ -420,7 +542,7 @@ export const AgencyFooterWithConsentTemplate: Story = {
     },
     decorators: [
         (Story) => (
-            <div style={{ width: 390, height: 844, overflow: 'hidden' }}>
+            <div style={{ width: 'min(390px, calc(100vw - 32px))', height: 844, overflow: 'hidden' }}>
                 <Story />
             </div>
         ),
@@ -439,11 +561,17 @@ export const AgencyFooterWithConsentTemplate: Story = {
         );
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-        // The bar scrolls instead of wrapping, and never shows a scrollbar: the
-        // scroll track occupies no layout space at all.
-        expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
-        expect(bar.offsetHeight - bar.clientHeight).toBe(0);
+        // The narrow bar keeps a single row and a visible scroll affordance.
         expect(window.getComputedStyle(bar).flexWrap).toBe('nowrap');
+        expect(window.getComputedStyle(bar).overflowX).toBe('auto');
+        expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
+        const next = await waitFor(() => canvas.getByRole('button', { name: 'Weitere Steuerelemente rechts' }));
+        await userEvent.click(next);
+        await waitFor(() => expect(bar.scrollLeft).toBeGreaterThan(0));
+        await userEvent.click(
+            await waitFor(() => canvas.getByRole('button', { name: 'Weitere Steuerelemente links' })),
+        );
+        await waitFor(() => expect(bar.scrollLeft).toBeLessThan(2));
     },
 };
 

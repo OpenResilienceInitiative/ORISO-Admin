@@ -42,7 +42,7 @@ const states = (input: AccountInviteDTO) => derivePhases(input).map((phase) => `
 describe('derivePhases — Träger (TENANT_ADMIN)', () => {
     /*
      * Owner model (#725 / live defect on pre-dev): sending the mail proves ONLY
-     * "Eingeladen" — never registration. "Vertrag unterschrieben" is the FINAL
+     * "Eingeladen" — never registration. "Vertrag bestätigt" is the FINAL
      * gate before completion, and the gate status READY (accepted + e-mail +
      * 2FA) says NOTHING about the DPA — a forwarded, unsigned contract must
      * never render as complete.

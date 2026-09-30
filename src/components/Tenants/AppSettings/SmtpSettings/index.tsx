@@ -1,13 +1,15 @@
-import { Card, Form } from 'antd';
+import { Form } from 'antd';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { CardDeck } from '../../../CardDeck';
 import { CardEditable } from '../../../CardEditable';
-import { FormSwitchField } from '../../../FormSwitchField';
-import { FormInputField } from '../../../FormInputField';
-import { FormInputNumberField } from '../../../FormInputNumberField';
-import { FormInputPasswordField } from '../../../FormInputPasswordField';
+import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../../mui/MuiFormField';
+import { MuiSwitchField } from '../../../mui/MuiSwitchField/index';
 import { MuiColorField } from '../../../mui/MuiColorField';
+import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData, TENANT_QUERY_KEY } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
@@ -188,97 +190,116 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
     );
 
     return (
-        <CardEditable
-            key={formKey}
-            formProp={form}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            titleKey="tenants.appSettings.smtp.title"
-            onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
-        >
-            <Card className={styles.sectionCard} size="small" variant="outlined">
-                <div className={styles.checkGroup}>
-                    <FormSwitchField
-                        className={styles.smtpSwitch}
-                        label={renderSwitchLabel(
-                            'tenants.appSettings.smtp.systemEmailToggle.title',
-                            'tenants.appSettings.smtp.systemEmailToggle.description',
-                        )}
-                        name={['settings', 'featureSystemNotificationEmailsEnabled']}
-                        inline
-                        disableLabels
-                        disabled={!systemEmailsAllowed}
-                        switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
-                        switchVariant="m3"
-                    />
+        <ThemeProvider theme={orisoMuiTheme}>
+            <CardDeck
+                className={styles.smtpPage}
+                ariaLabel={t('tenants.appSettings.smtp.title')}
+                previousLabel={t('globalSettings.smtp.cardDeck.previous')}
+                nextLabel={t('globalSettings.smtp.cardDeck.next')}
+            >
+                <CardDeck.Item className={styles.smtpCardSlot}>
+                    <CardEditable
+                        key={formKey}
+                        className={styles.smtpCard}
+                        variant="dialog"
+                        headerIcon={<EmailOutlinedIcon />}
+                        formProp={form}
+                        isLoading={isLoading}
+                        initialValues={initialValues}
+                        titleKey="tenants.appSettings.smtp.title"
+                        subTitleKey="tenants.appSettings.smtp.description"
+                        onSave={(formData) => mutate(applyPlatformEmailRestrictions(formData))}
+                    >
+                        <div className={styles.fieldGrid}>
+                            <MuiSwitchField
+                                className={styles.smtpSwitch}
+                                label={renderSwitchLabel(
+                                    'tenants.appSettings.smtp.systemEmailToggle.title',
+                                    'tenants.appSettings.smtp.systemEmailToggle.description',
+                                )}
+                                name={['settings', 'featureSystemNotificationEmailsEnabled']}
+                                disabled={!systemEmailsAllowed}
+                                switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
+                            />
 
-                    <FormSwitchField
-                        className={styles.smtpSwitch}
-                        label={renderSwitchLabel(
-                            'tenants.appSettings.smtp.smtpToggle.title',
-                            'tenants.appSettings.smtp.smtpToggle.description',
-                        )}
-                        name={['settings', 'smtp', 'enabled']}
-                        inline
-                        disableLabels
-                        disabled={!smtpAllowed}
-                        switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
-                        switchVariant="m3"
-                    />
+                            <MuiSwitchField
+                                className={styles.smtpSwitch}
+                                label={renderSwitchLabel(
+                                    'tenants.appSettings.smtp.smtpToggle.title',
+                                    'tenants.appSettings.smtp.smtpToggle.description',
+                                )}
+                                name={['settings', 'smtp', 'enabled']}
+                                disabled={!smtpAllowed}
+                                switchLabel={t('tenants.appSettings.smtp.smtpToggle.title')}
+                            />
 
-                    <FormInputField
-                        labelKey="tenants.appSettings.smtp.host"
-                        name={['settings', 'smtp', 'host']}
-                        disabled={!smtpAllowed}
-                    />
-                    <FormInputNumberField
-                        labelKey="tenants.appSettings.smtp.port"
-                        name={['settings', 'smtp', 'port']}
-                        min={1}
-                        max={65535}
-                        disabled={!smtpAllowed}
-                    />
-                    <FormInputField
-                        labelKey="tenants.appSettings.smtp.username"
-                        name={['settings', 'smtp', 'username']}
-                        disabled={!smtpAllowed}
-                    />
-                    <FormInputPasswordField
-                        labelKey="tenants.appSettings.smtp.passwordNew"
-                        name={['settings', 'smtp', 'password']}
-                        disabled={!smtpAllowed}
-                        autoComplete="new-password"
-                    />
-                    <span className={styles.passwordHint}>
-                        {t(
-                            tenantSmtpPasswordSet
-                                ? 'tenants.appSettings.smtp.passwordStored'
-                                : 'tenants.appSettings.smtp.passwordNotSet',
-                        )}
-                    </span>
-                    <FormInputField
-                        labelKey="tenants.appSettings.smtp.from"
-                        name={['settings', 'smtp', 'from']}
-                        disabled={!smtpAllowed}
-                    />
-                    <MuiColorField
-                        className={styles.colorField}
-                        labelKey="tenants.appSettings.smtp.emailThemeColor"
-                        name={['settings', 'smtp', 'emailThemeColor']}
-                        disabled={!smtpAllowed}
-                    />
-                    <FormSwitchField
-                        className={styles.smtpSwitch}
-                        label={renderSwitchLabel('tenants.appSettings.smtp.secure')}
-                        name={['settings', 'smtp', 'secure']}
-                        inline
-                        disableLabels
-                        disabled={!smtpAllowed}
-                        switchLabel={t('tenants.appSettings.smtp.secure')}
-                        switchVariant="m3"
-                    />
-                </div>
-            </Card>
-        </CardEditable>
+                            <MuiFormField
+                                label={t('tenants.appSettings.smtp.host')}
+                                name={['settings', 'smtp', 'host']}
+                                helpText={t('tenants.appSettings.smtp.host.helpText')}
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiNumberFormField
+                                label={t('tenants.appSettings.smtp.port')}
+                                name={['settings', 'smtp', 'port']}
+                                helpText={t('tenants.appSettings.smtp.port.helpText')}
+                                min={1}
+                                inputProps={{ max: 65535 }}
+                                rules={[
+                                    {
+                                        type: 'number',
+                                        min: 1,
+                                        max: 65535,
+                                        message: t('tenants.appSettings.smtp.port.invalid'),
+                                    },
+                                ]}
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiFormField
+                                label={t('tenants.appSettings.smtp.username')}
+                                name={['settings', 'smtp', 'username']}
+                                helpText={t('tenants.appSettings.smtp.username.helpText')}
+                                autoComplete="off"
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiPasswordFormField
+                                label={t('tenants.appSettings.smtp.passwordNew')}
+                                name={['settings', 'smtp', 'password']}
+                                helpText={t(
+                                    tenantSmtpPasswordSet
+                                        ? 'tenants.appSettings.smtp.passwordStored'
+                                        : 'tenants.appSettings.smtp.passwordNotSet',
+                                )}
+                                autoComplete="new-password"
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiFormField
+                                label={t('tenants.appSettings.smtp.from')}
+                                name={['settings', 'smtp', 'from']}
+                                helpText={t('tenants.appSettings.smtp.from.helpText')}
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiColorField
+                                className={styles.colorField}
+                                labelKey="tenants.appSettings.smtp.emailThemeColor"
+                                help="tenants.appSettings.smtp.emailThemeColor.helpText"
+                                name={['settings', 'smtp', 'emailThemeColor']}
+                                disabled={!smtpAllowed}
+                            />
+                            <MuiSwitchField
+                                className={styles.smtpSwitch}
+                                label={renderSwitchLabel(
+                                    'tenants.appSettings.smtp.secure',
+                                    'tenants.appSettings.smtp.secure.description',
+                                )}
+                                name={['settings', 'smtp', 'secure']}
+                                disabled={!smtpAllowed}
+                                switchLabel={t('tenants.appSettings.smtp.secure')}
+                            />
+                        </div>
+                    </CardEditable>
+                </CardDeck.Item>
+            </CardDeck>
+        </ThemeProvider>
     );
 };

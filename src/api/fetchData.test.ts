@@ -242,6 +242,40 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(logout).not.toHaveBeenCalled();
     });
 
+    // UserService#1160: a 502 means the request was accepted but the MAIL could not
+    // be handed to SMTP. Without BAD_GATEWAY_WITH_RESPONSE the call fell into
+    // CATCH_ALL — a generic toast that hid a platform misconfiguration.
+    it('rejects with the raw response on 502 when BAD_GATEWAY_WITH_RESPONSE is requested, with no generic toast', async () => {
+        const badGateway = response(502, { reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' });
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badGateway));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/useradmin/account-invites',
+                method: FETCH_METHODS.POST,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE],
+                bodyData: JSON.stringify({ recipientEmail: 'neu@example.org' }),
+            }),
+        ).rejects.toBe(badGateway);
+
+        // The caller renders the specific cause; a CATCH_ALL toast on top would
+        // bury it under "something went wrong".
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    // Opt-in only: every existing caller keeps the behaviour it had.
+    it('keeps the CATCH_ALL toast on 502 when BAD_GATEWAY_WITH_RESPONSE is not requested', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(response(502, { reason: 'SMTP_SEND_FAILED', detail: 'SMTP_CREDENTIALS_MISSING' })),
+        );
+
+        await expect(createAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenCalledTimes(1);
+    });
+
     // Dead-session UX: when the refresh fails and we fall back to logout, the
     // admin must be TOLD the session expired instead of watching a spinner or a
     // silent redirect.
@@ -338,5 +372,60 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
+    });
+});
+
+/**
+ * #1015. TenantService now answers 400 with `X-Reason: SUBDOMAIN_INVALID` for a malformed
+ * subdomain. Which object the rejection carries decides whether the admin can be told which
+ * field was refused: a caller that declares no 400 branch falls through to the final `else`
+ * and gets a bare `Error`, so the `error.headers.get('X-Reason')` the tenant form does is
+ * never reachable and the generic "something went wrong" is all that is left.
+ */
+describe('fetchData – a 400 carries its reason only when the caller opts in', () => {
+    const badRequest = {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { get: (name: string) => (name === FETCH_ERRORS.X_REASON ? 'SUBDOMAIN_INVALID' : null) },
+        json: async () => ({}),
+    };
+
+    const saveTenant = (responseHandling: string[]) =>
+        fetchData({
+            url: 'https://api.test/service/tenantadmin/1',
+            method: FETCH_METHODS.PUT,
+            responseHandling,
+            bodyData: JSON.stringify({ subdomain: 'Not Valid' }),
+        });
+
+    beforeEach(() => {
+        getAccessTokenForRequests.mockReset();
+        getAccessTokenForRequests.mockReturnValue('access-token');
+        messageError.mockReset();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badRequest));
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('rejects with a bare Error when no 400 branch is declared, losing the reason', async () => {
+        const error = await saveTenant([FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE]).catch(
+            (rejection) => rejection,
+        );
+
+        expect(error).toBeInstanceOf(Error);
+        expect((error as unknown as Response).headers).toBeUndefined();
+    });
+
+    it('rejects with the raw response, reason header and all, when the caller declares it', async () => {
+        const error = await saveTenant([
+            FETCH_SUCCESS.CONTENT,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+        ]).catch((rejection) => rejection);
+
+        expect(error).not.toBeInstanceOf(Error);
+        expect(error.headers.get(FETCH_ERRORS.X_REASON)).toBe('SUBDOMAIN_INVALID');
     });
 });

@@ -15,10 +15,41 @@ export interface DepartmentDataProtectionContent {
      * The consent sentence stored WITH this policy (ADR-021 decision 4) as a
      * multilingual JSON language→sentence map string.
      *
-     * TODO(#250): added by ORISO-AgencyService branch `feat/legal-text-versioning-250`.
-     * `undefined` = the deployed backend does not know the field yet, and the Admin
-     * hides the consent editor rather than offering an input that cannot be saved;
-     * `null` = the backend knows it and nothing was authored.
+     * `null` = the backend knows the field and nothing was authored. `undefined` = it is
+     * simply not in the payload, which since #929 means the same thing: a policy that was
+     * read carries a consent field, empty or not. Whether the key is present is a
+     * serialisation detail of the service and must not decide what the editor offers.
      */
     consentText?: string | null;
 }
+
+/**
+ * Whether a resolved read actually produced one of these documents.
+ *
+ * `fetchData` resolves a `204` with the raw `Response` and a JSON `null` body with `null`,
+ * and neither marks the query as failed. A caller that inferred "this department has no
+ * text" from such a payload would seed its editor with the INHERITED text and let a publish
+ * store that as the department's own — so the shape is checked before it is believed.
+ *
+ * `publicationStatus` is what is checked, and deliberately not `content` or `consentText`:
+ * it is the only property the read contract marks REQUIRED (same for the imprint read), while
+ * the other two are nullable and may or may not appear depending on how the service serialises
+ * nulls. Keying the guard on one of those would re-create #929 — a healthy read of a
+ * never-authored department would fail closed and hide the editor again.
+ */
+const isStoredJsonMap = (value: unknown): boolean => typeof value === 'string' || value === null || value === undefined;
+
+export const isLegalDocumentPayload = (data: unknown): data is DepartmentDataProtectionContent => {
+    if (typeof data !== 'object' || data === null || Array.isArray(data) || data instanceof Response) {
+        return false;
+    }
+    const candidate = data as DepartmentDataProtectionContent;
+    if (candidate.publicationStatus !== 'DRAFT' && candidate.publicationStatus !== 'PUBLISHED') {
+        return false;
+    }
+    // Both are stored as JSON map STRINGS. `parseLegalContentMap` does not throw on anything else
+    // — its JSON.parse sits in a try/catch — it hands back `{ de: <that value> }`, which would make
+    // a department look like it carries its own text and put a non-string into the editor. Cheaper
+    // to refuse the document here than to reason about that downstream.
+    return isStoredJsonMap(candidate.content) && isStoredJsonMap(candidate.consentText);
+};

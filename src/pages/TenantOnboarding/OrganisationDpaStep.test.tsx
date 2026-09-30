@@ -177,6 +177,82 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
 });
 
 /**
+ * The backend can fail to deliver the contract text for two opposite reasons
+ * (`dpaUnavailableReason`), and the page used to answer both with "please
+ * reload". Reloading helps in neither case: on staging that single sentence
+ * made a server-side misconfiguration read as "the operator published
+ * nothing", and it stayed unreported for hours. The step must pass the reason
+ * through and keep refusing the submit in every case.
+ */
+describe('OrganisationDpaStep — the unavailable agreement names its cause', () => {
+    it('shows the platform-configuration message on an upstream error', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'UPSTREAM_ERROR' } });
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            'tenantOnboarding.dpa.unavailableUpstream',
+        );
+    });
+
+    it('shows the not-yet-published message when nothing was published', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'NOT_PUBLISHED' } });
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            'tenantOnboarding.dpa.unavailableNotPublished',
+        );
+    });
+
+    it('falls back to the generic message against a backend that does not send the field', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null } });
+
+        // Anchored: both reason keys start with the generic one.
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            /^tenantOnboarding\.dpa\.unavailable$/,
+        );
+    });
+
+    it('still refuses the submit with a named reason — the step stays blocked', async () => {
+        const onSubmit = vi.fn();
+        renderStep({
+            invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'UPSTREAM_ERROR' },
+            onSubmit,
+        });
+
+        await screen.findByTestId('dpa-content-unavailable');
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), {
+            target: { value: 'beispiel' },
+        });
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId('onboarding-submit-error')).toHaveTextContent(
+                'tenantOnboarding.dpa.unavailableBlocked',
+            ),
+        );
+        expect(onSubmit).not.toHaveBeenCalled();
+        // The delegation path is the way out and must survive the error state.
+        expect(screen.getByRole('button', { name: /dpaForward\.action\.notAuthorised/ })).toBeInTheDocument();
+    });
+
+    it('ships both reason messages in every locale, each with its own remedy', () => {
+        expect(de['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/Plattform-Konfiguration/);
+        expect(de['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/Neuladen der Seite hilft hier nicht/);
+        expect(de['tenantOnboarding.dpa.unavailableNotPublished']).toMatch(/noch keine Vertragsunterlagen/);
+        // The old wording sent people to reload; the named states must not.
+        expect(de['tenantOnboarding.dpa.unavailableNotPublished']).not.toMatch(/laden Sie die Seite neu/);
+        expect(en['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/platform configuration/i);
+        expect(en['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/will not help/i);
+        expect(en['tenantOnboarding.dpa.unavailableNotPublished']).toMatch(/has not published/i);
+        expect(en['tenantOnboarding.dpa.unavailableNotPublished']).not.toMatch(/reload the page/i);
+    });
+});
+
+/**
  * With a section header above them the signer fields no longer have to repeat
  * "der unterzeichnenden Person" in every single label (owner report
  * 2026-08-19) — the long labels were truncated in the two-column grid.
@@ -184,13 +260,13 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
 describe('tenant onboarding wording — short signer labels under their section header', () => {
     it('ships both section headers in every locale', () => {
         expect(de['tenantOnboarding.organisation.masterDataTitle']).toBe('Stammdaten Organisation');
-        expect(de['tenantOnboarding.dpa.signerSectionTitle']).toBe('Daten der unterschriftsberechtigten Person');
+        expect(de['tenantOnboarding.dpa.signerSectionTitle']).toBe('Daten der vertretungsberechtigten Person');
         expect(en['tenantOnboarding.organisation.masterDataTitle']).toBeTruthy();
         expect(en['tenantOnboarding.dpa.signerSectionTitle']).toBeTruthy();
     });
 
     it('shortens the four signer labels', () => {
-        expect(de['tenantOnboarding.dpa.signerName']).toBe('Name');
+        expect(de['tenantOnboarding.dpa.signerName']).toBe('Vollständiger Name');
         expect(de['tenantOnboarding.dpa.signerPosition']).toBe('Position');
         expect(de['tenantOnboarding.dpa.signerEmail']).toBe('E-Mail');
         expect(de['tenantOnboarding.dpa.signerNote']).toBe('Anmerkung (optional)');

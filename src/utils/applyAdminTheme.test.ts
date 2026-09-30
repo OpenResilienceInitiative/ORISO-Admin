@@ -7,24 +7,9 @@ import {
     clearAdminInvertedThemeTokens,
 } from './applyAdminTheme';
 import { computeOrisoPalette } from './theme/orisoScheme';
+import { contrastRatio, relativeLuminance } from './contrastRatio';
 
 const BENCHMARK_SEED = '#a5000a';
-
-const relativeLuminance = (hex: string): number => {
-    const channel = (value: number) => {
-        const c = value / 255;
-        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    };
-    const n = parseInt(hex.slice(1), 16);
-    // eslint-disable-next-line no-bitwise
-    return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
-};
-
-const wcagRatio = (hexA: string, hexB: string): number => {
-    const a = relativeLuminance(hexA);
-    const b = relativeLuminance(hexB);
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-};
 
 describe('applyAdminTheme', () => {
     it('overrides the --m3-* tokens with the light theme output', () => {
@@ -106,7 +91,7 @@ describe('applyAdminTheme', () => {
         const surface = root.style.getPropertyValue('--admin-field-selected-surface');
         const text = root.style.getPropertyValue('--admin-field-selected-text');
 
-        expect(wcagRatio(text, surface)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(text, surface)).toBeGreaterThanOrEqual(4.5);
     });
 });
 
@@ -231,7 +216,7 @@ describe('applyAdminInvertedTheme', () => {
         ['--admin-nav-indicator-icon', '--admin-nav-indicator-surface'],
     ])('%s on %s meets WCAG-AA body contrast', (onRole, surface) => {
         const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'inverted');
-        const ratio = wcagRatio(tokens[onRole], tokens[surface]);
+        const ratio = contrastRatio(tokens[onRole], tokens[surface]);
 
         expect(
             ratio,
@@ -247,7 +232,7 @@ describe('applyAdminInvertedTheme', () => {
         const { tokens } = computeOrisoPalette({ accentDark: BENCHMARK_SEED, accentLight: '#00cc00' }, 'inverted');
         const onRole = '--admin-nav-indicator-icon';
         const surface = '--admin-nav-indicator-surface';
-        const ratio = wcagRatio(tokens[onRole], tokens[surface]);
+        const ratio = contrastRatio(tokens[onRole], tokens[surface]);
 
         expect(
             ratio,

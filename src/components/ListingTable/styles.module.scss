@@ -1,3 +1,8 @@
+/* Host for ResizeObserver / getBoundingClientRect — must not be display:contents. */
+.measureHost {
+    width: 100%;
+}
+
 .listingTable {
     --admin-table-radius: 16px;
 

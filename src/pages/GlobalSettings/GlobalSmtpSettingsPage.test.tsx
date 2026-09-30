@@ -29,11 +29,11 @@ vi.mock('../../api/settings/sendGlobalSmtpTestEmail', () => ({
 import { GlobalSmtpSettingsPage } from './index';
 import { globalSmtpPlatformSettingsEndpoint, serverSettingsAdminEndpoint } from '../../appConfig';
 
-const deploymentSummary = {
-    host: 'smtp.deployment.example',
+const savedSummary = {
+    host: 'smtp.saved.example',
     port: 587,
     secure: true,
-    from: 'mail@deployment.example',
+    from: 'mail@saved.example',
     configured: true,
     credentialsPresent: true,
 };
@@ -52,41 +52,41 @@ const renderPage = () => {
     };
 };
 
-describe('GlobalSmtpSettingsPage (deployment SMTP)', () => {
+describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
     beforeEach(() => {
         mocks.fetchData
             .mockReset()
             .mockImplementation(({ url }) =>
-                Promise.resolve(url === globalSmtpPlatformSettingsEndpoint ? deploymentSummary : {}),
+                Promise.resolve(url === globalSmtpPlatformSettingsEndpoint ? savedSummary : {}),
             );
         mocks.sendGlobalSmtpTestEmail.mockReset().mockResolvedValue({});
         mocks.useUserData.mockReturnValue({ data: { email: 'admin@example.org' } });
         mocks.useAppConfigContext.mockReturnValue({
             settings: {
                 globalFeatureSystemNotificationEmailsEnabled: true,
-                globalSmtpHost: 'smtp.legacy.example',
-                globalSmtpPort: '25',
-                globalSmtpFrom: 'old@legacy.example',
+                globalSmtpEnabled: true,
+                globalSmtpHost: savedSummary.host,
+                globalSmtpPort: '587',
+                globalSmtpSecure: true,
+                globalSmtpFrom: savedSummary.from,
             },
             setManualSettings: vi.fn(),
             setServerSettings: vi.fn(),
         });
     });
 
-    it('shows effective deployment values as text and never offers server credential fields', async () => {
+    it('shows saved values and offers editable SMTP and empty write-only credential fields', async () => {
         renderPage();
-
-        expect(await screen.findByText('smtp.deployment.example')).toBeInTheDocument();
-        expect(screen.getByText('mail@deployment.example')).toBeInTheDocument();
-        expect(screen.queryByText('smtp.legacy.example')).not.toBeInTheDocument();
-        expect(screen.queryByLabelText('globalSettings.smtp.host')).not.toBeInTheDocument();
-        expect(screen.queryByLabelText('globalSettings.smtp.password')).not.toBeInTheDocument();
+        expect(await screen.findByText(savedSummary.host)).toBeInTheDocument();
+        expect(screen.getByLabelText('globalSettings.smtp.host')).toHaveValue(savedSummary.host);
+        expect(screen.getByLabelText('globalSettings.smtp.username')).toHaveValue('');
+        expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue('');
     });
 
     it('keeps the independent notification switch editable without sending SMTP fields', async () => {
         const user = userEvent.setup();
         renderPage();
-        await screen.findByText('smtp.deployment.example');
+        await screen.findByText('smtp.saved.example');
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('switch', { name: 'globalSettings.smtp.systemEmailToggle.title' }));
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
@@ -95,12 +95,20 @@ describe('GlobalSmtpSettingsPage (deployment SMTP)', () => {
             expect(mocks.fetchData.mock.calls.some(([args]) => args.url === serverSettingsAdminEndpoint)).toBe(true),
         );
         const patch = mocks.fetchData.mock.calls.find(([args]) => args.url === serverSettingsAdminEndpoint)![0];
-        expect(JSON.parse(patch.bodyData)).toEqual({ globalFeatureSystemNotificationEmailsEnabled: false });
+        expect(JSON.parse(patch.bodyData)).toEqual({
+            globalFeatureSystemNotificationEmailsEnabled: false,
+            globalSmtpEnabled: true,
+            globalSmtpHost: savedSummary.host,
+            globalSmtpPort: '587',
+            globalSmtpSecure: true,
+            globalSmtpFrom: savedSummary.from,
+        });
     });
 
-    it('sends only the recipient to the deployment-backed test endpoint', async () => {
+    it('sends only the recipient to the saved-settings test endpoint', async () => {
         const user = userEvent.setup();
         renderPage();
+        await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' }));
 
         await waitFor(() => expect(mocks.sendGlobalSmtpTestEmail).toHaveBeenCalledTimes(1));
@@ -126,12 +134,12 @@ describe('GlobalSmtpSettingsPage (deployment SMTP)', () => {
         );
     });
 
-    it('shows a read error instead of stale Admin values when the deployment summary is unavailable', async () => {
+    it('blocks testing when the saved summary is unavailable', async () => {
         mocks.fetchData.mockRejectedValue(new Error('unavailable'));
         renderPage();
 
         expect(await screen.findByRole('alert')).toHaveTextContent('globalSettings.smtp.deployment.error');
-        expect(screen.queryByText('smtp.legacy.example')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
     });
 
     it('shows the server configuration error from a failed test send', async () => {
@@ -143,8 +151,156 @@ describe('GlobalSmtpSettingsPage (deployment SMTP)', () => {
         );
         const user = userEvent.setup();
         renderPage();
+        await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' }));
 
         expect(await screen.findByText('SMTP_HOST is missing')).toBeInTheDocument();
+    });
+
+    it('blocks dirty fields and preserves them when a save fails', async () => {
+        mocks.fetchData.mockImplementation(({ url }) =>
+            url === serverSettingsAdminEndpoint
+                ? Promise.reject(new Error('save unavailable'))
+                : Promise.resolve(savedSummary),
+        );
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const host = screen.getByLabelText('globalSettings.smtp.host');
+        await user.clear(host);
+        await user.type(host, 'smtp.changed.example');
+        const test = screen.getByRole('button', { name: 'globalSettings.smtp.test.button' });
+        expect(test).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(host).not.toBeDisabled());
+        expect(host).toHaveValue('smtp.changed.example');
+        expect(test).toBeDisabled();
+        expect(mocks.sendGlobalSmtpTestEmail).not.toHaveBeenCalled();
+    });
+
+    it('waits for acknowledged save and refreshed summary before sending a recipient-only test', async () => {
+        let finishSave!: (value: object) => void;
+        let finishSummary!: (value: typeof savedSummary) => void;
+        let reads = 0;
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === serverSettingsAdminEndpoint)
+                return new Promise((resolve) => {
+                    finishSave = resolve;
+                });
+            reads += 1;
+            return reads === 1
+                ? Promise.resolve(savedSummary)
+                : new Promise((resolve) => {
+                      finishSummary = resolve;
+                  });
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const host = screen.getByLabelText('globalSettings.smtp.host');
+        await user.clear(host);
+        await user.type(host, 'smtp.changed.example');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        const test = screen.getByRole('button', { name: 'globalSettings.smtp.test.button' });
+        expect(test).toBeDisabled();
+        finishSave({});
+        await waitFor(() => expect(reads).toBe(2));
+        expect(test).toBeDisabled();
+        finishSummary({ ...savedSummary, host: 'smtp.changed.example' });
+        await waitFor(() => expect(test).toBeEnabled());
+        await user.click(test);
+        await waitFor(() =>
+            expect(mocks.sendGlobalSmtpTestEmail).toHaveBeenCalledWith({ recipientEmail: 'admin@example.org' }),
+        );
+    });
+
+    it('saves nonblank credentials once and clears their DOM fields after acknowledgement', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.type(screen.getByLabelText('globalSettings.smtp.username'), 'updated-user');
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), 'fixture-password');
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue(''));
+        expect(screen.getByLabelText('globalSettings.smtp.username')).toHaveValue('');
+        const patch = mocks.fetchData.mock.calls.find(([args]) => args.url === serverSettingsAdminEndpoint)![0];
+        expect(JSON.parse(patch.bodyData)).toMatchObject({
+            globalSmtpUsername: 'updated-user',
+            globalSmtpPassword: 'fixture-password',
+        });
+    });
+
+    it('discards an unsaved credential and allows testing the unchanged saved settings', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), 'unsaved-fixture');
+        await user.click(screen.getByRole('button', { name: 'card.edit.cancel' }));
+        expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue('');
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeEnabled();
+    });
+
+    it('hydrates settings arriving after mount without overwriting a touched draft', async () => {
+        const context = mocks.useAppConfigContext();
+        mocks.useAppConfigContext.mockReturnValue({ ...context, settings: {} });
+        const user = userEvent.setup();
+        const page = renderPage();
+        await screen.findByText(savedSummary.host);
+        mocks.useAppConfigContext.mockReturnValue(context);
+        const rerender = () =>
+            page.rerender(
+                <QueryClientProvider client={page.queryClient}>
+                    <GlobalSmtpSettingsPage />
+                </QueryClientProvider>,
+            );
+        rerender();
+        await waitFor(() => expect(screen.getByLabelText('globalSettings.smtp.host')).toHaveValue(savedSummary.host));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.clear(screen.getByLabelText('globalSettings.smtp.host'));
+        await user.type(screen.getByLabelText('globalSettings.smtp.host'), 'smtp.draft.example');
+        mocks.useAppConfigContext.mockReturnValue({
+            ...context,
+            settings: { ...context.settings, globalSmtpHost: 'smtp.external.example' },
+        });
+        rerender();
+        expect(screen.getByLabelText('globalSettings.smtp.host')).toHaveValue('smtp.draft.example');
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
+    });
+
+    it('omits whitespace-only credentials so the stored values are retained', async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.type(screen.getByLabelText('globalSettings.smtp.username'), '   ');
+        await user.type(screen.getByLabelText('globalSettings.smtp.password'), '   ');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(screen.getByLabelText('globalSettings.smtp.password')).toHaveValue(''));
+        const patch = mocks.fetchData.mock.calls.find(([args]) => args.url === serverSettingsAdminEndpoint)![0];
+        expect(JSON.parse(patch.bodyData)).not.toHaveProperty('globalSmtpUsername');
+        expect(JSON.parse(patch.bodyData)).not.toHaveProperty('globalSmtpPassword');
+    });
+
+    it('blocks testing after a successful save if the refreshed saved snapshot is unavailable', async () => {
+        let reads = 0;
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === serverSettingsAdminEndpoint) return Promise.resolve({});
+            reads += 1;
+            return reads === 1 ? Promise.resolve(savedSummary) : Promise.reject(new Error('snapshot unavailable'));
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: 'globalSettings.smtp.systemEmailToggle.title' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await screen.findByRole('alert');
+        expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
+        expect(mocks.sendGlobalSmtpTestEmail).not.toHaveBeenCalled();
     });
 });

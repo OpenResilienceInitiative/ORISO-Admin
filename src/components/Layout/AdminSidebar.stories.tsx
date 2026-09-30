@@ -130,11 +130,14 @@ export const TenantAdmin: Story = {
     },
 };
 
-/** Agency admin: only the agencies, users and links entries (no tenants/settings/logs). */
+/**
+ * Agency admin: only the agencies and users entries (no tenants/settings/logs, and no links —
+ * invite links create tenants or counsellors, which is a Träger/platform admin job).
+ */
 export const AgencyAdmin: Story = {
     args: {
-        items: [agencyItem, usersItem, linksItem],
-        currentPath: routePathNames.links,
+        items: [agencyItem, usersItem],
+        currentPath: routePathNames.agency,
     },
 };
 

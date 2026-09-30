@@ -33,6 +33,8 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .module {
     display: flex;
     flex-direction: column;
+    // Shared cards can be phone-width inside a desktop Storybook or split view.
+    container-type: inline-size;
     width: 100%;
     max-width: 800px;
     min-width: 280px;
@@ -59,8 +61,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
                 flex-direction: column;
             }
 
+            // The text scrolls inside; a fixed floor would push it over a wrapped function bar.
             .editor {
                 display: flex;
+                min-height: 0;
                 flex: 1;
                 flex-direction: column;
                 overflow: hidden;
@@ -646,6 +650,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Read mode: the chips sit directly on the card surface.
 .readMode .anchorNav {
     background: $m3-surface;
+
+    @container (max-width: 599px) {
+        background: #ffffff;
+    }
+}
+
+@container (max-width: 599px) {
+    .module.fluid:not(.inDialog) .editor .anchorNav {
+        background: #ffffff;
+        border-top: 0;
+    }
 }
 
 .anchorBubbleHost {
@@ -706,6 +721,27 @@ $m3-state-active: rgb(39 50 112 / 12%);
     color: $m3-on-surface;
     font-size: 13px;
     font-weight: 600;
+}
+
+.versionMenuEmpty {
+    display: block;
+    padding: 0 4px;
+    color: rgb(68 71 72 / 80%);
+    font-size: 13px;
+}
+
+// "+ Neue Vorlage erstellen": the section's own way forward, in the action colour.
+.versionMenuCreate {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: $m3-primary;
+    font-weight: 500;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
 }
 
 .versionMenuItem {
@@ -785,9 +821,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 // M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
 // .hasSnackbar above reserves matching scroll space so text remains reachable.
+// A snackbar flips in from its lower edge. The editor shows one at a time
+// (EditorSnackbarQueue); when the next one takes the place, this replays, so the
+// change is visible instead of the text silently swapping.
+// Rotation only, no opacity: edge-on at -90deg the snackbar is already invisible, and an
+// opacity of 0 would make every "is the snackbar visible" check fail during the 240ms.
+@keyframes hintSnackbarFlipIn {
+    from {
+        transform: perspective(600px) rotateX(-90deg);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
 .hintSnackbar {
     position: absolute;
     z-index: 5;
+    transform-origin: 50% 100%;
+    animation: hintSnackbarFlipIn 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
     right: 6px;
     bottom: 6px;
     left: 6px;
@@ -824,6 +882,20 @@ $m3-state-active: rgb(39 50 112 / 12%);
 /* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
    dark text. Used when the message confirms something that happened rather than
    blocking an action — e.g. the DPA was signed. */
+
+// Errors in the M3 error role (owner call 2026-09-23): a red snackbar instead of an alert box.
+.hintSnackbarError {
+    background: var(--m3-error-container, #ffd9e2);
+    color: var(--m3-on-error-container, #3f0018);
+
+    .hintSnackbarAction {
+        color: var(--m3-error, #b1005e);
+
+        &:hover {
+            background: rgb(177 0 94 / 12%);
+        }
+    }
+}
 
 .hintSnackbarSuccess {
     background: var(--m3-on-secondary-container, #e7effc);
@@ -915,6 +987,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // against the card edges.
 .contentInset {
     padding: 0 16px;
+}
+
+// "Platzhalter einfügen" menu: long names (the platform DPO) wrap instead of widening the menu.
+.tokenMenuText {
+    display: block;
+    max-width: 340px;
+    white-space: normal;
+
+    small {
+        max-width: none;
+    }
 }
 
 .editor {
@@ -1106,50 +1189,89 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Lower function bar (Figma 1261-48667 / #862): one horizontal row of split
 // buttons. Must stay scrollable with a visible thin scrollbar when consent +
 // language + department + version no longer fit the 800px card.
+.functionBarShell {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.functionBarScrollCue {
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    display: grid;
+    width: 36px;
+    height: 44px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    color: $m3-primary;
+    font-size: 28px;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: -2px;
+    }
+}
+
+.functionBarScrollCueLeft {
+    left: 0;
+    background: linear-gradient(to right, $m3-surface 65%, transparent);
+}
+
+.functionBarScrollCueRight {
+    right: 0;
+    background: linear-gradient(to left, $m3-surface 65%, transparent);
+}
+
 .functionBar {
     display: flex;
     width: 100%;
-    max-width: 100%;
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
-    flex-wrap: nowrap;
-    gap: 12px;
+    // Desktop can wrap so every control stays directly visible.
+    flex-wrap: wrap;
     align-items: center;
-    // Spacer pushes controls right when they fit; shrinks away so overflow can
-    // scroll from the start (flex-end alone leaves left items unreachable).
-    justify-content: flex-start;
+    justify-content: flex-end;
     padding: 12px 16px 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--m3-outline, #747778) transparent;
-
-    &:before {
-        content: '';
-        flex: 1 1 0;
-        min-width: 0;
-    }
-
-    &::-webkit-scrollbar {
-        height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        border-radius: 2px;
-        background: var(--m3-outline, #747778);
-    }
+    gap: 8px 12px;
 
     > * {
-        flex-shrink: 0;
+        min-width: 0;
+        max-width: 100%;
+        flex-shrink: 1;
     }
 
-    @media (max-width: 599px) {
-        gap: 8px;
+    > .versionHistoryStatus {
+        white-space: normal;
+    }
 
-        &:before {
-            display: none;
+    @container (max-width: 599px) {
+        justify-content: flex-start;
+        gap: 8px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-color: $m3-outline-variant transparent;
+        scrollbar-width: thin;
+
+        &::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: $m3-outline-variant;
+            border-radius: 8px;
+        }
+
+        > * {
+            flex: 0 0 auto;
+            max-width: none;
         }
     }
 }
@@ -1172,6 +1294,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
+.versionHistoryControl {
+    @container (max-width: 599px) {
+        .versionLeading > span {
+            max-width: 12ch;
+        }
+    }
+}
+
+.splitDropdownOverlay {
+    max-width: calc(100vw - 16px);
+
+    :global(.ant-dropdown-menu) {
+        max-height: min(60dvh, 440px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 599px) {
+        :global(.ant-dropdown-menu-item) {
+            min-height: 44px;
+        }
+    }
+}
+
 .versionLeading,
 .versionTrailing {
     display: inline-flex;
@@ -1183,6 +1330,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     .versionSplit:hover & {
         background: $m3-state-hover;
+    }
+
+    @container (max-width: 599px) {
+        min-height: 44px;
+        touch-action: manipulation;
     }
 }
 
@@ -1267,8 +1419,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
        vertical 8px comes from `.editor` above; the fluid variant's 56px
        bottom clearance wins by specificity, which is intended. */
 
+    // Owner call 2026-09-21: 8px left the reading text 9px from the card edge
+    // while header (24px) and controls (16px) sat further in. Match the header.
     .editorContentScroll {
-        padding-inline: 8px;
+        padding-inline: 24px;
+
+        @media (max-width: 599px) {
+            padding-inline: 16px;
+        }
     }
 
     // Owner call 2026-07-30, desktop AND mobile: with the outer box gone there
@@ -1445,6 +1603,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-width: 0;
     min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
@@ -1479,6 +1638,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .textBtn {
     display: inline-flex;
+    // Long labels ("Datenschutzerklärung (Plattform) veröffentlichen") give way
+    // before the row overflows; the full text stays in the title.
+    min-width: 0;
+    flex-shrink: 1;
     gap: 8px;
     align-items: center;
     height: 40px;
@@ -1490,6 +1653,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 500;
     letter-spacing: 0.1px;
     cursor: pointer;
+
+    > svg {
+        flex-shrink: 0;
+    }
 
     &:hover {
         background: $m3-state-hover;
@@ -1507,4 +1674,33 @@ $m3-state-active: rgb(39 50 112 / 12%);
     &.draft {
         color: $m3-primary;
     }
+
+    // Offering a template publishes nothing, so it shares the neutral colour of
+    // "Save draft". Red stays reserved for the one action that goes live.
+    &.publishTemplate {
+        color: $m3-primary;
+    }
+}
+
+// Wraps the template action so a disabled button can still carry its reason as a
+// hover title — a disabled <button> itself receives no pointer events.
+.actionWithReason {
+    display: inline-flex;
+    min-width: 0;
+}
+
+.actionLabel {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }

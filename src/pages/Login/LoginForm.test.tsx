@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     login: vi.fn(),
     messageError: vi.fn(),
     navigate: vi.fn(),
+    recordLoginFailure: vi.fn(),
 }));
 
 const translations: Record<string, string> = {
@@ -84,6 +85,10 @@ vi.mock('antd', async () => {
     };
 });
 
+vi.mock('../../observability/loginFailureTracker', () => ({
+    recordLoginFailure: mocks.recordLoginFailure,
+}));
+
 vi.mock('../../hooks/usePublicTenantData.hook', () => ({
     usePublicTenantData: () => ({ data: { id: 42 } }),
 }));
@@ -125,6 +130,7 @@ describe('LoginForm', () => {
         mocks.login.mockReset();
         mocks.messageError.mockReset();
         mocks.navigate.mockReset();
+        mocks.recordLoginFailure.mockReset();
         consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
 
@@ -139,7 +145,7 @@ describe('LoginForm', () => {
     });
 
     /*
-     * Owner review of predev.oriso.org/admin, "Muss zentrierter sein": the
+     * Owner review of predev.example.org/admin, "Muss zentrierter sein": the
      * password-reset link was the only child of the sign-in form that did not
      * share the axis of the fields and the submit button — it hugged the inline
      * start ~100px left of the form centre.
@@ -332,11 +338,15 @@ describe('LoginForm', () => {
         expect(await screen.findByText('Please enter one-time password')).toBeInTheDocument();
     });
 
-    it('shows the generic OTP guidance when the authentication response omits the OTP type', async () => {
+    // Keycloak answers a wrong password with 400 invalid_grant and NO otpType.
+    // Until 2026-09 this branch revealed the OTP field and said nothing, so a
+    // plain typo in the password looked like a dead button (ORISO-Frontend#1402
+    // has the same symptom on the app layer).
+    it('shows the credentials hint, not the OTP field, for a 400 without an OTP type', async () => {
         mocks.login.mockImplementationOnce((_values, options) =>
             options.onError({
                 message: FETCH_ERRORS.BAD_REQUEST,
-                options: { data: {} },
+                options: { data: { error: 'invalid_grant', error_description: 'Invalid user credentials' } },
             }),
         );
         render(<LoginForm />);
@@ -344,8 +354,51 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByPlaceholderText('One-time password')).toBeInTheDocument();
-        expect(screen.getByText('Please enter one-time password')).toBeInTheDocument();
-        expect(screen.queryByText('message.form.login.otp.')).not.toBeInTheDocument();
+        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
+        expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    it('shows the credentials hint when the code was submitted and Keycloak still answers 400', async () => {
+        mocks.login
+            .mockImplementationOnce((_values, options) =>
+                options.onError({
+                    message: FETCH_ERRORS.BAD_REQUEST,
+                    options: { data: { otpType: TwoFactorType.App } },
+                }),
+            )
+            .mockImplementationOnce((_values, options) =>
+                options.onError({
+                    message: FETCH_ERRORS.BAD_REQUEST,
+                    options: { data: { error: 'invalid_grant', error_description: 'Invalid user credentials' } },
+                }),
+            );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        const otpField = await screen.findByPlaceholderText('One-time password');
+        await user.type(otpField, '123456');
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        // The OTP field stays so the person can correct the code, not start over.
+        expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+    });
+
+    it('counts every failure for SigNoz without any identifying attribute', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(new Error(FETCH_ERRORS.UNAUTHORIZED)));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await screen.findByTestId('login-credentials-hint');
+        expect(mocks.recordLoginFailure).toHaveBeenCalledTimes(1);
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'credentials',
+            transport: 'unauthorized',
+            stage: 'password',
+        });
     });
 });

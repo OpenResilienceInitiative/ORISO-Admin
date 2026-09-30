@@ -134,7 +134,7 @@
 
 .fieldGrid {
     display: grid;
-    gap: 0;
+    gap: mui.$mui-unit * 2;
     grid-template-columns: 1fr;
 }
 

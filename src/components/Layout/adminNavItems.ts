@@ -5,9 +5,9 @@ import {
     type CanFn,
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
+import { canSeeLinksSection } from '../../constants/linksAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
-import { UserRole } from '../../enums/UserRole';
 import { AdminSidebarNavItem } from './AdminSidebar';
 
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
@@ -111,10 +111,11 @@ export const buildAdminNavItems = ({
             activeMatch: { paths: [routePathNames.tenants], mode: 'includes' },
         });
     }
-    if (
-        can(PermissionAction.Read, Resource.Agency) &&
-        (hasRole(UserRole.AgencyAdmin) || !hasRole(UserRole.RestrictedAgencyAdmin))
-    ) {
+    // `Agency.read` is the only gate. An earlier role check additionally hid the entry from every
+    // admin holding `restricted-agency-admin` without `agency-admin` — i.e. from the standard
+    // Beratungsstellen-Admin bundle, which then had no path into its own agency (ORISO-Admin#917).
+    // The list itself is filtered server-side to the admin's assigned agencies.
+    if (can(PermissionAction.Read, Resource.Agency)) {
         items.push({
             key: 'agency',
             to: routePathNames.agency,
@@ -144,11 +145,9 @@ export const buildAdminNavItems = ({
             iconPath: routePathNames.statistic,
         });
     }
-    if (
-        can(PermissionAction.Read, Resource.Agency) ||
-        can(PermissionAction.Read, Resource.AgencyAdminUser) ||
-        hasRole(UserRole.RestrictedAgencyAdmin)
-    ) {
+    // "Links" hands out invite links one level below the admin (tenants / counsellors), so
+    // Beratungsstellen-Admins get no entry at all; see `linksAccess.ts` for the per-tab rule.
+    if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({
             key: 'links',
             to: routePathNames.links,

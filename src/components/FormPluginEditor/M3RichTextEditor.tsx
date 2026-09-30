@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -36,12 +36,15 @@ import {
     FormatAlignJustify,
     Image as ImageIcon,
     Restore,
+    Add,
     Language,
     ArrowDropDown,
     Fingerprint,
     TextFields,
+    LocalOffer,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import type { MenuProps } from 'antd';
 import { ResolvingImage } from './createResolvingImage';
 import {
     CrossReferenceIcon,
@@ -50,6 +53,7 @@ import {
     MinimizeContentIcon,
     PublishedIcon,
     EditIcon,
+    PublishTemplateIcon,
     VersionHistoryIcon,
 } from '../CustomIcons/EditorIcons';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
@@ -78,6 +82,28 @@ export type EditorVersion = {
     content: string;
     /** False when content is a preview fallback from another language. */
     restorable?: boolean;
+    /**
+     * Menu name and detail line for versions that are not "online from … to …" —
+     * a sent template was never live, so the published-range wording would be false.
+     */
+    name?: string;
+    detail?: string;
+};
+
+/**
+ * A titled group in the version menu, e.g. "Impressum (Vorlagen)" above
+ * "Impressum (Plattform)" — one menu, one document, two kinds of history.
+ */
+export type EditorVersionSection = {
+    key: string;
+    title: string;
+    /** Newest first. Ids must be unique across all sections. */
+    versions: EditorVersion[];
+    /** Said instead of an empty list, so a section never looks broken. */
+    emptyLabel?: string;
+    /** Last row of the section, with a leading plus ("Neue Vorlage erstellen"). */
+    createLabel?: string;
+    onCreate?: () => void;
 };
 
 export type M3RichTextEditorProps = {
@@ -91,6 +117,15 @@ export type M3RichTextEditorProps = {
      * the draft (append-only history — the old version is never mutated).
      */
     versions?: EditorVersion[];
+    /**
+     * Grouped history instead of `versions`: each section gets a small heading,
+     * its versions and an optional "create" row. When set, `versions` is ignored.
+     */
+    versionSections?: EditorVersionSection[];
+    /** Whether this owner exposes the version-history collection. */
+    versionHistoryState?: 'loading' | 'available' | 'unsupported' | 'unavailable';
+    /** Honest status shown when history is loading, unsupported or unavailable. */
+    versionHistoryStatusLabel?: string;
     /** Called with a version's content when the admin restores it as a new draft (copy). */
     onRestoreVersion?: (content: string) => void;
     /**
@@ -180,8 +215,25 @@ export type M3RichTextEditorProps = {
      * to three split button fields).
      */
     topicSlot?: React.ReactNode;
+    /**
+     * Offers the saved draft to the level below as a template (platform → Träger).
+     * Rendered as its own footer action directly before Publish, in the same shape,
+     * because it is an action on the document — not a view control like the version
+     * menu. Publishing a template never makes anything public.
+     */
+    onPublishTemplate?: () => void;
+    /**
+     * When set, the template action stays visible but disabled, and this sentence
+     * says why (disable, don't hide — the admin should learn what is missing).
+     */
+    publishTemplateDisabledReason?: string;
     /** Rendered between the toolbar and the editor (e.g. per-field translate button). */
     aboveEditorSlot?: React.ReactNode;
+    /**
+     * `{{key}}` tokens the backend fills per Beratungsstelle. Offered by the toolbar's
+     * "Platzhalter einfügen" menu with a sample value each; a pick inserts the token at the cursor.
+     */
+    textTokens?: TextToken[];
     /**
      * Replaces the built-in toolbar + editor entirely (e.g. Form-bound TiptapEditors that
      * bring their own toolbar, placeholder plugin and anchor navigation). With an editorSlot
@@ -210,6 +262,16 @@ export type M3RichTextEditorProps = {
      * Must not change during the editor's lifetime.
      */
     enableAnchors?: boolean;
+    /** Replaces "Veröffentlichen", e.g. "Impressum (Plattform) veröffentlichen". */
+    publishLabel?: string;
+    /** Replaces "Vorlage veröffentlichen". */
+    publishTemplateLabel?: string;
+    /**
+     * Whether there is anything to save. `false` hides "Entwurf speichern" — a save
+     * action that would store nothing new only raises the question what it is for.
+     * Left undefined, the action stays as before for hosts that do not track it.
+     */
+    dirty?: boolean;
     onPublish?: (html: string) => void;
     onSaveDraft?: (html: string) => void;
 };
@@ -296,6 +358,65 @@ const MenuRow = ({ glyph, label, hint }: { glyph: React.ReactNode; label: React.
     </span>
 );
 
+type TextToken = { key: string; label: string; sample: string };
+
+/**
+ * "Platzhalter einfügen": one toolbar menu instead of a chip row above the text, so the
+ * placeholders cost no editor height (ORISO-Admin#1067). antd's menu brings role="menu",
+ * arrow-key navigation and Escape.
+ */
+const TextTokenMenu = ({ editor, tokens, disabled }: { editor: Editor; tokens: TextToken[]; disabled?: boolean }) => {
+    const { t } = useTranslation();
+    const [open, setOpen] = useState(false);
+    const label = t('legal.m3Editor.tokens.button', 'Platzhalter einfügen');
+    return (
+        <Dropdown
+            trigger={['click']}
+            disabled={disabled}
+            open={open}
+            onOpenChange={setOpen}
+            menu={{
+                'aria-label': label,
+                items: tokens.map((token) => ({
+                    key: token.key,
+                    label: (
+                        <MenuRow
+                            glyph={<LocalOffer />}
+                            label={
+                                <span className={styles.tokenMenuText}>
+                                    {token.label}
+                                    <small>{token.sample}</small>
+                                </span>
+                            }
+                        />
+                    ),
+                })),
+                onClick: ({ key }) => {
+                    setOpen(false);
+                    editor.chain().focus().insertContent(`{{${key}}}`).run();
+                },
+            }}
+        >
+            <button
+                type="button"
+                className={`${styles.toolBtn} ${styles.menuBtn}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onKeyDown={(e) => {
+                    if (e.key === 'Escape' && open) setOpen(false);
+                }}
+                title={label}
+                aria-label={label}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                data-testid="m3-toolbar-placeholders"
+            >
+                <LocalOffer />
+                <ArrowDropDown className={styles.caret} />
+            </button>
+        </Dropdown>
+    );
+};
+
 type ToolbarProps = {
     editor: Editor;
     /** Read mode / version look-back: formatting stays visible but inert (Figma 1261-51137). */
@@ -309,6 +430,8 @@ type ToolbarProps = {
     onToggleAutoChapters?: (level: number) => void;
     /** Template placeholders (key -> i18n label key) inserted as literal `${key}` text. */
     placeholders?: { [key: string]: string };
+    /** `{{key}}` tokens with a sample value, offered by the "Platzhalter einfügen" menu. */
+    textTokens?: TextToken[];
     /** Opens the image file picker (upload to the tenant media endpoint). */
     onInsertImage?: () => void;
     /** Upload in flight: the image button shows busy state. */
@@ -323,6 +446,7 @@ const Toolbar = ({
     autoChapters,
     onToggleAutoChapters,
     placeholders,
+    textTokens,
     onInsertImage,
     imageUploading,
 }: ToolbarProps) => {
@@ -363,6 +487,16 @@ const Toolbar = ({
                             <Redo />
                         </ToolButton>
                     </div>
+                    {/* Early in the bar: the card is narrower than the toolbar, and the legal
+                        editors' placeholders must not hide behind the horizontal scroll. */}
+                    {textTokens && textTokens.length > 0 && (
+                        <>
+                            <span className={styles.vDivider} />
+                            <div className={styles.toolGroup}>
+                                <TextTokenMenu editor={editor} tokens={textTokens} disabled={disabled} />
+                            </div>
+                        </>
+                    )}
                     <span className={styles.vDivider} />
                     <div className={styles.toolGroup}>
                         <HeadingMenu
@@ -651,7 +785,10 @@ export const M3RichTextEditor = ({
     title = 'Impressum',
     icon: IconComponent = Fingerprint,
     value = '',
-    versions = [],
+    versions: flatVersions = [],
+    versionSections,
+    versionHistoryState = 'available',
+    versionHistoryStatusLabel,
     onRestoreVersion,
     onViewVersionChange,
     onChange,
@@ -669,17 +806,30 @@ export const M3RichTextEditor = ({
     languageSlot,
     consentSlot,
     topicSlot,
+    onPublishTemplate,
+    publishTemplateDisabledReason,
     helpSlot,
     snackbarSlot,
     aboveEditorSlot,
+    textTokens,
     editorSlot,
     belowSlot,
     actionsLeading,
     readOnlyFooter,
     enableAnchors = true,
+    publishLabel,
+    publishTemplateLabel,
+    dirty,
     onPublish,
     onSaveDraft,
 }: M3RichTextEditorProps) => {
+    // Every look-back path (select, restore, label) works on one list; sections only
+    // change how the menu groups it.
+    const versions = useMemo(
+        () => (versionSections ? versionSections.flatMap((section) => section.versions) : flatVersions),
+        [flatVersions, versionSections],
+    );
+    const publishTemplateReasonId = useId();
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
     // Whether the "link to section" chapter menu in the bubble is open (arrow flips up).
@@ -819,6 +969,36 @@ export const M3RichTextEditor = ({
         }
     }, [editorContent, editor]);
 
+    const functionBarRef = useRef<HTMLDivElement>(null);
+    const [footerScroll, setFooterScroll] = useState({ left: false, right: false });
+    useEffect(() => {
+        const bar = functionBarRef.current;
+        if (!bar) return undefined;
+        const update = () => {
+            const left = bar.scrollLeft > 2;
+            const right = bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 2;
+            setFooterScroll((current) =>
+                current.left === left && current.right === right ? current : { left, right },
+            );
+        };
+        update();
+        bar.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+        observer?.observe(bar);
+        Array.from(bar.children).forEach((child) => observer?.observe(child));
+        return () => {
+            bar.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+            observer?.disconnect();
+        };
+    }, [versions.length, versionSections]);
+    const scrollFooter = (direction: -1 | 1) =>
+        functionBarRef.current?.scrollBy({
+            left: direction * functionBarRef.current.clientWidth * 0.7,
+            behavior: 'smooth',
+        });
+
     if (!editor) return null;
 
     const html = () => (editorSlot || editor.isEmpty ? '' : editor.getHTML());
@@ -856,22 +1036,128 @@ export const M3RichTextEditor = ({
     // Reader: no formatting bar at all. The version control only earns its
     // place when there is something to look back at.
     const showToolbar = !editorSlot && !readOnly;
-    const languageControl =
-        languageSlot ??
-        (languages.length > 1 ? (
-            <SplitDropdown
-                icon={<Language />}
-                label={language.toUpperCase()}
-                title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
-                menu={{
-                    selectable: true,
-                    selectedKeys: [language],
-                    items: languages.map((l) => ({ key: l.value, label: l.label })),
-                    onClick: ({ key }) => onLanguageChange?.(key),
-                }}
-            />
-        ) : null);
-    const showVersionControl = !readOnly || versions.length > 0;
+    // Disable, never hide (admin design rule): a tenant with a single active
+    // language keeps the control — inert — so the admin sees WHICH language the
+    // text is written in and that further languages exist as a concept at all.
+    // Hiding it made the field look role-dependent (owner report 2026-09-03).
+    const languageControl = languageSlot ?? (
+        <SplitDropdown
+            icon={<Language />}
+            label={language.toUpperCase()}
+            title={t('legal.m3Editor.chooseLanguage', 'Sprache wählen')}
+            disabled={languages.length <= 1}
+            menu={{
+                selectable: true,
+                selectedKeys: [language],
+                items: languages.map((l) => ({ key: l.value, label: l.label })),
+                onClick: ({ key }) => onLanguageChange?.(key),
+            }}
+        />
+    );
+    // One menu row per version, numbered within its own list so "Variante 3" of the
+    // templates is not counted against the published versions.
+    const versionMenuItem = (v: EditorVersion, index: number, list: EditorVersion[]) => {
+        const from = versionDate(v);
+        const until = index > 0 ? versionDate(list[index - 1]) : null;
+        let range = v.label;
+        if (from && until) {
+            range = t('legal.m3Editor.versionRangePublished', {
+                from: formatVersionDate(from),
+                until: formatVersionDate(until),
+            });
+        } else if (from) {
+            range = t('legal.m3Editor.versionRangeOnline', { from: formatVersionDate(from) });
+        }
+        return {
+            key: v.id,
+            label: (
+                <span className={styles.versionMenuItem}>
+                    <Restore />
+                    <span>
+                        <span className={styles.versionMenuName}>
+                            {v.name ?? t('legal.m3Editor.versionVariant', { n: list.length - index })}
+                        </span>
+                        <span className={styles.versionMenuRange}>{v.detail ?? range}</span>
+                    </span>
+                </span>
+            ),
+        };
+    };
+    // Sectioned menu: current draft, then per section a small heading, its versions
+    // (or an honest empty line) and the section's own "create" row.
+    const sectionRows = (section: EditorVersionSection) => {
+        let rows: NonNullable<MenuProps['items']> = [];
+        if (section.versions.length > 0) {
+            rows = section.versions.map((v, index) => versionMenuItem(v, index, section.versions));
+        } else if (section.emptyLabel) {
+            rows = [
+                {
+                    key: `empty:${section.key}`,
+                    disabled: true,
+                    label: <span className={styles.versionMenuEmpty}>{section.emptyLabel}</span>,
+                },
+            ];
+        }
+        const create =
+            section.onCreate && section.createLabel && !readOnly
+                ? [
+                      {
+                          key: `create:${section.key}`,
+                          label: (
+                              <span className={styles.versionMenuCreate}>
+                                  <Add />
+                                  <span>{section.createLabel}</span>
+                              </span>
+                          ),
+                      },
+                  ]
+                : [];
+        return [
+            { type: 'divider' as const },
+            {
+                key: `section:${section.key}`,
+                disabled: true,
+                label: <span className={styles.versionMenuHeader}>{section.title}</span>,
+            },
+            ...rows,
+            ...create,
+        ];
+    };
+    const sectionedMenuItems: MenuProps['items'] = versionSections && [
+        { key: 'current', label: t('legal.m3Editor.versionCurrentDraft') },
+        ...versionSections.flatMap(sectionRows),
+    ];
+    const historyUnavailable = versionHistoryState !== 'available';
+    // Grouped history also contains sent templates. Only the live section can
+    // describe what is currently online; its newest entry is always first.
+    const liveVersions = versionSections
+        ? versionSections.find((section) => section.key === 'live')?.versions ?? []
+        : versions;
+    const versionName = (version: EditorVersion, list: EditorVersion[]) =>
+        version.name ?? t('legal.m3Editor.versionVariant', { n: list.length - list.indexOf(version) });
+    const latestOnline = liveVersions[0];
+    const selectedVersionList = viewingVersion
+        ? versionSections?.find((section) => section.versions.includes(viewingVersion))?.versions ?? versions
+        : versions;
+    const displayedVersion = viewingVersion ?? latestOnline;
+    const displayedVersionName = displayedVersion
+        ? versionName(displayedVersion, viewingVersion ? selectedVersionList : liveVersions)
+        : versionLabel;
+    const displayedVersionDate = displayedVersion && versionDate(displayedVersion);
+    const versionTooltip = displayedVersionDate
+        ? `${displayedVersionName} · ${formatVersionDate(displayedVersionDate)}`
+        : undefined;
+    // A sectioned menu carries more than the published history (e.g. sent templates and the
+    // "create" rows), so it stays even when that history is loading or missing — the host
+    // then states the history's status inside its section.
+    const showVersionControl = versionSections
+        ? !readOnly || versions.length > 0
+        : !historyUnavailable && (!readOnly || versions.length > 0);
+    // Only offer a save when there is something new to keep (hosts that do not
+    // report `dirty` keep the action as before).
+    const showSaveDraft = !!onSaveDraft && dirty !== false;
+    const publishText = publishLabel ?? t('legal.m3Editor.publish');
+    const publishTemplateText = publishTemplateLabel ?? t('legal.m3Editor.publishTemplate');
 
     const card = (
         <div
@@ -906,6 +1192,7 @@ export const M3RichTextEditor = ({
                     autoChapters={autoChapters}
                     onToggleAutoChapters={toggleAutoChapters}
                     placeholders={placeholders}
+                    textTokens={textTokens}
                     onInsertImage={imageUpload.openImagePicker}
                     imageUploading={imageUpload.uploading}
                 />
@@ -945,7 +1232,10 @@ export const M3RichTextEditor = ({
                     <div className={styles.contentInset}>{editorSlot}</div>
                 ) : (
                     <div className={styles.editorWrap} onClickCapture={handleContentClickCapture}>
-                        <div className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}>
+                        <div
+                            className={`${styles.editor} ${snackbarSlot ? styles.hasSnackbar : ''}`}
+                            data-testid="m3-editor-surface"
+                        >
                             {/* Reading mode: the text viewport is the named
                                 landmark. It only becomes a tab stop when it
                                 actually scrolls — a keyboard user must be able
@@ -1038,107 +1328,138 @@ export const M3RichTextEditor = ({
                 language, consent template (slot), topic/department (slot),
                 version history. Every one of them can be the only occupant, so
                 each has to hold the bar open on its own. */}
-            {(languageControl || consentSlot || topicSlot || showVersionControl) && (
-                <div className={styles.functionBar} data-testid="m3-editor-function-bar">
-                    {languageControl}
-                    {consentSlot}
-                    {topicSlot}
-                    {showVersionControl && (
-                        <SplitDropdown
-                            icon={<VersionHistoryIcon />}
-                            title={t('legal.m3Editor.versionHistory')}
-                            label={
-                                viewingVersion
-                                    ? viewingVersion.label
-                                    : [versionLabel, versions[0]?.label].filter(Boolean).join(' ')
-                            }
-                            menu={{
-                                selectable: true,
-                                selectedKeys: [viewingVersionId ?? 'current'],
-                                items:
-                                    versions.length > 0
-                                        ? [
-                                              {
-                                                  key: 'current',
-                                                  label: t('legal.m3Editor.versionCurrentDraft'),
-                                              },
-                                              { type: 'divider' as const },
-                                              ...(onlineSinceDate
-                                                  ? [
-                                                        {
-                                                            key: 'onlineSince',
-                                                            disabled: true,
-                                                            label: (
-                                                                <span className={styles.versionMenuHeader}>
-                                                                    {t('legal.m3Editor.versionOnlineSince', {
-                                                                        date: formatVersionDate(onlineSinceDate),
-                                                                    })}
-                                                                </span>
-                                                            ),
-                                                        },
-                                                    ]
-                                                  : []),
-                                              ...versions.map((v, index) => {
-                                                  const from = versionDate(v);
-                                                  const until = index > 0 ? versionDate(versions[index - 1]) : null;
-                                                  let range = v.label;
-                                                  if (from && until) {
-                                                      range = t('legal.m3Editor.versionRangePublished', {
-                                                          from: formatVersionDate(from),
-                                                          until: formatVersionDate(until),
-                                                      });
-                                                  } else if (from) {
-                                                      range = t('legal.m3Editor.versionRangeOnline', {
-                                                          from: formatVersionDate(from),
-                                                      });
-                                                  }
-                                                  return {
-                                                      key: v.id,
+            {(languageControl || consentSlot || topicSlot || showVersionControl || historyUnavailable) && (
+                <div className={styles.functionBarShell}>
+                    <div ref={functionBarRef} className={styles.functionBar} data-testid="m3-editor-function-bar">
+                        {languageControl}
+                        {consentSlot}
+                        {topicSlot}
+                        {historyUnavailable && !versionSections && versionHistoryStatusLabel && (
+                            <span
+                                className={`${styles.versionMenuHeader} ${styles.versionHistoryStatus}`}
+                                role="status"
+                            >
+                                {versionHistoryStatusLabel}
+                            </span>
+                        )}
+                        {showVersionControl && (
+                            <SplitDropdown
+                                icon={<VersionHistoryIcon />}
+                                title={t('legal.m3Editor.versionHistory')}
+                                tooltip={versionTooltip}
+                                className={styles.versionHistoryControl}
+                                label={displayedVersionName}
+                                menu={{
+                                    selectable: true,
+                                    selectedKeys: [viewingVersionId ?? 'current'],
+                                    items:
+                                        sectionedMenuItems ??
+                                        (versions.length > 0
+                                            ? [
+                                                  {
+                                                      key: 'current',
+                                                      label: t('legal.m3Editor.versionCurrentDraft'),
+                                                  },
+                                                  { type: 'divider' as const },
+                                                  ...(onlineSinceDate
+                                                      ? [
+                                                            {
+                                                                key: 'onlineSince',
+                                                                disabled: true,
+                                                                label: (
+                                                                    <span className={styles.versionMenuHeader}>
+                                                                        {t('legal.m3Editor.versionOnlineSince', {
+                                                                            date: formatVersionDate(onlineSinceDate),
+                                                                        })}
+                                                                    </span>
+                                                                ),
+                                                            },
+                                                        ]
+                                                      : []),
+                                                  ...versions.map((v, index) => versionMenuItem(v, index, versions)),
+                                              ]
+                                            : // Never published: say so explicitly instead of
+                                              // offering a menu that looks broken (#768).
+                                              [
+                                                  {
+                                                      key: 'empty',
+                                                      disabled: true,
                                                       label: (
-                                                          <span className={styles.versionMenuItem}>
-                                                              <Restore />
-                                                              <span>
-                                                                  <span className={styles.versionMenuName}>
-                                                                      {t('legal.m3Editor.versionVariant', {
-                                                                          n: versions.length - index,
-                                                                      })}
-                                                                  </span>
-                                                                  <span className={styles.versionMenuRange}>
-                                                                      {range}
-                                                                  </span>
-                                                              </span>
+                                                          <span className={styles.versionMenuHeader}>
+                                                              {t('legal.m3Editor.versionEmpty')}
                                                           </span>
                                                       ),
-                                                  };
-                                              }),
-                                          ]
-                                        : // Never published: say so explicitly instead of
-                                          // offering a menu that looks broken (#768).
-                                          [
-                                              {
-                                                  key: 'empty',
-                                                  disabled: true,
-                                                  label: (
-                                                      <span className={styles.versionMenuHeader}>
-                                                          {t('legal.m3Editor.versionEmpty')}
-                                                      </span>
-                                                  ),
-                                              },
-                                              { key: 'latest', label: t('legal.m3Editor.versionLatest') },
-                                          ],
-                                onClick: ({ key }) => viewVersion(key === 'current' ? null : key),
-                            }}
-                        />
+                                                  },
+                                                  { key: 'latest', label: t('legal.m3Editor.versionLatest') },
+                                              ]),
+                                    onClick: ({ key }) => {
+                                        if (key.startsWith('create:')) {
+                                            const section = versionSections?.find((s) => `create:${s.key}` === key);
+                                            viewVersion(null);
+                                            section?.onCreate?.();
+                                            return;
+                                        }
+                                        viewVersion(key === 'current' ? null : key);
+                                    },
+                                }}
+                            />
+                        )}
+                    </div>
+                    {footerScroll.left && (
+                        <button
+                            type="button"
+                            className={`${styles.functionBarScrollCue} ${styles.functionBarScrollCueLeft}`}
+                            aria-label={t('legal.m3Editor.scrollControlsBack', 'Weitere Steuerelemente links')}
+                            onClick={() => scrollFooter(-1)}
+                        >
+                            ‹
+                        </button>
+                    )}
+                    {footerScroll.right && (
+                        <button
+                            type="button"
+                            className={`${styles.functionBarScrollCue} ${styles.functionBarScrollCueRight}`}
+                            aria-label={t('legal.m3Editor.scrollControlsForward', 'Weitere Steuerelemente rechts')}
+                            onClick={() => scrollFooter(1)}
+                        >
+                            ›
+                        </button>
                     )}
                 </div>
             )}
 
-            {editorEditable && (onPublish || onSaveDraft || actionsLeading) && (
+            {/* The deck card keeps its footer row even while no action is due — a
+                card that shrinks whenever there is nothing to publish or save looks
+                broken (owner feedback 2026-09-21); the read-only footer does the same.
+                Fluid hosts grow with their content and keep the row only with actions. */}
+            {editorEditable && (!fluid || onPublish || showSaveDraft || actionsLeading || onPublishTemplate) && (
                 <>
                     <hr className={styles.divider} />
 
                     <div className={styles.actions}>
                         {actionsLeading && <div className={styles.actionsLeading}>{actionsLeading}</div>}
+                        {onPublishTemplate && (
+                            <span className={styles.actionWithReason} title={publishTemplateDisabledReason}>
+                                <button
+                                    type="button"
+                                    className={`${styles.textBtn} ${styles.publishTemplate}`}
+                                    disabled={publishing || imageUpload.uploading || !!publishTemplateDisabledReason}
+                                    aria-describedby={
+                                        publishTemplateDisabledReason ? publishTemplateReasonId : undefined
+                                    }
+                                    onClick={onPublishTemplate}
+                                    title={publishTemplateDisabledReason ? undefined : publishTemplateText}
+                                >
+                                    <PublishTemplateIcon />
+                                    <span className={styles.actionLabel}>{publishTemplateText}</span>
+                                </button>
+                                {publishTemplateDisabledReason && (
+                                    <span id={publishTemplateReasonId} className={styles.visuallyHidden}>
+                                        {publishTemplateDisabledReason}
+                                    </span>
+                                )}
+                            </span>
+                        )}
                         {onPublish && (
                             <button
                                 type="button"
@@ -1146,12 +1467,13 @@ export const M3RichTextEditor = ({
                                 disabled={publishing || imageUpload.uploading}
                                 aria-busy={publishing || imageUpload.uploading}
                                 onClick={() => onPublish(html())}
+                                title={publishText}
                             >
                                 <PublishedIcon />
-                                <span>{t('legal.m3Editor.publish')}</span>
+                                <span className={styles.actionLabel}>{publishText}</span>
                             </button>
                         )}
-                        {onSaveDraft && (
+                        {showSaveDraft && onSaveDraft && (
                             <button
                                 type="button"
                                 className={`${styles.textBtn} ${styles.draft}`}
@@ -1165,7 +1487,7 @@ export const M3RichTextEditor = ({
                                 onClick={() => onSaveDraft(html())}
                             >
                                 <EditIcon />
-                                <span>{t('legal.m3Editor.saveDraft')}</span>
+                                <span className={styles.actionLabel}>{t('legal.m3Editor.saveDraft')}</span>
                             </button>
                         )}
                     </div>

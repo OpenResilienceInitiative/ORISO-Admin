@@ -214,10 +214,14 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         // specific message (see AccountInvitesTab's onCreate). FORBIDDEN_WITH_RESPONSE
         // does the same for a 403 — the backend explains WHY the caller's role cannot
         // invite (UserService#1006), and that explanation must reach the admin.
+        // BAD_GATEWAY_WITH_RESPONSE does it for a 502: the mail could not be handed
+        // to SMTP (UserService#1160) and the body names the category, so the admin
+        // learns that DELIVERY is misconfigured instead of "something went wrong".
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
@@ -255,7 +259,14 @@ export const sendAccountInvite = async (
         skipAuth: false,
         // FORBIDDEN_WITH_RESPONSE: surface the backend's role explanation on 403
         // (UserService#1006) instead of the generic failure toast.
-        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
+        // BAD_GATEWAY_WITH_RESPONSE: same for a 502 SMTP failure (UserService#1160).
+        // The invite stays DRAFT — the backend writes EMAIL_SENT only after SMTP
+        // confirms the handover — so the admin can retry once mail is configured.
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
+        ],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             templateId: body.templateId,
@@ -272,8 +283,12 @@ export const resendAccountInvite = async (
         url: `${accountInvitesEndpoint}/${inviteId}/resend`,
         method: FETCH_METHODS.POST,
         skipAuth: false,
-        // FORBIDDEN_WITH_RESPONSE: same 403 surfacing as send (UserService#1006).
-        responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE],
+        // Same 403 (UserService#1006) and 502 (UserService#1160) surfacing as send.
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
+        ],
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             templateId: body.templateId,

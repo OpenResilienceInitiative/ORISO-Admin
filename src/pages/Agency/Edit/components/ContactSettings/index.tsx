@@ -7,15 +7,47 @@ import { FormInputField } from '../../../../../components/FormInputField';
 import styles from '../RegistrationSettings/styles.module.scss';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { CardEditable } from '../../../../../components/CardEditable';
+import { TenantDataProtectionOfficer } from '../../../../../types/tenant';
+import { formatDpo, hasOwnAgencyDpo } from '../../../../../utils/dataProtectionOfficer';
+import ownStyles from './styles.module.scss';
 
 interface ContactSettingsProps {
     initialValues?: Record<string, unknown>;
     onSave?: <T>(formData: T, options?: { onError?: () => void }) => void;
     type?: any;
+    /** The Träger's DPO, shown as inherited while the Beratungsstelle names none (Admin#1067). */
+    traegerDpo?: TenantDataProtectionOfficer | null;
 }
 
-const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any }) => {
+const InheritedDpoHint = ({ value }: { value: string }) => {
     const { t } = useTranslation();
+    return (
+        <p className={ownStyles.inheritedDpo} data-testid="agency-inherited-dpo">
+            <span className={ownStyles.inheritedDpoLabel}>
+                {t('placeholderTemplate.token.datenschutzbeauftragte')}:
+            </span>{' '}
+            {value}{' '}
+            <span className={ownStyles.inheritedDpoChip}>{t('agency.edit.settings.legal.contact.inheritedDpo')}</span>
+        </p>
+    );
+};
+
+const ContactSettingsFields = ({
+    form,
+    type,
+    initialDataProtection,
+    traegerDpo,
+}: {
+    form?: FormInstance;
+    type?: any;
+    initialDataProtection?: Parameters<typeof hasOwnAgencyDpo>[0];
+    traegerDpo?: TenantDataProtectionOfficer | null;
+}) => {
+    const { t } = useTranslation();
+    const watchedDataProtection = Form.useWatch('dataProtection', form);
+    const inheritedDpo = !hasOwnAgencyDpo(watchedDataProtection ?? initialDataProtection)
+        ? formatDpo(traegerDpo)
+        : undefined;
     const watchedType = Form.useWatch(['dataProtection', 'dataProtectionResponsibleEntity'], form);
     const finalType = watchedType || type;
     const contactKey = useMemo(() => {
@@ -30,6 +62,7 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
     return (
         <>
             <Paragraph className="text desc">{t('agency.edit.settings.legal.contact.text')}</Paragraph>
+            {inheritedDpo && <InheritedDpoHint value={inheritedDpo} />}
 
             <MuiRadioGroupField
                 required
@@ -102,7 +135,8 @@ const ContactSettingsFields = ({ form, type }: { form?: FormInstance; type?: any
     );
 };
 
-export const ContactSettings = ({ initialValues, onSave, type }: ContactSettingsProps) => {
+export const ContactSettings = ({ initialValues, onSave, type, traegerDpo }: ContactSettingsProps) => {
+    const initialDataProtection = initialValues?.dataProtection as Parameters<typeof hasOwnAgencyDpo>[0];
     if (onSave) {
         return (
             <CardEditable
@@ -113,14 +147,21 @@ export const ContactSettings = ({ initialValues, onSave, type }: ContactSettings
                 editButtonPlacement="footer"
                 onSave={onSave}
             >
-                {({ form }) => <ContactSettingsFields form={form} type={type} />}
+                {({ form }) => (
+                    <ContactSettingsFields
+                        form={form}
+                        type={type}
+                        initialDataProtection={initialDataProtection}
+                        traegerDpo={traegerDpo}
+                    />
+                )}
             </CardEditable>
         );
     }
 
     return (
         <Card titleKey="agency.edit.settings.legal.contact.title" variant="dialog">
-            <ContactSettingsFields type={type} />
+            <ContactSettingsFields type={type} initialDataProtection={initialDataProtection} traegerDpo={traegerDpo} />
         </Card>
     );
 };

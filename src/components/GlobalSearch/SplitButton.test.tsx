@@ -72,6 +72,12 @@ describe('SplitButton open state', () => {
 });
 
 describe('SplitButton segment behaviour (regression guard for existing callers)', () => {
+    it('renders a visible error state on the main segment', () => {
+        render(<SplitButton label="Einwilligung bearbeiten" mainInvalid />);
+
+        expect(screen.getByRole('button', { name: 'Einwilligung bearbeiten' })).toHaveClass(styles.invalid);
+    });
+
     it('disables only the main segment with mainDisabled while the menu stays reachable', () => {
         render(<SplitButton label="Senden" mainDisabled menu={menu} menuLabel="Sendeoptionen" />);
         expect(screen.getByRole('button', { name: 'Senden' })).toBeDisabled();

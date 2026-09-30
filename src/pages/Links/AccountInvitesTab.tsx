@@ -19,7 +19,11 @@ import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
 import getAgencyDataById, { AgencyAccessError } from '../../api/agency/getAgencyById';
 import { Modal } from '../../components/Modal';
-import { extractApiErrorMessageOrNull } from '../../utils/extractApiErrorMessage';
+import {
+    extractApiErrorMessageOrNull,
+    extractSmtpSendFailure,
+    type SmtpSendFailureDetail,
+} from '../../utils/extractApiErrorMessage';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -251,6 +255,67 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [t],
     );
 
+    /**
+     * ONE specific toast per mail-delivery cause (UserService#1160).
+     *
+     * A 502 `{"reason":"SMTP_SEND_FAILED","detail":...}` means the invite itself
+     * was fine and the MAIL could not be handed to SMTP. Before this the call
+     * fell into `CATCH_ALL` and the admin got two generic toasts, so a
+     * misconfigured platform looked like a flaky invite form and admins retried
+     * an action that can never succeed until a platform admin fixes SMTP.
+     * An unknown/absent category falls back to the neutral delivery message —
+     * never guess a cause the backend did not name.
+     */
+    const smtpFailureMessageFor = useCallback(
+        (detail: SmtpSendFailureDetail | null) => {
+            switch (detail) {
+                case 'SMTP_CREDENTIALS_MISSING':
+                    return t(
+                        'links.accountInvites.smtpCredentialsMissing',
+                        'E-Mail-Versand nicht konfiguriert: SMTP-Zugangsdaten fehlen. Bitte Plattform-Admin kontaktieren.',
+                    );
+                case 'SMTP_DISABLED_OR_INCOMPLETE':
+                    return t(
+                        'links.accountInvites.smtpDisabledOrIncomplete',
+                        'E-Mail-Versand ist deaktiviert oder unvollständig konfiguriert. Bitte Plattform-Admin kontaktieren.',
+                    );
+                case 'SMTP_SETTINGS_UNAVAILABLE':
+                    return t(
+                        'links.accountInvites.smtpSettingsUnavailable',
+                        'E-Mail-Einstellungen konnten nicht geladen werden. Bitte später erneut versuchen oder Plattform-Admin kontaktieren.',
+                    );
+                case 'SMTP_TRANSPORT_FAILED':
+                    return t(
+                        'links.accountInvites.smtpTransportFailed',
+                        'E-Mail-Server hat den Versand abgelehnt. Bitte Plattform-Admin kontaktieren.',
+                    );
+                default:
+                    return t(
+                        'links.accountInvites.smtpSendFailed',
+                        'E-Mail konnte nicht versendet werden. Bitte Plattform-Admin kontaktieren.',
+                    );
+            }
+        },
+        [t],
+    );
+
+    /**
+     * Shows the delivery toast and reports whether the error WAS a delivery
+     * failure, so each caller can skip its own generic toast instead of
+     * stacking a second, less informative one on top.
+     */
+    const reportSmtpFailure = useCallback(
+        async (error: unknown): Promise<boolean> => {
+            const failure = await extractSmtpSendFailure(error);
+            if (!failure) {
+                return false;
+            }
+            message.error(smtpFailureMessageFor(failure.detail));
+            return true;
+        },
+        [smtpFailureMessageFor],
+    );
+
     const onCreate = useCallback(
         async (values: InviteComposerValues): Promise<InviteSubmitOutcome> => {
             setSubmitting(true);
@@ -362,6 +427,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         return false;
                     }
                 }
+                // 502 = the invite could not be MAILED (UserService#1160). The
+                // backend rolls the invite back when it knows nothing was sent and
+                // keeps it when delivery is uncertain, so reload rather than assume
+                // either — and never show the generic create-failed text on top.
+                if (await reportSmtpFailure(error)) {
+                    await loadInvites();
+                    return false;
+                }
                 // 403 = the admin's ROLE cannot create administrative accounts
                 // (UserService#1006). Prefer the backend's own explanation; fall back
                 // to a translated role hint. Never the generic create-failed text —
@@ -376,7 +449,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 setSubmitting(false);
             }
         },
-        [forbiddenFallbackFor, isTenantInvite, loadInvites, rememberGeneratedLink, targetRole, t],
+        [forbiddenFallbackFor, isTenantInvite, loadInvites, rememberGeneratedLink, reportSmtpFailure, targetRole, t],
     );
 
     // One row of the CSV batch. Uses the send mode captured at file-pick time:
@@ -429,6 +502,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
                 await loadInvites();
             } catch (error) {
+                // Mail delivery failed (UserService#1160): the invite is untouched —
+                // the backend writes EMAIL_SENT only after SMTP confirms — so the row
+                // stays as it was and the admin can retry once SMTP is fixed.
+                if (await reportSmtpFailure(error)) {
+                    await loadInvites();
+                    return;
+                }
                 // Same role surfacing as onCreate (UserService#1006).
                 if (error instanceof Response && error.status === 403) {
                     message.error(
@@ -439,7 +519,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 message.error(t('links.accountInvites.resendFailed', 'Could not resend invite'));
             }
         },
-        [activeTemplates, forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
+        [
+            activeTemplates,
+            forbiddenFallbackFor,
+            loadInvites,
+            rememberGeneratedLink,
+            reportSmtpFailure,
+            selectedTemplateId,
+            t,
+        ],
     );
 
     const onRevoke = useCallback(
@@ -529,6 +617,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         // A 403 fails EVERY row for the same role reason (UserService#1006) — remember
         // the first one so the admin gets the cause once, on top of the count summary.
         let firstForbidden: Response | null = null;
+        // Same for a 502 SMTP failure (UserService#1160): mail is misconfigured for
+        // the whole platform, so every remaining row would fail identically.
+        let firstSmtpFailure: Response | null = null;
         for (let i = 0; i < targets.length; i += 1) {
             try {
                 const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
@@ -540,6 +631,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 rememberGeneratedLink(delivered);
             } catch (error) {
                 failed.push(targets[i]);
+                if (error instanceof Response && error.status === 502) {
+                    firstSmtpFailure ??= error;
+                    failed.push(...targets.slice(i + 1));
+                    break;
+                }
                 if (error instanceof Response && error.status === 403) {
                     // A role-level 403 fails EVERY remaining row the same way
                     // (UserService#1006) — mark them failed and stop, instead of
@@ -554,6 +650,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         setBulkRunning(false);
         if (firstForbidden) {
             message.error((await extractApiErrorMessageOrNull(firstForbidden)) ?? forbiddenFallbackFor(targetRole));
+        }
+        // The delivery cause first, then the count summary below: the admin needs
+        // to know WHY before deciding whether a retry can ever work. Selected rows
+        // stay DRAFT, so retrying after SMTP is fixed sends exactly these again.
+        if (firstSmtpFailure) {
+            await reportSmtpFailure(firstSmtpFailure);
         }
         if (failed.length === 0) {
             message.success(
@@ -571,7 +673,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             setSelectedIds(failed.map((invite) => invite.id));
         }
         await loadInvites();
-    }, [forbiddenFallbackFor, loadInvites, rememberGeneratedLink, selectedInvites, selectedTemplateId, targetRole, t]);
+    }, [
+        forbiddenFallbackFor,
+        loadInvites,
+        rememberGeneratedLink,
+        reportSmtpFailure,
+        selectedInvites,
+        selectedTemplateId,
+        targetRole,
+        t,
+    ]);
 
     // Empty-state CTA: the composer IS the invite entry point and sits right
     // above the board — bring it into view and focus its first field.

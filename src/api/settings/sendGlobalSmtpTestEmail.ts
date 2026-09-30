@@ -10,5 +10,5 @@ export const sendGlobalSmtpTestEmail = (payload: GlobalSmtpTestPayload) =>
         url: globalSmtpTestEmailEndpoint,
         method: FETCH_METHODS.POST,
         bodyData: JSON.stringify(payload),
-        responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE],
+        responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL_SILENT],
     });

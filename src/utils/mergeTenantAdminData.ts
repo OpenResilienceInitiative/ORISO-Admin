@@ -1,6 +1,12 @@
 import mergeWith from 'lodash.mergewith';
 import { TenantAdminData } from '../types/TenantAdminData';
 
+/**
+ * Legal language maps are snapshots: a published draft that no longer has a language or a
+ * consent entry must replace the stored map, or a deep merge would restore the removed wording.
+ */
+const REPLACED_CONTENT_MAPS = ['impressum', 'privacy', 'privacyConsent'] as const;
+
 export const mergeTenantAdminData = (
     currentTenantData: TenantAdminData | undefined,
     formData: Partial<TenantAdminData>,
@@ -10,6 +16,13 @@ export const mergeTenantAdminData = (
         ...base,
         content: { ...(base.content ?? {}) },
     };
+    // mergeWith writes into its destination; without a copy a partial map would edit the caller's cache.
+    REPLACED_CONTENT_MAPS.forEach((key) => {
+        const existing = (tmp.content as Record<string, unknown>)[key];
+        if (existing && typeof existing === 'object') {
+            (tmp.content as Record<string, unknown>)[key] = { ...(existing as Record<string, unknown>) };
+        }
+    });
 
     Object.keys(tmp.content).forEach((key) => {
         if (typeof tmp.content[key] === 'boolean') {
@@ -21,6 +34,16 @@ export const mergeTenantAdminData = (
         return objValue instanceof Array ? srcValue : undefined;
     }) as TenantAdminData;
 
+    const formContent = formData.content as Record<string, unknown> | undefined;
+    if (finalData.content && formContent) {
+        REPLACED_CONTENT_MAPS.forEach((key) => {
+            const replacement = formContent[key];
+            if (replacement && typeof replacement === 'object') {
+                (finalData.content as Record<string, unknown>)[key] = { ...(replacement as Record<string, unknown>) };
+            }
+        });
+    }
+
     if (finalData.content) {
         Object.keys(finalData.content).forEach((key) => {
             delete finalData.content[key]?.translate;
@@ -28,4 +51,21 @@ export const mergeTenantAdminData = (
     }
 
     return finalData;
+};
+
+/** Normalize only the invalid read-model echo; local cache merges retain the original shape. */
+export const serializeTenantAdminDataUpdate = (
+    currentTenantData: TenantAdminData | undefined,
+    formData: Partial<TenantAdminData>,
+): string => {
+    const payload = mergeTenantAdminData(currentTenantData, formData);
+    if (
+        !Object.prototype.hasOwnProperty.call(formData, 'licensing') &&
+        payload.licensing?.allowedNumberOfUsers === null &&
+        Object.keys(payload.licensing).length === 1
+    ) {
+        // The existing null quota stays null when licensing is omitted. Never omit a populated quota.
+        delete payload.licensing;
+    }
+    return JSON.stringify(payload);
 };

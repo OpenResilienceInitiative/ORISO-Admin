@@ -13,9 +13,10 @@ import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalCon
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
-import { sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { formatBerlinDateTime } from '../../utils/utcTimestamp';
 import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardLink, DpaForwardOutcome } from '../../../../../api/tenantOnboarding/dpaForward';
 
@@ -89,10 +90,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const mapped: LegalVersion[] = useMemo(
         () =>
             (versions as DpaVersion[]).map((version, index) => {
-                const date = new Date(version.activationDate);
-                const dateLabel = Number.isNaN(date.getTime())
-                    ? version.activationDate
-                    : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
+                const dateLabel = formatBerlinDateTime(version.activationDate, lang);
                 return {
                     id: version.activationDate,
                     label: index === 0 ? `${dateLabel} ${t('tenants.legal.version.current')}` : dateLabel,
@@ -111,10 +109,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     );
     const signedAtLabel = useMemo(() => {
         if (!latestSignedDpa?.signedAt) return undefined;
-        const date = new Date(latestSignedDpa.signedAt);
-        return Number.isNaN(date.getTime())
-            ? latestSignedDpa.signedAt
-            : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
+        return formatBerlinDateTime(latestSignedDpa.signedAt, lang);
     }, [lang, latestSignedDpa?.signedAt]);
 
     /**
@@ -148,7 +143,10 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 expiresAt: link.expiresAt ?? '',
             });
             return { link, mailFailed: false };
-        } catch {
+        } catch (error) {
+            if (!isDpaInviteEmailDeliveryFailure(error)) {
+                throw error;
+            }
             // Same shape as the public 502: the link exists, the mail did not go.
             return { link, mailFailed: true };
         }
@@ -265,6 +263,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     {forwardDialogOpen && (
                         <DpaForwardDialog
                             forward={forward}
+                            tenantId={id}
                             // Legal Settings lives behind ProtectedRoute, so the
                             // admin-only branded mail preview is reachable here.
                             surface="admin"

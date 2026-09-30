@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => ({
     isLoading: false,
     isError: false,
     dpaGate: { dpaPublished: true, dpaSigned: true },
+    // Token roles of the signed-in admin (default: a Träger admin).
+    roles: ['tenant-admin'] as string[],
+    // `GET /service/users/data` of the signed-in admin (only consulted for agency-scoped admins).
+    userData: undefined as any,
+    userDataLoading: false,
+    userDataError: false,
 }));
 
 const translations: Record<string, string> = {
@@ -65,6 +71,9 @@ vi.mock('@ant-design/icons', () => ({
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
+    Navigate: ({ to, replace }: { to: string; replace?: boolean }) => (
+        <div data-testid="navigate" data-to={to} data-replace={String(Boolean(replace))} />
+    ),
 }));
 
 vi.mock('use-debounce', () => ({
@@ -151,8 +160,18 @@ vi.mock('../../../hooks/useUserPermission', () => ({
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
         isSuperAdmin: false,
-        isTenantScopedAdmin: true,
+        isTenantScopedAdmin: mocks.roles.includes('tenant-admin'),
         tenantId: 84,
+        hasRole: (role: string | string[]) =>
+            (Array.isArray(role) ? role : [role]).some((candidate) => mocks.roles.includes(candidate)),
+    }),
+}));
+
+vi.mock('../../../hooks/useUserData.hook', () => ({
+    useUserData: () => ({
+        data: mocks.userData,
+        isLoading: mocks.userDataLoading,
+        isError: mocks.userDataError,
     }),
 }));
 
@@ -204,6 +223,10 @@ describe('AgencyList topic rendering', () => {
         mocks.navigate.mockReset();
         mocks.refetch.mockReset();
         mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.roles = ['tenant-admin'];
+        mocks.userData = undefined;
+        mocks.userDataLoading = false;
+        mocks.userDataError = false;
     });
 
     it('renders a single topic without an expand button and without truncation styling', () => {
@@ -309,5 +332,66 @@ describe('AgencyList topic rendering', () => {
         expect(screen.getByRole('button', { name: 'New' })).toBeDisabled();
         fireEvent.click(screen.getByRole('button', { name: 'New' }));
         expect(mocks.navigate).not.toHaveBeenCalled();
+    });
+});
+
+describe('AgencyList landing for a Beratungsstellen-Admin (ORISO-Admin#917)', () => {
+    beforeEach(() => {
+        mocks.agencies = [buildAgency([{ id: 1, name: 'Topic A' }])];
+        mocks.isLoading = false;
+        mocks.isError = false;
+        mocks.navigate.mockReset();
+        mocks.refetch.mockReset();
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.roles = ['restricted-agency-admin', 'user-admin'];
+        mocks.userData = undefined;
+        mocks.userDataLoading = false;
+        mocks.userDataError = false;
+    });
+
+    it('forwards straight into the settings of the single assigned agency', () => {
+        mocks.userData = { agencies: [{ id: 42, name: 'Beratungsstelle Nord' }] };
+
+        render(<AgencyList />);
+
+        const navigate = screen.getByTestId('navigate');
+        expect(navigate).toHaveAttribute('data-to', '/admin/agency/42');
+        expect(navigate).toHaveAttribute('data-replace', 'true');
+        expect(screen.queryByText('Agency One')).not.toBeInTheDocument();
+    });
+
+    it('stays on the list when several agencies are assigned', () => {
+        mocks.userData = { agencies: [{ id: 42 }, { id: 43 }] };
+
+        render(<AgencyList />);
+
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+        expect(screen.getByTestId('actions-agency-1')).toBeInTheDocument();
+    });
+
+    it('renders nothing while the assignment is still loading, so the list does not flash', () => {
+        mocks.userDataLoading = true;
+
+        const { container } = render(<AgencyList />);
+
+        expect(container).toBeEmptyDOMElement();
+    });
+
+    it('falls back to the list when the assignment cannot be loaded', () => {
+        mocks.userDataError = true;
+
+        render(<AgencyList />);
+
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+        expect(screen.getByTestId('actions-agency-1')).toBeInTheDocument();
+    });
+
+    it('never forwards a Träger admin, whatever the user data says', () => {
+        mocks.roles = ['tenant-admin', 'restricted-agency-admin'];
+        mocks.userData = { agencies: [{ id: 42 }] };
+
+        render(<AgencyList />);
+
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
     });
 });

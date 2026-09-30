@@ -111,7 +111,8 @@ const invite = (id: number, inviteStatus: string, recipientEmail = `person${id}@
     provisioningStatus: null,
     inviteStatus,
     emailVerificationStatus: 'PENDING',
-    emailDeliveryStatus: null,
+    // A successful send always records a SENT delivery; null would read as unconfirmed.
+    emailDeliveryStatus: inviteStatus === 'EMAIL_SENT' ? 'SENT' : null,
     twoFactorStatus: 'NOT_REQUIRED',
     accessGateStatus: 'BLOCKED_INVITE',
     expiresAt: null,
@@ -626,4 +627,66 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
             expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
         },
     );
+});
+
+/*
+ * UserService#1160: SMTP is a PLATFORM-wide setting, so a 502 on the first row
+ * condemns every remaining one exactly like the role 403 does. Firing one doomed
+ * request per selected row helps nobody and risks a partial mail burst.
+ */
+describe('SMTP delivery failures on resend and bulk send (UserService#1160)', () => {
+    const smtp502 = (detail = 'SMTP_CREDENTIALS_MISSING') =>
+        new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+    const CREDENTIALS_MISSING =
+        'E-Mail-Versand nicht konfiguriert: SMTP-Zugangsdaten fehlen. Bitte Plattform-Admin kontaktieren.';
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(MIXED_INVITES));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    const rowResendButton = async (email: string) => {
+        const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
+        return within(row).getByRole('button', { name: 'Erinnerung erneut senden' });
+    };
+
+    it('explains a single resend 502 instead of the generic failure', { timeout: 90_000 }, async () => {
+        mocks.resendAccountInvite.mockRejectedValue(smtp502());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowResendButton('person22@example.org'));
+
+        expect(await screen.findByText(CREDENTIALS_MISSING)).toBeInTheDocument();
+        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+    });
+
+    it('stops after the first 502 — one cause toast on top of the count summary', { timeout: 90_000 }, async () => {
+        mocks.sendAccountInvite.mockRejectedValue(smtp502());
+        mocks.resendAccountInvite.mockRejectedValue(smtp502());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+        expect(await screen.findAllByText(CREDENTIALS_MISSING)).toHaveLength(1);
+        expect(
+            await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
+        ).toBeInTheDocument();
+    });
 });

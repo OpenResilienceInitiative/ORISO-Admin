@@ -5,6 +5,8 @@ import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
+import { UserRole } from '../../enums/UserRole';
 
 const t = (key: string, fallback?: unknown) => (typeof fallback === 'string' ? fallback : key);
 
@@ -38,11 +40,16 @@ vi.mock('../../components/ListingTable', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
+    useUserRoles: vi.fn(),
+    useTenantsData: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
     previewInviteEmailTemplateContent: vi.fn(),
 }));
+
+vi.mock('../../hooks/useUserRoles.hook', () => ({ useUserRoles: mocks.useUserRoles }));
+vi.mock('../../hooks/useTenantsData', () => ({ useTenantsData: mocks.useTenantsData }));
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
@@ -128,6 +135,9 @@ const counsellorTemplate = {
     updateDate: null,
 };
 
+/** `hasRole` of a tenant admin: tenant- and agency-admin, never the platform operator. */
+const asTenantAdmin = hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin);
+
 /** The srcDoc of the email-kit preview frame inside the currently open dialog. */
 const previewSrcDoc = () =>
     within(screen.getByRole('dialog')).getByTitle('E-Mail-Vorschau').getAttribute('srcdoc') ?? '';
@@ -143,6 +153,12 @@ describe('EmailTemplatesDialog', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, tenantId: 0, hasRole: () => true });
+        mocks.useTenantsData.mockReturnValue({
+            data: { data: [{ id: 40, name: 'Springfield' }], total: 1 },
+            isLoading: false,
+            isError: false,
+        });
         mocks.previewInviteEmailTemplateContent.mockReset();
         mocks.previewInviteEmailTemplateContent.mockResolvedValue({
             templateId: null,
@@ -194,6 +210,7 @@ describe('EmailTemplatesDialog', () => {
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
 
+        await user.selectOptions(withinDialog.getByLabelText('Vorschau für'), '40');
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
@@ -211,6 +228,7 @@ describe('EmailTemplatesDialog', () => {
                 active: true,
             }),
         );
+        expect(mocks.createInviteEmailTemplate.mock.calls[0][0]).not.toHaveProperty('tenantId');
         expect(onChanged).toHaveBeenCalledWith(saved);
 
         // Back on the list view, which refetches (3 kinds on mount, 3 more on refresh).
@@ -239,6 +257,47 @@ describe('EmailTemplatesDialog', () => {
      * new boundary rather than deleted: what the composer hands the renderer, and
      * what it does with the answer.
      */
+    it('changes only unsaved preview context between platform and Springfield', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+        const dialog = await openCreateForm(user);
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: undefined }),
+            ),
+        );
+        await user.selectOptions(dialog.getByLabelText('Vorschau für'), '40');
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: 40 }),
+            ),
+        );
+        expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.selectOptions(dialog.getByLabelText('Vorschau für'), 'platform');
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: undefined }),
+            ),
+        );
+    });
+
+    it('uses the active tenant without offering cross-tenant preview selection', async () => {
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
+        renderDialog({ templateKind: 'COUNSELLOR_INVITE' });
+        // A tenant admin sees the counsellor invite only (see the tenant-admin
+        // block below), so the shared helper's three-row wait does not apply.
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await userEvent.setup().click(screen.getByRole('button', { name: 'New template' }));
+        expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: 40 }),
+            ),
+        );
+    });
+
     it('previews through the backend renderer, not a local re-implementation', async () => {
         const user = userEvent.setup();
         renderDialog();
@@ -656,5 +715,127 @@ describe('EmailTemplatesDialog', () => {
 
         expect(await screen.findByText('Could not create template')).toBeInTheDocument();
         expect(screen.queryByText('CATCH_ALL')).not.toBeInTheDocument();
+    });
+});
+
+/**
+ * Invite e-mail templates carry no tenant: one text is shared by the whole
+ * platform and each tenant's branding is applied at render time. A tenant admin
+ * therefore never has "their own" template to manage — only the kind their Links
+ * tab sends with, and no edit, because an edit to a shared template changes the
+ * mail every other tenant sends (v2.0.8 QA 1.13).
+ */
+describe('EmailTemplatesDialog — a tenant admin', () => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.createInviteEmailTemplate.mockReset();
+        mocks.updateInviteEmailTemplate.mockReset();
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            templateId: null,
+            templateName: null,
+            kind: 'COUNSELLOR_INVITE',
+            language: 'de',
+            subject: 'Willkommen',
+            html: '<!doctype html><html><body>OK</body></html>',
+            plainText: 'OK',
+            sampleAcceptUrl: 'https://app.example/account-invite/SAMPLE',
+        });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
+            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
+            return Promise.resolve([]);
+        });
+    });
+
+    const renderAsTenantAdmin = () =>
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+    it('asks only for the counsellor invite, never for the platform operator’s kinds', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const requestedKinds = mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind);
+        expect(requestedKinds).toEqual(['COUNSELLOR_INVITE']);
+        expect(screen.queryByText('Default tenant template')).not.toBeInTheDocument();
+    });
+
+    it('offers no edit on a shared template', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    });
+
+    it('does not open the edit form on a double-click either', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        fireEvent.doubleClick(screen.getByTestId('template-row'));
+
+        // The form would show the stored subject in an editable field.
+        expect(screen.queryByDisplayValue('Welcome')).not.toBeInTheDocument();
+    });
+
+    it('offers only the counsellor invite as the kind of a new template', async () => {
+        const user = userEvent.setup();
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const kindOptions = within(screen.getByRole('dialog'))
+            .getAllByRole('option')
+            .map((option) => option.getAttribute('value'))
+            .filter(Boolean);
+        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('cannot reach a shared template’s edit form through the editor’s template menu', async () => {
+        // "Vorlage wählen" in the editor switches the form to editing that
+        // template, and save then PUTs it — the same change the hidden Edit
+        // button withholds. For a tenant admin the pick starts a new template
+        // from it instead, so the shared one is never written.
+        const user = userEvent.setup();
+        mocks.createInviteEmailTemplate.mockResolvedValue({ ...counsellorTemplate, id: 9, name: 'Eigene' });
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        const withinDialog = within(screen.getByRole('dialog'));
+        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Default counsellor template$/ }));
+
+        // A copy, not the stored template: its content, but no name of its own yet.
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Welcome');
+
+        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Eigene');
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+
+        await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+});
+
+describe('EmailTemplatesDialog — the platform admin', () => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, tenantId: 0, hasRole: () => true });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
+            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
+            return Promise.resolve([]);
+        });
+    });
+
+    it('still sees every kind and may edit them', async () => {
+        render(<EmailTemplatesDialog templateKind="TENANT_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        const requestedKinds = mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind).sort();
+        expect(requestedKinds).toEqual(['COUNSELLOR_INVITE', 'DPA_FORWARD', 'TENANT_INVITE']);
+        expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2);
     });
 });

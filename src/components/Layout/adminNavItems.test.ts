@@ -106,6 +106,34 @@ describe('buildAdminNavItems', () => {
         expect(routePathNames.inactiveAccountAuditLogs.startsWith(routePathNames.logs)).toBe(true);
     });
 
+    it('shows the Beratungsstellen entry to a Beratungsstellen-Admin (restricted-agency-admin + user-admin)', () => {
+        // ORISO-Admin#917: the standard bundle has `Agency.read` but no `agency-admin` role and
+        // used to lose the entry to an over-broad role gate.
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            can: canFor(Resource.Agency, Resource.Consultant),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        const agency = items.find((item) => item.key === 'agency');
+        expect(agency?.to).toBe(routePathNames.agency);
+        expect(agency?.label).toBe(labels.agency);
+    });
+
+    it('hides the Beratungsstellen entry from an admin without Agency read', () => {
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.UserAdmin),
+            can: canFor(Resource.Consultant),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.some((item) => item.key === 'agency')).toBe(false);
+    });
+
     it('shows no log entry for an admin without consultant read', () => {
         const items = build({
             isSuperAdmin: false,
@@ -163,5 +191,45 @@ describe('buildAdminNavItems', () => {
 
         expect(items.find((item) => item.key === 'logs')?.to).toBe(routePathNames.caseHandoverLogs);
         expect(items.some((item) => item.key === 'tenants')).toBe(false);
+    });
+
+    describe('"Links" entry', () => {
+        const linksEntry = (items: ReturnType<typeof build>) => items.find((item) => item.key === 'links');
+
+        it('is shown to the platform admin', () => {
+            const items = build({
+                isSuperAdmin: true,
+                hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin),
+                can: canFor(Resource.Tenant, Resource.Agency, Resource.Consultant),
+                labels,
+                settingsPath: '/admin/theme-settings/global-config',
+            });
+            expect(linksEntry(items)).toBeDefined();
+        });
+
+        it('is shown to a Träger admin (who may invite counsellors)', () => {
+            const items = build({
+                isSuperAdmin: false,
+                hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.UserAdmin),
+                can: canFor(Resource.Tenant, Resource.Consultant, Resource.AgencyAdminUser),
+                labels,
+                settingsPath: '/admin/theme-settings/general',
+            });
+            expect(linksEntry(items)).toBeDefined();
+        });
+
+        it.each([
+            ['agency-admin + user-admin', hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin)],
+            ['restricted-agency-admin + user-admin', hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin)],
+        ])('is hidden from a Beratungsstellen-Admin (%s) even with Agency read', (_label, hasRole) => {
+            const items = build({
+                isSuperAdmin: false,
+                hasRole,
+                can: canFor(Resource.Agency, Resource.AgencyAdminUser, Resource.Consultant),
+                labels,
+                settingsPath: '/admin/theme-settings/general',
+            });
+            expect(linksEntry(items)).toBeUndefined();
+        });
     });
 });

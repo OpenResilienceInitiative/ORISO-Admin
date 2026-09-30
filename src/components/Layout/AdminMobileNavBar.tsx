@@ -28,7 +28,8 @@ const SECTION_GLYPHS: Record<string, NavGlyphName> = {
 export interface AdminMobileNavBarProps {
     /** The same resolved destinations the sidebar gets. */
     items: AdminSidebarNavItem[];
-    account: AdminSidebarNavItem;
+    /** Omitted while the layout is restricted (#891) — see `AdminSidebarProps`. */
+    account?: AdminSidebarNavItem;
     logout: { label: string; onLogout: () => void };
     currentPath: string;
 }
@@ -62,7 +63,9 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout }: Admin
 
     const accountItems = useMemo(
         () => [
-            { key: account.key, label: account.label, to: account.to, icon: <NavGlyph name="profile" /> },
+            ...(account
+                ? [{ key: account.key, label: account.label, to: account.to, icon: <NavGlyph name="profile" /> }]
+                : []),
             { key: LOGOUT_KEY, label: logout.label, icon: <NavGlyph name="logout" /> },
         ],
         [account, logout.label],
@@ -71,7 +74,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout }: Admin
     // Same resolver the deleted bottom nav used: prefix match plus each item's
     // `activeMatch`, so Users/Logs sibling hubs still light the right section.
     const activeSectionKey = useMemo(
-        () => resolveActiveNavKey([...items, account], currentPath) ?? '',
+        () => resolveActiveNavKey(account ? [...items, account] : items, currentPath) ?? '',
         [account, currentPath, items],
     );
 

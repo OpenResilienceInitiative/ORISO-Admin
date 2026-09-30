@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { appURL } from '../../appConfig';
 import { useInviteEmailPreview } from '../../hooks/useInviteEmailPreview.hook';
 import { useSingleTenantData } from '../../hooks/useSingleTenantData';
 import { normalizeLanguage } from '../../utils/language';
@@ -28,7 +29,8 @@ export const BrandedEmailPreview = ({ tenantId }: BrandedEmailPreviewProps) => {
     // flight or has failed the branding is UNKNOWN, and `undefined` (= no hint) is the only honest
     // answer — claiming "no logo" there would accuse the admin of a misconfiguration that may not
     // exist.
-    const logoFallbackReason = tenantId == null || !tenant ? undefined : resolveEmailLogoFallbackReason(tenant.theming);
+    const logoFallbackReason =
+        tenantId == null || !tenant ? undefined : resolveEmailLogoFallbackReason(tenant.theming, tenant.id, appURL);
 
     return (
         <BrandedEmailPreviewView

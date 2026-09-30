@@ -118,3 +118,46 @@ describe('SmtpSettings (write-only password, #730)', () => {
         expect(sent.settings.smtp.password).toBe('rotated-secret');
     });
 });
+
+describe('SmtpSettings (#903 parity with the platform card)', () => {
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.appSettings = { globalSmtpHost: 'global.example.org', globalSmtpFrom: 'platform@example.org' };
+        mocks.tenantData = { id: 1, settings: { smtp: { enabled: true, host: '', passwordSet: false } } };
+    });
+
+    const inputByName = (name: string) =>
+        document.querySelector(`input[name="${name}"], input[id$="${name}"]`) as HTMLInputElement | null;
+
+    it('shows the platform value when the tenant has none of its own', () => {
+        renderCard();
+
+        const values = Array.from(document.querySelectorAll('input')).map((input) => input.value);
+        expect(values).toContain('global.example.org');
+        expect(values).toContain('platform@example.org');
+    });
+
+    it('locks the SMTP fields when the platform has SMTP turned off', () => {
+        mocks.appSettings = { ...mocks.appSettings, globalSmtpEnabled: false };
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        const host = Array.from(document.querySelectorAll('input')).find(
+            (input) => input.value === 'global.example.org',
+        );
+        expect(host).toBeDefined();
+        expect(host).toBeDisabled();
+        expect(passwordInput()).toBeDisabled();
+    });
+
+    it('explains every field and offers no test e-mail on the tenant side', () => {
+        renderCard();
+
+        expect(screen.getByText('tenants.appSettings.smtp.description')).toBeInTheDocument();
+        expect(screen.getByText('tenants.appSettings.smtp.host.helpText')).toBeInTheDocument();
+        expect(screen.getByText('tenants.appSettings.smtp.from.helpText')).toBeInTheDocument();
+        expect(screen.getByText('tenants.appSettings.smtp.passwordNotSet')).toBeInTheDocument();
+        expect(document.body.innerHTML).not.toContain('smtp.test');
+        expect(inputByName('recipientEmail')).toBeNull();
+    });
+});
