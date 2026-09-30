@@ -130,6 +130,28 @@ export const ProfileMandatoryOverlay: Story = {
     },
 };
 
+/** Failed setup lookup: enrollment must not advance with neither key nor QR. */
+export const ProfileMissingSetupData: Story = {
+    render: () => <TwoFactorSetup context="profile" required />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/users/data', () =>
+                    HttpResponse.json(
+                        userData({
+                            isEnabled: true,
+                            isActive: false,
+                            qrCode: '',
+                            secret: '',
+                            type: 'APP',
+                        }),
+                    ),
+                ),
+            ],
+        },
+    },
+};
+
 /** Profile context with active app 2FA: switch is on and shows the configured type. */
 export const ProfileActive: Story = {
     render: () => <TwoFactorSetup context="profile" />,
