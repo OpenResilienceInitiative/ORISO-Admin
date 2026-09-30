@@ -217,8 +217,13 @@ export const useCounsellorOnboardingFlow = (
                     };
                 });
             })
-            .catch(() => {
-                if (!cancelled && stateRef.current.phase === 'form') setTopicLanguageError(true);
+            .catch((error: unknown) => {
+                if (cancelled || stateRef.current.phase !== 'form') return;
+                if (error instanceof InviteLinkError) {
+                    setState({ phase: 'link-error', reason: error.reason });
+                    return;
+                }
+                setTopicLanguageError(true);
             });
         return () => {
             cancelled = true;

@@ -106,6 +106,30 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.data.topicIds).toEqual([12, 13]);
     });
 
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'INVALID'] as const)(
+        'keeps a %s invite terminal when resolving translated names',
+        async (reason) => {
+            const client = createClient({
+                getOnboardingInvite: vi
+                    .fn()
+                    .mockResolvedValueOnce(INVITE)
+                    .mockRejectedValueOnce(new InviteLinkError(reason)),
+            });
+            const { result, rerender } = renderHook(
+                ({ language }) => useCounsellorOnboardingFlow('raw-token', client, language),
+                { initialProps: { language: 'de' } },
+            );
+            await waitFor(() => expect(result.current.state.phase).toBe('form'));
+            rerender({ language: 'en' });
+            await waitFor(() => expect(result.current.state).toEqual({ phase: 'link-error', reason }));
+            await act(async () => {
+                await result.current.submitRegistration();
+            });
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+            expect(result.current.topicLanguageError).toBe(false);
+        },
+    );
+
     it('retries a failed translation refresh without resetting names or selection', async () => {
         const client = createClient({
             getOnboardingInvite: vi
