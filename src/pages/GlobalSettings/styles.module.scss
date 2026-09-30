@@ -146,7 +146,7 @@
 
 .smtpReadOnly {
     display: grid;
-    gap: 16px;
+    gap: mui.$mui-unit * 2;
 
     > div {
         min-width: 0;
