@@ -460,8 +460,10 @@ export const AgencyLegalTextContainer = ({
                 content: { [agencyContentKey]: { ...saved.content } },
             });
         } catch {
-            setEditorError(t('legal.serverDraft.publishError'));
-            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+            if (editorIdentityRef.current === operationIdentity) {
+                setEditorError(t('legal.serverDraft.publishError'));
+                setActionPending(false);
+            }
             return;
         }
         try {
@@ -474,7 +476,7 @@ export const AgencyLegalTextContainer = ({
         } catch {
             // Publication is already live. A missing or concurrently replaced draft is retained
             // in the UI and the hook exposes a 409 for explicit conflict resolution.
-            setEditorError(t('legal.serverDraft.cleanupError'));
+            if (editorIdentityRef.current === operationIdentity) setEditorError(t('legal.serverDraft.cleanupError'));
         } finally {
             if (editorIdentityRef.current === operationIdentity) setActionPending(false);
         }

@@ -19,6 +19,25 @@ beforeAll(() => {
 });
 
 describe('M3RichTextEditor shared comparison', () => {
+    it('reopens a host-controlled comparison without reopening its previous fullscreen popup', async () => {
+        const editor = (open: boolean) => (
+            <M3RichTextEditor
+                title="Impressum"
+                value="<p>Eigener Entwurf</p>"
+                enableAnchors={false}
+                comparison={{ title: 'Erhaltene Vorlage', html: '<p>Muster</p>', open }}
+            />
+        );
+        const view = render(editor(true));
+        await userEvent.click(screen.getByRole('button', { name: 'legal.m3Editor.maximizeTemplate' }));
+        await screen.findByRole('dialog', { name: 'Erhaltene Vorlage' });
+        view.rerender(editor(false));
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Erhaltene Vorlage' })).toBeNull());
+        view.rerender(editor(true));
+        expect(screen.getByRole('complementary', { name: 'Erhaltene Vorlage' })).toBeVisible();
+        expect(screen.queryByRole('dialog', { name: 'Erhaltene Vorlage' })).toBeNull();
+    });
+
     it('opens the full received template in a read-only dialog and returns to the unchanged draft', async () => {
         const user = userEvent.setup();
         const onChange = vi.fn();

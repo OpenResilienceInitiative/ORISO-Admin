@@ -850,8 +850,12 @@ export const M3RichTextEditor = ({
     const comparisonOpen = comparison?.open ?? localComparisonOpen;
     const setComparisonOpen = (open: boolean) => {
         setLocalComparisonOpen(open);
+        if (!open) setTemplateMaximized(false);
         comparison?.onOpenChange?.(open);
     };
+    useEffect(() => {
+        if (!comparisonOpen) setTemplateMaximized(false);
+    }, [comparisonOpen]);
     const [editing, setEditing] = useState(dirty === true);
     const [localDirty, setLocalDirty] = useState(false);
     const [savingLocal, setSavingLocal] = useState(false);
