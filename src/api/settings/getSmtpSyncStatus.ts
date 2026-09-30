@@ -18,7 +18,10 @@ export const parseSmtpSyncState = (value: unknown): SmtpSyncState | null => {
         (!Number.isSafeInteger(state.appliedRevision) || (state.appliedRevision as number) < 0)
     )
         return null;
-    if (!['UNKNOWN', 'SMTP_SYNC_PENDING', 'APPLIED', 'DISABLED_OR_INCOMPLETE'].includes(String(state.status)))
+    if (
+        typeof state.status !== 'string' ||
+        !['UNKNOWN', 'SMTP_SYNC_PENDING', 'APPLIED', 'DISABLED_OR_INCOMPLETE'].includes(state.status)
+    )
         return null;
     if (
         (state.status === 'APPLIED' || state.status === 'DISABLED_OR_INCOMPLETE') &&

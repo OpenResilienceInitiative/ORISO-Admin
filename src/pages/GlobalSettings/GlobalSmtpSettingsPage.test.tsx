@@ -152,6 +152,22 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
     });
 
+    it('does not show applied for a malformed status array with an unconfirmed revision', async () => {
+        mocks.fetchData.mockImplementation(({ url }) =>
+            Promise.resolve(
+                url === globalSmtpPlatformSettingsEndpoint
+                    ? savedSummary
+                    : url === smtpSyncStatusEndpoint
+                    ? { revision: 6, appliedRevision: 5, status: ['APPLIED'] }
+                    : {},
+            ),
+        );
+        const page = renderPage();
+        await screen.findByText(savedSummary.host);
+        await waitFor(() => expect(page.queryClient.getQueryState(['SMTP_SYNC_STATUS'])?.status).toBe('success'));
+        expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
+    });
+
     it('shows a later pending revision instead of a previous applied save', async () => {
         mocks.fetchData.mockImplementation(({ url }) => {
             if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
