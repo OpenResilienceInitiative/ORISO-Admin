@@ -546,13 +546,10 @@ export const TemplateFullscreen: Story = {
         ...InlineTemplateComparison.args,
         comparison: {
             ...InlineTemplateComparison.args!.comparison!,
-            html:
-                '<h2>Muster-Impressum</h2>' +
-                Array.from(
-                    { length: 16 },
-                    (_, index) => `<p>Abschnitt ${index + 1}: Vollständige Vorlage zum Lesen und Kopieren.</p>`,
-                ).join('') +
-                '<p>Letzter Absatz der Vorlage.</p>',
+            html: `<h2>Muster-Impressum</h2>${Array.from(
+                { length: 16 },
+                (_, index) => `<p>Abschnitt ${index + 1}: Vollständige Vorlage zum Lesen und Kopieren.</p>`,
+            ).join('')}<p>Letzter Absatz der Vorlage.</p>`,
         },
     },
     play: async ({ canvasElement }) => {
