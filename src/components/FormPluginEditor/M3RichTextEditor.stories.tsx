@@ -256,9 +256,6 @@ export const CaretBelowHeadingLandsInBodyText: Story = {
             return node!;
         });
 
-        // The guarantee paragraph must exist below the final heading.
-        await waitFor(() => expect(editorNode.querySelector('h1 + p')).not.toBeNull());
-
         // Click into the dead space between the heading's bottom and the
         // editor surface's bottom (its min-height keeps that area open).
         // `caretRangeFromPoint` is the browser's OWN hit-testing — the same
@@ -269,6 +266,10 @@ export const CaretBelowHeadingLandsInBodyText: Story = {
         const surfaceRect = editorNode.getBoundingClientRect();
         const clientX = surfaceRect.left + 24;
         const clientY = headingRect.bottom + (surfaceRect.bottom - headingRect.bottom) / 2;
+        // Entering edit mode alone must not mutate a loaded document. The
+        // first click below its final heading creates the body paragraph.
+        await userEvent.pointer({ target: editorNode, coords: { clientX, clientY }, keys: '[MouseLeft]' });
+        await waitFor(() => expect(editorNode.querySelector('h1 + p')).not.toBeNull());
         const caretRange = document.caretRangeFromPoint(clientX, clientY);
         expect(caretRange).not.toBeNull();
 
@@ -510,17 +511,61 @@ export const InlineTemplateComparison: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         await userEvent.click(canvas.getByRole('button', { name: 'Vorlage vergleichen' }));
         await expect(
             canvas.getByRole('complementary', { name: 'Vorlage des Plattformbetreibers' }),
         ).toBeInTheDocument();
         await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        const reference = canvas.getByRole('complementary', { name: 'Vorlage des Plattformbetreibers' });
+        const maximize = within(reference).getByRole('button', { name: 'Vorlage im Vollbild ansehen' });
+        await userEvent.click(maximize);
+        const page = within(canvasElement.ownerDocument.body);
+        const dialog = await page.findByRole('dialog', { name: 'Vorlage des Plattformbetreibers' });
+        await expect(within(dialog).getByRole('region', { name: 'Vorlage des Plattformbetreibers' })).toHaveTextContent(
+            'Telefon: [Nummer]',
+        );
+        await expect(within(dialog).queryByRole('textbox')).toBeNull();
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Vollbild schließen' }));
+        await waitFor(() => expect(page.queryByRole('dialog', { name: 'Vorlage des Plattformbetreibers' })).toBeNull());
+        await waitFor(() => expect(maximize).toHaveFocus());
+        await expect(canvas.getByRole('textbox')).toHaveTextContent('Mein Entwurf');
         await userEvent.click(
             within(canvas.getByRole('complementary', { name: 'Vorlage des Plattformbetreibers' })).getByRole('button', {
                 name: 'Vergleichsansicht schließen',
             }),
         );
         await expect(canvas.queryByRole('complementary')).toBeNull();
+    },
+};
+
+/** Full received text in the shared modal layer, including at phone width. */
+export const TemplateFullscreen: Story = {
+    ...InlineTemplateComparison,
+    args: {
+        ...InlineTemplateComparison.args,
+        comparison: {
+            ...InlineTemplateComparison.args!.comparison!,
+            html:
+                '<h2>Muster-Impressum</h2>' +
+                Array.from(
+                    { length: 16 },
+                    (_, index) => `<p>Abschnitt ${index + 1}: Vollständige Vorlage zum Lesen und Kopieren.</p>`,
+                ).join('') +
+                '<p>Letzter Absatz der Vorlage.</p>',
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlage vergleichen' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlage im Vollbild ansehen' }));
+        const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog', {
+            name: 'Vorlage des Plattformbetreibers',
+        });
+        await expect(within(dialog).getByRole('region', { name: 'Vorlage des Plattformbetreibers' })).toHaveTextContent(
+            'Letzter Absatz der Vorlage.',
+        );
+        await expect(within(dialog).queryByRole('textbox')).toBeNull();
     },
 };
 

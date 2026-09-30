@@ -845,6 +845,7 @@ export const M3RichTextEditor = ({
     const publishTemplateReasonId = useId();
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    const [templateMaximized, setTemplateMaximized] = useState(false);
     const [localComparisonOpen, setLocalComparisonOpen] = useState(false);
     const comparisonOpen = comparison?.open ?? localComparisonOpen;
     const setComparisonOpen = (open: boolean) => {
@@ -1301,7 +1302,19 @@ export const M3RichTextEditor = ({
                             // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
                         />
-                        {comparison.actions && <div className={styles.comparisonActions}>{comparison.actions}</div>}
+                        <div className={styles.comparisonFooter}>
+                            <button
+                                type="button"
+                                className={styles.templateMaximize}
+                                onClick={() => setTemplateMaximized(true)}
+                                title={t('legal.m3Editor.maximizeTemplate')}
+                                aria-label={t('legal.m3Editor.maximizeTemplate')}
+                                aria-haspopup="dialog"
+                            >
+                                <MaximizeContentIcon />
+                            </button>
+                            {comparison.actions && <div className={styles.comparisonActions}>{comparison.actions}</div>}
+                        </div>
                     </aside>
                 )}
                 {editorSlot ? (
@@ -1630,43 +1643,99 @@ export const M3RichTextEditor = ({
         </div>
     );
 
+    // Reuse the editor's modal layer, without mounting another editable editor
+    // or expanding the compact reference inside the comparison.
+    const templateDialog = comparisonOpen && comparison && (
+        <Modal
+            open={templateMaximized}
+            closable={false}
+            footer={null}
+            centered
+            width="min(1512px, calc(100vw - 96px))"
+            className={styles.dialogModal}
+            title={<span className={styles.templateDialogLabel}>{comparison.title}</span>}
+            zIndex={EDITOR_FULLSCREEN_Z_INDEX + 1}
+            onCancel={() => setTemplateMaximized(false)}
+            styles={{
+                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                header: { margin: 0, background: 'transparent' },
+            }}
+        >
+            <div className={styles.templateDialog}>
+                <div className={styles.templateDialogHeader}>
+                    <div>
+                        <h2>{comparison.title}</h2>
+                        {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
+                    </div>
+                    <button
+                        type="button"
+                        className={styles.templateDialogClose}
+                        aria-label={t('legal.m3Editor.closeDialog')}
+                        onClick={() => setTemplateMaximized(false)}
+                    >
+                        <Close />
+                    </button>
+                </div>
+                <div
+                    className={`${styles.comparisonDocument} ${styles.templateDialogDocument}`}
+                    role="region"
+                    aria-label={comparison.title}
+                    lang={comparison.language}
+                    // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the full scrollable template
+                    tabIndex={0}
+                    // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
+                />
+            </div>
+        </Modal>
+    );
+
     // Fullscreen mode is a real modal dialog (Figma 1007-27636): white 80%
     // scrim with backdrop blur, centered card, round close button beside the
     // top right corner. antd Modal provides focus trap + Escape handling.
     if (maximized) {
         return (
-            <Modal
-                open
-                closable={false}
-                footer={null}
-                centered
-                width="min(1512px, calc(100vw - 96px))"
-                className={styles.dialogModal}
-                // Above every application overlay — see EDITOR_FULLSCREEN_Z_INDEX.
-                zIndex={EDITOR_FULLSCREEN_Z_INDEX}
-                onCancel={() => setMaximized(false)}
-                styles={{
-                    mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
-                    content: { padding: 0, background: 'transparent', boxShadow: 'none' },
-                }}
-                aria-label={title}
-            >
-                <div className={styles.dialogLayout}>
-                    {card}
-                    <button
-                        type="button"
-                        className={styles.dialogClose}
-                        aria-label={t('legal.m3Editor.closeDialog')}
-                        onClick={() => setMaximized(false)}
-                    >
-                        <Close />
-                    </button>
-                </div>
-            </Modal>
+            <>
+                <Modal
+                    open
+                    closable={false}
+                    footer={null}
+                    centered
+                    width="min(1512px, calc(100vw - 96px))"
+                    className={styles.dialogModal}
+                    // Above every application overlay — see EDITOR_FULLSCREEN_Z_INDEX.
+                    zIndex={EDITOR_FULLSCREEN_Z_INDEX}
+                    onCancel={() => setMaximized(false)}
+                    styles={{
+                        mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                        content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                    }}
+                    aria-label={title}
+                >
+                    <div className={styles.dialogLayout}>
+                        {card}
+                        <button
+                            type="button"
+                            className={styles.dialogClose}
+                            aria-label={t('legal.m3Editor.closeDialog')}
+                            onClick={() => setMaximized(false)}
+                        >
+                            <Close />
+                        </button>
+                    </div>
+                </Modal>
+                {templateDialog}
+            </>
         );
     }
 
-    return card;
+    return (
+        <>
+            {card}
+            {templateDialog}
+        </>
+    );
 };
 
 export default M3RichTextEditor;

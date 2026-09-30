@@ -1708,6 +1708,7 @@
     "legal.m3Editor.maximize": "Maximize window",
     "legal.m3Editor.minimize": "Minimize window",
     "legal.m3Editor.closeDialog": "Close fullscreen",
+    "legal.m3Editor.maximizeTemplate": "View template in fullscreen",
     "legal.m3Editor.versionLabel": "Latest version",
     "legal.m3Editor.versionLatest": "Current version (draft)",
     "legal.m3Editor.versionPublished": "Published version",
