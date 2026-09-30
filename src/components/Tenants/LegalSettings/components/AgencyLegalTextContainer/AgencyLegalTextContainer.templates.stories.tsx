@@ -11,7 +11,7 @@ import { AgencyLegalTextWithTemplates } from './AgencyLegalTextWithTemplates';
 
 /**
  * #1070 — a Beratungsstelle receives the privacy policy its Träger forwarded: the same
- * left/right compare as one rung up, plus how many Fachbereiche follow the agency text.
+ * shared editor comparison as one rung up, plus how many Fachbereiche follow the agency text.
  * Real container and hooks, mocked HTTP (API note 1070-api.md, section 3.3).
  */
 
@@ -137,13 +137,14 @@ type Story = StoryObj<typeof meta>;
 
 const LOAD = { timeout: 10000 };
 
-/** The Träger forwarded its privacy policy: template left, own card right, Fachbereich impact named. */
+/** The Träger forwarded its privacy policy: preview opens the reference beside one editor, with Fachbereich impact. */
 export const AgencyWithNewTemplate: Story = {
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const region = await canvas.findByRole(
-            'region',
+            'complementary',
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
             LOAD,
         );
@@ -159,6 +160,7 @@ export const AgencyAdoptsTemplate: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -179,8 +181,9 @@ export const AgencyReadOnlyUnderPlatformLock: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
         const region = await canvas.findByRole(
-            'region',
+            'complementary',
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
             LOAD,
         );
@@ -190,12 +193,21 @@ export const AgencyReadOnlyUnderPlatformLock: Story = {
     },
 };
 
-/** Phone 390: template on top, collapsible, the agency card below. */
+/** Phone 390: preview opens a readable reference while the draft stays in its one editor. */
 export const AgencyMobile390: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('button', { name: 'Vorlage einklappen' }, LOAD)).toBeVisible();
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        const reference = await canvas.findByRole(
+            'complementary',
+            { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
+            LOAD,
+        );
+        await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
+        await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
     },
 };

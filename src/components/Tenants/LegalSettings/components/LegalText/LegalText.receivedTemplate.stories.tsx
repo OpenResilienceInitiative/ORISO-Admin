@@ -9,7 +9,7 @@ import type { DistributeAgencyLegalProposal, TenantLegalProposal } from '../../.
 import { TraegerLegalText } from './TraegerLegalText';
 
 /**
- * #1070 — a Träger receives the platform's imprint template: marker, left/right compare
+ * #1070 — a Träger receives the platform's imprint template: editor notice and shared comparison
  * (template read-only on the left, own draft on the right), adopt / dismiss, and forwarding its
  * own draft to its Beratungsstellen. Real card and hooks, mocked HTTP (API note 1070-api.md).
  */
@@ -285,12 +285,21 @@ export const TraegerForwardResult: Story = {
     },
 };
 
-/** Phone 390: template on top (collapsible), own draft below. */
+/** Phone 390: preview keeps the received reference and the one editable draft in the shared surface. */
 export const TraegerMobile390: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     parameters: { msw: { handlers: handlers({ draft: ownDraft }) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('button', { name: 'Vorlage einklappen' }, LOAD)).toBeVisible();
+        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        const reference = await canvas.findByRole(
+            'complementary',
+            { name: /Vorlage des Plattformbetreibers · Impressum/ },
+            LOAD,
+        );
+        await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
+        await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
+        await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
     },
 };

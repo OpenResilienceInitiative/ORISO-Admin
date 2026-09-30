@@ -1276,11 +1276,10 @@ export const M3RichTextEditor = ({
                             </button>
                         </div>
                         {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
-                        {/* The received template is sanitized before it reaches this shared editor. */}
-                        {/* eslint-disable-next-line react/no-danger */}
                         <div
                             className={styles.comparisonDocument}
                             lang={comparison.language}
+                            // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
                         />
                         {comparison.actions && <div className={styles.comparisonActions}>{comparison.actions}</div>}

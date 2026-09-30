@@ -531,8 +531,8 @@ export const EditorErrorSnackbars: Story = {
     },
 };
 
-// Browser-level regression coverage for the narrow layout: the floating blocker
-// reserves scroll space, the chapter navigation remains available, and the first
+// Browser-level regression coverage for the narrow layout: the notice stack
+// reserves its own row, the chapter navigation remains available, and the first
 // function-bar control starts inside the viewport.
 export const ResponsiveHintAndFunctionBar: Story = {
     render: (args) => <ResponsiveHintEditor {...args} />,
@@ -564,8 +564,12 @@ export const ResponsiveHintAndFunctionBar: Story = {
         expect(scrollContainer).not.toBeNull();
         // The snackbar now reserves a flex row below the text rather than
         // borrowing padding inside the scrollport.
-        expect(scrollContainer!.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-            canvas.getByRole('status').getBoundingClientRect().top,
+        // Measure the stable dock, because the entering snackbar rotates above it.
+        const noticeStack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
+        await waitFor(() =>
+            expect(scrollContainer!.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+                noticeStack.getBoundingClientRect().top,
+            ),
         );
         expect(canvas.getByRole('navigation')).toBeVisible();
 

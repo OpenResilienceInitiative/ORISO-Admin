@@ -188,8 +188,8 @@ export const LegalTemplateCompare = ({
                                 })}
                             </p>
                         )}
-                        {readOnly && readOnlyReason && <p>{readOnlyReason}</p>}
-                        {adoptBlockedReason && <p>{adoptBlockedReason}</p>}
+                        {readOnly && readOnlyReason && <p role="note">{readOnlyReason}</p>}
+                        {adoptBlockedReason && <p role="note">{adoptBlockedReason}</p>}
                     </>
                 ),
                 actions: (
