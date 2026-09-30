@@ -64,6 +64,8 @@ const handlers = () => {
 };
 
 const typeIntoEditor = async (canvasElement: HTMLElement, text: string) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten|Edit/ }));
     await waitFor(() => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull(), {
         timeout: 8000,
     });

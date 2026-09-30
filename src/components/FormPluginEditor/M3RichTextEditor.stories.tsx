@@ -61,6 +61,44 @@ export const Imprint: Story = {
     },
 };
 
+/** Shared legal editor: one persistent footer action switches from editing to saving. */
+export const EditSaveMobile: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Impressum',
+        value: '<p>Träger Nordlicht e. V.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(375px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const edit = canvas.getByRole('button', { name: /Bearbeiten|Edit/ });
+        await expect(edit).toHaveAttribute('aria-pressed', 'false');
+        await userEvent.click(edit);
+        await expect(edit).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.type(canvas.getByRole('textbox', { name: 'Impressum' }), ' Zusatz');
+        await expect(canvas.getByRole('button', { name: /Speichern|Save/ })).toBeVisible();
+    },
+};
+
+export const EditSaveDesktop: Story = {
+    ...EditSaveMobile,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 'min(800px, calc(100vw - 32px))' }}>
+                <Story />
+            </div>
+        ),
+    ],
+};
+
 export const GDPR: Story = {
     render: (args) => <ControlledEditor {...args} />,
     args: {
@@ -90,6 +128,7 @@ export const PlaceholderMenu: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
         await expect(canvas.queryByTestId('m3-editor-token-row')).toBeNull();
         await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
         const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
@@ -107,6 +146,7 @@ export const PlaceholderMenuPlatform: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
         await userEvent.click(await canvas.findByRole('button', { name: 'Platzhalter einfügen' }));
         const menu = await within(canvasElement.ownerDocument.body).findByRole('menu');
         await waitFor(() =>
@@ -208,6 +248,7 @@ export const CaretBelowHeadingLandsInBodyText: Story = {
         language: 'de',
     },
     play: async ({ canvasElement }) => {
+        await userEvent.click(within(canvasElement).getByRole('button', { name: /Bearbeiten|Edit/ }));
         const editorNode = await waitFor(() => {
             const node = canvasElement.querySelector<HTMLElement>('.ProseMirror');
             expect(node).not.toBeNull();
@@ -297,11 +338,7 @@ export const ResponsiveHintAndFunctionBar: Story = {
         const canvas = within(canvasElement);
         await waitFor(() => expect(canvas.getByRole('status')).toBeInTheDocument());
 
-        const textbox = canvas.getByRole('textbox');
-        let scrollContainer = textbox.parentElement;
-        while (scrollContainer && window.getComputedStyle(scrollContainer).overflowY !== 'auto') {
-            scrollContainer = scrollContainer.parentElement;
-        }
+        const scrollContainer = canvasElement.querySelector<HTMLElement>('[class*="editorContentScroll"]');
         expect(scrollContainer).not.toBeNull();
         expect(parseFloat(window.getComputedStyle(scrollContainer!).paddingBottom)).toBeGreaterThan(0);
         expect(canvas.getByRole('navigation')).toBeVisible();

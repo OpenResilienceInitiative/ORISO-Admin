@@ -173,7 +173,8 @@ const enabledTemplateButton = async (canvas: ReturnType<typeof within>) => {
 };
 
 const PUBLISH_PLATFORM = { name: /Impressum \(Plattform\) veröffentlichen|Publish imprint \(platform\)/ };
-const SAVE_DRAFT = { name: /Entwurf speichern|Save draft/ };
+const SAVE_DRAFT = { name: /Speichern|Save$/ };
+const EDIT_DRAFT = { name: /Bearbeiten|Edit$/ };
 
 const footerLabels = (button: HTMLElement) =>
     within(button.closest('[class*="actions"]') as HTMLElement)
@@ -193,6 +194,7 @@ export const SavedDraftReadyToSend: Story = {
         await expect(footerLabels(button)).toEqual([
             expect.stringMatching(/Vorlage veröffentlichen|Publish as template/),
             expect.stringMatching(/Impressum \(Plattform\) veröffentlichen|Publish imprint \(platform\)/),
+            expect.stringMatching(/Bearbeiten|Edit/),
         ]);
         await expect(canvas.queryByRole('button', SAVE_DRAFT)).toBeNull();
     },
@@ -366,7 +368,7 @@ export const NothingToDoKeepsFooter: Story = {
         await canvas.findByRole('button', { name: /Versionsverlauf|Version history/ }, LOAD);
         await waitFor(() => expect(canvasElement.querySelector('[class*="_actions_"]')).not.toBeNull(), LOAD);
         const footer = canvasElement.querySelector('[class*="_actions_"]') as HTMLElement;
-        await expect(within(footer).queryAllByRole('button')).toHaveLength(0);
+        await expect(within(footer).getByRole('button', EDIT_DRAFT)).toBeVisible();
         await expect(footer.getBoundingClientRect().height).toBeGreaterThanOrEqual(68);
     },
 };
@@ -437,6 +439,7 @@ export const TypingShowsSaveAndSendingSavesFirst: Story = {
         await enabledTemplateButton(canvas);
         await expect(canvas.queryByRole('button', SAVE_DRAFT)).toBeNull();
         const editor = canvasElement.querySelector('.ProseMirror') as HTMLElement;
+        await userEvent.click(canvas.getByRole('button', EDIT_DRAFT));
         await userEvent.click(editor);
         await userEvent.keyboard(' Noch nicht gespeichert.');
         await expect(await canvas.findByRole('button', SAVE_DRAFT, LOAD)).toBeEnabled();
