@@ -221,6 +221,7 @@ export const DraftAndHelpSnackbarsStack: Story = {
         await expect(helpAction).toBeVisible();
         await expect(within(stack).getAllByRole('status')).toHaveLength(1);
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
 
         await userEvent.click(within(stack).getByRole('button', { name: 'Hinweis ausblenden' }));

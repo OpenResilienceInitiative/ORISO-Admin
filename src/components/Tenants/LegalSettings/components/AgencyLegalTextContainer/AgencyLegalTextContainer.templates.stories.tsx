@@ -206,6 +206,7 @@ export const AgencyMobile390: Story = {
             LOAD,
         );
         await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         await expect(canvas.getAllByRole('textbox')).toHaveLength(1);
         await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
         await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
