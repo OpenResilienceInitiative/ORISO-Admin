@@ -2,7 +2,7 @@ import type { InviteEmailPreviewDTO } from '../../api/accountInvites/accountInvi
 
 // Verbatim backend output (see scripts/email-fixtures/README.md). This particular
 // fixture is the one whose sample accept URL has the counsellor shape
-// (`https://admin.oriso.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN`), which
+// (`https://admin.example.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN`), which
 // is exactly the shape `DPA_FORWARD` renders with: `InviteEmailPreviewService.targetRoleFor`
 // maps TENANT_INVITE to tenant onboarding and *everything else* — COUNSELLOR_INVITE and
 // DPA_FORWARD alike — to the COUNSELLOR role, whose link is the Admin counsellor
@@ -85,7 +85,7 @@ export const renderBrandedEmailStoryPreview = (subject: string, body: string): I
         .replace(SUBJECT_CELL, (_match, open: string, close: string) => `${open}${escapeHtml(subject)}${close}`)
         .replace(CONTENT_CELL, (_match, open: string, close: string) => `${open}${bodyToHtml(body)}${close}`),
     plainText: `${subject}\n\n${body}`,
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN',
 });
 
 /** The endpoint a story has to intercept to use the renderer above. */

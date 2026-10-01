@@ -67,6 +67,7 @@
     "prestart": "node scripts/generate-runtime-env.js",
     "start": "vite",
     "build": "tsc && vite build",
+    "postbuild": "bash scripts/validate-hardcoded-hosts.sh build",
     "build:analyze": "tsc && vite build --mode analyze",
     "build:check": "npm run build && node scripts/bundleCheck.mjs",
     "serve": "vite preview",
@@ -87,7 +88,7 @@
     "lint:formatting:fix": "prettier . --write --ignore-unknown",
     "prettier:css": "prettier **/*.scss --write ",
     "test:integration": "cypress open",
-    "test:integration:cli": "concurrently --kill-others --success first \"cross-env BROWSER=none VITE_PORT=9000 VITE_USE_API_URL=true VITE_USE_HTTPS=true VITE_API_URL=api.oriso.org VITE_APP_URL=app.oriso.org VITE_MATRIX_URL=matrix.oriso.org VITE_KEYCLOAK_URL=https://auth.oriso.org VITE_KEYCLOAK_REALM=online-beratung VITE_KEYCLOAK_CLIENT_ID=app VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT=X-CSRF-Token npm run start -- --strictPort\" \"wait-on http://localhost:9000/admin && cypress run\""
+    "test:integration:cli": "concurrently --kill-others --success first \"cross-env BROWSER=none VITE_PORT=9000 VITE_USE_API_URL=true VITE_USE_HTTPS=true VITE_API_URL=api.example.org VITE_APP_URL=app.example.org VITE_MATRIX_URL=matrix.example.org VITE_KEYCLOAK_URL=https://auth.example.org VITE_KEYCLOAK_REALM=online-beratung VITE_KEYCLOAK_CLIENT_ID=app VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT=X-CSRF-Token npm run start -- --strictPort\" \"wait-on http://localhost:9000/admin && cypress run\""
   },
   "eslintConfig": {
     "extends": [

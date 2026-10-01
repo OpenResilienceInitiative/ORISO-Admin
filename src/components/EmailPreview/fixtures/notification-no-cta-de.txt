@@ -14,7 +14,7 @@ kontakt@example.org
 
 ORISO ist ein Angebot von ORISO.
 
-Datenschutz: https://app.oriso.org/datenschutz
-Impressum: https://app.oriso.org/impressum
+Datenschutz: https://app.example.org/datenschutz
+Impressum: https://app.example.org/impressum
 
 Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.

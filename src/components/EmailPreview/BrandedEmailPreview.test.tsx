@@ -37,7 +37,7 @@ const PREVIEW: InviteEmailPreviewDTO = {
     subject: 'Ihre Einladung zu ORISO',
     html: '<!doctype html><html lang="de"><body>mail</body></html>',
     plainText: 'ORISO',
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
 };
 
 const renderPreview = (tenantId?: number) =>

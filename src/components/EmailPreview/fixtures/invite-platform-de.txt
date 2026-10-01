@@ -10,7 +10,7 @@ Der Link ist 30 Tage gueltig. Bei Fragen antworten Sie bitte nicht auf diese
 E-Mail, sondern wenden Sie sich an Ihre Ansprechperson.
 
 Einladung annehmen:
-https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
+https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN
 
 ----------------------------------------------------------------
 Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.
@@ -21,7 +21,7 @@ kontakt@example.org
 
 ORISO ist ein Angebot von ORISO.
 
-Datenschutz: https://app.oriso.org/datenschutz
-Impressum: https://app.oriso.org/impressum
+Datenschutz: https://app.example.org/datenschutz
+Impressum: https://app.example.org/impressum
 
 Diese E-Mail gehört zu Ihrer Einladung und lässt sich nicht abbestellen. Bitte antworten Sie nicht darauf.
