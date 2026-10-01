@@ -1796,7 +1796,7 @@
         "fileName": "arrow_menu_open_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/arrow_menu_open_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx"],
+        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1907,7 +1907,7 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1920,7 +1920,7 @@
         "fileName": "mail_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -2658,7 +2658,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2840,7 +2845,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2951,6 +2961,7 @@
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
             "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
         ],
         "usage": "app-used"
