@@ -192,7 +192,11 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-const renderTenantTab = () => render(<TenantInvitesTab />);
+// The Träger tab is the platform operator's view; a Träger admin's own-Träger view is covered below.
+const renderTenantTab = () => {
+    mocks.superAdmin = true;
+    return render(<TenantInvitesTab />);
+};
 
 // A plain flag survives vi.clearAllMocks(); reset it so no block inherits the platform-admin view.
 beforeEach(() => {
@@ -994,7 +998,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
         });
         const user = await fill('Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        // The sharded CI run is slow: give the debounced agency search room.
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 5_000 }));
         expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
 
         const agencyField = screen.getByRole('combobox', { name: 'Beratungsstelle' });
@@ -1134,6 +1139,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
         );
 
+        mocks.superAdmin = true;
         render(<CounsellorInvitesTab />);
 
         expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
@@ -1141,6 +1147,21 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(screen.getByText('taken3@example.org')).toBeInTheDocument();
         expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
         expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
+    });
+
+    it('gives a Träger admin their own further Träger admins on the Träger tab, not on the Berater tab', async () => {
+        const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+        const furtherAdmin = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow, furtherAdmin]));
+
+        const { unmount } = render(<CounsellorInvitesTab />);
+        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+        expect(screen.queryByText('taken3@example.org')).not.toBeInTheDocument();
+        unmount();
+
+        render(<TenantInvitesTab />);
+        expect(await screen.findByText('taken3@example.org')).toBeInTheDocument();
+        expect(screen.queryByText('taken1@example.org')).not.toBeInTheDocument();
     });
 
     it('changes a counsellor’s topic permission from the table', async () => {

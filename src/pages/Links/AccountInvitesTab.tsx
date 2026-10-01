@@ -116,10 +116,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const currentTenantId = Number.isFinite(jwtTenantId) && jwtTenantId > 0 ? jwtTenantId : undefined;
     const { isSuperAdmin, hasRole } = useUserRoles();
     const isTenantInvite = targetRole === 'TENANT_ADMIN';
-    // The Träger tab is platform-only.
-    const viewerScope: InviteViewerScope = isTenantInvite
-        ? 'platform'
-        : resolveInviteViewerScope({ isSuperAdmin, hasRole });
+    // On the Träger tab a Träger admin only invites into their own Träger; the composer locks it.
+    const viewerScope: InviteViewerScope = resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
     const tab: InviteTab = isTenantInvite ? 'tenant' : 'counsellor';
     const { invites, setInvites, tileCounts, loading, reload: loadInvites } = useInviteList(tab, viewerScope);
@@ -160,7 +158,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        if (!isTenantInvite) return undefined;
+        // Only the platform admin founds new Träger, so only they need the taken numbers.
+        if (!isTenantInvite || !isSuperAdmin) return undefined;
         let cancelled = false;
         const loadAllTenantIds = async () => {
             const perPage = 200;
@@ -189,7 +188,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         return () => {
             cancelled = true;
         };
-    }, [isTenantInvite]);
+    }, [isTenantInvite, isSuperAdmin]);
 
     // Active-invite tenant ids used to need a second, dedicated full fetch;
     // since the board loads the COMPLETE list (see loadInvites), they are now a
@@ -540,14 +539,21 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     // The CSV import sits in the table card's ⋮ menu but imports with the card's send mode.
     const [composerSendMode, setComposerSendMode] = useState<InviteSendMode>('direct');
     const [panelCollapsed, setPanelCollapsed] = useInvitePanelCollapsed(targetRole);
+    let csvBlockedReason: string | undefined;
+    if (isAgencyViewer) {
+        csvBlockedReason = t(
+            'links.csvImport.blockedAgencyAdmin',
+            'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
+        );
+    } else if (isTenantInvite && !isSuperAdmin) {
+        csvBlockedReason = t(
+            'links.csvImport.blockedTenantTab',
+            'Nur Plattform-Admins: Eine Datei kann neue Träger enthalten.',
+        );
+    }
     const csvProps: InviteCsvProps = {
         onParsed: (result, sendMode) => setCsvImport({ result, sendMode }),
-        blockedReason: isAgencyViewer
-            ? t(
-                  'links.csvImport.blockedAgencyAdmin',
-                  'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
-              )
-            : undefined,
+        blockedReason: csvBlockedReason,
     };
     const bulkProps: InviteBulkProps = {
         count: bulk.selectedInvites.length,

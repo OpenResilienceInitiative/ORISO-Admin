@@ -704,7 +704,8 @@ describe('InviteProgressBoard — role chip', () => {
         expect(roleChip('Lena Vogt')).toHaveTextContent(/^Berater:in$/);
         await userEvent.click(roleChip('Lena Vogt'));
         const menu = await screen.findByRole('menu');
-        expect(within(menu).getAllByRole('menuitem')).toHaveLength(3);
+        // A Träger admin's own Träger-Admin invites live on the Träger tab: two entries here.
+        expect(within(menu).getAllByRole('menuitem')).toHaveLength(2);
         await userEvent.click(within(menu).getByText('BST-Admin'));
 
         expect(onRoleChange).toHaveBeenCalledWith(open, 'AGENCY_ADMIN');
@@ -801,7 +802,9 @@ describe('InviteProgressBoard — role chip', () => {
     );
 
     it('explains that a Träger-Admin needs a new invite instead of a role change', async () => {
-        render(<InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn() })} />);
+        render(
+            <InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn(), viewerScope: 'platform' })} />,
+        );
 
         await userEvent.click(roleChip('Lena Vogt'));
         const tenantAdmin = within(await screen.findByRole('menu'))

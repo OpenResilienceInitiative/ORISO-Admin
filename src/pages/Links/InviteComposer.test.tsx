@@ -61,6 +61,12 @@ vi.mock('./EmailTemplatesDialog', () => ({
     ),
 }));
 
+// The Träger tab is the platform operator's view.
+vi.mock('../../hooks/useUserRoles.hook', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../hooks/useUserRoles.hook')>();
+    return { useUserRoles: () => ({ ...actual.useUserRoles(), isSuperAdmin: true, hasRole: () => true }) };
+});
+
 const mocks = vi.hoisted(() => ({
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),

@@ -18,9 +18,10 @@ const invite = (patch: Partial<AccountInviteDTO>) => ({ targetRole: 'COUNSELLOR'
 describe('inviteRules', () => {
     it.each([
         ['platform', 'counsellor', ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN']],
-        ['tenant', 'counsellor', ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN']],
+        ['tenant', 'counsellor', ['COUNSELLOR', 'AGENCY_ADMIN']],
         ['agency', 'counsellor', ['COUNSELLOR']],
         ['platform', 'tenant', ['TENANT_ADMIN']],
+        ['tenant', 'tenant', ['TENANT_ADMIN']],
     ] as const)('lets a %s viewer on the %s tab invite %j', (viewer, tab, roles) => {
         expect(invitableRoles(viewer, tab)).toEqual(roles);
     });
@@ -85,6 +86,10 @@ describe('inviteRules', () => {
         [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'AUTO' }, 'tenant', 'platform', true],
         [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }, 'tenant', 'platform', false],
         [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }, 'counsellor', 'platform', true],
+        [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }, 'tenant', 'tenant', true],
+        [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }, 'counsellor', 'tenant', false],
+        [{ targetRole: 'AGENCY_ADMIN' }, 'tenant', 'tenant', false],
+        [{ targetRole: 'TENANT_ADMIN', tenantIdAllocationMode: 'EXISTING' }, 'tenant', 'agency', false],
         [{ targetRole: 'AGENCY_ADMIN' }, 'counsellor', 'tenant', true],
         [{ targetRole: 'AGENCY_ADMIN' }, 'counsellor', 'agency', false],
         [{ targetRole: 'ADVICE_SEEKER' }, 'counsellor', 'platform', false],
@@ -102,15 +107,23 @@ describe('inviteRules', () => {
                 ...patch,
             });
 
-        it('swaps Berater:in and BST-Admin on an open invite; Träger-Admin needs a new invite', () => {
+        it('swaps Berater:in and BST-Admin on an open invite; a Träger admin has no Träger-Admin entry here', () => {
             expect(roleMenuFor(open(), 'tenant', 'counsellor')).toEqual({
                 mode: 'change',
                 entries: [
                     { action: 'change', role: 'COUNSELLOR', current: true },
                     { action: 'change', role: 'AGENCY_ADMIN', current: false },
-                    { action: 'change', role: 'TENANT_ADMIN', current: false, disabledReason: 'needsNewInvite' },
                 ],
                 pointsToUsers: false,
+            });
+        });
+
+        it('leaves the platform admin the Träger-Admin entry, locked until a new invite', () => {
+            expect(roleMenuFor(open(), 'platform', 'counsellor').entries.at(-1)).toEqual({
+                action: 'change',
+                role: 'TENANT_ADMIN',
+                current: false,
+                disabledReason: 'needsNewInvite',
             });
         });
 
@@ -143,7 +156,7 @@ describe('inviteRules', () => {
         });
 
         it('only adds "auch BST-Admin" once the account exists; removal points to the users area', () => {
-            expect(roleMenuFor(accepted(), 'tenant', 'counsellor')).toEqual({
+            expect(roleMenuFor(accepted(), 'platform', 'counsellor')).toEqual({
                 mode: 'add',
                 entries: [
                     { action: 'add', role: 'AGENCY_ADMIN', current: false },

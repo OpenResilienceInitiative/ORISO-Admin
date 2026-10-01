@@ -166,7 +166,8 @@ const meta = {
     decorators: [
         withAdminProviders,
         (Story) => {
-            setStoryAuth([UserRole.TenantAdmin]);
+            // Tenant id 0 with both admin roles is the platform operator.
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin]);
             return <Story />;
         },
     ],

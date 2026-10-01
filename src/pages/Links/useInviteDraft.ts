@@ -256,7 +256,10 @@ export const useInviteDraft = ({
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     // A counsellor account cannot be provisioned without names.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
+    // The server lets an agency admin invite counsellors only, so the Träger tab is read-only for them.
+    const mayNotInvite = tenantTab && viewer.scope === 'agency';
     const isValid =
+        !mayNotInvite &&
         emailValid &&
         !emailTaken &&
         tenantIdValid &&
@@ -271,7 +274,7 @@ export const useInviteDraft = ({
         email: emailValid && !emailTaken,
         firstName: firstName.trim().length > 0,
         lastName: lastName.trim().length > 0,
-        tenant: tenantTab ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
+        tenant: tenantMayBeNew ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
         agency: agencyPicked,
         role: true,
         alsoCounsellor: true,
@@ -325,6 +328,12 @@ export const useInviteDraft = ({
     // The first unmet precondition, in the order an admin fills the row.
     const blockReason = (() => {
         if (isValid || submitting) return undefined;
+        if (mayNotInvite) {
+            return t(
+                'links.composer.blocked.tenantTabAgencyAdmin',
+                'Nur Träger- und Plattform-Admins können Träger-Admins einladen.',
+            );
+        }
         if (!emailValid) return t('links.composer.blocked.email', 'Bitte eine gültige E-Mail-Adresse eingeben.');
         if (emailTaken) {
             return t(

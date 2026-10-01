@@ -7,8 +7,11 @@ import type { InviteViewerScope } from '../pages/Links/inviteModel';
  * Which "Links" tabs an admin may see. The section hands out invite links, and each
  * tab creates something a level BELOW the admin who uses it:
  *
- * - "Träger-Invites" create whole tenants and "Externe Inbounds" configure
- *   platform-wide inbound links → platform admin only.
+ * - "Externe Inbounds" configure platform-wide inbound links → platform admin only.
+ * - "Träger-Invites" found whole tenants for the platform admin; a tenant admin
+ *   sees the tab too but only invites further admins into their OWN Träger
+ *   (the server refuses anything else). An agency admin sees it, the server
+ *   lets them invite counsellors only, so the tab is read-only for them.
  * - "Berater-Invites" create counsellors inside the admin's own unit → platform
  *   admin, tenant admin and agency admin (counsellors into own agencies only).
  */
@@ -26,7 +29,7 @@ export const resolveVisibleLinksTabs = ({ isSuperAdmin, hasRole }: LinksAccessCo
         return ['tenants', 'counsellor', 'external-inbounds'];
     }
     if (hasRole(UserRole.TenantAdmin) || isAgencyAdmin(hasRole)) {
-        return ['counsellor'];
+        return ['tenants', 'counsellor'];
     }
     return [];
 };
@@ -41,9 +44,9 @@ export const resolveInviteViewerScope = ({ isSuperAdmin, hasRole }: LinksAccessC
 export const canSeeLinksSection = (context: LinksAccessContext): boolean => resolveVisibleLinksTabs(context).length > 0;
 
 /**
- * The invite e-mail template kinds each Links tab sends with. Tenant invites and
- * the contract forward belong to the platform operator's work; the counsellor
- * invite is the kind everyone else sends with.
+ * The invite e-mail template kinds each Links tab sends with. The contract
+ * forward belongs to the platform operator's work (see `resolveVisibleTemplateKinds`);
+ * the tenant and counsellor invites are what every other admin sends with.
  */
 const TEMPLATE_KINDS_BY_TAB: Record<LinksTabKey, InviteEmailTemplateKind[]> = {
     tenants: ['TENANT_INVITE', 'DPA_FORWARD'],
@@ -61,7 +64,10 @@ const TEMPLATE_KINDS_BY_TAB: Record<LinksTabKey, InviteEmailTemplateKind[]> = {
  * only line an admin's view can be drawn along.
  */
 export const resolveVisibleTemplateKinds = (context: LinksAccessContext): InviteEmailTemplateKind[] =>
-    resolveVisibleLinksTabs(context).flatMap((tab) => TEMPLATE_KINDS_BY_TAB[tab]);
+    resolveVisibleLinksTabs(context)
+        .flatMap((tab) => TEMPLATE_KINDS_BY_TAB[tab])
+        // Forwarding a contract is the platform operator's work, whatever tabs another admin has.
+        .filter((kind) => kind !== 'DPA_FORWARD' || context.isSuperAdmin);
 
 /**
  * Whether an admin may change a STORED template. Because a template is shared by

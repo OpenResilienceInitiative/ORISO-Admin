@@ -568,7 +568,7 @@ const RoleBoard = ({
         invites={ROLE_INVITES}
         loading={false}
         targetRole="COUNSELLOR"
-        viewerScope="tenant"
+        viewerScope="platform"
         selectedIds={[]}
         onSelectionChange={() => {}}
         isRowSelectable={() => false}
