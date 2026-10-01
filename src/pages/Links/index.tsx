@@ -7,7 +7,7 @@ import { Page } from '../../components/Page';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
-import { type LinksTabKey, resolveVisibleLinksTabs } from '../../constants/linksAccess';
+import { type LinksTabKey, resolveInviteViewerScope, resolveVisibleLinksTabs } from '../../constants/linksAccess';
 import routePathNames from '../../appConfig';
 import pageStyles from '../../components/Page/styles.module.scss';
 // The tab glyph is the ORISO icon-master link mark, not the generic permissions
@@ -41,7 +41,10 @@ const useVisibleLinkTabs = () => {
     const { isSuperAdmin, hasRole } = useUserRoles();
     return useMemo(() => {
         const visible = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
-        return LINK_TABS.filter((tab) => visible.includes(tab.key));
+        return {
+            navigableTabs: LINK_TABS.filter((tab) => visible.includes(tab.key)),
+            viewerScope: resolveInviteViewerScope({ isSuperAdmin, hasRole }),
+        };
     }, [isSuperAdmin, hasRole]);
 };
 
@@ -50,7 +53,8 @@ export const LinksPage = () => {
     const { pathname } = useLocation();
     const isDesktopLayout = useIsDesktopLayout();
 
-    const navigableTabs = useVisibleLinkTabs();
+    const { navigableTabs, viewerScope } = useVisibleLinkTabs();
+    const displayedTabs = viewerScope === 'agency' ? navigableTabs : LINK_TABS;
 
     const activeSubsectionKey = useMemo(() => {
         const matches = navigableTabs
@@ -83,7 +87,7 @@ export const LinksPage = () => {
                 {isDesktopLayout && (
                     <div className={styles.pageHeader}>
                         <div className={pageStyles.tabsContainer}>
-                            {LINK_TABS.map((tab) =>
+                            {displayedTabs.map((tab) =>
                                 navigableTabs.includes(tab) ? (
                                     <NavLink className={pageStyles.tab} to={tab.to} key={tab.key}>
                                         <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
@@ -119,6 +123,7 @@ export const LinksPage = () => {
 
 /** `/admin/links` lands on the first tab the admin may see. */
 export const LinksIndexRedirect = () => {
-    const [firstTab] = useVisibleLinkTabs();
+    const { navigableTabs } = useVisibleLinkTabs();
+    const [firstTab] = navigableTabs;
     return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;
 };

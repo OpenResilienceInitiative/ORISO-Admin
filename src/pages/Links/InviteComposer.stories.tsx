@@ -200,6 +200,9 @@ const ComposerHarness = () => {
                     selectedTemplateId={templateId}
                     templateKind="TENANT_INVITE"
                     onClose={() => setDialogView(null)}
+                    onChanged={(saved) =>
+                        setTemplates((current) => [saved, ...current.filter((item) => item.id !== saved.id)])
+                    }
                     onSelect={(template) => {
                         setTemplateId(template.id);
                         setDialogView(null);
@@ -1081,5 +1084,52 @@ export const TenantTabReservedIdBlocksSending: Story = {
         await userEvent.type(await canvas.findByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
         await userEvent.type(canvas.getByRole('combobox', { name: FIELD.tenant }), '30');
         await canvas.findByText(/durch eine offene Einladung reserviert|reserved by an open invite/);
+    },
+};
+
+const createdInviteWithNewTemplate = fn();
+
+/** Blank creation from the toolbar immediately makes the saved template available for sending. */
+export const TenantTabCreateAndUseTemplate: Story = {
+    render: () => <ComposerHarness />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.post(INVITES_ENDPOINT, async ({ request }) => {
+                    createdInviteWithNewTemplate(await request.json());
+                    return HttpResponse.json({ id: 99 }, { status: 201 });
+                }),
+                ...defaultHandlers,
+                http.post(TEMPLATES_ENDPOINT, async ({ request }) =>
+                    HttpResponse.json(
+                        { ...TEMPLATES[0], ...((await request.json()) as object), id: 99 },
+                        { status: 201 },
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await canvas.findByRole('button', { name: /Träger-Willkommen/ });
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        const dialog = within(await body.findByRole('dialog'));
+        await expect(dialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        await expect(dialog.getByLabelText('Betreff')).toHaveValue('');
+        await expect(dialog.getByLabelText('Inhalt')).toHaveValue('');
+        await userEvent.type(dialog.getByLabelText('Vorlagenname'), 'Neue Einladung');
+        await userEvent.type(dialog.getByLabelText('Betreff'), 'Willkommen');
+        await userEvent.type(dialog.getByLabelText('Inhalt'), 'Ihr Zugang zur Beratung');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
+        await expect(canvas.getByRole('button', { name: /Neue Einladung/ })).toBeVisible();
+        await userEvent.type(canvas.getByRole('textbox', { name: FIELD.email }), PREFILLED.recipientEmail);
+        await waitFor(() => expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeEnabled());
+        await userEvent.click(canvas.getByRole('button', { name: SEND.createAndInvite }));
+        await waitFor(() =>
+            expect(createdInviteWithNewTemplate).toHaveBeenCalledWith(expect.objectContaining({ templateId: 99 })),
+        );
     },
 };

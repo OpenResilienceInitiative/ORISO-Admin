@@ -216,6 +216,7 @@
     "counsellorOnboarding.topics.selectExistingHint": "Choose the topics of your counselling centre you counsel in – at least one.",
     "counsellorOnboarding.topics.pickOneHint": "Choose the topic of your counselling centre you counsel in.",
     "counsellorOnboarding.topics.fixedHint": "Your counselling centre has set your topic.",
+    "counsellorOnboarding.topics.languageError": "The topic names could not be loaded in your language. Please try again.",
     "counsellorOnboarding.topics.add": "Add topic",
     "counsellorOnboarding.topics.remove": "Remove {{topic}}",
     "counsellorOnboarding.topics.none": "No focus topics are available for this invitation yet. Please contact the person who invited you.",
