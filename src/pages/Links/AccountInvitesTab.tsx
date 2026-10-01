@@ -605,7 +605,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                             list: templates,
                             selectedId: selectedTemplateId,
                             onSelect: setSelectedTemplateId,
-                            onManage: (intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list'),
+                            onManage: (intent) => {
+                                setCreateFromTemplateId(undefined);
+                                setTemplatesDialogView(intent === 'create' ? 'create' : 'list');
+                            },
                             onCreateFrom: (templateId) => {
                                 setCreateFromTemplateId(templateId);
                                 setTemplatesDialogView('create');

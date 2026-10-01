@@ -198,6 +198,40 @@ describe('EmailTemplatesDialog', () => {
         expect(within(rows[2]).getByText('Default counsellor template')).toBeInTheDocument();
     });
 
+    it('uses a newly saved active template immediately in picker mode', async () => {
+        const user = userEvent.setup();
+        const onChanged = vi.fn();
+        const onSelect = vi.fn();
+        const saved = { ...tenantTemplate, id: 99, name: 'Directly usable' };
+        mocks.createInviteEmailTemplate.mockResolvedValue(saved);
+        renderDialog({ onChanged, onSelect });
+        const dialog = await openCreateForm(user);
+        await user.type(dialog.getByLabelText('Vorlagenname'), saved.name);
+        await user.type(dialog.getByLabelText('Betreff'), 'Welcome');
+        await user.type(dialog.getByLabelText('Inhalt'), 'Your invitation');
+        await user.click(dialog.getByRole('button', { name: 'save' }));
+        await waitFor(() => expect(onSelect).toHaveBeenCalledWith(saved));
+        expect(onChanged).toHaveBeenCalledWith(saved);
+        expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([{ active: false }, { kind: 'COUNSELLOR_INVITE' }])(
+        'keeps a newly saved unusable template in the overview: %j',
+        async (changes) => {
+            const user = userEvent.setup();
+            const onSelect = vi.fn();
+            mocks.createInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, id: 99, ...changes });
+            renderDialog({ onSelect });
+            const dialog = await openCreateForm(user);
+            await user.type(dialog.getByLabelText('Vorlagenname'), 'New template');
+            await user.type(dialog.getByLabelText('Betreff'), 'Welcome');
+            await user.type(dialog.getByLabelText('Inhalt'), 'Your invitation');
+            await user.click(dialog.getByRole('button', { name: 'save' }));
+            await screen.findByTestId('listing-table');
+            expect(onSelect).not.toHaveBeenCalled();
+        },
+    );
+
     it('creates a template preset to the opening kind, notifies the opener, and refreshes', async () => {
         const user = userEvent.setup();
         const onChanged = vi.fn();

@@ -301,6 +301,7 @@ export const InvitePanel = ({
                             templates.onCreateFrom &&
                             ((id) => templates.onCreateFrom?.(typeof id === 'number' ? id : Number(id)))
                         }
+                        onCreateTemplate={() => templates.onManage('create')}
                         onMainClick={() => templates.onManage('list')}
                         onSelectTemplate={(id) => {
                             templates.onSelect?.(typeof id === 'number' ? id : Number(id));

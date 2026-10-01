@@ -45,13 +45,18 @@ vi.mock('./EmailTemplatesDialog', () => ({
     EmailTemplatesDialog: ({
         initialView,
         initialTemplateId,
+        onClose,
     }: {
         initialView?: string;
         initialTemplateId?: number;
+        onClose: () => void;
     }) => (
         <div data-testid="templates-dialog">
             {initialView}
             {initialTemplateId != null ? `:${initialTemplateId}` : ''}
+            <button type="button" onClick={onClose}>
+                Close template dialog
+            </button>
         </div>
     ),
 }));
@@ -564,6 +569,29 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                 ),
             ).toHaveLength(0);
         });
+    });
+
+    it('opens a blank new template from the invitation toolbar', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create');
+        expect(screen.getByTestId('templates-dialog')).not.toHaveTextContent('create:');
+    });
+
+    it('starts blank after closing a create-from dialog', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
+        await user.click(screen.getByRole('button', { name: 'Close template dialog' }));
+        await user.click(screen.getByTitle('Standard'));
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create');
+        expect(screen.getByTestId('templates-dialog')).not.toHaveTextContent('create:');
     });
 
     it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {

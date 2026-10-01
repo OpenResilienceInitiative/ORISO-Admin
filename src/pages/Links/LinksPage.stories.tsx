@@ -56,11 +56,30 @@ const withOutlet =
 /** Platform admin (tenantId 0): all three tabs — Träger-Invites, Berater-Invites, Externe Inbounds. */
 export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeVisible();
+    },
 };
 
 /** Träger admin: "Berater-Invites"; the platform-only tabs are shown disabled. */
 export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toHaveAttribute('href');
+        // Träger-Invites and Externe Inbounds belong to the platform admin: shown, never openable.
+        for (const name of [/Träger-Invites|Tenant invites/, /Externe Inbounds|External inbounds/]) {
+            const tab = canvas.getByRole('link', { name });
+            await expect(tab).toHaveAttribute('aria-disabled', 'true');
+            await expect(tab).not.toHaveAttribute('href');
+        }
+        await expect(
+            await canvas.findByRole('heading', { name: /Berater:in einladen|Invite counsellor/ }),
+        ).toBeVisible();
+    },
 };
 
 // The backend scopes the agency search to an agency admin's own agencies; these handlers do the same.
@@ -100,15 +119,11 @@ export const AgencyAdmin: Story = {
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
         // One role on offer: „Rolle" is a fixed value row on „Berater:in".
         await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
-        // Platform-only tabs stay visible, disabled, and say why.
-        // Announced like its enabled siblings: a link, marked disabled.
-        const tenantTab = canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ });
-        await expect(tenantTab).toHaveAttribute('aria-disabled', 'true');
-        await expect(tenantTab).not.toHaveAttribute('href');
-        tenantTab.focus();
-        await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
-            /Nur Plattform-Admins|Platform admins only/,
-        );
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeNull();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.queryByText(/Träger-Invites|Tenant invites/)).toBeNull();
+        await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
     },
 };
 
@@ -116,6 +131,7 @@ export const AgencyAdmin: Story = {
 export const RestrictedAgencyAdmin: Story = {
     parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
     decorators: [withOutlet([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
+    play: AgencyAdmin.play,
 };
 
 /** Agency admin of several Beratungsstellen: picks among them only, never a new one. */

@@ -816,6 +816,12 @@ export const CounsellorCompact: Story = {
         const steps = within(anke.getByRole('list')).getAllByRole('listitem');
         await expect(steps).toHaveLength(4);
         await expect(steps[3].getBoundingClientRect().top).toBeGreaterThan(steps[2].getBoundingClientRect().top);
+        // A wrapped bead still explains its step on hover.
+        await userEvent.hover(steps[3].querySelector<HTMLElement>('[tabindex="0"]') as HTMLElement);
+        await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
+            /(Wartet auf Abschluss: dieser Schritt ist gerade an der Reihe|Awaiting completion: .+)/,
+        );
+        await userEvent.unhover(steps[3]);
         // Actions sit under the status chip in the same cell.
         const revoke = anke.getByRole('button', { name: /Einladung widerrufen|revoke/i });
         const status = anke.getByText(/^(Angenommen|Accepted)$/);
