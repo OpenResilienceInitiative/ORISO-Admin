@@ -211,6 +211,7 @@
     "counsellorOnboarding.topics.selectExistingHint": "Wählen Sie aus den Themen Ihrer Beratungsstelle, in denen Sie beraten – mindestens eines.",
     "counsellorOnboarding.topics.pickOneHint": "Wählen Sie das Thema Ihrer Beratungsstelle, in dem Sie beraten.",
     "counsellorOnboarding.topics.fixedHint": "Ihr Thema hat Ihre Beratungsstelle festgelegt.",
+    "counsellorOnboarding.topics.languageError": "Die Themennamen konnten nicht in Ihrer Sprache geladen werden. Bitte versuchen Sie es erneut.",
     "counsellorOnboarding.topics.add": "Thema hinzufügen",
     "counsellorOnboarding.topics.remove": "{{topic}} entfernen",
     "counsellorOnboarding.topics.none": "Für diese Einladung sind noch keine Themenfelder hinterlegt. Bitte wenden Sie sich an die Person, die Sie eingeladen hat.",

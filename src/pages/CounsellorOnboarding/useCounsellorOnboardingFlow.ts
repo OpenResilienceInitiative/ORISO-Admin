@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeLanguage } from '../../utils/language';
 import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import {
     CounsellorOnboardingClient,
@@ -96,7 +97,15 @@ export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): nu
 /** Single source: the shared consultant credential policy (also used by the admin form). */
 export { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from '../../utils/consultantCredentialRules';
 
-export const useCounsellorOnboardingFlow = (inviteToken: string, client: CounsellorOnboardingClient) => {
+export const useCounsellorOnboardingFlow = (
+    inviteToken: string,
+    client: CounsellorOnboardingClient,
+    language = 'de',
+) => {
+    const topicLanguage = normalizeLanguage(language) ?? 'de';
+    const loadedTopics = useRef<{ token: string; language: string } | null>(null);
+    const [topicLanguageError, setTopicLanguageError] = useState(false);
+    const [topicNamesAttempt, setTopicNamesAttempt] = useState(0);
     const [state, setState] = useState<CounsellorOnboardingState>({ phase: 'loading' });
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
@@ -127,10 +136,14 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         }
 
         setState({ phase: 'loading' });
+        setTopicLanguageError(false);
+        loadedTopics.current = null;
+        const requestedLanguage = topicLanguage;
         client
             .getOnboardingInvite(inviteToken)
             .then((loaded) => {
                 if (cancelled) return;
+                loadedTopics.current = { token: inviteToken, language: requestedLanguage };
                 setInvite(loaded);
                 if (loaded.phase === 'PENDING_2FA_ACTIVATION') {
                     // Resume (#569 contract): the registration already
@@ -170,6 +183,65 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         // The invite is resolved once per token/attempt; the client is stable by contract.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inviteToken, loadAttempt]);
+
+    // A locale change refreshes labels without resetting the form, while still
+    // honouring terminal/resumed invite states. Re-running the initial resolve
+    // would erase the account, avatar, names and topic selection already entered.
+    useEffect(() => {
+        let cancelled = false;
+        setTopicLanguageError(false);
+        if (
+            state.phase !== 'form' ||
+            busy ||
+            loadedTopics.current?.token !== inviteToken ||
+            loadedTopics.current.language === topicLanguage
+        ) {
+            return undefined;
+        }
+        client
+            .getOnboardingInvite(inviteToken)
+            .then((localized) => {
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
+                if (localized.phase === 'PENDING_2FA_ACTIVATION') {
+                    setState({
+                        phase: 'two-factor',
+                        result: { twoFactor: localized.twoFactor ?? null, resumed: true },
+                    });
+                    return;
+                }
+                const names = new Map(
+                    [...localized.topics, ...(localized.availableTopics ?? [])].map((topic) => [topic.id, topic]),
+                );
+                loadedTopics.current = { token: inviteToken, language: topicLanguage };
+                setInvite((current) => {
+                    if (!current || cancelled) return current;
+                    const localize = (topic: CounsellorOnboardingInviteDTO['topics'][number]) => {
+                        const translated = names.get(topic.id);
+                        return translated ? { ...topic, name: translated.name } : topic;
+                    };
+                    return {
+                        ...current,
+                        topics: current.topics.map(localize),
+                        availableTopics: current.availableTopics?.map(localize),
+                    };
+                });
+            })
+            .catch((error: unknown) => {
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
+                if (error instanceof InviteLinkError) {
+                    setState({ phase: 'link-error', reason: error.reason });
+                    return;
+                }
+                setTopicLanguageError(true);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [client, inviteToken, topicLanguage, topicNamesAttempt, state.phase, busy]);
+
+    const retryTopicNames = useCallback(() => {
+        setTopicNamesAttempt((attempt) => attempt + 1);
+    }, []);
 
     const retryLoad = useCallback(() => {
         if (stateRef.current.phase !== 'load-error') {
@@ -316,6 +388,8 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         submitError,
         busy,
         retryLoad,
+        topicLanguageError,
+        retryTopicNames,
         updateAccount,
         updatePerson,
         updateNames,
