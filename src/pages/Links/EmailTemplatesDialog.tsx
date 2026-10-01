@@ -373,6 +373,10 @@ export const EmailTemplatesDialog = ({
                 message.success(t('links.templates.created', 'Template created'));
             }
             onChanged?.(saved);
+            if (!editingTemplate && isSelectable(saved)) {
+                onSelect?.(saved);
+                return;
+            }
             backToList();
             await loadTemplates();
         } catch {
@@ -384,7 +388,19 @@ export const EmailTemplatesDialog = ({
         } finally {
             setSubmitting(false);
         }
-    }, [backToList, draftComplete, draftMeta, draftValues, editingTemplate, loadTemplates, onChanged, submitting, t]);
+    }, [
+        backToList,
+        draftComplete,
+        draftMeta,
+        draftValues,
+        editingTemplate,
+        isSelectable,
+        loadTemplates,
+        onChanged,
+        onSelect,
+        submitting,
+        t,
+    ]);
 
     const columns = useMemo(
         () => [
