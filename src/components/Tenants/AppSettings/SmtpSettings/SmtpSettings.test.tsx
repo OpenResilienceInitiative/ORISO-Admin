@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
     tenantData: undefined as any,
     appSettings: {} as any,
+    sendTenantSmtpTestEmail: vi.fn(),
 }));
 
 const t = (key: string) => key;
@@ -25,6 +26,9 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
     useTenantAdminDataMutation: () => ({ mutate: mocks.mutate }),
 }));
+vi.mock('../../../../api/tenant/sendTenantSmtpTestEmail', () => ({
+    sendTenantSmtpTestEmail: mocks.sendTenantSmtpTestEmail,
+}));
 
 // eslint-disable-next-line import/first
 import { SmtpSettings } from './index';
@@ -38,11 +42,12 @@ const renderCard = () => {
     );
 };
 
-const passwordInput = () => document.querySelector('input[type="password"]') as HTMLInputElement | null;
+const passwordInput = () => screen.getByLabelText<HTMLInputElement>('tenants.appSettings.smtp.passwordNew');
 
 describe('SmtpSettings (write-only password, #730)', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.sendTenantSmtpTestEmail.mockReset().mockResolvedValue({ status: 204 });
         mocks.appSettings = {
             globalSmtpHost: 'global.example.org',
             globalSmtpUsername: 'global-user',
@@ -67,8 +72,8 @@ describe('SmtpSettings (write-only password, #730)', () => {
     it('renders the password field empty and never leaks a stored or global secret', () => {
         renderCard();
 
-        expect(passwordInput()).not.toBeNull();
-        expect(passwordInput()!.value).toBe('');
+        expect(passwordInput()).toBeInTheDocument();
+        expect(passwordInput().value).toBe('');
         expect(document.body.innerHTML).not.toContain('global-secret');
     });
 
@@ -76,6 +81,20 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.passwordStored')).toBeInTheDocument();
+    });
+
+    it('tests only the saved own server without sending a recipient or SMTP secret from the form', async () => {
+        renderCard();
+        fireEvent.click(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' }));
+        await waitFor(() => expect(mocks.sendTenantSmtpTestEmail).toHaveBeenCalledWith('1'));
+        expect(mocks.sendTenantSmtpTestEmail.mock.calls[0]).toHaveLength(1);
+    });
+
+    it('does not offer a test for platform mode or an unsaved own server', () => {
+        mocks.tenantData.settings.smtpMode = 'PLATFORM';
+        renderCard();
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
+        expect(mocks.sendTenantSmtpTestEmail).not.toHaveBeenCalled();
     });
 
     it('shows the not-set indicator when no password is stored', () => {
@@ -94,7 +113,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.passwordStored')).toBeInTheDocument();
-        expect(passwordInput()!.value).toBe('');
+        expect(passwordInput().value).toBe('');
         expect(document.body.innerHTML).not.toContain('legacy-plaintext');
     });
 
@@ -114,7 +133,7 @@ describe('SmtpSettings (write-only password, #730)', () => {
         renderCard();
 
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
-        fireEvent.change(passwordInput()!, { target: { value: 'rotated-secret' } });
+        fireEvent.change(passwordInput(), { target: { value: 'rotated-secret' } });
         fireEvent.click(screen.getByText('card.edit.save'));
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
@@ -137,6 +156,45 @@ describe('SmtpSettings (write-only password, #730)', () => {
         expect(JSON.stringify(sent.settings.smtp)).not.toContain('tenant-user');
         expect(JSON.stringify(sent.settings)).not.toContain('global.example.org');
         expect(JSON.stringify(sent.settings)).not.toContain('global-user');
+    });
+
+    it.each([0, 65536])('can select PLATFORM and save with a retained invalid OWN port of %i', async (port) => {
+        mocks.tenantData.settings.smtp.port = port;
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const portField = screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' });
+        expect(portField).toHaveValue(port);
+        fireEvent.click(screen.getByRole('radio', { name: 'tenants.appSettings.smtp.platformMode' }));
+        expect(portField).toBeDisabled();
+        fireEvent.click(screen.getByText('card.edit.save'));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate.mock.calls[0][0].settings).toMatchObject({
+            smtpMode: 'PLATFORM',
+            smtp: { enabled: false, emailThemeColor: '#0f3b8f' },
+        });
+        expect(mocks.mutate.mock.calls[0][0].settings.smtp).toEqual({
+            enabled: false,
+            emailThemeColor: '#0f3b8f',
+        });
+        expect(screen.queryByText('tenants.appSettings.smtp.port.invalid')).not.toBeInTheDocument();
+    });
+
+    it.each([0, 65536])('still rejects an OWN port of %i without sending a save', async (port) => {
+        mocks.tenantData.settings.smtp.port = port;
+        renderCard();
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const portField = screen.getByRole('spinbutton', { name: 'tenants.appSettings.smtp.port' });
+        expect(portField).not.toBeDisabled();
+        expect(portField).toBeInvalid();
+        // Exercise registered Form rules as well as the native number constraint.
+        // A normal button click already stops at native min/max validation.
+        fireEvent.submit(portField.closest('form')!);
+
+        expect(await screen.findByText('tenants.appSettings.smtp.ownServerIncomplete')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
     it('refuses to save an incomplete own-server configuration', async () => {
@@ -194,14 +252,14 @@ describe('SmtpSettings (tenant mode is independent of platform SMTP)', () => {
         expect(passwordInput()).not.toBeDisabled();
     });
 
-    it('explains every field and offers no test e-mail on the tenant side', () => {
+    it('explains every field and disables the stored-server test for an incomplete server', () => {
         renderCard();
 
         expect(screen.getByText('tenants.appSettings.smtp.description')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.host.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.from.helpText')).toBeInTheDocument();
         expect(screen.getByText('tenants.appSettings.smtp.passwordNotSet')).toBeInTheDocument();
-        expect(document.body.innerHTML).not.toContain('smtp.test');
+        expect(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' })).toBeDisabled();
         expect(inputByName('recipientEmail')).toBeNull();
     });
 });
