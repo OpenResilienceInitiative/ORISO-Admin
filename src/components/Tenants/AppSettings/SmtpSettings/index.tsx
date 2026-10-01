@@ -286,15 +286,19 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 helpText={t('tenants.appSettings.smtp.port.helpText')}
                                 min={1}
                                 inputProps={{ max: 65535 }}
-                                rules={[
-                                    ownServerRule(false, true),
-                                    {
-                                        type: 'number',
-                                        min: 1,
-                                        max: 65535,
-                                        message: t('tenants.appSettings.smtp.port.invalid'),
-                                    },
-                                ]}
+                                rules={
+                                    ownServerSelected
+                                        ? [
+                                              ownServerRule(false, true),
+                                              {
+                                                  type: 'number',
+                                                  min: 1,
+                                                  max: 65535,
+                                                  message: t('tenants.appSettings.smtp.port.invalid'),
+                                              },
+                                          ]
+                                        : []
+                                }
                                 disabled={!ownServerSelected}
                             />
                             <MuiFormField

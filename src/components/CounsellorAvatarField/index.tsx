@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
+import AbcIcon from '@mui/icons-material/Abc';
 import { AvatarPickerGrid, type AvatarOption } from '../AvatarPickerGrid';
 import { ReactComponent as ArrowIcon } from '../../resources/img/svg/keyboard-arrow-down.svg';
 import { ANIMAL_AVATARS } from '../../resources/img/svg/avatars';
@@ -21,15 +22,22 @@ export const INITIALS_TILE_ID = '__initials__';
 
 /** Tile diameter and grid gap, mirrored from AvatarPickerGrid's stylesheet. */
 const TILE_SIZE = 52;
-const GRID_GAP = 8;
+const GRID_GAP = 12;
 /** One arrow click travels exactly one row, so the motion is legible. */
-const ROW_STEP = TILE_SIZE + GRID_GAP;
+export const ROW_STEP = TILE_SIZE + GRID_GAP;
+/**
+ * Room around the grid inside the scrolling viewport. The selection ring
+ * reaches 6px beyond a tile and the focus outline around it 10px (2px at an
+ * 8px offset); anything less and an edge tile's indicator is clipped.
+ */
+export const VIEWPORT_PADDING = 10;
 /**
  * The picker shows five rows and scrolls (owner, 2026-09-17): all 61 motifs at
- * once pushed the rest of the form off the screen.
+ * once pushed the rest of the form off the screen. The padding is added on top
+ * so the five rows stay fully visible (the viewport is border-box).
  */
 export const VISIBLE_ROWS = 5;
-export const VIEWPORT_HEIGHT = VISIBLE_ROWS * TILE_SIZE + (VISIBLE_ROWS - 1) * GRID_GAP;
+export const VIEWPORT_HEIGHT = VISIBLE_ROWS * TILE_SIZE + (VISIBLE_ROWS - 1) * GRID_GAP + 2 * VIEWPORT_PADDING;
 
 export interface CounsellorAvatarFieldProps extends CounsellorNameParts {
     value: CounsellorAvatarValue;
@@ -124,9 +132,15 @@ export const CounsellorAvatarField = ({
         () => [
             {
                 id: INITIALS_TILE_ID,
-                // Empty until a name is typed — an empty tinted circle is honest,
-                // a placeholder letter would be a name the counsellor never has.
-                node: <span className={styles.initials}>{initials}</span>,
+                // Until a name is typed there are no initials. A bare red circle
+                // read as "failed to load" (owner, 2026-09-24), and a placeholder
+                // letter would be a name the counsellor never has — so the tile
+                // shows the generic "ABC" glyph that stands for "initials".
+                node: initials ? (
+                    <span className={styles.initials}>{initials}</span>
+                ) : (
+                    <AbcIcon aria-hidden="true" data-testid="initials-placeholder" />
+                ),
                 label: initials ? t('counselor.avatar.initials', { initials }) : t('counselor.avatar.initials.empty'),
             },
             ...ANIMAL_AVATARS.map(({ id, Icon }) => ({
@@ -158,7 +172,7 @@ export const CounsellorAvatarField = ({
                 <div
                     ref={viewportRef}
                     className={styles.viewport}
-                    style={{ maxHeight: VIEWPORT_HEIGHT }}
+                    style={{ maxHeight: VIEWPORT_HEIGHT, padding: VIEWPORT_PADDING }}
                     onScroll={syncScrollState}
                 >
                     <AvatarPickerGrid
