@@ -369,8 +369,8 @@ export const ScrollButtonsOnOverflow: Story = {
 
 /** Nothing to scroll: a row that fits shows no scroll buttons at all. */
 export const ScrollButtonsOnlyWhenOverflowing: Story = {
-    // A Träger admin has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
-    args: { initialValues: { ...PREFILLED, role: 'TENANT_ADMIN' } },
+    // The Träger tab has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
+    args: { tab: 'tenant', initialValues: PREFILLED },
     decorators: [frameOf(1400)],
     globals: { viewport: { value: 'desktop', isRotated: false } },
     play: async ({ canvasElement }) => {
@@ -879,9 +879,10 @@ export const RoleHidesFields: Story = {
         await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
 
+        // Träger-Admin is no role of this tab: a new Träger is founded on the Träger tab.
         await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
-        await userEvent.click(await body.findByTitle(/Träger-Admin|Tenant admin/));
-        await waitFor(() => expect(canvas.queryByRole('combobox', { name: FIELD.agency })).not.toBeInTheDocument());
+        await expect(await body.findByTitle(/^(Berater:in|Counsellor)$/)).toBeInTheDocument();
+        await expect(body.queryByTitle(/Träger-Admin|Tenant admin/)).not.toBeInTheDocument();
     },
 };
 

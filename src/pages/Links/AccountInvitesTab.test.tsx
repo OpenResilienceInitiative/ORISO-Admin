@@ -1130,39 +1130,50 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(tenant).toHaveValue('');
     });
 
-    it('lists every invite that joins a unit, but not the Träger founders', async () => {
-        const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
-        const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
-        const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
-        const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
-        mocks.listAccountInvites.mockResolvedValue(
-            invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
-        );
+    it.each([
+        ['the platform admin', true],
+        ['a Träger admin', false],
+    ])(
+        'lists on the Berater tab every invite that joins an agency, never a Träger-Admin invite — %s',
+        async (_who, platform) => {
+            const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+            const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
+            const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+            const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
+            );
 
-        mocks.superAdmin = true;
-        render(<CounsellorInvitesTab />);
+            mocks.superAdmin = platform;
+            render(<CounsellorInvitesTab />);
 
-        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
-        expect(screen.getByText('taken2@example.org')).toBeInTheDocument();
-        expect(screen.getByText('taken3@example.org')).toBeInTheDocument();
-        expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
-        expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
-    });
+            expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+            expect(screen.getByText('taken2@example.org')).toBeInTheDocument();
+            expect(screen.queryByText('taken3@example.org')).not.toBeInTheDocument();
+            expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
+            expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
+        },
+    );
 
-    it('gives a Träger admin their own further Träger admins on the Träger tab, not on the Berater tab', async () => {
-        const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
-        const furtherAdmin = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
-        mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow, furtherAdmin]));
+    it.each([
+        ['the platform admin', true],
+        ['a Träger admin', false],
+    ])(
+        'lists on the Träger tab every Träger-Admin invite, new Träger or further admin — %s',
+        async (_who, platform) => {
+            const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+            const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+            const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow, joinsTenant, foundsTenant]));
 
-        const { unmount } = render(<CounsellorInvitesTab />);
-        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
-        expect(screen.queryByText('taken3@example.org')).not.toBeInTheDocument();
-        unmount();
+            mocks.superAdmin = platform;
+            render(<TenantInvitesTab />);
 
-        render(<TenantInvitesTab />);
-        expect(await screen.findByText('taken3@example.org')).toBeInTheDocument();
-        expect(screen.queryByText('taken1@example.org')).not.toBeInTheDocument();
-    });
+            expect(await screen.findByText('taken3@example.org')).toBeInTheDocument();
+            expect(screen.getByText('taken4@example.org')).toBeInTheDocument();
+            expect(screen.queryByText('taken1@example.org')).not.toBeInTheDocument();
+        },
+    );
 
     it('changes a counsellor’s topic permission from the table', async () => {
         const counsellorRow = {

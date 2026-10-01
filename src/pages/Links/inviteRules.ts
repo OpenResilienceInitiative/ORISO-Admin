@@ -15,10 +15,13 @@ const ALL_ROLES: InviteRole[] = ['COUNSELLOR', 'AGENCY_ADMIN', 'TENANT_ADMIN'];
 /** A higher unit invites a lower one; the backend enforces the same rule. */
 export const invitableRoles = (viewer: InviteViewerScope, tab: InviteTab): InviteRole[] => {
     if (tab === 'tenant') return ['TENANT_ADMIN'];
-    if (viewer === 'agency') return ['COUNSELLOR'];
-    // A Träger admin invites further Träger admins on the Träger tab, not here.
-    return viewer === 'tenant' ? ['COUNSELLOR', 'AGENCY_ADMIN'] : ALL_ROLES;
+    // Träger admins, new Träger or further ones, are invited and listed on the Träger tab only.
+    return viewer === 'agency' ? ['COUNSELLOR'] : ['COUNSELLOR', 'AGENCY_ADMIN'];
 };
+
+/** A CSV file may still carry every role the viewer may hand out, Träger admins included. */
+export const csvInvitableRoles = (viewer: InviteViewerScope): InviteRole[] =>
+    viewer === 'agency' ? ['COUNSELLOR'] : ALL_ROLES;
 
 // The server refuses agency-admin self-assignment: that row was never read.
 export const SELF_ASSIGN_ROLES: InviteRole[] = ['COUNSELLOR'];
@@ -60,15 +63,11 @@ export const isBulkSelectable = (invite: AccountInviteDTO) =>
 
 const TAB_ROLES: ReadonlySet<AccountInviteTargetRole> = new Set(['TENANT_ADMIN', 'AGENCY_ADMIN', 'COUNSELLOR']);
 
-/** For the platform the Träger tab lists the invites that found a Träger; everything joining a unit is on the counsellor tab. */
+/** The Träger tab lists every Träger-Admin invite; everything joining an agency is on the counsellor tab. */
 export const listedOnTab = (invite: AccountInviteDTO, tab: InviteTab, viewer: InviteViewerScope): boolean => {
     if (!TAB_ROLES.has(invite.targetRole)) return false;
-    if (viewer === 'platform') {
-        const foundsTenant = invite.targetRole === 'TENANT_ADMIN' && invite.tenantIdAllocationMode !== 'EXISTING';
-        return foundsTenant === (tab === 'tenant');
-    }
-    // A Träger admin's Träger tab lists the further admins of their own Träger.
-    if (tab === 'tenant') return viewer === 'tenant' && invite.targetRole === 'TENANT_ADMIN';
+    // Every Träger-Admin invite, a new Träger or a further admin of an existing one, lives on the Träger tab.
+    if (tab === 'tenant') return viewer !== 'agency' && invite.targetRole === 'TENANT_ADMIN';
     // The backend scopes an agency admin's list; they act on counsellor invites only.
     return invite.targetRole !== 'TENANT_ADMIN' && (viewer !== 'agency' || invite.targetRole === 'COUNSELLOR');
 };
@@ -130,8 +129,8 @@ export const roleMenuFor = (
     tab: InviteTab,
 ): RoleMenu => {
     const allowed = invitableRoles(viewer, tab);
-    // A Träger admin's Träger-Admin invites live on the Träger tab, so that menu has no such entry.
-    const tabRoles: InviteRole[] = tab === 'tenant' || viewer === 'tenant' ? allowed : ALL_ROLES;
+    // Träger-Admin invites live on the Träger tab, so the Berater menu has no such entry.
+    const tabRoles: InviteRole[] = tab === 'tenant' ? ['TENANT_ADMIN'] : ['COUNSELLOR', 'AGENCY_ADMIN'];
     const current = invite.targetRole as InviteRole;
     const changeReason = (role: InviteRole): RoleLockReason | undefined => {
         if (role === current) return undefined;

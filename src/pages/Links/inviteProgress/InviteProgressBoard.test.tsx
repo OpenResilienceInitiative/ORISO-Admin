@@ -801,19 +801,6 @@ describe('InviteProgressBoard — role chip', () => {
         },
     );
 
-    it('explains that a Träger-Admin needs a new invite instead of a role change', async () => {
-        render(
-            <InviteProgressBoard {...counsellorProps([open], { onRoleChange: vi.fn(), viewerScope: 'platform' })} />,
-        );
-
-        await userEvent.click(roleChip('Lena Vogt'));
-        const tenantAdmin = within(await screen.findByRole('menu'))
-            .getByText('Träger-Admin')
-            .closest('li') as HTMLElement;
-        expect(tenantAdmin).toHaveAttribute('aria-disabled', 'true');
-        expect(tenantAdmin).toHaveTextContent('widerrufen und neu einladen');
-    });
-
     it('keeps the chip visible but locked without a change handler', () => {
         render(<InviteProgressBoard {...counsellorProps([open])} />);
         expect(roleChip('Lena Vogt')).toHaveAttribute('aria-disabled', 'true');

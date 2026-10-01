@@ -44,30 +44,25 @@ export const resolveInviteViewerScope = ({ isSuperAdmin, hasRole }: LinksAccessC
 export const canSeeLinksSection = (context: LinksAccessContext): boolean => resolveVisibleLinksTabs(context).length > 0;
 
 /**
- * The invite e-mail template kinds each Links tab sends with. The contract
- * forward belongs to the platform operator's work (see `resolveVisibleTemplateKinds`);
- * the tenant and counsellor invites are what every other admin sends with.
- */
-const TEMPLATE_KINDS_BY_TAB: Record<LinksTabKey, InviteEmailTemplateKind[]> = {
-    tenants: ['TENANT_INVITE', 'DPA_FORWARD'],
-    counsellor: ['COUNSELLOR_INVITE'],
-    'external-inbounds': [],
-};
-
-/**
- * Which template kinds an admin may see in the template list — derived from the
- * tabs they may use, so a tab granted or withdrawn later carries its templates
- * with it instead of drifting from a second hand-kept list.
+ * Which template kinds an admin may see, create and send with. Kind and the admin's
+ * own level are the only line an admin's view can be drawn along: templates carry
+ * no tenant in what the Admin shows, one text is shared and each Träger's branding
+ * is applied when the mail is rendered.
  *
- * Templates carry no tenant: one text is shared by the whole platform and each
- * tenant's branding is applied when the mail is rendered. Kind is therefore the
- * only line an admin's view can be drawn along.
+ * - Platform admin: every kind, the contract forward included.
+ * - Träger admin: the Berater and the Träger invite (they add further Träger admins).
+ * - Beratungsstellen admin: the Berater invite only; the Träger tab is read-only for them.
+ *
+ * The server enforces the same rule; this keeps the Admin from offering what it would refuse.
  */
-export const resolveVisibleTemplateKinds = (context: LinksAccessContext): InviteEmailTemplateKind[] =>
-    resolveVisibleLinksTabs(context)
-        .flatMap((tab) => TEMPLATE_KINDS_BY_TAB[tab])
-        // Forwarding a contract is the platform operator's work, whatever tabs another admin has.
-        .filter((kind) => kind !== 'DPA_FORWARD' || context.isSuperAdmin);
+export const resolveVisibleTemplateKinds = ({
+    isSuperAdmin,
+    hasRole,
+}: LinksAccessContext): InviteEmailTemplateKind[] => {
+    if (isSuperAdmin) return ['TENANT_INVITE', 'DPA_FORWARD', 'COUNSELLOR_INVITE'];
+    if (hasRole(UserRole.TenantAdmin)) return ['TENANT_INVITE', 'COUNSELLOR_INVITE'];
+    return isAgencyAdmin(hasRole) ? ['COUNSELLOR_INVITE'] : [];
+};
 
 /**
  * Whether an admin may change a STORED template. Because a template is shared by

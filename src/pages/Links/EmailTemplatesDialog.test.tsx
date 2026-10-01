@@ -974,6 +974,46 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
     });
 });
 
+/**
+ * A Beratungsstellen admin only writes and sends Berater invites: the Träger invite and the
+ * contract forward are neither listed nor offered as the kind of a new template.
+ */
+describe('EmailTemplatesDialog — a Beratungsstellen admin', () => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.useUserRoles.mockReturnValue({
+            isSuperAdmin: false,
+            tenantId: 40,
+            hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin),
+        });
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [counsellorTemplate] : []),
+        );
+    });
+
+    it('asks for the Berater invite only', async () => {
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind)).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('offers the Berater invite as the only kind of a new template', async () => {
+        const user = userEvent.setup();
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const kindOptions = within(screen.getByRole('dialog'))
+            .getAllByRole('option')
+            .map((option) => option.getAttribute('value'))
+            .filter(Boolean);
+        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+    });
+});
+
 describe('EmailTemplatesDialog — the platform admin', () => {
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();

@@ -606,9 +606,8 @@ export const RoleChipMenu: Story = {
         await userEvent.click(lena);
         const menu = await body.findByRole('menu');
         const items = within(menu).getAllByRole('menuitem');
-        await expect(items).toHaveLength(3);
-        await expect(items[2]).toHaveAttribute('aria-disabled', 'true');
-        await expect(items[2]).toHaveTextContent(/widerrufen und neu einladen|revoke and invite again/);
+        // Träger-Admin invites live on the Träger tab: two entries here.
+        await expect(items).toHaveLength(2);
         await userEvent.click(within(menu).getByText(/^(BST-Admin|Agency admin)$/));
         await expect(args.onRoleChange).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'lena.vogt@example.org' }),
