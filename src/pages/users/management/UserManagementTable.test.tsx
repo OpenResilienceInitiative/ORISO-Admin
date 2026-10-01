@@ -79,11 +79,11 @@ describe('UserManagementTable section authorization', () => {
         show();
         fireEvent.click(screen.getByRole('button', { name: /new$/ }));
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/add'));
-        const buttons = within(screen.getByTestId('rows')).getAllByRole('button');
-        expect(buttons).toHaveLength(2);
-        fireEvent.click(buttons[0]);
+        const row = within(screen.getByTestId('rows'));
+        expect(row.getAllByRole('button')).toHaveLength(2);
+        fireEvent.click(row.getByRole('button', { name: 'edit', exact: true }));
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/42'));
-        fireEvent.click(buttons[1]);
+        fireEvent.click(row.getByRole('button', { name: 'delete', exact: true }));
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
     });
 
@@ -92,6 +92,9 @@ describe('UserManagementTable section authorization', () => {
         state.isSuperAdmin = true;
         show();
         expect(screen.getByRole('button', { name: /new$/ })).toBeInTheDocument();
-        expect(within(screen.getByTestId('rows')).getAllByRole('button')).toHaveLength(2);
+        const row = within(screen.getByTestId('rows'));
+        expect(row.getAllByRole('button')).toHaveLength(2);
+        expect(row.getByRole('button', { name: 'edit', exact: true })).toBeInTheDocument();
+        expect(row.getByRole('button', { name: 'delete', exact: true })).toBeInTheDocument();
     });
 });
