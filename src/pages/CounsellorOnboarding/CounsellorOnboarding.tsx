@@ -24,8 +24,10 @@ import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoF
 import { toBase32Secret } from '../../utils/totpSecret';
 import { SALUTATION_KEYS } from '../../utils/salutationKeys';
 import { SuccessCard } from '../../components/cards/SuccessCard';
-import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
+import { passwordErrorKey, passwordFormRules, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';
+import { AccountStep } from '../TenantOnboarding/AccountStep';
+import { DoneStep } from '../TenantOnboarding/DoneStep';
 import {
     counsels,
     effectiveTopicPermission,
@@ -102,10 +104,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         toggleTopic,
         setAlsoCounsellor,
         submitRegistration,
+        submitAccountSetup,
         submitTwoFactorCode,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
+    const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
 
     if (state.phase === 'loading') {
         return (
@@ -145,8 +149,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
     if (state.phase === 'done') {
         return (
-            <div className={styles.wizard} data-testid="onboarding-done">
-                <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+            <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
+                {existingAccountSetup ? (
+                    <DoneStep existingAccountSetup />
+                ) : (
+                    <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+                )}
             </div>
         );
     }
@@ -183,6 +191,25 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
     if (!invite) {
         return null;
+    }
+
+    if (existingAccountSetup) {
+        return (
+            <div className={styles.wizard}>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
+                    {t('accountSetup.title')}
+                </Typography>
+                <AccountStep
+                    invite={invite}
+                    busy={busy}
+                    showRegistrationError={submitError === 'registration'}
+                    existingAccountSetup
+                    passwordRules={passwordFormRules(t)}
+                    passwordHintKey="cards.advisorAccount.passwordHint"
+                    onSubmit={submitAccountSetup}
+                />
+            </div>
+        );
     }
 
     const { topics } = invite;

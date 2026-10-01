@@ -35,7 +35,16 @@ import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
  * "something is missing above" sends them nowhere, while "use the link from
  * the newest e-mail" is the whole remedy.
  */
-export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'SUPERSEDED' | 'INVALID';
+export type InviteLinkErrorReason =
+    | 'CONSUMED'
+    | 'REVOKED'
+    | 'EXPIRED'
+    | 'SUPERSEDED'
+    | 'INVALID'
+    | 'SETUP_IN_PROGRESS'
+    | 'SETUP_OPERATOR_REVIEW_REQUIRED';
+
+export type OnboardingPurpose = 'INVITE' | 'EXISTING_ACCOUNT_SETUP';
 
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
@@ -66,6 +75,8 @@ export type DpaUnavailableReason = 'NOT_PUBLISHED' | 'UPSTREAM_ERROR';
 
 /** Resolved state of a tenant-admin invite link, keyed by the raw invite token. */
 export interface TenantAdminOnboardingInviteDTO {
+    /** Server-bound existing account setup; absent keeps ordinary provisioning. */
+    onboardingPurpose?: OnboardingPurpose;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
@@ -216,8 +227,14 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
     423: 'REVOKED',
 };
 
-const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
+export const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
+    value === 'CONSUMED' ||
+    value === 'REVOKED' ||
+    value === 'EXPIRED' ||
+    value === 'SUPERSEDED' ||
+    value === 'INVALID' ||
+    value === 'SETUP_IN_PROGRESS' ||
+    value === 'SETUP_OPERATOR_REVIEW_REQUIRED';
 
 /**
  * Translates a rejected public-endpoint call into the typed client errors: an
@@ -288,6 +305,24 @@ const probeTwoFactorResume = async (inviteToken: string): Promise<TenantAdminOnb
 // can map statuses itself. FORBIDDEN_SILENT: never bounce a public visitor to
 // the authenticated /admin/access-denied page.
 const PUBLIC_RESPONSE_HANDLING = [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT];
+
+/** Sets the password of the token-bound existing account; never provisions or starts a session. */
+export const completeExistingAccountSetup = async (inviteToken: string, password: string): Promise<void> => {
+    try {
+        const result = await fetchData({
+            url: `${publicAccountInvitesEndpoint}/${encodeURIComponent(inviteToken)}/setup`,
+            method: FETCH_METHODS.POST,
+            skipAuth: true,
+            responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
+            bodyData: JSON.stringify({ password }),
+        });
+        if (result?.phase !== 'COMPLETED') {
+            throw new Error('ACCOUNT_SETUP_INCOMPLETE');
+        }
+    } catch (error) {
+        throw await toOnboardingError(error);
+    }
+};
 
 /**
  * Production client for the public tenant-admin onboarding endpoints
