@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
@@ -72,14 +72,14 @@ describe('UserManagementTable section authorization', () => {
         state.section = TypeOfUser.PlatformAdmins;
         show();
         expect(screen.queryByRole('button', { name: /new$/ })).not.toBeInTheDocument();
-        expect(screen.getByTestId('rows').querySelector('.editBtnWrapper')).toBeNull();
+        expect(within(screen.getByTestId('rows')).queryByRole('button')).toBeNull();
     });
 
     it('keeps create, edit and delete wired for scoped admins on tenant admins', () => {
         show();
         fireEvent.click(screen.getByRole('button', { name: /new$/ }));
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/add'));
-        const buttons = screen.getByTestId('rows').querySelectorAll('.editBtnWrapper button');
+        const buttons = within(screen.getByTestId('rows')).getAllByRole('button');
         expect(buttons).toHaveLength(2);
         fireEvent.click(buttons[0]);
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/42'));
@@ -92,6 +92,6 @@ describe('UserManagementTable section authorization', () => {
         state.isSuperAdmin = true;
         show();
         expect(screen.getByRole('button', { name: /new$/ })).toBeInTheDocument();
-        expect(screen.getByTestId('rows').querySelectorAll('.editBtnWrapper button')).toHaveLength(2);
+        expect(within(screen.getByTestId('rows')).getAllByRole('button')).toHaveLength(2);
     });
 });

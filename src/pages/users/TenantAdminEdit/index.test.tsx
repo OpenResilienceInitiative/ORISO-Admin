@@ -1,18 +1,9 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TenantAdminEditOrAdd } from './index';
-
-// A Träger-Admin (tenant-scoped tenant admin) regains create/update/delete on
-// TenantAdminUser. These tests pin the two UI halves of that fix in this page:
-//  - add mode must default AND lock the tenant to the caller's own tenant (the
-//    "+ Neu" navigation passes no ?tenantId=, and a crafted query param must not
-//    repoint the locked field),
-//  - the Edit action must follow the update permission instead of rendering
-//    unconditionally, and the shared /platform-admins/ route variant stays
-//    super-admin-only.
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
@@ -22,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     useTenantData: vi.fn(),
     useTenantUserAdminData: vi.fn(),
     mutate: vi.fn(),
+    useAddOrUpdateTenantAdmin: vi.fn(),
     location: { pathname: '/admin/users/tenant-admins/add', search: '' },
     params: { id: 'add' } as { id: string },
 }));
@@ -63,7 +55,11 @@ vi.mock('../../../hooks/useTenantUserAdminData', () => ({
 }));
 
 vi.mock('../../../hooks/useAddOrUpdateTenantAdmin.hook', () => ({
-    useAddOrUpdateTenantAdmin: () => ({ mutate: mocks.mutate }),
+    useAddOrUpdateTenantAdmin: mocks.useAddOrUpdateTenantAdmin,
+}));
+
+vi.mock('../../ErrorPages/AccessDenied', () => ({
+    AccessDenied: () => <div role="alert">access-denied</div>,
 }));
 
 vi.mock('../../../components/GrantConsultantIdentityModal', () => ({
@@ -106,10 +102,15 @@ vi.mock('../../../components/Card', () => ({
     },
 }));
 
-vi.mock('../../../components/mui/MuiFormField', () => ({
-    MuiFormField: ({ name }: { name: string }) => <div data-testid={`field-${name}`} />,
-    MuiPasswordFormField: ({ name }: { name: string }) => <div data-testid={`field-${name}`} />,
-}));
+vi.mock('../../../components/mui/MuiFormField', async () => {
+    const { Form } = await import('antd');
+    const Field = ({ name }: { name: string }) => (
+        <Form.Item name={name}>
+            <input aria-label={name} />
+        </Form.Item>
+    );
+    return { MuiFormField: Field, MuiPasswordFormField: Field };
+});
 
 // The probe stands in for the tenant Autocomplete: antd's Form.Item injects the form
 // value, so assertions can read the effective tenantId default, the explicit disabled
@@ -122,13 +123,18 @@ vi.mock('../../../components/mui/MuiSelectField', async () => {
         value,
         disabled,
         optionLabels,
+        onChange,
     }: {
         value?: unknown;
         disabled?: boolean;
         optionLabels: string;
+        onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
     }) => (
-        <output
+        <input
             aria-label="tenant-select"
+            value={value == null ? '' : String(value)}
+            onChange={onChange}
+            disabled={disabled}
             data-value={value == null ? '' : String(value)}
             data-disabled={String(Boolean(disabled))}
             data-option-labels={optionLabels}
@@ -177,6 +183,7 @@ const asSuperAdmin = () =>
 describe('TenantAdminEditOrAdd', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.useAddOrUpdateTenantAdmin.mockReturnValue({ mutate: mocks.mutate });
         mocks.location = { pathname: '/admin/users/tenant-admins/add', search: '' };
         mocks.params = { id: 'add' };
         mocks.useTenantData.mockReturnValue({ data: { id: 2, name: 'Tenant Zwei' } });
@@ -239,6 +246,16 @@ describe('TenantAdminEditOrAdd', () => {
             expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
         });
 
+        it('does not fetch or expose an edit record without Read permission', () => {
+            mocks.params.id = '42';
+            mocks.can.mockImplementation((action: PermissionAction) => action !== PermissionAction.Read);
+            renderPage();
+            expect(mocks.useTenantUserAdminData).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+            expect(mocks.useAddOrUpdateTenantAdmin).toHaveBeenCalledWith(expect.objectContaining({ id: '' }));
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+            expect(screen.queryByLabelText('firstname')).not.toBeInTheDocument();
+        });
+
         it('does not offer Save without Create permission', () => {
             mocks.can.mockImplementation((action: PermissionAction) => action !== PermissionAction.Create);
             renderPage();
@@ -263,11 +280,11 @@ describe('TenantAdminEditOrAdd', () => {
             expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
         });
 
-        it('rejects direct form submission on the platform-admin add route', async () => {
+        it('renders access denied without a submit form on the platform-admin add route', () => {
             mocks.location.pathname = '/admin/users/platform-admins/add';
             const { container } = renderPage();
-            fireEvent.submit(container.querySelector('form')!);
-            await waitFor(() => expect(container.querySelector('form')).toBeInTheDocument());
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+            expect(container.querySelector('form')).toBeNull();
             expect(mocks.mutate).not.toHaveBeenCalled();
         });
 
@@ -293,6 +310,73 @@ describe('TenantAdminEditOrAdd', () => {
             renderPage();
             fireEvent.click(screen.getByRole('button', { name: 'save' }));
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '0' })));
+        });
+
+        it('rejects a crafted foreign tenant on create before calling the mutation', async () => {
+            const { container } = renderPage();
+            fireEvent.change(screen.getByLabelText('tenant-select'), { target: { value: '7' } });
+            expect(screen.getByLabelText('tenant-select')).toHaveValue('7');
+            await act(async () => {
+                fireEvent.submit(container.querySelector('form')!);
+            });
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('rejects a crafted foreign tenant on update before calling the mutation', async () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '2' }, isLoading: false });
+            const { container } = renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.change(screen.getByLabelText('tenant-select'), { target: { value: '7' } });
+            expect(screen.getByLabelText('tenant-select')).toHaveValue('7');
+            await act(async () => {
+                fireEvent.submit(container.querySelector('form')!);
+            });
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it.each([false, true])(
+            'never renders foreign cached record data, including during refetch: %s',
+            (isLoading) => {
+                mocks.params.id = '42';
+                mocks.location.pathname = '/admin/users/tenant-admins/42';
+                mocks.useTenantUserAdminData.mockReturnValue({
+                    data: { tenantId: '7', firstname: 'Foreign', lastname: 'Private', email: 'foreign@example.test' },
+                    isLoading,
+                });
+                renderPage();
+                expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+                expect(screen.queryByText('Foreign Private')).not.toBeInTheDocument();
+                expect(screen.queryByDisplayValue('foreign@example.test')).not.toBeInTheDocument();
+                expect(screen.queryByLabelText('firstname')).not.toBeInTheDocument();
+            },
+        );
+
+        it.each([
+            { data: undefined, isLoading: false, isError: true },
+            { data: undefined, isLoading: false },
+        ])('does not render an edit form for an inaccessible record: %j', (result) => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue(result);
+            renderPage();
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+            expect(screen.queryByLabelText('firstname')).not.toBeInTheDocument();
+        });
+
+        it('does not fetch or expose records on an unauthorized platform route', () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/platform-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({
+                data: { tenantId: '0', firstname: 'Platform' },
+                isLoading: false,
+            });
+            renderPage();
+            expect(mocks.useTenantUserAdminData).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+            expect(mocks.useAddOrUpdateTenantAdmin).toHaveBeenCalledWith(expect.objectContaining({ id: '' }));
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+            expect(screen.queryByDisplayValue('Platform')).not.toBeInTheDocument();
         });
 
         it('denies editing a cached record belonging to another tenant', () => {
@@ -324,6 +408,70 @@ describe('TenantAdminEditOrAdd', () => {
             renderPage();
 
             expect(screen.getByLabelText('tenant-select')).toHaveAttribute('data-value', '7');
+        });
+    });
+
+    describe('navigation between cached records', () => {
+        beforeEach(() => {
+            grantAllPermissions();
+            asTenantScopedAdmin();
+        });
+
+        it('starts read-only with the new record values when changing edit routes', () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({
+                data: { tenantId: '2', firstname: 'Anna', lastname: 'First', email: 'first@example.test' },
+                isLoading: false,
+            });
+            const { rerender } = renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.change(screen.getByLabelText('firstname'), { target: { value: 'Unsaved' } });
+            mocks.params.id = '43';
+            mocks.location.pathname = '/admin/users/tenant-admins/43';
+            mocks.useTenantUserAdminData.mockReturnValue({
+                data: { tenantId: '2', firstname: 'Berta', lastname: 'Second', email: 'second@example.test' },
+                isLoading: false,
+            });
+            rerender(<TenantAdminEditOrAdd />);
+            expect(screen.getByRole('heading', { name: 'Berta Second' })).toBeInTheDocument();
+            expect(screen.getByLabelText('firstname')).toHaveValue('Berta');
+            expect(screen.getByLabelText('email')).toHaveValue('second@example.test');
+            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
+        });
+
+        it('clears edit values and permits creating a new admin on the add route', () => {
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({
+                data: { tenantId: '2', firstname: 'Anna', email: 'first@example.test' },
+                isLoading: false,
+            });
+            const { rerender } = renderPage();
+            mocks.params.id = 'add';
+            mocks.location.pathname = '/admin/users/tenant-admins/add';
+            mocks.useTenantUserAdminData.mockReturnValue({ data: undefined, isLoading: false });
+            rerender(<TenantAdminEditOrAdd />);
+            expect(screen.getByLabelText('firstname')).toHaveValue('');
+            expect(screen.getByLabelText('email')).toHaveValue('');
+            expect(screen.getByRole('button', { name: 'save' })).toBeInTheDocument();
+            expect(screen.getByLabelText('tenant-select')).toHaveValue('2');
+        });
+
+        it('discards add draft values and opens a cached record read-only', () => {
+            const { rerender } = renderPage();
+            fireEvent.change(screen.getByLabelText('firstname'), { target: { value: 'Draft' } });
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({
+                data: { tenantId: '2', firstname: 'Anna', email: 'first@example.test' },
+                isLoading: false,
+            });
+            rerender(<TenantAdminEditOrAdd />);
+            expect(screen.getByLabelText('firstname')).toHaveValue('Anna');
+            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
         });
     });
 

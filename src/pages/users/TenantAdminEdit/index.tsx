@@ -25,8 +25,14 @@ import { GrantConsultantIdentityModal } from '../../../components/GrantConsultan
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { CounselorData } from '../../../types/counselor';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 
 export const TenantAdminEditOrAdd = () => {
+    const { pathname, search } = useLocation();
+    return <TenantAdminEditor key={`${pathname}${search}`} />;
+};
+
+const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
     const isPlatformAdmin = pathname.includes('/platform-admins/');
@@ -47,16 +53,24 @@ export const TenantAdminEditOrAdd = () => {
     const { id } = useParams<{ id: string }>();
     const isEditing = id !== 'add';
     const [isReadOnly, setReadOnly] = useState(isEditing);
-    const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
+    const hasOwnTenant = isTenantScopedAdmin && ownTenantId !== null && ownTenantId > 0;
+    const scopeAllowed = isSuperAdmin || (!isPlatformAdmin && hasOwnTenant);
+    const canRead = scopeAllowed && can(PermissionAction.Read, Resource.TenantAdminUser);
+    const {
+        data,
+        isLoading: isLoadingConsultants,
+        isError: isRecordError,
+    } = useTenantUserAdminData({
+        id,
+        enabled: isEditing && canRead,
+    });
     // Tenant-scoped admins may not list all tenants — and the locked field only ever
     // shows their own, which useTenantData already provides.
     const { data: tenants, isLoading } = useTenantsData({
         perPage: 1000,
-        enabled: !isPlatformAdmin && isSuperAdmin,
+        enabled: !isPlatformAdmin && isSuperAdmin && canRead,
     });
     const { data: ownTenant, isLoading: isLoadingOwnTenant, isError: isOwnTenantError } = useTenantData();
-    const hasOwnTenant = isTenantScopedAdmin && ownTenantId !== null && ownTenantId > 0;
-    const scopeAllowed = isSuperAdmin || (!isPlatformAdmin && hasOwnTenant);
     const recordAllowed =
         !isEditing || (data != null && (isSuperAdmin || String(data.tenantId) === String(ownTenantId)));
     const ownTenantReady = isSuperAdmin || (!isLoadingOwnTenant && !isOwnTenantError && ownTenant?.id === ownTenantId);
@@ -67,13 +81,13 @@ export const TenantAdminEditOrAdd = () => {
 
     const tenantOptions = useMemo(() => {
         if (lockTenantToOwn) {
-            return ownTenant?.id != null ? [{ id: ownTenant.id, name: ownTenant.name }] : [];
+            return ownTenant?.id === ownTenantId ? [{ id: ownTenant.id, name: ownTenant.name }] : [];
         }
         return tenants?.data ?? [];
-    }, [lockTenantToOwn, ownTenant?.id, ownTenant?.name, tenants?.data]);
+    }, [lockTenantToOwn, ownTenantId, ownTenant?.id, ownTenant?.name, tenants?.data]);
 
     const { mutate } = useAddOrUpdateTenantAdmin({
-        id: id !== 'add' ? id : '',
+        id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
             notification.success({
@@ -103,7 +117,16 @@ export const TenantAdminEditOrAdd = () => {
         } else {
             navigate(listPath);
         }
-    }, [isEditing, listPath]);
+    }, [isEditing, listPath, navigate]);
+
+    // Never pass an inaccessible or foreign cached record to the title or form,
+    // including while a background refetch is still running.
+    if (
+        !canRead ||
+        (isEditing && ((data != null && !recordAllowed) || (!isLoadingConsultants && (isRecordError || !data))))
+    ) {
+        return <AccessDenied />;
+    }
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
     const requiredRule = { required: true, message: t('form.errors.required') };
