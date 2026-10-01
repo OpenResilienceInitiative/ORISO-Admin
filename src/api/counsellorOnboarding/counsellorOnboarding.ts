@@ -19,6 +19,7 @@
  */
 
 import { publicAccountInvitesEndpoint } from '../../appConfig';
+import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { InviteLinkError, InviteLinkErrorReason } from '../tenantOnboarding/tenantOnboarding';
 import { TwoFactorCodeInvalidError } from '../tenantOnboarding/TwoFactorCodeInvalidError';
@@ -33,8 +34,15 @@ export interface CounsellorTopicOption {
     name: string | null;
 }
 
+/** CREATE: "+" adds Träger topics. SELECT_EXISTING: agency topics only. NONE: assigned one, else exactly one. */
+export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
+
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
+    /** Absent (older backend) means `COUNSELLOR`. */
+    targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
+    /** Agency-admin invites only: the inviter's proposal, shown as a switch the invitee may change. */
+    alsoCounsellor?: boolean | null;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
@@ -43,6 +51,21 @@ export interface CounsellorOnboardingInviteDTO {
     departmentId: number | null;
     /** Topics the wizard's topic step may offer (at least the routed department topic). */
     topics: CounsellorTopicOption[];
+    /**
+     * `false` when the invite's Beratungsstellen-ID is still a reservation: the
+     * agency does not exist yet and is created on registration with the invitee
+     * as its owner (the composer's "new agency" case). Absent = existing agency.
+     */
+    agencyExists?: boolean;
+    /**
+     * The tenant's active topics. The invitee may ADD any of them to the
+     * preselected coverage (owner decision 2026-09-17: a counsellor must be able
+     * to pick further topics, not only the routed ones). Absent/empty = only the
+     * coverage is selectable.
+     */
+    availableTopics?: CounsellorTopicOption[];
+    /** Absent (older backend) means `CREATE`. */
+    topicPermission?: CounsellorTopicPermission;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -72,8 +95,23 @@ export interface CounsellorRegistrationRequest {
         /** Internal display name; internal surfaces fall back to the public name. */
         internalDisplayName?: string;
     };
-    /** Chosen topics — validated server-side against the invite's coverage. */
+    /**
+     * The chosen counsellor avatar (#1046/#1047). Omitted when the invitee made
+     * no choice — the backend then stores none and rendering falls back to the
+     * initials. `id` is the motif id and is only present for `kind: 'ICON'`.
+     * `PICTURE` is the reserved kind of #1048/#1049; the wizard cannot pick it yet.
+     */
+    avatar?: { kind: CounsellorAvatarKind; id?: string };
+    /** Chosen topics — validated server-side against coverage ∪ tenant topics. */
     topicIds: number[];
+    /**
+     * Only for invites whose agency does not exist yet (`agencyExists === false`):
+     * the new Beratungsstelle is created with this name and the chosen topics
+     * as its departments; the invitee becomes its owner.
+     */
+    agency?: { name: string };
+    /** Agency-admin invites only. Off = an admin login only: no consultant, topics optional. */
+    alsoCounsellor?: boolean;
 }
 
 export interface CounsellorRegistrationResultDTO {
@@ -111,7 +149,7 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /** Body-first error mapping — an explicit `reason` wins over the status code. */
 const toOnboardingError = async (error: unknown): Promise<unknown> => {
@@ -161,7 +199,12 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
                 });
-                return { ...invite, topics: invite.topics ?? [] };
+                return {
+                    ...invite,
+                    topics: invite.topics ?? [],
+                    availableTopics: invite.availableTopics ?? [],
+                    topicPermission: invite.topicPermission ?? 'CREATE',
+                };
             }),
 
         registerCounsellor: (inviteToken, request) =>
@@ -216,7 +259,13 @@ const STUB_INVITE: CounsellorOnboardingInviteDTO = {
     topics: [
         { id: 12, name: 'Familienberatung' },
         { id: 13, name: 'Schuldnerberatung' },
+    ],
+    availableTopics: [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
         { id: 14, name: 'Suchtberatung' },
+        { id: 15, name: 'Schwangerschaftsberatung' },
+        { id: 16, name: 'Migrationsberatung' },
     ],
     expiresAt: null,
 };
@@ -283,9 +332,27 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            const coveredIds = new Set(invite.topics.map(({ id }) => id));
-            if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
+            // Like the backend and the wizard: a topic is needed to counsel or to found an agency; agency admins get CREATE.
+            const agencyAdmin = invite.targetRole === 'AGENCY_ADMIN';
+            const counselling = !agencyAdmin || (request.alsoCounsellor ?? invite.alsoCounsellor ?? true);
+            const needsTopics = counselling || invite.agencyExists === false;
+            // Like the backend: coverage plus — with CREATE only — every active tenant topic.
+            const permission = agencyAdmin ? 'CREATE' : invite.topicPermission ?? 'CREATE';
+            const selectable =
+                permission === 'CREATE' ? [...invite.topics, ...(invite.availableTopics ?? [])] : invite.topics;
+            const coveredIds = new Set(selectable.map(({ id }) => id));
+            if ((needsTopics && request.topicIds.length === 0) || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
+            }
+            if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
+                throw new Error('EXACTLY_ONE_TOPIC');
+            }
+            if (invite.agencyExists === false && !request.agency?.name?.trim()) {
+                throw new Error('AGENCY_NAME_MISSING');
+            }
+            if (request.avatar?.kind === 'ICON' && !request.avatar.id) {
+                // Like the backend: a motif choice without a motif is not a choice.
+                throw new Error('AVATAR_MOTIF_MISSING');
             }
             registered = true;
             if (registrationPhase === 'COMPLETED') {

@@ -45,6 +45,14 @@
     min-height: 56px;
 }
 
+/* The grown multi-select must keep sizing itself from its tags, so it opts out
+   of the `height: 100%` the single-value field needs; `align-self: stretch`
+   then still hands it the full outline. */
+
+.hasMultiSelect .select {
+    height: auto;
+}
+
 .label {
     composes: label from '../FloatingLabelInput/floatingLabelInput.module.scss';
 }
@@ -55,6 +63,18 @@
 
 .select {
     width: 100%;
+
+    /*
+     * antd paints an explicit control height on the `.ant-select` ROOT (40px at
+     * the admin theme's control size). That beats `align-self: stretch`, so the
+     * root parked at the top of the 56px outline — and since `.ant-select-arrow`
+     * is absolutely positioned at `top: 50%` of that root, the chevron (and the
+     * search icon antd swaps in while the popup is open) sat ~7px above the
+     * field's middle line. Filling the shell fixes both states at once, in every
+     * label position (the label is positioned against `.outline`, not this) and
+     * in the error state.
+     */
+    height: 100%;
     align-self: stretch;
 
     :global(.ant-select-selector) {

@@ -22,6 +22,8 @@ export const supportedLanguages = [...SUPPORTED_LANGUAGE_CODES];
 
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
+/** Träger → Beratungsstellen template distribution (ORISO-AgencyService#303). */
+export const agencyLegalProposalDistributionsEndpoint = `${agencyServiceURL}/service/agencyadmin/legal-proposal-distributions`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
 // TEN-INV ID allocation (#569/#570), wired to the REAL backend contracts:
 // live validation is aggregated in UserService (U3), next-free stepping goes
@@ -51,6 +53,7 @@ export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin
 export const idAllocationValidationEndpoint = `${userServiceURL}/service/useradmin/id-allocation`;
 export const serverSettingsEndpoint = `${consultingTypeServiceURL}/service/settings`;
 export const serverSettingsAdminEndpoint = `${consultingTypeServiceURL}/service/settingsadmin`;
+export const smtpSyncStatusEndpoint = `${serverSettingsAdminEndpoint}/smtp-sync-status`;
 export const baseTenantPublicEndpoint = `${tenantServiceURL}/service/tenant/public`;
 export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
 export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
@@ -60,6 +63,7 @@ export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/t
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
+export const accountInactivityActivityEndpoint = `${userServiceURL}/service/users/account-inactivity/activity`;
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
@@ -71,7 +75,9 @@ export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/pas
 // the U3/U6 onboarding endpoints (`{token}/onboarding[...]`) follow the same
 // convention and get verified against the UserService wiring chunks.
 export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
+export const serviceNoticeDraftsEndpoint = `${userServiceURL}/service/users/admin/service-notices/drafts`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
+export const globalSmtpPlatformSettingsEndpoint = `${userServiceURL}/service/users/system-notification-emails/platform-settings`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
 export const usersConsultantsSearchEndpoint = `${userServiceURL}/service/users/consultants/search`;
 export const supervisorLogsEndpoint = `${userServiceURL}/service/users/supervisors/logs`;
@@ -83,8 +89,10 @@ export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/usera
 export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
+export const selfAssignmentsEndpoint = `${userServiceURL}/service/useradmin/self-assignments`;
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
+export const dpaInvitePreviewEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/preview`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
@@ -108,6 +116,7 @@ const routePathNames = {
      */
     counsellorOnboarding: '/admin/counsellor-onboarding',
     themeSettings: '/admin/theme-settings',
+    serviceNotices: '/admin/theme-settings/service-notices',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',
     users: '/admin/users',

@@ -111,7 +111,8 @@ const invite = (id: number, inviteStatus: string, recipientEmail = `person${id}@
     provisioningStatus: null,
     inviteStatus,
     emailVerificationStatus: 'PENDING',
-    emailDeliveryStatus: null,
+    // A successful send always records a SENT delivery; null would read as unconfirmed.
+    emailDeliveryStatus: inviteStatus === 'EMAIL_SENT' ? 'SENT' : null,
     twoFactorStatus: 'NOT_REQUIRED',
     accessGateStatus: 'BLOCKED_INVITE',
     expiresAt: null,
@@ -267,7 +268,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(await screen.findByText('2 Einladungen gesendet')).toBeInTheDocument();
         await waitFor(() => expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument());
         // Back in single-create mode once nothing is selected.
-        expect(await screen.findByRole('button', { name: 'Direkt Versenden' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Anlegen & einladen' })).toBeInTheDocument();
     });
     // A3 / B3 / B4: the counter is the ONLY send affordance in multi-select, so
     // a dead one has to look dead. Tonal is reserved for "this can fire now".
@@ -482,5 +483,205 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.clear(search);
         expect(await rowCheckbox('person21@example.org')).not.toBeChecked();
         expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument();
+    });
+});
+
+/*
+ * 403 role surfacing beyond create (UserService#1006): resend and both bulk-send
+ * delivery verbs (/send for DRAFT, /resend for EMAIL_SENT) must explain a role
+ * rejection — preferring the backend's own message, falling back to the
+ * role-appropriate translated hint — instead of the generic failure texts.
+ */
+describe('403 role surfacing on resend and bulk send (UserService#1006)', () => {
+    const forbiddenWithMessage = () =>
+        new Response(JSON.stringify({ message: 'Only platform admins can create administrative accounts' }), {
+            status: 403,
+        });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(MIXED_INVITES));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    const rowResendButton = async (email: string) => {
+        const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
+        return within(row).getByRole('button', { name: 'Erinnerung erneut senden' });
+    };
+
+    it('shows the backend message when a resend is answered 403', { timeout: 90_000 }, async () => {
+        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowResendButton('person22@example.org'));
+
+        expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the counsellor wording on a bodyless resend 403', { timeout: 90_000 }, async () => {
+        mocks.resendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowResendButton('person22@example.org'));
+
+        expect(
+            await screen.findByText('Ihre Rolle ist nicht berechtigt, Berater:innen einzuladen.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
+    });
+
+    it('keeps the generic resend-failed toast for non-403 failures', { timeout: 90_000 }, async () => {
+        mocks.resendAccountInvite.mockRejectedValue(new Error('network down'));
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowResendButton('person22@example.org'));
+
+        expect(await screen.findByText('Die Einladung konnte nicht erneut gesendet werden.')).toBeInTheDocument();
+    });
+
+    it('keeps going after a 403 — one toast, every selected row still tried', { timeout: 90_000 }, async () => {
+        mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        // A 403 is that invite's own (its unit may be foreign), so the next row still goes out.
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
+        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
+        expect(roleToasts).toHaveLength(1);
+        // The count summary stays — the cause toast comes ON TOP of it.
+        expect(
+            await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
+        ).toBeInTheDocument();
+    });
+
+    it('fails only the row with the 403 and delivers the rows after it', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([invite(21, 'DRAFT'), invite(22, 'EMAIL_SENT'), invite(25, 'EMAIL_SENT')]),
+        );
+        mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
+        mocks.resendAccountInvite.mockImplementation((id: number) =>
+            id === 22 ? Promise.reject(forbiddenWithMessage()) : Promise.resolve(invite(id, 'EMAIL_SENT')),
+        );
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send, succeeds
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend, 403
+        await user.click(await rowCheckbox('person25@example.org')); // EMAIL_SENT -> /resend, succeeds
+
+        const sendButton = await screen.findByRole('button', { name: '3 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledWith(21, expect.anything());
+        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(25, expect.anything());
+        expect(await screen.findByText('2 gesendet, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
+    });
+
+    it(
+        'falls back to the Träger-admin wording for a bodyless bulk-send 403 on the tenant tab',
+        { timeout: 90_000 },
+        async () => {
+            mocks.sendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+            mocks.resendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+            // The Träger tab lists only the invites that found a Träger.
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage(MIXED_INVITES.map((row) => ({ ...row, targetRole: 'TENANT_ADMIN' }))),
+            );
+            await renderTenantTab();
+            const user = userEvent.setup();
+
+            await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+            await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+
+            const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+            await waitFor(() => expect(sendButton).toBeEnabled());
+            await user.click(sendButton);
+
+            expect(
+                await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
+            ).toBeInTheDocument();
+            await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
+            expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
+        },
+    );
+});
+
+/*
+ * UserService#1160: SMTP is a PLATFORM-wide setting, so a 502 on the first row
+ * condemns every remaining one. Firing one doomed
+ * request per selected row helps nobody and risks a partial mail burst.
+ */
+describe('SMTP delivery failures on resend and bulk send (UserService#1160)', () => {
+    const smtp502 = (detail = 'SMTP_CREDENTIALS_MISSING') =>
+        new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail }), {
+            status: 502,
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+    const CREDENTIALS_MISSING =
+        'E-Mail-Versand nicht konfiguriert: SMTP-Zugangsdaten fehlen. Bitte Plattform-Admin kontaktieren.';
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(MIXED_INVITES));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    const rowResendButton = async (email: string) => {
+        const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
+        return within(row).getByRole('button', { name: 'Erinnerung erneut senden' });
+    };
+
+    it('explains a single resend 502 instead of the generic failure', { timeout: 90_000 }, async () => {
+        mocks.resendAccountInvite.mockRejectedValue(smtp502());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowResendButton('person22@example.org'));
+
+        expect(await screen.findByText(CREDENTIALS_MISSING)).toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
+    });
+
+    it('stops after the first 502 — one cause toast on top of the count summary', { timeout: 90_000 }, async () => {
+        mocks.sendAccountInvite.mockRejectedValue(smtp502());
+        mocks.resendAccountInvite.mockRejectedValue(smtp502());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
+
+        await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+        expect(await screen.findAllByText(CREDENTIALS_MISSING)).toHaveLength(1);
+        expect(
+            await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
+        ).toBeInTheDocument();
     });
 });

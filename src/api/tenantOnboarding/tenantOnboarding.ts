@@ -26,8 +26,16 @@ import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
 
-/** Why an invite link cannot (or can no longer) be used. */
-export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'INVALID';
+/**
+ * Why an invite link cannot (or can no longer) be used. Mirrors the backend's
+ * `AccountInviteLinkException.Reason` (410 + `{ "reason": … }`), minus
+ * NOT_ACTIVE, which collapses onto INVALID. SUPERSEDED is its own state on
+ * purpose: an invite replaced by a resend has a working successor, and the
+ * owner hit exactly this with an old tab — telling that person "expired" or
+ * "something is missing above" sends them nowhere, while "use the link from
+ * the newest e-mail" is the whole remedy.
+ */
+export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'SUPERSEDED' | 'INVALID';
 
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
@@ -42,20 +50,38 @@ export class InviteLinkError extends Error {
 
 export { TwoFactorCodeInvalidError };
 
+/**
+ * Why `dpaContent` came back empty. The resolve endpoint cannot show the
+ * contract text for two entirely different reasons, and they need entirely
+ * different remedies:
+ *  - `NOT_PUBLISHED` — the platform operator has published nothing yet. The
+ *    invitee waits for the operator; there is nothing wrong with the server.
+ *  - `UPSTREAM_ERROR` — the backend's own read of the published text failed
+ *    (platform misconfiguration). Reloading cannot fix it, and on staging the
+ *    old "please reload the page" wording hid exactly this for hours.
+ * Always `null` when `dpaContent` is present. Older backends omit the field
+ * entirely — `undefined` is treated like `null` and keeps the generic message.
+ */
+export type DpaUnavailableReason = 'NOT_PUBLISHED' | 'UPSTREAM_ERROR';
+
 /** Resolved state of a tenant-admin invite link, keyed by the raw invite token. */
 export interface TenantAdminOnboardingInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
-    /** The tenant ID the invite reserved (TenantIdReservationDTO.tenantId). */
-    reservedTenantId: number;
+    /** TenantIdReservationDTO.tenantId; absent when the invite joins an existing Träger. */
+    reservedTenantId?: number;
     /**
      * TenantIdReservationDTO.token — proves ownership of the reservation and is
      * sent back on registration, where the backend forwards it as
      * MultilingualTenantDTO.tenantIdReservationToken so creation + consumption
      * happen atomically.
      */
-    tenantIdReservationToken: string;
+    tenantIdReservationToken?: string;
+    /** Joins an existing Träger (also a later admin of a just-created one): no reservation, password only. */
+    joinsExistingTenant?: boolean;
+    /** The joined Träger — set together with `joinsExistingTenant`. */
+    tenantId?: number | null;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -64,6 +90,13 @@ export interface TenantAdminOnboardingInviteDTO {
      * the wording is never authored in this flow.
      */
     dpaContent: string | null;
+    /**
+     * Why {@link dpaContent} is empty, so the step can say what actually
+     * happened instead of asking for a pointless reload. `null`/absent
+     * whenever the content is present — or when the backend is older than the
+     * field (then the generic message stands).
+     */
+    dpaUnavailableReason?: DpaUnavailableReason | null;
     /**
      * Onboarding phase per the UserService resume contract (#569 hardening):
      * `PENDING_2FA_ACTIVATION` = the invite was already accepted/registered
@@ -79,12 +112,29 @@ export interface TenantAdminOnboardingInviteDTO {
      * 2FA step then renders the verify-only variant.
      */
     twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
+    /**
+     * When step 1 forwarded the contract documents (ISO local date-time).
+     * Recorded on the invite, so a reload restores the waiting view (#1065).
+     */
+    dpaForwardedAt?: string | null;
+    /**
+     * When the authorised representative's confirmation landed (ISO local
+     * date-time). Set = no consent step; the wizard continues to the account.
+     */
+    dpaSignedAt?: string | null;
 }
 
 export interface OrganisationData {
     name: string;
     subdomain: string;
     address: string;
+    /**
+     * Optional sender block for the mail footer (Frank, 2026-09-23). Sent only when entered;
+     * UserService forwards it to TenantService's MultilingualTenantDTO on creation.
+     */
+    legalName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
 }
 
 /** Mirrors the existing DpaSignature signer fields (src/types/dpa.ts). */
@@ -96,7 +146,18 @@ export interface DpaAcceptanceData {
     signerOrganisation: string;
 }
 
-export interface TenantAdminRegistrationRequest {
+/** A new Träger sends organisation, DPA and the reservation pair; joining an existing one sends only `account`. */
+export type TenantAdminRegistrationRequest =
+    | TenantAdminNewTenantRegistrationRequest
+    | TenantAdminJoinRegistrationRequest;
+
+export interface TenantAdminJoinRegistrationRequest {
+    account: {
+        password: string;
+    };
+}
+
+export interface TenantAdminNewTenantRegistrationRequest {
     organisation: OrganisationData;
     /**
      * The request shape is UNCHANGED by the forward flow (#723 contract).
@@ -115,8 +176,8 @@ export interface TenantAdminRegistrationRequest {
 }
 
 export interface TenantAdminRegistrationResultDTO {
-    /** The created (inactive) tenant — equals the reserved ID. */
-    tenantId: number;
+    /** The created (inactive) tenant — equals the reserved ID; absent for a join that names no Träger. */
+    tenantId?: number;
     twoFactor: {
         /** Base32 TOTP secret to show/link in the authenticator app. */
         secret: string;
@@ -156,7 +217,7 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /**
  * Translates a rejected public-endpoint call into the typed client errors: an
@@ -368,7 +429,12 @@ export const createStubTenantAdminOnboardingClient = (
         if (!inviteToken) {
             throw new InviteLinkError('INVALID');
         }
-        if (inviteState === 'REVOKED' || inviteState === 'EXPIRED' || inviteState === 'INVALID') {
+        if (
+            inviteState === 'REVOKED' ||
+            inviteState === 'EXPIRED' ||
+            inviteState === 'SUPERSEDED' ||
+            inviteState === 'INVALID'
+        ) {
             throw new InviteLinkError(inviteState);
         }
         if (twoFactorActivated) {
@@ -395,7 +461,16 @@ export const createStubTenantAdminOnboardingClient = (
                 // happens via getOnboardingInvite's PENDING_2FA_ACTIVATION.
                 throw new InviteLinkError('CONSUMED');
             }
+            if (invite.joinsExistingTenant) {
+                // Joining an existing Träger needs the password alone.
+                if ('organisation' in request) {
+                    throw new Error('JOIN_TAKES_ACCOUNT_ONLY');
+                }
+                registered = true;
+                return { tenantId: invite.tenantId ?? undefined, twoFactor: STUB_TWO_FACTOR };
+            }
             if (
+                !('organisation' in request) ||
                 request.tenantIdReservationToken !== invite.tenantIdReservationToken ||
                 request.reservedTenantId !== invite.reservedTenantId
             ) {
@@ -404,8 +479,8 @@ export const createStubTenantAdminOnboardingClient = (
                 throw new InviteLinkError('INVALID');
             }
             // Mirrors the server rule: `accepted: false` passes only when THIS
-            // invite forwarded the DPA beforehand — never on a client claim.
-            if (!request.dpa.accepted && !forwarded) {
+            // invite forwarded (or got confirmed) beforehand — never on a client claim.
+            if (!request.dpa.accepted && !forwarded && !invite.dpaForwardedAt && !invite.dpaSignedAt) {
                 throw new Error('DPA_NOT_ACCEPTED');
             }
             registered = true;

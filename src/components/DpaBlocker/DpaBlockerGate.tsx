@@ -3,18 +3,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import logout from '../../api/auth/logout';
 import { signDpaAdmin } from '../../api/tenant/signDpaAdmin';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../api/tenant/createDpaSignInvite';
-import { sendDpaInviteEmail } from '../../api/tenant/sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../api/tenant/sendDpaInviteEmail';
 import { DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import { Initialization } from '../Layout/Initialization';
 import { UserRole } from '../../enums/UserRole';
 import { DPA_STATUS_KEY, useDpaStatus } from '../../hooks/useDpaStatus.hook';
-import { useDpaVersions } from '../../hooks/useDpaVersions.hook';
+import { DPA_VERSIONS_KEY, useDpaVersions } from '../../hooks/useDpaVersions.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
-import { DpaAdminSignRequest } from '../../types/dpa';
+import { DpaAdminSignRequest, DpaVersion, TenantDpaStatusInfo } from '../../types/dpa';
 import { deriveDpaGateDecision, resolveDpaGateSubject } from '../../utils/dpaBlockerGate';
 import { DpaBlocker, DpaBlockerSignData } from './DpaBlocker';
 import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
 import { DpaUnlockDialog } from './DpaUnlockDialog';
+import { useDpaOperationScope } from '../../hooks/useDpaOperationScope.hook';
+import { parseBackendInstant } from '../../utils/backendInstant';
 
 /**
  * Global route guard for TEN-INV-U10 (#572): wraps the ENTIRE protected admin
@@ -47,7 +49,11 @@ import { DpaUnlockDialog } from './DpaUnlockDialog';
  * sign endpoint the admin themselves submits. Nothing here fabricates a
  * consent or signature record.
  */
-export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
+const ScopedDpaBlockerGate = ({
+    children,
+    scope,
+    isCurrent,
+}: { children: JSX.Element } & ReturnType<typeof useDpaOperationScope>) => {
     const { hasRole, isSuperAdmin, tenantId, tokenUnreadable } = useUserRoles();
     const queryClient = useQueryClient();
     /**
@@ -58,6 +64,8 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     const awaitedForwardedSignature = useRef(false);
     /** The re-check confirmed the signature — the app may render. */
     const [platformUnlocked, setPlatformUnlocked] = useState(false);
+    /** Link created on this screen, reused by the pending gate instead of spending another slot. */
+    const [forwardedLink, setForwardedLink] = useState<{ link: DpaForwardLink; version?: string | null } | null>(null);
     const [recheckPending, setRecheckPending] = useState(false);
     /** The re-check came back without a signature — explained on the gate. */
     const [recheckRejected, setRecheckRejected] = useState(false);
@@ -74,6 +82,11 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     });
 
     const statusQuery = useDpaStatus(tenantId ?? 0, subjectKind === 'subject');
+    const { isCurrent: isPublicationCurrent } = useDpaOperationScope(
+        tenantId,
+        undefined,
+        statusQuery.data?.currentDpaVersion,
+    );
 
     const decision = deriveDpaGateDecision({
         subjectKind,
@@ -94,19 +107,69 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         }
     }, [decision.kind]);
 
+    useEffect(() => {
+        if (decision.kind === 'inactive' || decision.kind === 'unlock-confirm') {
+            setForwardedLink(null);
+        }
+    }, [decision.kind]);
+
     const blockedSignable = decision.kind === 'blocked' && decision.signable;
     // silent: a versions failure renders the blocker's inline error — never
     // the global toast or the /admin/access-denied redirect (#569 hardening).
     const versionsQuery = useDpaVersions(tenantId ?? 0, blockedSignable, { silent: true });
 
     const signMutation = useMutation({
-        mutationFn: (body: DpaAdminSignRequest) => signDpaAdmin(tenantId ?? 0, body),
-        onSuccess: (statusInfo) => {
+        mutationFn: (operation: { tenantId: number; body: DpaAdminSignRequest }) =>
+            signDpaAdmin(operation.tenantId, operation.body),
+        onSuccess: (statusInfo, operation) => {
             // The sign endpoint answers with the resulting authoritative status
             // (VALID) — write it into the cache so the block lifts right away.
-            queryClient.setQueryData([DPA_STATUS_KEY, tenantId], statusInfo);
+            const current = queryClient.getQueryData<TenantDpaStatusInfo>([DPA_STATUS_KEY, operation.tenantId]);
+            const currentDocument = queryClient.getQueryData<DpaVersion[]>([DPA_VERSIONS_KEY, operation.tenantId])?.[0];
+            if (
+                isCurrent() &&
+                statusInfo.tenantId === operation.tenantId &&
+                (!current?.currentDpaVersion || current.currentDpaVersion === operation.body.dpaVersion) &&
+                (!currentDocument || currentDocument.activationDate === operation.body.dpaVersion)
+            ) {
+                queryClient.setQueryData([DPA_STATUS_KEY, operation.tenantId], statusInfo);
+            }
         },
     });
+
+    // Creating a forwarding link does not soften the gate. The next status
+    // read reports `forwardPending`, which renders the dedicated waiting gate
+    // until the authorised signer has completed the agreement.
+    const mintLink = async (): Promise<DpaForwardLink> => {
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
+        const invite = await createDpaSignInvite(scope.tenantId ?? 0);
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
+        return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
+    };
+
+    const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
+        const link = await mintLink();
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
+        if (!recipientEmail) {
+            return { link, mailFailed: false };
+        }
+        try {
+            // The authenticated delivery endpoint (UserService #530) carries no
+            // recipient name — the salutation falls back to the template default.
+            await sendDpaInviteEmail({
+                tenantId: scope.tenantId ?? 0,
+                recipientEmail,
+                signLink: link.signUrl,
+                expiresAt: link.expiresAt ?? '',
+            });
+            return { link, mailFailed: false };
+        } catch (error) {
+            if (!isDpaInviteEmailDeliveryFailure(error)) {
+                throw error;
+            }
+            return { link, mailFailed: true };
+        }
+    };
 
     if (decision.kind === 'inactive') {
         return children;
@@ -132,6 +195,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             setRecheckPending(true);
             setRecheckRejected(false);
             const verified = await statusQuery.refetch();
+            if (!isCurrent()) return;
             setRecheckPending(false);
             if (verified.isError || verified.data?.status !== 'VALID') {
                 setRecheckRejected(!verified.isError);
@@ -153,52 +217,43 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         // Post-login there is no "read the active link" endpoint: issuing a
         // fresh one is the supported way, and every issued link stays valid
         // until a signature lands (#723 contract).
-        const mintLink = async (): Promise<DpaForwardLink> => {
-            const invite = await createDpaSignInvite(tenantId ?? 0);
-            return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
-        };
-        const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
-            const link = await mintLink();
-            if (!recipientEmail) {
-                return { link, mailFailed: false };
-            }
-            try {
-                // The authenticated delivery endpoint (UserService #530)
-                // carries no recipient name — the salutation falls back to the
-                // template default.
-                await sendDpaInviteEmail({
-                    tenantId: tenantId ?? 0,
-                    recipientEmail,
-                    signLink: link.signUrl,
-                    expiresAt: link.expiresAt ?? '',
-                });
-                return { link, mailFailed: false };
-            } catch {
-                // Same shape as the public 502: the link exists, only the mail
-                // did not go out — never present that as a total failure.
-                return { link, mailFailed: true };
-            }
-        };
         // No `children`: an unsigned tenant may not reach the admin area at
         // all, so there is nothing behind the dialog to click (JOB7).
         return (
             <DpaPendingSignatureDialog
+                key={statusQuery.data?.currentDpaVersion ?? ''}
                 ensureSignLink={mintLink}
+                initialLink={
+                    forwardedLink?.version === statusQuery.data?.currentDpaVersion &&
+                    forwardedLink?.link.expiresAt &&
+                    parseBackendInstant(forwardedLink.link.expiresAt).getTime() > Date.now()
+                        ? forwardedLink.link
+                        : undefined
+                }
                 forward={forward}
+                tenantId={tenantId}
                 onLogout={() => logout(true)}
                 recheckRejected={recheckRejected}
             />
         );
     }
 
+    const displayedVersion = versionsQuery.data?.[0]?.activationDate;
+    const signStale =
+        signMutation.isError && signMutation.error instanceof Response && signMutation.error.status === 409;
     const onSign = (data: DpaBlockerSignData) => {
+        if (!displayedVersion || signStale) return;
         signMutation.mutate({
-            signerName: data.signerName,
-            signerPosition: data.signerPosition,
-            signerEmail: data.signerEmail,
-            signerOrganisation: data.signerOrganisation,
-            accepted: data.accepted,
-            language: data.language,
+            tenantId: scope.tenantId ?? 0,
+            body: {
+                dpaVersion: displayedVersion,
+                signerName: data.signerName,
+                signerPosition: data.signerPosition,
+                signerEmail: data.signerEmail,
+                signerOrganisation: data.signerOrganisation,
+                accepted: data.accepted,
+                language: data.language,
+            },
         });
     };
 
@@ -212,16 +267,41 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
 
     return (
         <DpaBlocker
+            key={`${tenantId}:${displayedVersion ?? ''}`}
             reason={decision.reason}
             signable={decision.signable}
             dpaContent={versionsQuery.data?.[0]?.content ?? null}
+            signingDeadlineAt={
+                versionsQuery.data?.[0]?.signingDeadlineAt ??
+                (statusQuery.data?.currentDpaVersion === displayedVersion
+                    ? statusQuery.data?.signingDeadlineAt
+                    : undefined)
+            }
             dpaContentLoading={blockedSignable && versionsQuery.isLoading}
             signPending={signMutation.isPending}
             signFailed={signMutation.isError}
+            signStale={signStale}
             onSign={onSign}
+            onForward={blockedSignable ? forward : undefined}
+            tenantId={tenantId}
+            onForwarded={(result) => {
+                if (!isCurrent() || !isPublicationCurrent()) return;
+                setForwardedLink({ link: result.link, version: statusQuery.data?.currentDpaVersion });
+                statusQuery.refetch();
+            }}
             onRetry={onRetry}
             retryPending={statusQuery.isFetching}
             onLogout={() => logout(true)}
         />
+    );
+};
+
+export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
+    const { tenantId } = useUserRoles();
+    const operationScope = useDpaOperationScope(tenantId);
+    return (
+        <ScopedDpaBlockerGate key={JSON.stringify(operationScope.scope)} {...operationScope}>
+            {children}
+        </ScopedDpaBlockerGate>
     );
 };

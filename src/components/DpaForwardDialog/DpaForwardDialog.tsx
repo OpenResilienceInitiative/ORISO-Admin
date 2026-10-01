@@ -9,7 +9,6 @@ import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { FieldGrid } from '../FieldGrid';
 import { MuiFormField } from '../mui/MuiFormField';
-import { EmailKitPreview } from '../PlaceholderTemplate/EmailKitPreview';
 import {
     DpaForwardError,
     DpaForwardFailureKind,
@@ -17,8 +16,7 @@ import {
     DpaForwardOutcome,
 } from '../../api/tenantOnboarding/dpaForward';
 import { CopyLinkRow } from './CopyLinkRow';
-import { PlainMailPreview } from './PlainMailPreview';
-import { buildForwardMailPreview } from './forwardMailPreview';
+import { DpaCanonicalMailPreview } from './DpaCanonicalMailPreview';
 import styles from './styles.module.scss';
 
 export interface DpaForwardResult {
@@ -30,12 +28,8 @@ export interface DpaForwardResult {
 }
 
 /**
- * Which surface hosts the dialog. This is not cosmetic: `'admin'` unlocks the
- * backend-rendered branded mail preview, which comes from the ADMIN-ONLY
- * endpoint `POST /service/useradmin/invite-email-templates/preview`.
- *
- * The default is `'public'` — a host that declares nothing gets the plain-text
- * preview, never a logout. See {@link DpaForwardDialogProps.surface}.
+ * Which canonical preview endpoint the host may use: public onboarding uses its
+ * opaque invite token; authenticated admin screens use their tenant ID.
  */
 export type DpaForwardSurface = 'public' | 'admin';
 
@@ -54,25 +48,23 @@ export interface DpaForwardDialogProps {
     /**
      * Declares whether the host is an authenticated admin surface.
      *
-     * On `'admin'` the mail preview is rendered by the backend's own mail
-     * renderer, so the preview and the sent mail cannot drift. On `'public'`
-     * (the default) that request is not issued at all: the endpoint is
-     * admin-only and answers 401 to an anonymous visitor, and `fetchData` turns
-     * a 401 on a credentialled call into refresh → logout → `/admin/login`.
-     * That is #712 — the public onboarding visitor was thrown onto the admin
-     * login page about half a second after opening this dialog, and could never
-     * type a recipient address.
-     *
-     * Defaulting to `'public'` keeps the failure mode safe: forgetting the prop
-     * costs a branded preview, never a session.
+     * Both surfaces receive the exact no-send document from UserService. Public
+     * requests use the anonymous token-scoped endpoint; admin requests use the
+     * authenticated tenant-scoped endpoint.
      */
     surface?: DpaForwardSurface;
+    /** Opaque public-onboarding credential used only for the read-only preview. */
+    inviteToken?: string;
+    /** Tenant selected by an authenticated admin for the read-only preview. */
+    tenantId?: number;
+    /** Keep the forwarding dialog and its close guard above the host overlay. */
+    zIndex?: number;
     titleKey?: string;
     descriptionKey?: string;
 }
 
 interface RecipientFormValues {
-    recipientName: string;
+    recipientName?: string;
     recipientEmail: string;
 }
 
@@ -85,6 +77,7 @@ const FAILURE_MESSAGE: Record<DpaForwardFailureKind, string> = {
     UNKNOWN_TOKEN: 'dpaForward.dialog.errorUnknownToken',
     NO_DPA_PUBLISHED: 'dpaForward.dialog.errorNoDpaPublished',
     TOO_MANY_LINKS: 'dpaForward.dialog.errorTooManyLinks',
+    FORWARD_BUDGET_EXHAUSTED: 'dpaForward.dialog.errorBudgetExhausted',
     TECHNICAL: 'dpaForward.dialog.linkError',
 };
 
@@ -100,9 +93,8 @@ const failureKey = (error: unknown): string =>
  * The sign link is the primary artefact: copyable for any channel, with the
  * note that it stays valid until the contract is signed no matter where it is
  * shared. The e-mail send is optional and shows the actual DPA_FORWARD mail
- * before anything goes out — through the backend's own mail renderer on an
- * admin surface, and as plain text on the public one (see {@link
- * DpaForwardDialogProps.surface}).
+ * before anything goes out, through the backend's own renderer on both surfaces
+ * (see {@link DpaForwardDialogProps.surface}).
  *
  * **Links are minted on demand, never on open (#712).** Only five links may be
  * outstanding per onboarding (14-day TTL) and every issued one stays valid until
@@ -119,6 +111,9 @@ export const DpaForwardDialog = ({
     onClose,
     onForwarded,
     surface = 'public',
+    inviteToken,
+    tenantId,
+    zIndex,
     titleKey = 'dpaForward.dialog.title',
     descriptionKey = 'dpaForward.dialog.description',
 }: DpaForwardDialogProps) => {
@@ -129,9 +124,36 @@ export const DpaForwardDialog = ({
     const [sendErrorKey, setSendErrorKey] = useState<string>(FAILURE_MESSAGE.TECHNICAL);
     const [sentTo, setSentTo] = useState<string | null>(null);
     const [mailFailed, setMailFailed] = useState(false);
-    const [recipientName, setRecipientName] = useState('');
+    const [closeGuardOpen, setCloseGuardOpen] = useState(false);
+    // The authenticated UserService endpoint has no recipient-name field. Only
+    // the public onboarding endpoint may promise a personalised salutation.
+    const supportsRecipientName = surface === 'public';
 
     const link = linkState.kind === 'ready' ? linkState.link : null;
+
+    /**
+     * The host flips into its forwarded state only through this confirm — a
+     * dialog that is merely closed leaves the wizard exactly where it was,
+     * with a live link (and possibly a sent mail) the flow knows nothing
+     * about. The owner did exactly that: sent the mail, overlooked the
+     * confirm, closed, and sent again — three times, spending the whole
+     * per-invite forward budget on one recipient. So every close gesture
+     * (X, Escape, mask, Cancel) is guarded once something was minted: the
+     * guard offers to complete the forward, and closing anyway is the
+     * explicit second choice, not the default.
+     */
+    const completeForward = () => {
+        if (!link) return;
+        onForwarded({ link, recipientEmail: sentTo, mailFailed });
+    };
+
+    const requestClose = () => {
+        if (link) {
+            setCloseGuardOpen(true);
+            return;
+        }
+        onClose();
+    };
 
     /**
      * The explicit "I want a link to share myself" act, and the retry for a
@@ -175,170 +197,178 @@ export const DpaForwardDialog = ({
         }
     };
 
-    // The preview shows the REAL mail: the actual link once it exists, and the
-    // salutation the recipient will see — never a raw {{token}}.
-    const preview = buildForwardMailPreview(t, { recipientName, signUrl: link?.signUrl ?? null });
-
     return (
-        <Modal
-            titleKey={titleKey}
-            descriptionKey={descriptionKey}
-            icon={<ForwardToInboxRounded fontSize="inherit" />}
-            okLabelKey="dpaForward.dialog.confirm"
-            cancelLabelKey="cancel"
-            confirmDisabled={!link}
-            onConfirm={() => {
-                if (!link) return;
-                onForwarded({ link, recipientEmail: sentTo, mailFailed });
-            }}
-            onClose={onClose}
-            className={styles.dialog}
-            width={880}
-        >
-            <div className={styles.body} data-testid="dpa-forward-dialog">
-                {/* The mail comes first: it is the worked example of what the
+        <>
+            <Modal
+                titleKey={titleKey}
+                descriptionKey={descriptionKey}
+                icon={<ForwardToInboxRounded fontSize="inherit" />}
+                okLabelKey="dpaForward.dialog.confirm"
+                cancelLabelKey="cancel"
+                confirmDisabled={!link}
+                onConfirm={completeForward}
+                onClose={requestClose}
+                className={styles.dialog}
+                width={880}
+                zIndex={zIndex}
+                wrapperTestId="dpa-forward-dialog-modal"
+            >
+                <div className={styles.body} data-testid="dpa-forward-dialog">
+                    {/* The mail comes first: it is the worked example of what the
                     recipient receives. The link block below it is the
                     alternative for anyone who would rather share it themselves. */}
-                <div className={styles.emailSection}>
-                    <h3 className={styles.sectionTitle}>{t('dpaForward.dialog.emailSectionTitle')}</h3>
-                    <Form<RecipientFormValues>
-                        form={form}
-                        name="dpaForwardEmail"
-                        layout="vertical"
-                        requiredMark={false}
-                        onFinish={submitEmail}
-                        onValuesChange={(_, values) => {
-                            setRecipientName(values.recipientName ?? '');
-                            if (sendState === 'failed') setSendState('idle');
-                        }}
-                        initialValues={{ recipientName: '', recipientEmail: '' }}
-                    >
-                        {/* Name and address share one row wherever the sheet is
-                            wide enough for two 240px tracks, and stack below it. */}
-                        <FieldGrid minColumnWidth={240} maxColumns={2}>
-                            <MuiFormField name="recipientName" label={t('dpaForward.dialog.recipientName')} />
-                            <MuiFormField
-                                name="recipientEmail"
-                                label={t('dpaForward.dialog.recipientEmail')}
-                                type="email"
-                                rules={[
-                                    {
-                                        required: true,
-                                        whitespace: true,
-                                        message: t('tenantOnboarding.validation.required'),
-                                    },
-                                    { type: 'email', message: t('tenantOnboarding.validation.email') },
-                                ]}
-                            />
-                        </FieldGrid>
+                    <div className={styles.emailSection}>
+                        <h3 className={styles.sectionTitle}>{t('dpaForward.dialog.emailSectionTitle')}</h3>
+                        <Form<RecipientFormValues>
+                            form={form}
+                            name="dpaForwardEmail"
+                            layout="vertical"
+                            requiredMark={false}
+                            onFinish={submitEmail}
+                            onValuesChange={() => {
+                                if (sendState === 'failed') setSendState('idle');
+                            }}
+                            initialValues={{ recipientName: '', recipientEmail: '' }}
+                        >
+                            {/* Public onboarding lays name and address out together.
+                                Authenticated forwarding offers only the address its
+                                UserService request can actually deliver. */}
+                            <FieldGrid minColumnWidth={240} maxColumns={2}>
+                                {supportsRecipientName && (
+                                    <MuiFormField name="recipientName" label={t('dpaForward.dialog.recipientName')} />
+                                )}
+                                <MuiFormField
+                                    name="recipientEmail"
+                                    label={t('dpaForward.dialog.recipientEmail')}
+                                    type="email"
+                                    rules={[
+                                        {
+                                            required: true,
+                                            whitespace: true,
+                                            message: t('tenantOnboarding.validation.required'),
+                                        },
+                                        { type: 'email', message: t('tenantOnboarding.validation.email') },
+                                    ]}
+                                />
+                            </FieldGrid>
 
-                        {sendState === 'sent' && sentTo && (
-                            <Alert severity="success" data-testid="dpa-forward-sent" sx={{ mb: 2 }}>
-                                {t('dpaForward.dialog.sent', { email: sentTo })}
-                            </Alert>
-                        )}
-                        {/* 502: the link exists — a warning, never an error. */}
-                        {sendState === 'mail-failed' && (
-                            <Alert severity="warning" data-testid="dpa-forward-mail-failed" sx={{ mb: 2 }}>
-                                {t('dpaForward.dialog.mailFailedLinkReady')}
-                            </Alert>
-                        )}
-                        {sendState === 'failed' && (
-                            <Alert severity="error" role="alert" data-testid="dpa-forward-send-failed" sx={{ mb: 2 }}>
-                                {t(sendErrorKey)}
-                            </Alert>
-                        )}
+                            {sendState === 'sent' && sentTo && (
+                                <Alert severity="success" data-testid="dpa-forward-sent" sx={{ mb: 2 }}>
+                                    {t('dpaForward.dialog.sent', { email: sentTo })}
+                                </Alert>
+                            )}
+                            {/* 502: the link exists — a warning, never an error. */}
+                            {sendState === 'mail-failed' && (
+                                <Alert severity="warning" data-testid="dpa-forward-mail-failed" sx={{ mb: 2 }}>
+                                    {t('dpaForward.dialog.mailFailedLinkReady')}
+                                </Alert>
+                            )}
+                            {sendState === 'failed' && (
+                                <Alert
+                                    severity="error"
+                                    role="alert"
+                                    data-testid="dpa-forward-send-failed"
+                                    sx={{ mb: 2 }}
+                                >
+                                    {t(sendErrorKey)}
+                                </Alert>
+                            )}
 
-                        {/* The section's own primary action: filled, and on the
+                            {/* The section's own primary action: filled, and on the
                             trailing edge where the sheet's actions live. */}
-                        <div className={styles.sendActions}>
-                            <M3Button
-                                type="submit"
-                                variant="filled"
-                                loading={sendState === 'pending'}
-                                icon={<ForwardToInboxRounded fontSize="small" />}
-                            >
-                                {t('dpaForward.dialog.send')}
-                            </M3Button>
-                        </div>
-                    </Form>
+                            <div className={styles.sendActions}>
+                                <M3Button
+                                    type="submit"
+                                    variant="filled"
+                                    loading={sendState === 'pending'}
+                                    icon={<ForwardToInboxRounded fontSize="small" />}
+                                >
+                                    {/* After a successful send the same action reads as the
+                                    repeat it now is — every further send spends another
+                                    of the per-invite forwards, so it must not look like
+                                    the first one was never made. */}
+                                    {t(sentTo ? 'dpaForward.dialog.resend' : 'dpaForward.dialog.send')}
+                                </M3Button>
+                            </div>
+                        </Form>
 
-                    {/* The branded render is an ADMIN-ONLY backend call. Issuing
-                        it from the public wizard 401s and logs the anonymous
-                        visitor out (#712), so the public surface previews the
-                        wording it composed itself instead. */}
-                    <div className={styles.preview}>
-                        {/* The kind is what makes this the FORWARD mail rather than a
-                            generic invite. Without it the backend renderer defaults to
-                            TENANT_INVITE (`InviteEmailPreviewService`: a null kind falls
-                            back to TENANT_INVITE), so the sample call-to-action pointed
-                            at the admin console — `admin.oriso.org/admin/tenant-onboarding/…`
-                            — while a DPA signer is sent to the app host instead. The
-                            house frame around the mail, and with it the footer (brand
-                            name, Impressum · Datenschutz, automated-send note), is
-                            applied by the backend for every kind; it is not something
-                            this dialog composes. */}
-                        {surface === 'admin' ? (
-                            <EmailKitPreview
-                                kind="DPA_FORWARD"
-                                subject={preview.subject}
-                                body={preview.body}
+                        <div className={styles.preview}>
+                            <DpaCanonicalMailPreview
+                                surface={surface}
+                                inviteToken={inviteToken}
+                                tenantId={tenantId}
                                 previewLabel={t('dpaForward.dialog.previewLabel')}
                             />
-                        ) : (
-                            <PlainMailPreview
-                                subject={preview.subject}
-                                body={preview.body}
-                                previewLabel={t('dpaForward.dialog.previewLabel')}
-                            />
+                        </div>
+                    </div>
+
+                    <div className={styles.linkSection} data-testid="dpa-forward-link-section">
+                        {/* No link until one is asked for: every mint spends one of
+                        the five that may be outstanding per onboarding (#712). */}
+                        {linkState.kind === 'idle' && (
+                            <div className={styles.linkIdle}>
+                                <p className={styles.validityNote}>{t('dpaForward.dialog.linkIntro')}</p>
+                                <M3Button variant="tonal" icon={<LinkRounded fontSize="small" />} onClick={requestLink}>
+                                    {t('dpaForward.dialog.linkCreate')}
+                                </M3Button>
+                            </div>
+                        )}
+
+                        {linkState.kind === 'loading' && (
+                            <p className={styles.linkPending} role="status">
+                                {t('dpaForward.dialog.linkPending')}
+                            </p>
+                        )}
+
+                        {linkState.kind === 'error' && (
+                            <Alert
+                                severity="error"
+                                role="alert"
+                                data-testid="dpa-forward-link-error"
+                                action={
+                                    <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={requestLink}>
+                                        {t('dpaForward.dialog.linkRetry')}
+                                    </M3Button>
+                                }
+                            >
+                                {t(linkState.why)}
+                            </Alert>
+                        )}
+
+                        {link && (
+                            <>
+                                <CopyLinkRow value={link.signUrl} />
+                                <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
+                                    {t('dpaForward.dialog.validityNote')}
+                                </p>
+                            </>
                         )}
                     </div>
                 </div>
+            </Modal>
 
-                <div className={styles.linkSection} data-testid="dpa-forward-link-section">
-                    {/* No link until one is asked for: every mint spends one of
-                        the five that may be outstanding per onboarding (#712). */}
-                    {linkState.kind === 'idle' && (
-                        <div className={styles.linkIdle}>
-                            <p className={styles.validityNote}>{t('dpaForward.dialog.linkIntro')}</p>
-                            <M3Button variant="tonal" icon={<LinkRounded fontSize="small" />} onClick={requestLink}>
-                                {t('dpaForward.dialog.linkCreate')}
-                            </M3Button>
-                        </div>
-                    )}
-
-                    {linkState.kind === 'loading' && (
-                        <p className={styles.linkPending} role="status">
-                            {t('dpaForward.dialog.linkPending')}
-                        </p>
-                    )}
-
-                    {linkState.kind === 'error' && (
-                        <Alert
-                            severity="error"
-                            role="alert"
-                            data-testid="dpa-forward-link-error"
-                            action={
-                                <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={requestLink}>
-                                    {t('dpaForward.dialog.linkRetry')}
-                                </M3Button>
-                            }
-                        >
-                            {t(linkState.why)}
-                        </Alert>
-                    )}
-
-                    {link && (
-                        <>
-                            <CopyLinkRow value={link.signUrl} />
-                            <p className={styles.validityNote} data-testid="dpa-forward-validity-note">
-                                {t('dpaForward.dialog.validityNote')}
-                            </p>
-                        </>
-                    )}
-                </div>
-            </div>
-        </Modal>
+            {/* The close guard: completing is offered first, closing anyway is the
+            deliberate alternative. Escape/mask/X on the guard itself only puts
+            the question away — the safe default is staying in the dialog. */}
+            {closeGuardOpen && (
+                <Modal
+                    titleKey="dpaForward.closeGuard.title"
+                    descriptionKey={
+                        sentTo ? 'dpaForward.closeGuard.descriptionSent' : 'dpaForward.closeGuard.description'
+                    }
+                    descriptionKeyOptions={sentTo ? { email: sentTo } : undefined}
+                    okLabelKey="dpaForward.closeGuard.complete"
+                    cancelLabelKey="dpaForward.closeGuard.closeAnyway"
+                    onConfirm={completeForward}
+                    onClose={onClose}
+                    onDismiss={() => setCloseGuardOpen(false)}
+                    closable={false}
+                    width={480}
+                    zIndex={zIndex === undefined ? undefined : zIndex + 1}
+                    wrapperTestId="dpa-forward-close-guard-modal"
+                />
+            )}
+        </>
     );
 };
 

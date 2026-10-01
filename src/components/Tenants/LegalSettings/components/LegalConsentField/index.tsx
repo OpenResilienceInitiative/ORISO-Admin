@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -24,18 +24,16 @@ export interface LegalConsentFieldProps {
     /** Viewers (no legal-text edit permission) and version look-back render read-only. */
     readOnly?: boolean;
     /**
-     * The sentence is inherited from a higher level of the ladder and has not been
-     * overridden here (ADR-021 decision 1 — a document without its level is not a
-     * valid statement, so the card says which one it is showing).
-     */
-    inheritedFrom?: string;
-    /**
      * The HOST already offers the template chooser — the department card lifts it
      * into the editor's function bar (agency level, owner decision 2026-08-19), so
      * this module must not draw a second, identical one. The choice itself is not
      * taken away; only its location moves.
      */
     hideTemplateChooser?: boolean;
+    /** Lets a surrounding split button own the visible dialog trigger. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    hideTrigger?: boolean;
 }
 
 /**
@@ -51,27 +49,50 @@ export const LegalConsentField = ({
     language,
     onChange,
     readOnly,
-    inheritedFrom,
     hideTemplateChooser,
+    open: openProp,
+    onOpenChange,
+    hideTrigger,
 }: LegalConsentFieldProps) => {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState(value);
     const [activeTemplateId, setActiveTemplateId] = useState<number | string | undefined>(undefined);
     const templates = useConsentTemplates(language);
+    const dialogOpen = openProp ?? open;
+    const setDialogOpen = (next: boolean) => {
+        if (openProp === undefined) setOpen(next);
+        onOpenChange?.(next);
+    };
+
+    // Owner call 2026-09-23: an empty field opens with the platform template written in, instead of
+    // a notice explaining what applies while it is empty. Clearing it is then a deliberate act, and
+    // the empty state is reported as the error it is.
+    const templateText = templates[0]?.values?.text ?? '';
+    const seed = (current: string) => (isBlankConsentText(current) ? templateText : current);
+
+    useEffect(() => {
+        if (dialogOpen) {
+            setDraft(seed(value));
+            setActiveTemplateId(undefined);
+        }
+        // `seed` is derived from the template of the current language; adding it would re-seed on
+        // every render of the parent.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dialogOpen, value, templateText]);
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
 
     const openDialog = () => {
-        setDraft(value);
+        setDraft(seed(value));
         setActiveTemplateId(undefined);
-        setOpen(true);
+        setDialogOpen(true);
     };
 
     const closeDialog = () => {
-        setOpen(false);
-        setDraft(value);
+        setDialogOpen(false);
+        setDraft(seed(value));
         setActiveTemplateId(undefined);
     };
 
@@ -79,7 +100,7 @@ export const LegalConsentField = ({
         if (!readOnly) {
             onChange(draft);
         }
-        setOpen(false);
+        setDialogOpen(false);
         setActiveTemplateId(undefined);
     };
 
@@ -99,16 +120,18 @@ export const LegalConsentField = ({
 
     return (
         <>
-            <button
-                type="button"
-                className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
-                data-testid="consent-edit-trigger"
-                data-missing-token={missingMandatoryToken || undefined}
-                onClick={openDialog}
-            >
-                {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
-            </button>
-            {open && (
+            {!hideTrigger && (
+                <button
+                    type="button"
+                    className={classNames(styles.trigger, missingMandatoryToken && styles.triggerDanger)}
+                    data-testid="consent-edit-trigger"
+                    data-missing-token={missingMandatoryToken || undefined}
+                    onClick={openDialog}
+                >
+                    {readOnly ? t('legal.consent.viewButton') : t('legal.consent.editButton')}
+                </button>
+            )}
+            {dialogOpen && (
                 <PlaceholderTemplateDialog
                     icon={<LegalConsentHeadIcon data-testid="legal-consent-head-icon" />}
                     titleKey="placeholderTemplate.dialog.legalTitle"
@@ -116,19 +139,23 @@ export const LegalConsentField = ({
                     onSave={saveDialog}
                     onClose={closeDialog}
                     saveDisabled={readOnly}
+                    /* This dialog hands the sentence back to the editor; the
+                       policy — body and sentence together — is stored by the
+                       editor's own Publish / Save-draft action. A button
+                       labelled "Speichern" promised a save that had not
+                       happened, so the sentence looked stored and was gone
+                       after a reload (#929). */
+                    okLabelKey="legal.consent.apply"
                 >
                     <div className={styles.dialogBody}>
-                        {(inheritedFrom || isBlankConsentText(value)) && (
+                        {isBlankConsentText(draft) && (
                             <Alert
                                 className={styles.notice}
-                                type="info"
+                                type="error"
                                 showIcon
-                                data-testid="consent-inherited-notice"
-                                message={
-                                    inheritedFrom
-                                        ? t('legal.consent.inherited', { level: inheritedFrom })
-                                        : t('legal.consent.emptyMeansInherited')
-                                }
+                                data-testid="consent-empty-error"
+                                message={t('legal.consent.error.empty.title')}
+                                description={t('legal.consent.error.empty.description')}
                             />
                         )}
                         {draftMissingMandatoryToken && (

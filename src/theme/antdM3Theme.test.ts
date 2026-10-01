@@ -16,7 +16,7 @@ vi.mock('../utils/theme/orisoScheme', async (importOriginal) => {
         ...actual,
         computeOrisoPalette: (...args: Parameters<typeof actual.computeOrisoPalette>) =>
             mocks.tokensOverride
-                ? { tokens: mocks.tokensOverride, tooPale: false }
+                ? { tokens: mocks.tokensOverride, tooPale: false, signalTooClose: false }
                 : actual.computeOrisoPalette(...args),
     };
 });
@@ -38,7 +38,9 @@ describe('buildAdminAntdTheme', () => {
         expect(token?.colorLink).toBe(tokens['--m3-primary']);
         expect(token?.colorInfo).toBe(tokens['--m3-primary']);
         expect(token?.colorError).toBe(tokens['--m3-error']);
-        expect(token?.colorWarning).toBe(tokens['--m3-warning']);
+        // Warning is antd-only fallback — Admin palette no longer emits --m3-warning (#905).
+        expect(token?.colorWarning).toBe('#410001');
+        expect(tokens['--m3-warning']).toBeUndefined();
         // Surfaces, text and borders follow the M3 surface roles.
         expect(token?.colorTextBase).toBe(tokens['--m3-on-surface']);
         expect(token?.colorBgBase).toBe(tokens['--m3-surface']);

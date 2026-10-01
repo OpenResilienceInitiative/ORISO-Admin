@@ -43,3 +43,9 @@
 .infoContainer {
     max-width: 620px;
 }
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}

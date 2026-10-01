@@ -68,7 +68,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456');
     });
 
-    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'INVALID'] as const)(
+    it.each(['CONSUMED', 'REVOKED', 'EXPIRED', 'SUPERSEDED', 'INVALID'] as const)(
         'maps a %s link to a distinct link-error state on load',
         async (reason) => {
             const client = createClient({
@@ -80,6 +80,34 @@ describe('useTenantAdminOnboardingFlow', () => {
             expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe(reason);
         },
     );
+
+    it.each([
+        ['the reserved number', { reservedTenantId: undefined }],
+        ['the reservation token', { tenantIdReservationToken: undefined }],
+    ])('treats a new-Träger invite without %s as an INVALID link', async (_missing, gap) => {
+        const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...gap }) });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        await waitFor(() => expect(result.current.state.phase).toBe('link-error'));
+        expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe('INVALID');
+    });
+
+    it("keeps the invite's Träger number when the registration answers without one", async () => {
+        const client = createClient({
+            registerTenantAdmin: vi.fn().mockResolvedValue({ twoFactor: { secret: 'S', qrCodeBase64: null } }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+        await act(async () => {
+            await result.current.submitAccount('SecurePass1!');
+        });
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456');
+        });
+
+        expect(result.current.state).toEqual({ phase: 'done', tenantId: 21 });
+    });
 
     it('treats a missing token as an INVALID link without calling the backend', async () => {
         const client = createClient();
@@ -395,5 +423,72 @@ describe('useTenantAdminOnboardingFlow', () => {
             'raw-token',
             expect.objectContaining({ dpa: expect.objectContaining({ accepted: false, signerName: '' }) }),
         );
+    });
+
+    describe('restores the DPA state the server recorded (#1065)', () => {
+        it('a forwarded invite re-enters the on-hold view after a reload, not the consent step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaForwardedAt: '2026-09-24T16:05:30' }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaForward).not.toBeNull();
+            expect(result.current.dpaForward?.recipientEmail).toBeNull();
+            expect(result.current.dpaConfirmed).toBe(false);
+
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('account');
+            await act(async () => {
+                await result.current.submitAccount('SecurePass1!');
+            });
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ dpa: expect.objectContaining({ accepted: false }) }),
+            );
+        });
+
+        it('a confirmed invite skips the consent act and continues to the account step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    dpaForwardedAt: '2026-09-24T16:05:30',
+                    dpaSignedAt: '2026-09-25T09:12:00',
+                }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaConfirmed).toBe(true);
+            // Confirmed wins over forwarded: no waiting view, no signature mail promised.
+            expect(result.current.dpaForward).toBeNull();
+
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('account');
+            await act(async () => {
+                await result.current.submitAccount('SecurePass1!');
+            });
+            expect(result.current.state.phase).toBe('two-factor');
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({
+                    organisation: ORGANISATION,
+                    dpa: expect.objectContaining({ accepted: false }),
+                }),
+            );
+        });
+
+        it('an untouched invite still starts at the consent step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaForwardedAt: null, dpaSignedAt: null }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaForward).toBeNull();
+            expect(result.current.dpaConfirmed).toBe(false);
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('organisation');
+        });
     });
 });

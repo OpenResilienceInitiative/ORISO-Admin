@@ -56,6 +56,27 @@ describe('PhaseStepper', () => {
         expect(screen.getAllByText(/Abgeschlossen/)).toHaveLength(2);
     });
 
+    it('shows the idle label when no phase is active (all pending)', () => {
+        render(
+            <PhaseStepper
+                phases={[
+                    { key: 'invited', label: 'Eingeladen', state: 'pending' },
+                    { key: 'completed', label: 'Abgeschlossen', state: 'pending' },
+                ]}
+                idleLabel="Entwurf – noch nicht eingeladen"
+            />,
+        );
+        expect(screen.getByText('Entwurf – noch nicht eingeladen')).toBeInTheDocument();
+        // Nothing pretends to be active on an idle track.
+        expect(screen.queryByText(/aktueller Schritt/)).not.toBeInTheDocument();
+    });
+
+    it('never shows the idle label while a phase is active', () => {
+        render(<PhaseStepper phases={PHASES} idleLabel="Entwurf – noch nicht eingeladen" />);
+        expect(screen.queryByText('Entwurf – noch nicht eingeladen')).not.toBeInTheDocument();
+        expect(screen.getAllByText(/Registriert/)).toHaveLength(2);
+    });
+
     it('can hide the visible label for ultra-compact cells', () => {
         render(<PhaseStepper phases={PHASES} showActiveLabel={false} />);
         // Only the sr-only phrase remains.
@@ -102,5 +123,28 @@ describe('PhaseStepper', () => {
         screen.getAllByRole('listitem').forEach((item) => {
             expect(item.querySelector('[tabindex="0"]')).not.toBeNull();
         });
+    });
+
+    it('shows the date and time under each reached step, the full timestamp in its tooltip', async () => {
+        const user = userEvent.setup();
+        render(
+            <PhaseStepper
+                phases={[
+                    {
+                        key: 'invited',
+                        label: 'Eingeladen',
+                        state: 'done',
+                        at: { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' },
+                    },
+                    { key: 'completed', label: 'Fertig', state: 'current' },
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('24.09., 11:01')).toBeInTheDocument();
+        await user.hover(screen.getByText(/^Eingeladen – abgeschlossen/));
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('24.09.2026, 11:01:00');
+        // Screen readers hear the date with the step.
+        expect(screen.getByText(/^Eingeladen – abgeschlossen/)).toHaveTextContent('24.09.2026, 11:01:00');
     });
 });

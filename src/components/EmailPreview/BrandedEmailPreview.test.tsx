@@ -37,7 +37,7 @@ const PREVIEW: InviteEmailPreviewDTO = {
     subject: 'Ihre Einladung zu ORISO',
     html: '<!doctype html><html lang="de"><body>mail</body></html>',
     plainText: 'ORISO',
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
 };
 
 const renderPreview = (tenantId?: number) =>
@@ -52,6 +52,56 @@ describe('BrandedEmailPreview', () => {
         mocks.language.current = 'de';
         mocks.getInviteEmailPreview.mockReset().mockResolvedValue(PREVIEW);
         mocks.useSingleTenantData.mockReset().mockReturnValue({ data: undefined });
+    });
+
+    it('uses the server image outcome even when the cached tenant has no logo', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: { id: 7, theming: {} } });
+        mocks.getInviteEmailPreview.mockResolvedValue({
+            ...PREVIEW,
+            branding: {
+                brandName: 'Fresh organisation',
+                logoUrl: 'https://mail.example.org/tenant/7/logo',
+                accentColor: '#246b45',
+                primaryColor: '#0f3b8f',
+                logoRendering: 'IMAGE',
+            },
+        });
+        renderPreview(7);
+        expect(await screen.findByText('Fresh organisation')).toBeInTheDocument();
+        expect(
+            screen.queryByText(/emailPreview\.branding\.(noLogo|logoNotRemote|textWordmark)/),
+        ).not.toBeInTheDocument();
+    });
+
+    it('shows the rendered wordmark when the server rejected an otherwise plausible cached image', async () => {
+        mocks.useSingleTenantData.mockReturnValue({
+            data: { id: 7, theming: { logo: 'data:image/png;base64,iVBORw0KGgo=' } },
+        });
+        mocks.getInviteEmailPreview.mockResolvedValue({
+            ...PREVIEW,
+            branding: {
+                brandName: 'Resolved organisation',
+                logoUrl: null,
+                accentColor: '#246b45',
+                primaryColor: '#0f3b8f',
+                logoRendering: 'TEXT_WORDMARK',
+            },
+        });
+        renderPreview(7);
+        expect(await screen.findByText('tenants.appSettings.emailPreview.branding.textWordmark')).toBeInTheDocument();
+        expect(mocks.useSingleTenantData).not.toHaveBeenCalled();
+    });
+
+    it('does not invent a logo outcome when an older backend returns no metadata', async () => {
+        mocks.useSingleTenantData.mockReturnValue({
+            data: { id: 7, theming: { logo: 'https://external.example/logo.png' } },
+        });
+        renderPreview(7);
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(
+            screen.queryByText(/emailPreview\.branding\.(noLogo|logoNotRemote|textWordmark)/),
+        ).not.toBeInTheDocument();
+        expect(mocks.useSingleTenantData).not.toHaveBeenCalled();
     });
 
     it('requests the tenant branding and the current UI language', async () => {
@@ -77,11 +127,22 @@ describe('BrandedEmailPreview', () => {
         expect(frame).toHaveAttribute('srcdoc', PREVIEW.html);
     });
 
-    it('explains the wordmark fallback when the tenant logo cannot be used in e-mail', async () => {
-        mocks.useSingleTenantData.mockReturnValue({ data: { theming: { logo: 'data:image/png;base64,AAA' } } });
+    it('reports the actual wordmark when the server selected no usable image', async () => {
+        mocks.useSingleTenantData.mockReturnValue({ data: { theming: { logo: 'https://external.example/logo.png' } } });
         renderPreview(7);
 
-        expect(await screen.findByText('tenants.appSettings.emailPreview.branding.logoNotRemote')).toBeInTheDocument();
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
+        expect(mocks.useSingleTenantData).not.toHaveBeenCalled();
+    });
+
+    it('does not warn about an uploaded logo with an effective tenant id', async () => {
+        mocks.useSingleTenantData.mockReturnValue({
+            data: { id: 1, theming: { logo: 'data:image/png;base64,iVBORw0KGgo=' } },
+        });
+        renderPreview(0);
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
     });
 
     it('stays silent about branding while the tenant is still loading', async () => {
@@ -100,11 +161,13 @@ describe('BrandedEmailPreview', () => {
         expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
     });
 
-    it('reports the missing logo once the tenant really has none', async () => {
+    it('does not infer a missing logo from cached settings without a server outcome', async () => {
         mocks.useSingleTenantData.mockReturnValue({ data: { theming: {} }, isPending: false, isError: false });
         renderPreview(7);
 
-        expect(await screen.findByText('tenants.appSettings.emailPreview.branding.noLogo')).toBeInTheDocument();
+        await screen.findByTestId('branded-email-preview-frame');
+        expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
+        expect(mocks.useSingleTenantData).not.toHaveBeenCalled();
     });
 
     it('shows no branding hint for a platform preview, even without tenant data', async () => {

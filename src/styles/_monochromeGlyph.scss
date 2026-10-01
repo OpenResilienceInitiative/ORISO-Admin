@@ -1,0 +1,41 @@
+/*
+ * Recolouring rule for the monochrome counsellor motifs (#1046/#1047).
+ *
+ * The 61 motifs are NOT uniform: 34 are filled line art with `fill="black"`
+ * or no fill attribute at all, and 27 are drawn with STROKES instead. Several
+ * also carry `fill="white"` highlight shapes. A blanket `fill: currentColor`
+ * therefore left every stroke-drawn motif black — invisible once the tile
+ * became the saturated brand red — and flattened the white highlights into the
+ * glyph colour.
+ *
+ * This mirrors, in CSS, exactly what ORISO-Frontend's `recolorSvg()` does in
+ * JS for the same asset set: recolour fill AND stroke, but preserve `none` and
+ * white so highlights stay light. Keep the two in step — they paint the same
+ * artwork in the two apps.
+ */
+@mixin recolour-to-current-color {
+    svg {
+        fill: currentColor;
+    }
+
+    /* Shapes with no fill attribute default to black — recolour them. */
+    svg path:not([fill]),
+    svg circle:not([fill]),
+    svg rect:not([fill]),
+    svg ellipse:not([fill]),
+    svg polygon:not([fill]),
+    svg polyline:not([fill]),
+    svg g:not([fill]) {
+        fill: currentColor;
+    }
+
+    /* Explicit fills, except the preserved light/none values. */
+    svg [fill]:not([fill='none' i]):not([fill='white' i]):not([fill='#fff' i]):not([fill='#ffffff' i]) {
+        fill: currentColor;
+    }
+
+    /* Stroke-drawn motifs: same rule, or they stay black on a dark tile. */
+    svg [stroke]:not([stroke='none' i]):not([stroke='white' i]):not([stroke='#fff' i]):not([stroke='#ffffff' i]) {
+        stroke: currentColor;
+    }
+}

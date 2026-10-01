@@ -1,9 +1,3 @@
-.tabDisabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-    pointer-events: none;
-}
-
 /* Bulk selection (#316): "N ausgewählt" line between composer and table. */
 .selectionCount {
     padding: 0 12px 8px;
@@ -28,4 +22,27 @@
 
 .inboundField {
     min-width: 220px;
+}
+
+/* M3 disabled state: the tab stays readable but does not look pressable. */
+.tabDisabled {
+    cursor: not-allowed;
+    opacity: 0.38;
+}
+
+/* Role-change snackbar: the sentence plus one text action ("Erneut senden"). */
+.snackbar {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.snackbarAction {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
 }

@@ -48,6 +48,7 @@ vi.mock('../../api/tenant/createDpaSignInvite', () => ({
 
 vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
     sendDpaInviteEmail: mocks.sendDpaInviteEmail,
+    isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
 }));
 
 vi.mock('../../api/auth/logout', () => ({
@@ -111,7 +112,7 @@ describe('DpaBlockerGate', () => {
         mocks.createDpaSignInvite.mockReset();
         mocks.createDpaSignInvite.mockResolvedValue({
             signLink: 'https://app.example.org/dpa-sign/minted-token',
-            expiresAt: '2026-08-29T14:31:07',
+            expiresAt: '2099-08-29T14:31:07',
         });
         mocks.sendDpaInviteEmail.mockReset();
         mocks.sendDpaInviteEmail.mockResolvedValue(undefined);
@@ -193,15 +194,17 @@ describe('DpaBlockerGate', () => {
         expect(mocks.getDpaStatus).not.toHaveBeenCalled();
     });
 
-    it('shows the signable blocker with the published DPA text for OUTDATED', async () => {
-        mocks.getDpaStatus.mockResolvedValue(statusInfo('OUTDATED'));
+    it('keeps ongoing work reachable for OUTDATED after renewal expiry', async () => {
+        mocks.getDpaStatus.mockResolvedValue({
+            ...statusInfo('OUTDATED'),
+            signingDeadlineAt: '2020-01-01T12:00:00Z',
+            newCounsellingAllowed: false,
+        });
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
-        expect(screen.getByText('dpaBlocker.intro.OUTDATED')).toBeInTheDocument();
-        expect(await screen.findByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers');
-        expect(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' })).toBeInTheDocument();
+        expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
     });
 
     it('shows the MISSING state without a sign form', async () => {
@@ -272,6 +275,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: 'Vertretungsberechtigt laut Satzung',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -301,6 +305,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: '',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -350,7 +355,7 @@ describe('DpaBlockerGate', () => {
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+        expect(await screen.findByTestId('dpa-text')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
         expect(mocks.logout).toHaveBeenCalledWith(true);
@@ -372,6 +377,23 @@ describe('DpaBlockerGate', () => {
         // The waiting state is the additive `forwardPending` flag on the status
         // DTO — the enum stays MISSING|UNSIGNED|OUTDATED|VALID|INCONSISTENT.
         const forwarded = (status: TenantDpaStatus) => ({ ...statusInfo(status), forwardPending: true });
+
+        it('reuses the link created by the blocker when the pending gate takes over', async () => {
+            mocks.getDpaStatus.mockResolvedValueOnce(statusInfo('UNSIGNED')).mockResolvedValue(forwarded('UNSIGNED'));
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await user.click(await screen.findByRole('button', { name: 'dpaBlocker.forward' }));
+            await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
+            await user.click(await screen.findByRole('button', { name: 'dpaForward.dialog.confirm' }));
+
+            expect(await screen.findByTestId('dpa-pending-dialog')).toBeInTheDocument();
+            expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(
+                'https://app.example.org/dpa-sign/minted-token',
+            );
+            expect(mocks.createDpaSignInvite).toHaveBeenCalledTimes(1);
+        });
 
         it('shows the waiting dialog INSTEAD of the admin app — nothing renders behind it (JOB7)', async () => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
@@ -467,7 +489,7 @@ describe('DpaBlockerGate', () => {
 
         it('a failed delivery keeps the link and reports it as mail-not-sent, not as a total failure', async () => {
             mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
-            mocks.sendDpaInviteEmail.mockRejectedValue(new Error('SMTP failed'));
+            mocks.sendDpaInviteEmail.mockRejectedValue(new Response(null, { status: 502 }));
             const user = userEvent.setup();
 
             renderGate();
@@ -480,6 +502,23 @@ describe('DpaBlockerGate', () => {
 
             expect(await screen.findByTestId('dpa-forward-mail-failed')).toBeInTheDocument();
             expect(screen.queryByTestId('dpa-forward-send-failed')).not.toBeInTheDocument();
+        });
+
+        it('surfaces unexpected delivery API failures instead of reporting a recoverable mail failure', async () => {
+            mocks.getDpaStatus.mockResolvedValue(forwarded('UNSIGNED'));
+            mocks.sendDpaInviteEmail.mockRejectedValue(new Response(null, { status: 403 }));
+            const user = userEvent.setup();
+
+            renderGate();
+
+            await screen.findByTestId('dpa-pending-dialog');
+            await user.click(screen.getByRole('button', { name: 'dpaPending.resend' }));
+            await screen.findByTestId('dpa-forward-dialog');
+            await user.type(screen.getByLabelText('dpaForward.dialog.recipientEmail'), 'legal@example.org');
+            await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.send' }));
+
+            expect(await screen.findByTestId('dpa-forward-send-failed')).toBeInTheDocument();
+            expect(screen.queryByTestId('dpa-forward-mail-failed')).not.toBeInTheDocument();
         });
 
         it('keeps the hard blocker for the never-forwarded unsigned state (#572 unchanged)', async () => {

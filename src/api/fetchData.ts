@@ -27,6 +27,19 @@ export const FETCH_ERRORS = {
     // caller can render its own inline access-denied state. Additive — every existing caller
     // that doesn't pass this flag keeps the redirect exactly as before.
     FORBIDDEN_SILENT: 'FORBIDDEN_SILENT',
+    // Opt-in: reject a 403 with the RAW Response (like CONFLICT_WITH_RESPONSE) so the
+    // caller can surface the backend's own explanation (e.g. "Only platform admins can
+    // create administrative accounts", UserService#1006) instead of a generic toast.
+    // Also skips the global access-denied redirect for this one call.
+    FORBIDDEN_WITH_RESPONSE: 'FORBIDDEN_WITH_RESPONSE',
+    // Opt-in: reject a 502 with the RAW Response so the caller can read the
+    // gateway's machine-readable `reason`/`detail` body. UserService answers
+    // 502 `{"reason":"SMTP_SEND_FAILED","detail":"<category>"}` when an invite
+    // mail could not be handed to SMTP (UserService#1160) — without this the
+    // call fell into CATCH_ALL and the admin saw "something went wrong"
+    // instead of "mail delivery is misconfigured". Must be checked BEFORE
+    // CATCH_ALL so no generic toast is stacked on top of the specific one.
+    BAD_GATEWAY_WITH_RESPONSE: 'BAD_GATEWAY_WITH_RESPONSE',
     CONFLICT: 'CONFLICT',
     CONFLICT_WITH_RESPONSE: 'CONFLICT_WITH_RESPONSE',
     EMPTY: 'EMPTY',
@@ -43,7 +56,12 @@ export const X_REASON = {
     EMAIL_NOT_AVAILABLE: 'EMAIL_NOT_AVAILABLE',
     USERNAME_NOT_AVAILABLE: 'USERNAME_NOT_AVAILABLE',
     NUMBER_OF_LICENSES_EXCEEDED: 'NUMBER_OF_LICENSES_EXCEEDED',
+    TENANT_LICENSING_NOT_CONFIGURED: 'TENANT_LICENSING_NOT_CONFIGURED',
     SUBDOMAIN_NOT_UNIQUE: 'SUBDOMAIN_NOT_UNIQUE',
+    // TenantService answers 400 (not 409) for a subdomain that cannot appear in a host
+    // name; `SubdomainValidator` there mirrors this app's own `SUBDOMAIN_PATTERN`. The
+    // caller must declare BAD_REQUEST_WITH_RESPONSE, or the reason never reaches it.
+    SUBDOMAIN_INVALID: 'SUBDOMAIN_INVALID',
     CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS: 'CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS',
     CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE:
         'CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE',
@@ -165,6 +183,13 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                                 ? response
                                 : new Error(FETCH_ERRORS.CONFLICT),
                         );
+                    } else if (
+                        response.status === 403 &&
+                        props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE)
+                    ) {
+                        // Reject with the raw response so the caller can read the backend's
+                        // message (see FORBIDDEN_WITH_RESPONSE above). No redirect.
+                        reject(response);
                     } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
                         // Reject locally so the caller can render an in-place "no access"
                         // state instead of losing the whole page to the redirect below.
@@ -176,6 +201,14 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                             window.location.href = '/admin/access-denied';
                             reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
                         }
+                    } else if (
+                        response.status === 502 &&
+                        props.responseHandling.includes(FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE)
+                    ) {
+                        // Raw response: the body carries WHY the upstream refused
+                        // (see BAD_GATEWAY_WITH_RESPONSE above). No toast here — the
+                        // caller renders the specific one.
+                        reject(response);
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or
@@ -239,6 +272,17 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
         }
 
         if (isUnauthorized && !props.skipAuth) {
+            // Tell the user WHY they are being taken to the login page. Without this,
+            // a dead session ended an in-progress action (e.g. sending a Träger-admin
+            // invite) with nothing but a spinner and a silent redirect.
+            // Stable key: concurrent 401s (a page with many active queries) all reach
+            // this fallback once the shared refresh has failed — antd collapses repeats
+            // with the same key into ONE toast instead of stacking identical ones.
+            message.error({
+                content: i18next.t('message.error.sessionExpired') as string,
+                duration: 8,
+                key: 'session-expired',
+            });
             logout(true, routePathNames.login);
         }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Space, Spin } from 'antd';
 import Check from '@mui/icons-material/Check';
 import { useTranslation } from 'react-i18next';
@@ -13,11 +13,17 @@ import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalCon
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
-import { sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
+import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
 import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { formatBerlinDateTime } from '../../utils/utcTimestamp';
 import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardLink, DpaForwardOutcome } from '../../../../../api/tenantOnboarding/dpaForward';
+import { DpaPublishDeadlineDialog } from '../DpaPublishDeadlineDialog';
+import { parseBackendInstant } from '../../../../../utils/backendInstant';
+import { useDpaOperationScope } from '../../../../../hooks/useDpaOperationScope.hook';
+import { UserRole } from '../../../../../enums/UserRole';
+import { resolveDpaGateSubject } from '../../../../../utils/dpaBlockerGate';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -47,27 +53,84 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const { data: tenantData } = useTenantAdminData();
     const { translate } = useTranslateLegalContent();
     const { data: userData, isLoading: isUserLoading } = useUserData();
-    const { isTenantScopedAdmin } = useUserRoles();
+    const { hasRole, isSuperAdmin, tenantId: accountTenantId, tokenUnreadable } = useUserRoles();
+    const isDpaRecipient =
+        resolveDpaGateSubject({
+            hasTenantAdminRole: hasRole(UserRole.TenantAdmin),
+            hasSingleTenantAdminRole: hasRole(UserRole.SingleTenantAdmin),
+            isSuperAdmin,
+            tenantId: accountTenantId,
+            tokenUnreadable,
+        }) === 'subject';
     const {
         data: dpaGate,
         isError: dpaGateError,
         refetch: refetchDpaGate,
-    } = useDpaGate(id, isTenantScopedAdmin && Number.isFinite(id) && id > 0);
+    } = useDpaGate(id, Number.isFinite(id) && id > 0);
+    const latestVersionId = (versions as DpaVersion[])[0]?.activationDate;
+    const gateForDocument =
+        !dpaGate?.currentDpaVersion || dpaGate.currentDpaVersion === latestVersionId ? dpaGate : undefined;
+    useEffect(() => {
+        if (dpaGate?.currentDpaVersion && dpaGate.currentDpaVersion !== latestVersionId) {
+            refetchVersions();
+        }
+    }, [dpaGate?.currentDpaVersion, latestVersionId, refetchVersions]);
     const { data: dpaSignatures = [], isError: dpaSignaturesError } = useDpaSignatures(
         id,
-        isTenantScopedAdmin && dpaGate?.dpaSigned === true,
+        isDpaRecipient && gateForDocument?.dpaSigned === true,
     );
-    const [signLink, setSignLink] = useState<string>();
-    const [signInvite, setSignInvite] = useState<DpaSignInvite>();
-    const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
-    const [inviteEmailSentTo, setInviteEmailSentTo] = useState<string | null>(null);
-    const effectiveReadOnly = !!readOnly || isTenantScopedAdmin;
+    const { scope: identity, isCurrent: isPublicationCurrent } = useDpaOperationScope(
+        id,
+        userData?.id,
+        latestVersionId,
+    );
+    // Invalidate an invite as soon as the gate discovers a renewal, even while
+    // the matching contract is still loading. Links belong to that publication.
+    const { scope: invitationIdentity, isCurrent: isInvitationCurrent } = useDpaOperationScope(
+        id,
+        userData?.id,
+        dpaGate?.currentDpaVersion ?? latestVersionId,
+    );
+    const [forwardState, setForwardState] = useState<{
+        identity: typeof invitationIdentity;
+        signLink?: string;
+        signInvite?: DpaSignInvite;
+        open?: boolean;
+        sentTo?: string | null;
+    }>({ identity: invitationIdentity });
+    const forwarding = forwardState.identity === invitationIdentity ? forwardState : { identity: invitationIdentity };
+    if (forwarding !== forwardState) setForwardState(forwarding);
+    const { signLink, signInvite, open: forwardDialogOpen, sentTo: inviteEmailSentTo } = forwarding;
+    const setForwardDialogOpen = (open: boolean) => {
+        if (isInvitationCurrent()) setForwardState((current) => ({ ...current, open }));
+    };
+    const invitationRequest = useRef<
+        { identity: typeof invitationIdentity; promise: Promise<DpaForwardLink> } | undefined
+    >(undefined);
+    const [publicationState, setPublicationState] = useState<{
+        identity: typeof identity;
+        pending?: Record<string, string>;
+        error?: string;
+    }>({ identity });
+    const publication = publicationState.identity === identity ? publicationState : { identity };
+    if (publication !== publicationState) setPublicationState(publication);
+    const pendingPublication = publication.pending;
+    const publishError = publication.error;
+    const setPublishError = useCallback(
+        (error?: string) => {
+            if (isPublicationCurrent()) setPublicationState((current) => ({ ...current, error }));
+        },
+        [isPublicationCurrent],
+    );
+    const setPendingPublication = (pending?: Record<string, string>) => {
+        if (isPublicationCurrent()) setPublicationState((current) => ({ ...current, pending }));
+    };
+    const effectiveReadOnly = !!readOnly || isDpaRecipient;
     // Persist a dismissal only once the opaque user id is known. Usernames and
     // email addresses must not become storage keys, and late identity loading
     // must not remount the editor (which would discard an in-progress draft).
     const dismissalScope = userData?.id ? `${id}:${userData.id}` : undefined;
 
-    const latestVersionId = (versions as DpaVersion[])[0]?.activationDate;
     const latestContentByLanguage = useMemo(
         () => parseLegalContentMap((versions as DpaVersion[])[0]?.content),
         [versions],
@@ -79,6 +142,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
         'dpa',
         effectiveReadOnly ? undefined : dismissalScope,
         latestVersionId,
+        setPublishError,
     );
     const editorContentByLanguage = draft?.content ?? latestContentByLanguage;
     const languages = useMemo(
@@ -89,10 +153,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     const mapped: LegalVersion[] = useMemo(
         () =>
             (versions as DpaVersion[]).map((version, index) => {
-                const date = new Date(version.activationDate);
-                const dateLabel = Number.isNaN(date.getTime())
-                    ? version.activationDate
-                    : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
+                const dateLabel = formatBerlinDateTime(version.activationDate, lang);
                 return {
                     id: version.activationDate,
                     label: index === 0 ? `${dateLabel} ${t('tenants.legal.version.current')}` : dateLabel,
@@ -111,30 +172,37 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     );
     const signedAtLabel = useMemo(() => {
         if (!latestSignedDpa?.signedAt) return undefined;
-        const date = new Date(latestSignedDpa.signedAt);
-        return Number.isNaN(date.getTime())
-            ? latestSignedDpa.signedAt
-            : date.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' });
+        return formatBerlinDateTime(latestSignedDpa.signedAt, lang);
     }, [lang, latestSignedDpa?.signedAt]);
 
     /**
-     * Shared forward dialog seam (#723). A created invite is reused for the
-     * lifetime of this view — every issued link stays valid until a signature
-     * lands, so repeated opens need not mint fresh tokens here.
+     * Shared forward dialog seam (#723). Reuse only a live invite for the
+     * currently viewed tenant, account and publication.
      */
     const ensureSignLink = async (): Promise<DpaForwardLink> => {
-        if (signInvite && signLink) {
+        if (!isInvitationCurrent()) throw new Error('The viewed DPA changed.');
+        if (signInvite && signLink && parseBackendInstant(signInvite.expiresAt).getTime() > Date.now()) {
             return { signUrl: signLink, expiresAt: signInvite.expiresAt };
         }
-        const invite = await createDpaSignInvite(id);
-        const resolvedSignLink = resolveDpaSignLink(invite.signLink);
-        setSignInvite(invite);
-        setSignLink(resolvedSignLink);
-        return { signUrl: resolvedSignLink, expiresAt: invite.expiresAt };
+        if (invitationRequest.current?.identity === invitationIdentity) return invitationRequest.current.promise;
+        const promise = (async () => {
+            const invite = await createDpaSignInvite(id);
+            if (!isInvitationCurrent()) throw new Error('The viewed DPA changed.');
+            const resolvedSignLink = resolveDpaSignLink(invite.signLink);
+            setForwardState((current) => ({ ...current, signInvite: invite, signLink: resolvedSignLink }));
+            return { signUrl: resolvedSignLink, expiresAt: invite.expiresAt };
+        })();
+        invitationRequest.current = { identity: invitationIdentity, promise };
+        try {
+            return await promise;
+        } finally {
+            if (invitationRequest.current?.promise === promise) invitationRequest.current = undefined;
+        }
     };
 
     const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
         const link = await ensureSignLink();
+        if (!isInvitationCurrent()) throw new Error('The viewed DPA changed.');
         if (!recipientEmail) {
             return { link, mailFailed: false };
         }
@@ -148,7 +216,10 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 expiresAt: link.expiresAt ?? '',
             });
             return { link, mailFailed: false };
-        } catch {
+        } catch (error) {
+            if (!isDpaInviteEmailDeliveryFailure(error)) {
+                throw error;
+            }
             // Same shape as the public 502: the link exists, the mail did not go.
             return { link, mailFailed: true };
         }
@@ -195,15 +266,26 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 // Remount when the stored content changes (e.g. after a publish) so the editor
                 // resets to it, and when a stored draft appears or is discarded. Saving a draft
                 // deliberately does NOT change this key — it would reset the editor mid-edit.
-                key={`${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
+                key={`${id}|${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
                 initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
                 versions={mapped}
-                onPublish={(contentByLanguage) => publish(contentByLanguage, { onSuccess: () => discardDraft() })}
+                onPublish={(contentByLanguage) => {
+                    setPublishError(undefined);
+                    setPendingPublication(contentByLanguage);
+                }}
                 publishing={isPending}
-                onTranslate={readOnly ? undefined : translate}
+                onTranslate={effectiveReadOnly ? undefined : translate}
                 readOnly={effectiveReadOnly}
-                dpaSigned={dpaGate?.dpaSigned}
+                dpaSigned={gateForDocument?.dpaSigned}
+                signingDeadlineAt={
+                    gateForDocument?.signingDeadlineAt ?? (versions as DpaVersion[])[0]?.signingDeadlineAt
+                }
+                dpaStatus={gateForDocument?.dpaStatus}
+                newCounsellingAllowed={gateForDocument?.newCounsellingAllowed}
+                renewalGraceActive={gateForDocument?.renewalGraceActive}
+                errorMessage={publishError}
+                onCloseError={() => setPublishError(undefined)}
                 dismissalScope={dismissalScope}
                 onSaveDraft={effectiveReadOnly || !dismissalScope ? undefined : saveDraft}
                 draftSavedAt={savedAt}
@@ -221,7 +303,30 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     ) : undefined
                 }
             />
-            {isTenantScopedAdmin && dpaGateError && (
+            {pendingPublication && (
+                <DpaPublishDeadlineDialog
+                    publishing={isPending}
+                    onCancel={() => setPendingPublication(undefined)}
+                    onConfirm={(signingDeadlineAt) =>
+                        publish(
+                            { contentByLanguage: pendingPublication, signingDeadlineAt },
+                            {
+                                onSuccess: () => {
+                                    if (!isPublicationCurrent()) return;
+                                    discardDraft();
+                                    setPendingPublication(undefined);
+                                },
+                                onError: () => {
+                                    if (!isPublicationCurrent()) return;
+                                    setPendingPublication(undefined);
+                                    setPublishError(t('tenants.legal.version.publishError'));
+                                },
+                            },
+                        )
+                    }
+                />
+            )}
+            {isDpaRecipient && dpaGateError && (
                 <Alert
                     type="error"
                     showIcon
@@ -233,7 +338,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     }
                 />
             )}
-            {isTenantScopedAdmin && dpaGate?.dpaPublished && !dpaGate.dpaSigned && (
+            {isDpaRecipient && gateForDocument?.dpaPublished && !gateForDocument.dpaSigned && (
                 <>
                     <Alert
                         type="warning"
@@ -265,19 +370,21 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     {forwardDialogOpen && (
                         <DpaForwardDialog
                             forward={forward}
+                            tenantId={id}
                             // Legal Settings lives behind ProtectedRoute, so the
                             // admin-only branded mail preview is reachable here.
                             surface="admin"
                             onClose={() => setForwardDialogOpen(false)}
                             onForwarded={({ recipientEmail }) => {
+                                if (!isInvitationCurrent()) return;
                                 setForwardDialogOpen(false);
-                                setInviteEmailSentTo(recipientEmail);
+                                setForwardState((current) => ({ ...current, sentTo: recipientEmail }));
                             }}
                         />
                     )}
                 </>
             )}
-            {isTenantScopedAdmin && dpaGate?.dpaSigned && dpaSignaturesError && (
+            {isDpaRecipient && gateForDocument?.dpaSigned && dpaSignaturesError && (
                 <Alert type="error" showIcon message={t('legal.dpa.sign.detailsLoadError')} />
             )}
         </>

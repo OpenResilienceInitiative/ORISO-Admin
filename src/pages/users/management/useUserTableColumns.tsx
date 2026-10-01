@@ -109,24 +109,28 @@ export const useUserTableColumns = ({
             const isOpen = openRows.includes(record.id);
             const visibleAgencies = isOpen ? agencies : [agencies[0]];
 
-            // Each chip label lives in its own element: `text-overflow: ellipsis` is ignored on
-            // the anonymous flex item of an `inline-flex` chip, which sliced long names mid-word.
-            const chip = (variant: 'postcode' | 'name' | 'city', value?: string) => (
-                <span
-                    className={`counselorList__agencyChip counselorList__agencyChip--${variant}`}
-                    title={value || undefined}
-                >
-                    <span className="counselorList__agencyChipLabel">{value}</span>
-                </span>
-            );
-
-            return visibleAgencies.filter(Boolean).map((agencyItem) => (
-                <div key={agencyItem.id} className="counselorList__agencies">
-                    {chip('postcode', agencyItem.postcode)}
-                    {chip('name', agencyItem.name)}
-                    {chip('city', agencyItem.city)}
-                </div>
-            ));
+            // One unit per centre: "postcode city" on top, the name below. Each line lives in its
+            // own truncating element — `text-overflow: ellipsis` is ignored on the anonymous flex
+            // item of an `inline-flex` box, which sliced long names mid-word (ORISO-Admin#99).
+            return visibleAgencies.filter(Boolean).map((agencyItem) => {
+                const place = [agencyItem.postcode, agencyItem.city]
+                    .map((part) => part?.trim())
+                    .filter(Boolean)
+                    .join(' ');
+                const fullText = [place, agencyItem.name].filter(Boolean).join(', ');
+                return (
+                    <div key={agencyItem.id} className="counselorList__agencies">
+                        <span className="counselorList__agencyChip" title={fullText || undefined}>
+                            {place && (
+                                <span className="counselorList__agencyChipLine counselorList__agencyChipLine--place">
+                                    {place}
+                                </span>
+                            )}
+                            <span className="counselorList__agencyChipLine">{agencyItem.name}</span>
+                        </span>
+                    </div>
+                );
+            });
         };
 
         const columns: Array<ColumnProps<TableRow>> = visibleColumns.map((columnConfig) => {

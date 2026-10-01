@@ -36,8 +36,12 @@ export interface AdminSidebarProps {
     items: AdminSidebarNavItem[];
     /** Optional grouped "activity logs" section shown below the main items. */
     activityLogs?: AdminSidebarActivityLogs;
-    /** Lower "account" nav item. */
-    account: AdminSidebarNavItem;
+    /**
+     * Lower "account" nav item. Omitted while the layout is restricted (#891):
+     * a gated admin may only enrol, recover or log out, so no destination is
+     * offered that the gate would swallow anyway.
+     */
+    account?: AdminSidebarNavItem;
     /** Logout action row. */
     logout: {
         label: string;
@@ -114,9 +118,11 @@ export const AdminSidebar = ({ items, activityLogs, account, logout, lang, curre
             </ul>
 
             <ul className="lowerSidebar">
-                <li className="menuItem">
-                    <NavItemLink item={account} lang={lang} currentPath={currentPath} />
-                </li>
+                {account && (
+                    <li className="menuItem">
+                        <NavItemLink item={account} lang={lang} currentPath={currentPath} />
+                    </li>
+                )}
 
                 <li className="menuItem">
                     <button onClick={logout.onLogout} type="button" aria-label={logout.label} title={logout.label}>

@@ -1,6 +1,11 @@
 import logout from './logout';
 import { bootstrapAuthSessionViaBff, refreshAuthTokensViaBff, setAuthTokensViaBff } from './authBffClient';
-import { getTokenExpiryFromLocalStorage, setTokenExpiryInLocalStorage } from './accessSessionLocalStorage';
+import {
+    ACCESS_TOKEN_VALID_UNTIL_KEY,
+    REFRESH_TOKEN_VALID_UNTIL_KEY,
+    getTokenExpiryFromLocalStorage,
+    setTokenExpiryInLocalStorage,
+} from './accessSessionLocalStorage';
 import routePathNames from '../../appConfig';
 import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
@@ -38,10 +43,10 @@ export const setTokens = async (
     setSessionTokens(access_token || null, refresh_token || null);
 
     if (access_token) {
-        setTokenExpiryInLocalStorage('auth.access_token_valid_until', expires_in);
+        setTokenExpiryInLocalStorage(ACCESS_TOKEN_VALID_UNTIL_KEY, expires_in);
     }
     if (refresh_token) {
-        setTokenExpiryInLocalStorage('auth.refresh_token_valid_until', refresh_expires_in);
+        setTokenExpiryInLocalStorage(REFRESH_TOKEN_VALID_UNTIL_KEY, refresh_expires_in);
     }
 
     await setAuthTokensViaBff({
@@ -89,11 +94,11 @@ export const tryRefreshAccessToken = (): Promise<boolean> => {
 
             setSessionTokens(response.access_token, response.refresh_token);
             setTokenExpiryInLocalStorage(
-                'auth.access_token_valid_until',
+                ACCESS_TOKEN_VALID_UNTIL_KEY,
                 resolveExpiresInSeconds(response.access_token, response.expires_in),
             );
             setTokenExpiryInLocalStorage(
-                'auth.refresh_token_valid_until',
+                REFRESH_TOKEN_VALID_UNTIL_KEY,
                 resolveExpiresInSeconds(response.refresh_token, response.refresh_expires_in),
             );
 
@@ -147,11 +152,11 @@ export const bootstrapAuthSession = async (): Promise<boolean> => {
 
         setSessionTokens(session.access_token, session.refresh_token);
         setTokenExpiryInLocalStorage(
-            'auth.access_token_valid_until',
+            ACCESS_TOKEN_VALID_UNTIL_KEY,
             resolveExpiresInSeconds(session.access_token, session.expires_in),
         );
         setTokenExpiryInLocalStorage(
-            'auth.refresh_token_valid_until',
+            REFRESH_TOKEN_VALID_UNTIL_KEY,
             resolveExpiresInSeconds(session.refresh_token, session.refresh_expires_in),
         );
         return true;

@@ -2,10 +2,9 @@
 #
 # NOTE ON BRANCHES: `target-branch` only applies to VERSION updates. Dependabot
 # SECURITY updates always open against the repository default branch (`main`)
-# and cannot be retargeted from here. Since day-to-day work happens on
-# `pre-dev`, security PRs against `main` fix nothing that is actually deployed.
-# The real fix is to make `pre-dev` the default branch; until then security
-# fixes have to be applied to `pre-dev` by hand.
+# and cannot be retargeted from here. Human feature PRs and Dependabot version
+# updates target `dev`. Security PRs against `main` are an exception; apply
+# those fixes onto `dev` by hand when they matter for what is deployed.
 #
 # Security updates are split by dependency-type so that production findings
 # (what actually ships to users) never drown in build/test tooling noise.
@@ -13,7 +12,7 @@ version: 2
 updates:
     - package-ecosystem: 'npm'
       directory: '/'
-      target-branch: 'pre-dev'
+      target-branch: 'dev'
       schedule:
           interval: 'monthly'
       open-pull-requests-limit: 3
@@ -40,7 +39,7 @@ updates:
 
     - package-ecosystem: 'github-actions'
       directory: '/'
-      target-branch: 'pre-dev'
+      target-branch: 'dev'
       schedule:
           interval: 'monthly'
       open-pull-requests-limit: 1
@@ -52,7 +51,7 @@ updates:
 
     - package-ecosystem: 'docker'
       directory: '/'
-      target-branch: 'pre-dev'
+      target-branch: 'dev'
       schedule:
           interval: 'monthly'
       open-pull-requests-limit: 1

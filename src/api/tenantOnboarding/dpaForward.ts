@@ -65,6 +65,14 @@ export type DpaForwardFailureKind =
     | 'NO_DPA_PUBLISHED'
     /** 429 — this onboarding already holds the maximum of outstanding sign links. */
     | 'TOO_MANY_LINKS'
+    /**
+     * 400 whose body names the per-invite forward budget (#1065:
+     * `MAX_DPA_FORWARDS_PER_INVITE`, currently 3). Distinct from
+     * TOO_MANY_LINKS: that is the TenantService cap on OUTSTANDING sign
+     * links, this is the UserService's never-replenished per-invitation
+     * budget — once it is spent, only a fresh invitation helps.
+     */
+    | 'FORWARD_BUDGET_EXHAUSTED'
     /** Anything else — retryable/technical. */
     | 'TECHNICAL';
 
@@ -101,12 +109,12 @@ export const isAwaitingForwardedSignature = (
 };
 
 const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'INVALID';
+    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /**
  * 410 carries `{ reason }` — mapped body-first, exactly like `…/onboarding`.
- * `SUPERSEDED`/`NOT_ACTIVE` are link deaths the wizard has no distinct state
- * for; they collapse onto the terminal INVALID state.
+ * `NOT_ACTIVE` is the one link death the wizard has no distinct state for; it
+ * collapses onto the terminal INVALID state.
  */
 const toLinkDeath = async (response: Response): Promise<InviteLinkError> => {
     try {
@@ -120,17 +128,40 @@ const toLinkDeath = async (response: Response): Promise<InviteLinkError> => {
     return new InviteLinkError('INVALID');
 };
 
+/**
+ * The one 400 the dialog must phrase specifically: the per-invite forward
+ * budget is spent (#1065). The backend throws a plain `BadRequestException`,
+ * which serialises as 400 + `{ "message": "This invitation has already
+ * forwarded the data processing agreement N times; …" }` — no `reason` code,
+ * no X-Reason header — so the message text is the only discriminator there
+ * is. Matched defensively on its stable core ("already forwarded"): a
+ * non-JSON body, a missing message or any other wording keeps the generic
+ * mapping, never fakes a budget verdict.
+ */
+const isForwardBudgetExhausted = async (response: Response): Promise<boolean> => {
+    try {
+        const message = (await response.clone().json())?.message;
+        return typeof message === 'string' && /already forwarded/i.test(message);
+    } catch {
+        return false;
+    }
+};
+
 const toForwardError = async (error: unknown): Promise<unknown> => {
     if (!(error instanceof Response)) {
         return error;
     }
-    // 400 deliberately has NO mapping of its own. It used to become
+    // Other 400s deliberately have NO mapping of their own. 400 used to become
     // INVALID_EMAIL, which told the user their address was wrong for any
     // server-side rejection — the owner hit exactly that with a valid address
     // while the real cause was a missing APP_BASE_URL two services away. The
-    // body is empty, so a 400 cannot be discriminated here anyway, and the
-    // dialog already blocks malformed addresses client-side via { type: 'email' }.
+    // dialog already blocks malformed addresses client-side via { type: 'email' };
+    // the single discriminable 400 is the forward-budget rejection above.
     switch (error.status) {
+        case 400:
+            return (await isForwardBudgetExhausted(error))
+                ? new DpaForwardError('FORWARD_BUDGET_EXHAUSTED')
+                : new DpaForwardError('TECHNICAL');
         case 404:
             return new DpaForwardError('UNKNOWN_TOKEN');
         case 409:

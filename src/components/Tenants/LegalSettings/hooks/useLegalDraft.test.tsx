@@ -58,8 +58,12 @@ describe('useLegalDraft', () => {
 
     it('stores the content map and confirms the save to the admin', () => {
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc', '2026-08-01T09:00:00.000Z'));
-        act(() => result.current.saveDraft({ de: '<p>neu</p>', en: '<p>new</p>' }));
+        let saved = false;
+        act(() => {
+            saved = result.current.saveDraft({ de: '<p>neu</p>', en: '<p>new</p>' });
+        });
 
+        expect(saved).toBe(true);
         const stored = readLegalDraft(legalDraftKey('dpa', '1:user-abc'));
         expect(stored?.content).toEqual({ de: '<p>neu</p>', en: '<p>new</p>' });
         expect(stored?.baseVersionId).toBe('2026-08-01T09:00:00.000Z');
@@ -140,8 +144,12 @@ describe('useLegalDraft', () => {
             throw new Error('quota');
         });
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc'));
-        act(() => result.current.saveDraft({ de: '<p>neu</p>' }));
+        let saved = true;
+        act(() => {
+            saved = result.current.saveDraft({ de: '<p>neu</p>' });
+        });
 
+        expect(saved).toBe(false);
         expect(errorNotification).toHaveBeenCalledTimes(1);
         expect(successNotification).not.toHaveBeenCalled();
         expect(result.current.savedAt).toBeUndefined();

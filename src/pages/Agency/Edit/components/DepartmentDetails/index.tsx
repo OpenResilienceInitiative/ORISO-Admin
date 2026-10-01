@@ -2,6 +2,7 @@ import { Alert, Button, notification, Select, Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../../components/Card';
+import { M3Button } from '../../../../../components/M3Button';
 import { CardEditable } from '../../../../../components/CardEditable';
 import { FieldGrid } from '../../../../../components/FieldGrid';
 import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
@@ -9,6 +10,7 @@ import { useDepartmentDetails } from '../../../../../hooks/useDepartmentDetails.
 import { useUpdateDepartmentDetails } from '../../../../../hooks/useUpdateDepartmentDetails.hook';
 import { AgencyData } from '../../../../../types/agency';
 import { DepartmentDetails } from '../../../../../types/departmentDetails';
+import styles from './styles.module.scss';
 
 export interface DepartmentOption {
     id: number;
@@ -33,6 +35,8 @@ interface DepartmentDetailsCardProps {
     isLoading?: boolean;
     isError?: boolean;
     onRetry?: () => void;
+    /** Jumps to the Fachbereich field of the settings card; no button without it. */
+    onAddDepartment?: () => void;
 }
 
 const TITLE_KEY = 'agency.edit.general.department_details';
@@ -57,6 +61,7 @@ export const DepartmentDetailsCard = ({
     isLoading,
     isError,
     onRetry,
+    onAddDepartment,
 }: DepartmentDetailsCardProps) => {
     const { t } = useTranslation();
 
@@ -73,11 +78,24 @@ export const DepartmentDetailsCard = ({
     );
 
     // Disable-not-hide: an agency without Fachbereiche keeps the card, with a hint instead
-    // of the form, so admins learn the capability exists.
+    // of the form. The hint names the card that adds one — testers took the grey card for
+    // "cannot be added later" and created a new Beratungsstelle instead (#1069).
     if (departments.length === 0) {
         return (
             <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
-                <p>{t('agency.edit.general.department_details.no_departments')}</p>
+                <p>
+                    {t('agency.edit.general.department_details.no_departments', {
+                        card: t('agency.edit.settings.title'),
+                        field: t('agency.edit.settings.departments'),
+                    })}
+                </p>
+                {onAddDepartment && (
+                    <div className={styles.addDepartment}>
+                        <M3Button variant="tonal" onClick={onAddDepartment}>
+                            {t('agency.edit.general.department_details.add_department')}
+                        </M3Button>
+                    </div>
+                )}
             </Card>
         );
     }
@@ -163,6 +181,7 @@ export const DepartmentDetailsCard = ({
 
 interface AgencyDepartmentDetailsProps {
     agencyData?: AgencyData;
+    onAddDepartment?: () => void;
 }
 
 /**
@@ -170,7 +189,7 @@ interface AgencyDepartmentDetailsProps {
  * PUT /agencyadmin/agencies/{agencyId}/topics/{topicId}/details. Only overrides are sent;
  * cleared fields are stored as null so the department inherits the Beratungsstelle value again.
  */
-export const AgencyDepartmentDetails = ({ agencyData }: AgencyDepartmentDetailsProps) => {
+export const AgencyDepartmentDetails = ({ agencyData, onAddDepartment }: AgencyDepartmentDetailsProps) => {
     const { t } = useTranslation();
     const agencyId = Number(agencyData?.id);
 
@@ -214,6 +233,7 @@ export const AgencyDepartmentDetails = ({ agencyData }: AgencyDepartmentDetailsP
             isLoading={detailsQuery.isLoading}
             isError={detailsQuery.isError}
             onRetry={() => detailsQuery.refetch()}
+            onAddDepartment={onAddDepartment}
         />
     );
 };

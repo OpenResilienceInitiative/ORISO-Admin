@@ -4,7 +4,7 @@ import type { MenuProps } from 'antd';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import { SplitButton } from '../GlobalSearch/SplitButton';
+import { SplitButton, type SplitButtonSize } from '../GlobalSearch/SplitButton';
 import styles from './PlaceholderTemplateEditor.module.scss';
 
 export interface TemplateOption {
@@ -17,6 +17,8 @@ export interface TemplateSplitButtonProps {
     /** The template currently loaded into the editor — shown on the main segment. */
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
+    /** Offers a blank new template in addition to any copy entries. */
+    onCreateTemplate?: () => void;
     /** Offers "new from template" menu entries; omit to hide them. */
     onCreateFromTemplate?: (id: number | string) => void;
     /** Main-segment press (e.g. open a manage dialog). Optional in the pure picker. */
@@ -30,10 +32,26 @@ export interface TemplateSplitButtonProps {
      * rendered as a checkbox label in registration).
      */
     icon?: ReactNode;
+    /**
+     * Pill height. Defaults to `small` (40px) for the legal editors, whose row of
+     * language/Fachbereich/version pickers sits at 36px. Surfaces whose row is
+     * built from default-size (56px) buttons — the invite composer — pass
+     * `medium`, so the chooser lines up with its neighbours instead of sitting
+     * a size below them.
+     */
+    size?: SplitButtonSize;
+    /** Optional fixed main label when choosing templates is the secondary action. */
+    label?: ReactNode;
+    mainTestId?: string;
+    mainDataMissingToken?: boolean;
+    mainInvalid?: boolean;
+    /** Id of the element explaining why the main action is invalid or disabled. */
+    mainDescribedBy?: string;
 }
 
 const SELECT_PREFIX = 'select:';
 const CREATE_PREFIX = 'create:';
+const CREATE_BLANK = 'create-blank';
 
 /**
  * Template chooser as an M3 split button (reused {@link SplitButton}, same
@@ -47,9 +65,16 @@ export const TemplateSplitButton = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onCreateTemplate,
     onMainClick,
     disabled = false,
     icon = <DescriptionOutlinedIcon />,
+    size = 'small',
+    label,
+    mainTestId,
+    mainDataMissingToken,
+    mainInvalid,
+    mainDescribedBy,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -84,6 +109,18 @@ export const TemplateSplitButton = ({
           }))
         : [];
 
+    if (onCreateTemplate) {
+        createItems.unshift({
+            key: CREATE_BLANK,
+            label: (
+                <span className={styles.templateMenuRow}>
+                    <AddRoundedIcon fontSize="small" aria-hidden />
+                    <span>{t('placeholderTemplate.template.newGroup', 'Neue Vorlage')}</span>
+                </span>
+            ),
+        });
+    }
+
     const menu: MenuProps = {
         items: [
             {
@@ -103,6 +140,10 @@ export const TemplateSplitButton = ({
                 : []),
         ],
         onClick: ({ key }) => {
+            if (key === CREATE_BLANK) {
+                onCreateTemplate?.();
+                return;
+            }
             const raw = key.startsWith(SELECT_PREFIX)
                 ? key.slice(SELECT_PREFIX.length)
                 : key.slice(CREATE_PREFIX.length);
@@ -120,22 +161,27 @@ export const TemplateSplitButton = ({
         <SplitButton
             disabled={disabled}
             icon={icon}
-            label={active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
+            label={label ?? active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}
             menuLabel={t('placeholderTemplate.template.menuLabel', 'Vorlagenmenü öffnen')}
             // Outlined at rest (#741, owner call on PR #727): the previous light
             // fill was the sheet's Elevated colourway — a state claim the resting
             // picker has no business making. It lifts only while its menu is open.
             variant="outlined"
-            // Small (40px), not the SplitButton default medium (56px): this picker sits in
-            // the same row as the legal editors' language/Fachbereich/version SplitDropdowns,
-            // whose pills are 36px. At 56px it towered over them and read as the row's main
-            // action, which a template chooser is not.
-            size="small"
+            // Defaults to small (40px), not the SplitButton default medium (56px): in the
+            // legal editors this picker sits in the same row as the language/Fachbereich/
+            // version SplitDropdowns, whose pills are 36px. At 56px it towered over them and
+            // read as the row's main action, which a template chooser is not. Rows built from
+            // default-size buttons pass `size` explicitly — see the invite composer.
+            size={size}
             // Without a main action the segment is inert — take it out of the
             // tab order instead of offering a button that does nothing (#727
             // post-merge review). The chevron menu stays fully interactive.
             mainDisabled={!onMainClick}
+            mainTestId={mainTestId}
+            mainDataMissingToken={mainDataMissingToken}
+            mainInvalid={mainInvalid}
+            mainDescribedBy={mainDescribedBy}
             onClick={onMainClick}
         />
     );

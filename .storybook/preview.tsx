@@ -16,6 +16,8 @@ import { AdminEmpty } from '../src/components/AdminEmpty';
 import 'antd/dist/reset.css';
 import '../src/styles/App.less';
 import '../src/app.css';
+// Preview-only override: re-enable scrolling for stories taller than the iframe.
+import './preview.css';
 // Initialise the shared i18next instance (side-effect import).
 import '../src/i18n';
 

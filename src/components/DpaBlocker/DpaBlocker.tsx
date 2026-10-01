@@ -12,10 +12,13 @@ import Refresh from '@mui/icons-material/Refresh';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaIcon } from '../CustomIcons/LegalIcons';
 import { DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
+import { DpaDeadlineInfo } from '../DpaLegalForm/DpaDeadlineInfo';
 import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
+import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
+import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
 
 export interface DpaBlockerSignData {
@@ -34,9 +37,17 @@ export interface DpaBlockerProps {
     /** Published multilingual DPA content (JSON map language -> HTML) to review. */
     dpaContent?: string | null;
     dpaContentLoading?: boolean;
+    signingDeadlineAt?: string | null;
     signPending?: boolean;
     signFailed?: boolean;
+    signStale?: boolean;
     onSign?: (data: DpaBlockerSignData) => void;
+    /** Delegates the signature to an authorised signer without accepting it locally. */
+    onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
+    /** Hands the created link back before refreshing into the pending gate. */
+    onForwarded?: (result: DpaForwardResult) => void;
     onRetry: () => void;
     retryPending?: boolean;
     onLogout: () => void;
@@ -77,7 +88,12 @@ export const DpaBlocker = ({
     dpaContentLoading = false,
     signPending = false,
     signFailed = false,
+    signStale = false,
+    signingDeadlineAt,
     onSign,
+    onForward,
+    tenantId,
+    onForwarded,
     onRetry,
     retryPending = false,
     onLogout,
@@ -86,6 +102,7 @@ export const DpaBlocker = ({
     const [form] = Form.useForm<DpaBlockerFormValues>();
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
+    const [forwardOpen, setForwardOpen] = useState(false);
     // Why the last submit did not go through — surfaced AT the button (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
 
@@ -133,6 +150,13 @@ export const DpaBlocker = ({
 
     const showSignForm = signable && !dpaContentLoading && !!dpaHtml;
     const showContentUnavailable = signable && !dpaContentLoading && !dpaHtml;
+    // Forwarding needs no DPA text on this screen, so a failed text load must
+    // not take it away — otherwise the unauthorised admin is back at a dead end.
+    const forwardButton = onForward && (
+        <M3Button type="button" variant="outlined" block onClick={() => setForwardOpen(true)}>
+            <span className={styles.actionLabel}>{t('dpaBlocker.forward')}</span>
+        </M3Button>
+    );
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -174,9 +198,12 @@ export const DpaBlocker = ({
                         )}
 
                         {showContentUnavailable && (
-                            <Alert severity="error" sx={{ mb: 2 }}>
-                                {t('dpaBlocker.contentUnavailable')}
-                            </Alert>
+                            <>
+                                <Alert severity="error" sx={{ mb: 2 }}>
+                                    {t('dpaBlocker.contentUnavailable')}
+                                </Alert>
+                                {forwardButton}
+                            </>
                         )}
 
                         {showSignForm && (
@@ -198,6 +225,12 @@ export const DpaBlocker = ({
                                 <DpaFormSection
                                     dpaHtml={dpaHtml}
                                     hideTextHeader
+                                    textMetadata={
+                                        <DpaDeadlineInfo
+                                            signingDeadlineAt={signingDeadlineAt}
+                                            status={reason === 'UNSIGNED' ? 'UNSIGNED' : undefined}
+                                        />
+                                    }
                                     textLabel={t('dpaBlocker.title')}
                                     textLanguage={i18n.language}
                                     accepted={dpaAccepted}
@@ -211,7 +244,7 @@ export const DpaBlocker = ({
 
                                 {signFailed && (
                                     <Alert severity="error" sx={{ mt: 2 }} role="alert">
-                                        {t('dpaBlocker.sign.error')}
+                                        {t(signStale ? 'dpaBlocker.sign.staleVersion' : 'dpaBlocker.sign.error')}
                                     </Alert>
                                 )}
 
@@ -235,11 +268,12 @@ export const DpaBlocker = ({
                                         type="submit"
                                         variant="filled"
                                         block
-                                        disabled={signPending}
+                                        disabled={signPending || signStale}
                                         icon={<Draw fontSize="small" />}
                                     >
-                                        {t('dpaBlocker.sign.submit')}
+                                        <span className={styles.actionLabel}>{t('dpaBlocker.sign.submit')}</span>
                                     </M3Button>
+                                    {forwardButton}
                                 </div>
                             </Form>
                         )}
@@ -260,16 +294,29 @@ export const DpaBlocker = ({
                             disabled={retryPending}
                             icon={<Refresh fontSize="small" />}
                         >
-                            {t('dpaBlocker.retry')}
+                            <span className={styles.actionLabel}>{t('dpaBlocker.retry')}</span>
                         </M3Button>
                         <M3Button variant="text" onClick={onLogout} icon={<Logout fontSize="small" />}>
-                            {t('dpaBlocker.logout')}
+                            <span className={styles.actionLabel}>{t('dpaBlocker.logout')}</span>
                         </M3Button>
                     </div>
                     <p className={styles.actionsHint} data-testid="dpa-blocker-actions-hint">
                         {t('dpaBlocker.actionsHint')}
                     </p>
                 </div>
+                {forwardOpen && onForward && (
+                    <DpaForwardDialog
+                        forward={onForward}
+                        tenantId={tenantId}
+                        surface="admin"
+                        zIndex={1400}
+                        onClose={() => setForwardOpen(false)}
+                        onForwarded={(result) => {
+                            setForwardOpen(false);
+                            onForwarded?.(result);
+                        }}
+                    />
+                )}
             </div>
         </ThemeProvider>
     );

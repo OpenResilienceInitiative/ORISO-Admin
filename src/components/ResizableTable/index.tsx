@@ -1,10 +1,11 @@
 import { Table as AntTable } from 'antd';
 import { ColumnProps, TableProps } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import ResizableTitle from './Resizable/Resizable';
 import styles from './styles.module.scss';
+import { useAdminTableScrollY } from './useAdminTableScrollY';
 
 export interface ResizeTableProps<T> extends TableProps<T> {
     columns: Array<ColumnProps<T>>;
@@ -20,7 +21,15 @@ const normalizeLoading = (loading: ResizeTableProps<unknown>['loading']) => {
     return loading;
 };
 
-const DEFAULT_TABLE_SCROLL_Y = 'calc(100dvh - 280px)';
+const scrollYToCssValue = (scrollY: string | number): string =>
+    typeof scrollY === 'number' ? `${scrollY}px` : scrollY;
+
+const scrollYCssVar = (scrollY: string | number | undefined): CSSProperties => {
+    if (scrollY === undefined || scrollY === 'auto') {
+        return {};
+    }
+    return { '--admin-table-scroll-y': scrollYToCssValue(scrollY) } as CSSProperties;
+};
 
 export const ResizeTable = ({
     className,
@@ -30,7 +39,12 @@ export const ResizeTable = ({
     style,
     ...defaultOptions
 }: ResizeTableProps<any>) => {
+    const hostRef = useRef<HTMLDivElement>(null);
     const [columnsWidth, setColumnsWidth] = useState(columns.filter(Boolean).map(({ width }) => width));
+
+    const callerScrollY = scroll?.y;
+    const measureDefaultScrollY = callerScrollY === undefined;
+    const measuredScrollY = useAdminTableScrollY(hostRef, measureDefaultScrollY);
 
     const handleResize = useCallback(
         (index) =>
@@ -50,28 +64,30 @@ export const ResizeTable = ({
             onResize: handleResize(index),
         }),
     }));
-    const effectiveScroll = { x: 'max-content', y: DEFAULT_TABLE_SCROLL_Y, ...scroll };
+
+    const defaultScrollY = measureDefaultScrollY ? measuredScrollY : callerScrollY;
+    const effectiveScroll = { x: 'max-content', y: defaultScrollY, ...scroll };
     const effectiveScrollY = effectiveScroll.y;
     const tableStyle = {
-        ...(typeof effectiveScrollY === 'string' && effectiveScrollY !== 'auto'
-            ? { '--admin-table-scroll-y': effectiveScrollY }
-            : {}),
+        ...scrollYCssVar(effectiveScrollY),
         ...style,
     } as CSSProperties;
 
     return (
-        <AntTable
-            {...defaultOptions}
-            loading={normalizeLoading(loading)}
-            className={classNames(styles.table, { [styles.autoHeight]: effectiveScrollY === 'auto' }, className)}
-            columns={mergeColumns}
-            scroll={effectiveScroll}
-            style={tableStyle}
-            components={{
-                header: {
-                    cell: ResizableTitle,
-                },
-            }}
-        />
+        <div ref={hostRef} className={styles.measureHost}>
+            <AntTable
+                {...defaultOptions}
+                loading={normalizeLoading(loading)}
+                className={classNames(styles.table, { [styles.autoHeight]: effectiveScrollY === 'auto' }, className)}
+                columns={mergeColumns}
+                scroll={effectiveScroll}
+                style={tableStyle}
+                components={{
+                    header: {
+                        cell: ResizableTitle,
+                    },
+                }}
+            />
+        </div>
     );
 };

@@ -15,6 +15,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import routePathNames from '../../../appConfig';
 import { useAddOrUpdateTenantAdmin } from '../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import styles from './styles.module.scss';
+import { passwordFormRules } from '../../../utils/consultantCredentialRules';
 import { getDomain } from '../../../utils/getDomain';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -196,16 +197,7 @@ export const TenantAdminEditOrAdd = () => {
                                         label={t('tenantAdmins.form.password')}
                                         placeholder={t('placeholder.password')}
                                         helpText={t('tenantAdmins.hint.password')}
-                                        rules={[
-                                            {
-                                                validator: (_, value) =>
-                                                    !value || value.length >= 8
-                                                        ? Promise.resolve()
-                                                        : Promise.reject(
-                                                              new Error(t('message.error.password.minLength')),
-                                                          ),
-                                            },
-                                        ]}
+                                        rules={passwordFormRules(t)}
                                     />
                                 </Card>
                             </Col>

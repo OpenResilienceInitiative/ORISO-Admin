@@ -15,8 +15,12 @@ export interface DpaPendingSignatureDialogProps {
      * every issued link stays valid until a signature lands (#723 contract).
      */
     ensureSignLink: () => Promise<DpaForwardLink>;
+    /** Link just created by the blocker; avoids minting a duplicate during the transition. */
+    initialLink?: DpaForwardLink;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /**
      * "Abmelden" — the ONLY way off this screen (JOB7). There is no dismiss:
      * an unsigned tenant may not use the platform, so the dialog is a gate,
@@ -48,16 +52,21 @@ type LinkState = { kind: 'loading' } | { kind: 'ready'; link: DpaForwardLink } |
  */
 export const DpaPendingSignatureDialog = ({
     ensureSignLink,
+    initialLink,
     forward,
+    tenantId,
     onLogout,
     onForwardCompleted,
     recheckRejected = false,
 }: DpaPendingSignatureDialogProps) => {
     const { t } = useTranslation();
     const [resendOpen, setResendOpen] = useState(false);
-    const [linkState, setLinkState] = useState<LinkState>({ kind: 'loading' });
+    const [linkState, setLinkState] = useState<LinkState>(
+        initialLink ? { kind: 'ready', link: initialLink } : { kind: 'loading' },
+    );
 
     useEffect(() => {
+        if (initialLink) return undefined;
         let cancelled = false;
         ensureSignLink()
             .then((link) => {
@@ -77,6 +86,7 @@ export const DpaPendingSignatureDialog = ({
         return (
             <DpaForwardDialog
                 forward={forward}
+                tenantId={tenantId}
                 // Shown after login on an authenticated admin surface, so the
                 // admin-only branded mail preview is reachable here.
                 surface="admin"

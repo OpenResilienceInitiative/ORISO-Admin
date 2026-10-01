@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { delay, http, HttpResponse } from 'msw';
+import { useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+// eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export
+import { expect, within } from 'storybook/test';
 import type { InviteEmailPreviewDTO } from '../../api/accountInvites/accountInvites';
 import { BrandedEmailPreviewView } from './BrandedEmailPreviewView';
 import { BrandedEmailPreview } from './BrandedEmailPreview';
@@ -15,7 +19,7 @@ const preview = (html: string, subject: string): InviteEmailPreviewDTO => ({
     subject,
     html,
     plainText: 'ORISO\n=====',
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
 });
 
 const PLATFORM = preview(invitePlatformDe, 'Ihre Einladung zu ORISO');
@@ -53,32 +57,40 @@ type Story = StoryObj<typeof meta>;
 /** Platform branding (super-admin view): no tenant is selected, so no branding hint is shown. */
 export const PlatformBranding: Story = {};
 
-/**
- * A tenant whose logo the mail can use (`theming.logo` is an absolute https URL), so
- * `logoFallbackReason` is `null` and **the panel stays quiet** — that is what this story pins.
- *
- * The fixture's sample host `cdn.example.org` does not resolve, so the frame renders the image's
- * `alt` text rather than a picture; the header slot and its alt fallback are documented in
- * `Organisms/EmailPreview/BrandedEmailLayout` → `TenantLogo`. For a real logo, use the live
- * preview on `/admin/theme-settings/smtp`.
- */
+/** The server selected an image. Fixtures do not prove remote image reachability. */
 export const TenantBranding: Story = {
-    args: { preview: TENANT, logoFallbackReason: null },
+    args: {
+        preview: {
+            ...TENANT,
+            branding: {
+                brandName: 'Tenant organisation',
+                logoUrl: 'https://app.example.org/service/tenant/public/branding/7/logo',
+                accentColor: '#246b45',
+                primaryColor: '#0f3b8f',
+                logoRendering: 'IMAGE',
+            },
+        },
+    },
 };
 
-/** Tenant without any logo: the mail falls back to the wordmark and the panel says why. */
+/** The server selected a text wordmark; the panel reports that outcome without guessing why. */
 export const NoTenantLogo: Story = {
-    args: { logoFallbackReason: 'NO_LOGO' },
+    args: {
+        preview: {
+            ...PLATFORM,
+            branding: {
+                brandName: 'Configured organisation',
+                logoUrl: null,
+                accentColor: '#246b45',
+                primaryColor: '#0f3b8f',
+                logoRendering: 'TEXT_WORDMARK',
+            },
+        },
+    },
 };
 
-/**
- * Tenant with a base64/`data:` logo. It exists, but Gmail and Outlook block embedded image data,
- * so the backend deliberately degrades to the wordmark — the panel explains that specific case
- * instead of leaving it looking like a missing upload.
- */
-export const LogoNotUsableInEmail: Story = {
-    args: { logoFallbackReason: 'LOGO_NOT_REMOTE' },
-};
+/** Older response: no selected outcome is known, so the panel shows no speculative warning. */
+export const LogoNotUsableInEmail: Story = {};
 
 /** While the render request is in flight. */
 export const Loading: Story = {
@@ -140,5 +152,59 @@ export const ConnectedError: StoryObj<typeof BrandedEmailPreview> = {
         msw: {
             handlers: [http.get(PREVIEW_ENDPOINT, () => new HttpResponse(null, { status: 500 }))],
         },
+    },
+};
+
+// Each connected scenario gets its own cache; a previous story must not supply its response.
+const PreviewScenario = ({ tenantId }: { tenantId?: number }) => {
+    const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+    return (
+        <QueryClientProvider client={client}>
+            <BrandedEmailPreview tenantId={tenantId} />
+        </QueryClientProvider>
+    );
+};
+
+const actualOutcomeStory = (wordmark: boolean): StoryObj<typeof BrandedEmailPreview> => ({
+    render: () => <PreviewScenario tenantId={7} />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(PREVIEW_ENDPOINT, ({ request }) => {
+                    const query = new URL(request.url).searchParams;
+                    if (query.get('tenant_id') !== '7' || !['de', 'en'].includes(query.get('language') ?? ''))
+                        return new HttpResponse(null, { status: 400 });
+                    return HttpResponse.json({
+                        ...TENANT,
+                        branding: {
+                            brandName: 'Fresh organisation',
+                            logoUrl: wordmark ? null : 'https://app.example.org/service/tenant/public/branding/7/logo',
+                            accentColor: '#246b45',
+                            primaryColor: '#0f3b8f',
+                            logoRendering: wordmark ? 'TEXT_WORDMARK' : 'IMAGE',
+                        },
+                    });
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Fresh organisation')).toBeVisible();
+        await expect(await canvas.findByTestId('branded-email-preview-frame')).toHaveAttribute('srcdoc', TENANT.html);
+        if (wordmark) await expect(await canvas.findByRole('alert')).toBeVisible();
+        else await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+    },
+});
+
+export const ConnectedActualImage = actualOutcomeStory(false);
+export const ConnectedActualWordmark = actualOutcomeStory(true);
+export const ConnectedLegacyUnknown: StoryObj<typeof BrandedEmailPreview> = {
+    render: () => <PreviewScenario tenantId={7} />,
+    parameters: { msw: { handlers: [http.get(PREVIEW_ENDPOINT, () => HttpResponse.json(TENANT))] } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('branded-email-preview-frame')).toHaveAttribute('srcdoc', TENANT.html);
+        await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
     },
 };

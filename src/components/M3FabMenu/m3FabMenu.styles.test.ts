@@ -11,11 +11,11 @@ describe('M3FabMenu action colour roles', () => {
         expect(styles).toMatch(/top:\s*calc\(100% \+ 8px\)/i);
     });
 
-    it('uses the Figma primary-container roles without a selected-item outline', () => {
-        expect(actionBlock).toMatch(/--m3-fab-menu-primary-container:\s*var\(--oriso-app-action,\s*#cc1e1c\)/i);
-        expect(actionBlock).toMatch(
-            /--m3-fab-menu-on-primary-container:\s*var\(--oriso-app-accent-light,\s*#ffe2de\)/i,
-        );
+    it('binds the primary action roles to theme tokens instead of a hard-coded red (#992)', () => {
+        expect(styles).not.toMatch(/#cc1e1c/i);
+        expect(styles).not.toMatch(/--oriso-app-/);
+        expect(actionBlock).toMatch(/--m3-fab-menu-primary-container:\s*var\(--m3-primary,\s*#a5000a\)/i);
+        expect(actionBlock).toMatch(/--m3-fab-menu-on-primary-container:\s*var\(--m3-primary-container,\s*#ffe2de\)/i);
         expect(actionBlock).toMatch(/\.item\s*{[^}]*background:\s*var\(--m3-fab-menu-primary-container\)/is);
         expect(actionBlock).toMatch(/\.item\s*{[^}]*color:\s*var\(--m3-fab-menu-on-primary-container\)/is);
         expect(actionBlock).not.toMatch(/\.itemActive\s*{[^}]*(?:outline|box-shadow)/is);
@@ -23,15 +23,18 @@ describe('M3FabMenu action colour roles', () => {
         expect(actionBlock).toMatch(/\.item:focus-visible\s*{[^}]*background:\s*color-mix\(/is);
     });
 
-    it('uses the Figma secondary roles for deactivated actions', () => {
+    it('colours neutral actions per item, not per menu, so the tone follows the action (#992)', () => {
         expect(actionBlock).toMatch(/--m3-fab-menu-secondary:\s*var\(--m3-secondary,\s*#4c555f\)/i);
         expect(actionBlock).toMatch(
             /--m3-fab-menu-on-secondary-container:\s*var\(--m3-on-secondary-container,\s*#e7effc\)/i,
         );
+        expect(actionBlock).toMatch(/\.itemNeutral\s*{[^}]*background:\s*var\(--m3-fab-menu-secondary\)/is);
+        expect(actionBlock).toMatch(/\.itemNeutral\s*{[^}]*color:\s*var\(--m3-fab-menu-on-secondary-container\)/is);
+        // The closed FAB still reports the current value; only the FAB keeps the menu-level tone.
         expect(actionBlock).toMatch(
-            /\.action\.neutral\s*{[^}]*\.item,[^}]*\.fab\s*{[^}]*background:\s*var\(--m3-fab-menu-secondary\)/is,
+            /\.action\.neutral\s*{[^}]*\.fab\s*{[^}]*background:\s*var\(--m3-fab-menu-secondary\)/is,
         );
-        expect(actionBlock).toMatch(/\.action\.neutral\s*{[^}]*color:\s*var\(--m3-fab-menu-on-secondary-container\)/is);
+        expect(actionBlock).not.toMatch(/\.action\.neutral\s*{[^}]*\.item[,\s]/is);
     });
 
     it('keeps long action labels inside a six-pixel smartphone inset', () => {

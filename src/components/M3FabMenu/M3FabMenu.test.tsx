@@ -334,6 +334,53 @@ describe('M3FabMenu', () => {
         expect(screen.getByRole('button', { name: 'Aktion' })).toBeDisabled();
     });
 
+    it('lets an item carry its own tone so "deactivate" is never coloured by the menu state (#992)', () => {
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={[
+                        { key: 'enabled-enforced', label: 'Aktivierung erzwungen', tone: 'primary' },
+                        { key: 'disabled-enforced', label: 'Deaktivierung erzwungen', tone: 'neutral' },
+                        { key: 'info', label: 'Weitere Informationen' },
+                    ]}
+                    open
+                    openLabel="Policy öffnen"
+                    closeLabel="Policy schließen"
+                    variant="action"
+                    tone="primary"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('button', { name: 'Aktivierung erzwungen' }).className).not.toContain('itemNeutral');
+        expect(screen.getByRole('button', { name: 'Deaktivierung erzwungen' }).className).toContain('itemNeutral');
+        // Without an explicit tone an item inherits the menu tone (here: primary).
+        expect(screen.getByRole('button', { name: 'Weitere Informationen' }).className).not.toContain('itemNeutral');
+    });
+
+    it('lets a primary item stay primary inside a neutral menu (#992)', () => {
+        render(
+            <MemoryRouter>
+                <M3FabMenu
+                    items={[
+                        { key: 'enabled-enforced', label: 'Aktivierung erzwungen', tone: 'primary' },
+                        { key: 'info', label: 'Weitere Informationen' },
+                    ]}
+                    open
+                    openLabel="Policy öffnen"
+                    closeLabel="Policy schließen"
+                    variant="action"
+                    tone="neutral"
+                    onOpenChange={vi.fn()}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('button', { name: 'Aktivierung erzwungen' }).className).not.toContain('itemNeutral');
+        expect(screen.getByRole('button', { name: 'Weitere Informationen' }).className).toContain('itemNeutral');
+    });
+
     it('renders account entries after the destinations', async () => {
         render(<Harness footerItems={[{ key: 'logout', label: 'Abmelden' }]} />);
         await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));

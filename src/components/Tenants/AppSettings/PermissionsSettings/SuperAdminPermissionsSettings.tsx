@@ -4,7 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
-import { applyVisibleTogglesAsValues, buildTenantAdminControlsPayload } from './permissionsSettingsUtils';
+import {
+    applyVisibleTogglesAsValues,
+    buildTenantAdminControlsPayload,
+    platformPresetValues,
+} from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
@@ -97,11 +101,13 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         [rebuildEffectivePlatformControls, updateTenantAdminControls],
     );
 
+    // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
+    // policies), never from a hard-coded all-on default that would contradict a stored policy.
     const initialValues = useMemo(
         () => ({
-            settings: applyVisibleTogglesAsValues(allowedPermissionToggles),
+            settings: platformPresetValues(platformControls),
         }),
-        [allowedPermissionToggles],
+        [platformControls],
     );
 
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
