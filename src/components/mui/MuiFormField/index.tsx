@@ -109,7 +109,7 @@ const MuiControl = ({
                   ...(startAdornment ? { startAdornment } : {}),
               }
             : undefined;
-    const shrinkLabel = type === 'date';
+    const shrinkLabel = type === 'date' || type === 'time' || type === 'datetime-local';
     const slotProps =
         inputSlotProps || inputProps || shrinkLabel
             ? {
