@@ -227,3 +227,10 @@
         border-color: var(--m3-error, #ba1a1a);
     }
 }
+
+/* `fitContent`: width comes from the input's `size` attribute, not the 20-character default. */
+.inputFit {
+    width: auto;
+    max-width: 22ch;
+    text-overflow: ellipsis;
+}

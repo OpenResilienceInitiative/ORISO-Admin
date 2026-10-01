@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { http, HttpResponse, delay } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import { UserRole } from '../../enums/UserRole';
+import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -66,7 +70,9 @@ const DialogHarness = ({
 }: React.ComponentProps<typeof EmailTemplatesDialog> & { picker?: boolean }) => {
     const [open, setOpen] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState(props.selectedTemplateId);
-    const selectedName = TEMPLATES.find((template) => template.id === selectedTemplateId)?.name;
+    const [selectedName, setSelectedName] = useState(
+        TEMPLATES.find((template) => template.id === props.selectedTemplateId)?.name,
+    );
 
     return (
         <>
@@ -85,6 +91,7 @@ const DialogHarness = ({
                         picker
                             ? (template) => {
                                   setSelectedTemplateId(template.id);
+                                  setSelectedName(template.name);
                                   setOpen(false);
                               }
                             : undefined
@@ -127,6 +134,13 @@ const meta = {
         templateKind: 'TENANT_INVITE',
         onClose: () => {},
     },
+    decorators: [
+        // `setStoryAuth` writes a shared store, so each story sets its own role.
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
+            return <Story />;
+        },
+    ],
 } satisfies Meta<typeof DialogHarness>;
 
 export default meta;
@@ -183,5 +197,140 @@ export const Loading: Story = {
 export const Error: Story = {
     parameters: {
         msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
+    },
+};
+
+/** A Träger admin may create templates and edit their own; the platform's stays disabled. */
+export const TraegerAdminOwnAndPlatformTemplates: Story = {
+    args: { templateKind: 'COUNSELLOR_INVITE' },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, () =>
+                    HttpResponse.json([
+                        {
+                            ...TEMPLATES[3],
+                            id: 31,
+                            name: 'Unsere eigene Berater-Einladung',
+                            tenantId: 1,
+                            editable: true,
+                        },
+                        {
+                            ...TEMPLATES[3],
+                            id: 32,
+                            name: 'Berater-Willkommen (Plattform)',
+                            tenantId: null,
+                            editable: false,
+                        },
+                    ]),
+                ),
+                createdTemplate,
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const body = within(canvasElement.ownerDocument.body);
+        // By name: the list sorts by kind and date.
+        await body.findByText('Unsere eigene Berater-Einladung');
+        // No `new Error()`: this file's `Error` story shadows the global.
+        const editButtonInRowOf = (name: string) =>
+            within(body.getByText(name).closest('tr') as HTMLElement).getByRole('button', {
+                name: /Bearbeiten|Edit/,
+            });
+        await expect(editButtonInRowOf('Unsere eigene Berater-Einladung')).toBeEnabled();
+        await expect(editButtonInRowOf('Berater-Willkommen (Plattform)')).toBeDisabled();
+        await expect(body.getByRole('button', { name: /Neue Vorlage|New template/ })).toBeEnabled();
+    },
+};
+
+const lockedRow = (id: number, name: string): InviteEmailTemplateDTO => ({
+    ...TEMPLATES[3],
+    id,
+    name,
+    tenantId: null,
+    editable: false,
+});
+
+/**
+ * A Träger admin sees several shared templates: the lock reason on the first row (under the
+ * header) and on the last row must both be readable, not clipped by the scrolling table body.
+ */
+export const LockReasonReadableOnFirstAndLastRow: Story = {
+    args: { templateKind: 'COUNSELLOR_INVITE' },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 1);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, () =>
+                    HttpResponse.json(
+                        Array.from({ length: 8 }, (_, index) => lockedRow(40 + index, `Geteilte Vorlage ${index + 1}`)),
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        await body.findByText('Geteilte Vorlage 8');
+        // The dialog zooms in; measure the rows once it has settled.
+        await waitFor(() => expect(doc.querySelector('.ant-modal[class*="ant-zoom"]')).toBeNull());
+        const rows = doc.querySelectorAll<HTMLElement>('.ant-table-tbody tr.ant-table-row');
+        const expectReadableLockReason = async (row: HTMLElement) => {
+            const trigger = within(row)
+                .getByRole('button', { name: /Bearbeiten|Edit/ })
+                .closest('[tabindex="0"]');
+            await expect(trigger).not.toBeNull();
+            (trigger as HTMLElement).focus();
+            const tooltip = await body.findByRole('tooltip');
+            // Outside the scrolling body, fully inside the viewport, and stacked above the dialog.
+            await expect(tooltip.closest('.ant-table-body')).toBeNull();
+            const rect = tooltip.getBoundingClientRect();
+            const view = doc.defaultView as Window;
+            await expect(rect.top >= 0 && rect.left >= 0).toBe(true);
+            await expect(rect.bottom <= view.innerHeight && rect.right <= view.innerWidth).toBe(true);
+            // Anchored to its own button: centred over it, just above it.
+            const anchor = (trigger as HTMLElement).getBoundingClientRect();
+            await expect(Math.abs(rect.left + rect.width / 2 - (anchor.left + anchor.width / 2))).toBeLessThan(2);
+            await expect(Math.abs(anchor.top - rect.bottom - 4)).toBeLessThan(2);
+            const dialogLayer = Number(view.getComputedStyle(row.closest('.ant-modal-wrap') as Element).zIndex);
+            await expect(Number(view.getComputedStyle(tooltip).zIndex)).toBeGreaterThan(dialogLayer);
+            (trigger as HTMLElement).blur();
+        };
+        await expectReadableLockReason(rows[0]);
+        await expectReadableLockReason(rows[rows.length - 1]);
+    },
+};
+
+/** A newly created active template closes the picker and becomes the invitation choice. */
+export const CreateAndUse: Story = {
+    args: { picker: true, selectedTemplateId: 1, initialView: 'create' },
+    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const dialog = within(await body.findByRole('dialog'));
+        await userEvent.type(dialog.getByLabelText('Vorlagenname'), 'Neue Einladung');
+        await userEvent.type(dialog.getByLabelText('Betreff'), 'Willkommen');
+        await userEvent.type(dialog.getByLabelText('Inhalt'), 'Ihr Zugang zur Beratung');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
+        await expect(canvas.getByText('Neue Einladung')).toBeInTheDocument();
     },
 };

@@ -9,6 +9,12 @@ export interface PhaseStepperPhase {
     key: string;
     label: string;
     state: PhaseStepperState;
+    /** Overrides the generic state word screen readers hear, e.g. „Zustellproblem" for `warning`. */
+    stateLabel?: string;
+    /** Overrides the generic tooltip sentence for this phase's state. */
+    stateHint?: string;
+    /** When the step was reached: `short` shows under the bead, `full` goes into its tooltip. */
+    at?: { short: string; full: string };
 }
 
 export interface PhaseStepperProps {
@@ -79,17 +85,19 @@ export const PhaseStepper = ({
     const { t } = useTranslation();
     const active = activePhase(phases);
     const allDone = phases.length > 0 && phases.every((phase) => phase.state === 'done');
+    // Dated steps stand in columns so each date sits under its own bead.
+    const dated = phases.some((phase) => phase.at);
 
     return (
         <div className={classNames(styles.stepper, className)}>
-            <ol className={styles.track} aria-label={ariaLabel}>
+            <ol className={classNames(styles.track, { [styles.trackDated]: dated })} aria-label={ariaLabel}>
                 {phases.map((phase) => (
                     <li key={phase.key} className={classNames(styles.phase, styles[phase.state])}>
                         <M3Tooltip
-                            text={`${phase.label}: ${t(
-                                `dataTable.phase.stateHint.${phase.state}`,
-                                STATE_HINT_FALLBACKS[phase.state],
-                            )}`}
+                            text={`${phase.label}: ${
+                                phase.stateHint ??
+                                t(`dataTable.phase.stateHint.${phase.state}`, STATE_HINT_FALLBACKS[phase.state])
+                            }${phase.at ? ` ${phase.at.full}` : ''}`}
                         >
                             {/* The bead is the hover target AND the focus target:
                                 the explanation is the only place the colour code
@@ -105,10 +113,17 @@ export const PhaseStepper = ({
                                 <span className={styles.srOnly}>
                                     {phase.label}
                                     {' – '}
-                                    {t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                    {phase.stateLabel ??
+                                        t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                    {phase.at && `, ${phase.at.full}`}
                                 </span>
                             </span>
                         </M3Tooltip>
+                        {dated && (
+                            <span aria-hidden className={styles.stamp}>
+                                {phase.at?.short}
+                            </span>
+                        )}
                     </li>
                 ))}
             </ol>

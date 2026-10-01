@@ -1,5 +1,7 @@
 .header {
     display: flex;
+    // Fachbereich name + status tag: on a phone the tag goes to the next line instead of being cut.
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
