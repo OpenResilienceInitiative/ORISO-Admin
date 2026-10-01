@@ -211,3 +211,67 @@
         --fli-radius: 4px;
     }
 }
+
+/* Search pill in the table card toolbar (#1117, board M). */
+.searchField {
+    display: flex;
+    width: 100%;
+    height: 48px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 4px 0 14px;
+    background: var(--m3-surface-container-high, #eae7e8);
+    border-radius: 24px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: text;
+    gap: 10px;
+
+    &:focus-within {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -2px;
+    }
+}
+
+.searchIcon {
+    flex-shrink: 0;
+}
+
+.searchInput {
+    min-width: 0;
+    height: 100%;
+    flex: 1 1 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+    outline: none;
+
+    &::placeholder {
+        color: var(--m3-on-surface-variant, #444748);
+    }
+
+    &::-webkit-search-cancel-button {
+        appearance: none;
+    }
+}
+
+.searchClear {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 20px;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+}

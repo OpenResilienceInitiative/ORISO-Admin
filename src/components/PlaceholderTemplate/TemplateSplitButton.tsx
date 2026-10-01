@@ -45,6 +45,8 @@ export interface TemplateSplitButtonProps {
     mainInvalid?: boolean;
     /** Id of the element explaining why the main action is invalid or disabled. */
     mainDescribedBy?: string;
+    /** Stretch to the container (the invite card's stacked fields). */
+    fullWidth?: boolean;
 }
 
 const SELECT_PREFIX = 'select:';
@@ -71,6 +73,7 @@ export const TemplateSplitButton = ({
     mainDataMissingToken,
     mainInvalid,
     mainDescribedBy,
+    fullWidth = false,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -140,6 +143,7 @@ export const TemplateSplitButton = ({
     return (
         <SplitButton
             disabled={disabled}
+            fullWidth={fullWidth}
             icon={icon}
             label={label ?? active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}

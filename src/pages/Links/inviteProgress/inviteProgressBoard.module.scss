@@ -2,18 +2,193 @@
     display: flex;
     flex-direction: column;
     padding-bottom: 24px;
-    gap: 16px;
 }
 
-/* Summary strip: four filter tiles, equal widths, 2×2 on phones. */
-.summary {
-    display: grid;
+/* ── Table card: toolbar + table on one surface ──────────────────────────── */
+.card {
+    position: relative;
+    padding: 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--admin-table-surface, #f6f3f3);
+    border-radius: 28px;
+}
+
+/* At the card's top edge; once it scrolls out of view the toolbar is stuck. */
+.stickySentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+/* Opaque, so rows scrolling under the sticky block never show through. */
+.toolbar {
+    position: sticky;
+    z-index: 3;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px 12px;
+    background: var(--admin-table-surface, #f6f3f3);
     gap: 12px;
-    grid-template-columns: repeat(5, minmax(128px, 1fr));
 }
 
-.summaryTile {
-    width: 100%;
+.toolbarRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.toolbarSearch {
+    min-width: 200px;
+    flex: 1 1 240px;
+}
+
+/* Without a search slot the pagination still sits on the right. */
+.toolbarPagination {
+    margin-left: auto;
+}
+
+.toolbarActions {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ── Filter chips (replace the summary tiles) ────────────────────────────── */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip {
+    display: inline-flex;
+    height: 32px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+    gap: 6px;
+    letter-spacing: 0.1px;
+    transition: background-color 150ms ease;
+    white-space: nowrap;
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.chipCount {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.chipAlert .chipCount {
+    color: var(--m3-error, #b1005e);
+}
+
+/* Selected: the check glyph leads, the chip trims its left padding by the glyph's inset. */
+.chipSelected,
+.chipSelected:hover {
+    padding-left: 8px;
+    border-color: var(--m3-secondary, #4c555f);
+    background: var(--m3-secondary, #4c555f);
+    color: var(--m3-on-secondary, #ffffff);
+
+    .chipCount {
+        color: var(--m3-on-secondary, #ffffff);
+    }
+}
+
+.chipCheck {
+    flex: none;
+}
+
+/* ── Table inside the card (board-scoped overrides of the shared DataTable) ─ */
+.tableArea {
+    position: relative;
+}
+
+/* Doubled class beats the DataTable module's own rules; overflow visible lets the header stick to the page. */
+.dataTable {
+    &#{&} {
+        overflow: visible;
+        border: none;
+        background: transparent;
+        border-radius: 0;
+
+        > div:first-child {
+            overflow: visible;
+        }
+
+        thead th {
+            top: var(--invite-board-toolbar-height, 0);
+            padding-top: 10px;
+            padding-bottom: 10px;
+            border-bottom: none;
+            background: var(--m3-surface-container-high, #eae7e8);
+            font: 500 13px/18px var(--m3-body-font-family);
+            white-space: nowrap;
+        }
+
+        thead th:first-child {
+            border-radius: 16px 0 0 16px;
+        }
+
+        thead th:last-child {
+            border-radius: 0 16px 16px 0;
+        }
+    }
+}
+
+/* Compact layout: tighter cells so five columns fit 846px; the 88px step columns carry their own air. */
+@media (min-width: 768px) {
+    .boardCompact .dataTable th,
+    .boardCompact .dataTable td {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .boardCompact .dataTable th:first-child,
+    .boardCompact .dataTable .selectCell,
+    .boardCompact .dataTable .progressCell {
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+}
+
+.cardStuck .dataTable thead th {
+    box-shadow: 0 6px 8px -6px rgb(27 27 28 / 25%);
+}
+
+/* Two-line header cell of the compact layout. */
+.headStack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.headStackEnd {
+    align-items: flex-end;
+}
+
+.headSub {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 11px/16px var(--m3-body-font-family);
 }
 
 /* ── Identity cell ───────────────────────────────────────────────────────── */
@@ -66,6 +241,33 @@
 .date {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+}
+
+/* Compact layout: date with the relative time under it. */
+.metaLine {
+    display: block;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
+
+.metaSub {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+}
+
+/* Compact layout: status chips with the actions under them, right-aligned. */
+.statusActionsCell {
+    white-space: nowrap;
+}
+
+.statusStack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.statusActionsCell .actions {
+    margin-top: 4px;
 }
 
 /* Tonal status chip (owner call 2026-07-29: chips are tonal, not traffic
@@ -259,17 +461,157 @@
     font: 400 14px/20px var(--m3-body-font-family);
 }
 
+/* Pre-drawn table: the empty box floats over the placeholder rows. */
+.emptyOverlay {
+    position: absolute;
+    display: grid;
+    inset: 0;
+    place-items: center;
+    pointer-events: none;
+}
+
+.emptyBox {
+    max-width: 460px;
+    padding: 24px 32px;
+    background: var(--admin-table-surface, #f6f3f3);
+    border-radius: 16px;
+    pointer-events: auto;
+    text-align: center;
+}
+
+/* ── Short list: hint row and fading stand-in rows ───────────────────────── */
+.hint {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.hintGraphic {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.hintTitle {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 16px/24px var(--m3-body-font-family);
+}
+
+.hintBody {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
+
+.placeholderRow td {
+    height: 72px;
+}
+
+.phCheckbox {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: 2px solid #dcd9d9;
+    border-radius: 2px;
+}
+
+.phBar {
+    display: block;
+    width: 140px;
+    max-width: 100%;
+    height: 12px;
+    background: #e4e2e2;
+    border-radius: 6px;
+}
+
+.phBarSub {
+    width: 100px;
+    height: 10px;
+    margin-top: 8px;
+    background: #eae7e8;
+}
+
+.phBarDate {
+    width: 80px;
+}
+
+.phBarDate.phBarSub {
+    width: 56px;
+}
+
+.phTrack {
+    display: inline-flex;
+    align-items: center;
+}
+
+.phBead {
+    width: 14px;
+    height: 14px;
+    box-sizing: border-box;
+    flex: none;
+    border: 2px solid #eae7e8;
+    border-radius: 50%;
+}
+
+.phLine {
+    width: 64px;
+    height: 2px;
+    flex: none;
+    background: #eae7e8;
+}
+
+.phChipCell {
+    text-align: right;
+}
+
+.phChip {
+    display: inline-block;
+    width: 76px;
+    height: 22px;
+    box-sizing: border-box;
+    border: 1px solid #e4e2e2;
+    border-radius: 30px;
+}
+
 /* ── Stacked cards (~390px): identity leads, mini stepper follows, meta gets
       its labels back, actions close the card. ──────────────────────────────── */
 
 @media (max-width: 767px) {
-    .summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Search, pager and chips fill half a phone screen: they scroll away instead of sticking. */
+    .toolbar {
+        position: static;
     }
 
-    /* Five tiles in two columns: "Braucht Aktion" takes the last line on its own. */
-    .summaryTile:last-child {
-        grid-column: 1 / -1;
+    /* Stand-in rows make no sense as stacked cards; the empty box stays in the flow. */
+    .placeholderRow {
+        display: none !important;
+    }
+
+    .emptyOverlay {
+        position: static;
+    }
+
+    .metaStackCell .metaLine {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .statusActionsCell {
+        display: flex !important;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .statusStack {
+        align-items: flex-start;
+    }
+
+    .statusActionsCell .actions {
+        align-self: flex-end;
     }
 
     .row {

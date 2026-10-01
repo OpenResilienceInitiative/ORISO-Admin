@@ -147,4 +147,46 @@ describe('PhaseStepper', () => {
         // Screen readers hear the date with the step.
         expect(screen.getByText(/^Eingeladen – abgeschlossen/)).toHaveTextContent('24.09.2026, 11:01:00');
     });
+
+    it('wraps a dated track after maxPerLine steps, still as one ordered list', () => {
+        const at = { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' };
+        const phases: PhaseStepperPhase[] = [
+            { key: 'a', label: 'Eins', state: 'done', at },
+            { key: 'b', label: 'Zwei', state: 'done', at },
+            { key: 'c', label: 'Drei', state: 'done', at },
+            { key: 'd', label: 'Vier', state: 'done', at },
+            { key: 'e', label: 'Fünf', state: 'current' },
+            { key: 'f', label: 'Sechs', state: 'pending' },
+            { key: 'g', label: 'Sieben', state: 'pending' },
+        ];
+        render(<PhaseStepper phases={phases} maxPerLine={4} ariaLabel="Onboarding-Fortschritt" />);
+
+        const track = screen.getByRole('list', { name: 'Onboarding-Fortschritt' });
+        const steps = screen.getAllByRole('listitem');
+        expect(steps.map((step) => step.textContent?.split(' – ')[0])).toEqual([
+            'Eins',
+            'Zwei',
+            'Drei',
+            'Vier',
+            'Fünf',
+            'Sechs',
+            'Sieben',
+        ]);
+        expect(track.style.getPropertyValue('--phase-stepper-per-line')).toBe('4');
+        // The line break sits after the fourth step: stub out of "Vier", stub into "Fünf".
+        expect(steps[3].className).toMatch(/lineEnd/);
+        expect(steps[3].className).toMatch(/nextReached/);
+        expect(steps[4].className).toMatch(/lineStart/);
+        expect(steps.filter((step) => /lineEnd|lineStart/.test(step.className))).toHaveLength(2);
+    });
+
+    it('keeps one line without maxPerLine or when the track fits', () => {
+        const at = { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' };
+        const { rerender } = render(<PhaseStepper phases={PHASES.map((phase) => ({ ...phase, at }))} />);
+        expect(screen.getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
+
+        rerender(<PhaseStepper phases={PHASES.map((phase) => ({ ...phase, at }))} maxPerLine={3} />);
+        expect(screen.getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
+        expect(screen.getAllByRole('listitem').some((step) => /lineEnd|lineStart/.test(step.className))).toBe(false);
+    });
 });

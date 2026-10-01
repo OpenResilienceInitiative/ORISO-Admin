@@ -34,6 +34,8 @@ import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, type InviteSendMode, type InviteSubmitOutcome } from './InviteComposer';
 import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
+import { useInvitePanelCollapsed } from './InvitePanel';
+import { InviteSearchField, useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
 import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
@@ -535,93 +537,125 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [explain, setInvites, t, withRoleSaving],
     );
 
-    // Empty-state CTA: the composer IS the invite entry point and sits right
-    // above the board — bring it into view and focus its first field.
+    // The CSV import sits in the table card's ⋮ menu but imports with the card's send mode.
+    const [composerSendMode, setComposerSendMode] = useState<InviteSendMode>('direct');
+    const [panelCollapsed, setPanelCollapsed] = useInvitePanelCollapsed(targetRole);
+    const csvProps: InviteCsvProps = {
+        onParsed: (result, sendMode) => setCsvImport({ result, sendMode }),
+        blockedReason: isAgencyViewer
+            ? t(
+                  'links.csvImport.blockedAgencyAdmin',
+                  'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
+              )
+            : undefined,
+    };
+    const bulkProps: InviteBulkProps = {
+        count: bulk.selectedInvites.length,
+        onSend: () => bulk.send(selectedTemplateId),
+        onClear: () => bulk.setSelectedIds([]),
+        onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),
+    };
+    const moreMenu = useInviteMoreMenu({
+        tab,
+        csv: csvProps,
+        bulk: bulkProps,
+        sendMode: composerSendMode,
+        selectedTemplate: activeTemplates.find((template) => template.id === selectedTemplateId),
+    });
+
+    // Empty-state CTA: the card IS the invite entry point — open it if folded, bring it into view, focus its first field.
     const composerRef = useRef<HTMLDivElement>(null);
     const focusComposer = useCallback(() => {
-        composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        composerRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({
-            preventScroll: true,
+        setPanelCollapsed(false);
+        // The folded rail has no inputs: wait one frame for the card to render.
+        window.requestAnimationFrame(() => {
+            composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            composerRef.current?.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({
+                preventScroll: true,
+            });
         });
-    }, []);
+    }, [setPanelCollapsed]);
 
     return (
-        <div ref={composerRef}>
-            <InviteComposer
-                tab={tab}
-                persistKey={targetRole}
-                viewer={{
-                    scope: viewerScope,
-                    ownTenant: currentTenantId != null ? { id: currentTenantId, name: ownTenantName } : undefined,
-                    ownAgency,
-                }}
-                clients={{
-                    searchTenants: !isTenantInvite && isSuperAdmin ? searchTenantsForPicker : undefined,
-                    searchAgencies: includeAgencyField ? searchAgenciesForPicker : undefined,
-                    resolveTenant: findInviteTenant,
-                    resolveAgency: findInviteAgency,
-                    loadAgencyTopicPermission,
-                }}
-                templates={{
-                    list: templates,
-                    selectedId: selectedTemplateId,
-                    onSelect: setSelectedTemplateId,
-                    onManage: (intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list'),
-                    onCreateFrom: (templateId) => {
-                        setCreateFromTemplateId(templateId);
-                        setTemplatesDialogView('create');
-                    },
-                }}
-                search={{
-                    query: searchQuery,
-                    onChange: setSearchQuery,
-                    placeholder: t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen'),
-                }}
-                csv={{
-                    onParsed: (result, sendMode) => setCsvImport({ result, sendMode }),
-                    blockedReason: isAgencyViewer
-                        ? t(
-                              'links.csvImport.blockedAgencyAdmin',
-                              'Nur Plattform- und Träger-Admins: Eine Datei kann Rollen und neue Beratungsstellen enthalten.',
-                          )
-                        : undefined,
-                }}
-                bulk={{
-                    count: bulk.selectedInvites.length,
-                    onSend: () => bulk.send(selectedTemplateId),
-                    onClear: () => bulk.setSelectedIds([]),
-                    onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),
-                }}
-                submitting={submitting || bulk.running}
-                onSelfAssign={isTenantInvite ? undefined : (agency) => setSelfAssign({ agency })}
-                onSubmit={onCreate}
-            />
-            {bulk.selectedInvites.length > 0 && (
-                <div className={styles.selectionCount} role="status">
-                    {t('links.bulk.selectedCount', '{{count}} ausgewählt', { count: bulk.selectedInvites.length })}
+        <div className={styles.invitesPage}>
+            {moreMenu.csvInput}
+            <div className={styles.invitesRow}>
+                <div ref={composerRef} className={styles.invitesPanel}>
+                    <InviteComposer
+                        layout="panel"
+                        panelCollapsed={panelCollapsed}
+                        onPanelCollapsedChange={setPanelCollapsed}
+                        onSendModeChange={setComposerSendMode}
+                        tab={tab}
+                        persistKey={targetRole}
+                        viewer={{
+                            scope: viewerScope,
+                            ownTenant:
+                                currentTenantId != null ? { id: currentTenantId, name: ownTenantName } : undefined,
+                            ownAgency,
+                        }}
+                        clients={{
+                            searchTenants: !isTenantInvite && isSuperAdmin ? searchTenantsForPicker : undefined,
+                            searchAgencies: includeAgencyField ? searchAgenciesForPicker : undefined,
+                            resolveTenant: findInviteTenant,
+                            resolveAgency: findInviteAgency,
+                            loadAgencyTopicPermission,
+                        }}
+                        templates={{
+                            list: templates,
+                            selectedId: selectedTemplateId,
+                            onSelect: setSelectedTemplateId,
+                            onManage: (intent) => setTemplatesDialogView(intent === 'create' ? 'create' : 'list'),
+                            onCreateFrom: (templateId) => {
+                                setCreateFromTemplateId(templateId);
+                                setTemplatesDialogView('create');
+                            },
+                        }}
+                        bulk={bulkProps}
+                        submitting={submitting || bulk.running}
+                        onSelfAssign={isTenantInvite ? undefined : (agency) => setSelfAssign({ agency })}
+                        onSubmit={onCreate}
+                    />
                 </div>
-            )}
-            <InviteProgressBoard
-                invites={invites}
-                loading={loading}
-                searchQuery={searchQuery}
-                targetRole={targetRole}
-                selectedIds={bulk.selectedIds}
-                onSelectionChange={bulk.setSelectedIds}
-                isRowSelectable={isBulkSelectable}
-                selectionDisabled={bulk.running}
-                onResend={onResend}
-                onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
-                onRevoke={onRevoke}
-                onInviteCta={focusComposer}
-                onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
-                topicPermissionSavingIds={topicSavingIds}
-                viewerScope={viewerScope}
-                onRoleChange={isTenantInvite ? undefined : onRoleChange}
-                onRoleAdd={isTenantInvite ? undefined : onRoleAdd}
-                roleSavingIds={roleSavingIds}
-                tileCounts={tileCounts}
-            />
+                <div className={styles.invitesBoard}>
+                    {bulk.selectedInvites.length > 0 && (
+                        <div className={styles.selectionCount} role="status">
+                            {t('links.bulk.selectedCount', '{{count}} ausgewählt', {
+                                count: bulk.selectedInvites.length,
+                            })}
+                        </div>
+                    )}
+                    <InviteProgressBoard
+                        invites={invites}
+                        loading={loading}
+                        searchQuery={searchQuery}
+                        toolbarSearch={
+                            <InviteSearchField
+                                query={searchQuery}
+                                placeholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
+                                onChange={setSearchQuery}
+                            />
+                        }
+                        toolbarActions={moreMenu.moreButton}
+                        targetRole={targetRole}
+                        selectedIds={bulk.selectedIds}
+                        onSelectionChange={bulk.setSelectedIds}
+                        isRowSelectable={isBulkSelectable}
+                        selectionDisabled={bulk.running}
+                        onResend={onResend}
+                        onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
+                        onRevoke={onRevoke}
+                        onInviteCta={focusComposer}
+                        onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
+                        topicPermissionSavingIds={topicSavingIds}
+                        viewerScope={viewerScope}
+                        onRoleChange={isTenantInvite ? undefined : onRoleChange}
+                        onRoleAdd={isTenantInvite ? undefined : onRoleAdd}
+                        roleSavingIds={roleSavingIds}
+                        tileCounts={tileCounts}
+                    />
+                </div>
+            </div>
             {selfAssign && (
                 <SelfAssignDialog
                     initialAgency={selfAssign.agency}

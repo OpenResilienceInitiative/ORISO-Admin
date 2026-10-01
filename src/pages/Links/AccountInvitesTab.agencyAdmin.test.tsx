@@ -221,10 +221,9 @@ describe.each([
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
         expect(tenant).toBeDisabled();
         expect(tenant).toHaveValue('Caritas Freiburg · 40');
-        // A fresh page shows Rolle expanded: one role on offer, so the select is disabled.
-        const role = screen.getByRole('combobox', { name: 'Rolle' });
-        expect(role.closest('.ant-select')).toHaveTextContent('Berater:in');
-        expect(role).toBeDisabled();
+        // One role on offer: the card shows it as a disabled value pill, not a dead select.
+        expect(screen.getByRole('button', { name: 'Rolle bearbeiten: Berater:in' })).toBeDisabled();
+        expect(screen.queryByRole('combobox', { name: 'Rolle' })).not.toBeInTheDocument();
     });
 
     it('sends a counsellor invite into the own agency as EXISTING', async () => {
@@ -394,9 +393,9 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
         await user.click(agency);
         await user.click(await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW));
 
-        // The Träger follows the agency, as an existing unit, folded into its pill.
-        const tenantPill = await screen.findByRole('button', { name: /^Träger bearbeiten/ }, SLOW);
-        expect(tenantPill).toHaveAttribute('title', 'Caritas Südbaden (7)');
+        // The Träger follows the agency as an existing unit; the card keeps its field open.
+        const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Südbaden · 7'), SLOW);
 
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
@@ -412,13 +411,7 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
             tenantIdAllocationMode: 'EXISTING',
         });
         await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
-        expect(screen.getByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
-            'title',
-            'Caritas Südbaden (7)',
-        );
-        expect(screen.getByRole('button', { name: /^Beratungsstelle bearbeiten/ })).toHaveAttribute(
-            'title',
-            'Mail v2 Einzeltest (14)',
-        );
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Caritas Südbaden · 7');
+        expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Mail v2 Einzeltest · 14');
     });
 });

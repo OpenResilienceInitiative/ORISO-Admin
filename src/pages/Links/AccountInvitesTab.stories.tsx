@@ -6,6 +6,7 @@ import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { TenantInvitesTab } from './AccountInvitesTab';
+import { invitePanelStorageKey } from './InvitePanel';
 
 const INVITES_ENDPOINT = '*/service/useradmin/account-invites';
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -261,5 +262,27 @@ export const SmtpCredentialsMissing: Story = {
                 ),
             { timeout: 10_000 },
         );
+    },
+};
+
+/**
+ * The invite card folded to its 80px rail (#1117): the table takes the width,
+ * and the fold survives a reload because it is stored per tab. The rail's
+ * toggle opens the card again.
+ */
+export const FoldedRail: Story = {
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => {
+            window.localStorage.setItem(invitePanelStorageKey('TENANT_ADMIN'), 'true');
+            return <Story />;
+        },
+    ],
+    play: async ({ canvas }) => {
+        const toggle = await canvas.findByRole('button', { name: /^(Formular ausklappen|Expand form)$/ });
+        await expect(canvas.queryByRole('textbox', { name: /^(E-Mail|E-mail)$/ })).not.toBeInTheDocument();
+        await userEvent.click(toggle);
+        await expect(await canvas.findByRole('textbox', { name: /^(E-Mail|E-mail)$/ })).toBeVisible();
+        await expect(window.localStorage.getItem(invitePanelStorageKey('TENANT_ADMIN'))).toBe('false');
     },
 };

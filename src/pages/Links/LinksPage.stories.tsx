@@ -98,8 +98,8 @@ export const AgencyAdmin: Story = {
         await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), { timeout: 5_000 });
         await expect(agency).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
-        // One role on offer: „Rolle" is fixed on „Berater:in".
-        await expect(canvas.getByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
+        // One role on offer: „Rolle" is a fixed value row on „Berater:in".
+        await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
         // Platform-only tabs stay visible, disabled, and say why.
         // Announced like its enabled siblings: a link, marked disabled.
         const tenantTab = canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ });

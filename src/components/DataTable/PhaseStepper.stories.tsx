@@ -134,3 +134,58 @@ export const DatedTrackInPhoneCard: Story = {
         await expect(['auto', 'scroll']).toContain(getComputedStyle(track).overflowX);
     },
 };
+
+/** Seven dated Träger steps in a narrow table: four per line, the track continues on the second line. */
+export const Wrapped: Story = {
+    args: {
+        phases: [
+            {
+                key: 'unit',
+                label: 'Träger angelegt',
+                state: 'done',
+                at: { short: '20.09., 08:00', full: '20.09.2026, 08:00 Uhr' },
+            },
+            {
+                key: 'invited',
+                label: 'Eingeladen',
+                state: 'done',
+                at: { short: '20.09., 08:05', full: '20.09.2026, 08:05 Uhr' },
+            },
+            {
+                key: 'registered',
+                label: 'Registriert',
+                state: 'done',
+                at: { short: '21.09., 10:12', full: '21.09.2026, 10:12 Uhr' },
+            },
+            {
+                key: 'dpaForwarded',
+                label: 'Vertragsunterlagen weitergeleitet',
+                state: 'done',
+                at: { short: '22.09., 09:40', full: '22.09.2026, 09:40 Uhr' },
+            },
+            {
+                key: 'dpaSigned',
+                label: 'Vertrag bestätigt',
+                state: 'done',
+                at: { short: '22.09., 14:30', full: '22.09.2026, 14:30 Uhr' },
+            },
+            { key: 'twoFactorActive', label: '2FA aktiv', state: 'current' },
+            { key: 'completed', label: 'Fertig', state: 'pending' },
+        ],
+        maxPerLine: 4,
+        ariaLabel: 'Onboarding-Fortschritt',
+    },
+    play: async ({ canvasElement }) => {
+        // One list for screen readers, all seven steps in order.
+        const track = within(canvasElement).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        const steps = within(track).getAllByRole('listitem');
+        await expect(steps).toHaveLength(7);
+        // Four steps on the first line, three on the second.
+        const tops = steps.map((step) => Math.round(step.getBoundingClientRect().top));
+        await expect(new Set(tops.slice(0, 4)).size).toBe(1);
+        await expect(new Set(tops.slice(4)).size).toBe(1);
+        await expect(tops[4]).toBeGreaterThan(tops[3]);
+        // Nothing scrolls sideways.
+        await expect(track.scrollWidth).toBeLessThanOrEqual(track.clientWidth);
+    },
+};

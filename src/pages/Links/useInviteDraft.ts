@@ -521,8 +521,8 @@ export const useInviteDraft = ({
         },
         topics: { value: topicPermission, set: chooseTopicPermission },
         alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
-        /** Which fields show as pills, and which select menu is open. */
-        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect },
+        /** Which fields show as pills, which select menu is open, and which fields hold a valid value. */
+        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect, valid: fieldValid },
         submit: {
             mode: sendMode,
             andNext: sendAndNext,
