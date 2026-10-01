@@ -82,7 +82,7 @@ const Section = ({
  * to the tenant-admin onboarding).
  */
 export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardingProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const alsoCounsellorId = useId();
     const navigate = useNavigate();
     const resolvedClient = useMemo(() => client ?? createHttpCounsellorOnboardingClient(), [client]);
@@ -93,6 +93,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitError,
         busy,
         retryLoad,
+        topicLanguageError,
+        retryTopicNames,
         updateAccount,
         updatePerson,
         updateNames,
@@ -103,7 +105,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         setAlsoCounsellor,
         submitRegistration,
         submitTwoFactorCode,
-    } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
+    } = useCounsellorOnboardingFlow(inviteToken, resolvedClient, i18n.resolvedLanguage ?? i18n.language);
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
 
@@ -420,6 +422,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
             {needsTopics && (
                 <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
+                    {topicLanguageError && (
+                        <div role="alert">
+                            <Typography variant="body2">{t('counsellorOnboarding.topics.languageError')}</Typography>
+                            <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={retryTopicNames}>
+                                {t('counsellorOnboarding.loadError.retry')}
+                            </M3Button>
+                        </div>
+                    )}
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {renderedTopicCount === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
