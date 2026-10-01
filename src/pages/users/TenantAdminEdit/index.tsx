@@ -27,11 +27,6 @@ import { CounselorData } from '../../../types/counselor';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { AccessDenied } from '../../ErrorPages/AccessDenied';
 
-export const TenantAdminEditOrAdd = () => {
-    const { pathname, search } = useLocation();
-    return <TenantAdminEditor key={`${pathname}${search}`} />;
-};
-
 const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
@@ -259,4 +254,9 @@ const TenantAdminEditor = () => {
             </ThemeProvider>
         </Page>
     );
+};
+
+export const TenantAdminEditOrAdd = () => {
+    const { pathname, search } = useLocation();
+    return <TenantAdminEditor key={`${pathname}${search}`} />;
 };
