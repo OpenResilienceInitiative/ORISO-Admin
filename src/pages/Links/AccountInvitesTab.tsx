@@ -5,6 +5,7 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import {
     acceptBaseUrlForRole,
     type CreateAccountInviteRequest,
+    type SendAccountInviteRequest,
     AccountInviteDTO,
     AccountInviteTargetRole,
     createAccountInvite,
@@ -416,16 +417,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const onResend = useCallback(
         async (invite: AccountInviteDTO) => {
-            const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
-            if (!templateId) {
-                message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
-                return;
+            let request: SendAccountInviteRequest | undefined;
+            if (invite.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP') {
+                const templateId = selectedTemplateId ?? activeTemplates[0]?.id;
+                if (!templateId) {
+                    message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
+                    return;
+                }
+                request = { acceptBaseUrl: acceptBaseUrlForRole(invite.targetRole), templateId };
             }
             try {
-                const resent = await resendAccountInvite(invite.id, {
-                    acceptBaseUrl: acceptBaseUrlForRole(invite.targetRole),
-                    templateId,
-                });
+                const resent = await resendAccountInvite(invite.id, request);
                 rememberGeneratedLink(resent);
                 message.success(t('links.accountInvites.resent', 'Invite resent'));
                 await loadInvites();

@@ -2,6 +2,7 @@ import routePathNames, { accountInvitesEndpoint, appURL, inviteEmailTemplatesEnd
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { withUtcInstants } from '../../utils/backendInstant';
 import type { AllocationMode } from '../idAllocation/idAllocation';
+import type { OnboardingPurpose } from '../tenantOnboarding/tenantOnboarding';
 
 export type AccountInviteTargetRole =
     | 'TENANT_ADMIN'
@@ -33,6 +34,8 @@ export type InviteProgressPhase = 'PREPARED' | 'INVITED' | 'ACCOUNT_CREATED' | '
 
 export interface AccountInviteDTO {
     id: number;
+    /** Server-derived purpose; absent on older backends means an ordinary invitation. */
+    onboardingPurpose?: OnboardingPurpose;
     targetRole: AccountInviteTargetRole;
     tenantId: number | null;
     recipientEmail: string;
@@ -342,7 +345,7 @@ export const sendAccountInvite = async (
 
 export const resendAccountInvite = async (
     inviteId: number,
-    body: SendAccountInviteRequest,
+    body?: SendAccountInviteRequest,
 ): Promise<AccountInviteDTO> => {
     const response = await fetchData({
         url: `${accountInvitesEndpoint}/${inviteId}/resend`,
@@ -357,8 +360,8 @@ export const resendAccountInvite = async (
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
         bodyData: JSON.stringify({
-            acceptBaseUrl: body.acceptBaseUrl,
-            templateId: body.templateId,
+            acceptBaseUrl: body?.acceptBaseUrl,
+            templateId: body?.templateId,
         }),
     });
     return withUtcInstants(await response.json());
