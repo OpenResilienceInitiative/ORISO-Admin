@@ -42,6 +42,10 @@ export const DoneStep = ({
 }: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const invitationDescriptionKey = joinedExisting
+        ? 'tenantOnboarding.done.joinDescription'
+        : 'tenantOnboarding.done.description';
+    const descriptionKey = existingAccountSetup ? 'accountSetup.success' : invitationDescriptionKey;
 
     return (
         <div className={styles.done} data-testid="onboarding-done">
@@ -50,11 +54,7 @@ export const DoneStep = ({
                 {t(existingAccountSetup ? 'accountSetup.completedTitle' : 'tenantOnboarding.done.title')}
             </Typography>
             <Typography color="text.secondary" data-testid="onboarding-done-description">
-                {existingAccountSetup
-                    ? t('accountSetup.success')
-                    : joinedExisting
-                    ? t('tenantOnboarding.done.joinDescription')
-                    : t('tenantOnboarding.done.description')}
+                {t(descriptionKey)}
             </Typography>
 
             {!existingAccountSetup && tenantId != null && (

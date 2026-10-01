@@ -590,6 +590,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 }}
                 bulk={{
                     count: bulk.selectedInvites.length,
+                    requiresTemplate: bulk.requiresTemplate,
                     onSend: () => bulk.send(selectedTemplateId),
                     onClear: () => bulk.setSelectedIds([]),
                     onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),

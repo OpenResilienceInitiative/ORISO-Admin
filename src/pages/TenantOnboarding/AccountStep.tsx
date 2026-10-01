@@ -42,6 +42,10 @@ export const AccountStep = ({
 }: AccountStepProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<{ password: string; repeatPassword: string }>();
+    const invitationDescriptionKey = invite.joinsExistingTenant
+        ? 'tenantOnboarding.account.joinDescription'
+        : 'tenantOnboarding.account.description';
+    const descriptionKey = existingAccountSetup ? 'accountSetup.description' : invitationDescriptionKey;
 
     return (
         <Form form={form} layout="vertical" requiredMark={false} onFinish={({ password }) => onSubmit(password)}>
@@ -49,11 +53,7 @@ export const AccountStep = ({
                 {t(existingAccountSetup ? 'accountSetup.passwordTitle' : 'tenantOnboarding.account.title')}
             </Typography>
             <Typography sx={{ mb: 2 }} color="text.secondary">
-                {existingAccountSetup
-                    ? t('accountSetup.description')
-                    : invite.joinsExistingTenant
-                    ? t('tenantOnboarding.account.joinDescription')
-                    : t('tenantOnboarding.account.description')}
+                {t(descriptionKey)}
             </Typography>
             <Typography sx={{ mb: 2 }}>
                 {t('tenantOnboarding.account.email')}: <strong>{invite.recipientEmail}</strong>

@@ -103,6 +103,8 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
 
     const joins = invite?.joinsExistingTenant === true;
     const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+    const invitationTitleKey = joins ? 'tenantOnboarding.join.title' : 'tenantOnboarding.title';
+    const titleKey = existingAccountSetup ? 'accountSetup.title' : invitationTitleKey;
 
     if (state.phase === 'done') {
         return (
@@ -123,11 +125,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
     return (
         <Sheet>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                {existingAccountSetup
-                    ? t('accountSetup.title')
-                    : joins
-                    ? t('tenantOnboarding.join.title')
-                    : t('tenantOnboarding.title')}
+                {t(titleKey)}
             </Typography>
             {!existingAccountSetup && (
                 <Typography color="text.secondary" sx={{ mb: 3 }}>

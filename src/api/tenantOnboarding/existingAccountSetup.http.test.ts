@@ -17,7 +17,7 @@ class RecordingRequest {
 
 const recordResponse = (response: Response) => {
     vi.stubGlobal('Request', RecordingRequest);
-    const http = vi.fn(async (_request: RecordingRequest) => response);
+    const http = vi.fn<(request: RecordingRequest) => Promise<Response>>().mockResolvedValue(response);
     vi.stubGlobal('fetch', http);
     return http;
 };
