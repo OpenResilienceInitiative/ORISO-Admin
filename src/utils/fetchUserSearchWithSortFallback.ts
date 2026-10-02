@@ -48,7 +48,8 @@ export const fetchUserSearchWithSortFallback = async ({
     try {
         return await request(field, sortOrder);
     } catch (primaryError) {
-        if (field === USER_TABLE_API_SAFE_SORT && sortOrder === USER_TABLE_API_SAFE_ORDER) {
+        const sortRefused = primaryError instanceof Error && primaryError.message === FETCH_ERRORS.BAD_REQUEST;
+        if (!sortRefused || (field === USER_TABLE_API_SAFE_SORT && sortOrder === USER_TABLE_API_SAFE_ORDER)) {
             if (rethrowOnFailure) {
                 throw primaryError;
             }
@@ -56,9 +57,7 @@ export const fetchUserSearchWithSortFallback = async ({
         }
         try {
             const safeList = await request(USER_TABLE_API_SAFE_SORT, USER_TABLE_API_SAFE_ORDER);
-            // Only a 400 means the server refused the sort; other failures get no notice.
-            const sortRefused = primaryError instanceof Error && primaryError.message === FETCH_ERRORS.BAD_REQUEST;
-            return sortRefused ? { ...safeList, rejectedSort: { field, order: sortOrder } } : safeList;
+            return { ...safeList, rejectedSort: { field, order: sortOrder } };
         } catch (fallbackError) {
             if (rethrowOnFailure) {
                 throw fallbackError;
