@@ -110,6 +110,12 @@ vi.mock('../DepartmentDataProtectionCard', async () => {
 
 import { AgencyLegalTextContainer } from '.';
 
+// Two Fachbereiche: a single one would be preselected and hide "Alle Fachbereiche" (#1066).
+const TWO_TOPICS = [
+    { id: 3, name: 'Debt advice' },
+    { id: 4, name: 'Pregnancy' },
+];
+
 const agencyData: any = {
     id: 0,
     tenantId: 0,
@@ -375,7 +381,7 @@ describe('AgencyLegalTextContainer server drafts', () => {
             isError: false,
             isSuccess: true,
         };
-        renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
+        renderContainer({ agencyData: { ...agencyData, topics: TWO_TOPICS } });
 
         await userEvent.click(screen.getByRole('button', { name: /agency.legal.department.choose/i }));
         await userEvent.click(await screen.findByText('Debt advice'));
@@ -397,7 +403,7 @@ describe('AgencyLegalTextContainer server drafts', () => {
                     finishSave = resolve;
                 }),
         );
-        renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
+        renderContainer({ agencyData: { ...agencyData, topics: TWO_TOPICS } });
         const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
         expect(switcher()).toBeEnabled();
 
@@ -447,6 +453,34 @@ describe('AgencyLegalTextContainer server drafts', () => {
         expect(cardProps().initialContentByLanguage).toEqual(baseOfNewVisit);
     });
 
+    it.each(['publish', 'cleanup'])('does not show a late %s error in another agency editor', async (phase) => {
+        let rejectOldOperation: (error: Error) => void = () => undefined;
+        const oldOperation = new Promise<void>((_, reject) => {
+            rejectOldOperation = reject;
+        });
+        h.serverSave.mockResolvedValue({
+            kind: 'DPP',
+            content: { de: '<p>saved A</p>' },
+            consentText: {},
+            revision: 'draft-id:20',
+            savedAt: '2026-09-30T10:00:00',
+        });
+        const boundary = phase === 'publish' ? h.onSaveAgencyWide : h.serverDiscard;
+        boundary.mockReturnValue(oldOperation);
+        const view = renderContainer();
+        const oldSave = cardProps().onSave({ de: '<p>old A</p>' }, true);
+        await waitFor(() => expect(boundary).toHaveBeenCalled());
+        const otherAgency = { ...agencyData, id: agencyData.id + 1 };
+        view.rerender(
+            <AgencyLegalTextContainer agencyData={otherAgency} field="privacy" onSaveAgencyWide={h.onSaveAgencyWide} />,
+        );
+        await act(async () => {
+            rejectOldOperation(new Error('late failure from agency A'));
+            await oldSave;
+        });
+        expect(cardProps().errorMessage).toBeUndefined();
+    });
+
     it('locks the Fachbereich switcher while a discard is in flight', async () => {
         let finishDiscard: () => void = () => undefined;
         h.server.draft = {
@@ -462,7 +496,7 @@ describe('AgencyLegalTextContainer server drafts', () => {
                     finishDiscard = resolve;
                 }),
         );
-        renderContainer({ agencyData: { ...agencyData, topics: [{ id: 3, name: 'Debt advice' }] } });
+        renderContainer({ agencyData: { ...agencyData, topics: TWO_TOPICS } });
         const switcher = () => screen.getByRole('button', { name: /agency.legal.department.choose/i });
 
         const pendingDiscard = noticeProps().onDiscard();

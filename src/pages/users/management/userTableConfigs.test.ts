@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { USER_TABLE_CONFIGS } from './userTableConfigs';
+import { USER_TABLE_CONFIGS, canManageSectionActions } from './userTableConfigs';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { mapSorterToApiField } from './useUserTableColumns';
 
@@ -37,6 +37,24 @@ describe('userTableConfigs sort contract: an arrow only where the server can sor
                 .filter((column) => column.sortable)
                 .map((column) => mapSorterToApiField(column.key));
             expect(sortableFields.filter((field) => !SERVER_SORT_FIELDS[sectionId]?.includes(field ?? ''))).toEqual([]);
+        },
+    );
+});
+
+// Resource.TenantAdminUser is shared between the Träger-Admins and Platform-Admins
+// sections, so restoring create/update/delete for tenant-scoped tenant admins must not
+// surface manage actions on the platform-admins section (reachable by direct URL even
+// though its pill is super-admin-only in UserSectionPills).
+describe('canManageSectionActions', () => {
+    it('keeps platform-admins manage actions super-admin-only', () => {
+        expect(canManageSectionActions(TypeOfUser.PlatformAdmins, false)).toBe(false);
+        expect(canManageSectionActions(TypeOfUser.PlatformAdmins, true)).toBe(true);
+    });
+
+    it.each([TypeOfUser.TenantAdmins, TypeOfUser.AgencyAdmins, TypeOfUser.Consultants, TypeOfUser.Tenants])(
+        'does not restrict %s by the super-admin flag',
+        (section) => {
+            expect(canManageSectionActions(section, false)).toBe(true);
         },
     );
 });

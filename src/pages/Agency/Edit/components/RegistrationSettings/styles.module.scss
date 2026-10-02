@@ -25,3 +25,18 @@
         margin-top: 24px;
     }
 }
+
+.assigned {
+    margin: 0 0 24px;
+}
+
+.assignedTitle {
+    margin: 0 0 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+.assignedEmpty {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+}

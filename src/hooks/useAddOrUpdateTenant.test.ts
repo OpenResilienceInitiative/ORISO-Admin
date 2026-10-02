@@ -66,3 +66,18 @@ describe('buildTenantRequestBody — Träger sender block', () => {
         });
     });
 });
+
+describe('buildTenantRequestBody — Träger DPO (Admin#1067)', () => {
+    const dpo = { nameAndLegalForm: 'Dr. Maria Muster', email: 'dsb@example.org' };
+
+    it('sends the DPO the form carries', () => {
+        const body = buildTenantRequestBody(STORED, form({ dataProtectionOfficer: dpo }), 'musterstadt');
+        expect(body.dataProtectionOfficer).toEqual(dpo);
+    });
+
+    it('keeps the stored DPO when the saving form does not carry it', () => {
+        const stored = { ...STORED, dataProtectionOfficer: dpo } as TenantAdminData;
+        const body = buildTenantRequestBody(stored, form(), 'musterstadt');
+        expect(body.dataProtectionOfficer).toEqual(dpo);
+    });
+});

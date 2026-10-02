@@ -52,10 +52,13 @@ describe('usePublishDpa', () => {
         const { wrapper, invalidateQueries } = renderWithClient();
 
         const { result } = renderHook(() => usePublishDpa(42), { wrapper });
-        result.current.mutate({ de: '<p>x</p>' });
+        result.current.mutate({
+            contentByLanguage: { de: '<p>x</p>' },
+            signingDeadlineAt: '2099-10-30T15:00:00+01:00',
+        });
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(publishMock).toHaveBeenCalledWith(42, { de: '<p>x</p>' });
+        expect(publishMock).toHaveBeenCalledWith(42, { de: '<p>x</p>' }, '2099-10-30T15:00:00+01:00');
         expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [DPA_VERSIONS_KEY, 42] });
     });
 
@@ -64,7 +67,10 @@ describe('usePublishDpa', () => {
         const { wrapper } = renderWithClient();
 
         const { result } = renderHook(() => usePublishDpa(42), { wrapper });
-        result.current.mutate({ de: '<p>x</p>' });
+        result.current.mutate({
+            contentByLanguage: { de: '<p>x</p>' },
+            signingDeadlineAt: '2099-10-30T15:00:00+01:00',
+        });
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(notificationSuccess).toHaveBeenCalledWith(
@@ -72,17 +78,18 @@ describe('usePublishDpa', () => {
         );
     });
 
-    it('surfaces a publish failure as an error notification (does not stay silent)', async () => {
+    it('returns publication failures to the card without a generic error notification', async () => {
         publishMock.mockRejectedValue(new Error('CATCH_ALL'));
         const { wrapper } = renderWithClient();
 
         const { result } = renderHook(() => usePublishDpa(42), { wrapper });
-        result.current.mutate({ de: '<p>x</p>' });
+        result.current.mutate({
+            contentByLanguage: { de: '<p>x</p>' },
+            signingDeadlineAt: '2099-10-30T15:00:00+01:00',
+        });
 
         await waitFor(() => expect(result.current.isError).toBe(true));
-        expect(notificationError).toHaveBeenCalledWith(
-            expect.objectContaining({ message: 'tenants.legal.version.publishError' }),
-        );
+        expect(notificationError).not.toHaveBeenCalled();
     });
 });
 

@@ -9,5 +9,7 @@ export const useDpaGate = (tenantId: number, enabled = true) =>
         queryFn: () => getDpaGate(tenantId),
         enabled: enabled && Number.isFinite(tenantId) && tenantId > 0,
         staleTime: 30_000,
+        // Re-ask the server during renewal grace so expiry changes creation controls.
+        refetchInterval: (query) => (query.state.data?.renewalGraceActive ? 30_000 : false),
         retry: false,
     });
