@@ -876,11 +876,24 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {
-        mocks.searchInviteAgencies.mockResolvedValue({
+        const agencyPage = {
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
             total: 1,
             hasMore: false,
             page: 1,
+        };
+        let requestSearch!: () => void;
+        const searchRequested = new Promise<void>((resolve) => {
+            requestSearch = resolve;
+        });
+        let answerSearch!: (page: typeof agencyPage) => void;
+        const searchResponse = new Promise<typeof agencyPage>((resolve) => {
+            answerSearch = resolve;
+        });
+        mocks.searchInviteAgencies.mockImplementation((query: string) => {
+            if (query !== 'Diak') return Promise.resolve({ ...agencyPage, hits: [], total: 0 });
+            requestSearch();
+            return searchResponse;
         });
         mocks.getAgencyDataById.mockResolvedValue({
             _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
@@ -891,7 +904,16 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        // Await the real debounced request, then answer it and let React paint the menu.
+        // Polling for the option before the request starts races the search on a busy CI shard.
+        await act(async () => {
+            await searchRequested;
+        });
+        expect(screen.queryByRole('option', { name: /Diakonie Lahr/ })).not.toBeInTheDocument();
+        await act(async () => {
+            answerSearch(agencyPage);
+        });
+        await user.click(screen.getByRole('option', { name: /Diakonie Lahr/ }));
 
         expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
         const sendButton = screen.getByRole('button', { name: 'Einladen' });
