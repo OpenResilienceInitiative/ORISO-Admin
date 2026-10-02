@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import type { InviteRole, TopicPermission } from '../inviteModel';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
+import { IconButton } from '../../../components/IconButton';
 import { InviteProgressBoard } from './InviteProgressBoard';
 
 /**
- * The Onboarding tracking board of the Links page: five phase tiles (the
- * only filter — Vorbereitet, Eingeladen, Konto angelegt, Fertig, Braucht
- * Aktion, each with its count and raw-status breakdown), the phase-progress
- * table and client-side pagination. Träger run the five-phase track (Eingeladen → Registriert →
+ * The Onboarding tracking board of the Links page: one card whose sticky
+ * toolbar holds the search slot, the compact pagination, the actions slot and
+ * the filter chips (Alle, Vorbereitet, Eingeladen, Konto angelegt, Fertig,
+ * Braucht Aktion — each with its count, the raw-status breakdown in the
+ * tooltip), over the phase-progress table. Narrow boards reflow to five
+ * columns instead of scrolling sideways. Träger run the five-phase track (Eingeladen → Registriert →
  * AVV bestätigt → 2FA aktiv → Abgeschlossen), Berater the three-phase track.
  * Dead invites (abgelaufen/widerrufen/ersetzt) carry the magenta error role.
  */
@@ -222,7 +225,7 @@ export const TenantInvites: Story = {
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
 };
 
-const tileGroup = (canvasElement: HTMLElement) =>
+const chipGroup = (canvasElement: HTMLElement) =>
     within(within(canvasElement).getByRole('group', { name: /Onboarding-Übersicht|Onboarding overview/ }));
 
 const tableRows = (canvasElement: HTMLElement) =>
@@ -231,43 +234,50 @@ const tableRows = (canvasElement: HTMLElement) =>
         .filter((row) => row.closest('tbody'));
 
 /**
- * One row of five tiles is the board's only filter. „Braucht Aktion" (magenta) holds the expired,
- * revoked and replaced invites plus the bounced mail; a second press clears the filter.
+ * One line of filter chips is the board's only filter (the export keeps its old name for stable story
+ * ids). „Braucht Aktion" holds the expired, revoked and replaced invites plus the bounced mail; a
+ * second press, or „Alle", clears the filter.
  */
 export const PhaseTilesFilter: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
     play: async ({ canvasElement }) => {
-        const tiles = tileGroup(canvasElement).getAllByRole('button');
-        await expect(tiles.map((tile) => tile.querySelector('span')?.nextElementSibling?.textContent)).toEqual([
+        const chips = chipGroup(canvasElement).getAllByRole('button');
+        await expect(chips.map((chip) => chip.textContent?.replace(/ \d+$/, ''))).toEqual([
+            'Alle',
             'Vorbereitet',
             'Eingeladen',
             'Konto angelegt',
             'Fertig',
             'Braucht Aktion',
         ]);
-        // One row on desktop.
-        const tops = new Set(tiles.map((tile) => Math.round(tile.getBoundingClientRect().top)));
+        await expect(chips[0]).toHaveTextContent(/^Alle 9$/);
+        await expect(chips[5]).toHaveTextContent(/^Braucht Aktion 4$/);
+        // One line on desktop.
+        const tops = new Set(chips.map((chip) => Math.round(chip.getBoundingClientRect().top)));
         await expect(tops.size).toBe(1);
-        // No status chips any more — the tiles are the filter.
+        // No status chips any more — the phase chips are the filter.
         await expect(within(canvasElement).queryByRole('checkbox', { name: /^(Angenommen|Accepted)$/ })).toBeNull();
 
-        const needsAction = tiles[4];
-        await expect(needsAction).toHaveTextContent(
-            /^4Braucht Aktion1 Abgelaufen · 1 Widerrufen · 1 Ersetzt · 1 Versand fehlgeschlagen$/,
+        const [all, prepared, , , , needsAction] = chips;
+        await expect(all).toHaveAttribute('aria-pressed', 'true');
+        await expect(needsAction).toHaveAttribute(
+            'title',
+            '1 Abgelaufen · 1 Widerrufen · 1 Ersetzt · 1 Versand fehlgeschlagen',
         );
         await userEvent.click(needsAction);
         await expect(needsAction).toHaveAttribute('aria-pressed', 'true');
+        await expect(all).toHaveAttribute('aria-pressed', 'false');
         await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(4));
         await expect(within(canvasElement).getByText('Claudia Winter')).toBeInTheDocument();
         await expect(within(canvasElement).queryByText('Maria Huber')).toBeNull();
 
-        await userEvent.click(tiles[0]);
+        await userEvent.click(prepared);
         await expect(needsAction).toHaveAttribute('aria-pressed', 'false');
         await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(1));
         await expect(within(canvasElement).getByText('Ayşe Demir')).toBeInTheDocument();
 
-        await userEvent.click(tiles[0]);
+        await userEvent.click(all);
         await waitFor(() => expect(tableRows(canvasElement)).toHaveLength(TENANT_INVITES.length));
     },
 };
@@ -294,7 +304,7 @@ export const Loading: Story = {
     ),
 };
 
-/** Empty: friendly invitation to send the first invite (CTA focuses the composer). */
+/** Empty: the table is pre-drawn with faint stand-in rows under the invitation to send the first invite (CTA focuses the composer). */
 export const Empty: Story = {
     render: () => (
         <InviteProgressBoard
@@ -310,9 +320,13 @@ export const Empty: Story = {
             onInviteCta={() => {}}
         />
     ),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByText(/Noch keine Einladungen|No invitations yet/)).toBeVisible();
+        await expect(canvasElement.querySelectorAll('tbody tr[aria-hidden="true"]')).toHaveLength(5);
+    },
 };
 
-/** Phone 390: tiles in two columns („Braucht Aktion" alone on the last line), rows as stacked cards. */
+/** Phone 390: chips wrap, rows as stacked cards. */
 export const Mobile: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => <Wired invites={TENANT_INVITES} targetRole="TENANT_ADMIN" />,
@@ -554,7 +568,7 @@ const RoleBoard = ({
         invites={ROLE_INVITES}
         loading={false}
         targetRole="COUNSELLOR"
-        viewerScope="tenant"
+        viewerScope="platform"
         selectedIds={[]}
         onSelectionChange={() => {}}
         isRowSelectable={() => false}
@@ -592,9 +606,8 @@ export const RoleChipMenu: Story = {
         await userEvent.click(lena);
         const menu = await body.findByRole('menu');
         const items = within(menu).getAllByRole('menuitem');
-        await expect(items).toHaveLength(3);
-        await expect(items[2]).toHaveAttribute('aria-disabled', 'true');
-        await expect(items[2]).toHaveTextContent(/widerrufen und neu einladen|revoke and invite again/);
+        // Träger-Admin invites live on the Träger tab: two entries here.
+        await expect(items).toHaveLength(2);
         await userEvent.click(within(menu).getByText(/^(BST-Admin|Agency admin)$/));
         await expect(args.onRoleChange).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'lena.vogt@example.org' }),
@@ -656,11 +669,13 @@ export const TileCountsOverTheWholeTab: Story = {
         },
     },
     play: async ({ canvasElement }) => {
-        const tiles = tileGroup(canvasElement).getAllByRole('button');
-        await expect(tiles[0]).toHaveTextContent(/^24(Vorbereitet|Prepared)/);
-        await expect(tiles[3]).toHaveTextContent(/^31(Fertig|Done)/);
-        await expect(tiles[4]).toHaveTextContent(
-            /^6(Braucht Aktion|Needs action)2 (Abgelaufen|Expired) · 1 (Widerrufen|Revoked) · 1 (Ersetzt|Superseded) · 1 (Link abgelaufen|Link expired) · 1 (Versand fehlgeschlagen|Delivery failed)$/,
+        const chips = chipGroup(canvasElement).getAllByRole('button');
+        await expect(chips[0]).toHaveTextContent(/^(Alle|All) 77$/);
+        await expect(chips[1]).toHaveTextContent(/^(Vorbereitet|Prepared) 24$/);
+        await expect(chips[4]).toHaveTextContent(/^(Fertig|Done) 31$/);
+        await expect(chips[5]).toHaveTextContent(/^(Braucht Aktion|Needs action) 6$/);
+        await expect(chips[5].getAttribute('title')).toMatch(
+            /^2 (Abgelaufen|Expired) · 1 (Widerrufen|Revoked) · 1 (Ersetzt|Superseded) · 1 (Link abgelaufen|Link expired) · 1 (Versand fehlgeschlagen|Delivery failed)$/,
         );
     },
 };
@@ -725,5 +740,123 @@ export const RoleChipAfterReload: Story = {
         await expect(roleChipOf(canvasElement, 'Anke Roth')).toHaveTextContent(
             /^(Berater:in \+ BST-Admin|Counsellor \+ Agency admin)$/,
         );
+    },
+};
+
+/* ── Card layouts (toolbar slots, wide vs. compact reflow, short list) ─────── */
+
+const MoreIcon = () => (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
+        <path
+            d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4m0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4"
+            fill="currentColor"
+        />
+    </svg>
+);
+
+/** Stand-ins for the page's search field and ⋮ menu, which live in AccountInvitesTab. */
+const toolbarSlots = {
+    toolbarSearch: (
+        <input
+            type="search"
+            aria-label="Einladungen durchsuchen"
+            placeholder="Name oder E-Mail suchen"
+            style={{
+                width: '100%',
+                height: 40,
+                boxSizing: 'border-box',
+                padding: '0 16px',
+                border: '1px solid #c4c7c8',
+                borderRadius: 20,
+                background: 'transparent',
+                font: 'inherit',
+            }}
+        />
+    ),
+    toolbarActions: <IconButton icon={<MoreIcon />} ariaLabel="Weitere Aktionen" />,
+};
+
+const fixedWidth = (width: number): Decorator[] => [
+    (Story) => (
+        <div data-testid="frame" style={{ width }}>
+            <Story />
+        </div>
+    ),
+];
+
+const expectNoSideScroll = async (canvasElement: HTMLElement) => {
+    const frame = within(canvasElement).getByTestId('frame');
+    const table = within(canvasElement).getByRole('table');
+    await expect(Math.round(table.getBoundingClientRect().right)).toBeLessThanOrEqual(
+        Math.round(frame.getBoundingClientRect().right),
+    );
+};
+
+/** Wide counsellor board (1440): seven columns, the dated track on one line, toolbar slots filled. */
+export const CounsellorWide: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: { targetRole: 'COUNSELLOR', invites: [...COUNSELLOR_INVITES, ...ROLE_INVITES], ...toolbarSlots },
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(7));
+        await expect(within(canvasElement).getByRole('searchbox')).toBeInTheDocument();
+        await expect(within(canvasElement).getByRole('button', { name: 'Weitere Aktionen' })).toBeInTheDocument();
+    },
+};
+
+/** Counsellor board in an 846px column: five columns, dates and actions stacked, the track wraps at three. */
+export const CounsellorCompact: Story = {
+    args: { targetRole: 'COUNSELLOR', invites: [...COUNSELLOR_INVITES, ...ROLE_INVITES], ...toolbarSlots },
+    decorators: fixedWidth(846),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const anke = rowOf(canvasElement, 'anke.roth@example.org');
+        // Four dated steps at three per line: the fourth starts the second line.
+        const steps = within(anke.getByRole('list')).getAllByRole('listitem');
+        await expect(steps).toHaveLength(4);
+        await expect(steps[3].getBoundingClientRect().top).toBeGreaterThan(steps[2].getBoundingClientRect().top);
+        // A wrapped bead still explains its step on hover.
+        await userEvent.hover(steps[3].querySelector<HTMLElement>('[tabindex="0"]') as HTMLElement);
+        await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
+            /(Wartet auf Abschluss: dieser Schritt ist gerade an der Reihe|Awaiting completion: .+)/,
+        );
+        await userEvent.unhover(steps[3]);
+        // Actions sit under the status chip in the same cell.
+        const revoke = anke.getByRole('button', { name: /Einladung widerrufen|revoke/i });
+        const status = anke.getByText(/^(Angenommen|Accepted)$/);
+        await expect(revoke.closest('td')).toBe(status.closest('td'));
+        await expect(revoke.getBoundingClientRect().top).toBeGreaterThan(status.getBoundingClientRect().bottom - 1);
+    },
+};
+
+/** Träger board in an 846px column: five columns, the long track wraps at four per line. */
+export const TraegerCompact: Story = {
+    args: { targetRole: 'TENANT_ADMIN', invites: [...TRAEGER_DATED, ...TENANT_INVITES.slice(0, 4)], ...toolbarSlots },
+    decorators: fixedWidth(846),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const steps = within(
+            rowOf(canvasElement, 'sabine.keller@caritas-passau.example.org').getByRole('list'),
+        ).getAllByRole('listitem');
+        await expect(steps).toHaveLength(6);
+        const tops = steps.map((step) => Math.round(step.getBoundingClientRect().top));
+        await expect(new Set(tops.slice(0, 4)).size).toBe(1);
+        await expect(tops[4]).toBeGreaterThan(tops[3]);
+    },
+};
+
+/** Two invites: a hint row says where the next ones appear, then stand-in rows fade out. */
+export const ShortListHint: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    args: { targetRole: 'COUNSELLOR', invites: ROLE_INVITES, ...toolbarSlots },
+    play: async ({ canvasElement }) => {
+        await expect(
+            within(canvasElement).getByText(
+                /Hier erscheinen die nächsten Einladungen|Your next invitations will appear here/,
+            ),
+        ).toBeVisible();
+        const standIns = Array.from(canvasElement.querySelectorAll<HTMLElement>('tbody tr[aria-hidden="true"]'));
+        await expect(standIns.map((row) => row.style.opacity)).toEqual(['1', '0.75', '0.5']);
     },
 };
