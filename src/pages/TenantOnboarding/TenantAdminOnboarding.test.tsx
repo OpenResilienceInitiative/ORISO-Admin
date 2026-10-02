@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
@@ -87,6 +87,179 @@ const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>
 };
 
 describe('TenantAdminOnboarding', () => {
+    it('sets only the password for an existing account without provisioning or public 2FA activation', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                recipientEmail: INVITE.recipientEmail,
+                firstName: INVITE.firstName,
+                lastName: INVITE.lastName,
+                tenantId: 21,
+                expiresAt: null,
+                dpaContent: null,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        expect(screen.queryByLabelText('tenantOnboarding.organisation.name')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: expect.stringContaining('/raw-token/setup'),
+                skipAuth: true,
+                bodyData: JSON.stringify({ password: 'SecurePass1!' }),
+            }),
+        );
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        expect(screen.getByTestId('onboarding-done-description')).toHaveTextContent('accountSetup.success');
+    });
+
+    it.each([
+        ['SETUP_IN_PROGRESS', 'accountSetup.inProgress.description'],
+        ['SETUP_OPERATOR_REVIEW_REQUIRED', 'accountSetup.operatorReview.description'],
+    ])('shows %s without repeating a password submission or starting public 2FA', async (reason, description) => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        mocks.fetchData.mockRejectedValue(new Response(JSON.stringify({ reason }), { status: 410 }));
+        const before = mocks.fetchData.mock.calls.length;
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(description);
+        expect(screen.queryByRole('button', { name: 'accountSetup.submit' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
+        expect(mocks.fetchData.mock.calls.length - before).toBe(1);
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+    });
+
+    it('keeps the existing tenant-admin password policy in setup mode', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        const before = mocks.fetchData.mock.calls.length;
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+        expect(await screen.findByText('passwordReset.passwordInvalid')).toBeInTheDocument();
+        expect(mocks.fetchData.mock.calls.length).toBe(before);
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('returns completed setup to ordinary login without activating public TOTP', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/setup']}>
+                <Routes>
+                    <Route
+                        path="/setup"
+                        element={<TenantAdminOnboarding inviteToken="bound-token" client={client} />}
+                    />
+                    <Route path="/admin/login" element={<p>ordinary-login-security-gate</p>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        await user.click(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+        expect(await screen.findByText('ordinary-login-security-gate')).toBeInTheDocument();
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('does not apply an old token setup response to a different account link', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn(async (token: string) => ({
+                ...INVITE,
+                recipientEmail: `${token}@example.org`,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' as const,
+            })),
+        });
+        let complete: (value: { phase: string }) => void = () => undefined;
+        mocks.fetchData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    complete = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        const view = render(
+            <MemoryRouter>
+                <TenantAdminOnboarding inviteToken="first" client={client} />
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        view.rerender(
+            <MemoryRouter>
+                <TenantAdminOnboarding inviteToken="second" client={client} />
+            </MemoryRouter>,
+        );
+        await screen.findByText('second@example.org');
+        await act(async () => {
+            complete({ phase: 'COMPLETED' });
+        });
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('tenantOnboarding.account.password')).toBeInTheDocument();
+        expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('clears the previous setup password and error when another account link is opened', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn(async (token: string) => ({
+                ...INVITE,
+                recipientEmail: `${token}@example.org`,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' as const,
+            })),
+        });
+        mocks.fetchData.mockRejectedValue(new Response(null, { status: 502 }));
+        const user = userEvent.setup();
+        const view = render(
+            <MemoryRouter>
+                <TenantAdminOnboarding inviteToken="first" client={client} />
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        await screen.findByRole('alert');
+        view.rerender(
+            <MemoryRouter>
+                <TenantAdminOnboarding inviteToken="second" client={client} />
+            </MemoryRouter>,
+        );
+        await screen.findByText('second@example.org');
+        expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
+        expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+    });
+
     it('renders the published DPA text and walks organisation → account → 2FA → done', async () => {
         const client = createClient();
         const user = userEvent.setup();

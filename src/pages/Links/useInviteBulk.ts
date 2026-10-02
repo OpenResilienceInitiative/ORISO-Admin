@@ -42,6 +42,8 @@ export const useInviteBulk = ({ invites, reload, explain, rememberGeneratedLink 
         [invites, selectedIds],
     );
 
+    const requiresTemplate = selectedInvites.some((invite) => invite.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP');
+
     // Revoke is the delete here; failures are collected into one summary.
     const revokeConfirmed = useCallback(async () => {
         setConfirmRevokeOpen(false);
@@ -75,36 +77,43 @@ export const useInviteBulk = ({ invites, reload, explain, rememberGeneratedLink 
         await reload();
     }, [reload, selectedInvites, t]);
 
-    // `/resend` supersedes the invite it gets, so a never-mailed DRAFT goes through `/send`.
+    // Setup rows always use their purpose-safe resend. An ordinary never-mailed DRAFT uses send.
     // Failed rows stay selected for a retry.
     const send = useCallback(
         async (templateId: number | undefined) => {
-            // No fallback template: the bar is the one gate and requires an explicit choice.
-            if (!templateId) {
+            const targets = selectedInvites;
+            if (targets.length === 0) return;
+            // Setup mail is canonical; ordinary invitations still need an explicit template.
+            if (requiresTemplate && !templateId) {
                 message.error(t('links.accountInvites.templateRequired', 'Select a template first.'));
                 return;
             }
-            const targets = selectedInvites;
-            if (targets.length === 0) return;
             setRunning(true);
             const failed: AccountInviteDTO[] = [];
             // The first explained cause is shown once, above the count summary.
             let firstCause: string | null = null;
             for (let i = 0; i < targets.length; i += 1) {
                 try {
-                    const deliver = targets[i].inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
+                    const target = targets[i];
+                    const setup = target.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+                    const deliver = target.inviteStatus === 'DRAFT' ? sendAccountInvite : resendAccountInvite;
+                    const delivery = setup
+                        ? resendAccountInvite(target.id, undefined)
+                        : deliver(target.id, {
+                              acceptBaseUrl: acceptBaseUrlForRole(target.targetRole),
+                              templateId,
+                          });
                     // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no mail burst
-                    const delivered = await deliver(targets[i].id, {
-                        acceptBaseUrl: acceptBaseUrlForRole(targets[i].targetRole),
-                        templateId,
-                    });
+                    const delivered = await delivery;
                     rememberGeneratedLink(delivered);
                 } catch (error) {
                     failed.push(targets[i]);
                     // eslint-disable-next-line no-await-in-loop -- reads the failed response body
                     const explained = await explain(
                         error,
-                        targets[i].inviteStatus === 'DRAFT' ? 'send' : 'resend',
+                        targets[i].onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP' && targets[i].inviteStatus === 'DRAFT'
+                            ? 'send'
+                            : 'resend',
                         targets[i].targetRole,
                     );
                     if (explained.status != null) firstCause ??= explained.message;
@@ -133,13 +142,14 @@ export const useInviteBulk = ({ invites, reload, explain, rememberGeneratedLink 
             }
             await reload();
         },
-        [explain, reload, rememberGeneratedLink, selectedInvites, t],
+        [explain, reload, rememberGeneratedLink, requiresTemplate, selectedInvites, t],
     );
 
     return {
         selectedIds,
         setSelectedIds,
         selectedInvites,
+        requiresTemplate,
         running,
         confirmRevokeOpen,
         setConfirmRevokeOpen,
