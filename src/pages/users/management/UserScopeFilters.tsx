@@ -16,14 +16,14 @@ const ALL = 10000;
 
 /** Which filters a tab offers: Träger for the platform admin, centres wherever people belong to centres. */
 export const useScopeFilterAvailability = (sectionId: TypeOfUser) => {
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { can } = useUserPermissions();
     const centreTab = sectionId === TypeOfUser.Consultants || sectionId === TypeOfUser.AgencyAdmins;
     return {
         tenant: isSuperAdmin && (centreTab || sectionId === TypeOfUser.TenantAdmins),
         agency: centreTab,
-        // Only agency admins may list centres (AgencyService SEARCH_AGENCIES); the server scopes the list.
-        canListAgencies: centreTab && can(PermissionAction.Read, Resource.Agency),
+        // AgencyService scopes this read-only search to the token tenant or assigned centres.
+        canListAgencies: centreTab && (isTenantScopedAdmin || can(PermissionAction.Read, Resource.Agency)),
     };
 };
 

@@ -1012,7 +1012,7 @@ export const CentreFilterForTraegerAdmin: Story = {
     render: onTab('consultants'),
     decorators: [
         (Story) => {
-            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin, UserRole.UserAdmin], 3);
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 3);
             return <Story />;
         },
     ],
