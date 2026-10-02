@@ -84,6 +84,8 @@ export const AllStates: Story = {
         // Pending text is the container's own on-colour (M3 pair).
         const pending = canvasElement.querySelector('[data-status="CREATED"]') as HTMLElement;
         await expect(getComputedStyle(pending).color).toBe(resolvedToken('--m3-on-tertiary-container'));
+        await expect(getComputedStyle(pending).borderTopWidth).toBe('1px');
+        await expect(getComputedStyle(pending).borderTopColor).toBe(resolvedToken('--m3-outline-variant'));
     },
 };
 
