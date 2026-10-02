@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    completeExistingAccountSetup,
     DpaAcceptanceData,
     InviteLinkError,
     InviteLinkErrorReason,
@@ -101,6 +102,8 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     const stateRef = useRef(state);
     stateRef.current = state;
     const busyRef = useRef(false);
+    const inviteTokenRef = useRef(inviteToken);
+    inviteTokenRef.current = inviteToken;
 
     useEffect(() => {
         let cancelled = false;
@@ -116,6 +119,12 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
             .then((loaded) => {
                 if (cancelled) return;
                 setInvite(loaded);
+                if (loaded.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP') {
+                    // Existing identity: no tenant reservation, DPA or provisioning-only TOTP.
+                    setSubmitError(null);
+                    setState({ phase: 'account' });
+                    return;
+                }
                 if (loaded.phase === 'PENDING_2FA_ACTIVATION') {
                     // Resume: registration already happened; only the 2FA
                     // activation is open (#569 resume contract).
@@ -207,7 +216,12 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     );
 
     const goBackToOrganisation = useCallback(() => {
-        if (stateRef.current.phase !== 'account' || busyRef.current || invite?.joinsExistingTenant) {
+        if (
+            stateRef.current.phase !== 'account' ||
+            busyRef.current ||
+            invite?.joinsExistingTenant ||
+            invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP'
+        ) {
             return;
         }
         setSubmitError(null);
@@ -228,13 +242,21 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 return;
             }
             const joins = invite.joinsExistingTenant === true;
-            if (!joins && (!organisation || (!dpa && !dpaForward && !dpaConfirmed))) {
+            const existingAccount = invite.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+            if (!existingAccount && !joins && (!organisation || (!dpa && !dpaForward && !dpaConfirmed))) {
                 return;
             }
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
+                if (existingAccount) {
+                    await completeExistingAccountSetup(inviteToken, password);
+                    if (inviteTokenRef.current === inviteToken) {
+                        setState({ phase: 'done' });
+                    }
+                    return;
+                }
                 const result = await client.registerTenantAdmin(
                     inviteToken,
                     joins
@@ -260,7 +282,9 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     },
                 });
             } catch (error) {
-                failFlow(error, 'registration');
+                if (!existingAccount || inviteTokenRef.current === inviteToken) {
+                    failFlow(error, 'registration');
+                }
             } finally {
                 busyRef.current = false;
                 setBusy(false);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -80,6 +80,128 @@ const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
 
 describe('CounsellorOnboarding', () => {
     const submit = () => screen.getByRole('button', { name: 'counsellorOnboarding.submit' });
+
+    it.each(['COUNSELLOR', 'AGENCY_ADMIN'] as const)(
+        '%s sets only the existing account password',
+        async (targetRole) => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    targetRole,
+                    onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+                }),
+            });
+            mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            // Preserve the existing consultant policy: an eight-character valid password works.
+            await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+            await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+            expect(screen.queryByLabelText('cards.advisorAccount.username')).not.toBeInTheDocument();
+            expect(screen.queryByRole('heading', { name: 'cards.personalInfo.title' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('heading', { name: 'cards.focusTopics.title' })).not.toBeInTheDocument();
+            await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+            expect(await screen.findByText('accountSetup.success')).toBeInTheDocument();
+            expect(mocks.fetchData).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    url: expect.stringContaining('/raw-token/setup'),
+                    skipAuth: true,
+                    bodyData: JSON.stringify({ password: 'Aa1!bbbb' }),
+                }),
+            );
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+            expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        },
+    );
+
+    it('never enters public TOTP from an incomplete setup response', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockResolvedValue({ phase: 'PENDING_2FA_ACTIVATION' });
+        const before = mocks.fetchData.mock.calls.length;
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.serviceError');
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+        expect(mocks.fetchData.mock.calls.length - before).toBe(1);
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    });
+
+    it('does not apply an old token setup response to a different counsellor account link', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn(async (token: string) => ({
+                ...INVITE,
+                recipientEmail: `${token}@example.org`,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' as const,
+            })),
+        });
+        let complete: (value: { phase: string }) => void = () => undefined;
+        mocks.fetchData.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    complete = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        const view = render(
+            <MemoryRouter>
+                <CounsellorOnboarding inviteToken="first" client={client} />
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        view.rerender(
+            <MemoryRouter>
+                <CounsellorOnboarding inviteToken="second" client={client} />
+            </MemoryRouter>,
+        );
+        await screen.findByText('second@example.org');
+        await act(async () => {
+            complete({ phase: 'COMPLETED' });
+        });
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('tenantOnboarding.account.password')).toBeInTheDocument();
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    });
+
+    it('clears the previous setup password and error when another counsellor account link is opened', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn(async (token: string) => ({
+                ...INVITE,
+                recipientEmail: `${token}@example.org`,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' as const,
+            })),
+        });
+        mocks.fetchData.mockRejectedValue(new Response(null, { status: 502 }));
+        const user = userEvent.setup();
+        const view = render(
+            <MemoryRouter>
+                <CounsellorOnboarding inviteToken="first" client={client} />
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        await screen.findByRole('alert');
+        view.rerender(
+            <MemoryRouter>
+                <CounsellorOnboarding inviteToken="second" client={client} />
+            </MemoryRouter>,
+        );
+        await screen.findByText('second@example.org');
+        expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
+        expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+    });
 
     it('renders one flat form — every group on screen, no cards, no step flow', async () => {
         renderFlow(createClient());

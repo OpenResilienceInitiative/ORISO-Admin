@@ -34,6 +34,8 @@ export interface InviteCsvProps {
 
 export interface InviteBulkProps {
     count: number;
+    /** Ordinary/unknown-purpose selections require a template; setup-only selections do not. */
+    requiresTemplate?: boolean;
     onSend: () => void;
     onClear: () => void;
     /** Opens the revoke confirmation; there is no hard delete. */
@@ -101,8 +103,8 @@ export const InviteToolbar = ({
     const activeTemplates = templates.list.filter((template) => template.active);
     const selectedTemplate = activeTemplates.find((template) => template.id === templates.selectedId);
     const bulkMode = bulk != null && bulk.count > 0;
-    // Resending always mails, so bulk send needs a template whatever the send mode.
-    const bulkReady = selectedTemplate != null;
+    // Only a server-declared setup-only selection can use canonical mail without a template.
+    const bulkReady = bulk?.requiresTemplate === false || selectedTemplate != null;
 
     const csvInputRef = useRef<HTMLInputElement>(null);
     const handleCsvFile = async (file: File) => {
