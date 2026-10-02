@@ -22,10 +22,42 @@ vi.mock('../../../context/useAppConfig', () => ({
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({ useConsultantsOrAdminsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
-    useTenantAdminsData: () => ({ data: { data: [{ id: '42', tenantId: 2 }], total: 1 }, refetch: vi.fn() }),
+    useTenantAdminsData: () => ({
+        data: {
+            data: [
+                {
+                    id: '42',
+                    tenantId: 2,
+                    firstName: 'Alex',
+                    lastName: 'Tenant',
+                    email: 'alex@example.test',
+                    username: 'alex',
+                    agencies: [],
+                },
+            ],
+            total: 1,
+        },
+        refetch: vi.fn(),
+    }),
 }));
 vi.mock('../../../hooks/usePlatformAdminsData', () => ({
-    usePlatformAdminsData: () => ({ data: { data: [{ id: '43', tenantId: 0 }], total: 1 }, refetch: vi.fn() }),
+    usePlatformAdminsData: () => ({
+        data: {
+            data: [
+                {
+                    id: '43',
+                    tenantId: 0,
+                    firstName: 'Pat',
+                    lastName: 'Platform',
+                    email: 'pat@example.test',
+                    username: 'pat',
+                    agencies: [],
+                },
+            ],
+            total: 1,
+        },
+        refetch: vi.fn(),
+    }),
 }));
 vi.mock('../../../hooks/useDeleteTenant', () => ({ useDeleteTenant: () => ({ mutate: vi.fn() }) }));
 vi.mock('../../../components/GlobalSearch', () => ({
@@ -38,23 +70,6 @@ vi.mock('../List/components/DeleteUser', () => ({ DeleteUserModal: () => null })
 vi.mock('../List/components/DeleteTenantAdmin', () => ({
     DeleteTenantAdminModal: () => <div>delete-confirmation</div>,
 }));
-// Replace table layout only: render the actual columns and actual EditButtons supplied by the consumer.
-vi.mock('../../../components/ResizableTable', () => ({
-    ResizeTable: ({ columns, dataSource }: any) => (
-        <div data-testid="rows">
-            {dataSource.map((row: any) => (
-                <div key={row.id}>
-                    {columns
-                        .filter((column: any) => column.key === 'actions')
-                        .map((column: any) => (
-                            <div key={column.key}>{column.render(undefined, row, 0)}</div>
-                        ))}
-                </div>
-            ))}
-        </div>
-    ),
-}));
-
 describe('UserManagementTable section authorization', () => {
     beforeEach(() => {
         state.section = TypeOfUser.TenantAdmins;
@@ -72,18 +87,19 @@ describe('UserManagementTable section authorization', () => {
         state.section = TypeOfUser.PlatformAdmins;
         show();
         expect(screen.queryByRole('button', { name: /new$/ })).not.toBeInTheDocument();
-        expect(within(screen.getByTestId('rows')).queryByRole('button')).toBeNull();
+        const table = within(screen.getByRole('table'));
+        expect(table.queryByRole('button', { name: 'userTable.card.edit', exact: true })).toBeNull();
+        expect(table.queryByRole('button', { name: 'userTable.card.delete', exact: true })).toBeNull();
     });
 
     it('keeps create, edit and delete wired for scoped admins on tenant admins', () => {
         show();
         fireEvent.click(screen.getByRole('button', { name: /new$/ }));
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/add'));
-        const row = within(screen.getByTestId('rows'));
-        expect(row.getAllByRole('button')).toHaveLength(2);
-        fireEvent.click(row.getByRole('button', { name: 'edit', exact: true }));
+        const row = within(screen.getByRole('table'));
+        fireEvent.click(row.getByRole('button', { name: 'userTable.card.edit', exact: true }));
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/42'));
-        fireEvent.click(row.getByRole('button', { name: 'delete', exact: true }));
+        fireEvent.click(row.getByRole('button', { name: 'userTable.card.delete', exact: true }));
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
     });
 
@@ -92,9 +108,8 @@ describe('UserManagementTable section authorization', () => {
         state.isSuperAdmin = true;
         show();
         expect(screen.getByRole('button', { name: /new$/ })).toBeInTheDocument();
-        const row = within(screen.getByTestId('rows'));
-        expect(row.getAllByRole('button')).toHaveLength(2);
-        expect(row.getByRole('button', { name: 'edit', exact: true })).toBeInTheDocument();
-        expect(row.getByRole('button', { name: 'delete', exact: true })).toBeInTheDocument();
+        const row = within(screen.getByRole('table'));
+        expect(row.getByRole('button', { name: 'userTable.card.edit', exact: true })).toBeInTheDocument();
+        expect(row.getByRole('button', { name: 'userTable.card.delete', exact: true })).toBeInTheDocument();
     });
 });
