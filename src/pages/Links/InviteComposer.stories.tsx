@@ -10,11 +10,19 @@ import {
     type InviteEmailTemplateDTO,
 } from '../../api/accountInvites/accountInvites';
 import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
-import type { IdAllocationClient, IdAllocationState } from '../../api/idAllocation/idAllocation';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
+import {
+    AGENCIES,
+    matches,
+    searchAgencies,
+    searchTenants,
+    stubbedAgencyIdAllocation,
+    stubbedTenantIdAllocation,
+    TENANTS,
+} from './inviteStoryFixtures';
 import {
     InviteComposer,
     sendModeStorageKey,
@@ -59,57 +67,6 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     const kind = new URL(request.url).searchParams.get('kind');
     return HttpResponse.json(TEMPLATES.filter((template) => !kind || template.kind === kind));
 });
-
-/**
- * Stubbed allocation client (#570 worked example): ids 1–20 assigned, 30–35
- * reserved. Auto adopts 21, stepping skips the taken ranges, typing 30 blocks.
- */
-const TAKEN_TENANT_IDS = new Set<number>([...Array.from({ length: 20 }, (_, i) => i + 1), 30, 31, 32, 33, 34, 35]);
-// Agencies: 1–140 exist, 150–152 are held by open invites — the next free agency number is 141.
-const TAKEN_AGENCY_IDS = new Set<number>([...Array.from({ length: 140 }, (_, i) => i + 1), 150, 151, 152]);
-
-const stubbedAllocation = (taken: Set<number>, reserved: (id: number) => boolean): IdAllocationClient => ({
-    checkIdAvailability: async (id) => {
-        let state: IdAllocationState = 'FREE';
-        if (taken.has(id)) state = reserved(id) ? 'RESERVED' : 'ASSIGNED';
-        return { id, state };
-    },
-    nextFreeId: async ({ from, direction }) => {
-        let candidate = from == null ? 1 : from + (direction === 'up' ? 1 : -1);
-        while (candidate >= 1 && candidate <= 999) {
-            if (!taken.has(candidate)) return { id: candidate };
-            candidate += direction === 'up' ? 1 : -1;
-        }
-        return { id: null };
-    },
-});
-
-const stubbedTenantIdAllocation = stubbedAllocation(TAKEN_TENANT_IDS, (id) => id >= 30 && id <= 35);
-const stubbedAgencyIdAllocation = stubbedAllocation(TAKEN_AGENCY_IDS, (id) => id >= 150 && id <= 152);
-
-const TENANTS: IdUnitOption[] = [
-    { id: 7, name: 'Caritas Südbaden' },
-    { id: 12, name: 'Diakonie Ortenau' },
-    { id: 15, name: 'AWO Freiburg' },
-];
-
-const AGENCIES: Array<IdUnitOption & { tenantId: number }> = [
-    { id: 101, tenantId: 7, name: 'Caritas Suchtberatung Freiburg', topics: ['Sucht', 'Glücksspiel'] },
-    { id: 102, tenantId: 7, name: 'Caritas Schuldnerberatung Lörrach', topics: ['Schulden'] },
-    { id: 118, tenantId: 12, name: 'Diakonie Jugendberatung Offenburg', topics: ['U25', 'Familie'] },
-    { id: 130, tenantId: 15, name: 'AWO Migrationsberatung', topics: ['Migration'] },
-];
-
-const matches = (unit: IdUnitOption, query: string) =>
-    query === '' ||
-    `${unit.id} ${unit.name ?? ''} ${(unit.topics ?? []).join(' ')}`.toLowerCase().includes(query.toLowerCase());
-
-const searchTenants = async (query: string) => TENANTS.filter((tenant) => matches(tenant, query));
-
-const searchAgencies = async (query: string, { tenantId }: { tenantId?: number }) =>
-    AGENCIES.filter((agency) => (tenantId == null || agency.tenantId === tenantId) && matches(agency, query)).map(
-        ({ tenantId: _tenantId, ...agency }) => agency,
-    );
 
 const defaultHandlers = [
     templatesByKind,
@@ -412,8 +369,8 @@ export const ScrollButtonsOnOverflow: Story = {
 
 /** Nothing to scroll: a row that fits shows no scroll buttons at all. */
 export const ScrollButtonsOnlyWhenOverflowing: Story = {
-    // A Träger admin has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
-    args: { initialValues: { ...PREFILLED, role: 'TENANT_ADMIN' } },
+    // The Träger tab has no Beratungsstelle and Themen fields, so the collapsed row fits 1400px.
+    args: { tab: 'tenant', initialValues: PREFILLED },
     decorators: [frameOf(1400)],
     globals: { viewport: { value: 'desktop', isRotated: false } },
     play: async ({ canvasElement }) => {
@@ -922,9 +879,10 @@ export const RoleHidesFields: Story = {
         await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
 
+        // Träger-Admin is no role of this tab: a new Träger is founded on the Träger tab.
         await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
-        await userEvent.click(await body.findByTitle(/Träger-Admin|Tenant admin/));
-        await waitFor(() => expect(canvas.queryByRole('combobox', { name: FIELD.agency })).not.toBeInTheDocument());
+        await expect(await body.findByTitle(/^(Berater:in|Counsellor)$/)).toBeInTheDocument();
+        await expect(body.queryByTitle(/Träger-Admin|Tenant admin/)).not.toBeInTheDocument();
     },
 };
 

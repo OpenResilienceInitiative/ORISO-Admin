@@ -64,9 +64,32 @@ export const PlatformAdmin: Story = {
     },
 };
 
-/** Träger admin: "Berater-Invites"; the platform-only tabs are shown disabled. */
+/** Träger admin: Träger-Invites (own Träger only) and Berater-Invites; Externe Inbounds stay platform-only. */
 export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toHaveAttribute('href');
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toHaveAttribute('href');
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
+        await expect(
+            await canvas.findByRole('heading', { name: /Berater:in einladen|Invite counsellor/ }),
+        ).toBeVisible();
+    },
+};
+
+/** On the Träger tab a Träger admin has their own Träger fixed and can only add another Träger admin. */
+export const TenantAdminOnTraegerTab: Story = {
+    decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <TenantInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(
+            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite tenant admin/ }),
+        ).toBeVisible();
+        await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
+        await expect(canvas.queryByRole('button', { name: /Neu anlegen|Create new/ })).toBeNull();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+    },
 };
 
 // The backend scopes the agency search to an agency admin's own agencies; these handlers do the same.
@@ -104,13 +127,24 @@ export const AgencyAdmin: Story = {
         await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), { timeout: 5_000 });
         await expect(agency).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
-        // One role on offer: „Rolle" is fixed on „Berater:in".
-        await expect(canvas.getByRole('combobox', { name: /^(Rolle|Role)$/ })).toBeDisabled();
+        // One role on offer: „Rolle" is a fixed value row on „Berater:in".
+        await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
-        await expect(canvas.queryByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeNull();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        // Platform-only: never shown to a Beratungsstellen admin.
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
-        await expect(canvas.queryByText(/Träger-Invites|Tenant invites/)).toBeNull();
         await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
+    },
+};
+
+/** A Beratungsstellen admin sees the Träger tab, but the server lets them invite counsellors only: send says why it is off. */
+export const AgencyAdminOnTraegerTab: Story = {
+    parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
+    decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <TenantInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.getByRole('button', { name: /Einladen|Invite/ })).toBeDisabled();
     },
 };
 

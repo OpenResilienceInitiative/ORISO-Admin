@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
@@ -18,7 +18,6 @@ import {
     DataTableRow,
     DataTableSort,
     PhaseStepper,
-    StatTile,
 } from '../../../components/DataTable';
 import { IconButton } from '../../../components/IconButton';
 import { M3Tooltip } from '../../../components/M3Tooltip';
@@ -214,7 +213,69 @@ export interface InviteProgressBoardProps {
     roleSavingIds?: number[];
     /** The server's tile counts over every page of the tab; without them the board counts its rows. */
     tileCounts?: LifecycleCounts;
+    /** Search field for the card toolbar (left, grows). */
+    toolbarSearch?: ReactNode;
+    /** Trailing toolbar controls, e.g. the more-menu (right of the pagination). */
+    toolbarActions?: ReactNode;
 }
+
+/** Board widths from which all seven columns fit without squeezing the one-line track. */
+const WIDE_MIN_WIDTH = { counsellor: 1180, tenant: 1500 } as const;
+
+/** Rows of the pre-drawn table: the board never looks like an empty box. */
+const PLACEHOLDER_ROWS = 5;
+
+const CHECK_GLYPH = (
+    <svg className={styles.chipCheck} width="18" height="18" viewBox="0 0 18 18" aria-hidden>
+        <path d="M7.1 12.3 3.6 8.8l1-1 2.5 2.5 5.3-5.3 1 1z" fill="currentColor" />
+    </svg>
+);
+
+/** A faint, inert stand-in row (aria-hidden): checkbox, name bars, three beads, dates, a chip. */
+const PlaceholderRow = ({ compact, opacity }: { compact: boolean; opacity?: number }) => (
+    <tr aria-hidden className={styles.placeholderRow} style={opacity != null ? { opacity } : undefined}>
+        <td className={styles.selectCell}>
+            <span className={styles.phCheckbox} />
+        </td>
+        <td>
+            <span className={styles.phBar} />
+            <span className={classNames(styles.phBar, styles.phBarSub)} />
+        </td>
+        <td>
+            <span className={styles.phTrack}>
+                <span className={styles.phBead} />
+                <span className={styles.phLine} />
+                <span className={styles.phBead} />
+                <span className={styles.phLine} />
+                <span className={styles.phBead} />
+            </span>
+        </td>
+        {compact ? (
+            <>
+                <td>
+                    <span className={classNames(styles.phBar, styles.phBarDate)} />
+                    <span className={classNames(styles.phBar, styles.phBarSub, styles.phBarDate)} />
+                </td>
+                <td className={styles.phChipCell}>
+                    <span className={styles.phChip} />
+                </td>
+            </>
+        ) : (
+            <>
+                <td>
+                    <span className={classNames(styles.phBar, styles.phBarDate)} />
+                </td>
+                <td>
+                    <span className={classNames(styles.phBar, styles.phBarSub, styles.phBarDate)} />
+                </td>
+                <td>
+                    <span className={styles.phChip} />
+                </td>
+                <td />
+            </>
+        )}
+    </tr>
+);
 
 /** Per-row topic permission as a chip in the role chip's line; picking a level saves at once. */
 const TopicPermissionChip = ({
@@ -254,9 +315,11 @@ const TopicPermissionChip = ({
 };
 
 /**
- * The "Onboarding" tracking board (Links page): summary tiles that filter,
- * status chips, the phase-progress table (one row per invitee) and client-side
- * pagination. Rendering only — data and actions stay in `AccountInvitesTab`.
+ * The "Onboarding" tracking board (Links page): one card with a sticky toolbar
+ * (search slot, compact pagination, actions slot, filter chips) over the
+ * phase-progress table (one row per invitee). Narrow boards reflow to five
+ * columns instead of scrolling sideways. Rendering only — data and actions
+ * stay in `AccountInvitesTab`.
  */
 export const InviteProgressBoard = ({
     invites,
@@ -278,17 +341,61 @@ export const InviteProgressBoard = ({
     onRoleAdd,
     roleSavingIds = [],
     tileCounts,
+    toolbarSearch,
+    toolbarActions,
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
     const [filter, setFilter] = useState<InviteFilter>(null);
     const [sort, setSort] = useState<DataTableSort | null>(null);
 
+    const isTenantTab = targetRole === 'TENANT_ADMIN';
+    const boardRef = useRef<HTMLElement>(null);
+    const toolbarRef = useRef<HTMLDivElement>(null);
+    const sentinelRef = useRef<HTMLSpanElement>(null);
+    // null = not measured (jsdom, first paint): the wide layout is today's layout.
+    const [boardWidth, setBoardWidth] = useState<number | null>(null);
+    const [toolbarHeight, setToolbarHeight] = useState(0);
+    const [stuck, setStuck] = useState(false);
+
+    useEffect(() => {
+        if (typeof ResizeObserver === 'undefined') return undefined;
+        const observer = new ResizeObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.target === boardRef.current && entry.contentRect.width > 0) {
+                    setBoardWidth(entry.contentRect.width);
+                }
+                if (entry.target === toolbarRef.current) {
+                    setToolbarHeight(entry.target.getBoundingClientRect().height);
+                }
+            });
+        });
+        if (boardRef.current) observer.observe(boardRef.current);
+        if (toolbarRef.current) observer.observe(toolbarRef.current);
+        return () => observer.disconnect();
+    }, []);
+
+    // The sentinel sits at the card's top edge: once it has scrolled above the
+    // viewport, the toolbar is stuck and gets its shadow.
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel || typeof IntersectionObserver === 'undefined') return undefined;
+        const observer = new IntersectionObserver(([entry]) => {
+            setStuck(!entry.isIntersecting && entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0));
+        });
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, []);
+
+    const compact = boardWidth != null && boardWidth < WIDE_MIN_WIDTH[isTenantTab ? 'tenant' : 'counsellor'];
+    // The Träger track is longer (up to seven steps), so its lines hold one step more.
+    const stepsPerLine = isTenantTab ? 4 : 3;
+
     const detailLabel = (detail: LifecycleDetail) =>
         detail in DETAIL_FALLBACK_LABELS
             ? t(...DETAIL_FALLBACK_LABELS[detail as keyof typeof DETAIL_FALLBACK_LABELS])
             : t(`links.accountInvites.status.${detail}`, INVITE_STATUS_FALLBACK_LABELS[detail as AccountInviteStatus]);
-    // "2 Draft · 1 Wartet": which raw statuses make up a tile's count.
+    // "2 Draft · 1 Wartet": which raw statuses make up a chip's count.
     const detailBreakdown = (details: Partial<Record<LifecycleDetail, number>>) =>
         DETAIL_ORDER.filter((detail) => (details[detail] ?? 0) > 0)
             .map((detail) => `${details[detail]} ${detailLabel(detail)}`)
@@ -302,11 +409,14 @@ export const InviteProgressBoard = ({
         setPage(1);
     }, [filter, searchQuery]);
 
-    // The tiles count the WHOLE list, not the search result: they are the
+    // The chips count the WHOLE list, not the search result: they are the
     // overview the search is run against, and a "3 Abgeschlossen" that silently
     // meant "3 among the rows matching fisch" would be a different number every
     // keystroke.
     const phaseCounts = useMemo(() => tileCounts ?? countLifecyclePhases(invites), [tileCounts, invites]);
+    const allCount = tileCounts
+        ? LIFECYCLE_PHASES.reduce((sum, phase) => sum + tileCounts[phase].total, 0)
+        : invites.length;
 
     const searched = useMemo(
         () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
@@ -316,7 +426,7 @@ export const InviteProgressBoard = ({
     const filtered = useMemo(() => searched.filter((invite) => matchesFilter(invite, filter)), [searched, filter]);
 
     /**
-     * Switching a tile also prunes the selection down to the rows the
+     * Switching a chip also prunes the selection down to the rows the
      * new filter still shows. The bulk actions above the board act on the
      * selection, NOT on what is on screen — a row hidden by a filter would
      * otherwise stay silently checked and get resent or revoked without the
@@ -384,22 +494,43 @@ export const InviteProgressBoard = ({
         'Sie haben keine Berechtigung, die Themen-Berechtigung dieser Person zu ändern.',
     );
 
-    const columns = useMemo(
-        () => [
-            { key: 'select', ariaLabel: t('links.inviteProgress.col.select', 'Auswahl'), width: 48 },
-            { key: 'recipient', label: t('links.inviteProgress.col.recipient', 'Empfänger'), sortable: true },
-            { key: 'progress', label: t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt') },
-            { key: 'invitedAt', label: t('links.inviteProgress.col.invitedAt', 'Eingeladen am'), sortable: true },
-            { key: 'lastActivity', label: t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität') },
-            { key: 'status', label: t('links.inviteProgress.col.status', 'Status') },
-            {
-                key: 'actions',
-                label: t('links.inviteProgress.col.actions', 'Aktionen'),
-                align: 'right' as const,
-            },
-        ],
-        [t],
-    );
+    const columns = useMemo(() => {
+        const select = { key: 'select', ariaLabel: t('links.inviteProgress.col.select', 'Auswahl'), width: 48 };
+        const recipient = {
+            key: 'recipient',
+            label: t('links.inviteProgress.col.recipient', 'Empfänger'),
+            sortable: true,
+        };
+        const progress = { key: 'progress', label: t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt') };
+        const invitedAt = t('links.inviteProgress.col.invitedAt', 'Eingeladen am');
+        const lastActivity = t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität');
+        const status = t('links.inviteProgress.col.status', 'Status');
+        const actions = t('links.inviteProgress.col.actions', 'Aktionen');
+        // Two-line header: the space keeps the accessible name readable ("Eingeladen am Letzte Aktivität").
+        const stacked = (main: string, sub: string, end = false) => (
+            <span className={classNames(styles.headStack, { [styles.headStackEnd]: end })}>
+                <span>{main}</span> <span className={styles.headSub}>{sub}</span>
+            </span>
+        );
+        if (compact) {
+            return [
+                select,
+                recipient,
+                progress,
+                { key: 'invitedAt', label: stacked(invitedAt, lastActivity), sortable: true },
+                { key: 'status', label: stacked(status, actions, true), align: 'right' as const },
+            ];
+        }
+        return [
+            select,
+            recipient,
+            progress,
+            { key: 'invitedAt', label: invitedAt, sortable: true },
+            { key: 'lastActivity', label: lastActivity },
+            { key: 'status', label: status },
+            { key: 'actions', label: actions, align: 'right' as const },
+        ];
+    }, [t, compact]);
 
     const toggleSelection = (invite: AccountInviteDTO, next: boolean) => {
         onSelectionChange(next ? [...selectedIds, invite.id] : selectedIds.filter((id) => id !== invite.id));
@@ -409,43 +540,391 @@ export const InviteProgressBoard = ({
         new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const emptyUnfiltered = invites.length === 0;
+    const unfiltered = filter == null && !searchQuery.trim();
+    // A short list gets a hint and fading stand-in rows, so the table reads as "fills up here".
+    const showNextHint = !loading && unfiltered && invites.length >= 1 && invites.length <= 3;
+
+    const chips: { key: InviteFilter; label: string; count: number; breakdown?: string; error?: boolean }[] = [
+        { key: null, label: t('links.inviteProgress.phaseTile.all', 'Alle'), count: allCount },
+        ...LIFECYCLE_PHASES.map((phase) => ({
+            key: phase,
+            label: t(`links.inviteProgress.phaseTile.${phase}`, PHASE_FALLBACK_LABELS[phase]),
+            count: phaseCounts[phase].total,
+            breakdown: detailBreakdown(phaseCounts[phase].details),
+            error: phase === 'needsAction',
+        })),
+    ];
+
+    const pagination = (
+        <DataTablePagination
+            compact
+            page={effectivePage}
+            pageSize={pageSize}
+            total={sorted.length}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+            }}
+        />
+    );
+
+    const renderRow = (invite: AccountInviteDTO) => {
+        const dead = isDeadInvite(invite);
+        const actionable = isActionable(invite);
+        // Same helper the "Empfänger" comparator uses, so the column
+        // is ordered by exactly what this cell shows.
+        const displayName = inviteDisplayName(invite);
+        const hasName = displayName !== invite.recipientEmail;
+        const lastActivity = inviteLastActivity(invite);
+        const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
+        // A waiting invite without a unit admin was never mailed: its
+        // warning bead is the queue problem, not a delivery problem.
+        const queueProblem = hasQueueProblem(invite);
+        const phases = derivePhases(invite).map((phase) => {
+            const reachedAt = phaseReachedAt(phase.key, invite);
+            return {
+                key: phase.key,
+                state: phase.state,
+                ...(reachedAt ? { at: formatStepTime(reachedAt, locale) } : {}),
+                ...(queueProblem && phase.state === 'warning'
+                    ? {
+                          stateLabel: queueProblemCopy(invite, t).state,
+                          stateHint: t(
+                              'links.inviteProgress.queueProblemStateHint',
+                              'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
+                          ),
+                      }
+                    : {}),
+                // A CURRENT phase is awaited, not reached: its label says
+                // what the row waits FOR ("Wartet auf Registrierung")
+                // instead of printing the reached-state word.
+                label:
+                    phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
+                        ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
+                        : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
+            };
+        });
+
+        /* NOT aria-hidden: the stacked mobile layout sets display:block on
+           tr/td, which drops the table roles and with them the header↔cell
+           association, so this label is the only thing naming the value.
+           It is display:none on desktop, where the <th> already names it. */
+        const invitedAtLabel = (
+            <span className={styles.cellLabel}>{t('links.inviteProgress.col.invitedAt', 'Eingeladen am')}</span>
+        );
+        const lastActivityLabel = (
+            <span className={styles.cellLabel}>{t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität')}</span>
+        );
+        const invitedAtValue = (
+            <time dateTime={invite.createDate} className={styles.date}>
+                {formatDate(invite.createDate)}
+            </time>
+        );
+        const lastActivityValue = (
+            <time dateTime={lastActivity} title={formatDate(lastActivity)} className={styles.date}>
+                {formatRelativeTime(lastActivity, locale)}
+            </time>
+        );
+
+        const statusBadges = (
+            <>
+                {/* tabIndex on a badge: the explanation is the only
+                    place the vocabulary is defined, so it has to be
+                    reachable without a mouse as well (C3). */}
+                <M3Tooltip text={t(inviteStatusHint(invite).key, inviteStatusHint(invite).fallback)}>
+                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
+                    <span tabIndex={0} className={statusChipClass}>
+                        {isDeliveryUnconfirmed(invite)
+                            ? t('links.accountInvites.status.deliveryUnconfirmed', 'Versand unbestätigt')
+                            : t(
+                                  `links.accountInvites.status.${invite.inviteStatus}`,
+                                  INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
+                              )}
+                    </span>
+                </M3Tooltip>
+                {queueProblem && (
+                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
+                        <span
+                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
+                            tabIndex={0}
+                            className={classNames(styles.statusChip, styles.statusChipDead, styles.problemChip)}
+                            data-testid="queue-problem-badge"
+                        >
+                            {queueProblemCopy(invite, t).badge}
+                        </span>
+                    </M3Tooltip>
+                )}
+            </>
+        );
+
+        const actions = (
+            <div className={styles.actions}>
+                {isWaitingForUnit(invite) ? (
+                    // Disable, don't hide: a manual send answers 409
+                    // UNIT_NOT_CREATED until the unit exists.
+                    <M3Tooltip
+                        text={t(
+                            'links.inviteProgress.action.resendWaiting',
+                            'Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.',
+                        )}
+                    >
+                        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                        <span tabIndex={0} className={styles.disabledActionSlot}>
+                            <IconButton
+                                icon={<ForwardToInboxOutlinedIcon />}
+                                ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
+                                disabled
+                                onClick={() => onResend(invite)}
+                            />
+                        </span>
+                    </M3Tooltip>
+                ) : (
+                    <IconButton
+                        icon={<ForwardToInboxOutlinedIcon />}
+                        ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
+                        disabled={!actionable}
+                        onClick={() => onResend(invite)}
+                    />
+                )}
+                {/* C5: the copy icon used to stay live between
+                    two disabled neighbours, and pressing it in a
+                    terminal state only produced the "link only
+                    visible after send" refusal. An action whose
+                    single outcome is a refusal is a disabled
+                    action, so it follows the same rule. */}
+                <IconButton
+                    icon={<ContentCopyOutlinedIcon />}
+                    ariaLabel={t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren')}
+                    disabled={!actionable}
+                    onClick={() => onCopyLink(invite)}
+                />
+                <IconButton
+                    icon={<BlockOutlinedIcon />}
+                    ariaLabel={t('links.inviteProgress.action.revoke', 'Einladung widerrufen')}
+                    disabled={!isRevocable(invite)}
+                    className={styles.revokeAction}
+                    onClick={() => onRevoke(invite)}
+                />
+            </div>
+        );
+
+        return (
+            <DataTableRow
+                key={invite.id}
+                tone={dead ? 'error' : 'default'}
+                selected={selectedIds.includes(invite.id)}
+                className={styles.row}
+            >
+                <DataTableCell align="center" className={styles.selectCell}>
+                    <M3Checkbox
+                        checked={selectedIds.includes(invite.id)}
+                        disabled={!isRowSelectable(invite) || selectionDisabled}
+                        label={t('links.inviteProgress.selectRow', 'Einladung für {{email}} auswählen', {
+                            email: invite.recipientEmail,
+                        })}
+                        onChange={(next) => toggleSelection(invite, next)}
+                    />
+                </DataTableCell>
+                <DataTableCell className={styles.identityCell}>
+                    <div className={styles.identity}>
+                        <span className={styles.identityName}>{displayName}</span>
+                        {hasName && <span className={styles.identityEmail}>{invite.recipientEmail}</span>}
+                        <span className={styles.identityMeta}>
+                            {isInviteRole(invite.targetRole) ? (
+                                <RoleChip
+                                    invite={invite}
+                                    displayName={displayName}
+                                    viewer={viewerScope}
+                                    tab={isTenantTab ? 'tenant' : 'counsellor'}
+                                    saving={roleSavingIds.includes(invite.id)}
+                                    onChangeRole={onRoleChange && ((role) => onRoleChange(invite, role))}
+                                    onAddRole={onRoleAdd && ((role) => onRoleAdd(invite, role))}
+                                />
+                            ) : (
+                                <span className={styles.roleChip}>
+                                    {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
+                                </span>
+                            )}
+                            {isTenantTab && invite.tenantId != null && (
+                                <span className={styles.idHint}>
+                                    {t('links.inviteProgress.tenantIdShort', 'Träger-ID {{id}}', {
+                                        id: invite.tenantId,
+                                    })}
+                                </span>
+                            )}
+                            {showTopicPermission && hasEditableTopicPermission(invite) && (
+                                <TopicPermissionChip
+                                    disabled={!onTopicPermissionChange || topicPermissionSavingIds.includes(invite.id)}
+                                    disabledReason={onTopicPermissionChange ? undefined : topicPermissionLockedReason}
+                                    displayName={displayName}
+                                    // Older invites carry no value: they behave as CREATE.
+                                    value={invite.topicPermission ?? 'CREATE'}
+                                    onChange={(next) => onTopicPermissionChange?.(invite, next)}
+                                />
+                            )}
+                        </span>
+                    </div>
+                </DataTableCell>
+                <DataTableCell className={styles.progressCell}>
+                    <PhaseStepper
+                        phases={phases}
+                        maxPerLine={compact ? stepsPerLine : undefined}
+                        idleLabel={
+                            isDraftInvite(invite)
+                                ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
+                                : undefined
+                        }
+                        ariaLabel={t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt')}
+                    />
+                </DataTableCell>
+                {compact ? (
+                    <>
+                        <DataTableCell className={styles.metaStackCell}>
+                            <span className={styles.metaLine}>
+                                {invitedAtLabel}
+                                {invitedAtValue}
+                            </span>
+                            <span className={classNames(styles.metaLine, styles.metaSub)}>
+                                {lastActivityLabel}
+                                {lastActivityValue}
+                            </span>
+                        </DataTableCell>
+                        <DataTableCell align="right" className={styles.statusActionsCell}>
+                            <div className={styles.statusStack}>{statusBadges}</div>
+                            {actions}
+                        </DataTableCell>
+                    </>
+                ) : (
+                    <>
+                        <DataTableCell className={styles.metaCell}>
+                            {invitedAtLabel}
+                            {invitedAtValue}
+                        </DataTableCell>
+                        <DataTableCell className={styles.metaCell}>
+                            {lastActivityLabel}
+                            {lastActivityValue}
+                        </DataTableCell>
+                        <DataTableCell className={styles.statusCell}>{statusBadges}</DataTableCell>
+                        <DataTableCell align="right" className={styles.actionsCell}>
+                            {actions}
+                        </DataTableCell>
+                    </>
+                )}
+            </DataTableRow>
+        );
+    };
 
     return (
         // The section is deliberately unnamed: naming it with the same string as
-        // the tile group below announced "Onboarding-Übersicht" twice in a row.
-        // The tile group and the table each carry their own name.
-        <section className={styles.board}>
+        // the chip group below announced "Onboarding-Übersicht" twice in a row.
+        // The chip group and the table each carry their own name.
+        <section
+            ref={boardRef}
+            className={classNames(styles.board, { [styles.boardCompact]: compact })}
+            data-layout={compact ? 'compact' : 'wide'}
+        >
             <div
-                className={styles.summary}
-                role="group"
-                aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
+                className={classNames(styles.card, { [styles.cardStuck]: stuck })}
+                style={{ '--invite-board-toolbar-height': `${toolbarHeight}px` } as CSSProperties}
             >
-                {LIFECYCLE_PHASES.map((phase) => (
-                    <StatTile
-                        key={phase}
-                        className={styles.summaryTile}
-                        label={t(`links.inviteProgress.phaseTile.${phase}`, PHASE_FALLBACK_LABELS[phase])}
-                        value={phaseCounts[phase].total}
-                        supportingText={detailBreakdown(phaseCounts[phase].details)}
-                        tone={phase === 'needsAction' ? 'error' : 'default'}
-                        active={filter === phase}
-                        onClick={() => applyFilter(filter === phase ? null : phase)}
-                    />
-                ))}
-            </div>
+                <span ref={sentinelRef} aria-hidden className={styles.stickySentinel} />
+                <div ref={toolbarRef} className={styles.toolbar}>
+                    <div className={styles.toolbarRow}>
+                        {toolbarSearch && <div className={styles.toolbarSearch}>{toolbarSearch}</div>}
+                        <div className={styles.toolbarPagination}>{pagination}</div>
+                        {toolbarActions && <div className={styles.toolbarActions}>{toolbarActions}</div>}
+                    </div>
+                    <div
+                        className={styles.chips}
+                        role="group"
+                        aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
+                    >
+                        {chips.map((chip) => {
+                            const selected = filter === chip.key;
+                            return (
+                                <button
+                                    key={chip.key ?? 'all'}
+                                    type="button"
+                                    aria-pressed={selected}
+                                    title={chip.breakdown}
+                                    className={classNames(styles.chip, {
+                                        [styles.chipSelected]: selected,
+                                        [styles.chipAlert]: chip.error && chip.count > 0,
+                                    })}
+                                    onClick={() => applyFilter(chip.key == null || selected ? null : chip.key)}
+                                >
+                                    {selected && CHECK_GLYPH}
+                                    <span className={styles.chipLabel}>{chip.label}</span>{' '}
+                                    <span className={styles.chipCount}>{chip.count}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
 
-            <DataTable
-                ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}
-                stickyHeader
-                stackedOnMobile
-                loading={loading}
-                skeletonColumns={columns.length}
-                isEmpty={sorted.length === 0}
-                empty={
-                    <div className={styles.empty}>
-                        <EmptyStateIcon aria-hidden className={styles.emptyGraphic} />
-                        {emptyUnfiltered ? (
-                            <>
+                <div className={styles.tableArea}>
+                    <DataTable
+                        className={styles.dataTable}
+                        ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}
+                        stickyHeader
+                        stackedOnMobile
+                        loading={loading}
+                        skeletonColumns={columns.length}
+                        isEmpty={sorted.length === 0 && !emptyUnfiltered}
+                        empty={
+                            <div className={styles.empty}>
+                                <EmptyStateIcon aria-hidden className={styles.emptyGraphic} />
+                                <p className={styles.emptyBody}>
+                                    {t('links.inviteProgress.empty.filtered', 'Keine Einladungen für diesen Filter.')}
+                                </p>
+                            </div>
+                        }
+                        header={<DataTableHeader columns={columns} sort={sort} onSortChange={setSort} />}
+                    >
+                        {emptyUnfiltered
+                            ? Array.from({ length: PLACEHOLDER_ROWS }, (_, index) => (
+                                  // eslint-disable-next-line react/no-array-index-key -- inert stand-ins without identity
+                                  <PlaceholderRow key={index} compact={compact} />
+                              ))
+                            : pageRows.map((invite) => renderRow(invite))}
+                        {showNextHint && (
+                            <tr className={styles.hintRow}>
+                                <td colSpan={columns.length}>
+                                    <div className={styles.hint}>
+                                        <EmptyStateIcon aria-hidden className={styles.hintGraphic} />
+                                        <div>
+                                            <p className={styles.hintTitle}>
+                                                {t(
+                                                    'links.inviteProgress.nextHint.title',
+                                                    'Hier erscheinen die nächsten Einladungen',
+                                                )}
+                                            </p>
+                                            <p className={styles.hintBody}>
+                                                {t(
+                                                    'links.inviteProgress.nextHint.body',
+                                                    'Im Einladungsformular ausfüllen und senden – jede Einladung bekommt eine eigene Zeile.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
+                        {showNextHint &&
+                            Array.from({ length: PLACEHOLDER_ROWS - invites.length }, (_, index) => (
+                                <PlaceholderRow
+                                    // eslint-disable-next-line react/no-array-index-key -- inert stand-ins without identity
+                                    key={index}
+                                    compact={compact}
+                                    opacity={Math.max(0.35, 1 - index * 0.25)}
+                                />
+                            ))}
+                    </DataTable>
+                    {emptyUnfiltered && !loading && (
+                        <div className={styles.emptyOverlay}>
+                            <div className={classNames(styles.empty, styles.emptyBox)}>
+                                <EmptyStateIcon aria-hidden className={styles.emptyGraphic} />
                                 <p className={styles.emptyTitle}>
                                     {t('links.inviteProgress.empty.title', 'Noch keine Einladungen')}
                                 </p>
@@ -460,255 +939,11 @@ export const InviteProgressBoard = ({
                                         {t('links.inviteProgress.empty.cta', 'Erste Einladung senden')}
                                     </M3Button>
                                 )}
-                            </>
-                        ) : (
-                            <p className={styles.emptyBody}>
-                                {t('links.inviteProgress.empty.filtered', 'Keine Einladungen für diesen Filter.')}
-                            </p>
-                        )}
-                    </div>
-                }
-                header={<DataTableHeader columns={columns} sort={sort} onSortChange={setSort} />}
-                footer={
-                    <DataTablePagination
-                        page={effectivePage}
-                        pageSize={pageSize}
-                        total={sorted.length}
-                        onPageChange={setPage}
-                        onPageSizeChange={(size) => {
-                            setPageSize(size);
-                            setPage(1);
-                        }}
-                    />
-                }
-            >
-                {pageRows.map((invite) => {
-                    const dead = isDeadInvite(invite);
-                    const actionable = isActionable(invite);
-                    // Same helper the "Empfänger" comparator uses, so the column
-                    // is ordered by exactly what this cell shows.
-                    const displayName = inviteDisplayName(invite);
-                    const hasName = displayName !== invite.recipientEmail;
-                    const lastActivity = inviteLastActivity(invite);
-                    const statusChipClass = classNames(styles.statusChip, { [styles.statusChipDead]: dead });
-                    // A waiting invite without a unit admin was never mailed: its
-                    // warning bead is the queue problem, not a delivery problem.
-                    const queueProblem = hasQueueProblem(invite);
-                    const phases = derivePhases(invite).map((phase) => {
-                        const reachedAt = phaseReachedAt(phase.key, invite);
-                        return {
-                            key: phase.key,
-                            state: phase.state,
-                            ...(reachedAt ? { at: formatStepTime(reachedAt, locale) } : {}),
-                            ...(queueProblem && phase.state === 'warning'
-                                ? {
-                                      stateLabel: queueProblemCopy(invite, t).state,
-                                      stateHint: t(
-                                          'links.inviteProgress.queueProblemStateHint',
-                                          'für diese neue Einheit ist keine Admin-Einladung mehr offen; die Einladung wartet.',
-                                      ),
-                                  }
-                                : {}),
-                            // A CURRENT phase is awaited, not reached: its label says
-                            // what the row waits FOR ("Wartet auf Registrierung")
-                            // instead of printing the reached-state word.
-                            label:
-                                phase.state === 'current' || (phase.state === 'warning' && isWaitingForUnit(invite))
-                                    ? t(phaseAwaitingLabelKey(phase.key), PHASE_AWAITING_FALLBACKS[phase.key])
-                                    : t(phaseLabelKey(phase.key), PHASE_LABEL_FALLBACKS[phase.key]),
-                        };
-                    });
-
-                    return (
-                        <DataTableRow
-                            key={invite.id}
-                            tone={dead ? 'error' : 'default'}
-                            selected={selectedIds.includes(invite.id)}
-                            className={styles.row}
-                        >
-                            <DataTableCell align="center" className={styles.selectCell}>
-                                <M3Checkbox
-                                    checked={selectedIds.includes(invite.id)}
-                                    disabled={!isRowSelectable(invite) || selectionDisabled}
-                                    label={t('links.inviteProgress.selectRow', 'Einladung für {{email}} auswählen', {
-                                        email: invite.recipientEmail,
-                                    })}
-                                    onChange={(next) => toggleSelection(invite, next)}
-                                />
-                            </DataTableCell>
-                            <DataTableCell className={styles.identityCell}>
-                                <div className={styles.identity}>
-                                    <span className={styles.identityName}>{displayName}</span>
-                                    {hasName && <span className={styles.identityEmail}>{invite.recipientEmail}</span>}
-                                    <span className={styles.identityMeta}>
-                                        {isInviteRole(invite.targetRole) ? (
-                                            <RoleChip
-                                                invite={invite}
-                                                displayName={displayName}
-                                                viewer={viewerScope}
-                                                tab={targetRole === 'TENANT_ADMIN' ? 'tenant' : 'counsellor'}
-                                                saving={roleSavingIds.includes(invite.id)}
-                                                onChangeRole={onRoleChange && ((role) => onRoleChange(invite, role))}
-                                                onAddRole={onRoleAdd && ((role) => onRoleAdd(invite, role))}
-                                            />
-                                        ) : (
-                                            <span className={styles.roleChip}>
-                                                {t(`links.inviteProgress.role.${invite.targetRole}`, invite.targetRole)}
-                                            </span>
-                                        )}
-                                        {targetRole === 'TENANT_ADMIN' && invite.tenantId != null && (
-                                            <span className={styles.idHint}>
-                                                {t('links.inviteProgress.tenantIdShort', 'Träger-ID {{id}}', {
-                                                    id: invite.tenantId,
-                                                })}
-                                            </span>
-                                        )}
-                                        {showTopicPermission && hasEditableTopicPermission(invite) && (
-                                            <TopicPermissionChip
-                                                disabled={
-                                                    !onTopicPermissionChange ||
-                                                    topicPermissionSavingIds.includes(invite.id)
-                                                }
-                                                disabledReason={
-                                                    onTopicPermissionChange ? undefined : topicPermissionLockedReason
-                                                }
-                                                displayName={displayName}
-                                                // Older invites carry no value: they behave as CREATE.
-                                                value={invite.topicPermission ?? 'CREATE'}
-                                                onChange={(next) => onTopicPermissionChange?.(invite, next)}
-                                            />
-                                        )}
-                                    </span>
-                                </div>
-                            </DataTableCell>
-                            <DataTableCell className={styles.progressCell}>
-                                <PhaseStepper
-                                    phases={phases}
-                                    idleLabel={
-                                        isDraftInvite(invite)
-                                            ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
-                                            : undefined
-                                    }
-                                    ariaLabel={t('links.inviteProgress.col.progress', 'Onboarding-Fortschritt')}
-                                />
-                            </DataTableCell>
-                            <DataTableCell className={styles.metaCell}>
-                                {/* NOT aria-hidden: the stacked mobile layout sets
-                                    display:block on tr/td, which drops the table
-                                    roles and with them the header↔cell association,
-                                    so this label is the only thing naming the value.
-                                    It is display:none on desktop, where the <th>
-                                    already names it — so it never doubles up. */}
-                                <span className={styles.cellLabel}>
-                                    {t('links.inviteProgress.col.invitedAt', 'Eingeladen am')}
-                                </span>
-                                <time dateTime={invite.createDate} className={styles.date}>
-                                    {formatDate(invite.createDate)}
-                                </time>
-                            </DataTableCell>
-                            <DataTableCell className={styles.metaCell}>
-                                <span className={styles.cellLabel}>
-                                    {t('links.inviteProgress.col.lastActivity', 'Letzte Aktivität')}
-                                </span>
-                                <time dateTime={lastActivity} title={formatDate(lastActivity)} className={styles.date}>
-                                    {formatRelativeTime(lastActivity, locale)}
-                                </time>
-                            </DataTableCell>
-                            <DataTableCell className={styles.statusCell}>
-                                {/* tabIndex on a badge: the explanation is the only
-                                    place the vocabulary is defined, so it has to be
-                                    reachable without a mouse as well (C3). */}
-                                <M3Tooltip text={t(inviteStatusHint(invite).key, inviteStatusHint(invite).fallback)}>
-                                    {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge is the only place the status vocabulary is explained, so it must be reachable without a mouse */}
-                                    <span tabIndex={0} className={statusChipClass}>
-                                        {isDeliveryUnconfirmed(invite)
-                                            ? t(
-                                                  'links.accountInvites.status.deliveryUnconfirmed',
-                                                  'Versand unbestätigt',
-                                              )
-                                            : t(
-                                                  `links.accountInvites.status.${invite.inviteStatus}`,
-                                                  INVITE_STATUS_FALLBACK_LABELS[invite.inviteStatus],
-                                              )}
-                                    </span>
-                                </M3Tooltip>
-                                {hasQueueProblem(invite) && (
-                                    <M3Tooltip text={queueProblemCopy(invite, t).hint}>
-                                        <span
-                                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger: the badge explains the problem
-                                            tabIndex={0}
-                                            className={classNames(
-                                                styles.statusChip,
-                                                styles.statusChipDead,
-                                                styles.problemChip,
-                                            )}
-                                            data-testid="queue-problem-badge"
-                                        >
-                                            {queueProblemCopy(invite, t).badge}
-                                        </span>
-                                    </M3Tooltip>
-                                )}
-                            </DataTableCell>
-                            <DataTableCell align="right" className={styles.actionsCell}>
-                                <div className={styles.actions}>
-                                    {isWaitingForUnit(invite) ? (
-                                        // Disable, don't hide: a manual send answers 409
-                                        // UNIT_NOT_CREATED until the unit exists.
-                                        <M3Tooltip
-                                            text={t(
-                                                'links.inviteProgress.action.resendWaiting',
-                                                'Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.',
-                                            )}
-                                        >
-                                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
-                                            <span tabIndex={0} className={styles.disabledActionSlot}>
-                                                <IconButton
-                                                    icon={<ForwardToInboxOutlinedIcon />}
-                                                    ariaLabel={t(
-                                                        'links.inviteProgress.action.resend',
-                                                        'Erinnerung erneut senden',
-                                                    )}
-                                                    disabled
-                                                    onClick={() => onResend(invite)}
-                                                />
-                                            </span>
-                                        </M3Tooltip>
-                                    ) : (
-                                        <IconButton
-                                            icon={<ForwardToInboxOutlinedIcon />}
-                                            ariaLabel={t(
-                                                'links.inviteProgress.action.resend',
-                                                'Erinnerung erneut senden',
-                                            )}
-                                            disabled={!actionable}
-                                            onClick={() => onResend(invite)}
-                                        />
-                                    )}
-                                    {/* C5: the copy icon used to stay live between
-                                        two disabled neighbours, and pressing it in a
-                                        terminal state only produced the "link only
-                                        visible after send" refusal. An action whose
-                                        single outcome is a refusal is a disabled
-                                        action, so it follows the same rule. */}
-                                    <IconButton
-                                        icon={<ContentCopyOutlinedIcon />}
-                                        ariaLabel={t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren')}
-                                        disabled={!actionable}
-                                        onClick={() => onCopyLink(invite)}
-                                    />
-                                    <IconButton
-                                        icon={<BlockOutlinedIcon />}
-                                        ariaLabel={t('links.inviteProgress.action.revoke', 'Einladung widerrufen')}
-                                        disabled={!isRevocable(invite)}
-                                        className={styles.revokeAction}
-                                        onClick={() => onRevoke(invite)}
-                                    />
-                                </div>
-                            </DataTableCell>
-                        </DataTableRow>
-                    );
-                })}
-            </DataTable>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </section>
     );
 };

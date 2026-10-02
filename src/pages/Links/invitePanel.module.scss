@@ -1,0 +1,321 @@
+/*
+ * Invite card (ORISO-Admin#1117): the form beside the table instead of a
+ * sideways-scrolling row. FormatCard geometry: 28px radius, outline-variant
+ * border, surface-container-low. Fields stack one per line.
+ */
+
+.panel,
+.rail {
+    /* Floating labels sit on the card colour, not the page background. */
+    --admin-field-label-surface: var(--m3-surface-container-low, #f6f3f3);
+
+    box-sizing: border-box;
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 28px;
+}
+
+.panel {
+    width: 360px;
+    max-width: 100%;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    padding: 12px 4px 4px 16px;
+    gap: 12px;
+}
+
+.avatar {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    background: var(--m3-primary-container, #ffdad5);
+    border-radius: 20px;
+    color: var(--m3-primary, #a5000a);
+}
+
+.titleBlock {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.title {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.15px;
+}
+
+.summary {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+}
+
+.summaryMissing {
+    color: var(--m3-error, #b1005e);
+}
+
+.toggle {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 24px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    transition: background-color 150ms ease;
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -4px;
+    }
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* The glyph points the way the card will move: left to fold, right to open. */
+.toggleOpen svg {
+    transform: scaleX(-1);
+}
+
+.progress {
+    display: flex;
+    padding: 0 16px 8px 68px;
+    gap: 4px;
+}
+
+.segment {
+    height: 4px;
+    flex: 1 1 0;
+    background: var(--m3-outline-variant, #c4c7c8);
+    border-radius: 2px;
+}
+
+.segment_done {
+    background: var(--m3-secondary-container, #646d78);
+}
+
+.segment_error {
+    background: var(--m3-error, #b1005e);
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 8px;
+}
+
+/* One field per line, full width. */
+.slot {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.select {
+    width: 100%;
+}
+
+/* A choice fixed on this tab reads as a settled value, not as a dead control. */
+.fixedPill button:disabled {
+    cursor: default;
+    opacity: 1;
+}
+
+/* E-Mail over Vorname | Name: one rounded group, 2px seams (Frank, board L4). */
+.personSlot {
+    width: 100%;
+}
+
+.personGroup {
+    display: grid;
+    width: 100%;
+    gap: 2px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.emailSlot,
+.firstNameSlot,
+.lastNameSlot {
+    width: 100%;
+    max-width: 100%;
+}
+
+.emailSlot {
+    --cf-pill-radius: 28px 28px 4px 4px;
+
+    grid-column: 1 / -1;
+}
+
+.firstNameSlot {
+    --cf-pill-radius: 4px 4px 4px 28px;
+}
+
+.lastNameSlot {
+    --cf-pill-radius: 4px 4px 28px 4px;
+}
+
+.emailInput,
+.firstNameInput,
+.lastNameInput {
+    width: 100%;
+}
+
+.emailInput {
+    --fli-radius: 28px 28px 4px 4px;
+}
+
+.firstNameInput {
+    --fli-radius: 4px 4px 4px 28px;
+}
+
+.lastNameInput {
+    --fli-radius: 4px 4px 28px 4px;
+}
+
+.divider {
+    height: 1px;
+    margin: 4px;
+    background: var(--m3-outline-variant, #c4c7c8);
+}
+
+.send {
+    display: flex;
+    width: 100%;
+}
+
+/* ── Folded: an 80px rail, one button per field ─────────────────────────── */
+.rail {
+    display: flex;
+    width: 80px;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 8px;
+}
+
+.railCount {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 600 11px/14px var(--m3-body-font-family);
+    letter-spacing: 0.5px;
+}
+
+.railCountMissing {
+    color: var(--m3-error, #b1005e);
+}
+
+.railDivider {
+    width: 40px;
+    height: 1px;
+    margin: 4px 0;
+    background: var(--m3-outline-variant, #c4c7c8);
+}
+
+.railItem,
+.railSend {
+    display: inline-flex;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.railItem {
+    width: 48px;
+    height: 48px;
+    border-radius: 24px;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+.railItem_done {
+    border-color: transparent;
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+}
+
+.railItem_error {
+    border-color: var(--m3-error, #b1005e);
+    color: var(--m3-error, #b1005e);
+}
+
+.railSend {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.38;
+    }
+}
+
+.railSendReady {
+    border-color: transparent;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+}
+
+/* Stacked over the table (narrow page): the card takes the full width. */
+@container invites (max-width: 1199px) {
+    .panel {
+        width: 100%;
+        align-self: stretch;
+    }
+}
+
+/* Phone: the rail lies across the top as a bar of field buttons. */
+@container invites (max-width: 599px) {
+    .rail {
+        width: 100%;
+        flex-flow: row wrap;
+        align-self: stretch;
+        padding: 8px 12px;
+    }
+
+    .railDivider {
+        width: 1px;
+        height: 40px;
+        margin: 0 4px;
+    }
+}

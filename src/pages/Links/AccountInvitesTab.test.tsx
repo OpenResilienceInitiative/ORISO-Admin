@@ -192,7 +192,11 @@ const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     createDate: '2026-07-01T00:00:00Z',
 });
 
-const renderTenantTab = () => render(<TenantInvitesTab />);
+// The Träger tab is the platform operator's view; a Träger admin's own-Träger view is covered below.
+const renderTenantTab = () => {
+    mocks.superAdmin = true;
+    return render(<TenantInvitesTab />);
+};
 
 // A plain flag survives vi.clearAllMocks(); reset it so no block inherits the platform-admin view.
 beforeEach(() => {
@@ -607,13 +611,16 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
     });
 
-    it('starts a fresh page with every field expanded — no pills before anything was chosen', async () => {
+    // The invite card rests its selects as value pills from the start; only typed fields open expanded.
+    it('starts a fresh page with the person fields open and the selects resting as value pills', async () => {
         render(<CounsellorInvitesTab />);
 
-        expect(await screen.findByRole('combobox', { name: 'Rolle' })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /^Rolle bearbeiten/ })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).not.toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: /^Vorlage bearbeiten/ })).not.toBeInTheDocument();
+        expect(await screen.findByLabelText('E-Mail')).toBeVisible();
+        expect(screen.queryByRole('button', { name: /^E-Mail · Vorname · Name bearbeiten/ })).not.toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Rolle bearbeiten: Berater:in' })).toBeEnabled();
+        expect(screen.queryByRole('combobox', { name: 'Rolle' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^E-Mail-Vorlage bearbeiten/ })).not.toBeInTheDocument();
     });
 
     // Each case types and sends a whole invite twice; the parallel CI runner exceeds the 30 s default.
@@ -655,14 +662,18 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             await waitFor(() => expect(email).toHaveFocus());
             expect(screen.getByLabelText('Vorname')).toHaveValue('');
             expect(screen.getByLabelText('Name')).toHaveValue('');
-            // The kept number is re-checked (it may just have been reserved), then folds back into its pill.
-            expect(
-                await screen.findByRole('button', { name: /^Beratungsstelle bearbeiten/ }, { timeout: 10_000 }),
-            ).toHaveAttribute('title', expect.stringContaining('900'));
+            // The kept number is re-checked (it may just have been reserved); the card never folds it into a pill.
+            await waitFor(
+                () =>
+                    expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'Beratungsstelle' }).value).toContain(
+                        '900',
+                    ),
+                { timeout: 10_000 },
+            );
             expect(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).toHaveTextContent(
                 'Darf weitere Fachbereiche auswählen',
             );
-            expect(screen.getByRole('button', { name: /^Vorlage bearbeiten/ })).toHaveTextContent('Standard');
+            expect(screen.getByRole('button', { name: /^E-Mail-Vorlage bearbeiten/ })).toHaveTextContent('Standard');
             expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
 
             // The next person only needs their own fields.
@@ -761,11 +772,11 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
 
             expect(await screen.findByText('Einladung konnte nicht angelegt werden.')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /^E-Mail bearbeiten/ })).toHaveAttribute(
+            // All three person fields stay valid, so the card keeps them folded into one pill.
+            expect(screen.getByRole('button', { name: /^E-Mail · Vorname · Name bearbeiten/ })).toHaveAttribute(
                 'title',
-                'lisa.simpson@example.org',
+                'Lisa Simpson · lisa.simpson@example.org',
             );
-            expect(screen.getByRole('button', { name: /^Vorname bearbeiten/ })).toHaveAttribute('title', 'Lisa');
         });
     });
 
@@ -829,9 +840,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         const user = await fill('275');
         await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 10_000 }));
 
-        expect(await screen.findByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
-            'title',
-            expect.stringContaining('79'),
+        await waitFor(() =>
+            expect(screen.getByRole<HTMLInputElement>('combobox', { name: 'Träger' }).value).toContain('79'),
         );
     });
 
@@ -988,7 +998,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
         });
         const user = await fill('Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        // The sharded CI run is slow: give the debounced agency search room.
+        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, { timeout: 5_000 }));
         expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
 
         const agencyField = screen.getByRole('combobox', { name: 'Beratungsstelle' });
@@ -1028,7 +1039,11 @@ describe('CounsellorInvitesTab — invite wiring', () => {
 
         expect(await screen.findByText(text, undefined, { timeout: 10_000 })).toBeInTheDocument();
         expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Vorname bearbeiten: Lisa' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: 'E-Mail · Vorname · Name bearbeiten: Lisa Simpson · lisa.simpson@example.org',
+            }),
+        ).toBeInTheDocument();
     });
 
     it('lets a counsellor wait for a new agency whose admin invite is open, and says so', async () => {
@@ -1115,23 +1130,50 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(tenant).toHaveValue('');
     });
 
-    it('lists every invite that joins a unit, but not the Träger founders', async () => {
-        const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
-        const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
-        const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
-        const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
-        mocks.listAccountInvites.mockResolvedValue(
-            invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
-        );
+    it.each([
+        ['the platform admin', true],
+        ['a Träger admin', false],
+    ])(
+        'lists on the Berater tab every invite that joins an agency, never a Träger-Admin invite — %s',
+        async (_who, platform) => {
+            const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+            const agencyAdminRow = { ...invite(2, 79, 'DRAFT'), targetRole: 'AGENCY_ADMIN' };
+            const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+            const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([counsellorRow, agencyAdminRow, joinsTenant, foundsTenant]),
+            );
 
-        render(<CounsellorInvitesTab />);
+            mocks.superAdmin = platform;
+            render(<CounsellorInvitesTab />);
 
-        expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
-        expect(screen.getByText('taken2@example.org')).toBeInTheDocument();
-        expect(screen.getByText('taken3@example.org')).toBeInTheDocument();
-        expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
-        expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
-    });
+            expect(await screen.findByText('taken1@example.org')).toBeInTheDocument();
+            expect(screen.getByText('taken2@example.org')).toBeInTheDocument();
+            expect(screen.queryByText('taken3@example.org')).not.toBeInTheDocument();
+            expect(screen.queryByText('taken4@example.org')).not.toBeInTheDocument();
+            expect(mocks.listAccountInvites.mock.calls[0][0].targetRole).toBeUndefined();
+        },
+    );
+
+    it.each([
+        ['the platform admin', true],
+        ['a Träger admin', false],
+    ])(
+        'lists on the Träger tab every Träger-Admin invite, new Träger or further admin — %s',
+        async (_who, platform) => {
+            const counsellorRow = { ...invite(1, 79, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' };
+            const joinsTenant = { ...invite(3, 79, 'EMAIL_SENT'), tenantIdAllocationMode: 'EXISTING' };
+            const foundsTenant = { ...invite(4, 79, 'EMAIL_SENT'), tenantIdAllocationMode: null };
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([counsellorRow, joinsTenant, foundsTenant]));
+
+            mocks.superAdmin = platform;
+            render(<TenantInvitesTab />);
+
+            expect(await screen.findByText('taken3@example.org')).toBeInTheDocument();
+            expect(screen.getByText('taken4@example.org')).toBeInTheDocument();
+            expect(screen.queryByText('taken1@example.org')).not.toBeInTheDocument();
+        },
+    );
 
     it('changes a counsellor’s topic permission from the table', async () => {
         const counsellorRow = {
@@ -1271,10 +1313,11 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             });
             render(<CounsellorInvitesTab />);
 
-            expect(await screen.findByRole('button', { name: /^24 Vorbereitet/ })).toBeInTheDocument();
-            expect(
-                screen.getByRole('button', { name: /^2 Braucht Aktion 1 Abgelaufen · 1 Ersetzt/ }),
-            ).toBeInTheDocument();
+            expect(await screen.findByRole('button', { name: 'Vorbereitet 24' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Braucht Aktion 2' })).toHaveAttribute(
+                'title',
+                '1 Abgelaufen · 1 Ersetzt',
+            );
             expect(mocks.listAccountInvites).toHaveBeenCalledWith(expect.objectContaining({ tab: 'UNIT' }));
         });
 
