@@ -79,6 +79,16 @@ const OtpResendLink = ({ onResend, cooldownSeconds }: OtpResendLinkProps) => {
         }
     }, [cooldownSeconds]);
 
+    /**
+     * Starts the wait after an answer, in the same way for a send and for a
+     * refusal. Never shortens: by the time this runs, the parent may already have
+     * passed a longer wait the realm just reported, and overwriting it with the
+     * local fallback would free the link while the realm still refuses.
+     */
+    const armCooldown = useCallback(() => {
+        setSecondsLeft((current) => Math.max(current, cooldownSeconds || RESEND_FALLBACK_COOLDOWN_SECONDS));
+    }, [cooldownSeconds]);
+
     const handleClick = useCallback(() => {
         if (isSending || secondsLeft > 0) {
             return;
@@ -93,19 +103,23 @@ const OtpResendLink = ({ onResend, cooldownSeconds }: OtpResendLinkProps) => {
                     return;
                 }
                 setIsRequested(true);
-                setSecondsLeft(cooldownSeconds || RESEND_FALLBACK_COOLDOWN_SECONDS);
+                armCooldown();
             })
             .catch((reason: unknown) => {
-                if (isMountedRef.current) {
-                    setHasFailed((reason as Error | null)?.message !== RESEND_ERROR_ALREADY_SHOWN);
+                if (!isMountedRef.current) {
+                    return;
                 }
+                setHasFailed((reason as Error | null)?.message !== RESEND_ERROR_ALREADY_SHOWN);
+                // A refusal is still an answer: without a wait here, "too many
+                // attempts" would be followed by a link that invites the next one.
+                armCooldown();
             })
             .finally(() => {
                 if (isMountedRef.current) {
                     setIsSending(false);
                 }
             });
-    }, [cooldownSeconds, isSending, onResend, secondsLeft]);
+    }, [armCooldown, isSending, onResend, secondsLeft]);
 
     return (
         <Box sx={{ mb: 2 }} data-testid="otp-resend">

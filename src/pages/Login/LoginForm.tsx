@@ -27,8 +27,21 @@ import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN } from './OtpResendLink';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
-/** Minutes to quote in the "too many requests" message; never "0 minutes". */
-const waitMinutes = (seconds: number): number => Math.max(1, Math.ceil(seconds / 60));
+/**
+ * The wait, in the unit it actually has. `resendAvailableInSeconds` carries both
+ * the 30 second cooldown and the remainder of a 15 minute window, so one fixed
+ * unit is wrong half the time — and rounding 27 seconds up to "1 minutes" was
+ * both ungrammatical and twice the real wait.
+ */
+const waitMessage = (seconds: number): [string, Record<string, number>] => {
+    if (seconds < 60) {
+        return ['message.error.auth.tooManyCodesWaitSeconds', { seconds }];
+    }
+    const minutes = Math.max(1, Math.round(seconds / 60));
+    return minutes === 1
+        ? ['message.error.auth.tooManyCodesWaitMinute', {}]
+        : ['message.error.auth.tooManyCodesWaitMinutes', { minutes }];
+};
 
 const positiveSeconds = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
@@ -62,13 +75,12 @@ const LoginForm = () => {
         return 'unexpected';
     };
 
-    const showRateLimitMessage = (error: ErrorLogin) => {
+    /** A 429 means "wait", never "wrong password" — say so, and count it as its own outcome. */
+    const handleRateLimited = (error: ErrorLogin, stage: 'password' | 'otp') => {
         const seconds = positiveSeconds(error.options?.data?.resendAvailableInSeconds);
-        message.error(
-            seconds
-                ? t('message.error.auth.tooManyCodesWait', { minutes: waitMinutes(seconds) })
-                : t('message.error.auth.tooManyCodes'),
-        );
+        const [key, values] = seconds ? waitMessage(seconds) : ['message.error.auth.tooManyCodes', {}];
+        message.error(t(key, values));
+        recordLoginFailure({ outcome: 'rate_limited', transport: 'too_many_requests', stage });
     };
 
     /**
@@ -104,12 +116,7 @@ const LoginForm = () => {
                             return;
                         }
                         if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
-                            showRateLimitMessage(error);
-                            recordLoginFailure({
-                                outcome: 'rate_limited',
-                                transport: 'too_many_requests',
-                                stage: 'password',
-                            });
+                            handleRateLimited(error, 'password');
                             reject(new Error(RESEND_ERROR_ALREADY_SHOWN));
                             return;
                         }
@@ -141,10 +148,8 @@ const LoginForm = () => {
                     recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
                 } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
                     // #1338: either too many code mails inside the window, or a code
-                    // guessed too often. Both mean "wait", not "wrong password" —
-                    // which is what this used to read as, via the network message.
-                    showRateLimitMessage(error);
-                    recordLoginFailure({ outcome: 'rate_limited', transport: 'too_many_requests', stage });
+                    // guessed too often. This used to read as a network failure.
+                    handleRateLimited(error, stage);
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
                     recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });

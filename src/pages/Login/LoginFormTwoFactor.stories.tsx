@@ -126,7 +126,7 @@ export const TooManyCodesRequested: Story = {
         await waitFor(() =>
             expect(
                 within(document.body).getByText(
-                    'Zu viele Versuche. Bitte warten Sie 7 Minuten, bevor Sie es erneut versuchen.',
+                    'Zu viele Versuche. Bitte warten Sie etwa 7 Minuten, bevor Sie es erneut versuchen.',
                 ),
             ).toBeInTheDocument(),
         );

@@ -43,8 +43,14 @@ const translations: Record<string, string> = {
 };
 
 const t = (key: string, options?: Record<string, unknown>) => {
-    if (key === 'message.error.auth.tooManyCodesWait') {
-        return `Too many attempts. Please wait ${options?.minutes} minutes before trying again.`;
+    if (key === 'message.error.auth.tooManyCodesWaitSeconds') {
+        return `Too many attempts. Please wait about ${options?.seconds} seconds before trying again.`;
+    }
+    if (key === 'message.error.auth.tooManyCodesWaitMinutes') {
+        return `Too many attempts. Please wait about ${options?.minutes} minutes before trying again.`;
+    }
+    if (key === 'message.error.auth.tooManyCodesWaitMinute') {
+        return 'Too many attempts. Please wait about a minute before trying again.';
     }
     if (key === 'login.otp.resend.actionIn') {
         return `Send a new code (${options?.countdown})`;
@@ -471,7 +477,7 @@ describe('LoginForm', () => {
 
         await waitFor(() => {
             expect(mocks.messageError).toHaveBeenCalledWith(
-                'Too many attempts. Please wait 7 minutes before trying again.',
+                'Too many attempts. Please wait about 7 minutes before trying again.',
             );
         });
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
@@ -480,6 +486,47 @@ describe('LoginForm', () => {
             stage: 'password',
         });
         expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+    });
+
+    it('quotes a short wait in seconds, not as "1 minutes"', async () => {
+        // resendAvailableInSeconds carries the 30 s cooldown as well as the
+        // remainder of a 15 min window; rounding both up to minutes doubled the
+        // short one and read as "1 minutes"
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+                options: { data: { resendAvailableInSeconds: 27 } },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait about 27 seconds before trying again.',
+            );
+        });
+    });
+
+    it('says "about a minute" rather than "1 minutes"', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+                options: { data: { resendAvailableInSeconds: 75 } },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait about a minute before trying again.',
+            );
+        });
     });
 
     it('falls back to the wait-a-moment wording when the realm reports no seconds', async () => {
@@ -515,12 +562,17 @@ describe('LoginForm', () => {
 
         await waitFor(() => {
             expect(mocks.messageError).toHaveBeenCalledWith(
-                'Too many attempts. Please wait 10 minutes before trying again.',
+                'Too many attempts. Please wait about 10 minutes before trying again.',
             );
         });
         expect(screen.queryByText('The code could not be requested. Please try again.')).not.toBeInTheDocument();
-        // the realm's wait is what the link counts down, not the local fallback
-        expect(await screen.findByRole('button', { name: 'Send a new code (10:00)' })).toBeDisabled();
+        // The realm's 600 s is what the link counts down, not the 30 s fallback.
+        // Matched as a range because the countdown ticks while the test runs — an
+        // exact "10:00" is a stopwatch race, not an assertion about behaviour.
+        const resendLink = await screen.findByRole('button', {
+            name: /^Send a new code \(9:5\d|^Send a new code \(10:00/,
+        });
+        expect(resendLink).toBeDisabled();
     });
 
     it('reports a failed resend request under the link', async () => {
