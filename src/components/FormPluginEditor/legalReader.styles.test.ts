@@ -181,3 +181,25 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
         expect(base).toMatch(/box-shadow:/);
     });
 });
+
+describe('lower function bar — every control stays reachable (#1066)', () => {
+    // Wide cards can wrap. On narrow cards the owner wants a single swipable
+    // row with visible scroll controls so the version menu stays reachable.
+    const bar = moduleStyles.match(/\n\.functionBar\s*{[\s\S]*?\n}/)?.[0] ?? '';
+
+    it('wraps on wide cards and scrolls a single row on narrow cards', () => {
+        expect(bar).toMatch(/flex-wrap:\s*wrap;/);
+        expect(bar).toMatch(/@container \(max-width: 599px\)\s*{[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;/);
+        expect(moduleStyles).toMatch(/\.functionBarScrollCueRight\s*{/);
+    });
+
+    it('lets the text surface of the fixed 740px card give way to a wrapped bar', () => {
+        // With two bar rows the 280px floor pushed the white surface 24px over the bar.
+        const fixedCard = moduleStyles.match(/&:not\(\.inDialog\)\s*{[\s\S]*?\n {8}}/)?.[0] ?? '';
+        expect(fixedCard).toMatch(/\.editor\s*{[^}]*min-height:\s*0;/);
+    });
+
+    it('lets a single control shrink to the bar width, truncating its label', () => {
+        expect(bar).toMatch(/>\s*\*\s*{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/);
+    });
+});

@@ -80,7 +80,7 @@ export const enforceRestrictedAgencyAdminCeiling = (
 };
 
 export const useUserRolesToPermission = () => {
-    const { roles, isSuperAdmin } = useUserRoles();
+    const { roles, isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
@@ -120,9 +120,9 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: true },
             TenantAdminUser: {
                 read: true,
-                create: isSuperAdmin,
-                update: isSuperAdmin,
-                delete: isSuperAdmin,
+                create: isTenantScopedAdmin || isSuperAdmin,
+                update: isTenantScopedAdmin || isSuperAdmin,
+                delete: isTenantScopedAdmin || isSuperAdmin,
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },

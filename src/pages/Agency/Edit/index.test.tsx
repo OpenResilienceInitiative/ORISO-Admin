@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Form, notification } from 'antd';
 import { AgencyPageEdit } from './index';
@@ -73,6 +73,7 @@ const translations: Record<string, string> = {
     'agency.form.registrationSettings.noTopicConfirm.cancel': 'Abbrechen',
     'agency.form.registrationSettings.noTopicConfirm.confirm': 'Trotzdem aktivieren',
     'topics.title': 'Themen',
+    'agency.edit.settings.departments': 'Fachbereich(e)',
     'agency.form.registrationSettings.postCodeTitle': 'Für welches Gebiet ist die Beratungsstelle sichtbar?',
     'agency.form.registrationSettings.allPostCode': 'Für alle PLZ-Gebiete',
     'agency.form.registrationSettings.onlySelectedPostCodes': 'PLZ-Gebiete definieren',
@@ -223,6 +224,11 @@ vi.mock('../../../hooks/useAgencyUpdate', () => ({
 
 vi.mock('../../../hooks/useAgencyLegalDataMissing', () => ({
     useAgencyLegalDataMissing: () => false,
+}));
+
+vi.mock('../../../hooks/useAgencyConsultants', () => ({
+    AGENCY_CONSULTANTS_KEY: 'AGENCY_CONSULTANTS',
+    useAgencyConsultants: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
@@ -569,7 +575,9 @@ const FOREIGN_CONSULTANT = {
 };
 const CONSULTANT_LABEL = 'Erika Beispiel erika@example.org';
 
-const setupUser = () => userEvent.setup({ delay: null });
+// user-event's pointer-events check walks every ancestor's computed style on
+// each pointer action; nothing here relies on pointer-events: none, so skip it.
+const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
 
 const fillRequiredCreateFields = async (user: ReturnType<typeof userEvent.setup>) => {
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neue Beratungsstelle' } });
@@ -594,7 +602,8 @@ const goLiveWithTopicsAvailable = async (user: ReturnType<typeof userEvent.setup
     await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
 };
 
-describe('AgencyPageEdit no-topic activation confirm', () => {
+// The full page with AntD selects takes 20-30 s on the parallel CI runner.
+describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
         mocks.navigate.mockReset();
@@ -665,7 +674,7 @@ describe('AgencyPageEdit no-topic activation confirm', () => {
         const user = setupUser();
         await goLiveWithTopicsAvailable(user);
 
-        await user.click(screen.getByRole('combobox', { name: /Themen/ }));
+        await user.click(screen.getByRole('combobox', { name: /Fachbereich/ }));
         await user.click(await screen.findByRole('option', { name: 'Debt counselling' }));
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 

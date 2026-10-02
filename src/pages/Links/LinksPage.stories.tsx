@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { CounsellorInvitesTab, LinksPage, TenantInvitesTab } from './index';
@@ -54,12 +56,123 @@ const withOutlet =
 /** Platform admin (tenantId 0): all three tabs — Träger-Invites, Berater-Invites, Externe Inbounds. */
 export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeVisible();
+    },
 };
 
-/**
- * Träger admin (tenantId > 0): only "Berater-Invites". Tenant invites would create whole
- * tenants and external inbounds are platform-wide, so both tabs are not rendered at all.
- */
+/** Träger admin: Träger-Invites (own Träger only) and Berater-Invites; Externe Inbounds stay platform-only. */
 export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toHaveAttribute('href');
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toHaveAttribute('href');
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
+        await expect(
+            await canvas.findByRole('heading', { name: /Berater:in einladen|Invite counsellor/ }),
+        ).toBeVisible();
+    },
+};
+
+/** On the Träger tab a Träger admin has their own Träger fixed and can only add another Träger admin. */
+export const TenantAdminOnTraegerTab: Story = {
+    decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <TenantInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(
+            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite tenant admin/ }),
+        ).toBeVisible();
+        await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
+        await expect(canvas.queryByRole('button', { name: /Neu anlegen|Create new/ })).toBeNull();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+    },
+};
+
+// The backend scopes the agency search to an agency admin's own agencies; these handlers do the same.
+const agencyHit = (id: number, name: string) => ({
+    _embedded: { id, name, tenantId: 40, tenantName: 'Caritas Freiburg', topics: [], deleteDate: 'null' },
+});
+const ownAgenciesHandler = (agencies: Array<{ id: number; name: string }>) =>
+    http.get('*/service/agencyadmin/agencies', () =>
+        HttpResponse.json({ total: agencies.length, _embedded: agencies.map(({ id, name }) => agencyHit(id, name)) }),
+    );
+const COUNSELLOR_TEMPLATE = {
+    id: 3,
+    kind: 'COUNSELLOR_INVITE',
+    name: 'Berater:innen-Willkommen',
+    language: 'de',
+    subject: 'Willkommen',
+    body: 'Hallo',
+    active: true,
+    createDate: '2026-09-01T00:00:00Z',
+    updateDate: null,
+};
+const agencyAdminHandlers = (agencies: Array<{ id: number; name: string }>) => [
+    http.get('*/service/useradmin/account-invites', () => emptyList()),
+    http.get('*/service/useradmin/invite-email-templates', () => HttpResponse.json([COUNSELLOR_TEMPLATE])),
+    ownAgenciesHandler(agencies),
+];
+
+/** Agency admin of one Beratungsstelle: Rolle, Träger and Beratungsstelle locked, no CSV import. */
+export const AgencyAdmin: Story = {
+    parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
+    decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ });
+        await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), { timeout: 5_000 });
+        await expect(agency).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
+        // One role on offer: „Rolle" is a fixed value row on „Berater:in".
+        await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
+        await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        // Platform-only: never shown to a Beratungsstellen admin.
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
+    },
+};
+
+/** A Beratungsstellen admin sees the Träger tab, but the server lets them invite counsellors only: send says why it is off. */
+export const AgencyAdminOnTraegerTab: Story = {
+    parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
+    decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <TenantInvitesTab />)],
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+        await expect(canvas.getByRole('button', { name: /Einladen|Invite/ })).toBeDisabled();
+    },
+};
+
+/** A restricted agency admin gets the same, locked bar. */
+export const RestrictedAgencyAdmin: Story = {
+    parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
+    decorators: [withOutlet([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
+    play: AgencyAdmin.play,
+};
+
+/** Agency admin of several Beratungsstellen: picks among them only, never a new one. */
+export const AgencyAdminSeveralAgencies: Story = {
+    parameters: {
+        msw: {
+            handlers: agencyAdminHandlers([
+                { id: 101, name: 'Caritas Suchtberatung Freiburg' },
+                { id: 102, name: 'Caritas Schuldnerberatung Freiburg' },
+            ]),
+        },
+    },
+    decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ });
+        await expect(agency).toBeEnabled();
+        await userEvent.click(agency);
+        await expect(await body.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ })).toBeVisible();
+        await expect(body.queryByRole('option', { name: /Neu anlegen|Create new/ })).toBeNull();
+    },
 };

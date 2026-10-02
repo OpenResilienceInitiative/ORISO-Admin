@@ -134,6 +134,7 @@ export const DpiaTextEditor = ({
                  */
                 enableAnchors={false}
                 value={currentContent}
+                dirty={Object.entries(edits).some(([id, html]) => html !== (initialTexts[id] ?? ''))}
                 onChange={readOnly ? undefined : handleChange}
                 readOnly={readOnly}
                 publishing={saving}
