@@ -46,6 +46,9 @@ export const FETCH_ERRORS = {
     FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
     TIMEOUT: 'TIMEOUT',
+    // Keycloak's token endpoint answers 429 when it refuses further codes or
+    // attempts for now (ORISO-UserService#1338).
+    TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
     UNAUTHORIZED: 'UNAUTHORIZED',
     PRECONDITION_FAILED: 'PRECONDITION FAILED',
     NOT_ALLOWED: 'NOT_ALLOWED',

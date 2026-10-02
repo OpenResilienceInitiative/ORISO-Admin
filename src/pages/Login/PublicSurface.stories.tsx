@@ -1,4 +1,7 @@
 import type { StoryObj } from '@storybook/react-vite';
+import { delay, http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { PHONE_390 } from '../../components/DpaLegalForm/dpaStoryText';
 import { LoginSurface } from './Login';
 
@@ -66,3 +69,137 @@ export const SideBySide: StoryObj = {
         </div>
     ),
 };
+
+/*
+ * ORISO-UserService#1338: the e-mail code step of the real sign-in form. The
+ * stubbed Keycloak token endpoint answers the password grant with the 400
+ * e-mail challenge, the way Keycloak does after it mailed a code; `resend`
+ * decides what the "send new code" request gets back.
+ */
+type ResendAnswer = 'challenge' | 'outage' | 'limit';
+
+const tokenEndpointStub = ({ firstWait, resend }: { firstWait?: number; resend: ResendAnswer }) => {
+    let calls = 0;
+    return {
+        reset: () => {
+            calls = 0;
+        },
+        handlers: [
+            http.post('*/protocol/openid-connect/token', async () => {
+                calls += 1;
+                // Long enough to see that "sent" waits for the answer.
+                await delay(600);
+                if (calls > 1 && resend === 'outage') {
+                    return new HttpResponse(null, { status: 503 });
+                }
+                if (calls > 1 && resend === 'limit') {
+                    return HttpResponse.json({ error: 'invalid_grant' }, { status: 429 });
+                }
+                return HttpResponse.json(
+                    {
+                        error: 'invalid_grant',
+                        error_description: 'Missing totp',
+                        otpType: 'EMAIL',
+                        ...(calls === 1 && firstWait !== undefined ? { resendAvailableInSeconds: firstWait } : {}),
+                    },
+                    { status: 400 },
+                );
+            }),
+        ],
+    };
+};
+
+const RESEND_LINK = /Neuen Code senden|Send new code/;
+
+const signInUntilEmailCode = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+        canvasElement.querySelector('input[autocomplete="username"]') as HTMLInputElement,
+        'admin@example.org',
+    );
+    await userEvent.type(
+        canvasElement.querySelector('input[autocomplete="current-password"]') as HTMLInputElement,
+        'story-only',
+    );
+    await userEvent.click(canvasElement.querySelector('button[type="submit"]') as HTMLButtonElement);
+    await canvas.findByRole('button', { name: RESEND_LINK }, { timeout: 4000 });
+    return canvas;
+};
+
+const emailCodeStory = (stub: ReturnType<typeof tokenEndpointStub>, play: StoryObj['play']): StoryObj => ({
+    parameters: { layout: 'fullscreen', msw: { handlers: stub.handlers } },
+    beforeEach: () => stub.reset(),
+    play,
+});
+
+/**
+ * Right after signing in a code was mailed. The link counts down 30 s
+ * ("Neuen Code senden (0:27)") and sends nothing meanwhile; it keeps keyboard
+ * focus (`aria-disabled`, not `disabled`). Below: "only the newest code".
+ */
+export const EmailCodeCountdown: StoryObj = emailCodeStory(
+    tokenEndpointStub({ resend: 'challenge' }),
+    async ({ canvasElement }) => {
+        const canvas = await signInUntilEmailCode(canvasElement);
+        const link = canvas.getByRole('button', { name: RESEND_LINK });
+        await expect(link).toHaveAttribute('aria-disabled', 'true');
+        await expect(link.textContent).toMatch(/\(0:(30|29|28)\)/);
+        await userEvent.click(link);
+        await expect(canvas.getByRole('status')).toBeEmptyDOMElement();
+        await expect(
+            canvas.getByText(/Nur der zuletzt gesendete Code gilt|Only the most recently sent code is valid/),
+        ).toBeVisible();
+    },
+);
+
+/**
+ * Frank's case: "Send new code" twice in a row. The first click sends, "New
+ * code sent" appears only once Keycloak has answered, and the second click
+ * meets the countdown and sends nothing.
+ */
+export const EmailCodeResent: StoryObj = emailCodeStory(
+    tokenEndpointStub({ firstWait: 0, resend: 'challenge' }),
+    async ({ canvasElement }) => {
+        const canvas = await signInUntilEmailCode(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: RESEND_LINK }));
+        await userEvent.click(canvas.getByRole('button', { name: RESEND_LINK }));
+        await expect(canvas.getByRole('status')).toBeEmptyDOMElement();
+        await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent(/Neuer Code gesendet|New code sent/), {
+            timeout: 4000,
+        });
+        await expect(canvas.getByRole('button', { name: RESEND_LINK })).toHaveAttribute('aria-disabled', 'true');
+        // The code field is still required for signing in.
+        await expect(canvas.queryByText(/Einmalkennwort eingeben|enter one-time password/)).toBeNull();
+    },
+);
+
+/** Keycloak unreachable (503): an error instead of "sent", and the link is usable again. */
+export const EmailCodeResendFailed: StoryObj = emailCodeStory(
+    tokenEndpointStub({ firstWait: 0, resend: 'outage' }),
+    async ({ canvasElement }) => {
+        const canvas = await signInUntilEmailCode(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: RESEND_LINK }));
+        await waitFor(
+            () =>
+                expect(canvas.getByRole('status')).toHaveTextContent(/konnte nicht gesendet werden|could not be sent/),
+            { timeout: 4000 },
+        );
+        await expect(canvas.getByRole('button', { name: RESEND_LINK })).toHaveAttribute('aria-disabled', 'false');
+    },
+);
+
+/** More than 5 codes in 15 minutes (429, comes with slice 1 of #1338): the limit is explained. */
+export const EmailCodeResendLimit: StoryObj = emailCodeStory(
+    tokenEndpointStub({ firstWait: 0, resend: 'limit' }),
+    async ({ canvasElement }) => {
+        const canvas = await signInUntilEmailCode(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: RESEND_LINK }));
+        await waitFor(
+            () =>
+                expect(canvas.getByRole('status')).toHaveTextContent(
+                    /Zu viele Codes angefordert|Too many codes requested/,
+                ),
+            { timeout: 4000 },
+        );
+    },
+);

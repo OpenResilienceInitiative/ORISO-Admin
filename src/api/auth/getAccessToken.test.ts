@@ -63,4 +63,39 @@ describe('getAccessToken', () => {
             FETCH_ERRORS.TIMEOUT,
         );
     });
+
+    it('reports a 429 as TOO_MANY_REQUESTS, not as an unreachable server (#1338)', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 429 }));
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toThrow(
+            FETCH_ERRORS.TOO_MANY_REQUESTS,
+        );
+    });
+
+    // Keycloak's e-mail code cap (ORISO-Keycloak#46) answers 429 with the
+    // challenge; the form needs it to show the code field and the real wait.
+    it('keeps the 429 body so the form sees otpType and resendAvailableInSeconds (#1338)', async () => {
+        const limitResponse = {
+            error: 'invalid_grant',
+            error_description: 'Too many codes requested',
+            otpType: 'EMAIL',
+            resendAvailableInSeconds: 745,
+        };
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 429, json: () => Promise.resolve(limitResponse) }));
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toMatchObject(
+            new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data: limitResponse }),
+        );
+    });
+
+    it('still reports TOO_MANY_REQUESTS when the 429 body is not JSON (ingress rate limit)', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({ status: 429, json: () => Promise.reject(new SyntaxError('HTML')) }),
+        );
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toMatchObject(
+            new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data: {} }),
+        );
+    });
 });
