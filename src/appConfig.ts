@@ -75,6 +75,7 @@ export const passwordResetConfirmEndpoint = `${userServiceURL}/service/users/pas
 // the U3/U6 onboarding endpoints (`{token}/onboarding[...]`) follow the same
 // convention and get verified against the UserService wiring chunks.
 export const publicAccountInvitesEndpoint = `${userServiceURL}/service/users/account-invites`;
+export const serviceNoticeDraftsEndpoint = `${userServiceURL}/service/users/admin/service-notices/drafts`;
 export const globalSmtpTestEmailEndpoint = `${userServiceURL}/service/users/system-notification-emails/test`;
 export const globalSmtpPlatformSettingsEndpoint = `${userServiceURL}/service/users/system-notification-emails/platform-settings`;
 export const usersConsultantEndpoint = `${userServiceURL}/service/users/consultants`;
@@ -115,6 +116,7 @@ const routePathNames = {
      */
     counsellorOnboarding: '/admin/counsellor-onboarding',
     themeSettings: '/admin/theme-settings',
+    serviceNotices: '/admin/theme-settings/service-notices',
     globalSettings: '/admin/global-settings',
     permissionsSettings: '/admin/theme-settings/permissions',
     users: '/admin/users',

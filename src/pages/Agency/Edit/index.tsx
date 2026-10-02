@@ -44,6 +44,7 @@ import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
@@ -136,7 +137,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
               },
           ];
     const isAgencyCreationDpaBlocked =
-        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
+        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || !canStartNewCounselling(dpaGate));
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {

@@ -15,7 +15,8 @@ import { LegalTemplateUnreadMarker } from '../../components/Tenants/LegalSetting
 
 export const TenantSettingsLayout = () => {
     const { settings } = useAppConfigContext();
-    const { hasRole, isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const { hasRole, isSuperAdmin, isTenantScopedAdmin, tenantId, isTechnicalAccount, tokenUnreadable } =
+        useUserRoles();
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
     const shouldShowThemeSettings =
@@ -33,6 +34,7 @@ export const TenantSettingsLayout = () => {
         () =>
             getSettingsTabs({
                 isSuperAdmin,
+                canManageServiceNotices: isSuperAdmin && !isTechnicalAccount && !tokenUnreadable,
                 shouldShowThemeSettings,
                 can,
                 isTenantSettingsEditEnabled: isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
@@ -47,6 +49,8 @@ export const TenantSettingsLayout = () => {
             hasNewLegalTemplate,
             isEnabled,
             isSuperAdmin,
+            isTechnicalAccount,
+            tokenUnreadable,
             settings.multitenancyWithSingleDomainEnabled,
             shouldShowThemeSettings,
         ],

@@ -70,7 +70,9 @@ const DialogHarness = ({
 }: React.ComponentProps<typeof EmailTemplatesDialog> & { picker?: boolean }) => {
     const [open, setOpen] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState(props.selectedTemplateId);
-    const selectedName = TEMPLATES.find((template) => template.id === selectedTemplateId)?.name;
+    const [selectedName, setSelectedName] = useState(
+        TEMPLATES.find((template) => template.id === props.selectedTemplateId)?.name,
+    );
 
     return (
         <>
@@ -89,6 +91,7 @@ const DialogHarness = ({
                         picker
                             ? (template) => {
                                   setSelectedTemplateId(template.id);
+                                  setSelectedName(template.name);
                                   setOpen(false);
                               }
                             : undefined
@@ -311,5 +314,23 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
         };
         await expectReadableLockReason(rows[0]);
         await expectReadableLockReason(rows[rows.length - 1]);
+    },
+};
+
+/** A newly created active template closes the picker and becomes the invitation choice. */
+export const CreateAndUse: Story = {
+    args: { picker: true, selectedTemplateId: 1, initialView: 'create' },
+    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorlagen verwalten' }));
+        const dialog = within(await body.findByRole('dialog'));
+        await userEvent.type(dialog.getByLabelText('Vorlagenname'), 'Neue Einladung');
+        await userEvent.type(dialog.getByLabelText('Betreff'), 'Willkommen');
+        await userEvent.type(dialog.getByLabelText('Inhalt'), 'Ihr Zugang zur Beratung');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
+        await expect(canvas.getByText('Neue Einladung')).toBeInTheDocument();
     },
 };

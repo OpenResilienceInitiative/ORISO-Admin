@@ -175,6 +175,14 @@ export interface InviteEmailTemplateDTO {
  * Render it as-is inside an isolated frame; never re-style, rewrite or otherwise post-process it,
  * or the Admin re-introduces exactly the drift the issue removes.
  */
+export interface InviteEmailBrandingSnapshot {
+    brandName: string;
+    logoUrl: string | null;
+    accentColor: string;
+    primaryColor: string;
+    logoRendering: 'IMAGE' | 'TEXT_WORDMARK';
+}
+
 export interface InviteEmailPreviewDTO {
     templateId: number | null;
     templateName: string | null;
@@ -185,6 +193,8 @@ export interface InviteEmailPreviewDTO {
     plainText: string;
     /** Always contains the literal token `SAMPLE-PREVIEW-TOKEN`, never a usable invite link. */
     sampleAcceptUrl: string;
+    /** Actual render outcome; absent on older servers means unknown, never a browser guess. */
+    branding?: InviteEmailBrandingSnapshot | null;
 }
 
 export interface InviteEmailPreviewParams {
