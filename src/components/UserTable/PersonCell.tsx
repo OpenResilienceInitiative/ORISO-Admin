@@ -32,11 +32,14 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
         return () => clearTimeout(timer);
     }, [copied]);
 
-    const copyEmail = () =>
-        navigator.clipboard
-            .writeText(email)
-            .then(() => setCopied('ok'))
-            .catch(() => setCopied('failed'));
+    const copyEmail = async () => {
+        try {
+            await navigator.clipboard.writeText(email);
+            setCopied('ok');
+        } catch {
+            setCopied('failed');
+        }
+    };
 
     return (
         <div className={styles.person}>
