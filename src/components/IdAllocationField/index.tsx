@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type KeyboardEvent,
+    type ReactNode,
+    type Ref,
+} from 'react';
 import { createPortal } from 'react-dom';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +44,10 @@ export interface IdAllocationFieldProps {
     onBlur?: () => void;
     inputRef?: Ref<HTMLInputElement>;
     className?: string;
+    /** Leading glyph inside the main segment. */
+    icon?: ReactNode;
+    /** Fill the container instead of sizing to the text (stacked forms). */
+    fullWidth?: boolean;
 }
 
 const BLOCKING_STATES: IdValidationState[] = ['reserved', 'assigned', 'error'];
@@ -65,6 +79,8 @@ export const IdAllocationField = ({
     onBlur,
     inputRef,
     className,
+    icon,
+    fullWidth = false,
 }: IdAllocationFieldProps) => {
     const { t } = useTranslation();
     const listId = useId();
@@ -314,7 +330,7 @@ export const IdAllocationField = ({
     return (
         <div
             ref={anchorRef}
-            className={classNames(styles.anchor, className)}
+            className={classNames(styles.anchor, { [styles.anchorFull]: fullWidth }, className)}
             // Focus moving between the input and the ⌄/^ split stays "inside"
             // the field; only leaving it altogether counts as a blur.
             onBlur={(event) => {
@@ -333,7 +349,9 @@ export const IdAllocationField = ({
                 disabled={inactive}
                 displayText={open ? query : restingText}
                 error={isError}
-                fitContent
+                fitContent={!fullWidth}
+                fullWidth={fullWidth}
+                icon={icon}
                 inputProps={{
                     role: 'combobox',
                     'aria-autocomplete': 'list',

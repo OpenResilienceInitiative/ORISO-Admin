@@ -319,9 +319,9 @@ describe('EmailTemplatesDialog', () => {
     it('uses the active tenant without offering cross-tenant preview selection', async () => {
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
         renderDialog({ templateKind: 'COUNSELLOR_INVITE' });
-        // A tenant admin sees the counsellor invite only (see the tenant-admin
-        // block below), so the shared helper's three-row wait does not apply.
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        // A tenant admin sees the Träger and Berater invites but not the contract
+        // forward (see the tenant-admin block below), so the shared helper's three-row wait does not apply.
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         await userEvent.setup().click(screen.getByRole('button', { name: 'New template' }));
         expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
         expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
@@ -776,23 +776,22 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
             plainText: 'OK',
             sampleAcceptUrl: 'https://app.example/account-invite/SAMPLE',
         });
-        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
-            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
-            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
-            return Promise.resolve([]);
-        });
+        // The Träger kind is on offer to a Träger admin too; these tests are about the Berater kind.
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [counsellorTemplate] : []),
+        );
     });
 
     const renderAsTenantAdmin = () =>
         render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
 
-    it('asks only for the counsellor invite, never for the platform operator’s kinds', async () => {
+    it('asks for the Träger and Berater invites, never for the contract forward', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         const requestedKinds = mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind);
-        expect(requestedKinds).toEqual(['COUNSELLOR_INVITE']);
-        expect(screen.queryByText('Default tenant template')).not.toBeInTheDocument();
+        expect(requestedKinds.sort()).toEqual(['COUNSELLOR_INVITE', 'TENANT_INVITE']);
+        expect(requestedKinds).not.toContain('DPA_FORWARD');
     });
 
     // Disable, don't hide: the role may not change it, but must see it.
@@ -934,7 +933,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(screen.queryByDisplayValue('Welcome')).not.toBeInTheDocument();
     });
 
-    it('offers only the counsellor invite as the kind of a new template', async () => {
+    it('offers the Träger and Berater invite, not the contract forward, as the kind of a new template', async () => {
         const user = userEvent.setup();
         renderAsTenantAdmin();
 
@@ -945,7 +944,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
             .getAllByRole('option')
             .map((option) => option.getAttribute('value'))
             .filter(Boolean);
-        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+        expect(kindOptions.sort()).toEqual(['COUNSELLOR_INVITE', 'TENANT_INVITE']);
     });
 
     it('cannot reach a shared template’s edit form through the editor’s template menu', async () => {
@@ -972,6 +971,46 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
 
         await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * A Beratungsstellen admin only writes and sends Berater invites: the Träger invite and the
+ * contract forward are neither listed nor offered as the kind of a new template.
+ */
+describe('EmailTemplatesDialog — a Beratungsstellen admin', () => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.useUserRoles.mockReturnValue({
+            isSuperAdmin: false,
+            tenantId: 40,
+            hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin),
+        });
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [counsellorTemplate] : []),
+        );
+    });
+
+    it('asks for the Berater invite only', async () => {
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind)).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('offers the Berater invite as the only kind of a new template', async () => {
+        const user = userEvent.setup();
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const kindOptions = within(screen.getByRole('dialog'))
+            .getAllByRole('option')
+            .map((option) => option.getAttribute('value'))
+            .filter(Boolean);
+        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
     });
 });
 

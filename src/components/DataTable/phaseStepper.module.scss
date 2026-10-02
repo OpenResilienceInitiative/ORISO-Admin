@@ -175,3 +175,38 @@
     letter-spacing: 0.4px;
     white-space: nowrap;
 }
+
+/*
+ * Wrapped dated track (`maxPerLine`): fixed-width lines of N columns. The last
+ * bead of a line runs a stub to its column edge, the first bead of the next
+ * line one in from its edge, so the track reads as one continuous line.
+ */
+
+.trackWrapped {
+    width: calc(var(--phase-stepper-per-line) * 88px);
+    max-width: none;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 6px;
+
+    /* Continuation bead: the incoming connector starts at the column's left edge (.phase beats the dated rule). */
+    .phase.lineStart:before {
+        left: 0;
+        width: auto;
+    }
+
+    .lineEnd:after {
+        position: absolute;
+        top: 9px;
+        right: 0;
+        left: calc(50% + 12px);
+        display: block;
+        height: 2px;
+        background: var(--m3-outline-variant, #c4c7c8);
+        content: '';
+    }
+
+    .lineEnd.nextReached:after {
+        background: color-mix(in srgb, var(--m3-secondary, #4c555f) 55%, transparent);
+    }
+}

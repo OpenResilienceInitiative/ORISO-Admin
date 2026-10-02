@@ -330,8 +330,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('karla.fischer@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'fisch');
+        await user.type(await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }), 'fisch');
 
         await waitFor(() => expect(screen.queryByText('ronny.bauer@example.org')).not.toBeInTheDocument());
         expect(screen.getByText('Karla Fischer')).toBeInTheDocument();
@@ -350,8 +349,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person22@example.org'));
         expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'person21@');
+        await user.type(await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }), 'person21@');
 
         // Only person21 is still listed, so only person21 is still selected.
         await waitFor(() => expect(screen.queryByText('person22@example.org')).not.toBeInTheDocument());
@@ -365,9 +363,8 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person21@example.org'));
         expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
         await user.type(
-            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }),
             'kein-treffer-fuer-diese-abfrage',
         );
 
@@ -412,8 +409,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+        const search = await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' });
 
         const onlyAminaVisible = async () => {
             await waitFor(() => expect(screen.queryByText('bruno.schmidt@example.org')).not.toBeInTheDocument());
@@ -449,9 +445,8 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
         await user.type(
-            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }),
             'kein-solcher-treffer',
         );
 
@@ -473,8 +468,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person21@example.org')); // DRAFT
         expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+        const search = await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' });
         await user.type(search, 'kein-treffer-fuer-diese-abfrage');
         await waitFor(() => expect(screen.queryByText('person21@example.org')).not.toBeInTheDocument());
         expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument();

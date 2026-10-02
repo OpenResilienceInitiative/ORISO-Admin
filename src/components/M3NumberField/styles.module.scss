@@ -234,3 +234,14 @@
     max-width: 22ch;
     text-overflow: ellipsis;
 }
+
+/* `fullWidth`: the group fills a stacked form's column. */
+.rootFull {
+    display: flex;
+    width: 100%;
+
+    .field {
+        display: flex;
+        width: 100%;
+    }
+}
