@@ -1796,7 +1796,7 @@
         "fileName": "arrow_menu_open_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/arrow_menu_open_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx"],
+        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1822,7 +1822,7 @@
         "fileName": "file_save_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/file_save_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx"],
         "usage": "app-used"
     },
     {
@@ -1907,7 +1907,7 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1920,7 +1920,7 @@
         "fileName": "mail_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteComposer.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1974,6 +1974,19 @@
         "exportNames": [],
         "usageFiles": [],
         "usage": "catalogued-only"
+    },
+    {
+        "id": "ui-icon:oriso:save-draft:base",
+        "family": "save-draft",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "save_draft_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/save_draft_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:schedule:base",
@@ -2038,6 +2051,19 @@
         "sourcePath": "src/resources/img/svg/oriso/silent_400_24px.svg",
         "exportNames": [],
         "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:oriso:snackbar-close:base",
+        "family": "snackbar-close",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": 24,
+        "fileName": "snackbar_close_24px.svg",
+        "sourcePath": "src/resources/img/svg/oriso/snackbar_close_24px.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/FormPluginEditor/EditorHintSnackbar.tsx"],
         "usage": "app-used"
     },
     {
@@ -2632,7 +2658,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2814,7 +2845,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2916,6 +2952,7 @@
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
             "src/components/CustomIcons/EditorIcons.tsx",
             "src/components/CustomIcons/LegalIcons.tsx",
+            "src/components/FormPluginEditor/EditorHintSnackbar.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
@@ -2923,7 +2960,8 @@
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
-            "src/pages/Links/InviteComposer.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
             "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
         ],
         "usage": "app-used"

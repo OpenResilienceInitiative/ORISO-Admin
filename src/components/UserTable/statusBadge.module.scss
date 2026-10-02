@@ -20,6 +20,7 @@
 }
 
 .pending {
+    border: 1px solid var(--m3-outline-variant);
     background: var(--m3-tertiary-container);
     color: var(--m3-on-tertiary-container);
 }

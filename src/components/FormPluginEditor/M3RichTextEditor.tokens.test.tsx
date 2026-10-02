@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
@@ -34,22 +34,52 @@ const tokens = [
     { key: 'Adresse', label: 'Adresse', sample: 'Musterstraße 1, 12345 Musterstadt' },
 ];
 
-describe('M3RichTextEditor text tokens', () => {
-    it('shows each placeholder with its sample value and inserts it at the cursor', async () => {
+const placeholderButton = () => screen.findByRole('button', { name: 'Platzhalter einfügen' });
+
+describe('M3RichTextEditor placeholder menu', () => {
+    it('replaces the placeholder row with one toolbar button', async () => {
+        render(<M3RichTextEditor title="Impressum" value="<p>x</p>" textTokens={tokens} onChange={vi.fn()} />);
+
+        const button = await placeholderButton();
+        expect(within(screen.getByTestId('m3-toolbar')).getByRole('button', { name: 'Platzhalter einfügen' })).toBe(
+            button,
+        );
+        expect(button).toHaveAttribute('aria-haspopup', 'menu');
+        expect(screen.queryByTestId('m3-editor-token-row')).toBeNull();
+        expect(screen.queryByText('Musterberatungsstelle')).toBeNull();
+    });
+
+    it('lists each placeholder with its sample value and inserts {{key}} at the cursor', async () => {
         const onChange = vi.fn();
         render(
             <M3RichTextEditor title="Impressum" value="<p>Anschrift: </p>" textTokens={tokens} onChange={onChange} />,
         );
 
-        const address = await screen.findByRole('button', { name: /Adresse.*Musterstraße 1, 12345 Musterstadt/ });
+        await userEvent.click(await placeholderButton());
+        const menu = await screen.findByRole('menu');
+        const address = within(menu).getByRole('menuitem', { name: /Adresse.*Musterstraße 1, 12345 Musterstadt/ });
+        expect(within(menu).getByRole('menuitem', { name: /Beratungsstelle.*Musterberatungsstelle/ })).toBeTruthy();
         await userEvent.click(address);
 
         await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.stringContaining('{{Adresse}}')));
     });
 
+    it('opens from the keyboard and closes on Escape', async () => {
+        render(<M3RichTextEditor title="Impressum" value="<p>x</p>" textTokens={tokens} onChange={vi.fn()} />);
+
+        const button = await placeholderButton();
+        button.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(await screen.findByRole('menu')).toBeInTheDocument();
+        expect(button).toHaveAttribute('aria-expanded', 'true');
+
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(button).toHaveAttribute('aria-expanded', 'false'));
+    });
+
     it('offers no placeholders to a reader', async () => {
         render(<M3RichTextEditor title="Impressum" value="<p>x</p>" textTokens={tokens} readOnly />);
         await screen.findByTestId('m3-editor');
-        expect(screen.queryByTestId('m3-editor-token-row')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Platzhalter einfügen' })).toBeNull();
     });
 });

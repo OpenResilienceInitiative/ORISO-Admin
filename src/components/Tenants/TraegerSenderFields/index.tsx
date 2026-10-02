@@ -10,7 +10,7 @@ interface TraegerSenderFieldsProps {
 /**
  * The Träger's own sender block for the mail footer (Frank, 2026-09-23): full legal name, contact
  * e-mail and phone. All optional — an empty value falls back (legal name → Träger name, contact →
- * the platform operator's entry). Limits and the e-mail rule mirror the operator's "Betreiber"
+ * the platform operator's entry). No help text: "Leer: …" confused testers (Frank, 2026-09-25). Limits and the e-mail rule mirror the operator's "Betreiber"
  * fields in Globale Einstellungen → Dokument-Stammdaten.
  */
 export const TraegerSenderFields = ({ wrapField = (field) => field }: TraegerSenderFieldsProps) => {
@@ -21,7 +21,6 @@ export const TraegerSenderFields = ({ wrapField = (field) => field }: TraegerSen
                 <MuiFormField
                     name="legalName"
                     label={t('tenants.form.sender.legalName')}
-                    helpText={t('tenants.form.sender.legalName.help')}
                     inputProps={{ maxLength: 255 }}
                 />,
                 'legalName',
@@ -30,7 +29,6 @@ export const TraegerSenderFields = ({ wrapField = (field) => field }: TraegerSen
                 <MuiFormField
                     name="contactEmail"
                     label={t('tenants.form.sender.contactEmail')}
-                    helpText={t('tenants.form.sender.contact.help')}
                     type="email"
                     rules={[{ type: 'email', message: t('message.error.email.incorrect') }]}
                     inputProps={{ maxLength: 255 }}

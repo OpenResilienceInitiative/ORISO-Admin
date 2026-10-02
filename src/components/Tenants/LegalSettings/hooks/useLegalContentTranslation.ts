@@ -193,13 +193,21 @@ export const useLegalContentTranslation = ({
             });
             const at = new Date().toISOString();
             const additions: Record<string, string> = {};
+            const translatedContent: Record<string, string> = {};
+            const translatedMeta: Record<string, string> = {};
             selectedLanguages.forEach((language) => {
                 const html = response.translations?.[language]?.[LEGAL_TRANSLATION_FIELD_KEY];
                 if (html) {
                     additions[language] = html;
                     additions[metaKeyFor(language)] = buildTranslationMeta(sourceLanguage, at);
+                    translatedContent[language] = html;
+                    translatedMeta[language] = additions[metaKeyFor(language)];
                 }
             });
+            // Generated text is an editor change. Keep it available when a
+            // later confirmation is cancelled or the publication request fails.
+            setEdits((current) => ({ ...current, ...translatedContent }));
+            setFreshMeta((current) => ({ ...current, ...translatedMeta }));
             setModalOpen(false);
             // Deselected languages stay untouched (not stored -> user app falls back to the original).
             onPublish({ ...buildPublishMap(), ...additions });

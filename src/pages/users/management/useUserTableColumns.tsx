@@ -121,6 +121,7 @@ export const useUserTableColumns = ({
                                             delete: mainTenantSubdomain === tenant.subdomain,
                                         }}
                                         resource={config.updateResource}
+                                        labels={{ edit: t('edit'), delete: t('delete') }}
                                     />
                                 )}
                             </div>
