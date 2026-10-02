@@ -103,6 +103,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         search,
         ...tableState,
         typeOfUser: consultantsSectionId,
+        rethrowOnFailure: true,
         enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
     });
 

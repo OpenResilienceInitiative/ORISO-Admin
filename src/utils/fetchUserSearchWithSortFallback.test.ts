@@ -59,7 +59,7 @@ describe('fetchUserSearchWithSortFallback', () => {
         expect(fetchDataMock.mock.calls[0][0].responseHandling).toEqual(['BAD_REQUEST']);
     });
 
-    it('retries the safe sort WITHOUT a rejected-sort notice when the primary failed for another reason', async () => {
+    it('returns no rows instead of silently changing sort after a non-400 failure', async () => {
         fetchDataMock
             .mockRejectedValueOnce(new Error('API call error: 500 Internal Server Error'))
             .mockResolvedValueOnce(list(['Bob']));
@@ -70,15 +70,34 @@ describe('fetchUserSearchWithSortFallback', () => {
             order: 'DESC',
         });
 
-        expect(fetchDataMock).toHaveBeenCalledTimes(2);
-        expect(fetchDataMock.mock.calls[1][0].url).toContain('&order=ASC&field=FIRSTNAME');
-        expect(result).toEqual(list(['Bob']));
+        expect(fetchDataMock).toHaveBeenCalledTimes(1);
+        expect(result).toEqual({ data: [], total: 0 });
         expect(result).not.toHaveProperty('rejectedSort');
+    });
+
+    it.each([
+        'API call error: 401 Unauthorized',
+        'API call error: 403 Forbidden',
+        'API call error: 500 Internal Server Error',
+        'Failed to fetch',
+    ])('rethrows the original non-400 error without retrying: %s', async (message) => {
+        const error = new Error(message);
+        fetchDataMock.mockRejectedValueOnce(error).mockResolvedValueOnce(list(['Bob']));
+
+        await expect(
+            fetchUserSearchWithSortFallback({
+                url: 'https://api/users?query=*',
+                sortBy: 'LASTNAME',
+                order: 'DESC',
+                rethrowOnFailure: true,
+            }),
+        ).rejects.toBe(error);
+        expect(fetchDataMock).toHaveBeenCalledTimes(1);
     });
 
     it('returns an empty list (never hangs / throws) when even the safe fallback fails', async () => {
         fetchDataMock
-            .mockRejectedValueOnce(new Error('CATCH_ALL')) // UPDATE_DATE/DESC
+            .mockRejectedValueOnce(new Error('BAD_REQUEST')) // UPDATE_DATE/DESC unsupported
             .mockRejectedValueOnce(new Error('CATCH_ALL')); // FIRSTNAME/ASC fallback
 
         const result = await fetchUserSearchWithSortFallback({
