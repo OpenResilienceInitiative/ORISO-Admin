@@ -14,12 +14,34 @@ export const RESEND_FALLBACK_COOLDOWN_SECONDS = 30;
  */
 export const RESEND_ERROR_ALREADY_SHOWN = 'resend-error-already-shown';
 
+/**
+ * Rejection reason for a request that never left the browser, so there is nothing
+ * to wait for. A cooldown here would kill the link without a code being on its way.
+ */
+export const RESEND_NOT_ATTEMPTED = 'resend-not-attempted';
+
+/**
+ * A resend answer that carries what the realm said about waiting. The wait travels
+ * with the answer instead of through the `cooldownSeconds` prop, because a prop
+ * read inside the click's own promise callback is one render out of date: an
+ * expired ten-minute wait would be re-armed over the thirty seconds the realm has
+ * just granted.
+ */
+export class ResendError extends Error {
+    constructor(message: string, readonly waitSeconds?: number) {
+        super(message);
+        this.name = 'ResendError';
+    }
+}
+
 interface OtpResendLinkProps {
     /**
      * Asks the realm for a new code. Resolving means the request was answered,
      * rejecting means it was not. The link reports that answer, never the click.
+     * The resolved number, and `ResendError.waitSeconds` on a rejection, is the
+     * wait the realm named for THIS answer.
      */
-    onResend: () => Promise<unknown>;
+    onResend: () => Promise<number | void>;
     /**
      * Seconds the realm says to wait, from `resendAvailableInSeconds`. Undefined
      * against an older realm, which is why the countdown has its own fallback.
@@ -80,14 +102,13 @@ const OtpResendLink = ({ onResend, cooldownSeconds }: OtpResendLinkProps) => {
     }, [cooldownSeconds]);
 
     /**
-     * Starts the wait after an answer, in the same way for a send and for a
-     * refusal. Never shortens: by the time this runs, the parent may already have
-     * passed a longer wait the realm just reported, and overwriting it with the
-     * local fallback would free the link while the realm still refuses.
+     * Starts the wait THIS answer named, or the local fallback when the realm named
+     * none. It deliberately ignores `cooldownSeconds`: that prop is one render old
+     * in here, so a wait that has already run out would be served a second time.
      */
-    const armCooldown = useCallback(() => {
-        setSecondsLeft((current) => Math.max(current, cooldownSeconds || RESEND_FALLBACK_COOLDOWN_SECONDS));
-    }, [cooldownSeconds]);
+    const armCooldown = useCallback((waitSeconds?: number) => {
+        setSecondsLeft(waitSeconds && waitSeconds > 0 ? waitSeconds : RESEND_FALLBACK_COOLDOWN_SECONDS);
+    }, []);
 
     const handleClick = useCallback(() => {
         if (isSending || secondsLeft > 0) {
@@ -98,21 +119,27 @@ const OtpResendLink = ({ onResend, cooldownSeconds }: OtpResendLinkProps) => {
         setIsRequested(false);
 
         onResend()
-            .then(() => {
+            .then((waitSeconds) => {
                 if (!isMountedRef.current) {
                     return;
                 }
                 setIsRequested(true);
-                armCooldown();
+                armCooldown(typeof waitSeconds === 'number' ? waitSeconds : undefined);
             })
             .catch((reason: unknown) => {
                 if (!isMountedRef.current) {
                     return;
                 }
-                setHasFailed((reason as Error | null)?.message !== RESEND_ERROR_ALREADY_SHOWN);
+                const error = reason as ResendError | null;
+                if (error?.message === RESEND_NOT_ATTEMPTED) {
+                    // Nothing was sent, so no wait is owed — and a dead link would
+                    // hide the only control that can put it right.
+                    return;
+                }
+                setHasFailed(error?.message !== RESEND_ERROR_ALREADY_SHOWN);
                 // A refusal is still an answer: without a wait here, "too many
                 // attempts" would be followed by a link that invites the next one.
-                armCooldown();
+                armCooldown(error?.waitSeconds);
             })
             .finally(() => {
                 if (isMountedRef.current) {

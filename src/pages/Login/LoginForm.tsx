@@ -23,7 +23,7 @@ import {
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
-import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN } from './OtpResendLink';
+import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN, RESEND_NOT_ATTEMPTED, ResendError } from './OtpResendLink';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -99,10 +99,10 @@ const LoginForm = () => {
      * Resolves when the realm answered the code challenge — that is the same 400 the
      * first login attempt got. Rejects otherwise, so the link can say so.
      */
-    const resendCode = async () => {
+    const resendCode = async (): Promise<number | void> => {
         const { username, password } = form.getFieldsValue();
         if (!username || !password) {
-            throw new Error('missing credentials');
+            throw new ResendError(RESEND_NOT_ATTEMPTED);
         }
 
         try {
@@ -110,17 +110,19 @@ const LoginForm = () => {
             // A realm that stopped asking for a second factor mid-session:
             // nothing to resend, the user is simply in.
             navigate('/admin');
+            return undefined;
         } catch (caught) {
             const error = caught as ErrorLogin;
-            setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
+            const waitSeconds = positiveSeconds(error.options?.data?.resendAvailableInSeconds);
+            setResendCooldownSeconds(waitSeconds);
             if (error.message === FETCH_ERRORS.BAD_REQUEST && error.options?.data?.otpType) {
-                return;
+                return waitSeconds;
             }
             if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
                 handleRateLimited(error, 'password');
-                throw new Error(RESEND_ERROR_ALREADY_SHOWN);
+                throw new ResendError(RESEND_ERROR_ALREADY_SHOWN, waitSeconds);
             }
-            throw new Error(error.message);
+            throw new ResendError(error.message, waitSeconds);
         }
     };
 
