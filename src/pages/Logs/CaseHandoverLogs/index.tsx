@@ -5,6 +5,7 @@ import { ColumnType } from 'antd/lib/table';
 import { ListingTable } from '../../../components/ListingTable';
 import { useCaseHandoverLogsData } from '../../../hooks/useCaseHandoverLogsData';
 import { CaseHandoverLogEntry } from '../../../types/caseHandoverLogs';
+import { reasonTranslationKey } from '../../../components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/caseHandoverCardUtils';
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -69,6 +70,9 @@ export const CaseHandoverLogsPage = () => {
                 dataIndex: 'reasonLabel',
                 key: 'reasonLabel',
                 width: 240,
+                // Backend label is English; translate by code, else the label, else the code itself.
+                render: (label: string, row) =>
+                    t(reasonTranslationKey(row.reasonCode), { defaultValue: label || row.reasonCode }),
             },
             {
                 title: t('caseHandoverLogs.table.auditOutcome'),

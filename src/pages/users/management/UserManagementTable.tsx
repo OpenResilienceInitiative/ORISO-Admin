@@ -30,7 +30,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
-import { USER_TABLE_CONFIGS, shouldShowTenantColumn } from './userTableConfigs';
+import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
 import { mapSorterToApiField } from './useUserTableColumns';
 import { TenantTable } from './TenantTable';
 import { UserDataTable } from './UserDataTable';
@@ -149,10 +149,16 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const showTenantColumn = shouldShowTenantColumn(sectionId, isSuperAdmin);
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
 
+    // the platform-admins section shares Resource.TenantAdminUser with the
+    // tenant-admins section, so its manage actions stay super-admin-only even now
+    // that tenant-scoped admins hold create/update/delete on that resource.
+    const canManageSection = canManageSectionActions(sectionId, isSuperAdmin);
     const canCreate =
         can(PermissionAction.Create, config.createResource) &&
+        canManageSection &&
         (!isTenants || isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING));
-    const canEditOrDelete = can([PermissionAction.Update, PermissionAction.Delete], config.updateResource);
+    const canEditOrDelete =
+        can([PermissionAction.Update, PermissionAction.Delete], config.updateResource) && canManageSection;
 
     const onEditUser = useCallback(
         (record: CounselorData) => {

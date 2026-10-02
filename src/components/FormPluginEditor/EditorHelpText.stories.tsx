@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>;
 
 const description =
     'Fügen Sie hier die Vertragsunterlagen ein und drücken Sie Veröffentlichen, um sie für Träger zu ' +
-    'veröffentlichen. Nur Träger, die die Unterlagen unterschrieben haben, können auf der Plattform ' +
+    'veröffentlichen. Nur Träger, die die Unterlagen bestätigt haben, können auf der Plattform ' +
     'Ratsuchende beraten.';
 const cta = 'Um Träger anzulegen, müssen Sie erst Vertragsunterlagen veröffentlichen.';
 
@@ -86,7 +86,7 @@ const PanelDemo = ({ readOnly, snackbarTone }: { readOnly?: boolean; snackbarTon
                         tone={snackbarTone}
                         text={
                             snackbarTone === 'success'
-                                ? 'Die Vereinbarung wurde unterschrieben. Beratungsstellen können nun angelegt werden.'
+                                ? 'Die Vereinbarung wurde bestätigt. Beratungsstellen können nun angelegt werden.'
                                 : cta
                         }
                         onClose={() => setHidden(true)}

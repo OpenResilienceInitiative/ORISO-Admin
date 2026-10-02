@@ -1,0 +1,24 @@
+.bar,
+.archiveList {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.bar {
+    margin-bottom: 8px;
+}
+
+.archiveList {
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}
+
+.archiveMeta {
+    margin-bottom: 12px;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+}

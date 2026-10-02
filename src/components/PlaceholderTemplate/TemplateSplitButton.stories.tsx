@@ -1,3 +1,5 @@
+// eslint-disable-next-line import/no-unresolved -- Storybook subpath export
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TemplateSplitButton } from './TemplateSplitButton';
@@ -49,4 +51,15 @@ export const NothingSelected: Story = {};
 
 export const PickOnly: Story = {
     args: { activeTemplateId: 2 },
+};
+
+export const BlankAndCopy: Story = {
+    args: { activeTemplateId: 1, size: 'medium', onCreateTemplate: fn(), onCreateFromTemplate: fn() },
+    play: async ({ canvasElement, args }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        await expect(args.onCreateTemplate).toHaveBeenCalledOnce();
+        await expect(args.onCreateFromTemplate).not.toHaveBeenCalled();
+    },
 };

@@ -1,4 +1,4 @@
-import { TenantDpaStatus } from '../types/dpa';
+import { DpaGateStatus, TenantDpaStatus } from '../types/dpa';
 
 /**
  * TEN-INV-U10 (#572, parent #569): decision logic for the global,
@@ -9,6 +9,11 @@ import { TenantDpaStatus } from '../types/dpa';
  * TenantService/UserService scope (TEN-INV-U9/U3): every mutating endpoint
  * stays the authoritative line of defense.
  */
+
+// Older responses remain strict: only a real signature permits new work.
+// An explicit server permission always takes precedence, including false.
+export const canStartNewCounselling = (gate: DpaGateStatus | undefined): boolean =>
+    gate?.newCounsellingAllowed ?? gate?.dpaSigned === true;
 
 export type DpaBlockerReason = 'UNSIGNED' | 'OUTDATED' | 'MISSING' | 'INCONSISTENT' | 'STATUS_UNAVAILABLE';
 
@@ -123,8 +128,11 @@ export const deriveDpaGateDecision = ({
     switch (status) {
         case 'VALID':
             return wasAwaitingForwardedSignature ? { kind: 'unlock-confirm' } : { kind: 'inactive' };
-        case 'UNSIGNED':
         case 'OUTDATED':
+            // Renewal restrictions apply to new work. Existing work and signing
+            // must remain reachable even after the server deadline expires.
+            return { kind: 'inactive' };
+        case 'UNSIGNED':
             // #724: only a positively reported forward softens the gate; the
             // never-forwarded state keeps the strict #572 blocker. The flag
             // rides on the same status answer, so there is no second request

@@ -12,7 +12,10 @@ import { useTenantData } from './useTenantData.hook';
  * GET /service/tenant path and skip the broken tenantadmin prefetch (same
  * pattern as GlobalLoginSettingsPage / PR #299).
  */
-export const useTenantAppearanceFormData = (tenantId: string) => {
+export const useTenantAppearanceFormData = (
+    tenantId: string,
+    { successMessageKey }: { successMessageKey?: string | null } = {},
+) => {
     const { data: tenantData, isLoading: isTenantLoading } = useTenantData();
     const seedTenantAdminData = useMemo(() => {
         if (tenantData?.id == null || tenantId === '' || tenantId === 'add') {
@@ -36,6 +39,7 @@ export const useTenantAppearanceFormData = (tenantId: string) => {
         id: tenantId,
         seedTenantAdminData,
         prefetchTenantAdminData: !seedTenantAdminData,
+        ...(successMessageKey === undefined ? {} : { successMessageKey }),
     });
 
     return {

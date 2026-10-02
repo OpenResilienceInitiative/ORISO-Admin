@@ -102,6 +102,7 @@ describe('M3RichTextEditor accessibility', () => {
 
 describe('M3RichTextEditor image upload integrity', () => {
     it('blocks save and publish until a pending image has been inserted', async () => {
+        const user = userEvent.setup();
         let resolveUpload: (value: { id: string; url: string; contentType: string }) => void = () => undefined;
         imageUploadMocks.uploadTenantMedia.mockReturnValueOnce(
             new Promise((resolve) => {
@@ -111,6 +112,7 @@ describe('M3RichTextEditor image upload integrity', () => {
         const onPublish = vi.fn();
         const onSaveDraft = vi.fn();
         render(<M3RichTextEditor title="Impressum" onPublish={onPublish} onSaveDraft={onSaveDraft} />);
+        await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.edit|^edit$/i }));
         const editor = await screen.findByRole('textbox', { name: 'Impressum' });
 
         fireEvent.paste(editor, {
@@ -121,7 +123,7 @@ describe('M3RichTextEditor image upload integrity', () => {
         });
 
         const publish = screen.getByRole('button', { name: /legal\.m3Editor\.publish|publish/i });
-        const saveDraft = screen.getByRole('button', { name: /legal\.m3Editor\.saveDraft|save draft/i });
+        const saveDraft = await screen.findByRole('button', { name: /^save$/i });
         await waitFor(() => expect(publish).toBeDisabled());
         expect(saveDraft).toBeDisabled();
 
