@@ -33,6 +33,8 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .module {
     display: flex;
     flex-direction: column;
+    // Shared cards can be phone-width inside a desktop Storybook or split view.
+    container-type: inline-size;
     width: 100%;
     max-width: 800px;
     min-width: 280px;
@@ -59,8 +61,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
                 flex-direction: column;
             }
 
+            // The text scrolls inside; a fixed floor would push it over a wrapped function bar.
             .editor {
                 display: flex;
+                min-height: 0;
                 flex: 1;
                 flex-direction: column;
                 overflow: hidden;
@@ -141,6 +145,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .module.fluid:not(.inDialog) {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
 
     /* `clip` still clips to the 28px radius but — unlike `hidden` — does not
        make the card a scroll container, which would trap the sticky chip row. */
@@ -646,6 +651,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Read mode: the chips sit directly on the card surface.
 .readMode .anchorNav {
     background: $m3-surface;
+
+    @container (max-width: 599px) {
+        background: #ffffff;
+    }
+}
+
+@container (max-width: 599px) {
+    .module.fluid:not(.inDialog) .editor .anchorNav {
+        background: #ffffff;
+        border-top: 0;
+    }
 }
 
 .anchorBubbleHost {
@@ -708,6 +724,27 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 600;
 }
 
+.versionMenuEmpty {
+    display: block;
+    padding: 0 4px;
+    color: rgb(68 71 72 / 80%);
+    font-size: 13px;
+}
+
+// "+ Neue Vorlage erstellen": the section's own way forward, in the action colour.
+.versionMenuCreate {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    color: $m3-primary;
+    font-weight: 500;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
 .versionMenuItem {
     display: flex;
     gap: 10px;
@@ -738,27 +775,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
     white-space: normal;
 }
 
-// Look-back banner shown while viewing an earlier version (read-only).
-.versionBanner {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    margin: 0 16px 8px;
-    padding: 8px 12px;
-    background: $m3-state-active;
-    border-radius: 12px;
-    color: $m3-on-surface;
-    font-size: 14px;
-}
-
-.versionBannerActions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
 // Hosts the editor surface plus the optional functionality hint.
 .editorRegion {
     position: relative;
@@ -767,30 +783,282 @@ $m3-state-active: rgb(39 50 112 / 12%);
     flex-direction: column;
 }
 
+.moduleComparing {
+    max-width: min(1120px, 100%);
+}
+
+.module:not(.inDialog) .comparisonOpen,
+.module.inDialog .comparisonOpen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 12px;
+
+    .editorWrap {
+        min-width: 0;
+        padding: 0;
+    }
+
+    @container (max-width: 699px) {
+        display: flex;
+        flex-direction: column;
+
+        .comparisonReference {
+            max-height: min(320px, 60dvh);
+            overflow-y: auto;
+        }
+
+        .comparisonHeading,
+        .comparisonDetail,
+        .comparisonFooter {
+            flex-shrink: 0;
+        }
+
+        .comparisonDocument {
+            min-height: 96px;
+            max-height: 180px;
+            flex-shrink: 1;
+        }
+    }
+}
+
+.comparisonReference {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    padding: 12px;
+    background: var(--m3-surface-container-low, #f4f1f2);
+    border: 1px solid $m3-outline-variant;
+    border-radius: 14px;
+}
+
+.comparisonHeading {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--m3-primary, #273270);
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        background: transparent;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+}
+
+.comparisonDetail {
+    padding: 4px 0 8px;
+    color: var(--m3-primary, #273270);
+    font-size: 12px;
+}
+
+.comparisonDocument {
+    min-height: 0;
+    flex: 1;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow-y: auto;
+    overflow-wrap: break-word;
+    user-select: text;
+}
+
+.comparisonActions {
+    display: flex;
+    flex: 1 1 0;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+    margin-left: auto;
+}
+
+.comparisonFooter {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding-top: 8px;
+}
+
+.templateMaximize,
+.templateDialogClose {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &:hover {
+        background: $m3-state-hover;
+    }
+
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: 2px;
+    }
+}
+
+.templateMaximize {
+    color: $m3-publish;
+    font-size: 20px;
+}
+
+.templateDialogClose {
+    color: $m3-on-surface-variant;
+}
+
+.templateDialog {
+    display: flex;
+    min-width: 0;
+    height: calc(100dvh - 96px);
+    flex-direction: column;
+    padding: 16px;
+    overflow: hidden;
+    background: $m3-surface;
+    border-radius: 28px;
+    color: $m3-on-surface;
+    font-family: 'Inter Variable', Inter, Arial, sans-serif;
+
+    @media (max-width: 599px) {
+        height: 100dvh;
+        padding: 12px;
+        border-radius: 0;
+    }
+}
+
+.templateDialogLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.templateDialogHeader {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+
+    > div {
+        min-width: 0;
+    }
+
+    h2 {
+        margin: 8px 0;
+        color: $m3-primary;
+        font-size: 18px;
+        line-height: 24px;
+        overflow-wrap: anywhere;
+    }
+}
+
+.templateDialogDocument {
+    padding: 16px;
+    overflow-wrap: anywhere;
+
+    @include scrollbars.quiet;
+
+    img,
+    table {
+        max-width: 100%;
+    }
+
+    pre {
+        white-space: pre-wrap;
+    }
+}
+
+.comparisonToggle {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    margin-left: auto;
+    padding: 8px 12px;
+    border: 1px solid $m3-outline-variant;
+    background: transparent;
+    border-radius: 100px;
+    color: var(--m3-primary, #273270);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
 .editorWrap {
     padding: 0 16px;
 }
 
-// The blocker intentionally floats over the white editor surface. Reserve scrollable
-// space for it so the final legal-text lines can always be brought above the overlay.
-.hasSnackbar .editorContentScroll {
-    padding-bottom: 64px;
-    scroll-padding-bottom: 64px;
+// The stack is a flex child of the editor surface. Its measured height reduces
+// the text viewport, so even three long mobile notices cannot cover the last line.
+.hasSnackbar {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+
+    .editorContentScroll {
+        min-height: 0;
+        flex: 1;
+        overflow-y: auto;
+    }
 }
 
-.hasAnchors .hasSnackbar .editorContentScroll {
-    padding-bottom: 110px;
-    scroll-padding-bottom: 110px;
+.snackbarStack {
+    display: flex;
+    // Let two long notices use the remaining surface height at narrow widths.
+    // If more notices exceed it, this stack scrolls instead of clipping actions.
+    max-height: 100%;
+    min-height: 0;
+    flex-shrink: 0;
+    flex-direction: column;
+    gap: 8px;
+    padding: 6px;
+    overflow-y: auto;
+}
+
+.snackbarStackItem {
+    flex-shrink: 0;
+    container-type: inline-size;
 }
 
 // M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
 // .hasSnackbar above reserves matching scroll space so text remains reachable.
+// A snackbar flips in from its lower edge; the stack slides when one closes.
+// Rotation only, no opacity: edge-on at -90deg the snackbar is already invisible, and an
+// opacity of 0 would make every "is the snackbar visible" check fail during the 240ms.
+@keyframes hintSnackbarFlipIn {
+    from {
+        transform: perspective(600px) rotateX(-90deg);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
 .hintSnackbar {
-    position: absolute;
+    position: relative;
     z-index: 5;
-    right: 6px;
-    bottom: 6px;
-    left: 6px;
+    transform-origin: 50% 100%;
+    animation: hintSnackbarFlipIn 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+
     display: flex;
     align-items: center;
     padding: 4px 4px 4px 16px;
@@ -808,8 +1076,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
             grid-column: 1 / -1;
         }
 
-        .hintSnackbarAction {
+        .hintSnackbarActions {
             justify-self: start;
+        }
+
+        &:not(.hintSnackbarLong) .hintSnackbarAction {
             padding-left: 0;
             white-space: normal;
             text-align: left;
@@ -824,6 +1095,24 @@ $m3-state-active: rgb(39 50 112 / 12%);
 /* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
    dark text. Used when the message confirms something that happened rather than
    blocking an action — e.g. the DPA was signed. */
+
+// Errors in the M3 error role (owner call 2026-09-23): a red snackbar instead of an alert box.
+.hintSnackbarError {
+    background: var(--m3-error, #b1005e);
+    color: var(--m3-on-error, #ffffff);
+
+    .hintSnackbarAction {
+        color: var(--m3-on-error, #ffffff);
+
+        &:hover {
+            background: rgb(255 255 255 / 16%);
+        }
+    }
+
+    .hintSnackbarClose {
+        color: var(--m3-on-error, #ffffff);
+    }
+}
 
 .hintSnackbarSuccess {
     background: var(--m3-on-secondary-container, #e7effc);
@@ -843,17 +1132,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 }
 
 // In read mode the dismiss label may wrap onto two lines.
-// With a chapter chip footer the snackbar floats above it.
-.hasAnchors .hintSnackbar {
-    bottom: 52px;
-}
-
-// Read mode has no white surface: the snackbar flows below the text.
-.readMode .hintSnackbar {
-    position: static;
-    margin: 8px 0 0;
-}
-
+// The same dock is used in reading and writing modes.
 .readMode .hintSnackbarAction {
     max-width: 130px;
     line-height: 14px;
@@ -867,6 +1146,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-size: 14px;
     letter-spacing: 0.25px;
     line-height: 20px;
+}
+
+.hintSnackbarActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .hintSnackbarAction {
@@ -900,14 +1185,89 @@ $m3-state-active: rgb(39 50 112 / 12%);
     color: #f3f0f0;
     cursor: pointer;
 
-    svg {
-        width: 20px;
-        height: 20px;
-    }
-
     &:hover {
         background: rgb(243 240 240 / 12%);
     }
+}
+
+.hintSnackbarClose svg {
+    width: 20px;
+    height: 20px;
+}
+
+.hintSnackbarCloseIcon {
+    // Recolour the exact Figma close shape for pink error snackbars as well.
+    path {
+        fill: currentColor;
+    }
+}
+
+.hintSnackbarSuccessIcon {
+    width: 20px;
+    height: 20px;
+}
+
+// Figma 53977:34280, adapted to dynamic legal copy and a possible second action.
+// Two 20px text lines produce the reference's 112px overall height.
+.hintSnackbarLong {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px;
+    grid-template-rows: auto minmax(48px, auto);
+    align-items: start;
+    gap: 10px 0;
+    padding: 14px 0 0 16px;
+
+    .hintSnackbarText {
+        min-width: 0;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        padding: 0 16px 0 0;
+        font-size: 14px;
+        line-height: 20px;
+        overflow-wrap: anywhere;
+    }
+
+    .hintSnackbarActions {
+        min-width: 0;
+        width: 100%;
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: end;
+        justify-content: flex-end;
+        padding-left: 8px;
+        gap: 10px;
+    }
+
+    .hintSnackbarAction {
+        min-height: 40px;
+        max-width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        letter-spacing: 0.1px;
+        line-height: 20px;
+        white-space: normal;
+    }
+
+    .hintSnackbarCloseIcon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .hintSnackbarClose {
+        width: 48px;
+        height: 48px;
+        grid-column: 2;
+        grid-row: 2;
+        align-self: end;
+    }
+}
+
+// Read mode's compact 130px limit must not squeeze long action labels.
+// Let each action take its natural width and wrap below its neighbour.
+.readMode .hintSnackbarLong .hintSnackbarAction {
+    max-width: 100%;
+    line-height: 20px;
+    white-space: normal;
 }
 
 // Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)
@@ -915,6 +1275,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // against the card edges.
 .contentInset {
     padding: 0 16px;
+}
+
+// "Platzhalter einfügen" menu: long names (the platform DPO) wrap instead of widening the menu.
+.tokenMenuText {
+    display: block;
+    max-width: 340px;
+    white-space: normal;
+
+    small {
+        max-width: none;
+    }
 }
 
 .editor {
@@ -1106,56 +1477,89 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Lower function bar (Figma 1261-48667 / #862): one horizontal row of split
 // buttons. Must stay scrollable with a visible thin scrollbar when consent +
 // language + department + version no longer fit the 800px card.
+.functionBarShell {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.functionBarScrollCue {
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    display: grid;
+    width: 36px;
+    height: 44px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    color: $m3-primary;
+    font-size: 28px;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: -2px;
+    }
+}
+
+.functionBarScrollCueLeft {
+    left: 0;
+    background: linear-gradient(to right, $m3-surface 65%, transparent);
+}
+
+.functionBarScrollCueRight {
+    right: 0;
+    background: linear-gradient(to left, $m3-surface 65%, transparent);
+}
+
 .functionBar {
     display: flex;
     width: 100%;
-    max-width: 100%;
     min-width: 0;
+    max-width: 100%;
     box-sizing: border-box;
-    flex-wrap: nowrap;
-    gap: 12px;
+    // Desktop can wrap so every control stays directly visible.
+    flex-wrap: wrap;
     align-items: center;
-    // Spacer pushes controls right when they fit; shrinks away so overflow can
-    // scroll from the start (flex-end alone leaves left items unreachable).
-    justify-content: flex-start;
+    justify-content: flex-end;
     padding: 12px 16px 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--m3-outline, #747778) transparent;
-
-    &:before {
-        content: '';
-        flex: 1 1 0;
-        min-width: 0;
-    }
-
-    &::-webkit-scrollbar {
-        height: 4px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        border-radius: 2px;
-        background: var(--m3-outline, #747778);
-    }
+    gap: 8px 12px;
 
     > * {
-        flex-shrink: 0;
+        min-width: 0;
+        max-width: 100%;
+        flex-shrink: 1;
     }
 
     > .versionHistoryStatus {
-        min-width: 0;
-        flex-shrink: 1;
         white-space: normal;
     }
 
-    @media (max-width: 599px) {
+    @container (max-width: 599px) {
+        justify-content: flex-start;
         gap: 8px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-color: $m3-outline-variant transparent;
+        scrollbar-width: thin;
 
-        &:before {
-            display: none;
+        &::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: $m3-outline-variant;
+            border-radius: 8px;
+        }
+
+        > * {
+            flex: 0 0 auto;
+            max-width: none;
         }
     }
 }
@@ -1178,6 +1582,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
+.versionHistoryControl {
+    @container (max-width: 599px) {
+        .versionLeading > span {
+            max-width: 12ch;
+        }
+    }
+}
+
+.splitDropdownOverlay {
+    max-width: calc(100vw - 16px);
+
+    :global(.ant-dropdown-menu) {
+        max-height: min(60dvh, 440px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 599px) {
+        :global(.ant-dropdown-menu-item) {
+            min-height: 44px;
+        }
+    }
+}
+
 .versionLeading,
 .versionTrailing {
     display: inline-flex;
@@ -1189,6 +1618,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     .versionSplit:hover & {
         background: $m3-state-hover;
+    }
+
+    @container (max-width: 599px) {
+        min-height: 44px;
+        touch-action: manipulation;
     }
 }
 
@@ -1273,8 +1707,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
        vertical 8px comes from `.editor` above; the fluid variant's 56px
        bottom clearance wins by specificity, which is intended. */
 
+    // Owner call 2026-09-21: 8px left the reading text 9px from the card edge
+    // while header (24px) and controls (16px) sat further in. Match the header.
     .editorContentScroll {
-        padding-inline: 8px;
+        padding-inline: 24px;
+
+        @media (max-width: 599px) {
+            padding-inline: 16px;
+        }
     }
 
     // Owner call 2026-07-30, desktop AND mobile: with the outer box gone there
@@ -1451,11 +1891,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 // Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
+    min-width: 0;
     min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
     padding: 8px 16px 16px;
+
+    @media (max-width: 400px) {
+        gap: 4px;
+        padding-inline: 8px;
+    }
 }
 
 .actionsLeading {
@@ -1485,6 +1931,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .textBtn {
     display: inline-flex;
+    // Long labels ("Datenschutzerklärung (Plattform) veröffentlichen") give way
+    // before the row overflows; the full text stays in the title.
+    min-width: 0;
+    flex-shrink: 1;
     gap: 8px;
     align-items: center;
     height: 40px;
@@ -1496,6 +1946,15 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 500;
     letter-spacing: 0.1px;
     cursor: pointer;
+
+    @media (max-width: 400px) {
+        gap: 4px;
+        padding-inline: 8px;
+    }
+
+    > svg {
+        flex-shrink: 0;
+    }
 
     &:hover {
         background: $m3-state-hover;
@@ -1513,4 +1972,37 @@ $m3-state-active: rgb(39 50 112 / 12%);
     &.draft {
         color: $m3-primary;
     }
+
+    &.editActive {
+        background: $m3-state-hover;
+    }
+
+    // Offering a template publishes nothing, so it shares the neutral colour of
+    // "Save draft". Red stays reserved for the one action that goes live.
+    &.publishTemplate {
+        color: $m3-primary;
+    }
+}
+
+// Wraps the template action so a disabled button can still carry its reason as a
+// hover title — a disabled <button> itself receives no pointer events.
+.actionWithReason {
+    display: inline-flex;
+    min-width: 0;
+}
+
+.actionLabel {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }

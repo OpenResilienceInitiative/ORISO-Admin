@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, within } from 'storybook/test';
 import { PhaseStepper } from './PhaseStepper';
 
 /**
@@ -23,7 +25,7 @@ const TENANT_TRACK = (states: ('done' | 'current' | 'pending' | 'warning' | 'err
         [
             { key: 'invited', label: 'Eingeladen' },
             { key: 'registered', label: 'Registriert' },
-            { key: 'dpaSigned', label: 'Vertrag unterschrieben' },
+            { key: 'dpaSigned', label: 'Vertrag bestätigt' },
             { key: 'twoFactorActive', label: '2FA aktiv' },
             { key: 'completed', label: 'Abgeschlossen' },
         ] as const
@@ -79,5 +81,111 @@ export const BeadsOnly: Story = {
         phases: TENANT_TRACK(['done', 'done', 'current', 'pending', 'pending']),
         showActiveLabel: false,
         ariaLabel: 'Onboarding-Fortschritt',
+    },
+};
+
+const DATED_TRAEGER_TRACK = [
+    {
+        key: 'unit',
+        label: 'Träger angelegt',
+        state: 'done',
+        at: { short: '20.09., 08:00', full: '20.09.2026, 08:00 Uhr' },
+    },
+    {
+        key: 'invited',
+        label: 'Eingeladen',
+        state: 'done',
+        at: { short: '20.09., 08:05', full: '20.09.2026, 08:05 Uhr' },
+    },
+    {
+        key: 'registered',
+        label: 'Registriert',
+        state: 'done',
+        at: { short: '21.09., 10:12', full: '21.09.2026, 10:12 Uhr' },
+    },
+    {
+        key: 'dpaSigned',
+        label: 'Vertrag bestätigt',
+        state: 'done',
+        at: { short: '22.09., 14:30', full: '22.09.2026, 14:30 Uhr' },
+    },
+    { key: 'twoFactorActive', label: '2FA aktiv', state: 'current' },
+    { key: 'completed', label: 'Fertig', state: 'pending' },
+] as const;
+
+/** Six dated Träger steps in a phone-wide card: the track scrolls inside the card instead of spilling out. */
+export const DatedTrackInPhoneCard: Story = {
+    args: { phases: DATED_TRAEGER_TRACK.map((phase) => ({ ...phase })), ariaLabel: 'Onboarding-Fortschritt' },
+    decorators: [
+        (Story) => (
+            <div data-testid="card" style={{ width: 320, overflow: 'hidden' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const card = within(canvasElement).getByTestId('card');
+        const track = within(card).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        await expect(track.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right);
+        // Six 88px steps (528px) really overflow the 320px card, and the track scrolls to reach them.
+        await expect(track.scrollWidth).toBeGreaterThanOrEqual(528);
+        await expect(track.scrollWidth).toBeGreaterThan(track.clientWidth);
+        // …and a person can scroll it (overflow hidden would clip the last steps out of reach).
+        await expect(['auto', 'scroll']).toContain(getComputedStyle(track).overflowX);
+    },
+};
+
+/** Seven dated Träger steps in a narrow table: four per line, the track continues on the second line. */
+export const Wrapped: Story = {
+    args: {
+        phases: [
+            {
+                key: 'unit',
+                label: 'Träger angelegt',
+                state: 'done',
+                at: { short: '20.09., 08:00', full: '20.09.2026, 08:00 Uhr' },
+            },
+            {
+                key: 'invited',
+                label: 'Eingeladen',
+                state: 'done',
+                at: { short: '20.09., 08:05', full: '20.09.2026, 08:05 Uhr' },
+            },
+            {
+                key: 'registered',
+                label: 'Registriert',
+                state: 'done',
+                at: { short: '21.09., 10:12', full: '21.09.2026, 10:12 Uhr' },
+            },
+            {
+                key: 'dpaForwarded',
+                label: 'Vertragsunterlagen weitergeleitet',
+                state: 'done',
+                at: { short: '22.09., 09:40', full: '22.09.2026, 09:40 Uhr' },
+            },
+            {
+                key: 'dpaSigned',
+                label: 'Vertrag bestätigt',
+                state: 'done',
+                at: { short: '22.09., 14:30', full: '22.09.2026, 14:30 Uhr' },
+            },
+            { key: 'twoFactorActive', label: '2FA aktiv', state: 'current' },
+            { key: 'completed', label: 'Fertig', state: 'pending' },
+        ],
+        maxPerLine: 4,
+        ariaLabel: 'Onboarding-Fortschritt',
+    },
+    play: async ({ canvasElement }) => {
+        // One list for screen readers, all seven steps in order.
+        const track = within(canvasElement).getByRole('list', { name: 'Onboarding-Fortschritt' });
+        const steps = within(track).getAllByRole('listitem');
+        await expect(steps).toHaveLength(7);
+        // Four steps on the first line, three on the second.
+        const tops = steps.map((step) => Math.round(step.getBoundingClientRect().top));
+        await expect(new Set(tops.slice(0, 4)).size).toBe(1);
+        await expect(new Set(tops.slice(4)).size).toBe(1);
+        await expect(tops[4]).toBeGreaterThan(tops[3]);
+        // Nothing scrolls sideways.
+        await expect(track.scrollWidth).toBeLessThanOrEqual(track.clientWidth);
     },
 };

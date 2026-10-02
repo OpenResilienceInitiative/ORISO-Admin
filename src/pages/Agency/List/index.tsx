@@ -31,6 +31,7 @@ import { ReactComponent as RowExpandHoverIcon } from '../../../resources/img/svg
 import { ReactComponent as RowExpandSelectedIcon } from '../../../resources/img/svg/table-actions/row_expand_filled.svg';
 import { getAgencyColumnSortOrder, getNextAgencyTableState } from './agencySort';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { isAgencyScopedAdmin, resolveAgencyAdminLanding } from '../../../constants/agencyAdminLanding';
 
 export const AgencyList = () => {
@@ -64,7 +65,7 @@ export const AgencyList = () => {
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
     const isMobile = !screens.md;
     const isAgencyCreationDpaBlocked =
-        isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
+        isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || !canStartNewCounselling(dpaGate));
 
     const navigate = useNavigate();
 

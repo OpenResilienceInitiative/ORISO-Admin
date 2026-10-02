@@ -127,7 +127,10 @@ export const NamedRecipient: Story = {
         const name = await body.findByLabelText(/Name der Person|Name of the person/);
         await userEvent.type(name, 'Dr. Ruth Recht');
         await expect(name).toHaveValue('Dr. Ruth Recht');
-        await expect(await body.findByTestId('dpa-forward-canonical-preview')).toBeVisible();
+        // The preview fades in; asserting in its first frame flaked on CI (opacity still 0).
+        await waitFor(() => expect(body.getByTestId('dpa-forward-canonical-preview')).toBeVisible(), {
+            timeout: 5000,
+        });
     },
 };
 

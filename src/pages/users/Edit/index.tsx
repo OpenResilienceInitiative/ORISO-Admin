@@ -458,7 +458,6 @@ export const UserEditOrAdd = () => {
         // have a login. Afterwards they are changed through the reset flow.
         if (isEditing || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
             excluded.add('password');
-            excluded.add('passwordConfirmation');
         }
 
         return [...excluded];

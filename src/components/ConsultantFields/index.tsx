@@ -32,7 +32,6 @@ export const CONSULTANT_PERSONAL_FIELDS = [
     'email',
     'username',
     'password',
-    'passwordConfirmation',
 ] as const;
 
 /** Behavioural flags and the absence note. */
@@ -244,29 +243,9 @@ export const ConsultantPersonalFields = ({
                     name="password"
                     label={t('counselor.password')}
                     placeholder={t('placeholder.password')}
+                    helpText={t('counselor.password.hint')}
                     required
                     rules={[requiredRule, ...passwordFormRules(t)]}
-                />
-            )}
-
-            {has('passwordConfirmation') && (
-                <MuiPasswordFormField
-                    name="passwordConfirmation"
-                    label={t('counselor.passwordConfirmation')}
-                    placeholder={t('placeholder.password')}
-                    required
-                    dependencies={['password']}
-                    rules={[
-                        requiredRule,
-                        ({ getFieldValue }) => ({
-                            validator(_, value) {
-                                if (!value || getFieldValue('password') === value) {
-                                    return Promise.resolve();
-                                }
-                                return Promise.reject(new Error(t('profile.passwordChange.error.passwordsNotMatch')));
-                            },
-                        }),
-                    ]}
                 />
             )}
         </>

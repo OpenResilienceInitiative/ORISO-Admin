@@ -1,5 +1,5 @@
-import { Alert, Button, Skeleton } from 'antd';
-import { useMemo, useState } from 'react';
+import { Alert, Button, notification, Skeleton } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { useDepartmentImprint } from '../../../../../hooks/useDepartmentImprint.hook';
@@ -12,25 +12,37 @@ import { useTranslateLegalContent } from '../../../../../hooks/useTranslateLegal
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
+import { useAgencyLegalDraft } from '../../hooks/useAgencyLegalDraft';
+import { useLegalTextReadOnlyReason } from '../../hooks/useLegalTextReadOnlyReason';
+import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { AgencyData } from '../../../../../types/agency';
 import { isLegalDocumentPayload } from '../../../../../types/dpp';
 import { LegalTextKind } from '../../../../../types/legalVersion';
-import { DepartmentDataProtectionCard } from '../DepartmentDataProtectionCard';
+import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
+import type { LegalProposalAdoptionMode } from '../../../../../api/tenant/legalProposals';
+import type { AgencyTemplateInbox } from '../../hooks/useLegalProposalInbox';
+import { LegalTemplateCompare } from '../LegalTemplateCompare';
+import { DepartmentDataProtectionCard, DepartmentPublicationStatus } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
+import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import styles from './styles.module.scss';
 
 type LegalField = 'privacy' | 'imprint';
 
-interface AgencyLegalTextContainerProps {
+export interface AgencyLegalTextContainerProps {
     agencyData?: AgencyData;
     field: LegalField;
     /** Persists the agency-wide text (the "Alle Fachbereiche" entry). */
-    onSaveAgencyWide: <T>(formData: T, options?: { onError?: () => void }) => void;
+    onSaveAgencyWide: <T>(formData: T) => Promise<unknown>;
     saving?: boolean;
+    /** Templates this Beratungsstelle's Träger forwarded (#1070): shown beside the own draft. */
+    templateInbox?: AgencyTemplateInbox;
 }
 
 /** The agency-level content key differs from the department wording ("imprint" vs "impressum"). */
@@ -58,17 +70,31 @@ export const AgencyLegalTextContainer = ({
     field,
     onSaveAgencyWide,
     saving,
+    templateInbox,
 }: AgencyLegalTextContainerProps) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     // #609: this editor used to have no permission check at all. It is the same
     // right the Träger-level cards ask for, one rung down the ladder.
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
-    const [selected, setSelected] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    const readOnlyReason = useLegalTextReadOnlyReason();
+    const [chosen, setChosen] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
+    // After adopting a template the agency-wide draft is what changed, so it is shown even where a
+    // single Fachbereich is otherwise preselected; any explicit choice lifts that again.
+    const [pinAgencyWide, setPinAgencyWide] = useState(false);
+    const setSelected = (value: number | typeof ALL_DEPARTMENTS) => {
+        setPinAgencyWide(false);
+        setChosen(value);
+    };
+    const [draftSource, setDraftSource] = useState<'local' | 'server'>();
+    const [draftActionPending, setDraftActionPending] = useState(false);
+    const draftActionPendingRef = useRef(false);
+    const [agencyEditorGeneration, setAgencyEditorGeneration] = useState(0);
+    const [editorError, setEditorError] = useState<string>();
+    // Closing the draft snackbar hides it for THIS saved version; a newer save shows it again.
+    const [closedDraftSnackbar, setClosedDraftSnackbar] = useState<string | undefined>();
 
     const agencyId = Number(agencyData?.id);
-    const isDepartment = selected !== ALL_DEPARTMENTS;
-    const topicId = isDepartment ? (selected as number) : undefined;
 
     // Which Fachbereich has left the inherited text, per kind: the switcher marks it so an admin
     // editing the agency-wide text sees who will NOT receive the change (#583). Keyed by topicId
@@ -96,6 +122,12 @@ export const AgencyLegalTextContainer = ({
                 })),
         [agencyData?.topics, ownTextByTopic],
     );
+    // One Fachbereich (the Caritas case): it IS the choice, so it starts selected (#1066, H4).
+    // Derived rather than stored, because the topics arrive with the agency after the first render.
+    const selected =
+        chosen === ALL_DEPARTMENTS && departments.length === 1 && !pinAgencyWide ? departments[0].id : chosen;
+    const isDepartment = selected !== ALL_DEPARTMENTS;
+    const topicId = isDepartment ? (selected as number) : undefined;
 
     // Tenant text is the root of the inheritance chain: Träger → Agentur → Fachbereich.
     const { data: tenantData } = useSingleTenantData({
@@ -127,31 +159,78 @@ export const AgencyLegalTextContainer = ({
     const departmentPublish = field === 'privacy' ? publishDpp : publishImprint;
 
     const agencyContentKey = AGENCY_CONTENT_KEY[field];
+    const traegerContent = tenantData?.content?.[agencyContentKey] as Record<string, string> | undefined;
+    const agencyOwnContent = agencyData?.content?.[agencyContentKey] as Record<string, string> | undefined;
     const agencyWideContent = useMemo<Record<string, string>>(
-        () => ({
-            ...((tenantData?.content?.[agencyContentKey] as Record<string, string>) || {}),
-            ...((agencyData?.content?.[agencyContentKey] as Record<string, string>) || {}),
-        }),
-        [tenantData, agencyData, agencyContentKey],
+        () => ({ ...(traegerContent || {}), ...(agencyOwnContent || {}) }),
+        [traegerContent, agencyOwnContent],
     );
+    // Which level the agency-wide text really comes from: "Veröffentlicht" belongs to a text this
+    // Beratungsstelle published itself, never to the Träger text it merely inherits (#1066, H3).
+    let agencyWideStatus: DepartmentPublicationStatus | undefined;
+    if (!isEmptyLegalContent(agencyOwnContent)) agencyWideStatus = 'PUBLISHED';
+    else if (!isEmptyLegalContent(traegerContent)) agencyWideStatus = 'INHERITED_FROM_TRAEGER';
 
-    const { data: userData } = useUserData();
-    /*
-     * The agency record has no draft state, exactly like the Träger record one level up —
-     * so the parked wording lives on the device (`LegalText` + `useLegalDraft` set this
-     * precedent, and its LegalDraftNotice is what tells the admin the draft is local).
-     *
-     * The agency id has to be in the scope. Both levels store the same `privacy` document
-     * for the same user, so without it a Beratungsstelle's parked wording and the Träger's
-     * would share one key and silently overwrite each other.
-     */
+    const { data: userData, isLoading: isUserLoading } = useUserData();
     const agencyDraftScope =
-        userData?.id && agencyData?.id ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}` : undefined;
+        userData?.id != null && agencyData?.id != null
+            ? `${agencyData.tenantId}:${userData.id}:agency:${agencyData.id}`
+            : undefined;
     const {
         draft: agencyDraft,
-        saveDraft: saveAgencyDraft,
+        savedAt: localDraftSavedAt,
         discardDraft: discardAgencyDraft,
-    } = useLegalDraft(field, agencyDraftScope);
+    } = useLegalDraft(field, agencyDraftScope, undefined, setEditorError);
+    // An open template needs the agency-wide draft even while a Fachbereich is shown: adopting writes it.
+    const agencyDraftEnabled =
+        canEditLegalText &&
+        (!isDepartment || !!templateInbox?.current) &&
+        agencyData !== undefined &&
+        Number.isFinite(agencyId);
+    const serverDraft = useAgencyLegalDraft(agencyId, VERSION_KIND[field], agencyDraftEnabled);
+    const draftContextIdentity = `${agencyId}:${field}:${userData?.id ?? ''}`;
+    // One object per agency × document × user session: an A→B→A switch restores the same string but
+    // is a new session, while switching Fachbereich stays in the same one (same agency draft).
+    const draftSessionRef = useRef({ key: draftContextIdentity });
+    if (draftSessionRef.current.key !== draftContextIdentity) {
+        draftSessionRef.current = { key: draftContextIdentity };
+    }
+    const editorContextKey = `${draftContextIdentity}:${String(selected)}`;
+    const editorIdentityRef = useRef({ key: editorContextKey });
+    if (editorIdentityRef.current.key !== editorContextKey) {
+        editorIdentityRef.current = { key: editorContextKey };
+    }
+    const editorIdentity = editorIdentityRef.current;
+    const setActionPending = (pending: boolean) => {
+        draftActionPendingRef.current = pending;
+        setDraftActionPending(pending);
+    };
+    useEffect(() => {
+        draftActionPendingRef.current = false;
+        setDraftActionPending(false);
+        setEditorError(undefined);
+    }, [editorIdentity]);
+    const [serverBaseState, setServerBaseState] = useState<{
+        identity: string;
+        draft: AgencyLegalDraft | null | undefined;
+        revision: string | undefined;
+    }>(() => ({ identity: draftContextIdentity, draft: undefined, revision: undefined }));
+    let serverBase = serverBaseState;
+    if (serverBase.identity !== draftContextIdentity) {
+        serverBase = { identity: draftContextIdentity, draft: undefined, revision: undefined };
+        setServerBaseState(serverBase);
+        setDraftSource(undefined);
+    }
+    // Pin both the complete snapshot and its opaque revision. A background refetch may
+    // discover another writer, but it must not move the edit base and bypass a 409.
+    if (agencyDraftEnabled && serverBase.draft === undefined && !serverDraft.isLoading && !serverDraft.isError) {
+        serverBase = {
+            identity: draftContextIdentity,
+            draft: serverDraft.draft ?? null,
+            revision: serverDraft.draft?.revision,
+        };
+        setServerBaseState(serverBase);
+    }
 
     /**
      * A request that succeeded is not yet evidence that a policy document came back. `fetchData`
@@ -180,10 +259,25 @@ export const AgencyLegalTextContainer = ({
     // department's real, existing text with the inherited one. That is the silent-overwrite class
     // this whole epic exists to remove, so both block the editor instead (see the branch below).
     const hasOwnText = departmentWasRead && Object.keys(departmentContent).length > 0;
-    // A parked draft is the admin's unfinished wording; it wins over the stored agency text
-    // until it is published or discarded. Departments keep their own seeding rules above.
-    const agencyWideSeed = agencyDraft?.content ?? agencyWideContent;
-    const contentByLanguage = hasOwnText ? departmentContent : agencyWideSeed;
+    const hasLocalDraft = !isDepartment && !!agencyDraft;
+    const hasServerDraft = !isDepartment && !!serverBase.draft;
+    const draftCollision = hasLocalDraft && hasServerDraft;
+    const sourceChosen = !draftCollision || draftSource !== undefined;
+    let selectedDraft: { content: Record<string, string>; consentText?: Record<string, string> } | null | undefined =
+        serverBase.draft;
+    if (draftSource !== 'server' && hasLocalDraft && (!hasServerDraft || draftSource === 'local')) {
+        selectedDraft = { content: agencyDraft.content, consentText: agencyDraft.consent };
+    }
+    // Once a draft exists it is a complete snapshot. Do not merge published keys back into it:
+    // an absent language or an explicit empty consent map may be a deliberate removal.
+    // A draft without any text would hide the inherited text from its editor only; every role has
+    // to see the same card (#1066, H6), so an empty draft falls back to what is live.
+    const draftHasText = !!selectedDraft && !isEmptyLegalContent(selectedDraft.content);
+    const agencyWideSeed = sourceChosen && selectedDraft && draftHasText ? selectedDraft.content : agencyWideContent;
+    let contentByLanguage = agencyWideSeed;
+    if (isDepartment) {
+        contentByLanguage = hasOwnText ? departmentContent : agencyWideContent;
+    }
 
     /**
      * The consent sentence (ADR-021 decision 4) is a FIELD of the data-protection policy, never of
@@ -217,6 +311,8 @@ export const AgencyLegalTextContainer = ({
         }
         return { ...(inherited ?? {}), ...(own ?? {}) };
     }, [tenantData?.content?.privacyConsent, agencyData?.content?.privacyConsent]);
+    const agencyDraftConsent =
+        sourceChosen && selectedDraft ? selectedDraft.consentText ?? agencyWideConsent ?? {} : agencyWideConsent ?? {};
     /**
      * A Fachbereich that has NOT forked yet edits a draft copy of what it currently shows. The body
      * above is already seeded that way (`contentByLanguage`), and the sentence must follow the same
@@ -229,7 +325,18 @@ export const AgencyLegalTextContainer = ({
      * blank means the level above still governs at runtime (decision 1), and re-seeding it here
      * would silently re-author a legal sentence nobody wrote.
      */
-    const forkSeedsConsent = isDepartment && !hasOwnText && departmentConsent !== undefined;
+    /* Whether the SENTENCE is this Fachbereich's own.
+       A stored sentence answers for itself, whatever the body says: the sentence is a field of the
+       policy and a blank body only means the level above still governs the document TEXT
+       (decision 1). Asking the body instead threw away every sentence saved against an empty
+       policy — which is exactly how the first one is authored — so a saved sentence read back as
+       the inherited one (#929).
+       The body still settles the one case the stored map cannot: an EMPTY map is "deliberately
+       blank" at a level that has already forked, and "nothing authored here yet" at one that has
+       not. An omitted `consentText` and an explicit `{}` are the same value on the wire, so there
+       is nothing else left to ask. */
+    const hasOwnConsent = departmentConsent !== undefined && (Object.keys(departmentConsent).length > 0 || hasOwnText);
+    const forkSeedsConsent = isDepartment && !hasOwnConsent && departmentConsent !== undefined;
     const consentByLanguage = useMemo(() => {
         if (field !== 'privacy' || !isDepartment) {
             return undefined;
@@ -272,36 +379,107 @@ export const AgencyLegalTextContainer = ({
         [tenantAdminData?.settings?.activeLanguages, contentByLanguage],
     );
 
-    const onSave = (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
+    const saveCurrentAgencyDraft = async (content: Record<string, string>, operationIdentity: { key: string }) => {
+        const draftContextAtStart = draftContextIdentity;
+        const draftSessionAtStart = draftSessionRef.current;
+        const saved = await serverDraft.save({
+            content: { ...content },
+            ...(field === 'privacy' ? { consentText: { ...agencyDraftConsent } } : {}),
+            ...(serverBase.revision ? { revision: serverBase.revision } : {}),
+        });
+        // Pin the saved revision even if the admin switched to a Fachbereich meanwhile, so the next
+        // agency-wide save builds on it instead of running into a 409 against a stale base.
+        if (draftSessionRef.current === draftSessionAtStart) {
+            setServerBaseState((current) =>
+                current.identity === draftContextAtStart
+                    ? { identity: draftContextAtStart, draft: saved, revision: saved.revision }
+                    : current,
+            );
+        }
+        // No remount for a session that began after the request: it may already hold new typing,
+        // which then saves on top of this revision instead of being replaced.
+        if (editorIdentityRef.current !== operationIdentity) return saved;
+        const localDiscarded = discardAgencyDraft();
+        setDraftSource(localDiscarded ? 'server' : undefined);
+        setAgencyEditorGeneration((current) => current + 1);
+        notification.success({ message: t('legal.serverDraft.saved'), duration: 4 });
+        return saved;
+    };
+
+    const onSave = async (content: Record<string, string>, publish: boolean, consent?: Record<string, string>) => {
+        setEditorError(undefined);
         if (isDepartment) {
             // Only the policy carries a consent sentence (decision 7), and the publish call omits
             // the property entirely when the card had none to give — a backend that does not know
             // `consentText` never receives it.
+            /* Say what happened. A fire-and-forget mutate left a Fachbereich save with no
+               success and no failure message at all — a rejected save was indistinguishable
+               from a stored one, which is why a sentence that never reached the server was
+               only noticed on the next reload (#929). The agency-wide branch below has
+               reported both outcomes all along. */
+            const feedback = {
+                onSuccess: () =>
+                    notification.success({
+                        message: t(publish ? 'legal.department.published' : 'legal.department.draftSaved'),
+                        duration: 4,
+                    }),
+                onError: () => setEditorError(t('legal.department.saveError')),
+            };
             if (field === 'privacy') {
-                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) });
+                publishDpp.mutate({ content, publish, ...(consent ? { consentText: consent } : {}) }, feedback);
             } else {
-                publishImprint.mutate({ content, publish });
+                publishImprint.mutate({ content, publish }, feedback);
             }
             return;
         }
-        // `publish === false` is the editor's "Save draft" action. Writing the agency record
-        // here would publish the live legal text under a label promising the opposite — so the
-        // draft goes to device-local storage and the record is left alone.
-        if (!publish) {
-            saveAgencyDraft(content, consent);
+        if (draftActionPendingRef.current || serverDraft.isError || serverDraft.hasConflict || !sourceChosen) {
             return;
         }
-        // NOTE: unlike the department publishes above, this path cannot invalidate the agency
-        // version history — it goes through the shared agency-card mutation, which has no legal
-        // hook. The look-back catches up on its own `staleTime` (60s).
-        // Agency-wide ("Alle Fachbereiche") never edits consent in this card (#862) — do not
-        // stamp privacyConsent from a leftover third argument.
-        onSaveAgencyWide({
-            content: { [agencyContentKey]: content },
-        });
-        // The parked wording has become the published text; keeping it would re-seed the editor
-        // with a stale copy on the next mount.
-        discardAgencyDraft();
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        let saved: AgencyLegalDraft;
+        try {
+            saved = await saveCurrentAgencyDraft(content, operationIdentity);
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                // Publishing saves first; when that fails nothing goes live, and the admin has to
+                // learn that — a vanishing "draft not saved" toast read as "nothing happened".
+                setEditorError(t(publish ? 'legal.serverDraft.publishSaveError' : 'legal.serverDraft.saveError'));
+                setActionPending(false);
+            }
+            return;
+        }
+        if (!publish || editorIdentityRef.current !== operationIdentity) {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+            return;
+        }
+        try {
+            await onSaveAgencyWide({
+                // #862: "Alle Fachbereiche" stays consent-free, so the Träger sentence keeps
+                // inheriting; stamping one here would override it for good.
+                content: { [agencyContentKey]: { ...saved.content } },
+            });
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                setEditorError(t('legal.serverDraft.publishError'));
+                setActionPending(false);
+            }
+            return;
+        }
+        try {
+            await serverDraft.discard(saved.revision);
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({ identity: draftContextIdentity, draft: null, revision: undefined });
+                setDraftSource(undefined);
+                setAgencyEditorGeneration((current) => current + 1);
+            }
+        } catch {
+            // Publication is already live. A missing or concurrently replaced draft is retained
+            // in the UI and the hook exposes a 409 for explicit conflict resolution.
+            if (editorIdentityRef.current === operationIdentity) setEditorError(t('legal.serverDraft.cleanupError'));
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
     };
 
     const selectedDepartment = departments.find(({ id }) => id === topicId);
@@ -348,12 +526,152 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
-    return (
+    // A Fachbereich without its own text shows the level above's, and says whose it is.
+    let departmentStatus: DepartmentPublicationStatus | undefined = departmentQuery.data?.publicationStatus;
+    if (!hasOwnText) {
+        departmentStatus = agencyWideStatus === 'PUBLISHED' ? 'INHERITED_FROM_AGENCY' : agencyWideStatus;
+    }
+    const agencyDraftBlocked =
+        !canEditLegalText || (!isDepartment && (serverDraft.isError || serverDraft.hasConflict || !sourceChosen));
+    const discardAgencyWideDraft = async () => {
+        if (draftActionPendingRef.current) return;
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        try {
+            if (serverBase.draft && serverBase.revision) await serverDraft.discard(serverBase.revision);
+            if (editorIdentityRef.current !== operationIdentity) return;
+            const localDiscarded = discardAgencyDraft();
+            if (editorIdentityRef.current === operationIdentity) {
+                setServerBaseState({
+                    identity: draftContextIdentity,
+                    draft: null,
+                    revision: undefined,
+                });
+                setDraftSource(localDiscarded ? undefined : 'local');
+                setAgencyEditorGeneration((current) => current + 1);
+            }
+        } catch {
+            if (editorIdentityRef.current === operationIdentity) {
+                setEditorError(t('legal.serverDraft.discardError'));
+            }
+        } finally {
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
+    };
+
+    const draftSnackbarKey = `draft:${serverBase.draft?.savedAt ?? ''}:${localDraftSavedAt ?? ''}`;
+    const showDraftSnackbar =
+        !isDepartment &&
+        canEditLegalText &&
+        closedDraftSnackbar !== draftSnackbarKey &&
+        isDraftInfoState({
+            savedAt: serverBase.draft?.savedAt,
+            localSavedAt: localDraftSavedAt,
+            // Answered once a source is chosen; the snackbar and its discard take over again.
+            collision: draftCollision && !sourceChosen,
+            unavailable: serverDraft.isError,
+            conflict: serverDraft.hasConflict,
+        });
+
+    // Replacing never loses the device-local draft: it is saved to the server first, so the archive
+    // the adoption writes holds it.
+    const onAdoptTemplate = async (mode: LegalProposalAdoptionMode) => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal || draftActionPendingRef.current) return;
+        const operationIdentity = editorIdentity;
+        setActionPending(true);
+        try {
+            let draftRevision = serverBase.revision;
+            const localFirst = !!agencyDraft && (draftSource === 'local' || !serverBase.draft);
+            if (mode === 'ARCHIVE_AND_REPLACE' && localFirst && agencyDraft) {
+                const saved = await serverDraft.save({
+                    content: { ...agencyDraft.content },
+                    ...(field === 'privacy' ? { consentText: { ...(agencyDraft.consent ?? {}) } } : {}),
+                    ...(serverBase.revision ? { revision: serverBase.revision } : {}),
+                });
+                draftRevision = saved.revision;
+            }
+            const adopted = await templateInbox.adopt(
+                proposal,
+                mode,
+                mode === 'ARCHIVE_AND_REPLACE' ? draftRevision : undefined,
+            );
+            discardAgencyDraft();
+            setServerBaseState({ identity: draftContextIdentity, draft: adopted, revision: adopted.revision });
+            setDraftSource('server');
+            setActionPending(false);
+            setChosen(ALL_DEPARTMENTS);
+            setPinAgencyWide(true);
+            setAgencyEditorGeneration((current) => current + 1);
+            notification.success({ message: t('legal.proposal.adopted'), duration: 5 });
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.adopt'));
+            // A draft appeared elsewhere meanwhile: re-read it, the next attempt then asks to replace it.
+            if (conflict && mode === 'CREATE_IF_EMPTY') {
+                await serverDraft.retry();
+                setServerBaseState({ identity: draftContextIdentity, draft: undefined, revision: undefined });
+            }
+            if (editorIdentityRef.current === operationIdentity) setActionPending(false);
+        }
+    };
+
+    const onDismissTemplate = async () => {
+        const proposal = templateInbox?.current;
+        if (!templateInbox || !proposal) return;
+        try {
+            await templateInbox.dismiss(proposal);
+            notification.success({ message: t('legal.proposal.dismissed'), duration: 4 });
+        } catch (error) {
+            const conflict = error instanceof Error && error.message === 'CONFLICT';
+            setEditorError(t(conflict ? 'legal.proposal.error.conflict' : 'legal.proposal.error.dismiss'));
+        }
+    };
+
+    const withTemplates = (node: React.ReactElement) =>
+        templateInbox ? (
+            <LegalTemplateCompare
+                proposal={templateInbox.current}
+                source="traeger"
+                documentType={field}
+                language={languages[0] ?? 'de'}
+                hasDraft={!!serverBase.draft || !!agencyDraft}
+                readOnly={!canEditLegalText}
+                readOnlyReason={canEditLegalText ? undefined : t(readOnlyReason.key)}
+                adoptBlockedReason={
+                    serverDraft.isError ||
+                    serverDraft.hasConflict ||
+                    // Unanswered "browser or server draft?": replacing now would drop one of them.
+                    (!!agencyDraft && !!serverBase.draft && draftSource === undefined)
+                        ? t('legal.proposal.adoptBlocked.draftChoice')
+                        : undefined
+                }
+                archives={canEditLegalText ? templateInbox.archives : undefined}
+                onAdopt={onAdoptTemplate}
+                onDismiss={onDismissTemplate}
+            >
+                {node}
+            </LegalTemplateCompare>
+        ) : (
+            node
+        );
+
+    const card = (
         <DepartmentDataProtectionCard
             // Remount when the source changes, so the editor resets to it instead of keeping the
             // previous department's text in an uncontrolled TipTap instance.
-            key={`${agencyId}-${field}-${String(selected)}-${departmentQuery.data?.content ?? ''}`}
+            // The consent sentence is part of what the card holds, so it belongs in the identity
+            // too: keyed on the body alone, a refetch that changed only the sentence left the
+            // card's staged edits in place and kept showing them as if they had been stored.
+            // It is the sentence the card SHOWS that counts: an unforked Fachbereich shows the
+            // level above's, which its own record does not carry.
+            key={`${agencyId}-${field}-${String(selected)}-${
+                isDepartment
+                    ? JSON.stringify([departmentQuery.data?.content ?? '', consentByLanguage ?? {}])
+                    : agencyEditorGeneration
+            }`}
             documentType={field}
+            documentScope={isDepartment ? 'department' : 'agency'}
             departmentName={selectedDepartment?.name}
             initialContentByLanguage={contentByLanguage}
             consentByLanguage={consentByLanguage}
@@ -361,15 +679,110 @@ export const AgencyLegalTextContainer = ({
             consentInheritedFrom={consentInheritedFrom}
             ownConsentByLanguage={ownConsentByLanguage}
             languages={languages}
-            publicationStatus={isDepartment ? departmentQuery.data?.publicationStatus : undefined}
+            publicationStatus={isDepartment ? departmentStatus : agencyWideStatus}
             versions={versions}
             versionsUnavailable={versionsUnavailable}
-            readOnly={!canEditLegalText}
+            readOnly={agencyDraftBlocked}
+            readOnlyReason={canEditLegalText ? undefined : t(readOnlyReason.key)}
             onSave={onSave}
-            saving={saving || departmentPublish.isPending}
+            saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}
-            departmentSlot={<DepartmentSelect departments={departments} value={selected} onChange={setSelected} />}
+            departmentSlot={
+                <DepartmentSelect
+                    departments={departments}
+                    value={selected}
+                    onChange={setSelected}
+                    // Switching mid-save left a publish unfinished without a word, or locked the
+                    // next editor in a draft collision; the switch waits for the action instead.
+                    disabled={draftActionPending || departmentPublish.isPending}
+                />
+            }
+            snackbarSlot={
+                showDraftSnackbar && (
+                    <EditorSnackbarQueue
+                        items={[
+                            {
+                                key: draftSnackbarKey,
+                                node: (
+                                    <DraftStatusSnackbar
+                                        savedAt={serverBase.draft?.savedAt}
+                                        localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
+                                        onDiscard={discardAgencyWideDraft}
+                                        onClose={() => setClosedDraftSnackbar(draftSnackbarKey)}
+                                        pending={draftActionPending}
+                                    />
+                                ),
+                            },
+                        ]}
+                    />
+                )
+            }
+            errorMessage={editorError}
+            onCloseError={() => setEditorError(undefined)}
         />
+    );
+    if (isDepartment || !canEditLegalText) return withTemplates(card);
+    if (!agencyDraftEnabled || serverDraft.isLoading || isUserLoading) {
+        return (
+            <div className={styles.fallbackCard}>
+                <Skeleton active title={false} paragraph={{ rows: 4 }} />
+            </div>
+        );
+    }
+    return (
+        <>
+            <TenantLegalDraftNotice
+                savedAt={serverBase.draft?.savedAt}
+                // After choosing the server copy the editor holds it; naming the browser copy's time
+                // would give the text the wrong provenance.
+                localSavedAt={draftSource === 'server' ? undefined : localDraftSavedAt}
+                collision={draftCollision && !sourceChosen}
+                loadServer={() => {
+                    if (draftActionPendingRef.current) return;
+                    setDraftSource('server');
+                    setAgencyEditorGeneration((current) => current + 1);
+                }}
+                keepLocal={() => {
+                    if (draftActionPendingRef.current) return;
+                    setDraftSource('local');
+                    setAgencyEditorGeneration((current) => current + 1);
+                }}
+                unavailable={serverDraft.isError}
+                retry={() => serverDraft.retry()}
+                conflict={serverDraft.hasConflict}
+                conflictRefreshFailed={serverDraft.conflictRefreshFailed}
+                conflictRefreshing={serverDraft.conflictRefreshing}
+                retryConflict={() => serverDraft.retryConflict()}
+                reloadConflict={() => {
+                    if (draftActionPendingRef.current) return;
+                    const remote = serverDraft.conflict;
+                    setServerBaseState({
+                        identity: draftContextIdentity,
+                        draft: remote ?? null,
+                        revision: remote?.revision,
+                    });
+                    setDraftSource('server');
+                    setAgencyEditorGeneration((current) => current + 1);
+                    serverDraft.clearConflict();
+                }}
+                keepEditing={() => {
+                    if (draftActionPendingRef.current) return;
+                    // A refresh that found no draft means it is gone: keep editing from "no draft" rather than
+                    // a revision the server no longer has (which would 409 again, or skip a needed DELETE).
+                    const remote = serverDraft.conflict;
+                    setServerBaseState((current) =>
+                        remote === null
+                            ? { ...current, draft: null, revision: undefined }
+                            : { ...current, revision: remote?.revision ?? current.revision },
+                    );
+                    serverDraft.clearConflict();
+                }}
+                onDiscard={discardAgencyWideDraft}
+                pending={draftActionPending}
+                showInfo={false}
+            />
+            {withTemplates(card)}
+        </>
     );
 };
 

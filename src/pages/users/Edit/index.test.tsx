@@ -49,7 +49,6 @@ const translations: Record<string, string> = {
     email: 'E-Mail',
     'counselor.username': 'Benutzername',
     'counselor.password': 'Passwort',
-    'counselor.passwordConfirmation': 'Passwort wiederholen',
     'counselor.displayName': 'Öffentlicher Anzeigename',
     'counselor.internalDisplayName': 'Interner Anzeigename',
     'counselor.salutation': 'Anrede',
@@ -226,7 +225,6 @@ const fillMandatoryFields = async () => {
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
     setField('Passwort', 'Str0ng!Pass');
-    setField('Passwort wiederholen', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
@@ -437,6 +435,79 @@ describe('assignment fields', () => {
         await chooseOption(user, 'Beratungsstelle', '20095 Beratungsstelle Nord Hamburg');
 
         expect(await screen.findAllByLabelText('Themen')).toHaveLength(1);
+    });
+});
+
+describe('topic assignment on edit (#1026)', () => {
+    const editConsultantWithTopics = () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: {
+                data: [
+                    {
+                        id: 'consultant-1',
+                        firstname: 'Ada',
+                        lastname: 'Lovelace',
+                        email: 'ada.lovelace@example.org',
+                        username: 'ada-lovelace',
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                ],
+            },
+            isLoading: false,
+        };
+        mocks.counselorResult = { data: { id: 'consultant-1', topics: [{ id: 11, name: 'Sucht' }] }, isLoading: false };
+    };
+
+    // ADR-003: a topic only saves when one of the consultant's agencies offers it.
+    const showTopicField = () => {
+        const agency = { id: 3, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id };
+        mocks.agenciesResult = {
+            data: { data: [{ ...agency, topics: [{ id: 11, name: 'Sucht' }] }] },
+            isLoading: false,
+        };
+        mocks.consultantsResult.data.data[0].agencies = [agency];
+        mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
+    };
+
+    it('submits no topicIds when the topic field was never shown', async () => {
+        // The tenant topic list came back empty, so the field stays hidden although the
+        // consultant holds topics; the save must leave them alone.
+        editConsultantWithTopics();
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(screen.queryByLabelText('Themen')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(await submit(user)).not.toHaveProperty('topicIds');
+    });
+
+    it('submits the shown topics when the field was on screen', async () => {
+        editConsultantWithTopics();
+        showTopicField();
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(await screen.findByLabelText('Themen')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect((await submit(user)).topicIds).toEqual([expect.objectContaining({ value: '11' })]);
+    });
+
+    it('submits an emptied topic field as [], so a deliberate removal still reaches the backend', async () => {
+        editConsultantWithTopics();
+        showTopicField();
+        const user = userEvent.setup();
+        renderForm();
+
+        await screen.findByLabelText('Themen');
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Themen'));
+        await user.keyboard('{Backspace}');
+
+        expect((await submit(user)).topicIds).toEqual([]);
     });
 });
 

@@ -176,6 +176,16 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
     );
 };
 
+// The configured app host, or nothing: the mock-up must not show a host this environment does not
+// serve (ORISO-Helm#368).
+const previewHost = (appBaseUrl: string): string => {
+    try {
+        return new URL(appBaseUrl).host;
+    } catch {
+        return '';
+    }
+};
+
 const PhoneThemePreview = ({
     labelKey,
     seeds,
@@ -214,8 +224,8 @@ const PhoneThemePreview = ({
                     )}
                 </div>
                 <img className={styles.phoneFrameImage} src={iphoneFrame} alt="" aria-hidden="true" />
-                <span className={styles.phoneAddressText} aria-hidden="true">
-                    app.oriso.org
+                <span className={styles.phoneAddressText} aria-hidden="true" data-testid="preview-address">
+                    {previewHost(appBaseUrl)}
                 </span>
             </div>
         </figure>

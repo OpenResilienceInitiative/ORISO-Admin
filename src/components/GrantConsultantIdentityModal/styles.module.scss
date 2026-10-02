@@ -5,3 +5,15 @@
     justify-content: flex-end;
     gap: 8px;
 }
+
+/* Space between the stacked selects (MuiSelectField renders noStyle, without its own margin). */
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.noTopics {
+    margin: 0;
+    color: var(--m3-on-surface-variant);
+}

@@ -25,3 +25,12 @@
         --card-deck-item-max-width: min(800px, calc(100vw - 176px));
     }
 }
+
+// #1070: a received template sits beside the own draft; the card then takes the page width it can
+// get (capped like every deck item), and the compare stacks itself below 900px.
+@media (min-width: 768px) {
+    .documentEditorItem:has([data-legal-compare-open='true']) {
+        --card-deck-item-width: 1440px;
+        --card-deck-item-max-width: calc(100vw - 176px);
+    }
+}

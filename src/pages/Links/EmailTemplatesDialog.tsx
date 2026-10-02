@@ -20,14 +20,14 @@ import {
     type PlaceholderTemplateDefinition,
 } from '../../components/PlaceholderTemplate';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { canEditSharedTemplates, resolveVisibleTemplateKinds } from '../../constants/linksAccess';
 import { useTenantsData } from '../../hooks/useTenantsData';
 import { convertToOptions } from '../../utils/convertToOptions';
 import { MuiSwitch } from '../../components/mui/MuiSwitchField';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
+import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
-
-const TEMPLATE_KINDS: InviteEmailTemplateKind[] = ['TENANT_INVITE', 'COUNSELLOR_INVITE', 'DPA_FORWARD'];
 
 interface EmailTemplatesDialogProps {
     /** The template kind of the invite tab the dialog was opened from — used to preset new templates. */
@@ -103,7 +103,43 @@ export const EmailTemplatesDialog = ({
     const [loadCompleted, setLoadCompleted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
-    const { isSuperAdmin, tenantId: activeTenantId } = useUserRoles();
+    const { isSuperAdmin, hasRole, tenantId: activeTenantId } = useUserRoles();
+    /* Templates carry no tenant: one text is shared by the whole platform and each
+       tenant's branding is applied when the mail is rendered. What an admin may see
+       is therefore drawn along KIND — the kinds their Links tabs send with — and
+       only the platform operator, who owns the shared text, may change it. Listing
+       every kind for everyone showed tenant admins the platform's tenant-invite and
+       contract-forward templates, with an Edit that rewrote the mail every other
+       tenant sends (v2.0.8 QA 1.13).
+
+       Creating stays open to tenant admins, for the one kind they send with — an
+       owner decision (2026-09-23), not an oversight. A template a tenant admin
+       creates is therefore still visible to every other tenant, and stays so until
+       templates carry an owning tenant on the server. */
+    const visibleKindsKey = resolveVisibleTemplateKinds({ isSuperAdmin, hasRole }).join(',');
+    // Keyed on the joined list: `hasRole` is a fresh function every render, and an
+    // unstable array here would refire the template request on every render.
+    const visibleKinds = useMemo(
+        () => (visibleKindsKey ? (visibleKindsKey.split(',') as InviteEmailTemplateKind[]) : []),
+        [visibleKindsKey],
+    );
+    const canEdit = canEditSharedTemplates({ isSuperAdmin, hasRole });
+    const sharedTemplateLockReason = t(
+        'links.templates.platformAdminOnly',
+        'Nur Plattform-Admins können geteilte Vorlagen ändern',
+    );
+    const noPermissionLockReason = t(
+        'links.templates.noPermission',
+        'Sie haben keine Berechtigung, diese Vorlage zu ändern',
+    );
+    // `editable: false` alone does not say why; only an unowned row is the platform's shared one.
+    const lockReasonFor = useCallback(
+        (template: InviteEmailTemplateDTO) =>
+            template.tenantId == null && !isSuperAdmin ? sharedTemplateLockReason : noPermissionLockReason,
+        [isSuperAdmin, noPermissionLockReason, sharedTemplateLockReason],
+    );
+    // The server answers per row; the role rule covers a server without `editable`.
+    const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
     // Preview context is deliberately separate from the persisted template draft.
     const [previewTenant, setPreviewTenant] = useState('platform');
     const {
@@ -138,12 +174,12 @@ export const EmailTemplatesDialog = ({
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
-    // One call per kind: the shared API function is typed around a required kind and
-    // the merged list keeps every template visible (grouped table, current kind first).
+    // One call per kind the admin may see: the shared API function is typed around a
+    // required kind, and the merged list is grouped with the current kind first.
     const loadTemplates = useCallback(async () => {
         setLoading(true);
         try {
-            const results = await Promise.all(TEMPLATE_KINDS.map((kind) => listInviteEmailTemplates(kind)));
+            const results = await Promise.all(visibleKinds.map((kind) => listInviteEmailTemplates(kind)));
             setTemplates(results.flat());
         } catch {
             message.error(t('links.templates.loadFailed', 'Could not load templates'));
@@ -154,7 +190,7 @@ export const EmailTemplatesDialog = ({
             // one, and the create deep link must open in both cases.
             setLoadCompleted(true);
         }
-    }, [t]);
+    }, [t, visibleKinds]);
 
     useEffect(() => {
         loadTemplates();
@@ -337,6 +373,10 @@ export const EmailTemplatesDialog = ({
                 message.success(t('links.templates.created', 'Template created'));
             }
             onChanged?.(saved);
+            if (!editingTemplate && isSelectable(saved)) {
+                onSelect?.(saved);
+                return;
+            }
             backToList();
             await loadTemplates();
         } catch {
@@ -348,7 +388,19 @@ export const EmailTemplatesDialog = ({
         } finally {
             setSubmitting(false);
         }
-    }, [backToList, draftComplete, draftMeta, draftValues, editingTemplate, loadTemplates, onChanged, submitting, t]);
+    }, [
+        backToList,
+        draftComplete,
+        draftMeta,
+        draftValues,
+        editingTemplate,
+        isSelectable,
+        loadTemplates,
+        onChanged,
+        onSelect,
+        submitting,
+        t,
+    ]);
 
     const columns = useMemo(
         () => [
@@ -429,9 +481,21 @@ export const EmailTemplatesDialog = ({
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
                     <div className={listingTableStyles.actionGroup}>
-                        <Button size="small" onClick={() => openEditForm(template)}>
-                            {t('links.templates.edit', 'Edit')}
-                        </Button>
+                        {mayEditTemplate(template) ? (
+                            <Button size="small" onClick={() => openEditForm(template)}>
+                                {t('links.templates.edit', 'Edit')}
+                            </Button>
+                        ) : (
+                            // Portal: the table body scrolls and would clip the bubble on the first and last row.
+                            <M3Tooltip text={lockReasonFor(template)} portal>
+                                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                                <span tabIndex={0}>
+                                    <Button disabled size="small">
+                                        {t('links.templates.edit', 'Edit')}
+                                    </Button>
+                                </span>
+                            </M3Tooltip>
+                        )}
                         {/* The backend exposes no DELETE for invite-email-templates yet
                             (AccountInviteController: POST/PUT/GET only), so per #314 the
                             delete action ships disabled with an explanatory tooltip
@@ -447,7 +511,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [isSelectable, kindLabel, onSelect, openEditForm, selectedTemplateId, t],
+        [isSelectable, kindLabel, lockReasonFor, mayEditTemplate, onSelect, openEditForm, selectedTemplateId, t],
     );
 
     const listFooter = (
@@ -538,7 +602,7 @@ export const EmailTemplatesDialog = ({
                             </label>
                             <Select
                                 id={`${fieldId}-kind`}
-                                options={TEMPLATE_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
+                                options={visibleKinds.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
                                 value={draftMeta.kind}
                                 onChange={(kind: InviteEmailTemplateKind) =>
                                     setDraftMeta((meta) => ({ ...meta, kind }))
@@ -633,7 +697,14 @@ export const EmailTemplatesDialog = ({
                         onSelectTemplate={(id) => {
                             const template = kindTemplates.find((entry) => entry.id === id);
                             if (template) {
-                                guardDraft(() => openEditForm(template));
+                                // Picking a template opens it for editing, and save writes it back.
+                                // Without the right to edit shared templates, the pick starts a new
+                                // template from it instead, as "Neu aus …" does.
+                                guardDraft(() =>
+                                    mayEditTemplate(template)
+                                        ? openEditForm(template)
+                                        : openCreateFromTemplate(template),
+                                );
                             }
                         }}
                     />
@@ -687,8 +758,8 @@ export const EmailTemplatesDialog = ({
                           }
                         : undefined,
                     // Manager-only mode: without picking, a row click is free
-                    // for the edit shortcut.
-                    onDoubleClick: onSelect ? undefined : () => openEditForm(template),
+                    // for the edit shortcut — for whoever may edit at all.
+                    onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
                 })}
             />
         </Modal>

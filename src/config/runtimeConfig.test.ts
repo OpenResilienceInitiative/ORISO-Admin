@@ -8,6 +8,7 @@ const runtimeEnvKeys = [
     'COOKIE_DOMAIN',
     'COOKIE_SECURE',
     'HOSTNAMES_WITHOUT_COOKIE_DOMAIN',
+    'APP_URL',
 ];
 
 const loadRuntimeConfig = async (config: Record<string, string | undefined>) => {
@@ -142,5 +143,30 @@ describe('bundle build identity', () => {
         vi.stubEnv('VITE_BUILD_COMMIT', commit);
         const { getBuildCommit } = await loadRuntimeConfig({ BUILD_COMMIT: 'b'.repeat(40) });
         expect(getBuildCommit()).toBeUndefined();
+    });
+});
+
+// ORISO-Helm#368 (AD-02): the app host is configured, never rewritten from the API host.
+describe('runtimeConfig app base URL', () => {
+    it('does not guess app.* from an api.* host', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'https://api.example.org' });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://api.example.org');
+        expect(runtimeConfig.appBaseUrl).not.toContain('app.example.org');
+    });
+
+    it('uses the configured API URL on a single-domain deployment without APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'https://beratung.example.org' });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://beratung.example.org');
+    });
+
+    it('uses the configured APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            API_URL: 'https://api.example.org',
+            APP_URL: 'app.example.org',
+        });
+
+        expect(runtimeConfig.appBaseUrl).toBe('https://app.example.org');
     });
 });

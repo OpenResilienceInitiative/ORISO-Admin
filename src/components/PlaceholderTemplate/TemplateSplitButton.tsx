@@ -17,6 +17,8 @@ export interface TemplateSplitButtonProps {
     /** The template currently loaded into the editor — shown on the main segment. */
     activeTemplateId?: number | string;
     onSelectTemplate: (id: number | string) => void;
+    /** Offers a blank new template in addition to any copy entries. */
+    onCreateTemplate?: () => void;
     /** Offers "new from template" menu entries; omit to hide them. */
     onCreateFromTemplate?: (id: number | string) => void;
     /** Main-segment press (e.g. open a manage dialog). Optional in the pure picker. */
@@ -45,10 +47,13 @@ export interface TemplateSplitButtonProps {
     mainInvalid?: boolean;
     /** Id of the element explaining why the main action is invalid or disabled. */
     mainDescribedBy?: string;
+    /** Stretch to the container (the invite card's stacked fields). */
+    fullWidth?: boolean;
 }
 
 const SELECT_PREFIX = 'select:';
 const CREATE_PREFIX = 'create:';
+const CREATE_BLANK = 'create-blank';
 
 /**
  * Template chooser as an M3 split button (reused {@link SplitButton}, same
@@ -62,6 +67,7 @@ export const TemplateSplitButton = ({
     activeTemplateId,
     onSelectTemplate,
     onCreateFromTemplate,
+    onCreateTemplate,
     onMainClick,
     disabled = false,
     icon = <DescriptionOutlinedIcon />,
@@ -71,6 +77,7 @@ export const TemplateSplitButton = ({
     mainDataMissingToken,
     mainInvalid,
     mainDescribedBy,
+    fullWidth = false,
 }: TemplateSplitButtonProps) => {
     const { t } = useTranslation();
     const active = templates.find((template) => template.id === activeTemplateId);
@@ -105,6 +112,18 @@ export const TemplateSplitButton = ({
           }))
         : [];
 
+    if (onCreateTemplate) {
+        createItems.unshift({
+            key: CREATE_BLANK,
+            label: (
+                <span className={styles.templateMenuRow}>
+                    <AddRoundedIcon fontSize="small" aria-hidden />
+                    <span>{t('placeholderTemplate.template.newGroup', 'Neue Vorlage')}</span>
+                </span>
+            ),
+        });
+    }
+
     const menu: MenuProps = {
         items: [
             {
@@ -124,6 +143,10 @@ export const TemplateSplitButton = ({
                 : []),
         ],
         onClick: ({ key }) => {
+            if (key === CREATE_BLANK) {
+                onCreateTemplate?.();
+                return;
+            }
             const raw = key.startsWith(SELECT_PREFIX)
                 ? key.slice(SELECT_PREFIX.length)
                 : key.slice(CREATE_PREFIX.length);
@@ -140,6 +163,7 @@ export const TemplateSplitButton = ({
     return (
         <SplitButton
             disabled={disabled}
+            fullWidth={fullWidth}
             icon={icon}
             label={label ?? active?.name ?? t('placeholderTemplate.template.none', 'Vorlage wählen')}
             menu={menu}

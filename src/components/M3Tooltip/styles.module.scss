@@ -31,3 +31,8 @@
 .bottom {
     top: calc(100% + 4px);
 }
+
+/* `portal`: positioned by inline fixed coordinates; only the stacking changes. */
+.portal {
+    z-index: 1100;
+}

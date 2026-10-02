@@ -61,7 +61,6 @@ const fillRequired = (values: Record<string, string> = {}) => {
         email: 'ada@example.org',
         'counselor.username': 'ada',
         'counselor.password': 'Str0ng!pass',
-        'counselor.passwordConfirmation': 'Str0ng!pass',
         ...values,
     };
     Object.entries(filled).forEach(([label, value]) => {
@@ -118,7 +117,6 @@ describe('the quick-create dialog field set', () => {
             'email',
             'counselor.username',
             'counselor.password',
-            'counselor.passwordConfirmation',
             'counselor.formalLanguage.title',
             'counselor.isGroupChatConsultant',
             'counselor.absent',

@@ -4,8 +4,6 @@ import { reportAccountInactivityActivity } from '../api/user/reportAccountInacti
 import parseJwt from '../utils/parseJWT';
 
 const REPORT_INTERVAL_MS = 60_000;
-// The endpoint is not deployed (yet): wait like after a success instead of retrying on every gesture.
-const ENDPOINT_UNAVAILABLE = new Set([404, 405, 501]);
 interface AccountReportState {
     subject: string;
     throttledAt: number | null;
@@ -39,13 +37,20 @@ export const useAccountInactivityActivity = () => {
             const controller = new AbortController();
             currentAccount.pending = controller;
             reportAccountInactivityActivity(token, controller.signal)
-                .then((status) => {
-                    const throttle = status === 204 || ENDPOINT_UNAVAILABLE.has(status);
-                    if (throttle && !disposed && account === currentAccount) currentAccount.throttledAt = Date.now();
-                })
                 .catch(() => undefined)
                 .finally(() => {
-                    if (account === currentAccount) currentAccount.pending = undefined;
+                    // An abort always lands here too, but only after `account` was reassigned or
+                    // the effect was disposed — so an aborted report never starts the window.
+                    if (disposed || account !== currentAccount) return;
+                    // Whatever the attempt produced — 204, a status that says the endpoint is
+                    // missing (404/405/501) or not permitted for this account (401/403), any
+                    // other error, or a failed request — the next report waits a full interval.
+                    // This ping is best-effort and must never cost a request per gesture: only
+                    // 404, 405 and 501 used to throttle, so the 403 staging returns (the
+                    // endpoint lives on an unmerged UserService branch) made every single
+                    // pointerdown and keydown fire one.
+                    currentAccount.throttledAt = Date.now();
+                    currentAccount.pending = undefined;
                 });
         };
         document.addEventListener('pointerdown', reportGesture, true);

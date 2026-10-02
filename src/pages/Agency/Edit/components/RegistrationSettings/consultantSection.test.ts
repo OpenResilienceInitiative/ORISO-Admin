@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { consultantCreationBlockedReason, isConsultantSectionVisible } from './consultantSection';
+import {
+    consultantCreationBlockedReason,
+    isConsultantSectionVisible,
+    mayBeVisibleInRegistration,
+} from './consultantSection';
 
 const base = { hasPersistedAgency: true, hasTenant: true };
 
@@ -36,5 +40,52 @@ describe('consultantCreationBlockedReason', () => {
 
     it('returns null when nothing blocks creation', () => {
         expect(consultantCreationBlockedReason(base)).toBeNull();
+    });
+});
+
+describe('mayBeVisibleInRegistration', () => {
+    const activating = { isAlreadyVisible: false };
+
+    it('accepts a counsellor the backend already knows about', () => {
+        expect(
+            mayBeVisibleInRegistration({ ...activating, hasAssignedConsultants: true, hasSelectedConsultants: false }),
+        ).toBe(true);
+    });
+
+    it('accepts a counsellor picked in the form, because saving assigns them', () => {
+        // The reported defect: on a saved agency the switch only looked at the server count,
+        // so picking a counsellor — exactly what the hint on the card asks for — left it dead.
+        expect(
+            mayBeVisibleInRegistration({ ...activating, hasAssignedConsultants: false, hasSelectedConsultants: true }),
+        ).toBe(true);
+    });
+
+    it('refuses to activate while the lookup has not answered', () => {
+        // Undefined is a failed or pending HAS_CONSULTANTS request. Unknown state must not
+        // authorise making an agency visible with nobody to answer.
+        expect(
+            mayBeVisibleInRegistration({
+                ...activating,
+                hasAssignedConsultants: undefined,
+                hasSelectedConsultants: false,
+            }),
+        ).toBe(false);
+    });
+
+    it('leaves an already visible agency alone when the lookup has not answered', () => {
+        // A postcode edit on a live agency must not be rejected because a request failed.
+        expect(
+            mayBeVisibleInRegistration({
+                hasAssignedConsultants: undefined,
+                hasSelectedConsultants: false,
+                isAlreadyVisible: true,
+            }),
+        ).toBe(true);
+    });
+
+    it('refuses when there is no counsellor at all', () => {
+        expect(
+            mayBeVisibleInRegistration({ ...activating, hasAssignedConsultants: false, hasSelectedConsultants: false }),
+        ).toBe(false);
     });
 });

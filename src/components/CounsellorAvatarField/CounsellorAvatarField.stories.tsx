@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, waitFor } from 'storybook/test';
-import { CounsellorAvatarField, type CounsellorAvatarFieldProps } from './index';
+import { CounsellorAvatarField, ROW_STEP, VIEWPORT_HEIGHT, type CounsellorAvatarFieldProps } from './index';
 import type { CounsellorAvatarValue } from '../../utils/counsellorAvatar';
 
 const Controlled = ({ value: initial, ...props }: CounsellorAvatarFieldProps) => {
@@ -66,11 +66,16 @@ export const MotifThenInitials: Story = {
     },
 };
 
-/** Without a name the initials tile is an empty tinted circle, not a made-up letter. */
+/**
+ * Without a name the initials tile shows the generic "ABC" glyph — not a
+ * made-up letter, and not a bare circle that reads as "failed to load".
+ */
 export const NoNameYet: Story = {
     args: { displayName: '' },
     play: async ({ canvas }) => {
-        await expect(canvas.getByRole('radio', { name: 'Initialen' })).toBeInTheDocument();
+        const tile = canvas.getByRole('radio', { name: /^Initialen/ });
+        await expect(tile).not.toHaveTextContent(/\S/);
+        await expect(canvas.getByTestId('initials-placeholder')).toBeInTheDocument();
     },
 };
 
@@ -89,14 +94,14 @@ export const ScrollsOneRowPerClick: Story = {
 
         const viewport = canvas.getByRole('radiogroup').parentElement as HTMLElement;
         await expect(viewport.scrollTop).toBe(0);
-        // Five rows of 52px plus four 8px gaps, and the list is taller than that.
-        await expect(viewport.clientHeight).toBeLessThanOrEqual(296);
+        // Five rows plus the ring padding, and the list is taller than that.
+        await expect(viewport.clientHeight).toBeLessThanOrEqual(VIEWPORT_HEIGHT);
         await expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
 
         await userEvent.click(down);
-        // One row = tile + gap = 60px. Smooth scrolling settles asynchronously.
+        // One row = tile + gap. Smooth scrolling settles asynchronously.
         await waitFor(async () => {
-            await expect(viewport.scrollTop).toBe(60);
+            await expect(viewport.scrollTop).toBe(ROW_STEP);
         });
         await expect(up).toBeEnabled();
     },
