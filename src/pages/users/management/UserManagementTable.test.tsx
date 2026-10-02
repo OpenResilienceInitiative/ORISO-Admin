@@ -66,7 +66,7 @@ vi.mock('../../../hooks/useAdminListPreferences', () => ({
 }));
 vi.mock('./UserScopeFilters', () => ({
     UserScopeFilters: () => null,
-    useScopeFilterAvailability: () => ({ canFilterTenants: false, canFilterAgencies: false }),
+    useScopeFilterAvailability: () => ({ tenant: false, agency: false, canListAgencies: false }),
 }));
 vi.mock('../../../hooks/useDeleteTenant', () => ({ useDeleteTenant: () => ({ mutate: vi.fn() }) }));
 vi.mock('../../../components/GlobalSearch', () => ({
