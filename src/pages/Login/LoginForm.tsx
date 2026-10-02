@@ -141,7 +141,21 @@ const LoginForm = () => {
                     },
                     onError: (error) => {
                         const data = error.options?.data;
-                        if (error.message === FETCH_ERRORS.BAD_REQUEST && data?.otpType) {
+                        // A password-only resend can also end in an access-denied result.
+                        if (error.message === ADMIN_PORTAL_ACCESS_DENIED || error.message === TENANT_ACCESS_DENIED) {
+                            message.error(
+                                t(
+                                    error.message === ADMIN_PORTAL_ACCESS_DENIED
+                                        ? 'message.error.auth.adminOnly'
+                                        : 'message.error.auth.tenantAccessDenied',
+                                ),
+                            );
+                            recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage: 'otp' });
+                            resolve({ kind: 'none' });
+                            return;
+                        }
+                        // Only an e-mail challenge means a mail went out.
+                        if (error.message === FETCH_ERRORS.BAD_REQUEST && data?.otpType === TwoFactorType.Email) {
                             resolve({
                                 kind: 'sent',
                                 resendAvailableInSeconds: readResendWait(data.resendAvailableInSeconds),

@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
 import { FETCH_ERRORS } from '../../api/fetchData';
-import { ADMIN_PORTAL_ACCESS_DENIED } from '../../hooks/useLoginMutation.hook';
+import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED } from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 
 const mocks = vi.hoisted(() => ({
@@ -32,6 +32,7 @@ const translations: Record<string, string> = {
     'message.form.login.otp.EMAIL': 'Please enter the code from your email for two-factor authentication.',
     'message.form.login.otp.APP': 'Please enter the code from your app for two-factor authentication.',
     'message.error.auth.adminOnly': 'This account cannot access the admin portal. Please use an admin account.',
+    'message.error.auth.tenantAccessDenied': 'This account has no access to this tenant.',
     'message.error.auth.login': 'Login failed. Please check username/email and password.',
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
@@ -604,6 +605,35 @@ describe('LoginForm e-mail code resend (#1338)', () => {
         await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 12 }));
 
         expect(resendLink()).toHaveTextContent('Send new code (0:12)');
+    });
+
+    it.each([
+        [ADMIN_PORTAL_ACCESS_DENIED, 'This account cannot access the admin portal. Please use an admin account.'],
+        [TENANT_ACCESS_DENIED, 'This account has no access to this tenant.'],
+    ])('reports %s on resend as access denied, not as a code-send failure', async (reason, text) => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.recordLoginFailure.mockClear();
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(new Error(reason)));
+
+        await user.click(resendLink());
+
+        await waitFor(() => expect(mocks.messageError).toHaveBeenCalledWith(text));
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'access_denied' }));
+        expect(mocks.recordLoginFailure).not.toHaveBeenCalledWith(expect.objectContaining({ outcome: 'credentials' }));
+        expect(screen.queryByText('The code could not be sent. Please try again.')).not.toBeInTheDocument();
+    });
+
+    it('does not say "New code sent" when the resend answers with a non-e-mail challenge', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({ message: FETCH_ERRORS.BAD_REQUEST, options: { data: { otpType: TwoFactorType.App } } }),
+        );
+
+        await user.click(resendLink());
+
+        expect(await screen.findByText('The code could not be sent. Please try again.')).toBeInTheDocument();
+        expect(screen.getByRole('status')).not.toHaveTextContent('New code sent');
+        expect(resendLink()).toHaveAttribute('aria-disabled', 'false');
     });
 
     it('offers no resend link for an authenticator-app code', async () => {
