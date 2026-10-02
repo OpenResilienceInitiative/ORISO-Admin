@@ -13,7 +13,26 @@ export interface ServiceNoticeDraftInput {
 
 export interface ServiceNoticeDraft extends ServiceNoticeDraftInput {
     campaignKey: string;
-    status: 'DRAFT';
+    status: 'DRAFT' | 'CONFIRMED';
+}
+
+/** Counts only, computed server-side: the browser never sees or supplies recipient addresses. */
+export interface ServiceNoticeDryRun {
+    campaignKey: string;
+    audience: 'AGENCY_ADMINS';
+    recipients: number;
+    mail: number;
+    feedOnlyPreferenceOff: number;
+    feedOnlyNoAddress: number;
+    feedOnlyNoSenderTenant: number;
+}
+
+export interface ServiceNoticeConfirmed {
+    campaignKey: string;
+    status: 'CONFIRMED';
+    recipients: number;
+    mailQueued: number;
+    alreadyConfirmed: boolean;
 }
 
 export interface ServiceNoticePreview {
@@ -53,6 +72,24 @@ export const getServiceNoticePreview = (
         method: FETCH_METHODS.GET,
         responseHandling,
         signal,
+    });
+
+export const dryRunServiceNotice = (campaignKey: string): Promise<ServiceNoticeDryRun> =>
+    fetchData({ url: `${draftUrl(campaignKey)}/dry-run`, method: FETCH_METHODS.GET, responseHandling });
+
+/**
+ * The operator's explicit send decision. It repeats the counted number; the server refuses it if
+ * the audience changed since. Never retried automatically.
+ */
+export const confirmServiceNotice = (
+    campaignKey: string,
+    expectedRecipients: number,
+): Promise<ServiceNoticeConfirmed> =>
+    fetchData({
+        url: `${draftUrl(campaignKey)}/confirm`,
+        method: FETCH_METHODS.POST,
+        bodyData: JSON.stringify({ expectedRecipients }),
+        responseHandling,
     });
 
 /** Display fixed local copy, never a remote exception body or URL. */

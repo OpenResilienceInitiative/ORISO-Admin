@@ -178,3 +178,118 @@ describe('service-notice saved drafts', () => {
         await waitFor(() => expect(mocks.fetchData).not.toHaveBeenCalled());
     });
 });
+
+describe('service-notice send decision', () => {
+    const counts = {
+        campaignKey: draft.campaignKey,
+        audience: 'AGENCY_ADMINS',
+        recipients: 12,
+        mail: 9,
+        feedOnlyPreferenceOff: 2,
+        feedOnlyNoAddress: 1,
+        feedOnlyNoSenderTenant: 0,
+    };
+    const confirmed = {
+        campaignKey: draft.campaignKey,
+        status: 'CONFIRMED',
+        recipients: 12,
+        mailQueued: 9,
+        alreadyConfirmed: false,
+    };
+    const respond = (overrides: { draft?: ServiceNoticeDraft; dryRun?: object; confirm?: () => Promise<unknown> }) =>
+        mocks.fetchData.mockReset().mockImplementation(({ url }: { url: string }) => {
+            if (url.includes('/preview?')) return Promise.resolve(previewFor('de-sie'));
+            if (url.endsWith('/dry-run')) return Promise.resolve(overrides.dryRun ?? counts);
+            if (url.endsWith('/confirm')) return overrides.confirm ? overrides.confirm() : Promise.resolve(confirmed);
+            return Promise.resolve(overrides.draft ?? draft);
+        });
+    const calls = (suffix: string) =>
+        mocks.fetchData.mock.calls.filter(([request]) => request.url.endsWith(suffix)).map(([request]) => request);
+    const countRecipients = async () => {
+        await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.count' }));
+        await screen.findByText('serviceNotices.send.counts');
+    };
+
+    beforeEach(() => {
+        Object.assign(mocks.roles, { isSuperAdmin: true, isTechnicalAccount: false, tokenUnreadable: false });
+        respond({});
+    });
+
+    it('offers no send control before the recipients were counted', async () => {
+        renderPage();
+        await openDraft();
+        expect(screen.getByRole('button', { name: 'serviceNotices.send.count' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
+        expect(calls('/dry-run')).toHaveLength(0);
+        expect(calls('/confirm')).toHaveLength(0);
+    });
+
+    it('shows the server-computed counts before anything can be sent', async () => {
+        renderPage();
+        await openDraft();
+        await countRecipients();
+        expect(calls('/dry-run')).toHaveLength(1);
+        expect(calls('/dry-run')[0].method).toBe('GET');
+        expect(screen.getByRole('button', { name: 'serviceNotices.send.open' })).toBeInTheDocument();
+        expect(calls('/confirm')).toHaveLength(0);
+    });
+
+    it('sends only after the dialog is confirmed, once, with the counted number', async () => {
+        renderPage();
+        await openDraft();
+        await countRecipients();
+        await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.open' }));
+        expect(calls('/confirm')).toHaveLength(0);
+        await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
+
+        expect(await screen.findByText('serviceNotices.send.done')).toBeInTheDocument();
+        expect(calls('/confirm')).toHaveLength(1);
+        expect(calls('/confirm')[0].method).toBe('POST');
+        expect(JSON.parse(calls('/confirm')[0].bodyData)).toEqual({ expectedRecipients: 12 });
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
+    });
+
+    it('cancelling the dialog sends nothing', async () => {
+        renderPage();
+        await openDraft();
+        await countRecipients();
+        await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.open' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.cancel' }));
+        await waitFor(() =>
+            expect(screen.queryByRole('button', { name: 'serviceNotices.send.confirm' })).not.toBeInTheDocument(),
+        );
+        expect(calls('/confirm')).toHaveLength(0);
+    });
+
+    it('asks to count again when the server refuses a changed audience', async () => {
+        respond({ confirm: () => Promise.reject(new Response(null, { status: 409 })) });
+        renderPage();
+        await openDraft();
+        await countRecipients();
+        await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.open' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
+
+        expect(await screen.findByText('serviceNotices.send.errors.conflict')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'serviceNotices.send.count' })).toBeInTheDocument();
+        expect(calls('/confirm')).toHaveLength(1);
+    });
+
+    it('offers no send control when nobody would receive the notice', async () => {
+        respond({ dryRun: { ...counts, recipients: 0, mail: 0, feedOnlyPreferenceOff: 0, feedOnlyNoAddress: 0 } });
+        renderPage();
+        await openDraft();
+        await countRecipients();
+        expect(screen.getByText('serviceNotices.send.nobody')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
+    });
+
+    it('an already confirmed draft offers neither counting nor sending', async () => {
+        respond({ draft: { ...draft, status: 'CONFIRMED' } });
+        renderPage();
+        await openDraft();
+        expect(screen.getByText('serviceNotices.send.alreadyConfirmed')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.count' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
+    });
+});
