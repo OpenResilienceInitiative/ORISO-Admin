@@ -13,6 +13,7 @@ import { TwoFactorType } from '../../enums/TwoFactorType';
 
 const mocks = vi.hoisted(() => ({
     login: vi.fn(),
+    loginAsync: vi.fn(),
     messageError: vi.fn(),
     navigate: vi.fn(),
     recordLoginFailure: vi.fn(),
@@ -125,7 +126,7 @@ vi.mock('../../hooks/useLoginMutation.hook', async () => {
 
     return {
         ...actual,
-        useLoginMutation: () => ({ mutate: mocks.login }),
+        useLoginMutation: () => ({ mutate: mocks.login, mutateAsync: mocks.loginAsync }),
     };
 });
 
@@ -153,6 +154,7 @@ const fillRequiredFields = async () => {
 describe('LoginForm', () => {
     beforeEach(() => {
         mocks.login.mockReset();
+        mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
         mocks.navigate.mockReset();
         mocks.recordLoginFailure.mockReset();
@@ -438,13 +440,14 @@ describe('LoginForm', () => {
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
         await screen.findByRole('button', { name: 'Send a new code' });
 
-        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge(30)));
+        mocks.loginAsync.mockRejectedValueOnce(emailOtpChallenge(30));
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-        expect(mocks.login).toHaveBeenLastCalledWith(
-            { username: 'admin@example.com', password: 'correct-password', otp: '' },
-            expect.objectContaining({ onError: expect.any(Function), onSuccess: expect.any(Function) }),
-        );
+        expect(mocks.loginAsync).toHaveBeenCalledWith({
+            username: 'admin@example.com',
+            password: 'correct-password',
+            otp: '',
+        });
         // the form's own validation never ran, so it cannot block the request
         expect(screen.queryByText('Please enter one-time password')).not.toBeInTheDocument();
         expect(await screen.findByRole('status')).toHaveTextContent('Request sent.');
@@ -552,12 +555,10 @@ describe('LoginForm', () => {
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
         await screen.findByRole('button', { name: 'Send a new code' });
 
-        mocks.login.mockImplementationOnce((_values, options) =>
-            options.onError({
-                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
-                options: { data: { resendAvailableInSeconds: 600 } },
-            }),
-        );
+        mocks.loginAsync.mockRejectedValueOnce({
+            message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+            options: { data: { resendAvailableInSeconds: 600 } },
+        });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
         await waitFor(() => {
@@ -582,11 +583,49 @@ describe('LoginForm', () => {
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
         await screen.findByRole('button', { name: 'Send a new code' });
 
-        mocks.login.mockImplementationOnce((_values, options) => options.onError({ message: FETCH_ERRORS.TIMEOUT }));
+        // Nothing answers `login`'s per-call callbacks here, which is what TanStack
+        // Query does to a resend overtaken by a sign-in: the old callback-based
+        // resend never heard back and left the link greyed out for good.
+        mocks.login.mockImplementationOnce(() => undefined);
+        mocks.loginAsync.mockRejectedValueOnce({ message: FETCH_ERRORS.TIMEOUT });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
         expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    /*
+     * Riccardo's review of PR #1125: a fresh sign-in that walks straight into the
+     * per-window ceiling gets a 429 that still names `otpType: EMAIL`. The ceiling
+     * only refuses NEW mails — the code from the previous attempt is still valid —
+     * so hiding the field locked out the one user who could have signed in.
+     */
+    it('still lets the held code be entered when the ceiling answers the password', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+                options: { data: { otpType: TwoFactorType.Email, resendAvailableInSeconds: 600 } },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        const otpField = await screen.findByPlaceholderText('One-time password');
+        // the wait is quoted, and the link stays dead while it runs
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait about 10 minutes before trying again.',
+            );
+        });
+        expect(screen.getByRole('button', { name: /^Send a new code \(/ })).toBeDisabled();
+
+        mocks.login.mockImplementationOnce((_values, options) => options.onSuccess());
+        await user.type(otpField, '123456');
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(mocks.login).toHaveBeenLastCalledWith(expect.objectContaining({ otp: '123456' }), expect.anything());
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin'));
     });
 
     it('offers no resend link for an authenticator-app code', async () => {

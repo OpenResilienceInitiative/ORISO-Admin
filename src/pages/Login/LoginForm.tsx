@@ -51,7 +51,9 @@ const LoginForm = () => {
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { mutate: login } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
+    const { mutate: login, mutateAsync: loginAsync } = useLoginMutation(
+        tenantData?.id != null ? `${tenantData.id}` : '',
+    );
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
@@ -89,42 +91,38 @@ const LoginForm = () => {
      * `required`, so a form submit would stop at its own validation message and the
      * user could never ask for a replacement for the code they are missing.
      *
+     * It awaits the mutation rather than passing per-call callbacks. TanStack Query
+     * hands those to the newest `mutate` only, so a sign-in started while a resend
+     * is still in flight drops the resend's own callbacks — and the link, waiting
+     * for one, would stay greyed out for the rest of the session.
+     *
      * Resolves when the realm answered the code challenge — that is the same 400 the
      * first login attempt got. Rejects otherwise, so the link can say so.
      */
-    const resendCode = () =>
-        new Promise<void>((resolve, reject) => {
-            const { username, password } = form.getFieldsValue();
-            if (!username || !password) {
-                reject(new Error('missing credentials'));
+    const resendCode = async () => {
+        const { username, password } = form.getFieldsValue();
+        if (!username || !password) {
+            throw new Error('missing credentials');
+        }
+
+        try {
+            await loginAsync({ username, password, otp: '' });
+            // A realm that stopped asking for a second factor mid-session:
+            // nothing to resend, the user is simply in.
+            navigate('/admin');
+        } catch (caught) {
+            const error = caught as ErrorLogin;
+            setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
+            if (error.message === FETCH_ERRORS.BAD_REQUEST && error.options?.data?.otpType) {
                 return;
             }
-
-            login(
-                { username, password, otp: '' },
-                {
-                    onSuccess: () => {
-                        // A realm that stopped asking for a second factor mid-session:
-                        // nothing to resend, the user is simply in.
-                        resolve();
-                        navigate('/admin');
-                    },
-                    onError: (error) => {
-                        setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
-                        if (error.message === FETCH_ERRORS.BAD_REQUEST && error.options?.data?.otpType) {
-                            resolve();
-                            return;
-                        }
-                        if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
-                            handleRateLimited(error, 'password');
-                            reject(new Error(RESEND_ERROR_ALREADY_SHOWN));
-                            return;
-                        }
-                        reject(new Error(error.message));
-                    },
-                },
-            );
-        });
+            if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                handleRateLimited(error, 'password');
+                throw new Error(RESEND_ERROR_ALREADY_SHOWN);
+            }
+            throw new Error(error.message);
+        }
+    };
 
     // Function gets fired on Form Submit
     const onFinish = async (values: any) => {
@@ -150,6 +148,13 @@ const LoginForm = () => {
                     // #1338: either too many code mails inside the window, or a code
                     // guessed too often. This used to read as a network failure.
                     handleRateLimited(error, stage);
+                    if (!otpSubmitted && otpType) {
+                        // The ceiling refuses NEW code mails; the one already in the
+                        // inbox stays valid. Keeping the field hidden here locks out
+                        // the very user who can still sign in.
+                        setOtpDisabled(false);
+                        setTwoFactorType(otpType);
+                    }
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
                     recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
