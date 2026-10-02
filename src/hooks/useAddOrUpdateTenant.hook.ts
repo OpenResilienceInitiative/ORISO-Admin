@@ -10,8 +10,11 @@ interface UseAddOrUpdateTenantOptions
     id?: string;
 }
 
-/** The Träger sender block for mail footers (TenantService `legalName`, `contactEmail`, `contactPhone`). */
-const SENDER_FIELDS = ['legalName', 'contactEmail', 'contactPhone'] as const;
+/**
+ * Optional Träger fields TenantService keeps when absent: the mail-footer sender block and the
+ * Träger DPO (Admin#1067).
+ */
+const SENDER_FIELDS = ['legalName', 'contactEmail', 'contactPhone', 'dataProtectionOfficer'] as const;
 
 /**
  * The PUT/POST body: the cached tenant with the form's values laid over it.

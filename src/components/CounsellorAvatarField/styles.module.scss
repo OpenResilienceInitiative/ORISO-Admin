@@ -27,8 +27,8 @@
     overflow-y: auto;
     overscroll-behavior: contain;
 
-    /* Room for the selected tile's 2px halo at the viewport edges. */
-    padding: 2px;
+    /* Padding is set from the component (VIEWPORT_PADDING), next to the
+       height it has to be added to. */
 }
 
 .arrow {
@@ -75,6 +75,7 @@
 
 /* Initials tile: the same tinted circle as a motif tile, text instead of glyph. */
 .initials {
+    line-height: 1;
     font-size: inherit;
     font-weight: inherit;
     letter-spacing: 0.02em;

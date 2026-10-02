@@ -58,6 +58,7 @@ export interface DpaFormSectionProps {
      * the agreement's name above it (the DPA blocker, Figma 1611-27868).
      */
     hideTextHeader?: boolean;
+    textMetadata?: React.ReactNode;
     /** Language of the shown agreement — passed to the reader for hyphenation. */
     textLanguage?: string;
     /**
@@ -98,6 +99,7 @@ export const DpaFormSection = ({
     textLabel,
     textDescription,
     hideTextHeader,
+    textMetadata,
     textLanguage,
     beforeSignerFields,
     signerHeadingLevel = 2,
@@ -152,6 +154,7 @@ export const DpaFormSection = ({
                 description={textDescription}
                 contentLanguage={textLanguage}
                 hideHeader={hideTextHeader}
+                metadata={textMetadata}
             />
             {beforeSignerFields}
             {/* A real heading, not a styled div (WCAG 2.2): the block was an

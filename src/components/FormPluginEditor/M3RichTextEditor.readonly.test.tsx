@@ -70,7 +70,7 @@ describe('M3RichTextEditor — read-only mode hides the editing affordances', ()
         render(<M3RichTextEditor title="AVV" value={anchored} readOnly />);
 
         await waitFor(() => expect(screen.getByRole('region', { name: 'AVV' })).toBeInTheDocument());
-        expect(screen.queryByTitle('legal.m3Editor.versionHistory')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.versionHistory' })).not.toBeInTheDocument();
     });
 
     it('keeps the version control for a read-only card that HAS versions (agency look-back)', async () => {
@@ -83,7 +83,7 @@ describe('M3RichTextEditor — read-only mode hides the editing affordances', ()
             />,
         );
 
-        expect(await screen.findByTitle('legal.m3Editor.versionHistory')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.m3Editor.versionHistory' })).toBeInTheDocument();
     });
 
     /**
@@ -100,8 +100,8 @@ describe('M3RichTextEditor — read-only mode hides the editing affordances', ()
             />,
         );
 
-        fireEvent.click(await screen.findByTitle('legal.m3Editor.versionHistory'));
-        fireEvent.click(await screen.findByText('legal.m3Editor.versionVariant'));
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.m3Editor.versionHistory' }));
+        fireEvent.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant/ }));
 
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
         expect(screen.getByTestId('m3-toolbar')).toBeInTheDocument();

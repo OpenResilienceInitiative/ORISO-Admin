@@ -5,6 +5,8 @@ import {
     INVITE_EMAIL_TOKENS,
     inviteEmailTokensForKind,
     LEGAL_CONSENT_TOKENS,
+    legalTextTokensFor,
+    PLATFORM_DPO_TOKEN,
     listPlaceholders,
     sampleValues,
 } from './placeholderTokens';
@@ -132,5 +134,26 @@ describe('token presets', () => {
             expect(samples[token.key]).toBe(token.sample);
             expect(token.sample.length).toBeGreaterThan(0);
         });
+    });
+});
+
+describe('legalTextTokensFor (Admin#1067)', () => {
+    const keys = (...args: Parameters<typeof legalTextTokensFor>) => legalTextTokensFor(...args).map((t) => t.key);
+
+    it('offers the inheritable DPO on Träger and Beratungsstelle privacy texts', () => {
+        expect(keys('privacy', 'traeger')).toContain('Datenschutzbeauftragte');
+        expect(keys('privacy', 'agency')).toContain('Datenschutzbeauftragte');
+        expect(keys('privacy', 'traeger')).not.toContain('Plattform_Datenschutzbeauftragte');
+    });
+
+    it('offers only the platform-labelled DPO on the platform privacy text, never the inherited one', () => {
+        expect(keys('privacy', 'platform')).toContain('Plattform_Datenschutzbeauftragte');
+        expect(keys('privacy', 'platform')).not.toContain('Datenschutzbeauftragte');
+        expect(PLATFORM_DPO_TOKEN.labelFallback).toContain('zuständig für die Plattform, nicht für Beratungsstellen');
+    });
+
+    it('keeps the imprint at the Beratungsstelle tokens', () => {
+        expect(keys('imprint', 'traeger')).toEqual(['Beratungsstelle', 'Adresse', 'Thema']);
+        expect(keys(undefined, 'platform')).toEqual(['Beratungsstelle', 'Adresse', 'Thema']);
     });
 });

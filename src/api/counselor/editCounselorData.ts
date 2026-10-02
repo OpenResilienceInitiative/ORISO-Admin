@@ -44,7 +44,8 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         avatarId,
     } = formData;
 
-    const topicIds = parseTopicIds(formData);
+    // #1026: absent means the form never showed topics; `[]` would wipe them (a 400 after UserService#1213).
+    const hasTopicField = formData?.topicIds !== undefined || formData?.topics !== undefined;
 
     const strippedCounselor = {
         firstname,
@@ -61,7 +62,7 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         // screen that never rendered the switch must not send it at all.
         ...(isGroupchatConsultant !== undefined && { isGroupchatConsultant: !!isGroupchatConsultant }),
         isSupervisor: !!isSupervisor,
-        topicIds,
+        ...(hasTopicField && { topicIds: parseTopicIds(formData) }),
         publicSlug,
         rejectPendingPublicSlug: !!rejectPendingPublicSlug,
         // Backend semantics: null/omitted leaves the stored value untouched, '' clears it.

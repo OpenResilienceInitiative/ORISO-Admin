@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import { UserRole } from '../../enums/UserRole';
@@ -198,6 +198,40 @@ describe('EmailTemplatesDialog', () => {
         expect(within(rows[2]).getByText('Default counsellor template')).toBeInTheDocument();
     });
 
+    it('uses a newly saved active template immediately in picker mode', async () => {
+        const user = userEvent.setup();
+        const onChanged = vi.fn();
+        const onSelect = vi.fn();
+        const saved = { ...tenantTemplate, id: 99, name: 'Directly usable' };
+        mocks.createInviteEmailTemplate.mockResolvedValue(saved);
+        renderDialog({ onChanged, onSelect });
+        const dialog = await openCreateForm(user);
+        await user.type(dialog.getByLabelText('Vorlagenname'), saved.name);
+        await user.type(dialog.getByLabelText('Betreff'), 'Welcome');
+        await user.type(dialog.getByLabelText('Inhalt'), 'Your invitation');
+        await user.click(dialog.getByRole('button', { name: 'save' }));
+        await waitFor(() => expect(onSelect).toHaveBeenCalledWith(saved));
+        expect(onChanged).toHaveBeenCalledWith(saved);
+        expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([{ active: false }, { kind: 'COUNSELLOR_INVITE' }])(
+        'keeps a newly saved unusable template in the overview: %j',
+        async (changes) => {
+            const user = userEvent.setup();
+            const onSelect = vi.fn();
+            mocks.createInviteEmailTemplate.mockResolvedValue({ ...tenantTemplate, id: 99, ...changes });
+            renderDialog({ onSelect });
+            const dialog = await openCreateForm(user);
+            await user.type(dialog.getByLabelText('Vorlagenname'), 'New template');
+            await user.type(dialog.getByLabelText('Betreff'), 'Welcome');
+            await user.type(dialog.getByLabelText('Inhalt'), 'Your invitation');
+            await user.click(dialog.getByRole('button', { name: 'save' }));
+            await screen.findByTestId('listing-table');
+            expect(onSelect).not.toHaveBeenCalled();
+        },
+    );
+
     it('creates a template preset to the opening kind, notifies the opener, and refreshes', async () => {
         const user = userEvent.setup();
         const onChanged = vi.fn();
@@ -285,9 +319,9 @@ describe('EmailTemplatesDialog', () => {
     it('uses the active tenant without offering cross-tenant preview selection', async () => {
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
         renderDialog({ templateKind: 'COUNSELLOR_INVITE' });
-        // A tenant admin sees the counsellor invite only (see the tenant-admin
-        // block below), so the shared helper's three-row wait does not apply.
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        // A tenant admin sees the Träger and Berater invites but not the contract
+        // forward (see the tenant-admin block below), so the shared helper's three-row wait does not apply.
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         await userEvent.setup().click(screen.getByRole('button', { name: 'New template' }));
         expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
         expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
@@ -742,30 +776,151 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
             plainText: 'OK',
             sampleAcceptUrl: 'https://app.example/account-invite/SAMPLE',
         });
-        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
-            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate]);
-            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
-            return Promise.resolve([]);
-        });
+        // The Träger kind is on offer to a Träger admin too; these tests are about the Berater kind.
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [counsellorTemplate] : []),
+        );
     });
 
     const renderAsTenantAdmin = () =>
         render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
 
-    it('asks only for the counsellor invite, never for the platform operator’s kinds', async () => {
+    it('asks for the Träger and Berater invites, never for the contract forward', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         const requestedKinds = mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind);
-        expect(requestedKinds).toEqual(['COUNSELLOR_INVITE']);
-        expect(screen.queryByText('Default tenant template')).not.toBeInTheDocument();
+        expect(requestedKinds.sort()).toEqual(['COUNSELLOR_INVITE', 'TENANT_INVITE']);
+        expect(requestedKinds).not.toContain('DPA_FORWARD');
     });
 
-    it('offers no edit on a shared template', async () => {
+    // Disable, don't hide: the role may not change it, but must see it.
+    it('shows the edit on a shared template disabled instead of hiding it', async () => {
         renderAsTenantAdmin();
 
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
-        expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    });
+
+    it('explains the disabled edit in one keyboard-reachable tooltip', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const editButton = screen.getByRole('button', { name: 'Edit' });
+        expect(editButton.closest('[title]')).toBeNull();
+        const trigger = editButton.closest('[tabindex="0"]') as HTMLElement;
+        expect(trigger).not.toBeNull();
+
+        act(() => trigger.focus());
+
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Nur Plattform-Admins können geteilte Vorlagen ändern');
+        expect(trigger).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id);
+    });
+
+    // The table body scrolls and clips; a bubble rendered inside it was cut off under the header.
+    it('renders the lock reason outside the table, so its scroll container cannot clip it', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const trigger = screen.getByRole('button', { name: 'Edit' }).closest('[tabindex="0"]') as HTMLElement;
+        act(() => trigger.focus());
+
+        const tooltip = screen.getByRole('tooltip');
+        expect(tooltip.closest('table')).toBeNull();
+        expect(tooltip.closest('.ant-table-body')).toBeNull();
+        expect(tooltip.parentElement).toBe(document.body);
+    });
+
+    // `editable` is the server's per-row answer; the role rule is only the fallback.
+    it('lets a Träger admin edit their own Träger’s template', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: 40, editable: true }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled();
+    });
+
+    it('keeps the platform’s own template read-only for a Träger admin', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: null, editable: false }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    });
+
+    it('saves a double-clicked own template as an update, not as a new template', async () => {
+        const user = userEvent.setup();
+        const ownTemplate = { ...counsellorTemplate, tenantId: 40, editable: true };
+        mocks.updateInviteEmailTemplate.mockResolvedValue({ ...ownTemplate, subject: 'Servus' });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [ownTemplate] : []),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        fireEvent.doubleClick(screen.getByTestId('template-row'));
+
+        const withinDialog = within(screen.getByRole('dialog'));
+        expect(await withinDialog.findByDisplayValue('Welcome')).toBeInTheDocument();
+        fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Servus' } });
+        await user.click(withinDialog.getByRole('button', { name: 'save' }));
+
+        await waitFor(() =>
+            expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(2, {
+                kind: 'COUNSELLOR_INVITE',
+                name: 'Default counsellor template',
+                language: 'en',
+                subject: 'Servus',
+                body: 'Hi {{firstName}}',
+                active: false,
+            }),
+        );
+        expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it('names the shared template as the lock reason only for an unowned row', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: null, editable: false }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const trigger = screen.getByRole('button', { name: 'Edit' }).closest('[tabindex="0"]') as HTMLElement;
+        act(() => trigger.focus());
+
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Nur Plattform-Admins können geteilte Vorlagen ändern');
+    });
+
+    it('gives the general lock reason for another Träger’s template', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: 41, editable: false }] : [],
+            ),
+        );
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const trigger = screen.getByRole('button', { name: 'Edit' }).closest('[tabindex="0"]') as HTMLElement;
+        act(() => trigger.focus());
+
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Sie haben keine Berechtigung, diese Vorlage zu ändern');
+    });
+
+    it('leaves creating a template open to a Träger admin', async () => {
+        renderAsTenantAdmin();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'New template' })).toBeEnabled();
     });
 
     it('does not open the edit form on a double-click either', async () => {
@@ -778,7 +933,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(screen.queryByDisplayValue('Welcome')).not.toBeInTheDocument();
     });
 
-    it('offers only the counsellor invite as the kind of a new template', async () => {
+    it('offers the Träger and Berater invite, not the contract forward, as the kind of a new template', async () => {
         const user = userEvent.setup();
         renderAsTenantAdmin();
 
@@ -789,7 +944,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
             .getAllByRole('option')
             .map((option) => option.getAttribute('value'))
             .filter(Boolean);
-        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+        expect(kindOptions.sort()).toEqual(['COUNSELLOR_INVITE', 'TENANT_INVITE']);
     });
 
     it('cannot reach a shared template’s edit form through the editor’s template menu', async () => {
@@ -819,6 +974,46 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
     });
 });
 
+/**
+ * A Beratungsstellen admin only writes and sends Berater invites: the Träger invite and the
+ * contract forward are neither listed nor offered as the kind of a new template.
+ */
+describe('EmailTemplatesDialog — a Beratungsstellen admin', () => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.useUserRoles.mockReturnValue({
+            isSuperAdmin: false,
+            tenantId: 40,
+            hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin),
+        });
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [counsellorTemplate] : []),
+        );
+    });
+
+    it('asks for the Berater invite only', async () => {
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind)).toEqual(['COUNSELLOR_INVITE']);
+    });
+
+    it('offers the Berater invite as the only kind of a new template', async () => {
+        const user = userEvent.setup();
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+
+        const kindOptions = within(screen.getByRole('dialog'))
+            .getAllByRole('option')
+            .map((option) => option.getAttribute('value'))
+            .filter(Boolean);
+        expect(kindOptions).toEqual(['COUNSELLOR_INVITE']);
+    });
+});
+
 describe('EmailTemplatesDialog — the platform admin', () => {
     beforeEach(() => {
         mocks.listInviteEmailTemplates.mockReset();
@@ -837,5 +1032,20 @@ describe('EmailTemplatesDialog — the platform admin', () => {
         const requestedKinds = mocks.listInviteEmailTemplates.mock.calls.map(([kind]) => kind).sort();
         expect(requestedKinds).toEqual(['COUNSELLOR_INVITE', 'DPA_FORWARD', 'TENANT_INVITE']);
         expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2);
+    });
+
+    it('gives the general lock reason when the server denies a row to the platform admin', async () => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(
+                kind === 'COUNSELLOR_INVITE' ? [{ ...counsellorTemplate, tenantId: null, editable: false }] : [],
+            ),
+        );
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        const trigger = screen.getByRole('button', { name: 'Edit' }).closest('[tabindex="0"]') as HTMLElement;
+        act(() => trigger.focus());
+
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Sie haben keine Berechtigung, diese Vorlage zu ändern');
     });
 });

@@ -115,10 +115,53 @@ describe('AgencyDepartmentDetails (container)', () => {
     });
 });
 
+describe('AgencyDepartmentDetails (container) without departments', () => {
+    it('hands the jump to the Fachbereich field through to the empty card', async () => {
+        h.useDepartmentDetails.mockReturnValue({ isLoading: false, isError: false, refetch: h.refetch });
+        const onAddDepartment = vi.fn();
+
+        render(
+            <AgencyDepartmentDetails agencyData={{ id: '55', topics: [] } as any} onAddDepartment={onAddDepartment} />,
+        );
+        await userEvent.click(
+            screen.getByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        );
+
+        expect(onAddDepartment).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('DepartmentDetailsCard (presentational)', () => {
     it('keeps the card visible with a hint when no departments are assigned (disable, not hide)', () => {
         render(<DepartmentDetailsCard departments={[]} onSelect={vi.fn()} inherited={{}} onSave={vi.fn()} />);
 
         expect(screen.getByText('agency.edit.general.department_details.no_departments')).toBeInTheDocument();
+    });
+
+    it('points to where a Fachbereich is added and jumps there (#1069)', async () => {
+        const onAddDepartment = vi.fn();
+        render(
+            <DepartmentDetailsCard
+                departments={[]}
+                onSelect={vi.fn()}
+                inherited={{}}
+                onSave={vi.fn()}
+                onAddDepartment={onAddDepartment}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        );
+
+        expect(onAddDepartment).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no jump button when nothing can be added', () => {
+        render(<DepartmentDetailsCard departments={[]} onSelect={vi.fn()} inherited={{}} onSave={vi.fn()} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        ).not.toBeInTheDocument();
     });
 });
