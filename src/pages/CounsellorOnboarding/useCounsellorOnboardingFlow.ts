@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeLanguage } from '../../utils/language';
 import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
+import { completeExistingAccountSetup } from '../../api/tenantOnboarding/tenantOnboarding';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -120,6 +121,8 @@ export const useCounsellorOnboardingFlow = (
     const stateRef = useRef(state);
     stateRef.current = state;
     const busyRef = useRef(false);
+    const inviteTokenRef = useRef(inviteToken);
+    inviteTokenRef.current = inviteToken;
     // Submits read the freshest collected data through a ref — the callbacks
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
@@ -145,6 +148,13 @@ export const useCounsellorOnboardingFlow = (
                 if (cancelled) return;
                 loadedTopics.current = { token: inviteToken, language: requestedLanguage };
                 setInvite(loaded);
+                if (loaded.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP') {
+                    // The server bound the identity already; profile, topics and public TOTP stay untouched.
+                    setData(EMPTY_DATA);
+                    setSubmitError(null);
+                    setState({ phase: 'form' });
+                    return;
+                }
                 if (loaded.phase === 'PENDING_2FA_ACTIVATION') {
                     // Resume (#569 contract): the registration already
                     // happened; only the 2FA activation is open.
@@ -297,7 +307,11 @@ export const useCounsellorOnboardingFlow = (
     };
 
     const submitRegistration = useCallback(async () => {
-        if (stateRef.current.phase !== 'form' || busyRef.current) {
+        if (
+            stateRef.current.phase !== 'form' ||
+            busyRef.current ||
+            inviteRef.current?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP'
+        ) {
             return;
         }
         busyRef.current = true;
@@ -356,6 +370,35 @@ export const useCounsellorOnboardingFlow = (
         }
     }, [client, inviteToken]);
 
+    const submitAccountSetup = useCallback(
+        async (password: string) => {
+            if (
+                stateRef.current.phase !== 'form' ||
+                busyRef.current ||
+                inviteRef.current?.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP'
+            ) {
+                return;
+            }
+            busyRef.current = true;
+            setBusy(true);
+            setSubmitError(null);
+            try {
+                await completeExistingAccountSetup(inviteToken, password);
+                if (inviteTokenRef.current === inviteToken) {
+                    setState({ phase: 'done' });
+                }
+            } catch (error) {
+                if (inviteTokenRef.current === inviteToken) {
+                    failFlow(error, 'registration');
+                }
+            } finally {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        },
+        [inviteToken],
+    );
+
     const submitTwoFactorCode = useCallback(
         async (otp: string) => {
             if (stateRef.current.phase !== 'two-factor' || busyRef.current) {
@@ -399,6 +442,7 @@ export const useCounsellorOnboardingFlow = (
         toggleTopic,
         setAlsoCounsellor,
         submitRegistration,
+        submitAccountSetup,
         submitTwoFactorCode,
     };
 };

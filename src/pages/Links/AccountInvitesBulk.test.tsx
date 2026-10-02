@@ -679,3 +679,116 @@ describe('SMTP delivery failures on resend and bulk send (UserService#1160)', ()
         ).toBeInTheDocument();
     });
 });
+
+// The setup purpose is server-declared. Both the real selection toolbar and the
+// hook must preserve ordinary invite guards while sending canonical setup mail.
+describe('AccountInvitesTab bulk existing-account setup reminders (#1058)', () => {
+    const setupInvite = (id: number, status: string) => ({
+        ...invite(id, status),
+        onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+        provisionedUserId: `existing-identity-${id}`,
+        provisioningStatus: 'PENDING',
+    });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([]);
+        mocks.sendAccountInvite.mockImplementation(async (id: number) => invite(id, 'EMAIL_SENT'));
+        mocks.resendAccountInvite.mockImplementation(async (id: number) => invite(id, 'EMAIL_SENT'));
+    });
+
+    it('enables setup-only bulk reminders without templates and resends even a DRAFT setup row', async () => {
+        const rows = [setupInvite(31, 'DRAFT'), setupInvite(32, 'EMAIL_SENT')];
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(rows));
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person32@example.org'));
+
+        const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        expect(send).toBeEnabled();
+        expect(send).not.toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(1, 31, undefined);
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(2, 32, undefined);
+        expect(mocks.sendAccountInvite).not.toHaveBeenCalled();
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(await screen.findByRole('button', { name: 'Anlegen & einladen' })).toBeInTheDocument();
+    });
+
+    it.each([undefined, 'INVITE', 'FUTURE_PURPOSE'])(
+        'keeps a mixed batch blocked without a template for purpose %s',
+        async (purpose) => {
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([setupInvite(31, 'EMAIL_SENT'), { ...invite(33, 'DRAFT'), onboardingPurpose: purpose }]),
+            );
+            renderCounsellorTab();
+            const user = userEvent.setup();
+            await user.click(await rowCheckbox('person31@example.org'));
+            await user.click(await rowCheckbox('person33@example.org'));
+
+            const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+            expect(send).toBeDisabled();
+            expect(send).toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+            await user.click(send);
+            expect(mocks.sendAccountInvite).not.toHaveBeenCalled();
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+        },
+    );
+
+    it('uses canonical setup resend and preserves ordinary DRAFT/send and sent/resend payloads in a mixed batch', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([
+                setupInvite(31, 'DRAFT'),
+                invite(33, 'DRAFT'),
+                { ...invite(34, 'EMAIL_SENT'), onboardingPurpose: 'FUTURE_PURPOSE' },
+            ]),
+        );
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person33@example.org'));
+        await user.click(await rowCheckbox('person34@example.org'));
+        const send = await screen.findByRole('button', { name: '3 ausgewählte senden' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(1, 31, undefined);
+        expect(mocks.sendAccountInvite).toHaveBeenCalledWith(33, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: TEMPLATE.id,
+        });
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(2, 34, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: TEMPLATE.id,
+        });
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+    });
+
+    it('keeps only a failed setup reminder selected after list refresh', async () => {
+        const rows = [setupInvite(31, 'DRAFT'), setupInvite(32, 'EMAIL_SENT')];
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(rows));
+        mocks.resendAccountInvite.mockImplementation(async (id: number) => {
+            if (id === 31) throw new Error('fixture delivery failure');
+            return setupInvite(id, 'EMAIL_SENT');
+        });
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person32@example.org'));
+        const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        expect(send).toBeEnabled();
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(await rowCheckbox('person31@example.org')).toBeChecked();
+        expect(await rowCheckbox('person32@example.org')).not.toBeChecked();
+        expect(screen.getByRole('button', { name: '1 ausgewählte senden' })).toBeEnabled();
+    });
+});

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -285,5 +286,103 @@ export const FoldedRail: Story = {
         await userEvent.click(toggle);
         await expect(await canvas.findByRole('textbox', { name: /^(E-Mail|E-mail)$/ })).toBeVisible();
         await expect(window.localStorage.getItem(invitePanelStorageKey('TENANT_ADMIN'))).toBe('false');
+    },
+};
+
+// Purpose comes from the protected server list. The setup row points to an
+// already-created identity; it uses canonical setup mail, never a legacy template.
+const setupResendRow: AccountInviteDTO & { onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' } = {
+    ...INVITES[0],
+    onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+    recipientEmail: 'existing.account@example.org',
+    firstName: null,
+    lastName: null,
+    tenantIdAllocationMode: null,
+    agencyIdAllocationMode: null,
+    provisioningStatus: 'PENDING',
+    provisionedUserId: 'fixture-existing-identity',
+    expiresAt: null,
+    createDate: '2026-09-30T09:00:00Z',
+};
+const setupResendRequests: unknown[] = [];
+let setupListReads = 0;
+
+/** Existing setup recovery must work before an ordinary invitation template exists. */
+export const SetupResendWithoutTemplates: Story = {
+    beforeEach: () => {
+        message.destroy();
+        setupResendRequests.length = 0;
+        setupListReads = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => {
+                    setupListReads += 1;
+                    return invitesResponse([
+                        {
+                            ...setupResendRow,
+                            ...(setupResendRequests.length ? { id: 91, createDate: '2026-10-01T09:00:00Z' } : {}),
+                        },
+                    ]);
+                }),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+                http.post(`${INVITES_ENDPOINT}/11/resend`, async ({ request }) => {
+                    setupResendRequests.push(await request.json());
+                    return HttpResponse.json({
+                        ...setupResendRow,
+                        id: 91,
+                        createDate: '2026-10-01T09:00:00Z',
+                        rawToken: null,
+                        acceptUrl: null,
+                    });
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('existing.account@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Erinnerung erneut senden|Resend reminder/ }));
+        await waitFor(() => expect(setupResendRequests).toEqual([{}]));
+        await waitFor(() => expect(setupListReads).toBeGreaterThan(1));
+        await waitFor(() => expect(canvasElement.querySelector('time[datetime="2026-10-01T09:00:00Z"]')).toBeVisible());
+        await expect(canvasElement.querySelector('time[datetime="2026-09-30T09:00:00Z"]')).not.toBeInTheDocument();
+    },
+};
+
+const ordinaryResendRequests: unknown[] = [];
+/** The setup exemption must not remove the existing ordinary invitation guard. */
+export const OrdinaryResendStillRequiresTemplate: Story = {
+    beforeEach: () => {
+        message.destroy();
+        ordinaryResendRequests.length = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => invitesResponse([{ ...INVITES[0], expiresAt: null }])),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+                http.post(`${INVITES_ENDPOINT}/11/resend`, async ({ request }) => {
+                    ordinaryResendRequests.push(await request.json());
+                    return HttpResponse.json(INVITES[0]);
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Erinnerung erneut senden|Resend reminder/ }));
+        await waitFor(() =>
+            expect(
+                within(document.body).getByText(/Bitte zuerst ein Template auswählen|Select a template first/),
+            ).toBeVisible(),
+        );
+        await expect(ordinaryResendRequests).toEqual([]);
     },
 };

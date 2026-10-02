@@ -21,7 +21,12 @@
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
-import { InviteLinkError, InviteLinkErrorReason } from '../tenantOnboarding/tenantOnboarding';
+import {
+    InviteLinkError,
+    InviteLinkErrorReason,
+    isInviteLinkErrorReason,
+    OnboardingPurpose,
+} from '../tenantOnboarding/tenantOnboarding';
 import { TwoFactorCodeInvalidError } from '../tenantOnboarding/TwoFactorCodeInvalidError';
 
 export { InviteLinkError, TwoFactorCodeInvalidError };
@@ -39,6 +44,8 @@ export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
+    /** Server-bound existing account setup; absent keeps ordinary provisioning. */
+    onboardingPurpose?: OnboardingPurpose;
     /** Absent (older backend) means `COUNSELLOR`. */
     targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
     /** Agency-admin invites only: the inviter's proposal, shown as a switch the invitee may change. */
@@ -147,9 +154,6 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
     410: 'EXPIRED',
     423: 'REVOKED',
 };
-
-const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
 
 /** Body-first error mapping — an explicit `reason` wins over the status code. */
 const toOnboardingError = async (error: unknown): Promise<unknown> => {
