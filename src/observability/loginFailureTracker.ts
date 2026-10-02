@@ -19,9 +19,9 @@ import { metrics, type Counter } from '@opentelemetry/api';
  * or anything else that could identify who failed to sign in. The three
  * attributes describe the health of the login path, not a person (ADR-011).
  */
-export type LoginFailureOutcome = 'credentials' | 'otp_required' | 'access_denied' | 'unavailable';
+export type LoginFailureOutcome = 'credentials' | 'otp_required' | 'access_denied' | 'rate_limited' | 'unavailable';
 
-export type LoginFailureTransport = 'bad_request' | 'unauthorized' | 'network' | 'unexpected';
+export type LoginFailureTransport = 'bad_request' | 'unauthorized' | 'too_many_requests' | 'network' | 'unexpected';
 
 export interface LoginFailureRecord {
     outcome: LoginFailureOutcome;

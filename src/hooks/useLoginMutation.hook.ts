@@ -12,13 +12,14 @@ import { hasAdminPortalAccess } from '../utils/adminPortalAccess';
 interface LoginParams {
     username: string;
     password: string;
-    otp: string;
+    /** Left out to ask Keycloak for a new e-mail code. */
+    otp?: string;
 }
 
 interface ErrorLogin {
     message: string;
     options?: {
-        data: { otpType: TwoFactorType };
+        data: { otpType: TwoFactorType; resendAvailableInSeconds?: unknown };
     };
 }
 

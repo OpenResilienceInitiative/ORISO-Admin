@@ -54,6 +54,8 @@ const getKeycloakAccessToken = (loginProps: {
                         // Reject with a real Error so callers can rely on error.message.
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     }
+                } else if (response.status === 429) {
+                    reject(new Error(FETCH_ERRORS.TOO_MANY_REQUESTS));
                 } else {
                     reject(new Error(FETCH_ERRORS.TIMEOUT));
                 }

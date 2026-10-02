@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
@@ -35,9 +35,20 @@ const translations: Record<string, string> = {
     'message.error.auth.login': 'Login failed. Please check username/email and password.',
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
+    'message.error.auth.network': 'The server is currently unreachable. Please try again later.',
+    'message.error.auth.tooManyRequests': 'Too many attempts. Please wait a few minutes and try again.',
+    'twoFactorAuth.activate.email.resend.headline': "It didn't work?",
+    'twoFactorAuth.activate.email.resend.new': 'Send new code',
+    'twoFactorAuth.activate.email.resend.countdown': 'Send new code ({{time}})',
+    'twoFactorAuth.activate.email.resend.sent': 'New code sent',
+    'twoFactorAuth.activate.email.resend.onlyLatest': 'Only the most recently sent code is valid.',
+    'twoFactorAuth.activate.email.resend.failed': 'The code could not be sent. Please try again.',
+    'twoFactorAuth.activate.email.resend.tooMany':
+        'Too many codes requested. Please wait a few minutes before requesting a new one.',
 };
 
-const t = (key: string) => translations[key] || key;
+const t = (key: string, options?: { time?: string }) =>
+    (translations[key] || key).replace('{{time}}', options?.time ?? '');
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
@@ -400,5 +411,161 @@ describe('LoginForm', () => {
             transport: 'unauthorized',
             stage: 'password',
         });
+    });
+});
+
+/*
+ * ORISO-UserService#1338, slice 3: the Admin login had no way to get a new
+ * e-mail code; the person had to reload and type the password again. Asking
+ * Keycloak for a new code is a password grant WITHOUT a code — the 400
+ * challenge that answers it is the confirmation that a mail went out.
+ */
+describe('LoginForm e-mail code resend (#1338)', () => {
+    const emailChallenge = (extra: Record<string, unknown> = {}) => ({
+        message: FETCH_ERRORS.BAD_REQUEST,
+        options: { data: { error: 'invalid_grant', otpType: TwoFactorType.Email, ...extra } },
+    });
+
+    beforeEach(() => {
+        mocks.login.mockReset();
+        mocks.messageError.mockReset();
+        mocks.navigate.mockReset();
+        mocks.recordLoginFailure.mockReset();
+        consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+        consoleWarnSpy.mockRestore();
+        vi.useRealTimers();
+    });
+
+    /** Signs in with username and password; Keycloak answers with the e-mail challenge. */
+    const reachEmailCodeStep = async (challenge = emailChallenge()) => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(challenge));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await screen.findByPlaceholderText('One-time password');
+        return user;
+    };
+
+    const resendLink = () => screen.getByRole('button', { name: /^Send new code/ });
+
+    it('shows the resend link with a 30 s countdown, and a click while it runs sends nothing', async () => {
+        await reachEmailCodeStep();
+
+        expect(resendLink()).toHaveTextContent('Send new code (0:30)');
+        expect(resendLink()).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByText('Only the most recently sent code is valid.')).toBeInTheDocument();
+
+        resendLink().click();
+        resendLink().click();
+        expect(mocks.login).toHaveBeenCalledTimes(1);
+    });
+
+    it('enables the link once the countdown has run out', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        await reachEmailCodeStep();
+
+        act(() => {
+            vi.advanceTimersByTime(3000);
+        });
+        expect(resendLink()).toHaveTextContent('Send new code (0:27)');
+
+        act(() => {
+            vi.advanceTimersByTime(27000);
+        });
+        expect(resendLink()).toHaveTextContent(/^Send new code$/);
+        expect(resendLink()).toHaveAttribute('aria-disabled', 'false');
+    });
+
+    it('requests a new code without a code even though the code field is required', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailChallenge()));
+
+        await user.click(resendLink());
+
+        await waitFor(() => expect(mocks.login).toHaveBeenCalledTimes(2));
+        const [values] = mocks.login.mock.calls[1];
+        expect(values).toEqual({ username: 'admin@example.com', password: 'correct-password' });
+        expect(screen.queryByText('Please enter one-time password')).not.toBeInTheDocument();
+    });
+
+    it('says "sent" only after Keycloak answered, then a quick second click sends nothing (Frank\'s case)', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        let answer: (() => void) | undefined;
+        mocks.login.mockImplementationOnce((_values, options) => {
+            answer = () => options.onError(emailChallenge());
+        });
+
+        await user.click(resendLink());
+        await user.click(resendLink());
+        expect(screen.getByRole('status')).not.toHaveTextContent('New code sent');
+
+        act(() => answer?.());
+        expect(await screen.findByText('New code sent')).toBeInTheDocument();
+        expect(resendLink()).toHaveTextContent('Send new code (0:30)');
+
+        await user.click(resendLink());
+        expect(mocks.login).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows an error instead of "sent" when sending fails, and allows a retry', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(new Error(FETCH_ERRORS.TIMEOUT)));
+
+        await user.click(resendLink());
+
+        expect(await screen.findByText('The code could not be sent. Please try again.')).toBeInTheDocument();
+        expect(screen.getByRole('status')).not.toHaveTextContent('New code sent');
+        expect(resendLink()).toHaveAttribute('aria-disabled', 'false');
+        expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    it('explains the limit when Keycloak refuses another code with 429', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError(new Error(FETCH_ERRORS.TOO_MANY_REQUESTS)),
+        );
+
+        await user.click(resendLink());
+
+        expect(
+            await screen.findByText('Too many codes requested. Please wait a few minutes before requesting a new one.'),
+        ).toBeInTheDocument();
+    });
+
+    it('uses the wait time Keycloak sends with the challenge', async () => {
+        await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 12 }));
+
+        expect(resendLink()).toHaveTextContent('Send new code (0:12)');
+    });
+
+    it('offers no resend link for an authenticator-app code', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({ message: FETCH_ERRORS.BAD_REQUEST, options: { data: { otpType: TwoFactorType.App } } }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await screen.findByPlaceholderText('One-time password');
+
+        expect(screen.queryByRole('button', { name: /^Send new code/ })).not.toBeInTheDocument();
+    });
+
+    it('says "too many attempts", not "server unreachable", when a submitted code gets 429', async () => {
+        const user = await reachEmailCodeStep();
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError(new Error(FETCH_ERRORS.TOO_MANY_REQUESTS)),
+        );
+
+        await user.type(screen.getByPlaceholderText('One-time password'), '123456');
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() =>
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait a few minutes and try again.',
+            ),
+        );
     });
 });

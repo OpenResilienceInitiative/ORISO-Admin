@@ -63,4 +63,12 @@ describe('getAccessToken', () => {
             FETCH_ERRORS.TIMEOUT,
         );
     });
+
+    it('reports a 429 as TOO_MANY_REQUESTS, not as an unreachable server (#1338)', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 429 }));
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toThrow(
+            FETCH_ERRORS.TOO_MANY_REQUESTS,
+        );
+    });
 });

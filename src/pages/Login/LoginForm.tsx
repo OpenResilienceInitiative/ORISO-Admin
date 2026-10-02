@@ -18,6 +18,7 @@ import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } fr
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
+import { EmailCodeResendResult, LoginEmailCodeResend, readResendWait } from './LoginEmailCodeResend';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -26,10 +27,16 @@ const LoginForm = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { mutate: login } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
+    const [form] = Form.useForm();
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
+    // Every e-mail challenge from a submit mailed a code; the resend link
+    // restarts its wait for it (keyed by `id`). ORISO-UserService#1338
+    const [emailCodeChallenge, setEmailCodeChallenge] = useState<{ id: number; resendAvailableInSeconds?: number }>({
+        id: 0,
+    });
     const otpHelpTextKey =
         twoFactorType === TwoFactorType.None ? 'message.form.login.otp' : `message.form.login.otp.${twoFactorType}`;
 
@@ -61,7 +68,15 @@ const LoginForm = () => {
                     // The password was right, the realm asks for the second factor.
                     setOtpDisabled(false);
                     setTwoFactorType(otpType);
+                    setEmailCodeChallenge((previous) => ({
+                        id: previous.id + 1,
+                        resendAvailableInSeconds: readResendWait(error.options?.data?.resendAvailableInSeconds),
+                    }));
                     recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
+                } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                    // Too many codes or wrong attempts: not an outage, not a typo.
+                    message.error(t('message.error.auth.tooManyRequests'));
+                    recordLoginFailure({ outcome: 'rate_limited', transport: 'too_many_requests', stage });
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
                     recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
@@ -90,10 +105,62 @@ const LoginForm = () => {
         });
     };
 
+    /**
+     * "Send new code": the same password grant WITHOUT a code. It bypasses the
+     * form submit on purpose, so the code field stays required for signing in.
+     */
+    const requestNewEmailCode = () =>
+        new Promise<EmailCodeResendResult>((resolve) => {
+            const { username, password } = form.getFieldsValue(['username', 'password']);
+            setShowCredentialsHint(false);
+            login(
+                { username, password },
+                {
+                    onSuccess: () => {
+                        navigate('/admin');
+                        resolve({ kind: 'none' });
+                    },
+                    onError: (error) => {
+                        const data = error.options?.data;
+                        if (error.message === FETCH_ERRORS.BAD_REQUEST && data?.otpType) {
+                            resolve({
+                                kind: 'sent',
+                                resendAvailableInSeconds: readResendWait(data.resendAvailableInSeconds),
+                            });
+                            return;
+                        }
+                        if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                            recordLoginFailure({
+                                outcome: 'rate_limited',
+                                transport: 'too_many_requests',
+                                stage: 'otp',
+                            });
+                            resolve({ kind: 'tooMany' });
+                            return;
+                        }
+                        recordLoginFailure({
+                            outcome: error.message === FETCH_ERRORS.TIMEOUT ? 'unavailable' : 'credentials',
+                            transport:
+                                error.message === FETCH_ERRORS.TIMEOUT ? 'network' : describeTransport(error.message),
+                            stage: 'otp',
+                        });
+                        resolve({ kind: 'failed' });
+                    },
+                },
+            );
+        });
+
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <div className="loginForm">
-                <Form name="basic" onFinish={onFinish} autoComplete="off" layout="vertical" requiredMark={false}>
+                <Form
+                    form={form}
+                    name="basic"
+                    onFinish={onFinish}
+                    autoComplete="off"
+                    layout="vertical"
+                    requiredMark={false}
+                >
                     <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 3 }}>
                         {t('admin.login')}
                     </Typography>
@@ -124,6 +191,14 @@ const LoginForm = () => {
                             startAdornment={startIcon(<VerifiedUserOutlined fontSize="small" />)}
                             helpText={t(otpHelpTextKey)}
                             rules={[{ required: !otpDisabled, message: t('message.form.login.otp') }]}
+                        />
+                    )}
+
+                    {!otpDisabled && twoFactorType === TwoFactorType.Email && (
+                        <LoginEmailCodeResend
+                            key={emailCodeChallenge.id}
+                            initialCooldownSeconds={emailCodeChallenge.resendAvailableInSeconds}
+                            onResend={requestNewEmailCode}
                         />
                     )}
 
