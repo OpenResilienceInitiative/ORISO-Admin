@@ -208,7 +208,8 @@ export const canReadSection = (sectionId: TypeOfUser, can: (action: PermissionAc
 
 // A platform admin sees every Träger, so each row names its Träger; a Träger admin only sees their own.
 export const shouldShowTenantColumn = (sectionId: TypeOfUser, isSuperAdmin: boolean) =>
-    isSuperAdmin && USER_TABLE_CONFIGS[sectionId].sectionKind === 'users';
+    isSuperAdmin &&
+    (USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants]).sectionKind === 'users';
 /**
  * The Träger-Admins and Platform-Admins sections share Resource.TenantAdminUser,
  * so the permission map alone cannot scope manage actions (create/update/delete) per
