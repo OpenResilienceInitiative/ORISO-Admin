@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import LoginForm from './LoginForm';
+import i18n from '../../i18n';
 
 /**
  * The admin sign-in form at its second-factor step (ORISO-UserService#1338).
@@ -28,6 +29,17 @@ const meta = {
     title: 'Pages/Login/TwoFactorResend',
     component: LoginForm,
     parameters: { layout: 'centered' },
+    // The play functions below select the German labels. Storybook otherwise
+    // takes the viewer's own language, and in an English session every selector
+    // would miss before reaching its assertion.
+    beforeEach: async () => {
+        const previous = i18n.language;
+        await i18n.changeLanguage('de');
+
+        return () => {
+            i18n.changeLanguage(previous);
+        };
+    },
     decorators: [
         (Story) => (
             <div style={{ width: 'min(400px, 92vw)' }}>
