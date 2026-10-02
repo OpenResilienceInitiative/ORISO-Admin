@@ -25,6 +25,10 @@ describe('userTableConfigs hasOtherIdentity column', () => {
 });
 
 describe('userTableConfigs Träger column', () => {
+    it('uses the Consultants fallback for an unknown route section', () => {
+        expect(shouldShowTenantColumn('unknown-section' as TypeOfUser, true)).toBe(true);
+    });
+
     const visibleKeys = (sectionId: TypeOfUser, isSuperAdmin: boolean) =>
         getVisibleColumns(sectionId, {
             showTenant: shouldShowTenantColumn(sectionId, isSuperAdmin),
