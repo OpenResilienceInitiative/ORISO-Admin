@@ -14,14 +14,27 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import routePathNames from '../../appConfig';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import { LoginFailureTransport, recordLoginFailure } from '../../observability/loginFailureTracker';
-import { ADMIN_PORTAL_ACCESS_DENIED, TENANT_ACCESS_DENIED, useLoginMutation } from '../../hooks/useLoginMutation.hook';
+import {
+    ADMIN_PORTAL_ACCESS_DENIED,
+    ErrorLogin,
+    TENANT_ACCESS_DENIED,
+    useLoginMutation,
+} from '../../hooks/useLoginMutation.hook';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
+import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN } from './OtpResendLink';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
+/** Minutes to quote in the "too many requests" message; never "0 minutes". */
+const waitMinutes = (seconds: number): number => Math.max(1, Math.ceil(seconds / 60));
+
+const positiveSeconds = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+
 const LoginForm = () => {
+    const [form] = Form.useForm();
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -30,6 +43,9 @@ const LoginForm = () => {
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
+    // What the realm last said about asking for another code (#1338). Undefined
+    // against a realm that does not report it; the link then uses its own fallback.
+    const [resendCooldownSeconds, setResendCooldownSeconds] = useState<number | undefined>(undefined);
     const otpHelpTextKey =
         twoFactorType === TwoFactorType.None ? 'message.form.login.otp' : `message.form.login.otp.${twoFactorType}`;
 
@@ -37,11 +53,71 @@ const LoginForm = () => {
         if (errorMessage === FETCH_ERRORS.BAD_REQUEST) {
             return 'bad_request';
         }
+        if (errorMessage === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+            return 'too_many_requests';
+        }
         if (errorMessage === FETCH_ERRORS.UNAUTHORIZED) {
             return 'unauthorized';
         }
         return 'unexpected';
     };
+
+    const showRateLimitMessage = (error: ErrorLogin) => {
+        const seconds = positiveSeconds(error.options?.data?.resendAvailableInSeconds);
+        message.error(
+            seconds
+                ? t('message.error.auth.tooManyCodesWait', { minutes: waitMinutes(seconds) })
+                : t('message.error.auth.tooManyCodes'),
+        );
+    };
+
+    /**
+     * Asks the realm for another code (#1338). It submits username and password
+     * WITHOUT a code, deliberately not through the form: the code field is
+     * `required`, so a form submit would stop at its own validation message and the
+     * user could never ask for a replacement for the code they are missing.
+     *
+     * Resolves when the realm answered the code challenge — that is the same 400 the
+     * first login attempt got. Rejects otherwise, so the link can say so.
+     */
+    const resendCode = () =>
+        new Promise<void>((resolve, reject) => {
+            const { username, password } = form.getFieldsValue();
+            if (!username || !password) {
+                reject(new Error('missing credentials'));
+                return;
+            }
+
+            login(
+                { username, password, otp: '' },
+                {
+                    onSuccess: () => {
+                        // A realm that stopped asking for a second factor mid-session:
+                        // nothing to resend, the user is simply in.
+                        resolve();
+                        navigate('/admin');
+                    },
+                    onError: (error) => {
+                        setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
+                        if (error.message === FETCH_ERRORS.BAD_REQUEST && error.options?.data?.otpType) {
+                            resolve();
+                            return;
+                        }
+                        if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                            showRateLimitMessage(error);
+                            recordLoginFailure({
+                                outcome: 'rate_limited',
+                                transport: 'too_many_requests',
+                                stage: 'password',
+                            });
+                            reject(new Error(RESEND_ERROR_ALREADY_SHOWN));
+                            return;
+                        }
+                        reject(new Error(error.message));
+                    },
+                },
+            );
+        });
 
     // Function gets fired on Form Submit
     const onFinish = async (values: any) => {
@@ -57,11 +133,18 @@ const LoginForm = () => {
                 const otpType = error.options?.data?.otpType;
                 const otpSubmitted = Boolean(values?.otp);
                 const stage = otpSubmitted ? 'otp' : 'password';
+                setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
                 if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
                     // The password was right, the realm asks for the second factor.
                     setOtpDisabled(false);
                     setTwoFactorType(otpType);
                     recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
+                } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                    // #1338: either too many code mails inside the window, or a code
+                    // guessed too often. Both mean "wait", not "wrong password" —
+                    // which is what this used to read as, via the network message.
+                    showRateLimitMessage(error);
+                    recordLoginFailure({ outcome: 'rate_limited', transport: 'too_many_requests', stage });
                 } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
                     message.error(t('message.error.auth.adminOnly'));
                     recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
@@ -93,7 +176,14 @@ const LoginForm = () => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <div className="loginForm">
-                <Form name="basic" onFinish={onFinish} autoComplete="off" layout="vertical" requiredMark={false}>
+                <Form
+                    form={form}
+                    name="basic"
+                    onFinish={onFinish}
+                    autoComplete="off"
+                    layout="vertical"
+                    requiredMark={false}
+                >
                     <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 3 }}>
                         {t('admin.login')}
                     </Typography>
@@ -125,6 +215,10 @@ const LoginForm = () => {
                             helpText={t(otpHelpTextKey)}
                             rules={[{ required: !otpDisabled, message: t('message.form.login.otp') }]}
                         />
+                    )}
+
+                    {!otpDisabled && twoFactorType === TwoFactorType.Email && (
+                        <OtpResendLink onResend={resendCode} cooldownSeconds={resendCooldownSeconds} />
                     )}
 
                     {showCredentialsHint && <LoginCredentialsHint />}

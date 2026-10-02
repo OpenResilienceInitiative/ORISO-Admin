@@ -35,9 +35,22 @@ const translations: Record<string, string> = {
     'message.error.auth.login': 'Login failed. Please check username/email and password.',
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
+    'message.error.auth.tooManyCodes': 'Too many attempts. Please wait a moment before trying again.',
+    'login.otp.resend.action': 'Send a new code',
+    'login.otp.resend.requested': 'Request sent. Please use the newest code from your inbox.',
+    'login.otp.resend.onlyNewest': 'Only the most recently sent code is valid.',
+    'login.otp.resend.failed': 'The code could not be requested. Please try again.',
 };
 
-const t = (key: string) => translations[key] || key;
+const t = (key: string, options?: Record<string, unknown>) => {
+    if (key === 'message.error.auth.tooManyCodesWait') {
+        return `Too many attempts. Please wait ${options?.minutes} minutes before trying again.`;
+    }
+    if (key === 'login.otp.resend.actionIn') {
+        return `Send a new code (${options?.countdown})`;
+    }
+    return translations[key] || key;
+};
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
@@ -65,6 +78,12 @@ const applyCompiledLoginFormStyles = (css: string) => {
 vi.mock('react-i18next', () => ({
     useTranslation: () => Object.assign([t], { t, i18n: { language: 'en' } }),
 }));
+
+/** The 400 challenge Keycloak answers a password-only token request with. */
+const emailOtpChallenge = (resendAvailableInSeconds?: number) => ({
+    message: FETCH_ERRORS.BAD_REQUEST,
+    options: { data: { otpType: TwoFactorType.Email, resendAvailableInSeconds } },
+});
 
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -384,6 +403,152 @@ describe('LoginForm', () => {
         expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
         // The OTP field stays so the person can correct the code, not start over.
         expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+    });
+
+    /*
+     * ORISO-UserService#1338. The admin login had no way to ask for a new code:
+     * an expired code — or a second login tab, which silently invalidates the
+     * first code — meant reloading and typing the password again. The code field
+     * is `required`, so the link must NOT go through the form's submit, or the
+     * form would stop at its own "please enter one-time password" instead.
+     */
+    it('offers a resend link once the realm asked for an e-mail code', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge()));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        expect(screen.queryByRole('button', { name: 'Send a new code' })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('button', { name: 'Send a new code' })).toBeInTheDocument();
+        expect(screen.getByText('Only the most recently sent code is valid.')).toBeInTheDocument();
+    });
+
+    it('asks for a new code without a code and without tripping the required rule', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge()));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await screen.findByRole('button', { name: 'Send a new code' });
+
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge(30)));
+        await user.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+        expect(mocks.login).toHaveBeenLastCalledWith(
+            { username: 'admin@example.com', password: 'correct-password', otp: '' },
+            expect.objectContaining({ onError: expect.any(Function), onSuccess: expect.any(Function) }),
+        );
+        // the form's own validation never ran, so it cannot block the request
+        expect(screen.queryByText('Please enter one-time password')).not.toBeInTheDocument();
+        expect(await screen.findByRole('status')).toHaveTextContent('Request sent.');
+    });
+
+    it('counts down with the seconds the realm reported', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge(90)));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('button', { name: 'Send a new code (1:30)' })).toBeDisabled();
+    });
+
+    // Both 429 cases ("too many codes requested" and "code guessed too often") used
+    // to arrive as TIMEOUT and read as "the server is unreachable", which is wrong
+    // advice: reloading and retyping makes it worse, waiting is the answer.
+    it('says how long to wait instead of blaming the network on a 429', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+                options: { data: { otpType: TwoFactorType.Email, resendAvailableInSeconds: 420 } },
+            }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait 7 minutes before trying again.',
+            );
+        });
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'rate_limited',
+            transport: 'too_many_requests',
+            stage: 'password',
+        });
+        expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the wait-a-moment wording when the realm reports no seconds', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({ message: FETCH_ERRORS.TOO_MANY_REQUESTS, options: { data: {} } }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait a moment before trying again.',
+            );
+        });
+    });
+
+    it('shows the rate-limit message once, not a second generic line under the link', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge()));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await screen.findByRole('button', { name: 'Send a new code' });
+
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({
+                message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+                options: { data: { resendAvailableInSeconds: 600 } },
+            }),
+        );
+        await user.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+        await waitFor(() => {
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait 10 minutes before trying again.',
+            );
+        });
+        expect(screen.queryByText('The code could not be requested. Please try again.')).not.toBeInTheDocument();
+        // the realm's wait is what the link counts down, not the local fallback
+        expect(await screen.findByRole('button', { name: 'Send a new code (10:00)' })).toBeDisabled();
+    });
+
+    it('reports a failed resend request under the link', async () => {
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(emailOtpChallenge()));
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await screen.findByRole('button', { name: 'Send a new code' });
+
+        mocks.login.mockImplementationOnce((_values, options) => options.onError({ message: FETCH_ERRORS.TIMEOUT }));
+        await user.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+        expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('offers no resend link for an authenticator-app code', async () => {
+        // nothing to resend: the code is generated on the device
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({ message: FETCH_ERRORS.BAD_REQUEST, options: { data: { otpType: TwoFactorType.App } } }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await screen.findByPlaceholderText('One-time password');
+        expect(screen.queryByRole('button', { name: 'Send a new code' })).not.toBeInTheDocument();
     });
 
     it('counts every failure for SigNoz without any identifying attribute', async () => {
