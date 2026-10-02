@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import { adminListPreferencesEndpoint } from '../appConfig';
 import { TypeOfUser } from '../enums/TypeOfUser';
@@ -56,9 +56,26 @@ const putSort = (tab: string, sort: AdminListSort) =>
         responseHandling: QUIET,
     }).catch(() => undefined);
 
+// The query client outlives tab remounts; each tab keeps its own write order.
+const sortWrites = new WeakMap<QueryClient, Map<string, Promise<unknown>>>();
+
+const queueSort = (client: QueryClient, tab: string, sort: AdminListSort) => {
+    let writes = sortWrites.get(client);
+    if (!writes) {
+        writes = new Map();
+        sortWrites.set(client, writes);
+    }
+    const previous = writes.get(tab);
+    const request = previous ? previous.then(() => putSort(tab, sort)) : putSort(tab, sort);
+    writes.set(tab, request);
+    request.then(() => {
+        if (writes.get(tab) === request) writes.delete(tab);
+    });
+};
+
 /**
  * Saves a tab's sort in the background and keeps the cached preferences in step.
- * Quick changes send one PUT with the last sort, so a slow earlier PUT cannot win.
+ * Quick changes send one PUT; later writes wait for the earlier PUT to settle.
  */
 export const useSaveAdminListSort = () => {
     const queryClient = useQueryClient();
@@ -70,11 +87,11 @@ export const useSaveAdminListSort = () => {
         return () => {
             waiting.forEach(({ sort, timer }, tab) => {
                 clearTimeout(timer);
-                putSort(tab, sort);
+                queueSort(queryClient, tab, sort);
             });
             waiting.clear();
         };
-    }, []);
+    }, [queryClient]);
 
     return useCallback(
         (tab: string, sort: AdminListSort) => {
@@ -85,7 +102,7 @@ export const useSaveAdminListSort = () => {
             clearTimeout(pending.current.get(tab)?.timer);
             const timer = setTimeout(() => {
                 pending.current.delete(tab);
-                putSort(tab, sort);
+                queueSort(queryClient, tab, sort);
             }, SAVE_SORT_DELAY_MS);
             pending.current.set(tab, { sort, timer });
         },
