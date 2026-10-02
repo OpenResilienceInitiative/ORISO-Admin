@@ -55,7 +55,14 @@ const getKeycloakAccessToken = (loginProps: {
                         reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
                     }
                 } else if (response.status === 429) {
-                    reject(new Error(FETCH_ERRORS.TOO_MANY_REQUESTS));
+                    // Keycloak's code limit sends the challenge with the 429;
+                    // an ingress limit sends HTML, so the body may not parse.
+                    Promise.resolve()
+                        .then(() => response.json())
+                        .catch(() => ({}))
+                        .then((data) => {
+                            reject(new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data }));
+                        });
                 } else {
                     reject(new Error(FETCH_ERRORS.TIMEOUT));
                 }

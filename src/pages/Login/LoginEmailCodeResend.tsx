@@ -4,9 +4,8 @@ import CheckCircleOutline from '@mui/icons-material/CheckCircleOutlined';
 import ErrorOutline from '@mui/icons-material/ErrorOutlined';
 
 /**
- * Client-side wait between two code mails. Keycloak enforces its own cooldown
- * once ORISO-UserService#1338 slice 1 ships and then sends the remaining
- * seconds with the challenge; until then this is the only brake.
+ * Fallback wait between two code mails, used only when Keycloak sends no
+ * `resendAvailableInSeconds` (its own cooldown and cap, ORISO-Keycloak#46).
  */
 export const EMAIL_CODE_RESEND_COOLDOWN_SECONDS = 30;
 
@@ -25,7 +24,7 @@ export const formatResendCountdown = (seconds: number): string =>
 
 export type EmailCodeResendResult =
     | { kind: 'sent'; resendAvailableInSeconds?: number }
-    | { kind: 'tooMany' }
+    | { kind: 'tooMany'; resendAvailableInSeconds?: number }
     | { kind: 'failed' }
     /** Nothing to announce, e.g. the sign-in went through. */
     | { kind: 'none' };
@@ -37,6 +36,8 @@ interface LoginEmailCodeResendProps {
     onResend: () => Promise<EmailCodeResendResult>;
     /** Wait before the first resend; a code was mailed a moment ago. */
     initialCooldownSeconds?: number;
+    /** Shown from the start, e.g. when sign-in already hit the code limit. */
+    initialNotice?: 'tooMany';
 }
 
 /**
@@ -46,6 +47,7 @@ interface LoginEmailCodeResendProps {
 export const LoginEmailCodeResend = ({
     onResend,
     initialCooldownSeconds = EMAIL_CODE_RESEND_COOLDOWN_SECONDS,
+    initialNotice,
 }: LoginEmailCodeResendProps) => {
     const { t } = useTranslation();
     const hintId = useId();
@@ -55,7 +57,7 @@ export const LoginEmailCodeResend = ({
     const [availableAt, setAvailableAt] = useState(() => Date.now() + initialCooldownSeconds * 1000);
     const [secondsLeft, setSecondsLeft] = useState(() => secondsUntil(availableAt));
     const [isSending, setIsSending] = useState(false);
-    const [notice, setNotice] = useState<Notice>(null);
+    const [notice, setNotice] = useState<Notice>(initialNotice ?? null);
     // State lands after the next render; a fast double click must not slip
     // through in between.
     const isSendingRef = useRef(false);
@@ -111,7 +113,7 @@ export const LoginEmailCodeResend = ({
             startCooldown(result.resendAvailableInSeconds ?? EMAIL_CODE_RESEND_COOLDOWN_SECONDS);
         } else if (result.kind === 'tooMany') {
             setNotice('tooMany');
-            startCooldown(EMAIL_CODE_RESEND_COOLDOWN_SECONDS);
+            startCooldown(result.resendAvailableInSeconds ?? EMAIL_CODE_RESEND_COOLDOWN_SECONDS);
         } else if (result.kind === 'failed') {
             // Nothing was mailed, so trying again right away is fine.
             setNotice('failed');

@@ -34,7 +34,12 @@ const LoginForm = () => {
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
     // Every e-mail challenge from a submit mailed a code; the resend link
     // restarts its wait for it (keyed by `id`). ORISO-UserService#1338
-    const [emailCodeChallenge, setEmailCodeChallenge] = useState<{ id: number; resendAvailableInSeconds?: number }>({
+    const [emailCodeChallenge, setEmailCodeChallenge] = useState<{
+        id: number;
+        resendAvailableInSeconds?: number;
+        /** No new mail went out: the limit is reached, the last code still works. */
+        limitReached?: boolean;
+    }>({
         id: 0,
     });
     const otpHelpTextKey =
@@ -73,6 +78,20 @@ const LoginForm = () => {
                         resendAvailableInSeconds: readResendWait(error.options?.data?.resendAvailableInSeconds),
                     }));
                     recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
+                } else if (
+                    error.message === FETCH_ERRORS.TOO_MANY_REQUESTS &&
+                    otpType === TwoFactorType.Email &&
+                    !otpSubmitted
+                ) {
+                    // Code limit reached: no new mail, but the last code still works.
+                    setOtpDisabled(false);
+                    setTwoFactorType(otpType);
+                    setEmailCodeChallenge((previous) => ({
+                        id: previous.id + 1,
+                        resendAvailableInSeconds: readResendWait(error.options?.data?.resendAvailableInSeconds),
+                        limitReached: true,
+                    }));
+                    recordLoginFailure({ outcome: 'rate_limited', transport: 'too_many_requests', stage });
                 } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
                     // Too many codes or wrong attempts: not an outage, not a typo.
                     message.error(t('message.error.auth.tooManyRequests'));
@@ -135,7 +154,10 @@ const LoginForm = () => {
                                 transport: 'too_many_requests',
                                 stage: 'otp',
                             });
-                            resolve({ kind: 'tooMany' });
+                            resolve({
+                                kind: 'tooMany',
+                                resendAvailableInSeconds: readResendWait(data?.resendAvailableInSeconds),
+                            });
                             return;
                         }
                         recordLoginFailure({
@@ -198,6 +220,7 @@ const LoginForm = () => {
                         <LoginEmailCodeResend
                             key={emailCodeChallenge.id}
                             initialCooldownSeconds={emailCodeChallenge.resendAvailableInSeconds}
+                            initialNotice={emailCodeChallenge.limitReached ? 'tooMany' : undefined}
                             onResend={requestNewEmailCode}
                         />
                     )}

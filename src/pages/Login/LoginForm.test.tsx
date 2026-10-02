@@ -535,6 +535,71 @@ describe('LoginForm e-mail code resend (#1338)', () => {
         ).toBeInTheDocument();
     });
 
+    /*
+     * Shirloin's review of #1124: once the mail cap is used up, Keycloak
+     * answers 429 with otpType EMAIL and the remaining wait. The code from
+     * the last mail still works, so the form must offer the code field.
+     */
+    const codeLimit = (resendAvailableInSeconds?: number) => ({
+        message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+        options: {
+            data: {
+                error: 'invalid_grant',
+                error_description: 'Too many codes requested',
+                otpType: TwoFactorType.Email,
+                resendAvailableInSeconds,
+            },
+        },
+    });
+
+    it('shows the code field when a password-only sign-in hits the code limit, with the server wait', async () => {
+        await reachEmailCodeStep(codeLimit(745) as never);
+
+        expect(
+            screen.getByText('Please enter the code from your email for two-factor authentication.'),
+        ).toBeInTheDocument();
+        expect(resendLink()).toHaveTextContent('Send new code (12:25)');
+        expect(resendLink()).toHaveAttribute('aria-disabled', 'true');
+        expect(
+            screen.getByText('Too many codes requested. Please wait a few minutes before requesting a new one.'),
+        ).toBeInTheDocument();
+        expect(mocks.messageError).not.toHaveBeenCalled();
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'rate_limited',
+            transport: 'too_many_requests',
+            stage: 'password',
+        });
+    });
+
+    it('keeps the code field hidden for a password-only 429 without an e-mail challenge', async () => {
+        mocks.login.mockImplementationOnce((_values, options) =>
+            options.onError({ message: FETCH_ERRORS.TOO_MANY_REQUESTS, options: { data: {} } }),
+        );
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        await waitFor(() =>
+            expect(mocks.messageError).toHaveBeenCalledWith(
+                'Too many attempts. Please wait a few minutes and try again.',
+            ),
+        );
+        expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
+    });
+
+    it('counts down the wait Keycloak sends with a 429 on resend, not 30 s', async () => {
+        const user = await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 0 }));
+        mocks.login.mockImplementationOnce((_values, options) => options.onError(codeLimit(745)));
+
+        await user.click(resendLink());
+
+        expect(
+            await screen.findByText('Too many codes requested. Please wait a few minutes before requesting a new one.'),
+        ).toBeInTheDocument();
+        expect(resendLink()).toHaveTextContent('Send new code (12:25)');
+    });
+
     it('uses the wait time Keycloak sends with the challenge', async () => {
         await reachEmailCodeStep(emailChallenge({ resendAvailableInSeconds: 12 }));
 
