@@ -546,7 +546,7 @@
     "links.inviteProgress.empty.filtered": "Keine Einladungen für diesen Filter.",
     "links.inviteProgress.empty.cta": "Erste Einladung senden",
     "links.inviteProgress.nextHint.title": "Hier erscheinen die nächsten Einladungen",
-    "links.inviteProgress.nextHint.body": "Links im Panel ausfüllen und senden – jede Einladung bekommt eine eigene Zeile.",
+    "links.inviteProgress.nextHint.body": "Im Einladungsformular ausfüllen und senden – jede Einladung bekommt eine eigene Zeile.",
     "links.error.loadFailed": "Links konnten nicht geladen werden",
     "links.error.createFailed": "Link konnte nicht erstellt werden",
     "links.col.createdAt": "Erstellt am",

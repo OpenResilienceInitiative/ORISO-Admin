@@ -903,7 +903,7 @@ export const InviteProgressBoard = ({
                                             <p className={styles.hintBody}>
                                                 {t(
                                                     'links.inviteProgress.nextHint.body',
-                                                    'Links im Panel ausfüllen und senden – jede Einladung bekommt eine eigene Zeile.',
+                                                    'Im Einladungsformular ausfüllen und senden – jede Einladung bekommt eine eigene Zeile.',
                                                 )}
                                             </p>
                                         </div>

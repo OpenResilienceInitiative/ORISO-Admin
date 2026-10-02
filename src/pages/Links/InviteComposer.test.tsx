@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { configure, render, screen, waitFor } from '@testing-library/react';
+import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 // Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
@@ -268,6 +268,25 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(await screen.findByText('Recipient created without sending an email')).toBeInTheDocument();
         // Successful submit clears the recipient fields for the next invite.
         expect(screen.getByLabelText('E-Mail')).toHaveValue('');
+    });
+
+    it('submits once when send fires twice before the page re-renders', async () => {
+        window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
+        mocks.createAccountInvite.mockReturnValue(new Promise(() => {}));
+
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Empfänger nur anlegen');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        // Both presses run on the same render, so `submitting` is still false for the second.
+        act(() => {
+            sendButton.click();
+            sendButton.click();
+        });
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
     });
 
     it('starts visibly on Auto and posts allocationMode AUTO without a browser-pinned id (#570)', async () => {

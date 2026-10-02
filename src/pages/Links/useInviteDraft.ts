@@ -461,32 +461,40 @@ export const useInviteDraft = ({
         else agencyAllocation.resetToAuto();
     };
 
+    // The render-time `submitting` lags a fast double press (rail or send button); this closes that gap.
+    const sendingRef = useRef(false);
+
     const send = async () => {
-        if (!isValid || submitting) return;
-        const outcome = await onSubmit(
-            toCreateInviteRequest(
-                {
-                    kind: 'draft',
-                    role,
-                    recipientEmail: recipientEmail.trim(),
-                    firstName: firstName.trim() || undefined,
-                    lastName: lastName.trim() || undefined,
-                    tenant: { mode: tenantAllocation.mode, id: tenantAllocation.value },
-                    agency: { mode: agencyAllocation.mode, id: agencyAllocation.value },
-                    alsoCounsellor,
-                    topicPermission,
-                    templateId,
-                },
-                { tab, viewer: viewer.scope, sendMode },
-            ),
-        );
-        if (outcome === 'emailTaken') {
-            // Keep everything the admin typed; only the address needs correcting.
-            setEmailTakenAddress(recipientEmail.trim().toLowerCase());
-            setEmailTouched(true);
-            return;
+        if (!isValid || submitting || sendingRef.current) return;
+        sendingRef.current = true;
+        try {
+            const outcome = await onSubmit(
+                toCreateInviteRequest(
+                    {
+                        kind: 'draft',
+                        role,
+                        recipientEmail: recipientEmail.trim(),
+                        firstName: firstName.trim() || undefined,
+                        lastName: lastName.trim() || undefined,
+                        tenant: { mode: tenantAllocation.mode, id: tenantAllocation.value },
+                        agency: { mode: agencyAllocation.mode, id: agencyAllocation.value },
+                        alsoCounsellor,
+                        topicPermission,
+                        templateId,
+                    },
+                    { tab, viewer: viewer.scope, sendMode },
+                ),
+            );
+            if (outcome === 'emailTaken') {
+                // Keep everything the admin typed; only the address needs correcting.
+                setEmailTakenAddress(recipientEmail.trim().toLowerCase());
+                setEmailTouched(true);
+                return;
+            }
+            if (outcome) resetAfterSend(typeof outcome === 'object' ? outcome : undefined);
+        } finally {
+            sendingRef.current = false;
         }
-        if (outcome) resetAfterSend(typeof outcome === 'object' ? outcome : undefined);
     };
 
     const unitLabel = (allocation: UseIdAllocationResult) => {
