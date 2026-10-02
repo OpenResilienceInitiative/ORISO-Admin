@@ -40,6 +40,7 @@ export const DraftStatusSnackbar = ({
     return (
         <div data-testid="legal-draft-snackbar">
             <EditorHintSnackbar
+                layout="long"
                 text={t(localSavedAt ? 'legal.draftSnackbar.local' : 'legal.draftSnackbar.saved', { savedAt: label })}
                 onClose={onClose}
                 onDismiss={onDiscard}

@@ -6,6 +6,7 @@ import { getDefaultSettingsPath, getSettingsTabs } from './settingsTabs';
 vi.mock('../appConfig', () => ({
     default: {
         themeSettings: '/settings',
+        serviceNotices: '/settings/service-notices',
     },
 }));
 
@@ -18,6 +19,23 @@ const baseContext = {
 };
 
 describe('settings tabs', () => {
+    it('exposes service notices only with the explicit platform-operator capability', () => {
+        expect(getSettingsTabs({ ...baseContext, isSuperAdmin: true, canManageServiceNotices: true })).toContainEqual({
+            to: '/settings/service-notices',
+            titleKey: 'serviceNotices.title',
+            iconName: 'email_server',
+        });
+        expect(
+            getSettingsTabs({ ...baseContext, isSuperAdmin: true, canManageServiceNotices: false }).some(
+                (tab) => tab.titleKey === 'serviceNotices.title',
+            ),
+        ).toBe(false);
+        expect(
+            getSettingsTabs({ ...baseContext, isSuperAdmin: false, canManageServiceNotices: true }).some(
+                (tab) => tab.titleKey === 'serviceNotices.title',
+            ),
+        ).toBe(false);
+    });
     it('returns all super-admin tabs when permissions allow them', () => {
         const tabs = getSettingsTabs({
             ...baseContext,

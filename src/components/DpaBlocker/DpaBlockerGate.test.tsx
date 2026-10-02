@@ -112,7 +112,7 @@ describe('DpaBlockerGate', () => {
         mocks.createDpaSignInvite.mockReset();
         mocks.createDpaSignInvite.mockResolvedValue({
             signLink: 'https://app.example.org/dpa-sign/minted-token',
-            expiresAt: '2026-08-29T14:31:07',
+            expiresAt: '2099-08-29T14:31:07',
         });
         mocks.sendDpaInviteEmail.mockReset();
         mocks.sendDpaInviteEmail.mockResolvedValue(undefined);
@@ -194,15 +194,17 @@ describe('DpaBlockerGate', () => {
         expect(mocks.getDpaStatus).not.toHaveBeenCalled();
     });
 
-    it('shows the signable blocker with the published DPA text for OUTDATED', async () => {
-        mocks.getDpaStatus.mockResolvedValue(statusInfo('OUTDATED'));
+    it('keeps ongoing work reachable for OUTDATED after renewal expiry', async () => {
+        mocks.getDpaStatus.mockResolvedValue({
+            ...statusInfo('OUTDATED'),
+            signingDeadlineAt: '2020-01-01T12:00:00Z',
+            newCounsellingAllowed: false,
+        });
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
-        expect(screen.getByText('dpaBlocker.intro.OUTDATED')).toBeInTheDocument();
-        expect(await screen.findByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers');
-        expect(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' })).toBeInTheDocument();
+        expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
     });
 
     it('shows the MISSING state without a sign form', async () => {
@@ -273,6 +275,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: 'Vertretungsberechtigt laut Satzung',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -302,6 +305,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: '',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -351,7 +355,7 @@ describe('DpaBlockerGate', () => {
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+        expect(await screen.findByTestId('dpa-text')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
         expect(mocks.logout).toHaveBeenCalledWith(true);

@@ -7,11 +7,10 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { LegalText } from './components/LegalText';
+import { TraegerLegalText } from './components/LegalText/TraegerLegalText';
 import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
-import { FeatureFlag } from '../../../enums/FeatureFlag';
-import { useFeatureContext } from '../../../context/FeatureContext';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
 
 interface LegalSettingsProps {
@@ -23,14 +22,16 @@ interface LegalSettingsProps {
 export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { t } = useTranslation();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
-    const { isEnabled } = useFeatureContext();
     const { mutate } = useSettingsAdminMutation();
+    // A platform admin inspecting a Träger needs its inbox too; the own platform draft has owner 0.
+    const isTraegerLevel = (isTenantScopedAdmin || isSuperAdmin) && String(draftTenantId ?? finalTenantId) !== '0';
+    const LegalTextCard = isTraegerLevel ? TraegerLegalText : LegalText;
 
     const LegalTextElement = (
-        <LegalText
+        <LegalTextCard
             tenantId={finalTenantId}
             draftTenantId={draftTenantId}
             fieldName={['content', 'privacy']}
@@ -41,16 +42,11 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
                 contentKey: 'privacy.confirmation.content',
-                cancelLabelKey: 'privacy.confirmation.confirm',
-                okLabelKey: 'privacy.confirmation.cancel',
+                // "Nein" = publish without informing, "Ja" = publish and inform (#1066).
+                cancelLabelKey: 'privacy.confirmation.cancel',
+                okLabelKey: 'privacy.confirmation.confirm',
                 field: ['content', 'confirmPrivacy'],
             }}
-            placeholders={
-                isEnabled(FeatureFlag.CentralDataProtectionTemplate) && {
-                    responsible: 'editor.plugin.placeholder.option.responsible.label',
-                    dataProtectionOfficer: 'editor.plugin.placeholder.option.dataProtectionOfficer.label',
-                }
-            }
         />
     );
 
@@ -94,7 +90,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
             </CardDeck.Item>
             <CardDeck.Item className={styles.documentEditorItem}>
-                <LegalText
+                <LegalTextCard
                     tenantId={finalTenantId}
                     draftTenantId={draftTenantId}
                     fieldName={['content', 'impressum']}
@@ -113,8 +109,8 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 showConfirmationModal={{
                     titleKey: 'termsAndConditions.confirmation.title',
                     contentKey: 'termsAndConditions.confirmation.content',
-                    cancelLabelKey: 'termsAndConditions.confirmation.confirm',
-                    okLabelKey: 'termsAndConditions.confirmation.cancel',
+                    cancelLabelKey: 'termsAndConditions.confirmation.cancel',
+                    okLabelKey: 'termsAndConditions.confirmation.confirm',
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}

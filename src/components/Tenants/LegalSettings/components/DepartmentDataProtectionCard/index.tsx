@@ -2,8 +2,9 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
-import { LEGAL_TEXT_TOKENS } from '../../../../PlaceholderTemplate/placeholderTokens';
-import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { M3RichTextEditor, M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { isSameDraftContent } from '../../utils/draftComparison';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
@@ -11,6 +12,7 @@ import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { EditorSnackbarQueue, editorSnackbarItems } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { consentPublicationBlockers } from '../../utils/consentTextValidation';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
@@ -21,7 +23,15 @@ import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
-export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED';
+/** `INHERITED_*`: no own text at this level; the card shows the level above's (#1066). */
+export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED' | 'INHERITED_FROM_TRAEGER' | 'INHERITED_FROM_AGENCY';
+
+const STATUS_LABEL_KEYS: Record<DepartmentPublicationStatus, string> = {
+    DRAFT: 'tenants.legal.departmentDataProtection.status.draft',
+    PUBLISHED: 'tenants.legal.departmentDataProtection.status.published',
+    INHERITED_FROM_TRAEGER: 'tenants.legal.departmentDataProtection.status.inheritedFromTraeger',
+    INHERITED_FROM_AGENCY: 'tenants.legal.departmentDataProtection.status.inheritedFromAgency',
+};
 
 interface DepartmentDataProtectionCardProps {
     /** Name of the Fachbereich (topic) this data privacy policy belongs to — shown in the header. */
@@ -109,6 +119,9 @@ interface DepartmentDataProtectionCardProps {
     departmentSlot?: React.ReactNode;
     /** The editor snackbar place (e.g. the draft status), passed through to the editor. */
     snackbarSlot?: React.ReactNode;
+    comparison?: M3RichTextEditorProps['comparison'];
+    errorMessage?: string;
+    onCloseError?: () => void;
     /**
      * The signed-in admin may not change legal content (#609). The card then reads —
      * editor, publish, draft-save and the consent sentence all inert — instead of
@@ -141,6 +154,9 @@ export const DepartmentDataProtectionCard = ({
     documentScope = 'department',
     departmentSlot,
     snackbarSlot,
+    comparison,
+    errorMessage,
+    onCloseError,
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
@@ -221,12 +237,12 @@ export const DepartmentDataProtectionCard = ({
 
     const legalTextTokens = useMemo(
         () =>
-            LEGAL_TEXT_TOKENS.map((token) => ({
+            legalTextTokensFor(documentType, 'agency').map((token) => ({
                 key: token.key,
                 label: t(token.labelKey, token.labelFallback),
                 sample: token.sample,
             })),
-        [t],
+        [t, documentType],
     );
 
     const editorVersions = useMemo(
@@ -248,6 +264,7 @@ export const DepartmentDataProtectionCard = ({
     // Owner call 2026-09-23: blocking errors read better as an error-coloured snackbar in the
     // editor than as an alert box below the card.
     const [consentBlockedClosed, setConsentBlockedClosed] = useState(false);
+    const [versionsNoticeClosed, setVersionsNoticeClosed] = useState(false);
     const consentBlockedSnackbar =
         blockedLanguages.length > 0 && !consentBlockedClosed ? (
             <span id={consentBlockedId} data-testid="consent-publish-blocked">
@@ -258,6 +275,32 @@ export const DepartmentDataProtectionCard = ({
                 />
             </span>
         ) : undefined;
+    const editorNotices = [
+        !!errorMessage && {
+            key: `save-error:${errorMessage}`,
+            node: <EditorHintSnackbar tone="error" text={errorMessage} onClose={() => onCloseError?.()} />,
+        },
+        versionsUnavailable &&
+            !versionsNoticeClosed && {
+                key: 'versions-unavailable',
+                node: (
+                    <span data-testid="legal-versions-unavailable">
+                        <EditorHintSnackbar
+                            tone="error"
+                            text={
+                                <>
+                                    <strong>{t('legal.versions.unavailable.title')}</strong>{' '}
+                                    {t('legal.versions.unavailable.description')}
+                                </>
+                            }
+                            onClose={() => setVersionsNoticeClosed(true)}
+                        />
+                    </span>
+                ),
+            },
+        consentBlockedSnackbar && { key: 'consent-blocked', node: consentBlockedSnackbar },
+        ...editorSnackbarItems(snackbarSlot, 'host-notice'),
+    ];
 
     const handlePublish = () => {
         if (blockedLanguages.length > 0) {
@@ -307,10 +350,18 @@ export const DepartmentDataProtectionCard = ({
     return (
         <div className={styles.card}>
             <M3RichTextEditor
-                snackbarSlot={consentBlockedSnackbar ?? snackbarSlot}
+                snackbarSlot={editorNotices.some(Boolean) ? <EditorSnackbarQueue items={editorNotices} /> : undefined}
+                comparison={comparison}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 value={currentContent}
+                dirty={
+                    !isSameDraftContent(
+                        { content: contentMapWithEdits, consent: consentMap },
+                        { content: initialContentByLanguage, consent: consentByLanguage },
+                        { compareConsent: consentEnabled },
+                    )
+                }
                 readOnly={readOnly}
                 onChange={readOnly ? undefined : handleEditorChange}
                 publishing={saving}
@@ -368,10 +419,8 @@ export const DepartmentDataProtectionCard = ({
                                 saved, so it carries "Veröffentlicht" too. Without a tag there, a
                                 published text read as a bug next to a tagged Fachbereich. */}
                             {publicationStatus && (
-                                <Tag color={published ? 'green' : 'default'}>
-                                    {published
-                                        ? t('tenants.legal.departmentDataProtection.status.published')
-                                        : t('tenants.legal.departmentDataProtection.status.draft')}
+                                <Tag color={published ? 'green' : 'default'} data-testid="legal-publication-status">
+                                    {t(STATUS_LABEL_KEYS[publicationStatus])}
                                 </Tag>
                             )}
                         </div>
@@ -434,15 +483,6 @@ export const DepartmentDataProtectionCard = ({
                 }
             />
             {/* A history that failed to load is not an empty history — see LegalText. */}
-            {versionsUnavailable && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    data-testid="legal-versions-unavailable"
-                    message={t('legal.versions.unavailable.title')}
-                    description={t('legal.versions.unavailable.description')}
-                />
-            )}
             {/* Shown as soon as ANY authored language is affected, not only after a
                 failed publish attempt: the rule arrived after texts were live, so a
                 stored sentence can be blocking on open, in a language that is not the

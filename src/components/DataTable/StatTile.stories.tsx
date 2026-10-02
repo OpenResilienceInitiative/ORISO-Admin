@@ -21,17 +21,29 @@ type Story = StoryObj<typeof meta>;
 /** Plain, non-interactive count. */
 export const Static: Story = {};
 
-/** Magenta count for the problem bucket. */
-export const ErrorTone: Story = { args: { label: 'Abgelaufen / Problem', value: 3, tone: 'error' } };
+/** Magenta count for the „Braucht Aktion" tile. */
+export const ErrorTone: Story = { args: { label: 'Braucht Aktion', value: 3, tone: 'error' } };
+
+/** A quiet breakdown line under the label: which raw statuses make up the count. */
+export const WithBreakdown: Story = {
+    args: { label: 'Vorbereitet', value: 3, supportingText: '2 Draft · 1 Wartet', onClick: () => {} },
+};
 
 /** Disabled filter tile: greyed out, never hidden. */
 export const Disabled: Story = { args: { disabled: true, onClick: () => {} } };
 
 const BUCKETS = [
-    { key: 'invited', label: 'Eingeladen', value: 12 },
-    { key: 'inProgress', label: 'In Bearbeitung', value: 5 },
-    { key: 'completed', label: 'Abgeschlossen', value: 21 },
-    { key: 'problem', label: 'Abgelaufen / Problem', value: 3, tone: 'error' as const },
+    { key: 'prepared', label: 'Vorbereitet', value: 3, supportingText: '2 Draft · 1 Wartet' },
+    { key: 'invited', label: 'Eingeladen', value: 12, supportingText: '12 Gesendet' },
+    { key: 'accountCreated', label: 'Konto angelegt', value: 5, supportingText: '5 Angenommen' },
+    { key: 'done', label: 'Fertig', value: 21, supportingText: '21 Angenommen' },
+    {
+        key: 'needsAction',
+        label: 'Braucht Aktion',
+        value: 3,
+        supportingText: '2 Abgelaufen · 1 Ersetzt',
+        tone: 'error' as const,
+    },
 ];
 
 const FilterStrip = () => {
@@ -44,6 +56,7 @@ const FilterStrip = () => {
                     key={bucket.key}
                     label={bucket.label}
                     value={bucket.value}
+                    supportingText={bucket.supportingText}
                     tone={bucket.tone}
                     active={active === bucket.key}
                     onClick={() => setActive((current) => (current === bucket.key ? null : bucket.key))}
@@ -53,5 +66,5 @@ const FilterStrip = () => {
     );
 };
 
-/** The four-bucket summary strip acting as a single-select filter. */
+/** The five-phase strip of the invite board acting as a single-select filter. */
 export const SummaryStrip: Story = { render: () => <FilterStrip /> };

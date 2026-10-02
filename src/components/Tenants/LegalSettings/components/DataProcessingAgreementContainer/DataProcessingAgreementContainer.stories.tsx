@@ -6,7 +6,7 @@ import { DataProcessingAgreementContainer } from './index';
  * The wired DPA card — real container, real hooks, real localStorage, mocked HTTP.
  * This is the story to look at for ORISO-Admin#708: type into the editor, press
  * "Entwurf bearbeiten", reload the page and the text is still there, announced
- * by the draft notice. Publishing (PUT .../dpa) is mocked and clears the draft.
+ * by the draft notice. Publishing (PUT .../dpa/v2) is mocked and clears the draft.
  */
 const meta = {
     title: 'Organisms/Legal/DataProcessingAgreementContainer',
@@ -40,7 +40,7 @@ const meta = {
                 http.get('*/service/tenantadmin/:id/dpa/gate', () =>
                     HttpResponse.json({ dpaPublished: true, dpaSigned: false }),
                 ),
-                http.put('*/service/tenantadmin/:id/dpa', () =>
+                http.put('*/service/tenantadmin/:id/dpa/v2', () =>
                     HttpResponse.json({ dpaPublished: true, dpaSigned: false }),
                 ),
             ],
