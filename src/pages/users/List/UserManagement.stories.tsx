@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
+import { Route, Routes } from 'react-router-dom';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
@@ -146,4 +149,55 @@ export const Loading: Story = {
 /** Backend failure (500): the search helper degrades gracefully to an empty table. */
 export const Error: Story = {
     parameters: { msw: { handlers: [http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] } },
+};
+
+// GET .../service/useradmin/tenantadmins/search — same HAL body; each admin carries its Träger.
+const TENANT_ADMINS_ENDPOINT = '*/service/useradmin/tenantadmins/search';
+
+const TENANT_ADMINS: CounselorData[] = [
+    { ...CONSULTANTS[0], id: 'ta-1', tenantId: '3', tenantName: 'Caritas Hamburg', agencies: [] },
+    { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
+];
+
+const onTenantAdminsTab = () => (
+    <Routes location="/admin/users/tenant-admins">
+        <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+    </Routes>
+);
+
+/** Träger-Admins tab seen by a platform admin: every row names its Träger. */
+export const TenantAdminsForPlatformAdmin: Story = {
+    render: onTenantAdminsTab,
+    parameters: {
+        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS))] },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const header = await canvas.findByRole('columnheader', { name: 'Träger' });
+        await expect(header).toBeVisible();
+        // Not clipped by the table's horizontal scroll at laptop width (ORISO-Admin#99).
+        const scroller = header.closest('.ant-table-content, .ant-table-body') ?? canvasElement;
+        await expect(header.getBoundingClientRect().right).toBeLessThanOrEqual(scroller.getBoundingClientRect().right);
+        await expect(await canvas.findByText('Caritas Hamburg')).toBeVisible();
+        await expect(canvas.getByText('Diakonie Berlin')).toBeVisible();
+    },
+};
+
+/** The same tab for a Träger admin: only their own Träger, so no Träger column. */
+export const TenantAdminsForTraegerAdmin: Story = {
+    render: onTenantAdminsTab,
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.TenantAdmin, UserRole.UserAdmin], 3);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: { handlers: [http.get(TENANT_ADMINS_ENDPOINT, () => consultantsResponse(TENANT_ADMINS.slice(0, 1)))] },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Muster')).toBeVisible();
+        await expect(canvas.queryByRole('columnheader', { name: 'Träger' })).toBeNull();
+    },
 };
