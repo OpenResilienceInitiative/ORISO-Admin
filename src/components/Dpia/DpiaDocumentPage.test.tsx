@@ -62,9 +62,10 @@ describe('DpiaDocumentPage', () => {
         expect(screen.getByText(/Scope/)).toHaveAttribute('aria-disabled', 'true');
     });
 
-    it('labels the default key figures as sample data and drops the label once real figures are supplied', () => {
+    it('renders missing figures honestly and accepts explicit figures for a preview', () => {
         const { rerender } = render(<DpiaDocumentPage />);
-        expect(screen.getByText('Beispieldaten')).toBeInTheDocument();
+        expect(screen.queryByText('Beispieldaten')).not.toBeInTheDocument();
+        expect(screen.getAllByText('Nicht hinterlegt')).toHaveLength(4);
 
         rerender(<DpiaDocumentPage keyFigures={[{ value: '1', label: 'Träger' }]} />);
         expect(screen.queryByText('Beispieldaten')).not.toBeInTheDocument();
