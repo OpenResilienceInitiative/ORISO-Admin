@@ -59,6 +59,15 @@ vi.mock('../../../hooks/usePlatformAdminsData', () => ({
         refetch: vi.fn(),
     }),
 }));
+// Filters and saved sorts have separate regression suites; this suite exercises real row actions.
+vi.mock('../../../hooks/useAdminListPreferences', () => ({
+    useAdminListPreferences: () => ({ data: { sorts: {} }, isLoading: false }),
+    useSaveAdminListSort: () => vi.fn(),
+}));
+vi.mock('./UserScopeFilters', () => ({
+    UserScopeFilters: () => null,
+    useScopeFilterAvailability: () => ({ tenant: false, agency: false, canListAgencies: false }),
+}));
 vi.mock('../../../hooks/useDeleteTenant', () => ({ useDeleteTenant: () => ({ mutate: vi.fn() }) }));
 vi.mock('../../../components/GlobalSearch', () => ({
     GlobalSearchBar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
