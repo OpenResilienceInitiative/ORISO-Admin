@@ -1,0 +1,55 @@
+/* Column layout for the users-hub table; cells come from components/UserTable. */
+.table {
+    margin-bottom: 24px;
+}
+
+.pill {
+    margin-left: 12px;
+    font-weight: 400;
+}
+
+.firstCentre {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 8px;
+}
+
+.more {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 500 12px/16px var(--m3-body-font-family);
+    white-space: nowrap;
+}
+
+.actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.centres {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0;
+    margin: 0;
+    gap: 12px;
+    list-style: none;
+}
+
+.centre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+}
+
+.centreName {
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+.topics {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 13px/18px var(--m3-body-font-family);
+}
