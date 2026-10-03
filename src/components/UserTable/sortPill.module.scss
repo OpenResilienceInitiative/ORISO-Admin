@@ -28,6 +28,15 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .value {
     font-weight: 600;
 }
