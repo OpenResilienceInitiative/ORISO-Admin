@@ -32,12 +32,16 @@ const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{i
  * the 30 second cooldown and the remainder of a 15 minute window, so one fixed
  * unit is wrong half the time — and rounding 27 seconds up to "1 minutes" was
  * both ungrammatical and twice the real wait.
+ *
+ * Minutes round UP. Rounding 89 seconds to "about a minute" would send the user
+ * back to a link that is still counting down 29 seconds, and that refusal is
+ * exactly what this message exists to prevent.
  */
 const waitMessage = (seconds: number): [string, Record<string, number>] => {
     if (seconds < 60) {
         return ['message.error.auth.tooManyCodesWaitSeconds', { seconds }];
     }
-    const minutes = Math.max(1, Math.round(seconds / 60));
+    const minutes = Math.max(1, Math.ceil(seconds / 60));
     return minutes === 1
         ? ['message.error.auth.tooManyCodesWaitMinute', {}]
         : ['message.error.auth.tooManyCodesWaitMinutes', { minutes }];
@@ -51,9 +55,7 @@ const LoginForm = () => {
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { mutate: login, mutateAsync: loginAsync } = useLoginMutation(
-        tenantData?.id != null ? `${tenantData.id}` : '',
-    );
+    const { mutateAsync: loginAsync } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
@@ -126,63 +128,68 @@ const LoginForm = () => {
         }
     };
 
-    // Function gets fired on Form Submit
+    /**
+     * The form's own submit. It awaits the mutation for the same reason the resend
+     * link does: TanStack Query keeps per-call callbacks for the newest call only,
+     * so a resend clicked while the code submission is still travelling used to
+     * silence that submission — the spinner kept turning, no error was shown, and a
+     * correct code did not sign the user in.
+     */
     const onFinish = async (values: any) => {
         setPostLoading(true);
         setShowCredentialsHint(false);
 
-        login(values, {
-            onSuccess: () => {
-                setPostLoading(false);
-                navigate('/admin');
-            },
-            onError: (error) => {
-                const otpType = error.options?.data?.otpType;
-                const otpSubmitted = Boolean(values?.otp);
-                const stage = otpSubmitted ? 'otp' : 'password';
-                setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
-                if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
-                    // The password was right, the realm asks for the second factor.
+        try {
+            await loginAsync(values);
+            navigate('/admin');
+        } catch (caught) {
+            const error = caught as ErrorLogin;
+            const otpType = error.options?.data?.otpType;
+            const otpSubmitted = Boolean(values?.otp);
+            const stage = otpSubmitted ? 'otp' : 'password';
+            setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
+            if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
+                // The password was right, the realm asks for the second factor.
+                setOtpDisabled(false);
+                setTwoFactorType(otpType);
+                recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
+            } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
+                // #1338: either too many code mails inside the window, or a code
+                // guessed too often. This used to read as a network failure.
+                handleRateLimited(error, stage);
+                if (!otpSubmitted && otpType) {
+                    // The ceiling refuses NEW code mails; the one already in the
+                    // inbox stays valid. Keeping the field hidden here locks out
+                    // the very user who can still sign in.
                     setOtpDisabled(false);
                     setTwoFactorType(otpType);
-                    recordLoginFailure({ outcome: 'otp_required', transport: 'bad_request', stage });
-                } else if (error.message === FETCH_ERRORS.TOO_MANY_REQUESTS) {
-                    // #1338: either too many code mails inside the window, or a code
-                    // guessed too often. This used to read as a network failure.
-                    handleRateLimited(error, stage);
-                    if (!otpSubmitted && otpType) {
-                        // The ceiling refuses NEW code mails; the one already in the
-                        // inbox stays valid. Keeping the field hidden here locks out
-                        // the very user who can still sign in.
-                        setOtpDisabled(false);
-                        setTwoFactorType(otpType);
-                    }
-                } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
-                    message.error(t('message.error.auth.adminOnly'));
-                    recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
-                } else if (error.message === TENANT_ACCESS_DENIED) {
-                    message.error(t('message.error.auth.tenantAccessDenied'));
-                    recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
-                } else if (error.message === FETCH_ERRORS.TIMEOUT) {
-                    message.error(t('message.error.auth.network'));
-                    recordLoginFailure({ outcome: 'unavailable', transport: 'network', stage });
-                } else {
-                    // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered
-                    // invitee get ONE combined, privacy-preserving hint — deliberately
-                    // not distinguishable, so the form cannot be used to enumerate
-                    // whether an account exists. (A successful login with a missing DPA
-                    // never lands here: it authenticates and hits the global blocker.)
-                    //
-                    // Keycloak reports a wrong password AND a wrong one-time code as
-                    // 400 invalid_grant "Invalid user credentials" without an otpType.
-                    // Until 2026-09 that 400 silently revealed the OTP field instead of
-                    // saying anything, so a plain typo looked like a dead button.
-                    setShowCredentialsHint(true);
-                    recordLoginFailure({ outcome: 'credentials', transport: describeTransport(error.message), stage });
                 }
-                setPostLoading(false);
-            },
-        });
+            } else if (error.message === ADMIN_PORTAL_ACCESS_DENIED) {
+                message.error(t('message.error.auth.adminOnly'));
+                recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
+            } else if (error.message === TENANT_ACCESS_DENIED) {
+                message.error(t('message.error.auth.tenantAccessDenied'));
+                recordLoginFailure({ outcome: 'access_denied', transport: 'unexpected', stage });
+            } else if (error.message === FETCH_ERRORS.TIMEOUT) {
+                message.error(t('message.error.auth.network'));
+                recordLoginFailure({ outcome: 'unavailable', transport: 'network', stage });
+            } else {
+                // TEN-INV-U10 (#572): invalid credentials and a not-yet-registered
+                // invitee get ONE combined, privacy-preserving hint — deliberately
+                // not distinguishable, so the form cannot be used to enumerate
+                // whether an account exists. (A successful login with a missing DPA
+                // never lands here: it authenticates and hits the global blocker.)
+                //
+                // Keycloak reports a wrong password AND a wrong one-time code as
+                // 400 invalid_grant "Invalid user credentials" without an otpType.
+                // Until 2026-09 that 400 silently revealed the OTP field instead of
+                // saying anything, so a plain typo looked like a dead button.
+                setShowCredentialsHint(true);
+                recordLoginFailure({ outcome: 'credentials', transport: describeTransport(error.message), stage });
+            }
+        } finally {
+            setPostLoading(false);
+        }
     };
 
     return (

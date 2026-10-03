@@ -72,16 +72,19 @@ describe('OtpResendLink', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('stays quiet when the caller already named the reason itself', async () => {
+    it('stays quiet when the caller already named the reason itself, but still waits', async () => {
         // the form shows "too many attempts, wait 12 minutes" as a toast; a second
-        // generic line under the link would only add noise
-        render(<OtpResendLink onResend={() => Promise.reject(new Error(RESEND_ERROR_ALREADY_SHOWN))} />);
+        // generic line under the link would only add noise. The wait itself has to
+        // be served, or the link invites the next attempt the realm will refuse.
+        render(<OtpResendLink onResend={() => Promise.reject(new ResendError(RESEND_ERROR_ALREADY_SHOWN, 720))} />);
 
         await act(async () => {
             link().click();
         });
 
-        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+        await waitFor(() => expect(link()).toBeDisabled());
+        expect(link()).toHaveTextContent('Send a new code (12:00)');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
     it('counts the realm cooldown down and refuses a click while it runs', async () => {
