@@ -133,6 +133,8 @@ it.each([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])(
         await screen.findByText('Renewed contract');
         await requestLink(3);
     },
+    // Four full link dialogs plus a reload: on the shared CI runner this hits the global 30 s limit.
+    90_000,
 );
 afterEach(() => {
     server.resetHandlers();
