@@ -28,7 +28,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
-import { USER_TABLE_CONFIGS, canManageSectionActions } from './userTableConfigs';
+import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
 import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
 import {
     normalizeTenantAdminSortField,
@@ -146,7 +146,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         },
     });
 
-    const showTenantColumn = isSuperAdmin && !isTenantAdmins && !isTenants;
+    const showTenantColumn = shouldShowTenantColumn(sectionId, isSuperAdmin);
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
 
     // the platform-admins section shares Resource.TenantAdminUser with the

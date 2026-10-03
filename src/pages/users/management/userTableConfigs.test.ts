@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { USER_TABLE_CONFIGS, canManageSectionActions } from './userTableConfigs';
+import {
+    USER_TABLE_CONFIGS,
+    getVisibleColumns,
+    shouldShowTenantColumn,
+    canManageSectionActions,
+} from './userTableConfigs';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { mapSorterToApiField } from './useUserTableColumns';
 
@@ -37,6 +42,36 @@ describe('userTableConfigs sort contract: an arrow only where the server can sor
                 .filter((column) => column.sortable)
                 .map((column) => mapSorterToApiField(column.key));
             expect(sortableFields.filter((field) => !SERVER_SORT_FIELDS[sectionId]?.includes(field ?? ''))).toEqual([]);
+        },
+    );
+});
+
+describe('userTableConfigs Träger column', () => {
+    it('uses the Consultants fallback for an unknown route section', () => {
+        expect(shouldShowTenantColumn('unknown-section' as TypeOfUser, true)).toBe(true);
+    });
+
+    const visibleKeys = (sectionId: TypeOfUser, isSuperAdmin: boolean) =>
+        getVisibleColumns(sectionId, {
+            showTenant: shouldShowTenantColumn(sectionId, isSuperAdmin),
+            showSubdomain: false,
+        }).map((column) => column.key);
+
+    it('shows the Träger of each Träger admin to a platform admin', () => {
+        expect(visibleKeys(TypeOfUser.TenantAdmins, true)).toContain('tenant');
+    });
+
+    it.each([TypeOfUser.Consultants, TypeOfUser.AgencyAdmins])(
+        'keeps the Träger column for a platform admin on %s',
+        (sectionId) => {
+            expect(visibleKeys(sectionId, true)).toContain('tenant');
+        },
+    );
+
+    it.each([TypeOfUser.TenantAdmins, TypeOfUser.Consultants, TypeOfUser.AgencyAdmins])(
+        'hides the Träger column from a Träger admin on %s, who only sees their own Träger',
+        (sectionId) => {
+            expect(visibleKeys(sectionId, false)).not.toContain('tenant');
         },
     );
 });
