@@ -1,0 +1,19 @@
+.filter {
+    width: 320px;
+
+    @media (max-width: 767px) {
+        width: 100%;
+    }
+}
+
+.option {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.detail {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}

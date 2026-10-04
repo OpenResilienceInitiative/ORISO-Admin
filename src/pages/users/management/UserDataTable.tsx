@@ -63,6 +63,9 @@ export interface UserDataTableProps {
     total: number;
     onPageChange: (page: number) => void;
     onPageSizeChange: (pageSize: number) => void;
+    /** Set when the Träger or BST filter is available: a chip click narrows the list to it. */
+    onTenantClick?: (tenantId: string) => void;
+    onAgencyClick?: (agencyId: string) => void;
     ariaLabel?: string;
 }
 
@@ -87,6 +90,8 @@ export const UserDataTable = ({
     total,
     onPageChange,
     onPageSizeChange,
+    onTenantClick,
+    onAgencyClick,
     ariaLabel,
 }: UserDataTableProps) => {
     const { t } = useTranslation();
@@ -207,7 +212,14 @@ export const UserDataTable = ({
                     />
                 );
             case 'tenant':
-                return row.tenantId ? <ScopeChip kind="tenant" id={row.tenantId} name={row.tenantName} /> : null;
+                return row.tenantId ? (
+                    <ScopeChip
+                        kind="tenant"
+                        id={row.tenantId}
+                        name={row.tenantName}
+                        onClick={onTenantClick && (() => onTenantClick(String(row.tenantId)))}
+                    />
+                ) : null;
             case 'subdomain':
                 return row.tenantSubdomain ? (
                     <Link target="_blank" to={`//${getDomain(row.tenantSubdomain)}`}>
@@ -225,6 +237,9 @@ export const UserDataTable = ({
                             name={first.name ?? ''}
                             postcode={first.postcode}
                             city={first.city}
+                            onClick={
+                                onAgencyClick && first.id != null ? () => onAgencyClick(String(first.id)) : undefined
+                            }
                         />
                         {row.agencies.length > 1 && <span className={styles.more}>+{row.agencies.length - 1}</span>}
                     </span>

@@ -8,6 +8,7 @@ import {
 import { CounselorData } from '../types/counselor';
 import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
+import { type UserSearchFilters, userSearchFilterParams } from '../utils/userSearchFilters';
 import { TENANT_ADMINS_QUERY_KEY } from './useTenantUserAdminData';
 
 // Platform administrators share the tenant-admin API representation but use
@@ -22,18 +23,27 @@ interface TenantUserAdminDataProps extends Omit<UseQueryOptions<ResponseList<Cou
     sortBy?: string;
     order?: string;
     pageSize?: number;
+    filters?: UserSearchFilters;
 }
 
 export const useTenantAdminsData = (
-    { search, current, sortBy, order, pageSize, ...options }: TenantUserAdminDataProps = {} as TenantUserAdminDataProps,
+    {
+        search,
+        current,
+        sortBy,
+        order,
+        pageSize,
+        filters = {},
+        ...options
+    }: TenantUserAdminDataProps = {} as TenantUserAdminDataProps,
 ) => {
     return useQuery({
-        queryKey: [TENANT_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize],
+        queryKey: [TENANT_ADMINS_QUERY_KEY, search, current, sortBy, order, pageSize, filters],
         queryFn: async () => {
             const response = await fetchUserSearchWithSortFallback({
                 url: `${tenantAdminsSearchEndpoint}?query=${encodeURIComponent(
                     search || '*',
-                )}&page=1&perPage=${TENANT_ADMINS_FETCH_SIZE}`,
+                )}&page=1&perPage=${TENANT_ADMINS_FETCH_SIZE}${userSearchFilterParams(filters, { agencies: false })}`,
                 sortBy: sortBy || USER_TABLE_DEFAULT_SORT,
                 order: order || USER_TABLE_DEFAULT_ORDER,
                 normalizeSortField: normalizeTenantAdminSortField,
