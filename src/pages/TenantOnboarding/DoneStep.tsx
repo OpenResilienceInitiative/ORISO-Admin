@@ -11,12 +11,15 @@ import styles from './styles.module.scss';
 
 interface DoneStepProps {
     /** The tenant ID the reservation was consumed for — the number the platform operator refers to. */
-    tenantId: number;
+    tenantId?: number;
     /**
      * The DPA signature was forwarded to an authorised signatory (#723) —
      * the completion additionally says an e-mail will follow once it arrives.
      */
     forwarded?: boolean;
+    /** The admin joined an existing Träger: nothing was created, nothing awaits activation. */
+    joinedExisting?: boolean;
+    existingAccountSetup?: boolean;
 }
 
 /**
@@ -31,39 +34,54 @@ interface DoneStepProps {
  * gallery (Atoms/CustomIcons) in the product's secondary colour (#594.11) —
  * the green MUI check it replaced was a colour from outside the palette.
  */
-export const DoneStep = ({ tenantId, forwarded = false }: DoneStepProps) => {
+export const DoneStep = ({
+    tenantId,
+    forwarded = false,
+    joinedExisting = false,
+    existingAccountSetup = false,
+}: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const invitationDescriptionKey = joinedExisting
+        ? 'tenantOnboarding.done.joinDescription'
+        : 'tenantOnboarding.done.description';
+    const descriptionKey = existingAccountSetup ? 'accountSetup.success' : invitationDescriptionKey;
 
     return (
         <div className={styles.done} data-testid="onboarding-done">
             <VerifiedIcon className={styles.doneIcon} data-testid="onboarding-done-success-icon" aria-hidden />
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-                {t('tenantOnboarding.done.title')}
+                {t(existingAccountSetup ? 'accountSetup.completedTitle' : 'tenantOnboarding.done.title')}
             </Typography>
             <Typography color="text.secondary" data-testid="onboarding-done-description">
-                {t('tenantOnboarding.done.description')}
+                {t(descriptionKey)}
             </Typography>
 
-            <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
-                <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
-                <dd>{tenantId}</dd>
-            </dl>
+            {!existingAccountSetup && tenantId != null && (
+                <dl className={styles.doneDetail} data-testid="onboarding-done-tenant-id">
+                    <dt>{t('tenantOnboarding.done.tenantIdLabel')}</dt>
+                    <dd>{tenantId}</dd>
+                </dl>
+            )}
 
             <ul className={styles.doneNext}>
-                {forwarded && (
+                {!existingAccountSetup && forwarded && (
                     <li data-testid="onboarding-done-next-step">
                         <MarkEmailReadRounded fontSize="small" aria-hidden />
                         <span>{t('tenantOnboarding.done.next.signature')}</span>
                     </li>
                 )}
-                <li data-testid="onboarding-done-next-step">
-                    <HourglassTopRounded fontSize="small" aria-hidden />
-                    <span>{t('tenantOnboarding.done.next.activation')}</span>
-                </li>
+                {!existingAccountSetup && !joinedExisting && (
+                    <li data-testid="onboarding-done-next-step">
+                        <HourglassTopRounded fontSize="small" aria-hidden />
+                        <span>{t('tenantOnboarding.done.next.activation')}</span>
+                    </li>
+                )}
                 <li data-testid="onboarding-done-next-step">
                     <LoginRounded fontSize="small" aria-hidden />
-                    <span>{t('tenantOnboarding.done.next.login')}</span>
+                    <span>
+                        {t(existingAccountSetup ? 'accountSetup.loginHint' : 'tenantOnboarding.done.next.login')}
+                    </span>
                 </li>
             </ul>
 

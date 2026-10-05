@@ -28,7 +28,8 @@ export { agencyIdNextFreeEndpoint, idAllocationValidationEndpoint, tenantIdNextF
 /** FREE = assignable · RESERVED = held by an open invite · ASSIGNED = consumed by a real entity. */
 export type IdAllocationState = 'FREE' | 'RESERVED' | 'ASSIGNED';
 
-export type AllocationMode = 'AUTO' | 'MANUAL';
+/** `EXISTING` names a unit that exists; nothing is reserved. */
+export type AllocationMode = 'AUTO' | 'MANUAL' | 'EXISTING';
 
 export type NextFreeIdDirection = 'up' | 'down';
 

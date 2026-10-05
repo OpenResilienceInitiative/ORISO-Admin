@@ -74,7 +74,13 @@ const withTopics = (topics: { id: number; name: string }[]) => ({
 const renderContainer = (props: Record<string, unknown> = {}) =>
     render(
         <AgencyLegalTextContainer
-            agencyData={withTopics([{ id: 3, name: 'U25 Suizidprävention' }]) as any}
+            // Two Fachbereiche: a single one would be preselected (#1066).
+            agencyData={
+                withTopics([
+                    { id: 3, name: 'U25 Suizidprävention' },
+                    { id: 4, name: 'Schuldnerberatung' },
+                ]) as any
+            }
             field="privacy"
             onSaveAgencyWide={vi.fn()}
             {...(props as any)}

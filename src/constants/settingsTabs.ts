@@ -10,6 +10,7 @@ export type SettingsTab = {
 
 type SettingsTabsContext = {
     isSuperAdmin: boolean;
+    canManageServiceNotices?: boolean;
     shouldShowThemeSettings: boolean;
     can: (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
     isTenantSettingsEditEnabled: boolean;
@@ -21,6 +22,7 @@ const compactTabs = (tabs: Array<SettingsTab | false | null | undefined>): Setti
 
 export const getSettingsTabs = ({
     isSuperAdmin,
+    canManageServiceNotices = false,
     shouldShowThemeSettings,
     can,
     isTenantSettingsEditEnabled,
@@ -53,6 +55,11 @@ export const getSettingsTabs = ({
             can(PermissionAction.Update, Resource.Tenant) && {
                 to: `${base}/smtp`,
                 titleKey: 'settings.subhead.smtp',
+                iconName: 'email_server',
+            },
+            canManageServiceNotices && {
+                to: routePathNames.serviceNotices,
+                titleKey: 'serviceNotices.title',
                 iconName: 'email_server',
             },
             can(PermissionAction.Update, Resource.Tenant) && {
