@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
@@ -125,7 +125,7 @@ vi.mock('../../../components/Page', () => {
         <div>{isLoading ? 'loading' : children}</div>
     );
     Page.BackWithActions = function PageBackWithActions({ children }: { children: React.ReactNode }) {
-        return <div>{children}</div>;
+        return <div data-testid="page-actions">{children}</div>;
     };
     return { Page };
 });
@@ -267,8 +267,12 @@ const fillMandatoryFields = async () => {
     await waitFor(() => expect(mocks.getSingleTenantData).toHaveBeenCalledWith(TENANT.id));
 };
 
+// Scoped to the header: a page-wide role query recomputes jsdom styles for every button on this
+// form, about a second after each render.
+const pageButton = (name: string) => within(screen.getByTestId('page-actions')).getByRole('button', { name });
+
 const submit = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'Speichern' }));
+    await user.click(pageButton('Speichern'));
     await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
     return mocks.mutate.mock.calls[0][0];
 };
@@ -527,11 +531,18 @@ describe('topics per centre (#1264)', () => {
         return names;
     };
 
-    const unlock = (user: ReturnType<typeof userEvent.setup>) =>
-        user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+    const unlock = (user: ReturnType<typeof userEvent.setup>) => user.click(pageButton('Bearbeiten'));
 
-    const removeChip = async (user: ReturnType<typeof userEvent.setup>, chipLabel: string) => {
-        const chip = screen.getByRole('button', { name: chipLabel });
+    /** The MUI field labelled `label`, to keep chip queries off the rest of the form. */
+    const fieldOf = (label: string) =>
+        within(screen.getByLabelText(label).closest('.MuiAutocomplete-root') as HTMLElement);
+
+    const removeChip = async (
+        user: ReturnType<typeof userEvent.setup>,
+        chipLabel: string,
+        scope: Pick<typeof screen, 'getByRole'> = screen,
+    ) => {
+        const chip = scope.getByRole('button', { name: chipLabel });
         await user.click(chip.querySelector('.MuiChip-deleteIcon') as Element);
     };
 
@@ -708,20 +719,23 @@ describe('topics per centre (#1264)', () => {
     });
 
     describe('moving a counsellor to a centre that lacks a topic (Admin#1034)', () => {
+        // Every test here walks the whole form; user-event's per-click style check pushed them past CI's 30 s.
+        const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
+
         const moveNordToOst = async (user: ReturnType<typeof userEvent.setup>) => {
             editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
             renderForm();
             await unlock(user);
             await chooseOption(user, 'Beratungsstelle', '10115 Ost Berlin');
             await user.keyboard('{Escape}');
-            await removeChip(user, '20095 Nord Hamburg');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
             expect(screen.queryByLabelText('Themen bei Nord (20095 Hamburg)')).not.toBeInTheDocument();
-            await user.click(screen.getByRole('button', { name: 'Speichern' }));
+            await user.click(pageButton('Speichern'));
             return screen.findByRole('dialog');
         };
 
         it('asks before saving and names the uncovered topic', async () => {
-            const user = userEvent.setup();
+            const user = setupUser();
             const dialog = await moveNordToOst(user);
 
             expect(dialog).toHaveTextContent('Themen passen nicht zur neuen Beratungsstelle');
@@ -730,9 +744,9 @@ describe('topics per centre (#1264)', () => {
         });
 
         it('"Thema weglassen" saves without the topic', async () => {
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Thema weglassen' }));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema weglassen' }));
 
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
             // Ost's only topic is preselected when the centre is added.
@@ -741,9 +755,9 @@ describe('topics per centre (#1264)', () => {
         });
 
         it('"Thema bei Ost ergänzen" adds it to the centre, then saves it there', async () => {
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
 
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
             expect(mocks.addTopicsToAgency).toHaveBeenCalledWith('3', ['12']);
@@ -752,15 +766,17 @@ describe('topics per centre (#1264)', () => {
 
         it('disables adding the topic, with the reason, without the right to edit that centre', async () => {
             mocks.canUpdateAgency = false;
-            const user = userEvent.setup();
+            const user = setupUser();
             const dialog = await moveNordToOst(user);
 
-            expect(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' })).toBeDisabled();
+            expect(
+                within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }),
+            ).toBeDisabled();
             expect(dialog).toHaveTextContent('Keine Berechtigung für Ost (10115 Berlin).');
         });
 
         it('says the topic becomes publicly offered at the new centre', async () => {
-            const user = userEvent.setup();
+            const user = setupUser();
             const dialog = await moveNordToOst(user);
 
             expect(dialog).toHaveTextContent('Wird danach bei Ost (10115 Berlin) öffentlich angeboten.');
@@ -768,10 +784,12 @@ describe('topics per centre (#1264)', () => {
 
         it('disables adding the topic, with the reason, when a centre may hold only one topic', async () => {
             mocks.appSettings = { oneTopicPerAgencyEnabled: true };
-            const user = userEvent.setup();
+            const user = setupUser();
             const dialog = await moveNordToOst(user);
 
-            expect(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' })).toBeDisabled();
+            expect(
+                within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }),
+            ).toBeDisabled();
             expect(dialog).toHaveTextContent(
                 'Nur ein Thema (Fachbereich) pro Stelle: Ost (10115 Berlin) hat schon eins.',
             );
@@ -781,9 +799,9 @@ describe('topics per centre (#1264)', () => {
             const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
             mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.FORBIDDEN));
             const toast = vi.spyOn(message, 'error');
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
 
             await waitFor(() =>
                 expect(toast).toHaveBeenCalledWith(
@@ -797,9 +815,9 @@ describe('topics per centre (#1264)', () => {
             const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
             mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.SETTINGS_UNAVAILABLE));
             const toast = vi.spyOn(message, 'error');
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
 
             await waitFor(() =>
                 expect(toast).toHaveBeenCalledWith(
@@ -811,19 +829,19 @@ describe('topics per centre (#1264)', () => {
 
         it('cannot be closed while the topic is being added', async () => {
             mocks.addTopicsToAgency.mockReturnValue(new Promise(() => {}));
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
-            fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape', code: 'Escape', keyCode: 27 });
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape', keyCode: 27 });
 
             expect(screen.getByRole('dialog')).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: 'Thema weglassen' })).toBeDisabled();
+            expect(within(dialog).getByRole('button', { name: 'Thema weglassen' })).toBeDisabled();
         });
 
         it('"Neue Beratungsstelle anlegen" opens the agency create page without saving', async () => {
-            const user = userEvent.setup();
-            await moveNordToOst(user);
-            await user.click(screen.getByRole('button', { name: 'Neue Beratungsstelle anlegen' }));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Neue Beratungsstelle anlegen' }));
 
             expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/add');
             expect(mocks.mutate).not.toHaveBeenCalled();
