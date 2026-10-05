@@ -39,7 +39,7 @@ export interface UseLegalDraftResult {
      * it, not an extra: a draft that stored only the body while reporting success
      * would lose the consent wording on the next reload.
      */
-    saveDraft: (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => void;
+    saveDraft: (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => boolean;
     /** Returns whether the draft is really gone — callers must not drop further state otherwise. */
     discardDraft: () => boolean;
 }
@@ -56,6 +56,7 @@ export const useLegalDraft = (
     document: LegalDraftDocument,
     scope: string | undefined,
     baseVersionId?: string,
+    onError?: (message: string) => void,
 ): UseLegalDraftResult => {
     const { t } = useTranslation();
     const key = legalDraftKey(document, scope);
@@ -77,13 +78,15 @@ export const useLegalDraft = (
     const saveDraft = useCallback(
         (contentByLanguage: Record<string, string>, consentByLanguage?: Record<string, string>) => {
             if (!key) {
-                return;
+                return false;
             }
             if (!writeLegalDraft(key, contentByLanguage, baseVersionId, consentByLanguage)) {
                 // Quota exceeded or storage disabled: nothing was stored, so say so
                 // instead of confirming a save the admin would rely on.
-                notification.error({ message: t('legal.draft.saveError'), duration: 8 });
-                return;
+                const message = t('legal.draft.saveError');
+                if (onError) onError(message);
+                else notification.error({ message, duration: 8 });
+                return false;
             }
             setState((previous) => ({
                 ...previous,
@@ -91,8 +94,9 @@ export const useLegalDraft = (
                 savedBaseVersionId: baseVersionId,
             }));
             notification.success({ message: t('legal.draft.saved'), duration: 4 });
+            return true;
         },
-        [baseVersionId, key, t],
+        [baseVersionId, key, onError, t],
     );
 
     const discardDraft = useCallback(() => {
@@ -103,12 +107,14 @@ export const useLegalDraft = (
         if (!clearLegalDraft(key)) {
             // The draft is still on disk — keep showing it rather than pretending it
             // is gone and resurrecting it on the next load.
-            notification.error({ message: t('legal.draft.discardError'), duration: 8 });
+            const message = t('legal.draft.discardError');
+            if (onError) onError(message);
+            else notification.error({ message, duration: 8 });
             return false;
         }
         setState({ key, draft: undefined, savedAt: undefined, savedBaseVersionId: undefined });
         return true;
-    }, [key, t]);
+    }, [key, onError, t]);
 
     const isStale = !!savedBaseVersionId && !!baseVersionId && savedBaseVersionId !== baseVersionId;
 

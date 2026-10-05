@@ -31,6 +31,19 @@ const readContentField = (tenantData: TenantData, field: string): unknown => {
 };
 
 /**
+ * `impressum`/`privacy` on /service/tenant are resolved to the request's language; the stored
+ * map travels next to them as `<field>Languages`. Editors must start from the map, or every
+ * other language drops out of the card and out of the next publish (#1066).
+ */
+const readLegalContentField = (tenantData: TenantData, field: 'impressum' | 'privacy'): unknown => {
+    const languages = (tenantData.content as Record<string, unknown> | undefined)?.[`${field}Languages`];
+    if (languages && typeof languages === 'object' && !Array.isArray(languages)) {
+        return languages;
+    }
+    return readContentField(tenantData, field);
+};
+
+/**
  * Like {@link readContentField}, but keeps ABSENCE distinguishable from an empty
  * value. `content.privacyConsent` (ADR-021 decision 4) is the one field whose
  * absence carries meaning: the legal editors offer the consent input only when
@@ -67,8 +80,8 @@ export const mapTenantDataToTenantAdminData = (tenantData: TenantData): TenantAd
             signal: tenantData.theming?.signal ?? null,
         },
         content: {
-            impressum: toTranslatableContent(readContentField(tenantData, 'impressum')),
-            privacy: toTranslatableContent(readContentField(tenantData, 'privacy')),
+            impressum: toTranslatableContent(readLegalContentField(tenantData, 'impressum')),
+            privacy: toTranslatableContent(readLegalContentField(tenantData, 'privacy')),
             termsAndConditions: toTranslatableContent(readContentField(tenantData, 'termsAndConditions')),
             claim: toTranslatableContent(readContentField(tenantData, 'claim')),
             confirmTermsAndConditions:

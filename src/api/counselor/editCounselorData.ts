@@ -45,7 +45,9 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         topicsByAgency,
     } = formData;
 
-    // null = keep the stored topics (the server treats a missing list as empty).
+    // #1026: absent means the form never showed topics; `[]` would wipe them (a 400 after UserService#1213).
+    // null = keep the stored topics explicitly; `[]` only when the admin really cleared them.
+    const hasTopicField = formData?.topicIds !== undefined || formData?.topics !== undefined;
     const topicIds = formData.topicIds === null ? null : parseTopicIds(formData);
 
     const strippedCounselor = {
@@ -63,7 +65,7 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         // screen that never rendered the switch must not send it at all.
         ...(isGroupchatConsultant !== undefined && { isGroupchatConsultant: !!isGroupchatConsultant }),
         isSupervisor: !!isSupervisor,
-        topicIds,
+        ...(hasTopicField && { topicIds }),
         // Only when the page knows the server stores topics per centre; older servers reject it.
         ...(Array.isArray(topicsByAgency) && { topicsByAgency }),
         publicSlug,

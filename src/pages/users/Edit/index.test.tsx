@@ -831,6 +831,80 @@ describe('topics per centre (#1264)', () => {
     });
 });
 
+describe('topic assignment on edit (#1026)', () => {
+    const editConsultantWithTopics = () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: {
+                data: [
+                    {
+                        id: 'consultant-1',
+                        firstname: 'Ada',
+                        lastname: 'Lovelace',
+                        email: 'ada.lovelace@example.org',
+                        username: 'ada-lovelace',
+                        tenantId: TENANT.id,
+                        agencies: [],
+                    },
+                ],
+            },
+            isLoading: false,
+        };
+        mocks.counselorResult = { data: { id: 'consultant-1', topics: [{ id: 11, name: 'Sucht' }] }, isLoading: false };
+    };
+
+    // ADR-003: a topic only saves when one of the consultant's agencies offers it.
+    const showTopicField = () => {
+        const agency = { id: 3, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id };
+        mocks.agenciesResult = {
+            data: { data: [{ ...agency, topics: [{ id: 11, name: 'Sucht' }] }] },
+            isLoading: false,
+        };
+        mocks.consultantsResult.data.data[0].agencies = [agency];
+        mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
+    };
+
+    it('submits no topicIds when the topic field was never shown', async () => {
+        // The tenant topic list came back empty, so the field stays hidden although the
+        // consultant holds topics; the save must leave them alone.
+        editConsultantWithTopics();
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(screen.queryByLabelText(/^Themen/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        // null = keep the stored topics (editCounselorData sends it as-is).
+        expect((await submit(user)).topicIds).toBeNull();
+    });
+
+    it('submits the shown topics when the field was on screen', async () => {
+        editConsultantWithTopics();
+        showTopicField();
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(await screen.findByLabelText('Themen bei Nord (20095 Hamburg)')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect((await submit(user)).topicIds).toEqual(['11']);
+    });
+
+    it('submits an emptied topic field as [], so a deliberate removal still reaches the backend', async () => {
+        editConsultantWithTopics();
+        showTopicField();
+        const user = userEvent.setup();
+        renderForm();
+
+        await screen.findByLabelText('Themen bei Nord (20095 Hamburg)');
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(screen.getByLabelText('Themen bei Nord (20095 Hamburg)'));
+        await user.keyboard('{Backspace}');
+
+        expect((await submit(user)).topicIds).toEqual([]);
+    });
+});
+
 describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     const CONSULTANT_ID = 'consultant-1';
     const SUPERVISOR_ID = 'supervisor-9';

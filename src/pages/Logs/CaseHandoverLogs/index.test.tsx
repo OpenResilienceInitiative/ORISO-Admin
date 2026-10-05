@@ -4,7 +4,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseHandoverLogsPage } from './index';
 
-const t = (key: string) => key;
+const TRANSLATIONS: Record<string, string> = {
+    'tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE': 'Ungeplant verhindert',
+};
+// Like i18next (returnEmptyString: false): an empty defaultValue falls through to the key.
+const t = (key: string, options?: { defaultValue?: string }) => TRANSLATIONS[key] ?? (options?.defaultValue || key);
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t }),
@@ -76,8 +80,34 @@ vi.mock('../../../hooks/useCaseHandoverLogsData', () => ({
                     requesterName: 'Requesting Counsellor',
                     previousName: 'Previous Counsellor',
                 },
+                {
+                    requestId: 2,
+                    sessionId: 43,
+                    status: 'GRANTED',
+                    auditOutcome: 'AUTO_APPROVED',
+                    reasonCode: 'TENANT_CUSTOM_REASON',
+                    reasonLabel: 'Custom backend label',
+                    explanation: '',
+                    clientConsentRequired: false,
+                    createdAt: '2026-07-02T10:00:00Z',
+                    requesterName: 'Second Requester',
+                    previousName: 'Second Previous',
+                },
+                {
+                    requestId: 3,
+                    sessionId: 44,
+                    status: 'GRANTED',
+                    auditOutcome: 'AUTO_APPROVED',
+                    reasonCode: 'TENANT_EMPTY_LABEL',
+                    reasonLabel: '',
+                    explanation: '',
+                    clientConsentRequired: false,
+                    createdAt: '2026-07-03T10:00:00Z',
+                    requesterName: 'Third Requester',
+                    previousName: 'Third Previous',
+                },
             ],
-            total: 1,
+            total: 3,
             page: 1,
             perPage: 20,
         },
@@ -94,10 +124,32 @@ describe('CaseHandoverLogsPage', () => {
     it('renders the audit log entries (who, when, reason, outcome)', () => {
         render(<CaseHandoverLogsPage />);
 
-        expect(screen.getByText('Counsellor is ill')).toBeInTheDocument();
+        expect(screen.getByText('Ungeplant verhindert')).toBeInTheDocument();
         expect(screen.getByText('Requesting Counsellor')).toBeInTheDocument();
         expect(screen.getByText('Previous Counsellor')).toBeInTheDocument();
         expect(screen.getByText('GRANTED_WITHOUT_CONSENT')).toBeInTheDocument();
+    });
+
+    it('translates the reason from its code (retired codes via their neutral successor)', () => {
+        render(<CaseHandoverLogsPage />);
+
+        expect(screen.getByText('Ungeplant verhindert')).toBeInTheDocument();
+        expect(screen.queryByText('Counsellor is ill')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the backend label for a code without translation', () => {
+        render(<CaseHandoverLogsPage />);
+
+        expect(screen.getByText('Custom backend label')).toBeInTheDocument();
+    });
+
+    it('shows the code when a custom reason has an empty backend label', () => {
+        render(<CaseHandoverLogsPage />);
+
+        expect(screen.getByText('TENANT_EMPTY_LABEL')).toBeInTheDocument();
+        expect(
+            screen.queryByText('tenants.permissions.card.caseHandover.reason.TENANT_EMPTY_LABEL'),
+        ).not.toBeInTheDocument();
     });
 
     it('is results-only: no policy editing and no free-text explanation column', () => {

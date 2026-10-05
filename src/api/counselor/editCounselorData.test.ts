@@ -161,6 +161,33 @@ describe('editCounselorData', () => {
         await editCounselorData('consultant-1', { ...baseFormData, isGroupchatConsultant: false });
         expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).isGroupchatConsultant).toBe(false);
     });
+    // #1026: an edit screen that never showed the topic field must not wipe the counsellor's
+    // topics — `[]` clears them today and becomes a 400 once UserService#1213 lands.
+    it('omits topicIds when the form did not show the topic field', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData });
+
+        const body = vi.mocked(fetchData).mock.calls[0][0].bodyData as string;
+        expect(JSON.parse(body)).not.toHaveProperty('topicIds');
+    });
+
+    it('sends the chosen topic ids when the admin edited the topic field', async () => {
+        await editCounselorData('consultant-1', {
+            ...baseFormData,
+            topicIds: [
+                { value: '11', label: 'Sucht' },
+                { value: '12', label: 'Schulden' },
+            ],
+        });
+
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).topicIds).toEqual([11, 12]);
+    });
+
+    it('sends an emptied topic field as [], so the backend can judge a deliberate removal', async () => {
+        await editCounselorData('consultant-1', { ...baseFormData, topicIds: [] });
+
+        expect(JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string).topicIds).toEqual([]);
+    });
+
     /**
      * The absence note does NOT follow the null/omitted-leaves-untouched contract the fields
      * above use, and that difference is the whole point of this pair of tests.

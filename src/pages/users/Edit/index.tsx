@@ -414,12 +414,13 @@ export const UserEditOrAdd = () => {
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
             // null = keep what is stored. Used when the pickers never loaded, and when a topic the
             // centre dropped is still held and nothing changed: the server would reject it (400).
+            // Also when no centre shows a picker at all (#1026): stored topics stay untouched.
             const keepStored =
                 isConsultantForm &&
                 isEditing &&
                 (!initialCentresRef.current ||
                     (!topicsChanged(initialCentresRef.current, centreIds, byCentre) &&
-                        centresWithDroppedTopics(centreIds, byCentre).length > 0));
+                        (centreIds.length === 0 || centresWithDroppedTopics(centreIds, byCentre).length > 0)));
             if (keepStored) {
                 payload.topicIds = null;
             } else if (isConsultantForm) {

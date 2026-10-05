@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { configure, render, screen, waitFor } from '@testing-library/react';
+import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 // Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
@@ -45,16 +45,27 @@ vi.mock('./EmailTemplatesDialog', () => ({
     EmailTemplatesDialog: ({
         initialView,
         initialTemplateId,
+        onClose,
     }: {
         initialView?: string;
         initialTemplateId?: number;
+        onClose: () => void;
     }) => (
         <div data-testid="templates-dialog">
             {initialView}
             {initialTemplateId != null ? `:${initialTemplateId}` : ''}
+            <button type="button" onClick={onClose}>
+                Close template dialog
+            </button>
         </div>
     ),
 }));
+
+// The Träger tab is the platform operator's view.
+vi.mock('../../hooks/useUserRoles.hook', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../hooks/useUserRoles.hook')>();
+    return { useUserRoles: () => ({ ...actual.useUserRoles(), isSuperAdmin: true, hasRole: () => true }) };
+});
 
 const mocks = vi.hoisted(() => ({
     listAccountInvites: vi.fn(),
@@ -138,13 +149,20 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
     // The composer row is one row of controls: the template chooser must stand at the
     // same height as the send button beside it. The chooser's own default is the legal
     // editors' 40px pill, which left it visibly a size short here.
+    it('keeps browser autofill off the recipient address', async () => {
+        await renderTenantTab();
+
+        expect(await screen.findByLabelText('E-Mail')).toHaveAttribute('autocomplete', 'off');
+    });
+
     it("renders the template chooser at the row's medium height, like the send button", async () => {
         await renderTenantTab();
 
+        // A fresh page shows the template split button expanded, not as a pill.
         const templatePill = (await screen.findByRole('button', { name: /Standard/ })).closest(
             `.${splitButtonStyles.splitButton}`,
         ) as HTMLElement;
-        const sendPill = (await findSendButton('Direkt Versenden')).closest(
+        const sendPill = (await findSendButton('Anlegen & einladen')).closest(
             `.${splitButtonStyles.splitButton}`,
         ) as HTMLElement;
 
@@ -157,7 +175,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         const wrapper = sendButton.closest(`.${splitButtonStyles.splitButton}`) as HTMLElement;
         // Template auto-selected and Träger-ID auto-suggested — the empty e-mail
         // alone must keep the action gated and in the outlined (non-primary) look.
@@ -180,7 +198,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
         expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail');
@@ -206,7 +224,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
-        await findSendButton('Direkt Versenden');
+        await findSendButton('Anlegen & einladen');
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
 
         const entry = await screen.findByRole('menuitem', { name: 'Direkt Versenden' });
@@ -217,12 +235,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const view = renderTenantTab();
         const user = userEvent.setup();
 
-        await findSendButton('Direkt Versenden');
+        await findSendButton('Anlegen & einladen');
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
         await user.click(await screen.findByRole('menuitem', { name: 'Empfänger nur anlegen' }));
 
         expect(await findSendButton('Empfänger nur anlegen')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Direkt Versenden' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Anlegen & einladen' })).not.toBeInTheDocument();
         expect(window.localStorage.getItem(sendModeStorageKey('TENANT_ADMIN'))).toBe('createOnly');
 
         // Survives a full remount (page reload) via localStorage.
@@ -252,18 +270,37 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(screen.getByLabelText('E-Mail')).toHaveValue('');
     });
 
+    it('submits once when send fires twice before the page re-renders', async () => {
+        window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
+        mocks.createAccountInvite.mockReturnValue(new Promise(() => {}));
+
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
+        const sendButton = await findSendButton('Empfänger nur anlegen');
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        // Both presses run on the same render, so `submitting` is still false for the second.
+        act(() => {
+            sendButton.click();
+            sendButton.click();
+        });
+
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+    });
+
     it('starts visibly on Auto and posts allocationMode AUTO without a browser-pinned id (#570)', async () => {
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
         renderTenantTab();
         const user = userEvent.setup();
 
-        const idInput = await screen.findByRole('textbox', { name: 'Träger-ID' });
-        expect(idInput).toHaveValue('Auto');
+        const idInput = await screen.findByRole('combobox', { name: 'Träger' });
+        expect(idInput).toHaveValue('Neu');
         expect(screen.queryByText('Die nächste freie ID wird automatisch vergeben.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -272,7 +309,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(payload.tenantIdAllocationMode).toBe('AUTO');
         expect(payload.tenantId).toBeUndefined();
         // After a successful submit the field rests on Auto again.
-        expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Neu');
     });
 
     it('blocks sending on a reserved id and unblocks via the Auto toggle (#570)', async () => {
@@ -282,15 +319,16 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         const user = userEvent.setup();
 
         await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         await waitFor(() => expect(sendButton).toBeEnabled());
 
-        await user.type(screen.getByRole('textbox', { name: 'Träger-ID' }), '30');
+        await user.type(screen.getByRole('combobox', { name: 'Träger' }), '30');
         expect(await screen.findByText('Diese ID ist durch eine offene Einladung reserviert.')).toBeInTheDocument();
         await waitFor(() => expect(sendButton).toBeDisabled());
 
-        await user.click(screen.getByRole('button', { name: 'Automatische ID-Vergabe' }));
-        expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('Auto');
+        // "＋ Neu anlegen" resets the field to Auto.
+        await user.click(await screen.findByRole('option', { name: /Neu anlegen/ }));
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Neu');
         await waitFor(() => expect(sendButton).toBeEnabled());
     });
 
@@ -300,17 +338,17 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        await screen.findByRole('textbox', { name: 'Träger-ID' });
+        await screen.findByRole('combobox', { name: 'Träger' });
         await user.click(screen.getByRole('button', { name: 'Wert erhöhen' }));
 
-        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Träger-ID' })).toHaveValue('21'));
+        await waitFor(() => expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('21'));
         expect(mocks.tenantIdAllocationClient.nextFreeId).toHaveBeenCalledWith({ direction: 'up' });
         // A free id is the expected case and says nothing an admin has to act on,
         // so it no longer produces a supporting line at all.
         expect(screen.queryByText('ID {{id}} ist frei.')).not.toBeInTheDocument();
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -353,7 +391,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
 
         // E-mail is valid and the Träger-ID rests on Auto, yet send stays off:
@@ -368,8 +406,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        const templatePill = await screen.findByRole('button', { name: /Standard/ });
-        await user.click(templatePill);
+        // The main segment of the (expanded) template split button opens the dialog.
+        await user.click(await screen.findByRole('button', { name: /Standard/ }));
 
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('list');
     });
@@ -392,12 +430,17 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /^Zweite Vorlage$/ }));
 
-        // Selection is lifted to the tab and re-labels the pill…
-        expect(await screen.findByRole('button', { name: /Zweite Vorlage/ })).toBeInTheDocument();
+        // Selection is lifted to the tab and the field folds into its pill…
+        // (a collapsed field is a button whose title is its value; a leftover menu item is no button)
+        await waitFor(() =>
+            expect(
+                screen.getAllByRole('button', { name: /bearbeiten/ }).map((pill) => pill.getAttribute('title')),
+            ).toContain('Zweite Vorlage'),
+        );
 
         // …and the send call uses exactly that template.
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
-        const sendButton = await findSendButton('Direkt Versenden');
+        const sendButton = await findSendButton('Anlegen & einladen');
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
@@ -426,7 +469,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             const emailField = await screen.findByLabelText('E-Mail');
             await user.type(emailField, 'taken@example.org');
-            const sendButton = await findSendButton('Direkt Versenden');
+            const sendButton = await findSendButton('Anlegen & einladen');
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
 
@@ -438,7 +481,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                 ),
             ).toHaveLength(2);
             // Inline, not a global toast: the generic create-failed toast must not appear.
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             // The row keeps its values — nothing the admin typed is thrown away.
             expect(screen.getByLabelText('E-Mail')).toHaveValue('taken@example.org');
             // And a second click cannot re-post the same address.
@@ -462,7 +505,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
                 ),
             ).toHaveLength(2);
-            expect(screen.queryByText('Could not create link')).not.toBeInTheDocument();
+            expect(screen.queryByText('Einladung konnte nicht angelegt werden.')).not.toBeInTheDocument();
             expect(mocks.createAccountInvite.mock.calls[0][0].templateId).toBeUndefined();
         });
 
@@ -474,7 +517,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             const emailField = await screen.findByLabelText('E-Mail');
             await user.type(emailField, 'taken@example.org');
-            const sendButton = await findSendButton('Direkt Versenden');
+            const sendButton = await findSendButton('Anlegen & einladen');
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
             await screen.findAllByText(
@@ -502,7 +545,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
 
             const emailField = await screen.findByLabelText('E-Mail');
             await user.type(emailField, 'taken@example.org');
-            const sendButton = await findSendButton('Direkt Versenden');
+            const sendButton = await findSendButton('Anlegen & einladen');
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
             await screen.findAllByText(
@@ -540,11 +583,11 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
             const user = userEvent.setup();
 
             await user.type(await screen.findByLabelText('E-Mail'), 'neu@example.org');
-            const sendButton = await findSendButton('Direkt Versenden');
+            const sendButton = await findSendButton('Anlegen & einladen');
             await waitFor(() => expect(sendButton).toBeEnabled());
             await user.click(sendButton);
 
-            expect(await screen.findByText('This tenant ID is already taken.')).toBeInTheDocument();
+            expect(await screen.findByText('Diese Träger-ID ist bereits vergeben.')).toBeInTheDocument();
             expect(
                 screen.queryAllByText(
                     'Diese E-Mail-Adresse wird bereits für ein bestehendes Konto oder eine bestehende Einladung verwendet. Bitte eine andere Adresse verwenden.',
@@ -553,12 +596,34 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         });
     });
 
+    it('opens a blank new template from the invitation toolbar', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create');
+        expect(screen.getByTestId('templates-dialog')).not.toHaveTextContent('create:');
+    });
+
+    it('starts blank after closing a create-from dialog', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
+        await user.click(screen.getByRole('button', { name: 'Close template dialog' }));
+        await user.click(screen.getByTitle('Standard'));
+        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+        expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create');
+        expect(screen.getByTestId('templates-dialog')).not.toHaveTextContent('create:');
+    });
+
     it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
         renderTenantTab();
         const user = userEvent.setup();
 
-        await screen.findByRole('button', { name: /Standard/ });
-        await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+        await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
 
         // The dialog opens straight in create mode with template 7 as the source.

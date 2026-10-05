@@ -59,6 +59,12 @@ export const serializeTenantAdminDataUpdate = (
     formData: Partial<TenantAdminData>,
 ): string => {
     const payload = mergeTenantAdminData(currentTenantData, formData);
+    if (formData.settings?.smtpMode === 'PLATFORM' && formData.settings.smtp) {
+        // The SMTP editor explicitly projects PLATFORM to disabled transport plus
+        // theme colour. Deep-merging would restore the stored OWN server fields.
+        // Mode-only and unrelated updates keep their normal preservation behaviour.
+        payload.settings = { ...payload.settings, smtp: { ...formData.settings.smtp } };
+    }
     if (
         !Object.prototype.hasOwnProperty.call(formData, 'licensing') &&
         payload.licensing?.allowedNumberOfUsers === null &&

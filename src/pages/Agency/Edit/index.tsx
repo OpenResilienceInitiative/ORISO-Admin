@@ -1,5 +1,5 @@
 import { Alert, Button, Form, notification } from 'antd';
-import { useCallback, useState } from 'react';
+import { ReactElement, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -23,6 +23,7 @@ import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
+import { OpenDepartmentFieldOnRequest } from './components/DepartmentDetails/OpenDepartmentFieldOnRequest';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
@@ -30,16 +31,20 @@ import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useAgencyLegalDataMissing } from '../../../hooks/useAgencyLegalDataMissing';
+import { useTraegerDataProtectionOfficer } from '../../../hooks/useTraegerDataProtectionOfficer';
 import { ResponsibleSettings } from './components/ResponsibleSettings';
 import { ContactSettings } from './components/ContactSettings';
 import { DataProcessingAgreementContainer } from '../../../components/Tenants/LegalSettings/components/DataProcessingAgreementContainer';
-import { AgencyLegalTextContainer } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer';
+import { AgencyLegalTextWithTemplates } from '../../../components/Tenants/LegalSettings/components/AgencyLegalTextContainer/AgencyLegalTextWithTemplates';
+import { LegalTemplateUnreadMarker } from '../../../components/Tenants/LegalSettings/components/LegalTemplateCompare/LegalTemplateUnreadMarker';
+import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSettings/hooks/useLegalProposalInbox';
 import pageStyles from '../../../components/Page/styles.module.scss';
 import styles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
+import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
@@ -80,6 +85,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
         formData: Record<string, unknown>;
         options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] };
@@ -103,7 +109,12 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
     const { data: tenantTopics } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
+    const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
+    let legalTabIcon: ReactElement | null = null;
+    if (legalDataMissing) legalTabIcon = <ErrorOutlinedIcon color="error" />;
+    else if (hasNewLegalTemplate) legalTabIcon = <LegalTemplateUnreadMarker />;
     const agencyTenantId = getEntityId(agencyData?.tenantId);
+    const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -117,7 +128,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                   titleKey: 'settings.subhead.legal',
                   to: `${routePathNames.agency}/${id}/legal-settings`,
                   iconName: 'legal',
-                  icon: legalDataMissing ? <ErrorOutlinedIcon color="error" /> : null,
+                  icon: legalTabIcon,
               },
               isEditing && {
                   titleKey: 'settings.subhead.functionAccess',
@@ -126,7 +137,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
               },
           ];
     const isAgencyCreationDpaBlocked =
-        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || dpaGate?.dpaSigned !== true);
+        !isEditing && isTenantScopedAdmin && (isDpaGateLoading || isDpaGateError || !canStartNewCounselling(dpaGate));
 
     const demographicsInitialValues = isEnabled(FeatureFlag.Demographics)
         ? {
@@ -451,15 +462,32 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 editButtonPlacement="footer"
                                 onSave={onSaveCard}
                             >
-                                <AgencySettings
-                                    isEditMode={isEditing}
-                                    asFields
-                                    persistedTeamAgency={initialValues.teamAgency}
-                                />
+                                {({ form: cardForm, startEditing }) => (
+                                    <>
+                                        <OpenDepartmentFieldOnRequest
+                                            request={departmentFieldRequest}
+                                            startEditing={startEditing}
+                                            form={cardForm}
+                                        />
+                                        <AgencySettings
+                                            isEditMode={isEditing}
+                                            asFields
+                                            persistedTeamAgency={initialValues.teamAgency}
+                                        />
+                                    </>
+                                )}
                             </CardEditable>
                         </CardDeck.Item>
                         <CardDeck.Item>
-                            <AgencyDepartmentDetails agencyData={agencyData} />
+                            <AgencyDepartmentDetails
+                                agencyData={agencyData}
+                                // The Fachbereich field only renders when the tenant offers topics.
+                                onAddDepartment={
+                                    tenantTopics?.length > 0
+                                        ? () => setDepartmentFieldRequest((request) => request + 1)
+                                        : undefined
+                                }
+                            />
                         </CardDeck.Item>
                     </CardDeck>
                 </ThemeProvider>
@@ -540,7 +568,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
                 </CardDeck.Item>
                 <CardDeck.Item>
-                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} />
+                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.documentEditorItem}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
@@ -550,7 +578,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
                         Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
                         with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
-                    <AgencyLegalTextContainer
+                    <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -558,7 +586,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     />
                 </CardDeck.Item>
                 <CardDeck.Item className={styles.documentEditorItem}>
-                    <AgencyLegalTextContainer
+                    <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
