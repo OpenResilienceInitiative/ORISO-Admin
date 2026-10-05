@@ -113,6 +113,29 @@ export const topicsChanged = (
     );
 };
 
+/**
+ * A flat topic list is stored at every centre that offers the topic. Per centre, the listed topics
+ * it offers but the admin did not pick there, which such a save would add there unseen.
+ */
+export const topicsMissingFromFlatList = (
+    centreIds: string[],
+    byCentre: TopicsByCentre,
+    centres: CentreWithTopics[],
+): Record<string, Option[]> => {
+    const listed = new Set(centreIds.flatMap((centreId) => (byCentre[centreId] ?? []).map(idOf)));
+    return Object.fromEntries(
+        centreIds
+            .map((centreId) => {
+                const picked = new Set((byCentre[centreId] ?? []).map(idOf));
+                const missing = centreTopicOptions(findCentre(centres, centreId)).filter(
+                    ({ value }) => listed.has(value) && !picked.has(value),
+                );
+                return [centreId, missing] as const;
+            })
+            .filter(([, missing]) => missing.length > 0),
+    );
+};
+
 export const buildTopicsPayload = (centreIds: string[], byCentre: TopicsByCentre = {}) => {
     const topicsByAgency = centreIds.map((centreId) => ({
         agencyId: Number(centreId),

@@ -1289,6 +1289,7 @@
     "counselor.topicsAtAgency.notOfferedChip": "{{topic}} – no longer offered here",
     "counselor.topicsAtAgency.notOfferedNotice": "This counselling centre no longer offers the marked topics. They stay saved until you remove them.",
     "counselor.topicsAtAgency.notOfferedBlocksChange": "Remove the marked topics first. This counselling centre no longer offers them, so changes to the topics cannot be saved otherwise.",
+    "counselor.topicsAtAgency.flatListOnly": "Topics are saved for all counselling centres together: a topic applies at every centre that offers it. So select here as well, or remove everywhere: {{topics}}.",
     "counselor.topicsLostByMove.title": "Topics do not fit the new counselling centre",
     "counselor.topicsLostByMove.text": "{{agency}} does not offer these topics the person had so far: {{topics}}.",
     "counselor.topicsLostByMove.addToTarget": "Add topic at {{agency}}",

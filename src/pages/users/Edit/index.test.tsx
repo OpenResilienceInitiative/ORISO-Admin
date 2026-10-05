@@ -84,6 +84,8 @@ const translations: Record<string, string> = {
     'counselor.topicsAtAgency.notOfferedChip': '{{topic}} – wird hier nicht mehr angeboten',
     'counselor.topicsAtAgency.notOfferedNotice': 'Markierte Themen bietet diese Stelle nicht mehr an.',
     'counselor.topicsAtAgency.notOfferedBlocksChange': 'Erst markierte Themen entfernen.',
+    'counselor.topicsAtAgency.flatListOnly':
+        'Gilt für alle Stellen gemeinsam, hier auch wählen oder überall entfernen: {{topics}}.',
     'counselor.topicsLostByMove.title': 'Themen passen nicht zur neuen Beratungsstelle',
     'counselor.topicsLostByMove.text': '{{agency}} bietet nicht an: {{topics}}.',
     'counselor.topicsLostByMove.addToTarget': 'Thema bei {{agency}} ergänzen',
@@ -884,6 +886,80 @@ describe('topics per centre (#1264)', () => {
             await user.click(within(dialog).getByRole('button', { name: 'Neue Beratungsstelle anlegen' }));
 
             expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/add');
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('a save that stores one topic list for all centres', () => {
+        // An older UserService (no topicsByAgency in the GET) and every create keep only the union,
+        // valid at each centre that offers the topic.
+        const savedForAll = (topics: string) =>
+            `Gilt für alle Stellen gemeinsam, hier auch wählen oder überall entfernen: ${topics}.`;
+
+        it('refuses a topic removed at only one of two centres that offer it', async () => {
+            editConsultant([NORD, SUED], { topics: [SUCHT] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Süd (80331 München)'));
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByText(savedForAll('Sucht')),
+            ).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('saves a topic removed at every centre that offers it', async () => {
+            editConsultant([NORD, SUED], { topics: [SUCHT] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Süd (80331 München)'));
+
+            const payload = await submit(user);
+            expect(payload.topicIds).toEqual([]);
+            expect(payload).not.toHaveProperty('topicsByAgency');
+        });
+
+        it('refuses a topic picked at only one of two centres when creating a counsellor', async () => {
+            mocks.agenciesResult = { data: { data: [NORD, SUED] }, isLoading: false };
+            mocks.topicsResult = { data: [SUCHT, SCHULDEN, FAMILIE], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await fillMandatoryFields();
+            await chooseOption(user, 'Beratungsstelle', '20095 Nord Hamburg');
+            await user.click(await screen.findByRole('option', { name: '80331 Süd München' }));
+            await user.keyboard('{Escape}');
+            await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Sucht');
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByText(savedForAll('Sucht')),
+            ).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('refuses before adding a lost topic to the new centre, so that centre stays unchanged', async () => {
+            // West offers Schulden, but the admin removed it there: adding it at Ost would store it at West again.
+            editConsultant([NORD, WEST], { topics: [SCHULDEN] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Schulden', fieldOf('Themen bei West (50667 Köln)'));
+            await chooseOption(user, 'Beratungsstelle', '10115 Ost Berlin');
+            await user.keyboard('{Escape}');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog');
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            expect(
+                await fieldOf('Themen bei West (50667 Köln)').findByText(savedForAll('Schulden')),
+            ).toBeInTheDocument();
+            expect(mocks.addTopicsToAgency).not.toHaveBeenCalled();
             expect(mocks.mutate).not.toHaveBeenCalled();
         });
     });

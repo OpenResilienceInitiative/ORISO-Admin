@@ -54,6 +54,7 @@ import {
     initialTopicsByCentre,
     notOfferedAt,
     topicsChanged,
+    topicsMissingFromFlatList,
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
@@ -280,6 +281,37 @@ export const UserEditOrAdd = () => {
             ),
         [filteredAgencies],
     );
+    /**
+     * Without per-centre topics (older UserService, and every create) the union is stored at each
+     * centre offering a topic. Refuses a selection that would come back different, and says where.
+     */
+    const refuseFlatListMismatch = useCallback(
+        (centreIds: string[], byCentre: TopicsByCentre) => {
+            const initial = initialCentresRef.current;
+            if (
+                !isConsultantForm ||
+                serverStoresTopicsPerCentre ||
+                (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))
+            ) {
+                return false;
+            }
+            const missing = topicsMissingFromFlatList(centreIds, byCentre, filteredAgencies);
+            form.setFields(
+                centreIds.map((centreId) => ({
+                    name: ['topicsByAgency', centreId],
+                    errors: missing[centreId]
+                        ? [
+                              t('counselor.topicsAtAgency.flatListOnly', {
+                                  topics: missing[centreId].map(({ label }) => label).join(', '),
+                              }),
+                          ]
+                        : [],
+                })),
+            );
+            return Object.keys(missing).length > 0;
+        },
+        [isConsultantForm, serverStoresTopicsPerCentre, isEditing, filteredAgencies, form, t],
+    );
 
     useEffect(() => {
         const { tenantId = 0 } = parseUserAuthInfo();
@@ -480,6 +512,9 @@ export const UserEditOrAdd = () => {
                 );
                 return;
             }
+            if (refuseFlatListMismatch(centreIds, byCentre)) {
+                return;
+            }
             const lost =
                 isConsultantForm && initialCentresRef.current
                     ? findTopicsLostByMove({
@@ -496,7 +531,7 @@ export const UserEditOrAdd = () => {
             }
             persist(data, byCentre);
         },
-        [isConsultantForm, filteredAgencies, form, persist, centresWithDroppedTopics, t],
+        [isConsultantForm, filteredAgencies, form, persist, centresWithDroppedTopics, refuseFlatListMismatch, t],
     );
 
     const dropLostTopics = () => {
@@ -507,6 +542,18 @@ export const UserEditOrAdd = () => {
     const addLostTopicsToTarget = async () => {
         const { data, lost } = pendingMove;
         const targetId = String(lost.target.id);
+        const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+        const targetTopics = [...(byCentre[targetId] ?? []), ...lost.topics];
+        // Before the PUT: a refused save must not leave the centre changed.
+        if (
+            refuseFlatListMismatch(
+                (data.agencies ?? []).map(({ value }) => String(value)),
+                { ...byCentre, [targetId]: targetTopics },
+            )
+        ) {
+            setPendingMove(null);
+            return;
+        }
         setAddingTopics(true);
         try {
             await addTopicsToAgency(
@@ -531,8 +578,6 @@ export const UserEditOrAdd = () => {
             queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });
             queryClient.invalidateQueries({ queryKey: ['AGENCY', targetId] });
         }
-        const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
-        const targetTopics = [...(byCentre[targetId] ?? []), ...lost.topics];
         form.setFieldValue(['topicsByAgency', targetId], targetTopics);
         persist(data, { ...byCentre, [targetId]: targetTopics });
         setPendingMove(null);

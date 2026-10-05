@@ -6,6 +6,7 @@ import {
     initialTopicsByCentre,
     notOfferedAt,
     topicsChanged,
+    topicsMissingFromFlatList,
 } from './topicsByCentre';
 
 const SUCHT = { id: 11, name: 'Sucht' };
@@ -96,6 +97,28 @@ describe('buildTopicsPayload', () => {
                 { agencyId: 2, topicIds: [11, 13] },
             ],
         });
+    });
+});
+
+describe('topicsMissingFromFlatList', () => {
+    it('names, per centre, the listed topics it offers but the admin did not pick there', () => {
+        expect(
+            topicsMissingFromFlatList(
+                ['1', '2', '3'],
+                { '1': [option(SUCHT)], '2': [], '3': [option(FAMILIE)] },
+                CENTRES,
+            ),
+        ).toEqual({ '2': [option(SUCHT), option(FAMILIE)] });
+    });
+
+    it('is empty when each centre holds the listed topics it offers, ignoring centres not selected', () => {
+        expect(
+            topicsMissingFromFlatList(
+                ['1', '3'],
+                { '1': [option(SUCHT)], '2': [option(SCHULDEN)], '3': [option(FAMILIE)] },
+                CENTRES,
+            ),
+        ).toEqual({});
     });
 });
 

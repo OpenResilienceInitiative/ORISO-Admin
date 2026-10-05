@@ -1000,6 +1000,7 @@
     "counselor.topicsAtAgency.notOfferedChip": "{{topic}} – wird hier nicht mehr angeboten",
     "counselor.topicsAtAgency.notOfferedNotice": "Markierte Themen bietet diese Beratungsstelle nicht mehr an. Sie bleiben gespeichert, bis Sie sie entfernen.",
     "counselor.topicsAtAgency.notOfferedBlocksChange": "Entfernen Sie zuerst die markierten Themen. Diese Beratungsstelle bietet sie nicht mehr an, deshalb lassen sich Änderungen an den Themen sonst nicht speichern.",
+    "counselor.topicsAtAgency.flatListOnly": "Themen werden für alle Beratungsstellen gemeinsam gespeichert: Ein Thema gilt bei jeder Beratungsstelle, die es anbietet. Wählen Sie deshalb auch hier aus oder entfernen Sie überall: {{topics}}.",
     "counselor.topicsLostByMove.title": "Themen passen nicht zur neuen Beratungsstelle",
     "counselor.topicsLostByMove.text": "{{agency}} bietet diese Themen nicht an, die die Person bisher hatte: {{topics}}.",
     "counselor.topicsLostByMove.addToTarget": "Thema bei {{agency}} ergänzen",
