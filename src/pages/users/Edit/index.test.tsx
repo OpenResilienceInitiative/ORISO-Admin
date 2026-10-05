@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { message } from 'antd';
@@ -824,6 +824,24 @@ describe('topics per centre (#1264)', () => {
                     expect.objectContaining({ content: 'Gerade nicht prüfbar, bitte erneut versuchen.' }),
                 ),
             );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('reloads the centres after a failed add, which may still have reached the server', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.FAILED));
+            const toast = vi.spyOn(message, 'error');
+            const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+            onTestFinished(() => invalidate.mockRestore());
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(expect.objectContaining({ content: 'Hinzufügen fehlgeschlagen.' })),
+            );
+            expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCIES'] });
+            expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '3'] });
             expect(mocks.mutate).not.toHaveBeenCalled();
         });
 

@@ -523,9 +523,10 @@ export const UserEditOrAdd = () => {
             return;
         } finally {
             setAddingTopics(false);
+            // Also after a failure: a timed-out PUT may still have changed the centre.
+            queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });
+            queryClient.invalidateQueries({ queryKey: ['AGENCY', targetId] });
         }
-        queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });
-        queryClient.invalidateQueries({ queryKey: ['AGENCY', targetId] });
         const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
         const targetTopics = [...(byCentre[targetId] ?? []), ...lost.topics];
         form.setFieldValue(['topicsByAgency', targetId], targetTopics);
