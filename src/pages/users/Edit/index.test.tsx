@@ -6,6 +6,7 @@ import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
+import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 
 /**
@@ -171,7 +172,9 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({
         permissions: {},
-        can: (_action: string, resource: Resource) => resource !== Resource.Agency || mocks.canUpdateAgency,
+        // Grants only "update" on agencies, so a check for any other action cannot pass by accident.
+        can: (action: PermissionAction, resource: Resource) =>
+            resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency),
     }),
 }));
 
