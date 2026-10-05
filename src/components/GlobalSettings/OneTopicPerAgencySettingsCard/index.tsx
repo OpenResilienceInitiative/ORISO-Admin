@@ -5,19 +5,25 @@ import { CardEditable } from '../../CardEditable';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
 
 interface Props {
     enabled?: boolean;
     isLoading: boolean;
     onSave: (enabled: boolean, options?: { onError?: () => void }) => void;
+    /**
+     * ORISO design rule: superadmin-only settings are never hidden, only disabled.
+     * Pass true for everyone else — the card renders greyed out and read-only.
+     */
+    disabled?: boolean;
 }
 
 /**
  * ORISO-UserService#1264 (ADR-014 amendment 2026-09-25): platform-wide switch "one topic per
  * counselling centre". Default off; the data model stays multi-topic.
  */
-export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSave }: Props) => {
+export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSave, disabled }: Props) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
 
@@ -29,7 +35,7 @@ export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSa
             titleKey="globalSettings.oneTopicPerAgency.title"
             initialValues={{ oneTopicPerAgencyEnabled: enabled }}
             isLoading={isLoading}
-            allowEdit={!isLoading}
+            allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
             onSave={(values: { oneTopicPerAgencyEnabled?: boolean }, options) =>
@@ -47,12 +53,14 @@ export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSa
 
 export const OneTopicPerAgencySettingsCardContainer = () => {
     const { t } = useTranslation();
+    const { isSuperAdmin } = useUserRoles();
     const { settings } = useAppConfigContext();
     const { mutate, isPending } = useSettingsAdminMutation();
     return (
         <OneTopicPerAgencySettingsCard
             enabled={settings.oneTopicPerAgencyEnabled === true}
             isLoading={isPending}
+            disabled={!isSuperAdmin}
             onSave={(oneTopicPerAgencyEnabled, options) =>
                 mutate(
                     { oneTopicPerAgencyEnabled },

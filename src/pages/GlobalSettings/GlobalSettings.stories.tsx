@@ -115,24 +115,29 @@ export const Empty: Story = {
     parameters: { msw: { handlers: okHandlers({}) } },
 };
 
-/** Platform admin: the platform-only cards render, including the one-topic-per-agency switch. */
+// Every card sits in its own <section>; the login card next to it has its own edit button.
+const oneTopicCard = (oneTopicSwitch: HTMLElement) => within(oneTopicSwitch.closest('section') as HTMLElement);
+
+/** Platform admin: the platform-only cards render, and the one-topic-per-agency switch is editable. */
 export const PlatformAdmin: Story = {
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin], 0),
     parameters: { msw: { handlers: platformAdminHandlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Eine Beratungsstelle hat genau einen Fachbereich')).toBeVisible();
-        await expect(canvas.getByRole('switch', { name: oneTopicSwitchName })).toBeInTheDocument();
+        const oneTopicSwitch = canvas.getByRole('switch', { name: oneTopicSwitchName });
+        await expect(oneTopicCard(oneTopicSwitch).getByRole('button', { name: /edit|bearbeiten/i })).toBeVisible();
     },
 };
 
-/** Tenant admin: the platform-wide one-topic switch is not offered (the settings API answers 403). */
+/** Tenant admin: the platform-wide one-topic switch is visible but disabled (ORISO rule: never hidden). */
 export const TenantAdmin: Story = {
     parameters: { msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('switch', { name: /Anonyme Beratung erlauben/ })).toBeInTheDocument();
-        await expect(canvas.queryByRole('switch', { name: oneTopicSwitchName })).not.toBeInTheDocument();
+        const oneTopicSwitch = await canvas.findByRole('switch', { name: oneTopicSwitchName });
+        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicCard(oneTopicSwitch).queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };
 

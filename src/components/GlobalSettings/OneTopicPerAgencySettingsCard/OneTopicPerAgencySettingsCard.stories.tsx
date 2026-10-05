@@ -39,6 +39,18 @@ export const On: Story = {
     },
 };
 
+/** ORISO rule: superadmin-only settings are visible-but-disabled for everyone else. */
+export const DisabledForNonSuperadmins: Story = {
+    args: { enabled: true, disabled: true },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const oneTopicSwitch = canvas.getByRole('switch', { name: /genau einen Fachbereich/ });
+        await expect(oneTopicSwitch).toBeChecked();
+        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
+    },
+};
+
 export const SwitchOn: Story = {
     play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);

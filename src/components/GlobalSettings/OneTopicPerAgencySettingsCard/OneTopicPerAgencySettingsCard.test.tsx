@@ -7,7 +7,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
-import { OneTopicPerAgencySettingsCardContainer } from '.';
+import { OneTopicPerAgencySettingsCard, OneTopicPerAgencySettingsCardContainer } from '.';
 
 const SAVED = 'Einstellungen wurden aktualisiert.';
 const SAVE_FAILED =
@@ -52,6 +52,15 @@ const switchOnAndSave = async () => {
     await userEvent.click(oneTopicSwitch());
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 };
+
+/** ORISO rule: superadmin-only settings stay visible for everyone, they just cannot be edited. */
+it('renders visible-but-not-editable when disabled', () => {
+    render(<OneTopicPerAgencySettingsCard enabled isLoading={false} onSave={() => undefined} disabled />);
+
+    expect(oneTopicSwitch()).toBeChecked();
+    expect(oneTopicSwitch()).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+});
 
 it('saves the switch and confirms the change', async () => {
     answerSaveWith(204);
