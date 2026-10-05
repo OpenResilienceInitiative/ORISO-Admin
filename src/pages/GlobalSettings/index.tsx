@@ -93,11 +93,13 @@ export const GlobalLoginSettingsPage = () => {
                             </CardEditable>
                         </ThemeProvider>
                     </section>
-                    <section className={styles.globalConfigCardSlot}>
-                        <ThemeProvider theme={orisoMuiTheme}>
-                            <OneTopicPerAgencySettingsCardContainer />
-                        </ThemeProvider>
-                    </section>
+                    {isSuperAdmin && (
+                        <section className={styles.globalConfigCardSlot}>
+                            <ThemeProvider theme={orisoMuiTheme}>
+                                <OneTopicPerAgencySettingsCardContainer />
+                            </ThemeProvider>
+                        </section>
+                    )}
                     <section className={styles.translationCardSlot}>
                         <TranslationApiKeysCardContainer />
                     </section>
