@@ -485,7 +485,7 @@ export const UserEditOrAdd = () => {
     });
 
     const persist = useCallback(
-        (data, byCentre: TopicsByCentre) => {
+        (data, byCentre: TopicsByCentre, onError?: () => void) => {
             const payload = { ...data };
             delete payload.topicsByAgency;
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
@@ -514,13 +514,13 @@ export const UserEditOrAdd = () => {
             // a supervisor nobody touched. Omitted, the backend leaves the assignment alone.
             if (!canWriteStandingSupervisor || !supervisorPickedByAdminRef.current) {
                 delete payload.assignedSupervisorId;
-                mutate(payload);
+                mutate(payload, { onError });
                 return;
             }
             // `MuiSelectField` emits `undefined` when the admin clears it, but the backend reads
             // undefined as "leave the assignment untouched" — only '' clears it. Without this
             // coercion a standing supervisor could be set but never removed.
-            mutate({ ...payload, assignedSupervisorId: payload.assignedSupervisorId ?? '' });
+            mutate({ ...payload, assignedSupervisorId: payload.assignedSupervisorId ?? '' }, { onError });
         },
         [
             isConsultantForm,
@@ -620,7 +620,14 @@ export const UserEditOrAdd = () => {
             queryClient.invalidateQueries({ queryKey: ['AGENCY', targetId] });
         }
         form.setFieldValue(['topicsByAgency', targetId], targetTopics);
-        persist(data, { ...byCentre, [targetId]: targetTopics });
+        // The centre keeps the topic: undoing the PUT could undo another admin's change. The form
+        // keeps the move, so Save retries it.
+        persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
+            message.warning({
+                content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
+                duration: 8,
+            }),
+        );
         setPendingMove(null);
     };
 

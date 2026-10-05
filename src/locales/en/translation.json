@@ -1302,6 +1302,7 @@
     "counselor.topicsLostByMove.oneTopicPerAgency": "Only one topic per counselling centre is allowed on this platform, and {{agency}} would then have more than one.",
     "counselor.topicsLostByMove.addForbidden": "You may not change the topics of {{agency}}. The person was not saved.",
     "counselor.topicsLostByMove.settingsUnavailable": "The platform setting for topics per counselling centre could not be checked just now. Please try again in a moment. The person was not saved.",
+    "counselor.topicsLostByMove.addedButNotSaved": "The topic was added at {{agency}}, but the person was not saved. Press Save to try again; the topic stays at {{agency}}.",
     "counselor.assignedSupervisor.placeholder": "Select a supervisor",
     "counselor.assignedSupervisor.hint": "Automatically added as supervisor to every case this counsellor accepts.",
     "counselor.assignedSupervisor.noCandidates": "Nobody to choose yet: no counsellor has been enabled via “Supervisor” capability.",

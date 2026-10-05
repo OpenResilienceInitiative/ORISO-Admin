@@ -98,6 +98,8 @@ const translations: Record<string, string> = {
     'counselor.topicsLostByMove.addForbidden': 'Keine Berechtigung, {{agency}} zu ändern.',
     'counselor.topicsLostByMove.addFailed': 'Hinzufügen fehlgeschlagen.',
     'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
+    'counselor.topicsLostByMove.addedButNotSaved':
+        'Thema bei {{agency}} ergänzt, Person nicht gespeichert. Es bleibt bei {{agency}}.',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -918,6 +920,35 @@ describe('topics per centre (#1264)', () => {
             expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCIES'] });
             expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '3'] });
             expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('says the topic stays at the centre when the person is then not saved, and saves on the next try', async () => {
+            // The PUT lands: from now on the centre list shows Ost offering Schulden.
+            mocks.addTopicsToAgency.mockImplementation(async () => {
+                mocks.agenciesResult = {
+                    data: { data: [NORD, SUED, { ...OST, topics: [FAMILIE, SCHULDEN] }, WEST] },
+                    isLoading: false,
+                };
+            });
+            mocks.mutate.mockImplementationOnce((_payload, options) => options?.onError?.(new Error('500')));
+            const warning = vi.spyOn(message, 'warning');
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(warning).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        content:
+                            'Thema bei Ost (10115 Berlin) ergänzt, Person nicht gespeichert. Es bleibt bei Ost (10115 Berlin).',
+                    }),
+                ),
+            );
+            await user.click(pageButton('Speichern'));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(2));
+            expect(mocks.mutate.mock.calls[1][0].topicsByAgency).toEqual([{ agencyId: 3, topicIds: [13, 12] }]);
+            expect(mocks.addTopicsToAgency).toHaveBeenCalledTimes(1);
         });
 
         it('cannot be closed while the topic is being added', async () => {
