@@ -257,7 +257,11 @@ export const UserEditOrAdd = () => {
     })();
 
     const hasSelectedAgencies = selectedAgencies.length > 0;
-    const showTopicPickers = isConsultantForm && topics?.length > 0 && hasSelectedAgencies;
+    // An empty tenant list (all inactive, or the request failed) must not hide topics the counsellor holds.
+    const holdsStoredTopics =
+        (consultantById?.topics?.length ?? 0) > 0 ||
+        (consultantById?.topicsByAgency ?? []).some(({ topicIds }) => (topicIds?.length ?? 0) > 0);
+    const showTopicPickers = isConsultantForm && hasSelectedAgencies && (topics?.length > 0 || holdsStoredTopics);
     // An older UserService rejects unknown fields, so only send what it announced.
     const serverStoresTopicsPerCentre = Array.isArray(consultantById?.topicsByAgency);
     /** Names for topics a centre no longer lists, so their chips stay readable. */

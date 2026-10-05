@@ -546,6 +546,9 @@ describe('topics per centre (#1264)', () => {
         await user.click(chip.querySelector('.MuiChip-deleteIcon') as Element);
     };
 
+    // For tests that walk the whole form: user-event's per-click style check pushed them past CI's 30 s.
+    const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
+
     it("shows one picker per centre, offering only that centre's topics", async () => {
         editConsultant([NORD, SUED], {
             topicsByAgency: [
@@ -671,6 +674,28 @@ describe('topics per centre (#1264)', () => {
         expect(payload).not.toHaveProperty('topicsByAgency');
     });
 
+    it('shows a stored topic, and lets it be removed, when the tenant topic list is empty', async () => {
+        editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11] }] });
+        // Empty when every tenant topic is inactive or the list failed to load; the centres still list theirs.
+        mocks.topicsResult = { data: [], isLoading: false };
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+        await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+
+        expect(await submit(user)).toMatchObject({ topicIds: [], topicsByAgency: [{ agencyId: 1, topicIds: [] }] });
+    });
+
+    it('still shows no picker when the tenant topic list is empty and the counsellor holds no topic', async () => {
+        editConsultant([NORD], { topicsByAgency: [] });
+        mocks.topicsResult = { data: [], isLoading: false };
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+
+        expect(screen.queryByLabelText('Themen bei Nord (20095 Hamburg)')).not.toBeInTheDocument();
+    });
+
     describe('a stored topic the centre no longer offers', () => {
         const editWithDroppedTopic = async (user: ReturnType<typeof userEvent.setup>) => {
             // Nord offers Sucht and Schulden; Familie was stored there before Nord dropped it.
@@ -719,9 +744,6 @@ describe('topics per centre (#1264)', () => {
     });
 
     describe('moving a counsellor to a centre that lacks a topic (Admin#1034)', () => {
-        // Every test here walks the whole form; user-event's per-click style check pushed them past CI's 30 s.
-        const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
-
         const moveNordToOst = async (user: ReturnType<typeof userEvent.setup>) => {
             editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
             renderForm();
@@ -901,8 +923,8 @@ describe('topic assignment on edit (#1026)', () => {
     };
 
     it('submits no topicIds when the topic field was never shown', async () => {
-        // The tenant topic list came back empty, so the field stays hidden although the
-        // consultant holds topics; the save must leave them alone.
+        // No centre is assigned, so no topic picker shows although the consultant holds
+        // topics; the save must leave them alone.
         editConsultantWithTopics();
         const user = userEvent.setup();
         renderForm();
