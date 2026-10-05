@@ -1,5 +1,5 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
-import { Form } from 'antd';
+import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../CardEditable';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
@@ -46,6 +46,7 @@ export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSa
 };
 
 export const OneTopicPerAgencySettingsCardContainer = () => {
+    const { t } = useTranslation();
     const { settings } = useAppConfigContext();
     const { mutate, isPending } = useSettingsAdminMutation();
     return (
@@ -53,7 +54,19 @@ export const OneTopicPerAgencySettingsCardContainer = () => {
             enabled={settings.oneTopicPerAgencyEnabled === true}
             isLoading={isPending}
             onSave={(oneTopicPerAgencyEnabled, options) =>
-                mutate({ oneTopicPerAgencyEnabled }, { onError: () => options?.onError?.() })
+                mutate(
+                    { oneTopicPerAgencyEnabled },
+                    {
+                        // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
+                        onError: () => {
+                            message.error({
+                                content: t('globalSettings.oneTopicPerAgency.error.generic'),
+                                duration: 5,
+                            });
+                            options?.onError?.();
+                        },
+                    },
+                )
             }
         />
     );
