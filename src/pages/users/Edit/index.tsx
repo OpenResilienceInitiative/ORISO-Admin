@@ -51,6 +51,7 @@ import {
     centreTopicOptions,
     findCentre,
     findTopicsLostByMove,
+    idOf,
     initialTopicsByCentre,
     notOfferedAt,
     topicsCarriedByMove,
@@ -162,11 +163,12 @@ export const UserEditOrAdd = () => {
     const publicSlug = Form.useWatch('publicSlug', form);
     const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
     const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
+    const pickedByCentre: TopicsByCentre | undefined = Form.useWatch('topicsByAgency', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
     /** Centres and their topics as loaded; a move away from them is checked against this. */
     const initialCentresRef = useRef<{ ids: string[]; byCentre: Record<string, Option[]> } | null>(null);
-    /** Topics a move already pre-selected, per added centre: each only once, so a deselection stands. */
-    const carriedByMoveRef = useRef<Record<string, string[]>>({});
+    /** Topics each centre's picker has held. Code only adds topics, so one gone now was removed by hand. */
+    const heldByPickerRef = useRef<Record<string, Set<string>>>({});
     const [pendingMove, setPendingMove] = useState<{ data: any; lost: TopicsLostByMove } | null>(null);
     const [addingTopics, setAddingTopics] = useState(false);
     /**
@@ -346,8 +348,17 @@ export const UserEditOrAdd = () => {
         if (isEditing) return;
         form.setFieldValue('agencies', []);
         form.setFieldValue('topicsByAgency', {});
+        heldByPickerRef.current = {};
         prevAgencyIdsRef.current = [];
     }, [selectedTenant, isEditing]);
+
+    useEffect(() => {
+        Object.entries(pickedByCentre ?? {}).forEach(([centreId, picked]) => {
+            const held = heldByPickerRef.current[centreId] ?? new Set<string>();
+            (picked ?? []).forEach((entry) => held.add(idOf(entry)));
+            heldByPickerRef.current[centreId] = held;
+        });
+    }, [pickedByCentre]);
 
     useEffect(() => {
         if (!isConsultantForm || !hasSelectedAgencies) {
@@ -369,12 +380,14 @@ export const UserEditOrAdd = () => {
             previousAgencyIds.some((agencyId) => !currentAgencyIds.includes(agencyId));
         prevAgencyIdsRef.current = currentAgencyIds;
 
-        // A new centre starts empty; a centre with a single topic has nothing to choose.
-        newlyAddedAgencyIds.forEach((agencyId) => {
-            const offered = centreTopicOptions(filteredAgencies.find((agency) => String(agency.id) === agencyId));
-            form.setFieldValue(['topicsByAgency', agencyId], offered.length === 1 ? offered : []);
-            carriedByMoveRef.current[agencyId] = [];
-        });
+        // A new centre starts empty; a centre with a single topic has nothing to choose. A centre
+        // added again keeps the selection it had when removed (the form keeps it).
+        newlyAddedAgencyIds
+            .filter((agencyId) => form.getFieldValue(['topicsByAgency', agencyId]) === undefined)
+            .forEach((agencyId) => {
+                const offered = centreTopicOptions(filteredAgencies.find((agency) => String(agency.id) === agencyId));
+                form.setFieldValue(['topicsByAgency', agencyId], offered.length === 1 ? offered : []);
+            });
 
         // A move pre-selects the held topics the new centre offers (#1264). Only when the centres
         // change: a refetch must not pick a topic behind the admin's back.
@@ -382,22 +395,17 @@ export const UserEditOrAdd = () => {
         if (!initial || !centresChanged) {
             return;
         }
+        const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
         const carried = topicsCarriedByMove({
             initialCentreIds: initial.ids,
             centreIds: currentAgencyIds,
-            initialByCentre: initial.byCentre,
+            byCentre,
+            heldByPicker: heldByPickerRef.current,
             centres: filteredAgencies,
         });
-        Object.entries(carried).forEach(([agencyId, carriedTopics]) => {
-            const done = carriedByMoveRef.current[agencyId] ?? [];
-            const picked: Array<Option | string> = form.getFieldValue(['topicsByAgency', agencyId]) ?? [];
-            const pickedIds = picked.map((entry) => (typeof entry === 'string' ? entry : String(entry.value)));
-            const fresh = carriedTopics.filter(({ value }) => !done.includes(value) && !pickedIds.includes(value));
-            carriedByMoveRef.current[agencyId] = [...done, ...carriedTopics.map(({ value }) => value)];
-            if (fresh.length > 0) {
-                form.setFieldValue(['topicsByAgency', agencyId], [...picked, ...fresh]);
-            }
-        });
+        Object.entries(carried).forEach(([agencyId, carriedTopics]) =>
+            form.setFieldValue(['topicsByAgency', agencyId], [...(byCentre[agencyId] ?? []), ...carriedTopics]),
+        );
     }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
 
     useEffect(() => {

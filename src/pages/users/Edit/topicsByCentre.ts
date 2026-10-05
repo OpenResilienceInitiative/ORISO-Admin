@@ -27,7 +27,7 @@ export interface TopicsLostByMove {
     target: CentreWithTopics;
 }
 
-const idOf = (entry: Option | string) => String(typeof entry === 'string' ? entry : entry.value);
+export const idOf = (entry: Option | string) => String(typeof entry === 'string' ? entry : entry.value);
 
 export const centreTopicOptions = (centre?: CentreWithTopics): Option[] =>
     (centre?.topics ?? [])
@@ -146,27 +146,33 @@ export const buildTopicsPayload = (centreIds: string[], byCentre: TopicsByCentre
 };
 
 /**
- * A move keeps what the new centre offers: per added centre, the topics held at a removed centre
- * that it offers. The page pre-selects them there.
+ * A move keeps what the new centre offers: per added centre, the topics it offers that a removed
+ * centre still held (`byCentre` keeps a removed centre's last selection). Leaves out what the added
+ * centre's picker holds or held: one it no longer holds was removed there by hand.
  */
 export const topicsCarriedByMove = ({
     initialCentreIds,
     centreIds,
-    initialByCentre,
+    byCentre,
+    heldByPicker,
     centres,
 }: {
     initialCentreIds: string[];
     centreIds: string[];
-    initialByCentre: Record<string, Option[]>;
+    byCentre: TopicsByCentre;
+    heldByPicker: Record<string, Set<string>>;
     centres: CentreWithTopics[];
 }): Record<string, Option[]> => {
     const removed = initialCentreIds.filter((id) => !centreIds.includes(id));
-    const held = new Set(removed.flatMap((id) => (initialByCentre[id] ?? []).map(idOf)));
+    const held = new Set(removed.flatMap((id) => (byCentre[id] ?? []).map(idOf)));
     return Object.fromEntries(
         centreIds
             .filter((id) => !initialCentreIds.includes(id))
             .map((id) => {
-                const carried = centreTopicOptions(findCentre(centres, id)).filter(({ value }) => held.has(value));
+                const there = new Set([...(heldByPicker[id] ?? []), ...(byCentre[id] ?? []).map(idOf)]);
+                const carried = centreTopicOptions(findCentre(centres, id)).filter(
+                    ({ value }) => held.has(value) && !there.has(value),
+                );
                 return [id, carried] as const;
             })
             .filter(([, carried]) => carried.length > 0),
@@ -174,9 +180,10 @@ export const topicsCarriedByMove = ({
 };
 
 /**
- * A move = a centre removed and another added. Returns the topics held at a removed centre that
- * survive nowhere and that no added centre offers, plus the first added centre as target. What an
- * added centre offers was pre-selected there (topicsCarriedByMove); if missing, the admin removed it.
+ * A move = a centre removed and another added. Returns the topics a removed centre still held (its
+ * last selection) that survive nowhere and that no added centre offers, plus the first added centre
+ * as target. What an added centre offers was pre-selected there (topicsCarriedByMove); if missing,
+ * the admin removed it.
  */
 export const findTopicsLostByMove = ({
     initialCentreIds,
@@ -203,10 +210,16 @@ export const findTopicsLostByMove = ({
         added.flatMap((id) => centreTopicOptions(findCentre(centres, id)).map(({ value }) => value)),
     );
     const lost = new Map<string, Option>();
-    removed
-        .flatMap((id) => initialByCentre[id] ?? [])
-        .filter(({ value }) => !kept.has(value) && !offeredByAdded.has(value))
-        .forEach((topic) => lost.set(topic.value, topic));
+    removed.forEach((id) => {
+        // Named as loaded or listed: a picked chip of a dropped topic carries its notice text instead.
+        const named = [...(initialByCentre[id] ?? []), ...centreTopicOptions(findCentre(centres, id))];
+        (byCentre[id] ?? [])
+            .map(idOf)
+            .filter((topicId) => !kept.has(topicId) && !offeredByAdded.has(topicId))
+            .forEach((topicId) =>
+                lost.set(topicId, named.find(({ value }) => value === topicId) ?? { value: topicId, label: topicId }),
+            );
+    });
 
     return lost.size > 0 ? { topics: [...lost.values()], target } : null;
 };

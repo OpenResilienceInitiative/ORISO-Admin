@@ -624,6 +624,20 @@ describe('topics per centre (#1264)', () => {
         ]);
     });
 
+    it('gives a centre that is removed and added again the topics it had when it was removed', async () => {
+        // Nord offers two topics, so a fresh picker there would start empty; the admin drops one first.
+        editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+        await removeChip(user, 'Schulden', fieldOf('Themen bei Nord (20095 Hamburg)'));
+        await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+        await chooseOption(user, 'Beratungsstelle', '20095 Nord Hamburg');
+        await user.keyboard('{Escape}');
+
+        expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 1, topicIds: [11] }]);
+    });
+
     it('keeps the stored topics when the detail record arrives before the search result', async () => {
         // A cached get-by-id (second visit) resolves before the search: the centres are unknown then,
         // and locking the pickers to "no centres" would save an empty topic list.
@@ -909,6 +923,36 @@ describe('topics per centre (#1264)', () => {
 
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
             expect(mocks.mutate.mock.calls[0][0].topicsByAgency).toEqual([{ agencyId: 2, topicIds: [11] }]);
+        });
+
+        it('does not pick again a topic the admin removed at the new centre before the move', async () => {
+            // West's only topic is pre-selected when West is added; the admin removes it there first.
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+            await removeChip(user, 'Schulden', fieldOf('Themen bei West (50667 Köln)'));
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+
+            expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 4, topicIds: [] }]);
+        });
+
+        it('neither carries nor names topics the admin removed at the old centre before the move', async () => {
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, 'Schulden', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+            await chooseOption(user, 'Beratungsstelle', '80331 Süd München');
+            await user.keyboard('{Escape}');
+
+            // Süd offers Sucht, so it would be carried; it lacks Schulden, so the dialog would name it.
+            expect(fieldOf('Themen bei Süd (80331 München)').queryByRole('button', { name: 'Sucht' })).toBeNull();
+            expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 2, topicIds: [] }]);
         });
     });
 

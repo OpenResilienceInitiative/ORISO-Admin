@@ -17,7 +17,8 @@ const FAMILIE = { id: 13, name: 'Familie' };
 const NORD = { id: 1, name: 'Nord', postcode: '20095', city: 'Hamburg', topics: [SUCHT, SCHULDEN] };
 const SUED = { id: 2, name: 'Süd', postcode: '80331', city: 'München', topics: [SUCHT, FAMILIE] };
 const OST = { id: 3, name: 'Ost', postcode: '10115', city: 'Berlin', topics: [FAMILIE] };
-const CENTRES = [NORD, SUED, OST];
+const WEST = { id: 4, name: 'West', postcode: '50667', city: 'Köln', topics: [SCHULDEN] };
+const CENTRES = [NORD, SUED, OST, WEST];
 
 const option = ({ id, name }: { id: number; name: string }) => ({ value: String(id), label: name });
 
@@ -124,12 +125,13 @@ describe('topicsMissingFromFlatList', () => {
 });
 
 describe('findTopicsLostByMove', () => {
-    const move = (byCentre: Record<string, ReturnType<typeof option>[]>, centreIds = ['3']) =>
+    // Nord is loaded with Sucht and Schulden; the form keeps a removed centre's last selection.
+    const move = (byCentre: Record<string, Array<{ value: string; label: string }>>, centreIds = ['3']) =>
         findTopicsLostByMove({
             initialCentreIds: ['1'],
             centreIds,
             initialByCentre: { '1': [option(SUCHT), option(SCHULDEN)] },
-            byCentre,
+            byCentre: { '1': [option(SUCHT), option(SCHULDEN)], ...byCentre },
             centres: CENTRES,
         });
 
@@ -144,14 +146,31 @@ describe('findTopicsLostByMove', () => {
     it('is quiet when nothing moved', () => {
         expect(move({ '1': [option(SUCHT)] }, ['1'])).toBeNull();
     });
+
+    it('takes what the old centre held when it was removed, named as loaded', () => {
+        // Sucht was removed there first; a picked chip can carry a notice text instead of the name.
+        expect(move({ '1': [{ value: '12', label: 'Schulden – notice' }], '3': [] })).toEqual({
+            topics: [option(SCHULDEN)],
+            target: OST,
+        });
+    });
 });
 
 describe('topicsCarriedByMove', () => {
-    const carried = (initialByCentre: Record<string, ReturnType<typeof option>[]>, centreIds: string[]) =>
+    // `selections` are the loaded centres with their last selection; `picked` adds new centres' pickers.
+    const carried = (
+        selections: Record<string, ReturnType<typeof option>[]>,
+        centreIds: string[],
+        {
+            picked = {},
+            heldByPicker = {},
+        }: { picked?: Record<string, ReturnType<typeof option>[]>; heldByPicker?: Record<string, Set<string>> } = {},
+    ) =>
         topicsCarriedByMove({
-            initialCentreIds: Object.keys(initialByCentre),
+            initialCentreIds: Object.keys(selections),
             centreIds,
-            initialByCentre,
+            byCentre: { ...selections, ...picked },
+            heldByPicker,
             centres: CENTRES,
         });
 
@@ -168,6 +187,16 @@ describe('topicsCarriedByMove', () => {
     it('is empty without a removed centre, or when the added centre offers none of the topics', () => {
         expect(carried({ '1': [option(SUCHT)] }, ['1', '2'])).toEqual({});
         expect(carried({ '1': [option(SUCHT), option(SCHULDEN)] }, ['3'])).toEqual({});
+    });
+
+    it('leaves out what the new centre holds, or held and lost by hand', () => {
+        const nord = { '1': [option(SUCHT), option(SCHULDEN)] };
+        expect(carried(nord, ['2', '4'], { heldByPicker: { '2': new Set(['11']) } })).toEqual({
+            '4': [option(SCHULDEN)],
+        });
+        expect(carried(nord, ['2', '4'], { picked: { '4': [option(SCHULDEN)] } })).toEqual({
+            '2': [option(SUCHT)],
+        });
     });
 });
 
