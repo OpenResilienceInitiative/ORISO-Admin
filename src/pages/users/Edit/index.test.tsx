@@ -712,6 +712,43 @@ describe('topics per centre (#1264)', () => {
         expect(screen.queryByLabelText('Themen bei Nord (20095 Hamburg)')).not.toBeInTheDocument();
     });
 
+    describe('a hidden picker assigns no topic', () => {
+        // Hidden: the tenant topic list is empty and the counsellor holds no topic. West offers a
+        // single topic, which a shown picker pre-selects.
+        it('when creating a counsellor', async () => {
+            mocks.agenciesResult = { data: { data: [NORD, WEST] }, isLoading: false };
+            mocks.topicsResult = { data: [], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await fillMandatoryFields();
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+
+            expect(screen.queryByLabelText('Themen bei West (50667 Köln)')).not.toBeInTheDocument();
+            expect((await submit(user)).topicIds).toEqual([]);
+        });
+
+        it('when a centre is added to a counsellor', async () => {
+            editConsultant([NORD], { topicsByAgency: [] });
+            mocks.topicsResult = { data: [], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+
+            expect(screen.queryByLabelText('Themen bei West (50667 Köln)')).not.toBeInTheDocument();
+            // The centres changed, so the save sends the (empty) topics instead of keeping the stored ones.
+            expect(await submit(user)).toMatchObject({
+                topicIds: [],
+                topicsByAgency: [
+                    { agencyId: 1, topicIds: [] },
+                    { agencyId: 4, topicIds: [] },
+                ],
+            });
+        });
+    });
+
     describe('a stored topic the centre no longer offers', () => {
         const editWithDroppedTopic = async (user: ReturnType<typeof userEvent.setup>) => {
             // Nord offers Sucht and Schulden; Familie was stored there before Nord dropped it.

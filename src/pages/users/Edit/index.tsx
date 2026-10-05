@@ -380,13 +380,17 @@ export const UserEditOrAdd = () => {
             previousAgencyIds.some((agencyId) => !currentAgencyIds.includes(agencyId));
         prevAgencyIdsRef.current = currentAgencyIds;
 
-        // A new centre starts empty; a centre with a single topic has nothing to choose. A centre
-        // added again keeps the selection it had when removed (the form keeps it).
+        // A new centre starts empty; a centre with a single topic has nothing to choose, unless the
+        // pickers are hidden: a topic the admin cannot see must not be saved. A centre added again
+        // keeps the selection it had when removed (the form keeps it).
         newlyAddedAgencyIds
             .filter((agencyId) => form.getFieldValue(['topicsByAgency', agencyId]) === undefined)
             .forEach((agencyId) => {
                 const offered = centreTopicOptions(filteredAgencies.find((agency) => String(agency.id) === agencyId));
-                form.setFieldValue(['topicsByAgency', agencyId], offered.length === 1 ? offered : []);
+                form.setFieldValue(
+                    ['topicsByAgency', agencyId],
+                    showTopicPickers && offered.length === 1 ? offered : [],
+                );
             });
 
         // A move pre-selects the held topics the new centre offers (#1264). Only when the centres
@@ -406,7 +410,7 @@ export const UserEditOrAdd = () => {
         Object.entries(carried).forEach(([agencyId, carriedTopics]) =>
             form.setFieldValue(['topicsByAgency', agencyId], [...(byCentre[agencyId] ?? []), ...carriedTopics]),
         );
-    }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
+    }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form, showTopicPickers]);
 
     useEffect(() => {
         // The assigned centres come from the search row; a cached detail record can arrive first.
