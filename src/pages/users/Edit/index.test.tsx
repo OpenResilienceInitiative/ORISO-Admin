@@ -888,6 +888,28 @@ describe('topics per centre (#1264)', () => {
             expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/add');
             expect(mocks.mutate).not.toHaveBeenCalled();
         });
+
+        it('pre-selects a held topic the new centre offers, names only the others, and saves it there', async () => {
+            // Süd offers Sucht among several topics, so its picker would otherwise start empty.
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '80331 Süd München');
+            await user.keyboard('{Escape}');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByRole('button', { name: 'Sucht' }),
+            ).toBeInTheDocument();
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog).toHaveTextContent('Süd (80331 München) bietet nicht an: Schulden.');
+            await user.click(within(dialog).getByRole('button', { name: 'Thema weglassen' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            expect(mocks.mutate.mock.calls[0][0].topicsByAgency).toEqual([{ agencyId: 2, topicIds: [11] }]);
+        });
     });
 
     describe('a save that stores one topic list for all centres', () => {

@@ -53,6 +53,7 @@ import {
     findTopicsLostByMove,
     initialTopicsByCentre,
     notOfferedAt,
+    topicsCarriedByMove,
     topicsChanged,
     topicsMissingFromFlatList,
     TopicsByCentre,
@@ -164,6 +165,8 @@ export const UserEditOrAdd = () => {
     const prevAgencyIdsRef = useRef<string[] | null>(null);
     /** Centres and their topics as loaded; a move away from them is checked against this. */
     const initialCentresRef = useRef<{ ids: string[]; byCentre: Record<string, Option[]> } | null>(null);
+    /** Topics a move already pre-selected, per added centre: each only once, so a deselection stands. */
+    const carriedByMoveRef = useRef<Record<string, string[]>>({});
     const [pendingMove, setPendingMove] = useState<{ data: any; lost: TopicsLostByMove } | null>(null);
     const [addingTopics, setAddingTopics] = useState(false);
     /**
@@ -359,15 +362,41 @@ export const UserEditOrAdd = () => {
             return;
         }
 
-        const newlyAddedAgencyIds = currentAgencyIds.filter(
-            (agencyId) => !(prevAgencyIdsRef.current || []).includes(agencyId),
-        );
+        const previousAgencyIds = prevAgencyIdsRef.current || [];
+        const newlyAddedAgencyIds = currentAgencyIds.filter((agencyId) => !previousAgencyIds.includes(agencyId));
+        const centresChanged =
+            newlyAddedAgencyIds.length > 0 ||
+            previousAgencyIds.some((agencyId) => !currentAgencyIds.includes(agencyId));
         prevAgencyIdsRef.current = currentAgencyIds;
 
         // A new centre starts empty; a centre with a single topic has nothing to choose.
         newlyAddedAgencyIds.forEach((agencyId) => {
             const offered = centreTopicOptions(filteredAgencies.find((agency) => String(agency.id) === agencyId));
             form.setFieldValue(['topicsByAgency', agencyId], offered.length === 1 ? offered : []);
+            carriedByMoveRef.current[agencyId] = [];
+        });
+
+        // A move pre-selects the held topics the new centre offers (#1264). Only when the centres
+        // change: a refetch must not pick a topic behind the admin's back.
+        const initial = initialCentresRef.current;
+        if (!initial || !centresChanged) {
+            return;
+        }
+        const carried = topicsCarriedByMove({
+            initialCentreIds: initial.ids,
+            centreIds: currentAgencyIds,
+            initialByCentre: initial.byCentre,
+            centres: filteredAgencies,
+        });
+        Object.entries(carried).forEach(([agencyId, carriedTopics]) => {
+            const done = carriedByMoveRef.current[agencyId] ?? [];
+            const picked: Array<Option | string> = form.getFieldValue(['topicsByAgency', agencyId]) ?? [];
+            const pickedIds = picked.map((entry) => (typeof entry === 'string' ? entry : String(entry.value)));
+            const fresh = carriedTopics.filter(({ value }) => !done.includes(value) && !pickedIds.includes(value));
+            carriedByMoveRef.current[agencyId] = [...done, ...carriedTopics.map(({ value }) => value)];
+            if (fresh.length > 0) {
+                form.setFieldValue(['topicsByAgency', agencyId], [...picked, ...fresh]);
+            }
         });
     }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
 

@@ -146,8 +146,37 @@ export const buildTopicsPayload = (centreIds: string[], byCentre: TopicsByCentre
 };
 
 /**
+ * A move keeps what the new centre offers: per added centre, the topics held at a removed centre
+ * that it offers. The page pre-selects them there.
+ */
+export const topicsCarriedByMove = ({
+    initialCentreIds,
+    centreIds,
+    initialByCentre,
+    centres,
+}: {
+    initialCentreIds: string[];
+    centreIds: string[];
+    initialByCentre: Record<string, Option[]>;
+    centres: CentreWithTopics[];
+}): Record<string, Option[]> => {
+    const removed = initialCentreIds.filter((id) => !centreIds.includes(id));
+    const held = new Set(removed.flatMap((id) => (initialByCentre[id] ?? []).map(idOf)));
+    return Object.fromEntries(
+        centreIds
+            .filter((id) => !initialCentreIds.includes(id))
+            .map((id) => {
+                const carried = centreTopicOptions(findCentre(centres, id)).filter(({ value }) => held.has(value));
+                return [id, carried] as const;
+            })
+            .filter(([, carried]) => carried.length > 0),
+    );
+};
+
+/**
  * A move = a centre removed and another added. Returns the topics held at a removed centre that
- * survive nowhere and that no added centre offers, plus the first added centre as target.
+ * survive nowhere and that no added centre offers, plus the first added centre as target. What an
+ * added centre offers was pre-selected there (topicsCarriedByMove); if missing, the admin removed it.
  */
 export const findTopicsLostByMove = ({
     initialCentreIds,

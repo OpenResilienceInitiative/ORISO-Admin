@@ -5,6 +5,7 @@ import {
     findTopicsLostByMove,
     initialTopicsByCentre,
     notOfferedAt,
+    topicsCarriedByMove,
     topicsChanged,
     topicsMissingFromFlatList,
 } from './topicsByCentre';
@@ -142,6 +143,31 @@ describe('findTopicsLostByMove', () => {
 
     it('is quiet when nothing moved', () => {
         expect(move({ '1': [option(SUCHT)] }, ['1'])).toBeNull();
+    });
+});
+
+describe('topicsCarriedByMove', () => {
+    const carried = (initialByCentre: Record<string, ReturnType<typeof option>[]>, centreIds: string[]) =>
+        topicsCarriedByMove({
+            initialCentreIds: Object.keys(initialByCentre),
+            centreIds,
+            initialByCentre,
+            centres: CENTRES,
+        });
+
+    it('pre-selects at an added centre the topics held at a removed centre that it offers', () => {
+        expect(carried({ '1': [option(SUCHT), option(SCHULDEN)] }, ['2'])).toEqual({ '2': [option(SUCHT)] });
+    });
+
+    it('carries nothing from a centre that stays', () => {
+        expect(carried({ '1': [option(SUCHT)], '3': [option(FAMILIE)] }, ['3', '2'])).toEqual({
+            '2': [option(SUCHT)],
+        });
+    });
+
+    it('is empty without a removed centre, or when the added centre offers none of the topics', () => {
+        expect(carried({ '1': [option(SUCHT)] }, ['1', '2'])).toEqual({});
+        expect(carried({ '1': [option(SUCHT), option(SCHULDEN)] }, ['3'])).toEqual({});
     });
 });
 
