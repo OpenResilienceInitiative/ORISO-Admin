@@ -81,16 +81,19 @@ const historyPlay: NonNullable<Story['play']> = async ({ canvasElement }) => {
     await expect(canvasElement.querySelector('[contenteditable="true"]')).toBeNull();
     const forwardButton = canvas.getByRole('button', { name: String(i18n.t('legal.dpa.sign.sendLink')) });
     await expect(forwardButton).toBeVisible();
-    for (let step = 0; step < 12 && canvasElement.ownerDocument.activeElement !== forwardButton; step += 1) {
+    const tabToForwardButton = async (remainingTabs: number): Promise<void> => {
+        if (canvasElement.ownerDocument.activeElement === forwardButton || remainingTabs === 0) return;
         await userEvent.tab();
-    }
+        await tabToForwardButton(remainingTabs - 1);
+    };
+    await tabToForwardButton(12);
     await expect(forwardButton).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
     await waitFor(() => expect(within(dialog).getByText(String(i18n.t('dpaForward.dialog.title')))).toBeVisible());
     await waitFor(() => expect(dialog).toBeVisible());
     await waitFor(() => expect(dialog.contains(canvasElement.ownerDocument.activeElement)).toBe(true));
-    const activeElement = canvasElement.ownerDocument.activeElement;
+    const { activeElement } = canvasElement.ownerDocument;
     if (activeElement) fireEvent.keyDown(activeElement, { key: 'Escape', code: 'Escape', keyCode: 27 });
     await waitFor(() => expect(dialog).not.toBeInTheDocument());
 };
