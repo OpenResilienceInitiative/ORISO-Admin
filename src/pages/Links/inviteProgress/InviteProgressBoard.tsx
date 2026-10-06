@@ -223,8 +223,8 @@ export interface InviteProgressBoardProps {
 
 /** Board widths from which all seven columns fit without squeezing the one-line track. */
 const WIDE_MIN_WIDTH = { counsellor: 1180, tenant: 1500 } as const;
-// Tenant rows include more milestone columns, so switch to cards before they crowd other cells.
-const STACKED_MIN_WIDTH = { counsellor: 768, tenant: 900 } as const;
+// Measured compact tables need 832px/900px including the card gutters. Stack before they overflow.
+const STACKED_MIN_WIDTH = { counsellor: 832, tenant: 900 } as const;
 // Preserve the former compact row footprint (three/four dated 88px steps),
 // with longer timelines scrolling inside it instead of wrapping.
 const COMPACT_TRACK_WIDTH = { counsellor: 264, tenant: 352 } as const;

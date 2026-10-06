@@ -150,9 +150,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 : undefined,
         [ownAgencies, ownAgencyTotal],
     );
+    const knownOwnTenantName = ownAgencies.find((agency) => agency.tenantName)?.tenantName;
     const [resolvedOwnTenant, setResolvedOwnTenant] = useState<IdUnitOption>();
     useEffect(() => {
-        if (currentTenantId == null) return undefined;
+        // Agency viewers resolve their own units in the scoped agency search above.
+        if (currentTenantId == null || isAgencyViewer || knownOwnTenantName) return undefined;
         let cancelled = false;
         findInviteTenant(currentTenantId).then((tenant) => {
             if (!cancelled) setResolvedOwnTenant(tenant ?? undefined);
@@ -160,9 +162,9 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         return () => {
             cancelled = true;
         };
-    }, [currentTenantId]);
+    }, [currentTenantId, isAgencyViewer, knownOwnTenantName]);
     const ownTenantName =
-        ownAgencies.find((agency) => agency.tenantName)?.tenantName ??
+        knownOwnTenantName ??
         (resolvedOwnTenant && resolvedOwnTenant.id === currentTenantId ? resolvedOwnTenant.name : undefined);
 
     // Client-side taken-id knowledge (existing tenants + still-active

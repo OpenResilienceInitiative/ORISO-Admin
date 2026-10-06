@@ -991,6 +991,13 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
 
         const headers = () => screen.getAllByRole('columnheader').map((header) => header.textContent);
 
+        it.each([767, 768, 831, 832])('uses cards below the counsellor table fit boundary at %ipx', (measuredWidth) => {
+            width = measuredWidth;
+            render(<InviteProgressBoard {...baseProps()} targetRole="COUNSELLOR" />);
+            const table = screen.getByRole('table');
+            expect(table.closest('[class*="stackedAlways"]') != null).toBe(measuredWidth < 832);
+        });
+
         it('reflows a narrow counsellor board to five columns: date over activity, status over actions', () => {
             width = 846;
             const counsellor = invite(50, {

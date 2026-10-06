@@ -67,6 +67,7 @@ const mocks = vi.hoisted(() => ({
     nextFreeAgencyId: vi.fn(),
     useUserRoles: vi.fn(),
     searchInviteAgencies: vi.fn(),
+    findInviteTenant: vi.fn(),
 }));
 
 vi.mock('../../hooks/useUserRoles.hook', () => ({ useUserRoles: mocks.useUserRoles }));
@@ -98,6 +99,8 @@ vi.mock('../../api/agency/getAgencyById', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/agency/getAgencyById')>()),
     default: mocks.getAgencyDataById,
 }));
+
+vi.mock('../../api/tenant/findInviteTenant', () => ({ findInviteTenant: mocks.findInviteTenant }));
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
@@ -222,6 +225,7 @@ describe.each([
         expect(tenant).toBeDisabled();
         expect(tenant).toHaveValue('Nr. 40');
         expect(screen.getByText('Caritas Freiburg')).toBeInTheDocument();
+        expect(mocks.findInviteTenant).not.toHaveBeenCalled();
         expect(screen.getByText('Caritas Suchtberatung Freiburg')).toBeInTheDocument();
         // One role on offer: the card shows it as a disabled value pill, not a dead select.
         expect(screen.getByRole('button', { name: 'Rolle bearbeiten: Berater:in' })).toBeDisabled();

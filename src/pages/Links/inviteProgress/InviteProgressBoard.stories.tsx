@@ -874,11 +874,14 @@ export const NarrowDatedTracker: Story = {
         const table = within(canvasElement).getByRole('table');
         await waitFor(() => expect(getComputedStyle(table).display).toBe('block'));
         const tracks = table.querySelectorAll('ol');
-        tracks.forEach((track) => {
-            expect(track.clientWidth).toBeLessThanOrEqual(table.clientWidth);
-            expect(getComputedStyle(track).overflowX).toBe('auto');
-        });
-        expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+        await expect(tracks.length).toBeGreaterThan(0);
+        await Promise.all(
+            Array.from(tracks).map(async (track) => {
+                await expect(track.clientWidth).toBeLessThanOrEqual(table.clientWidth);
+                await expect(getComputedStyle(track).overflowX).toBe('auto');
+            }),
+        );
+        await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
     },
 };
 
@@ -894,4 +897,64 @@ export const NarrowTenantTimeline: Story = {
         </div>
     ),
     play: NarrowDatedTracker.play,
+};
+
+/** The former 768px boundary must use cards: a five-column table cannot fit here. */
+export const CounsellorAt768: Story = {
+    ...CounsellorCompact,
+    decorators: fixedWidth(768),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const table = canvas.getByRole('table');
+        await waitFor(() => expect(getComputedStyle(table).display).toBe('block'));
+        await expectNoSideScroll(canvasElement);
+    },
+};
+
+/** The first table width is tested exactly, not inferred from a wider fixture. */
+export const CounsellorAt832: Story = {
+    ...CounsellorCompact,
+    decorators: fixedWidth(832),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const steps = within(rowOf(canvasElement, 'anke.roth@example.org').getByRole('list')).getAllByRole('listitem');
+        await expect(new Set(steps.map((step) => Math.round(step.getBoundingClientRect().top))).size).toBe(1);
+    },
+};
+
+export const TenantAt900: Story = {
+    ...TraegerCompact,
+    decorators: fixedWidth(900),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const steps = within(
+            rowOf(canvasElement, 'sabine.keller@caritas-passau.example.org').getByRole('list'),
+        ).getAllByRole('listitem');
+        await expect(new Set(steps.map((step) => Math.round(step.getBoundingClientRect().top))).size).toBe(1);
+    },
+};
+
+/** Only pagination: its exterior keyboard focus outline must fit in the scrollport. */
+export const PaginationFocus: Story = {
+    args: { targetRole: 'COUNSELLOR', invites: COUNSELLOR_INVITES },
+    decorators: fixedWidth(832),
+    play: async ({ canvasElement }) => {
+        const select = within(canvasElement).getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        const toolbar = select.closest('[class*="toolbarRow"]') as HTMLElement;
+        select.focus();
+        await expect(select).toHaveFocus();
+        const rect = select.getBoundingClientRect();
+        const clip = toolbar.getBoundingClientRect();
+        await expect(rect.top - clip.top).toBeGreaterThanOrEqual(3);
+        await expect(clip.bottom - rect.bottom).toBeGreaterThanOrEqual(3);
+    },
+};
+
+export const CounsellorAt831: Story = { ...CounsellorAt768, decorators: fixedWidth(831) };
+export const TenantAt899: Story = {
+    ...TraegerCompact,
+    decorators: fixedWidth(899),
+    play: CounsellorAt768.play,
 };
