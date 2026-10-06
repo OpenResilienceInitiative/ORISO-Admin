@@ -437,3 +437,40 @@ export const AgencyAdminFoundingWithoutCounselling: Story = {
         await expect(submit).toBeEnabled();
     },
 };
+
+/** The founding admin's next step after successful two-factor activation. */
+export const AgencyAdminFoundingSuccess: Story = {
+    name: 'Agency admin founding — sign in and complete agency',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: FOUNDING_INVITE,
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(
+            await canvas.findByRole('button', {
+                name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
+            }),
+        ).toBeVisible();
+    },
+};
+
+export const AgencyAdminFoundingSuccessMobile: Story = {
+    ...PHONE_390,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: FOUNDING_INVITE,
+        }),
+    },
+    play: AgencyAdminFoundingSuccess.play,
+};

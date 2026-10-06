@@ -150,12 +150,18 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
+        const foundingAgency = isAgencyAdminInvite(invite) && invite?.agencyExists === false;
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
                     <DoneStep existingAccountSetup />
                 ) : (
-                    <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+                    <SuccessCard
+                        titleKey={foundingAgency ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={foundingAgency ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={foundingAgency ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        onFinish={() => navigate(routePathNames.login)}
+                    />
                 )}
             </div>
         );
