@@ -61,9 +61,10 @@ const TopicSelection = ({
         queueMicrotask(() => trigger.current?.querySelector('button')?.focus());
     };
     const toggle = (id: number) => {
-        if (lockedIds.includes(id)) return;
+        if (fixed || lockedIds.includes(id) || (permission === 'NONE' && lockedIds.length > 0)) return;
         setDraft((previous) => {
-            if (previous.includes(id)) return previous.filter((value) => value !== id);
+            if (previous.includes(id))
+                return previous.length === 1 ? previous : previous.filter((value) => value !== id);
             if (permission === 'NONE') return [id];
             return [...previous, id];
         });
@@ -102,7 +103,7 @@ const TopicSelection = ({
                             key={topic.id}
                             label={topic[language]}
                             selected
-                            disabled={lockedIds.includes(topic.id)}
+                            disabled={lockedIds.includes(topic.id) || selected.length === 1}
                             className={styles.summaryChip}
                             ariaLabel={t('remove', { name: topic[language] })}
                             onChange={() => setSelected(selected.filter((id) => id !== topic.id))}
@@ -197,7 +198,11 @@ const TopicSelection = ({
                                     <div key={topic.id} className={styles.choice}>
                                         <M3Checkbox
                                             checked={draft.includes(topic.id)}
-                                            disabled={lockedIds.includes(topic.id)}
+                                            disabled={
+                                                fixed ||
+                                                lockedIds.includes(topic.id) ||
+                                                (permission === 'NONE' && lockedIds.length > 0)
+                                            }
                                             label={topic[language]}
                                             onChange={() => toggle(topic.id)}
                                         />

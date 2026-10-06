@@ -30,6 +30,7 @@ describe('topic selection design proposal', () => {
         render(<TopicSelectionProposal permission="NONE" fixed initialOpen />);
         const dialog = within(screen.getByRole('dialog'));
         expect(dialog.getByRole('checkbox', { name: 'Eltern und Familie' })).toBeDisabled();
+        expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toBeDisabled();
         expect(dialog.queryByRole('checkbox', { name: 'Sucht' })).not.toBeInTheDocument();
         expect(screen.getByRole('checkbox', { name: 'Eltern und Familie entfernen' })).toBeDisabled();
     });
@@ -67,4 +68,18 @@ describe('topic selection design proposal', () => {
         expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toBeEnabled();
         expect(dialog.queryByRole('checkbox', { name: 'Sucht' })).not.toBeInTheDocument();
     });
+});
+
+it('retains the last required topic in both the applied summary and the draft', async () => {
+    const user = userEvent.setup();
+    render(<TopicSelectionProposal />);
+    expect(screen.getByRole('checkbox', { name: 'Eltern und Familie entfernen' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Themen auswählen' }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByRole('checkbox', { name: 'Eltern und Familie' }));
+    expect(dialog.getByRole('checkbox', { name: 'Eltern und Familie' })).toHaveAttribute('aria-checked', 'true');
+    await user.click(dialog.getByRole('checkbox', { name: 'Schulden' }));
+    await user.click(dialog.getByRole('checkbox', { name: 'Eltern und Familie' }));
+    await user.click(dialog.getByRole('button', { name: 'Anwenden' }));
+    expect(screen.getByRole('checkbox', { name: 'Schulden entfernen' })).toBeDisabled();
 });

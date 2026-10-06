@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { TopicSelectionProposal } from './TopicSelectionProposal';
 
 const meta = {
@@ -61,7 +61,17 @@ export const Phone412: Story = { ...Catalogue, globals: { viewport: { value: 'to
 export const EnglishLongLabels: Story = {
     args: { initialOpen: true, initialLanguage: 'en', initialSelectedIds: [104, 113] },
 };
-export const InvitationFixed: Story = { args: { permission: 'NONE', fixed: true, initialOpen: true } };
+export const InvitationFixed: Story = {
+    args: { permission: 'NONE', fixed: true, initialOpen: true },
+    play: async ({ userEvent }) => {
+        const dialog = within(await within(document.body).findByRole('dialog'));
+        await expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toBeDisabled();
+        await userEvent.click(dialog.getByRole('button', { name: 'Anwenden' }));
+        await expect(
+            within(document.body).getByRole('checkbox', { name: 'Eltern und Familie entfernen' }),
+        ).toBeDisabled();
+    },
+};
 export const ExactlyOneCentreTopic: Story = { args: { permission: 'NONE', initialOpen: true } };
 export const CentreTopicsOnly: Story = { args: { permission: 'SELECT_EXISTING', initialOpen: true } };
 export const Loading: Story = { args: { initialOpen: true, initialStatus: 'loading' } };
@@ -71,8 +81,9 @@ export const NoResults: Story = {
     args: { initialOpen: true },
     play: async ({ userEvent }) => {
         const dialog = within(await within(document.body).findByRole('dialog'));
+        await waitFor(() => expect(dialog.getByLabelText('Themen suchen')).toBeVisible());
         await userEvent.type(dialog.getByLabelText('Themen suchen'), 'xyz');
-        await expect(dialog.getByText('Keine passenden Themen gefunden.')).toBeVisible();
+        await waitFor(() => expect(dialog.getByText('Keine passenden Themen gefunden.')).toBeVisible());
         await expect(dialog.getByRole('button', { name: 'Suche zurücksetzen' })).toBeVisible();
     },
 };

@@ -45,9 +45,11 @@ export const ClosedHistory: Story = {
         const row = within(canvas.getByRole('article', { name: 'Frida Beispiel · INV-204' }));
         await userEvent.click(row.getByRole('button', { name: 'Ersetzt · Erklärung' }));
         await expect(row.getByRole('note')).toHaveTextContent('Diese Einladung ist geschlossen');
-        await expect(row.getByRole('button', { name: /Konto angelegt · Erreicht/ })).toBeVisible();
-        await expect(row.getAllByText('30.09., 22:12')).toHaveLength(2);
+        await expect(row.getByRole('button', { name: /Konto angelegt · Noch nicht erreicht/ })).toBeVisible();
+        await expect(row.getAllByText('30.09., 22:12')).toHaveLength(1);
+        row.getByRole('button', { name: 'Erklärung schließen' }).focus();
         await userEvent.keyboard('{Escape}');
+        await expect(row.getByRole('button', { name: 'Ersetzt · Erklärung' })).toHaveFocus();
         await expect(row.queryByRole('note')).not.toBeInTheDocument();
     },
 };
@@ -64,7 +66,14 @@ export const RoleAndExplicitResend: Story = {
 };
 export const Draft: Story = { args: { onlyStatus: 'draft' } };
 export const AccountCreated: Story = { args: { onlyStatus: 'created' } };
-export const ExistingAccountAssignment: Story = { args: { onlyStatus: 'done' } };
+export const ExistingAccountAssignment: Story = {
+    args: { onlyStatus: 'assignmentPending', locale: 'en' },
+    play: async ({ canvas }) => {
+        await userEvent.click(canvas.getByRole('button', { name: 'Confirm assignment' }));
+        await expect(canvas.getByRole('status')).toHaveTextContent('No new account or email');
+    },
+};
+export const CompletedAccountAssignment: Story = { args: { onlyStatus: 'done' } };
 export const Revoked: Story = { args: { onlyStatus: 'revoked', initialView: 'history' } };
 export const Expired: Story = { args: { onlyStatus: 'expired' } };
 export const DeliveryFailure: Story = { args: { onlyStatus: 'failure' } };
