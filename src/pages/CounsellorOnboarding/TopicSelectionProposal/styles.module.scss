@@ -1,0 +1,119 @@
+.proposal {
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: 16px;
+    color: var(--m3-on-surface);
+    background: var(--m3-surface-container-high);
+    overflow-wrap: anywhere;
+
+    h1 {
+        font-size: 24px;
+        line-height: 32px;
+    }
+}
+
+.notice,
+.hint {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--m3-on-surface-variant);
+}
+
+.languages,
+.summary,
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.summary {
+    margin: 16px 0;
+}
+
+.actions {
+    justify-content: flex-end;
+}
+
+.results {
+    max-height: min(360px, 40dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.choice {
+    display: grid;
+    grid-template-columns: 40px 40px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--m3-outline-variant);
+}
+
+.icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.noIcon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--m3-on-surface-variant);
+    background: var(--m3-surface-container);
+    border-radius: 50%;
+}
+
+.topicLabel {
+    overflow-wrap: anywhere;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.empty {
+    padding: 16px 0;
+}
+
+.summaryChip {
+    max-width: 100%;
+    min-height: 40px;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    > span {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
+
+.locked {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--m3-on-surface-variant);
+}
+
+.dialog {
+    top: 16px;
+    max-width: calc(100vw - 16px);
+
+    :global(.ant-modal-content) {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100dvh - 32px);
+        overflow: hidden;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex-shrink: 0;
+    }
+
+    :global(.ant-modal-body) {
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
