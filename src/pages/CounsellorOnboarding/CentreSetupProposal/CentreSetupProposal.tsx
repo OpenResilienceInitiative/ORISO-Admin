@@ -1,5 +1,7 @@
 import { useId, useRef, useState } from 'react';
-import { Form } from 'antd';
+import { ConfigProvider, Form } from 'antd';
+import deDE from 'antd/es/locale/de_DE';
+import enGB from 'antd/es/locale/en_GB';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
@@ -112,7 +114,7 @@ const CentreSetupExample = ({
     }
 
     return (
-        <main className={styles.page}>
+        <main className={styles.page} lang={locale}>
             <div className={styles.shell}>
                 <div className={styles.previewBar}>
                     <span className={styles.previewBadge}>{text.preview}</span>
@@ -344,14 +346,19 @@ export const CentreSetupProposal = ({ locale = 'de', ...props }: CentreSetupProp
     return (
         <I18nextProvider i18n={instance}>
             <ThemeProvider theme={orisoMuiTheme}>
-                <CentreSetupExample
-                    {...props}
-                    locale={language}
-                    onLanguage={(next) => {
-                        instance.changeLanguage(next);
-                        setLanguage(next);
-                    }}
-                />
+                <ConfigProvider
+                    locale={language === 'en' ? enGB : deDE}
+                    modal={{ closable: { 'aria-label': (language === 'en' ? enGB : deDE).global?.close } }}
+                >
+                    <CentreSetupExample
+                        {...props}
+                        locale={language}
+                        onLanguage={(next) => {
+                            instance.changeLanguage(next);
+                            setLanguage(next);
+                        }}
+                    />
+                </ConfigProvider>
             </ThemeProvider>
         </I18nextProvider>
     );

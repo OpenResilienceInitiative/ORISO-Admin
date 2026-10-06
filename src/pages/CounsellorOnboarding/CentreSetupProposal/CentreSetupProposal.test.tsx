@@ -1,4 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { ConfigProvider } from 'antd';
+import deDE from 'antd/es/locale/de_DE';
 import { CentreSetupProposal } from './CentreSetupProposal';
 
 it('saves two centres, copies only address, and keeps the first saved centre unchanged', async () => {
@@ -86,3 +88,23 @@ it('switches language without losing edited fields or selected topic identities'
     expect(screen.getByRole('checkbox', { name: 'Parents and family' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'General social counselling' })).toBeChecked();
 });
+
+it.each([
+    ['de', 'Schließen'],
+    ['en', 'Close'],
+] as const)(
+    'localizes the copy dialog close action in %s even inside the German app provider',
+    async (locale, closeLabel) => {
+        render(
+            <ConfigProvider locale={deDE}>
+                <CentreSetupProposal locale={locale} initialStep="copy" />
+            </ConfigProvider>,
+        );
+        const dialog = within(screen.getByRole('dialog'));
+        const close = dialog.getByRole('button', { name: closeLabel, exact: true });
+        expect(close).toBeEnabled();
+        expect(screen.getByRole('main')).toHaveAttribute('lang', locale);
+        fireEvent.click(close);
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    },
+);
