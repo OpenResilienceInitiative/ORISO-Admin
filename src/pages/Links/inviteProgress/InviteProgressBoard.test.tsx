@@ -163,6 +163,26 @@ describe('InviteProgressBoard', () => {
         expect(within(row).queryByText(/– abgeschlossen/)).not.toBeInTheDocument();
     });
 
+    // #1127: on a phone the five chips fill half a screen. They fold behind a toggle (CSS hides
+    // them below 768px while folded; a selected chip stays visible so a filter is never hidden).
+    it('folds the filter chips behind a toggle that reports and controls their state', async () => {
+        const user = userEvent.setup();
+        render(<InviteProgressBoard {...baseProps()} />);
+
+        const toggle = screen.getByRole('button', { name: 'Filter' });
+        const chips = screen.getByRole('group', { name: 'Onboarding-Übersicht' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).toHaveAttribute('aria-controls', chips.id);
+        expect(chips).toHaveAttribute('data-collapsed', 'true');
+
+        await user.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(chips).toHaveAttribute('data-collapsed', 'false');
+
+        await user.click(toggle);
+        expect(chips).toHaveAttribute('data-collapsed', 'true');
+    });
+
     it('filters the table via a phase chip and clears on the second click', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);

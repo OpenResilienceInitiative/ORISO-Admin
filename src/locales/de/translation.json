@@ -534,6 +534,7 @@
     "userTable.person.username": "Benutzername",
     "userTable.person.copyEmail": "E-Mail von {{name}} kopieren",
     "userTable.person.emailCopied": "E-Mail kopiert",
+    "links.inviteProgress.filterToggle": "Filter",
     "links.inviteProgress.summaryLabel": "Onboarding-Übersicht",
     "links.inviteProgress.roleMeaning.COUNSELLOR": "Berät Ratsuchende in ihrer Beratungsstelle.",
     "links.inviteProgress.roleMeaning.AGENCY_ADMIN": "Verwaltet die Beratungsstelle: Berater:innen, Themen und Einstellungen.",
