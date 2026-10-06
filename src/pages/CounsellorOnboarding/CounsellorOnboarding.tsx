@@ -150,12 +150,19 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
+        // After registration, a resumed invite already reports its newly created agency as existing.
+        const agencyAdminRegistration = isAgencyAdminInvite(invite);
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
                     <DoneStep existingAccountSetup />
                 ) : (
-                    <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+                    <SuccessCard
+                        titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        onFinish={() => navigate(routePathNames.login)}
+                    />
                 )}
             </div>
         );
