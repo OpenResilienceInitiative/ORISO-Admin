@@ -356,6 +356,14 @@ export const createStubCounsellorOnboardingClient = (
             if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
                 throw new Error('EXACTLY_ONE_TOPIC');
             }
+            // Like the backend: while the rule is on, a new centre starts with one topic; the link stays usable.
+            if (
+                invite.agencyExists === false &&
+                invite.oneTopicPerAgencyEnabled === true &&
+                request.topicIds.length > 1
+            ) {
+                throw new Error('ONE_TOPIC_PER_AGENCY');
+            }
             if (invite.agencyExists === false && !request.agency?.name?.trim()) {
                 throw new Error('AGENCY_NAME_MISSING');
             }

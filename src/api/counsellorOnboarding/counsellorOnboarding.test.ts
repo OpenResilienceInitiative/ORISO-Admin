@@ -67,6 +67,54 @@ describe('createStubCounsellorOnboardingClient', () => {
         ).rejects.toThrow('TOPICS_OUTSIDE_COVERAGE');
     });
 
+    const ONE_TOPIC_RULE_TOPICS = [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
+    ];
+
+    it('refuses several topics for a new centre while the one-topic rule is on, without consuming the link', async () => {
+        const client = createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                agencyExists: false,
+                departmentId: null,
+                topicPermission: 'CREATE',
+                oneTopicPerAgencyEnabled: true,
+                topics: [],
+                availableTopics: ONE_TOPIC_RULE_TOPICS,
+            },
+        });
+        await client.getOnboardingInvite('raw-token');
+        const request = (topicIds: number[]) => ({
+            ...registration(topicIds),
+            agency: { name: 'Neue Beratungsstelle' },
+        });
+
+        await expect(client.registerCounsellor('raw-token', request([12, 13]))).rejects.toThrow('ONE_TOPIC_PER_AGENCY');
+        await expect(client.registerCounsellor('raw-token', request([12]))).resolves.toMatchObject({
+            phase: 'PENDING_2FA_ACTIVATION',
+        });
+    });
+
+    it('lets an existing centre keep several topics while the one-topic rule is on', async () => {
+        const client = createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                agencyExists: true,
+                departmentId: null,
+                topicPermission: 'CREATE',
+                oneTopicPerAgencyEnabled: true,
+                topics: ONE_TOPIC_RULE_TOPICS,
+                availableTopics: [],
+            },
+        });
+        await client.getOnboardingInvite('raw-token');
+
+        await expect(client.registerCounsellor('raw-token', registration([12, 13]))).resolves.toMatchObject({
+            phase: 'PENDING_2FA_ACTIVATION',
+        });
+    });
+
     it('consumes the link atomically: the second registration fails with CONSUMED', async () => {
         const client = createStubCounsellorOnboardingClient({ latencyMs: 0 });
         const invite = await client.getOnboardingInvite('raw-token');
