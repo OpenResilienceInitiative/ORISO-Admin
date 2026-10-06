@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { CentreSetupProposal } from './CentreSetupProposal/CentreSetupProposal';
 
 const meta = {
@@ -10,6 +10,11 @@ const meta = {
     render: (args) => <CentreSetupProposal key={JSON.stringify(args)} {...args} />,
     parameters: {
         layout: 'fullscreen',
+        viewport: {
+            options: {
+                centreNarrow: { name: 'Centre copy phone 320', styles: { width: '320px', height: '740px' } },
+            },
+        },
         docs: {
             description: {
                 component:
@@ -58,8 +63,30 @@ export const FirstCentreWithoutExtraPermission: Story = {
     },
 };
 export const AnotherOrFinish: Story = { args: { initialStep: 'saved' } };
-export const CopyChoices: Story = { args: { initialStep: 'copy' } };
-export const CopyChoicesEnglish: Story = { args: { locale: 'en', initialStep: 'copy' } };
+const assertCopyFooterWithinViewport = async () => {
+    const body = within(document.body);
+    const dialog = await body.findByRole('dialog');
+    const choices = within(dialog);
+    const apply = choices.getByRole('button', { name: /Auswahl übernehmen|Use selected information/ });
+    const cancel = choices.getByRole('button', { name: /Abbrechen|Cancel/ });
+    await waitFor(() => {
+        expect(apply).toBeVisible();
+        expect(cancel).toBeVisible();
+        expect(apply.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+        expect(cancel.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+        expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+    });
+};
+export const CopyChoices: Story = { args: { initialStep: 'copy' }, play: assertCopyFooterWithinViewport };
+export const CopyChoicesEnglish: Story = {
+    args: { locale: 'en', initialStep: 'copy' },
+    play: assertCopyFooterWithinViewport,
+};
+export const CopyChoicesNarrow: Story = {
+    args: { initialStep: 'copy' },
+    globals: { viewport: { value: 'centreNarrow', isRotated: false } },
+    play: assertCopyFooterWithinViewport,
+};
 export const Finished: Story = { args: { initialStep: 'finished' } };
 export const SingleTopic: Story = { args: { singleTopic: true } };
 export const MultipleTopics: Story = {
