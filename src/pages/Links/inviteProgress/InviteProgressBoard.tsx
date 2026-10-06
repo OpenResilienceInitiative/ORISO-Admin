@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import classNames from 'classnames';
 import type {
     AccountInviteDTO,
@@ -352,6 +354,9 @@ export const InviteProgressBoard = ({
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
     const [filter, setFilter] = useState<InviteFilter>(null);
+    // Phones only (CSS): the chip row folds behind a toggle; the selected chip stays visible.
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const chipsId = useId();
     const [sort, setSort] = useState<DataTableSort | null>(null);
 
     const isTenantTab = targetRole === 'TENANT_ADMIN';
@@ -841,11 +846,30 @@ export const InviteProgressBoard = ({
                 <div ref={toolbarRef} className={styles.toolbar}>
                     <div className={styles.toolbarRow}>
                         {toolbarSearch && <div className={styles.toolbarSearch}>{toolbarSearch}</div>}
+                        <button
+                            type="button"
+                            aria-controls={chipsId}
+                            aria-expanded={filtersOpen}
+                            className={styles.filterToggle}
+                            onClick={() => setFiltersOpen((open) => !open)}
+                        >
+                            <TuneOutlinedIcon aria-hidden fontSize="small" />
+                            {t('links.inviteProgress.filterToggle', 'Filter')}
+                            <KeyboardArrowDownIcon
+                                aria-hidden
+                                className={classNames(styles.filterToggleChevron, {
+                                    [styles.filterToggleChevronOpen]: filtersOpen,
+                                })}
+                                fontSize="small"
+                            />
+                        </button>
                         <div className={styles.toolbarPagination}>{pagination}</div>
                         {toolbarActions && <div className={styles.toolbarActions}>{toolbarActions}</div>}
                     </div>
                     <div
+                        id={chipsId}
                         className={styles.chips}
+                        data-collapsed={!filtersOpen}
                         role="group"
                         aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
                     >
