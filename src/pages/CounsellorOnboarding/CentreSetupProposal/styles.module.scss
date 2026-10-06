@@ -241,9 +241,28 @@
     padding-block: 16px;
 }
 
-.copyDialog :global(.ant-modal-body) {
-    max-height: calc(100dvh - 240px);
-    overflow-y: auto;
+.copyDialog {
+    :global(.ant-modal-content) {
+        display: flex;
+        max-height: calc(100dvh - 32px);
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex-shrink: 0;
+    }
+
+    :global(.ant-modal-body) {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+    }
+
+    .actions {
+        padding: 0;
+    }
 }
 
 @media (max-width: 600px) {
