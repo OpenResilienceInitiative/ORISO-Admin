@@ -21,6 +21,8 @@ export interface InputChipPickerProps {
     /** Accessible name of the chip list. */
     ariaLabel?: string;
     disabled?: boolean;
+    /** Stops adding once reached; removing existing chips stays available. */
+    maxSelected?: number;
     className?: string;
 }
 
@@ -54,11 +56,14 @@ export const InputChipPicker = ({
     removeLabel,
     ariaLabel,
     disabled = false,
+    maxSelected,
     className,
 }: InputChipPickerProps) => {
     const byValue = useMemo(() => new Map(options.map((option) => [option.value, option])), [options]);
     const selected = value.map((id) => byValue.get(id)).filter((option): option is InputChipOption => option != null);
     const remaining = options.filter((option) => !value.includes(option.value));
+
+    const addingDisabled = disabled || (maxSelected !== undefined && value.length >= maxSelected);
 
     const menuItems: MenuProps['items'] = remaining.map((option) => ({
         key: String(option.value),
@@ -84,14 +89,16 @@ export const InputChipPicker = ({
             {remaining.length > 0 && (
                 <Dropdown
                     trigger={['click']}
-                    disabled={disabled}
+                    disabled={addingDisabled}
                     menu={{
                         items: menuItems,
-                        onClick: ({ key }) => onChange([...value, Number(key)]),
+                        onClick: ({ key }) => {
+                            if (!addingDisabled) onChange([...value, Number(key)]);
+                        },
                     }}
                     overlayClassName={styles.menu}
                 >
-                    <button type="button" className={styles.add} aria-haspopup="menu" disabled={disabled}>
+                    <button type="button" className={styles.add} aria-haspopup="menu" disabled={addingDisabled}>
                         <PlusIcon />
                         <span className={styles.label}>{addLabel}</span>
                     </button>

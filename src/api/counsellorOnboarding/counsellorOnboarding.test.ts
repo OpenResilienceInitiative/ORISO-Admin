@@ -203,3 +203,18 @@ describe('createHttpCounsellorOnboardingClient', () => {
         await expect(client.activateTwoFactor('tok', '123456')).rejects.toMatchObject({ reason: 'CONSUMED' });
     });
 });
+
+describe('onboarding topic policy errors', () => {
+    it('keeps a rejected topic choice distinct from a consumed invite', async () => {
+        mocks.fetchData.mockRejectedValueOnce(
+            new Response(JSON.stringify({ reason: 'ONE_TOPIC_PER_AGENCY' }), {
+                status: 409,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+        const client = createHttpCounsellorOnboardingClient();
+        await expect(client.registerCounsellor('token', registration([12, 13]))).rejects.toThrow(
+            'ONE_TOPIC_PER_AGENCY',
+        );
+    });
+});
