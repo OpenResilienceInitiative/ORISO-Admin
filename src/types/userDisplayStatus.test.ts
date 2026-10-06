@@ -31,6 +31,10 @@ describe('resolveDisplayStatus', () => {
         expect(resolveDisplayStatus({ active: true, status: 'CREATED' } as CounselorData)).toBe('ACTIVE');
     });
 
+    it('preserves the disabled display state for a legacy inactive account', () => {
+        expect(resolveDisplayStatus({ status: 'INACTIVE' } as CounselorData)).toBe('DISABLED');
+    });
+
     it('does not invent an active account when the login status is missing', () => {
         expect(resolveDisplayStatus({} as CounselorData)).toBe('null');
         expect(resolveDisplayStatus({ active: null } as CounselorData)).toBe('null');
