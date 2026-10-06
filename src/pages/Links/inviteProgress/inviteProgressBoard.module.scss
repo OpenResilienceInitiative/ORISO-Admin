@@ -37,9 +37,11 @@
 
 .toolbarRow {
     display: flex;
-    flex-wrap: wrap;
+    min-width: 0;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px 16px;
+    overflow-x: auto;
 }
 
 .toolbarSearch {
@@ -49,11 +51,13 @@
 
 /* Without a search slot the pagination still sits on the right. */
 .toolbarPagination {
+    flex: none;
     margin-left: auto;
 }
 
 .toolbarActions {
     display: inline-flex;
+    flex: none;
     align-items: center;
 }
 
@@ -153,6 +157,15 @@
             border-radius: 0 16px 16px 0;
         }
     }
+}
+
+.progressTrack {
+    max-width: 100%;
+}
+
+/* Constrain the dated track instead of letting its intrinsic width enlarge the table. */
+.boardCompact .progressTrack {
+    width: var(--invite-track-width);
 }
 
 /* Compact layout: tighter cells so five columns fit 846px; the 88px step columns carry their own air. */
@@ -579,7 +592,11 @@
 /* ── Stacked cards (~390px): identity leads, mini stepper follows, meta gets
       its labels back, actions close the card. ──────────────────────────────── */
 
-@media (max-width: 767px) {
+@mixin stacked-board {
+    .progressTrack {
+        width: 100%;
+    }
+
     /* Search, pager and chips fill half a phone screen: they scroll away instead of sticking. */
     .toolbar {
         position: static;
@@ -651,6 +668,14 @@
         display: flex !important;
         justify-content: flex-end;
     }
+}
+
+.boardStacked {
+    @include stacked-board;
+}
+
+@media (max-width: 767px) {
+    @include stacked-board;
 }
 
 /* "Rolle entfernen: im Bereich Benutzer" — the role menu's way out to the users area. */

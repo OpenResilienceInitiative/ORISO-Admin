@@ -136,22 +136,22 @@
 /* ── Stacked cards on phones (~390px): each row becomes a card, the header
       row stays for screen readers only. ─────────────────────────────────── */
 
-@media (max-width: 767px) {
-    .stacked {
+@mixin stacked-rows($selector) {
+    #{$selector} {
         border: none;
         background: transparent;
         border-radius: 0;
     }
 
-    .stacked .table,
-    .stacked .table tbody,
-    .stacked .table tbody tr,
-    .stacked .table tbody td {
+    #{$selector} .table,
+    #{$selector} .table tbody,
+    #{$selector} .table tbody tr,
+    #{$selector} .table tbody td {
         display: block;
         width: 100%;
     }
 
-    .stacked .table thead {
+    #{$selector} .table thead {
         position: absolute;
         overflow: hidden;
         width: 1px;
@@ -160,47 +160,53 @@
         white-space: nowrap;
     }
 
-    .stacked .table tbody tr {
+    #{$selector} .table tbody tr {
         border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 14%, transparent);
         margin-bottom: 12px;
         background: var(--admin-table-surface, var(--m3-surface-container-low, #f6f3f3));
         border-radius: 16px;
     }
 
-    .stacked .table tbody td {
+    #{$selector} .table tbody td {
         padding: 6px 16px;
         border-bottom: none;
         text-align: left !important;
     }
 
-    .stacked .table tbody td:first-child {
+    #{$selector} .table tbody td:first-child {
         padding-top: 14px;
     }
 
-    .stacked .table tbody td:last-child {
+    #{$selector} .table tbody td:last-child {
         padding-bottom: 14px;
     }
 
-    .stacked .row:hover td,
-    .stacked .rowSelected td,
-    .stacked .rowError td,
-    .stacked .rowError:hover td {
+    #{$selector} .row:hover td,
+    #{$selector} .rowSelected td,
+    #{$selector} .rowError td,
+    #{$selector} .rowError:hover td {
         background: transparent;
     }
 
-    .stacked .rowSelected {
+    #{$selector} .rowSelected {
         border-color: color-mix(in srgb, var(--m3-secondary, #4c555f) 45%, transparent);
         background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, var(--m3-surface-container-low, #f6f3f3));
     }
 
-    .stacked .rowError {
+    #{$selector} .rowError {
         border-color: color-mix(in srgb, var(--m3-error, #b1005e) 35%, transparent);
         background: color-mix(in srgb, var(--m3-error, #b1005e) 5%, var(--m3-surface-container-low, #f6f3f3));
     }
 
-    .stacked .footer {
+    #{$selector} .footer {
         border-top: none;
         margin-top: 4px;
         border-radius: 16px;
     }
+}
+
+@include stacked-rows('.stackedAlways');
+
+@media (max-width: 767px) {
+    @include stacked-rows('.stacked');
 }

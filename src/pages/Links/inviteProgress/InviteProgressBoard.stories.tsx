@@ -860,3 +860,37 @@ export const ShortListHint: Story = {
         await expect(standIns.map((row) => row.style.opacity)).toEqual(['1', '0.75', '0.5']);
     },
 };
+
+/** A narrow board uses cards even inside a desktop viewport; dates scroll locally. */
+export const NarrowDatedTracker: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => (
+        <div style={{ width: 320, maxWidth: '100%' }}>
+            <RoleBoard />
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const table = within(canvasElement).getByRole('table');
+        await waitFor(() => expect(getComputedStyle(table).display).toBe('block'));
+        const tracks = table.querySelectorAll('ol');
+        tracks.forEach((track) => {
+            expect(track.clientWidth).toBeLessThanOrEqual(table.clientWidth);
+            expect(getComputedStyle(track).overflowX).toBe('auto');
+        });
+        expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    },
+};
+
+/** Seven tenant milestones stay inside a phone card rather than widening the page. */
+export const NarrowTenantTimeline: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => (
+        <div style={{ width: 320, maxWidth: '100%' }}>
+            <Wired
+                invites={TENANT_INVITES.map((invite) => ({ ...invite, sentAt: '2026-09-24T09:01:00Z' }))}
+                targetRole="TENANT_ADMIN"
+            />
+        </div>
+    ),
+    play: NarrowDatedTracker.play,
+};

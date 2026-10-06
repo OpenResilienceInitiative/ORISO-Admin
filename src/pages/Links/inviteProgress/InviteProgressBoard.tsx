@@ -221,6 +221,11 @@ export interface InviteProgressBoardProps {
 
 /** Board widths from which all seven columns fit without squeezing the one-line track. */
 const WIDE_MIN_WIDTH = { counsellor: 1180, tenant: 1500 } as const;
+// Tenant rows include more milestone columns, so switch to cards before they crowd other cells.
+const STACKED_MIN_WIDTH = { counsellor: 768, tenant: 900 } as const;
+// Preserve the former compact row footprint (three/four dated 88px steps),
+// with longer timelines scrolling inside it instead of wrapping.
+const COMPACT_TRACK_WIDTH = { counsellor: 264, tenant: 352 } as const;
 
 /** Rows of the pre-drawn table: the board never looks like an empty box. */
 const PLACEHOLDER_ROWS = 5;
@@ -387,9 +392,8 @@ export const InviteProgressBoard = ({
         return () => observer.disconnect();
     }, []);
 
+    const isStacked = boardWidth != null && boardWidth < STACKED_MIN_WIDTH[isTenantTab ? 'tenant' : 'counsellor'];
     const compact = boardWidth != null && boardWidth < WIDE_MIN_WIDTH[isTenantTab ? 'tenant' : 'counsellor'];
-    // The Träger track is longer (up to seven steps), so its lines hold one step more.
-    const stepsPerLine = isTenantTab ? 4 : 3;
 
     const detailLabel = (detail: LifecycleDetail) =>
         detail in DETAIL_FALLBACK_LABELS
@@ -769,7 +773,7 @@ export const InviteProgressBoard = ({
                 <DataTableCell className={styles.progressCell}>
                     <PhaseStepper
                         phases={phases}
-                        maxPerLine={compact ? stepsPerLine : undefined}
+                        className={styles.progressTrack}
                         idleLabel={
                             isDraftInvite(invite)
                                 ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
@@ -821,8 +825,13 @@ export const InviteProgressBoard = ({
         // The chip group and the table each carry their own name.
         <section
             ref={boardRef}
-            className={classNames(styles.board, { [styles.boardCompact]: compact })}
+            className={classNames(styles.board, { [styles.boardCompact]: compact, [styles.boardStacked]: isStacked })}
             data-layout={compact ? 'compact' : 'wide'}
+            style={
+                {
+                    '--invite-track-width': `${COMPACT_TRACK_WIDTH[isTenantTab ? 'tenant' : 'counsellor']}px`,
+                } as CSSProperties
+            }
         >
             <div
                 className={classNames(styles.card, { [styles.cardStuck]: stuck })}
@@ -868,6 +877,7 @@ export const InviteProgressBoard = ({
                         className={styles.dataTable}
                         ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}
                         stickyHeader
+                        stacked={isStacked}
                         stackedOnMobile
                         loading={loading}
                         skeletonColumns={columns.length}

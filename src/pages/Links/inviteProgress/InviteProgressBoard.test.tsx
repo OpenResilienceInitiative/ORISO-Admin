@@ -994,8 +994,8 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             expect(cells[3].querySelectorAll('time')).toHaveLength(2);
             expect(within(cells[4]).getByText('Gesendet')).toBeInTheDocument();
             expect(within(cells[4]).getByRole('button', { name: 'Einladung widerrufen' })).toBeInTheDocument();
-            // Four counsellor steps at three per line: the track wraps instead of widening the table.
-            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('3');
+            // The bounded track keeps a single scrollable line instead of forcing line breaks.
+            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
         });
 
         it('keeps all seven columns once the counsellor board is wide enough', () => {
@@ -1004,7 +1004,7 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             expect(headers()).toHaveLength(7);
         });
 
-        it('needs a wider board on the Träger tab, and wraps its track at four per line', () => {
+        it('needs a wider board on the Träger tab and leaves its track on one scrollable line', () => {
             width = 1400;
             render(
                 <InviteProgressBoard
@@ -1023,7 +1023,7 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             );
             expect(headers()).toHaveLength(5);
             const row = screen.getByText('person51@example.org').closest('tr') as HTMLElement;
-            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('4');
+            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
         });
     });
 });
