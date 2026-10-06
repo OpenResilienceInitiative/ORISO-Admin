@@ -216,11 +216,13 @@ describe.each([
         render(<CounsellorInvitesTab />);
 
         const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
-        await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), SLOW);
+        await waitFor(() => expect(agency).toHaveValue('Nr. 101'), SLOW);
         expect(agency).toBeDisabled();
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
         expect(tenant).toBeDisabled();
-        expect(tenant).toHaveValue('Caritas Freiburg · 40');
+        expect(tenant).toHaveValue('Nr. 40');
+        expect(screen.getByText('Caritas Freiburg')).toBeInTheDocument();
+        expect(screen.getByText('Caritas Suchtberatung Freiburg')).toBeInTheDocument();
         // One role on offer: the card shows it as a disabled value pill, not a dead select.
         expect(screen.getByRole('button', { name: 'Rolle bearbeiten: Berater:in' })).toBeDisabled();
         expect(screen.queryByRole('combobox', { name: 'Rolle' })).not.toBeInTheDocument();
@@ -230,10 +232,7 @@ describe.each([
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
         await waitFor(
-            () =>
-                expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue(
-                    'Caritas Suchtberatung Freiburg · 101',
-                ),
+            () => expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Nr. 101'),
             SLOW,
         );
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');

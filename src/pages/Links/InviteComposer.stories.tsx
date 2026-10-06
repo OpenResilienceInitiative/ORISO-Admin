@@ -846,7 +846,8 @@ export const TenantAdminLocked: Story = {
         const canvas = within(canvasElement);
         const tenant = await canvas.findByRole('combobox', { name: FIELD.tenant });
         await expect(tenant).toBeDisabled();
-        await expect(tenant).toHaveValue('Caritas Südbaden · 7');
+        await expect(tenant).toHaveValue('Nr. 7');
+        await expect(canvas.getByText('Caritas Südbaden')).toBeVisible();
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeEnabled();
     },
 };
@@ -858,9 +859,8 @@ export const AgencyAdminLocked: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findByRole('combobox', { name: FIELD.tenant })).toBeDisabled();
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeDisabled();
-        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toHaveValue(
-            'Caritas Suchtberatung Freiburg · 101',
-        );
+        await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toHaveValue('Nr. 101');
+        await expect(canvas.getByText('Caritas Suchtberatung Freiburg')).toBeVisible();
         // Only one role on offer: „Rolle" is fixed on „Berater:in".
         const role = canvas.getByRole('combobox', { name: FIELD.role });
         await expect(role.closest('.ant-select')).toHaveTextContent(/Berater:in|Counsellor/);

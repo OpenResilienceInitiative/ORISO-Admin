@@ -803,7 +803,7 @@ export const CounsellorWide: Story = {
     },
 };
 
-/** Counsellor board in an 846px column: five columns, dates and actions stacked, the track wraps at three. */
+/** Counsellor board in an 846px column: five columns, dates and actions stacked, the track scrolls in one line. */
 export const CounsellorCompact: Story = {
     args: { targetRole: 'COUNSELLOR', invites: [...COUNSELLOR_INVITES, ...ROLE_INVITES], ...toolbarSlots },
     decorators: fixedWidth(846),
@@ -811,11 +811,13 @@ export const CounsellorCompact: Story = {
         await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
         await expectNoSideScroll(canvasElement);
         const anke = rowOf(canvasElement, 'anke.roth@example.org');
-        // Four dated steps at three per line: the fourth starts the second line.
+        // All dated steps stay on one line inside the scrollable track.
         const steps = within(anke.getByRole('list')).getAllByRole('listitem');
         await expect(steps).toHaveLength(4);
-        await expect(steps[3].getBoundingClientRect().top).toBeGreaterThan(steps[2].getBoundingClientRect().top);
-        // A wrapped bead still explains its step on hover.
+        await expect(Math.round(steps[3].getBoundingClientRect().top)).toBe(
+            Math.round(steps[2].getBoundingClientRect().top),
+        );
+        // A bead still explains its step on hover.
         await userEvent.hover(steps[3].querySelector<HTMLElement>('[tabindex="0"]') as HTMLElement);
         await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
             /(Wartet auf Abschluss: dieser Schritt ist gerade an der Reihe|Awaiting completion: .+)/,
@@ -829,7 +831,7 @@ export const CounsellorCompact: Story = {
     },
 };
 
-/** Träger board in an 846px column: five columns, the long track wraps at four per line. */
+/** Träger board in an 846px column: cards keep the long track in one scrollable line. */
 export const TraegerCompact: Story = {
     args: { targetRole: 'TENANT_ADMIN', invites: [...TRAEGER_DATED, ...TENANT_INVITES.slice(0, 4)], ...toolbarSlots },
     decorators: fixedWidth(846),
@@ -841,8 +843,7 @@ export const TraegerCompact: Story = {
         ).getAllByRole('listitem');
         await expect(steps).toHaveLength(6);
         const tops = steps.map((step) => Math.round(step.getBoundingClientRect().top));
-        await expect(new Set(tops.slice(0, 4)).size).toBe(1);
-        await expect(tops[4]).toBeGreaterThan(tops[3]);
+        await expect(new Set(tops).size).toBe(1);
     },
 };
 
