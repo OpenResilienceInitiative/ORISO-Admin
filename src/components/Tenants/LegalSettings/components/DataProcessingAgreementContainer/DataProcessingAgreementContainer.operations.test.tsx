@@ -302,10 +302,15 @@ it.each([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])(
         const user = userEvent.setup();
         const requestLink = async (expected: number) => {
             await user.click(await screen.findByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') }));
-            await user.click(await screen.findByRole('button', { name: i18n.t('dpaForward.dialog.linkCreate') }));
-            const field = await screen.findByDisplayValue(`https://example.org/dpa?token=invite-${expected}`);
+            const dialog = await screen.findByRole('dialog');
+            await waitFor(() => expect(dialog).toBeVisible());
+            const dialogView = within(dialog);
+            const linkSection = within(dialogView.getByTestId('dpa-forward-link-section'));
+            await user.click(linkSection.getByRole('button', { name: i18n.t('dpaForward.dialog.linkCreate') }));
+            const field = await dialogView.findByDisplayValue(`https://example.org/dpa?token=invite-${expected}`);
             await waitFor(() => expect(field).toBeVisible());
-            await user.click(screen.getByRole('button', { name: i18n.t('dpaForward.dialog.confirm') }));
+            await user.click(dialogView.getByRole('button', { name: i18n.t('dpaForward.dialog.confirm') }));
+            await waitFor(() => expect(dialog).not.toBeInTheDocument());
         };
         await screen.findByText('Current contract');
         expect(await screen.findByText(i18n.t('legal.dpa.deadline.blockedRenewal'))).toBeVisible();
