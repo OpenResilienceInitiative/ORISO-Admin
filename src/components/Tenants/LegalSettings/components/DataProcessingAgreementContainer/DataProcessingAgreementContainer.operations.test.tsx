@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth } from '../../../../../utils/storybook/adminStoryDecorators';
 import { clearSessionTokens, setSessionTokens } from '../../../../../api/auth/tokenSessionStore';
 import { DataProcessingAgreementContainer } from './index';
+import { DpaBlockerGate } from '../../../../DpaBlocker/DpaBlockerGate';
 
 const version = '2026-07-01T12:00:00';
 const snapshot = {
@@ -29,6 +30,16 @@ const server = setupServer(
         HttpResponse.json({ subject: 'AVV', html: '<p>Mail preview</p>' }),
     ),
     http.get('*/service/tenantadmin/7/dpa/versions', () => HttpResponse.json([snapshot])),
+    http.get('*/service/tenantadmin/7/dpa/status', () =>
+        HttpResponse.json({
+            tenantId: 7,
+            status: 'OUTDATED',
+            currentDpaVersion: version,
+            signedDpaVersion: '2026-05-01T09:00:00',
+            signedAt: '2026-05-02T10:00:00Z',
+            signedBy: 'Erika Mustermann',
+        }),
+    ),
     http.get('*/service/tenantadmin/7/dpa/gate', () =>
         HttpResponse.json({
             dpaPublished: true,
@@ -69,6 +80,187 @@ const renderLegal = (readOnly = false) =>
             </MemoryRouter>
         </QueryClientProvider>,
     );
+
+it('retains the earlier signature while the governing contract still requires confirmation', async () => {
+    setStoryAuth([UserRole.TenantAdmin], 7);
+    renderLegal();
+    await screen.findByText('Current contract');
+    expect(
+        await screen.findByText('Frühere Unterschrift bleibt erhalten. Die aktuelle Fassung ist noch offen.'),
+    ).toBeVisible();
+    expect(screen.getByText(/Erika Mustermann/)).toBeVisible();
+    expect(screen.getByText(/01\.05\.2026/)).toBeVisible();
+    expect(screen.getByText(/02\.05\.2026/)).toBeVisible();
+    expect(screen.queryByText(i18n.t('legal.dpa.deadline.state.VALID'))).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+});
+
+it('shows retained evidence inside the global renewal gate without resetting the verified page', async () => {
+    setStoryAuth([UserRole.TenantAdmin], 7);
+    render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <MemoryRouter>
+                <DpaBlockerGate>
+                    <DataProcessingAgreementContainer tenantId={7} />
+                </DpaBlockerGate>
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+    expect(await screen.findByText(/Erika Mustermann/)).toBeVisible();
+    expect(screen.getByText('Current contract')).toBeVisible();
+    expect(screen.getByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).toBeVisible();
+});
+
+it('shows the authoritative current confirmation instead of an earlier forwarded signature', async () => {
+    setStoryAuth([UserRole.SingleTenantAdmin], 7);
+    server.use(
+        http.get('*/service/tenantadmin/7/dpa/status', () =>
+            HttpResponse.json({
+                tenantId: 7,
+                status: 'VALID',
+                currentDpaVersion: version,
+                signedDpaVersion: version,
+                signedAt: '2026-07-02T10:00:00Z',
+                signedBy: 'Current authorised signatory',
+            }),
+        ),
+        http.get('*/service/tenantadmin/7/dpa/gate', () =>
+            HttpResponse.json({ dpaPublished: true, dpaSigned: true, dpaStatus: 'VALID', currentDpaVersion: version }),
+        ),
+        http.get('*/service/tenantadmin/7/dpa/signatures', () =>
+            HttpResponse.json([
+                { status: 'SIGNED', signerName: 'Earlier forwarded signatory', signedAt: '2026-05-02T10:00:00Z' },
+            ]),
+        ),
+    );
+    renderLegal();
+    expect(await screen.findByText(/Current authorised signatory/)).toBeVisible();
+    expect(screen.getByText(/Unterschriebene Fassung vom 01\.07\.2026/)).toBeVisible();
+    expect(screen.queryByText(/Earlier forwarded signatory/)).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('legal.dpa.sign.previousRetained'))).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).not.toBeInTheDocument();
+});
+
+it.each([
+    { tenantId: 7, status: 'UNSIGNED', currentDpaVersion: version },
+    { tenantId: 8, status: 'OUTDATED', currentDpaVersion: version },
+    { tenantId: 7, status: 'VALID', currentDpaVersion: '2026-05-01T09:00:00' },
+])('withholds signature evidence that does not belong to this tenant and governing confirmation: %j', async (state) => {
+    setStoryAuth([UserRole.TenantAdmin], 7);
+    server.use(
+        http.get('*/service/tenantadmin/7/dpa/status', () =>
+            HttpResponse.json({
+                ...state,
+                signedDpaVersion: '2026-05-01T09:00:00',
+                signedAt: '2026-05-02T10:00:00Z',
+                signedBy: 'Unrelated confirmation',
+            }),
+        ),
+    );
+    renderLegal();
+    await screen.findByText('Current contract');
+    expect(screen.queryByText(/Unrelated confirmation/)).not.toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('legal.dpa.sign.previousRetained'))).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).toBeVisible();
+});
+
+it('keeps contract recovery available when signature details fail and displays them after retry', async () => {
+    setStoryAuth([UserRole.TenantAdmin], 7);
+    let unavailable = true;
+    server.use(
+        http.get('*/service/tenantadmin/7/dpa/status', () =>
+            unavailable
+                ? new HttpResponse(null, { status: 503 })
+                : HttpResponse.json({
+                      tenantId: 7,
+                      status: 'OUTDATED',
+                      currentDpaVersion: version,
+                      signedDpaVersion: '2026-05-01T09:00:00',
+                      signedAt: '2026-05-02T10:00:00Z',
+                      signedBy: 'Recovered signatory',
+                  }),
+        ),
+    );
+    renderLegal();
+    expect(await screen.findByText(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
+    expect(screen.getByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).toBeVisible();
+    expect(screen.queryByText(i18n.t('legal.dpa.sign.previousRetained'))).not.toBeInTheDocument();
+    unavailable = false;
+    await userEvent.click(screen.getByRole('button', { name: i18n.t('tenants.legal.version.retry') }));
+    expect(await screen.findByText(/Recovered signatory/)).toBeVisible();
+    expect(screen.queryByText(i18n.t('legal.dpa.sign.detailsLoadError'))).not.toBeInTheDocument();
+});
+
+it('keeps a late signature response from the previous tenant out of the new tenant view', async () => {
+    setStoryAuth([UserRole.TenantAdmin], 7);
+    let finishFirst!: () => void;
+    const pending = new Promise<void>((resolve) => {
+        finishFirst = resolve;
+    });
+    let responseDelivered!: () => void;
+    const delivered = new Promise<void>((resolve) => {
+        responseDelivered = resolve;
+    });
+    server.use(
+        http.get('*/service/tenantadmin/7/dpa/status', async () => {
+            await pending;
+            responseDelivered();
+            return HttpResponse.json({
+                tenantId: 7,
+                status: 'OUTDATED',
+                currentDpaVersion: version,
+                signedDpaVersion: '2026-05-01T09:00:00',
+                signedAt: '2026-05-02T10:00:00Z',
+                signedBy: 'Previous tenant signatory',
+            });
+        }),
+        http.get('*/service/tenantadmin/8/dpa/versions', () =>
+            HttpResponse.json([{ ...snapshot, content: '{"de":"<p>Other tenant contract</p>"}' }]),
+        ),
+        http.get('*/service/tenantadmin/8/dpa/gate', () =>
+            HttpResponse.json({
+                dpaPublished: true,
+                dpaSigned: false,
+                dpaStatus: 'OUTDATED',
+                currentDpaVersion: version,
+            }),
+        ),
+        http.get('*/service/tenantadmin/8/dpa/status', () =>
+            HttpResponse.json({
+                tenantId: 8,
+                status: 'OUTDATED',
+                currentDpaVersion: version,
+                signedDpaVersion: '2026-05-01T09:00:00',
+                signedAt: '2026-05-02T10:00:00Z',
+                signedBy: 'New tenant signatory',
+            }),
+        ),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = (tenantId: number) => (
+        <QueryClientProvider client={client}>
+            <MemoryRouter>
+                <DataProcessingAgreementContainer tenantId={tenantId} />
+            </MemoryRouter>
+        </QueryClientProvider>
+    );
+    const rendered = render(view(7));
+    try {
+        await screen.findByText('Current contract');
+        setStoryAuth([UserRole.TenantAdmin], 8);
+        rendered.rerender(view(8));
+        expect(await screen.findByText(/New tenant signatory/)).toBeVisible();
+        await act(async () => {
+            finishFirst();
+            await delivered;
+        });
+        expect(screen.queryByText(/Previous tenant signatory/)).not.toBeInTheDocument();
+        expect(screen.getByText('Other tenant contract')).toBeVisible();
+    } finally {
+        finishFirst();
+    }
+});
 
 it.each([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])(
     'keeps %s renewal read-only with a fresh signing invitation after expiry or publication change',
@@ -204,7 +396,7 @@ it('does not show a previous signature-load error beside a different governing p
     });
     const nextVersion = '2026-09-30T12:00:00';
     server.use(
-        http.get('*/service/tenantadmin/7/dpa/signatures', () =>
+        http.get('*/service/tenantadmin/7/dpa/status', () =>
             HttpResponse.json({ message: 'Unavailable' }, { status: 503 }),
         ),
         http.get('*/service/tenantadmin/7/dpa/gate', () =>
