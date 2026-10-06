@@ -15,7 +15,8 @@ type Status =
     | 'expired'
     | 'failure'
     | 'recovery'
-    | 'setupFailure';
+    | 'setupFailure'
+    | 'assignmentPending';
 type View = 'active' | 'history';
 interface Fixture {
     id: string;
@@ -65,8 +66,22 @@ const fixtures: Fixture[] = [
         name: 'Frida Beispiel',
         status: 'replaced',
         purpose: 'new',
-        reached: { invited: '30.09., 22:12', account: '30.09., 22:12' },
+        reached: { invited: '30.09., 22:12' },
         replacementId: 'INV-205',
+    },
+    {
+        id: 'INV-214',
+        name: 'Taylor Beispiel',
+        status: 'assignmentPending',
+        purpose: 'existing',
+        reached: { invited: '30.09., 14:00' },
+    },
+    {
+        id: 'INV-201',
+        name: 'Morgan Beispiel',
+        status: 'replaced',
+        purpose: 'new',
+        reached: { invited: '28.09., 10:00', account: '28.09., 10:05' },
     },
     { id: 'INV-203', name: 'Pat Beispiel', status: 'revoked', purpose: 'new', reached: { invited: '29.09., 12:00' } },
     {
@@ -96,6 +111,9 @@ const copy = {
         admin: 'BST-Admin',
         roleHint: 'Rolle ändern und E-Mail senden sind getrennte Aktionen.',
         roleSaved: 'Rolle im Vorschlag geändert. Es wurde keine E-Mail gesendet.',
+        assign: 'Zuordnung bestätigen',
+        assignmentSimulation:
+            'Vorschau: Die Zuordnung des vorhandenen Kontos muss vom Server bestätigt werden. Kein neues Konto und keine E-Mail.',
         resend: 'Erneut senden',
         send: 'Einladung senden',
         simulation:
@@ -122,8 +140,11 @@ const copy = {
             failure: 'Zustellproblem',
             recovery: 'Zugang wiederherstellen',
             setupFailure: 'Einrichtungsproblem',
+            assignmentPending: 'Zuordnung ausstehend',
         },
         hints: {
+            assignmentPending:
+                'Das Konto besteht bereits. Die Zuordnung zur Beratungsstelle muss noch bestätigt werden. Es wird kein neues Konto angelegt.',
             draft: 'Diese Einladung wurde vorbereitet. Es wurde noch keine E-Mail gesendet.',
             sent: 'Die E-Mail wurde gesendet. Der nächste Schritt richtet sich nach dem Zweck der Einladung.',
             created: 'Das neue Konto wurde angelegt. Die Einrichtung ist noch nicht abgeschlossen.',
@@ -149,7 +170,8 @@ const copy = {
             complete: 'Einrichtung abgeschlossen',
         },
         stageHints: {
-            invited: 'Dieser Schritt bestätigt die Zustellung der Einladung per E-Mail.',
+            invited:
+                'Dieser Schritt bestätigt, dass die Einladungs-E-Mail gesendet wurde. Eine bestätigte Zustellung ist damit nicht nachgewiesen.',
             account:
                 'Hier wird die Kontoanlage einer neuen Person bestätigt; die bestehende Beratungsstelle wird nicht neu angelegt.',
             assignment: 'Hier wird die Zuordnung eines vorhandenen Kontos zur bestehenden Beratungsstelle bestätigt.',
@@ -174,6 +196,9 @@ const copy = {
         admin: 'Centre admin',
         roleHint: 'Changing a role and sending an email are separate actions.',
         roleSaved: 'Role changed in the proposal. No email was sent.',
+        assign: 'Confirm assignment',
+        assignmentSimulation:
+            'Preview: The server must confirm assignment of the existing account. No new account or email.',
         resend: 'Resend invitation',
         send: 'Send invitation',
         simulation:
@@ -200,8 +225,11 @@ const copy = {
             failure: 'Delivery problem',
             recovery: 'Recover access',
             setupFailure: 'Setup problem',
+            assignmentPending: 'Assignment pending',
         },
         hints: {
+            assignmentPending:
+                'The account already exists. Its assignment to the counselling centre needs confirmation. No new account is created.',
             draft: 'This invitation is prepared. No email has been sent yet.',
             sent: 'The email was sent. The next step depends on the purpose of this invitation.',
             created: 'The new account was created. Setup is not complete yet.',
@@ -224,7 +252,7 @@ const copy = {
             complete: 'Setup complete',
         },
         stageHints: {
-            invited: 'This step confirms delivery of the invitation email.',
+            invited: 'This step confirms the invitation email was sent. It does not prove confirmed delivery.',
             account:
                 'This confirms account creation for a new person; the existing counselling centre is not being created again.',
             assignment: 'This confirms assignment of an existing account to the existing counselling centre.',
@@ -267,7 +295,10 @@ export const InviteTrackingProposal = ({
     useEffect(() => {
         if (!explanation) return undefined;
         const onEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setExplanation(null);
+            if (event.key === 'Escape') {
+                setExplanation(null);
+                explanationTrigger.current?.focus();
+            }
         };
         document.addEventListener('keydown', onEscape);
         return () => document.removeEventListener('keydown', onEscape);
@@ -432,6 +463,14 @@ export const InviteTrackingProposal = ({
                                                 <option value="admin">{c.admin}</option>
                                             </select>
                                         </label>
+                                        {fixture.status === 'assignmentPending' && (
+                                            <M3Button
+                                                variant="filled"
+                                                onClick={() => setNotice(c.assignmentSimulation)}
+                                            >
+                                                {c.assign}
+                                            </M3Button>
+                                        )}
                                         {fixture.status !== 'done' && fixture.purpose !== 'existing' && (
                                             <M3Button variant="outlined" onClick={() => setNotice(c.simulation)}>
                                                 {fixture.status === 'draft' ? c.send : c.resend}

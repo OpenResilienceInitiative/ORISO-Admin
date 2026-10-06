@@ -101,7 +101,7 @@
     line-height: 1.5;
     padding-block: 10px;
 
-    input {
+    input[type='radio'] {
         width: 20px;
         height: 20px;
         flex: 0 0 auto;
@@ -109,7 +109,7 @@
         margin-block-start: 2px;
     }
 
-    input:focus-visible {
+    input[type='radio']:focus-visible {
         outline: 2px solid var(--m3-primary);
         outline-offset: 3px;
     }

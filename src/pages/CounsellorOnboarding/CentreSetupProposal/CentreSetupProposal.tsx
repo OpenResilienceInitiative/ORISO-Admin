@@ -9,6 +9,7 @@ import AddRounded from '@mui/icons-material/AddRounded';
 import VerifiedUserOutlined from '@mui/icons-material/VerifiedUserOutlined';
 import { AgencyGeneralInformation } from '../../Agency/Edit/components/GeneralInformation';
 import { Card } from '../../../components/Card';
+import { M3Checkbox } from '../../../components/M3Checkbox';
 import { M3Button } from '../../../components/M3Button';
 import { Modal } from '../../../components/Modal';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
@@ -137,18 +138,18 @@ const CentreSetupExample = ({
                 <details className={styles.invitation} open>
                     <summary>{text.inviter}</summary>
                     <p>{text.carrier}</p>
-                    <label className={styles.choice} htmlFor={`${controlId}-grant`}>
-                        <input
-                            type="checkbox"
-                            id={`${controlId}-grant`}
+                    <div className={styles.choice}>
+                        <M3Checkbox
+                            label={text.grant}
+                            describedById={`${controlId}-grant-hint`}
                             checked={allowed}
-                            onChange={(event) => setAllowed(event.target.checked)}
+                            onChange={setAllowed}
                         />
                         <span>
                             {text.grant}
-                            <small>{text.grantHint}</small>
+                            <small id={`${controlId}-grant-hint`}>{text.grantHint}</small>
                         </span>
-                    </label>
+                    </div>
                 </details>
                 <div className={styles.secure}>
                     <VerifiedUserOutlined aria-hidden="true" />
@@ -215,29 +216,40 @@ const CentreSetupExample = ({
                             <fieldset className={styles.topics}>
                                 <legend>{text.topics}</legend>
                                 <p>{singleTopic ? text.singleHint : text.topicsHint}</p>
-                                {proposalTopics.map((topic) => (
-                                    <label
-                                        key={topic.id}
-                                        className={styles.choice}
-                                        htmlFor={`${controlId}-topic-${topic.id}`}
-                                    >
-                                        <input
-                                            id={`${controlId}-topic-${topic.id}`}
-                                            type={singleTopic ? 'radio' : 'checkbox'}
-                                            name="centre-topic"
-                                            checked={topicIds.includes(topic.id)}
-                                            onChange={() =>
-                                                setTopicIds((current) => {
-                                                    if (singleTopic) return [topic.id];
-                                                    if (current.includes(topic.id))
-                                                        return current.filter((id) => id !== topic.id);
-                                                    return [...current, topic.id];
-                                                })
-                                            }
-                                        />
-                                        <span>{topic[locale]}</span>
-                                    </label>
-                                ))}
+                                {proposalTopics.map((topic) => {
+                                    const selectTopic = () =>
+                                        setTopicIds((current) => {
+                                            if (singleTopic) return [topic.id];
+                                            if (current.includes(topic.id))
+                                                return current.filter((id) => id !== topic.id);
+                                            return [...current, topic.id];
+                                        });
+                                    return singleTopic ? (
+                                        <label
+                                            key={topic.id}
+                                            className={styles.choice}
+                                            htmlFor={`${controlId}-topic-${topic.id}`}
+                                        >
+                                            <input
+                                                id={`${controlId}-topic-${topic.id}`}
+                                                type="radio"
+                                                name="centre-topic"
+                                                checked={topicIds.includes(topic.id)}
+                                                onChange={selectTopic}
+                                            />
+                                            <span>{topic[locale]}</span>
+                                        </label>
+                                    ) : (
+                                        <div key={topic.id} className={styles.choice}>
+                                            <M3Checkbox
+                                                label={topic[locale]}
+                                                checked={topicIds.includes(topic.id)}
+                                                onChange={selectTopic}
+                                            />
+                                            <span>{topic[locale]}</span>
+                                        </div>
+                                    );
+                                })}
                                 {topicIds.length === 0 && <p className={styles.helper}>{text.topicRequired}</p>}
                             </fieldset>
                         </Form>
@@ -285,10 +297,10 @@ const CentreSetupExample = ({
                     >
                         <p className={styles.helper}>{text.review}</p>
                         {(['address', 'contact', 'hours', 'topics'] as const).map((block) => (
-                            <label key={block} className={styles.copyChoice} htmlFor={`${controlId}-copy-${block}`}>
-                                <input
-                                    type="checkbox"
-                                    id={`${controlId}-copy-${block}`}
+                            <div key={block} className={styles.copyChoice}>
+                                <M3Checkbox
+                                    label={text[block === 'topics' ? 'topicsCopy' : block]}
+                                    describedById={`${controlId}-copy-${block}-hint`}
                                     checked={blocks.includes(block)}
                                     onChange={() =>
                                         setBlocks((current) =>
@@ -300,9 +312,11 @@ const CentreSetupExample = ({
                                 />
                                 <span>
                                     {text[block === 'topics' ? 'topicsCopy' : block]}
-                                    <small>{text[`${block === 'topics' ? 'topics' : block}Detail`]}</small>
+                                    <small id={`${controlId}-copy-${block}-hint`}>
+                                        {text[`${block === 'topics' ? 'topics' : block}Detail`]}
+                                    </small>
                                 </span>
-                            </label>
+                            </div>
                         ))}
                         <p className={styles.notice}>{text.source}</p>
                     </Modal>

@@ -10,10 +10,12 @@ describe('invitation tracking design proposal', () => {
         const row = screen.getByRole('article', { name: 'Frida Beispiel · INV-204' });
         await user.click(within(row).getByRole('button', { name: 'Ersetzt · Erklärung' }));
         expect(within(row).getByRole('note')).toHaveTextContent('Diese Einladung ist geschlossen');
-        expect(within(row).getAllByText('30.09., 22:12')).toHaveLength(2);
-        expect(within(row).getByRole('button', { name: /Konto angelegt · Erreicht/ })).toBeVisible();
+        expect(within(row).getAllByText('30.09., 22:12')).toHaveLength(1);
+        expect(within(row).getByRole('button', { name: /Konto angelegt · Noch nicht erreicht/ })).toBeVisible();
         expect(within(row).queryByRole('button', { name: /Konto angelegt · Fehlgeschlagen/ })).not.toBeInTheDocument();
+        within(row).getByRole('button', { name: 'Erklärung schließen' }).focus();
         await user.keyboard('{Escape}');
+        expect(within(row).getByRole('button', { name: 'Ersetzt · Erklärung' })).toHaveFocus();
         expect(within(row).queryByRole('note')).not.toBeInTheDocument();
     });
 });
@@ -46,4 +48,36 @@ it('keeps a role edit separate from an explicit simulated resend and follows onl
     await user.click(within(replaced).getByRole('button', { name: /Neuere Einladung ansehen/ }));
     expect(screen.getByRole('status')).toHaveTextContent('Neuere Einladung: INV-205');
     expect(screen.getByRole('article', { name: 'Frida Beispiel · INV-205' })).toBeVisible();
+});
+
+it('offers an explicit assignment action for an existing account without creating another account or sending mail', async () => {
+    const user = userEvent.setup();
+    render(<InviteTrackingProposal locale="en" onlyStatus="assignmentPending" />);
+    const row = screen.getByRole('article', { name: 'Taylor Beispiel · INV-214' });
+    expect(within(row).getByRole('button', { name: /Assignment confirmed · Next step/ })).toBeVisible();
+    expect(within(row).queryByRole('button', { name: /Account created/ })).not.toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: /Resend/ })).not.toBeInTheDocument();
+    await user.click(within(row).getByRole('button', { name: 'Confirm assignment' }));
+    expect(screen.getByRole('status')).toHaveTextContent('No new account or email');
+});
+
+it('restores focus to the explanation trigger after Escape from the close control', async () => {
+    const user = userEvent.setup();
+    render(<InviteTrackingProposal initialView="history" />);
+    const row = within(screen.getByRole('article', { name: 'Frida Beispiel · INV-204' }));
+    const trigger = row.getByRole('button', { name: 'Ersetzt · Erklärung' });
+    await user.click(trigger);
+    row.getByRole('button', { name: 'Erklärung schließen' }).focus();
+    await user.keyboard('{Escape}');
+    expect(row.queryByRole('note')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+});
+it('retains evidenced account creation in a separate closed fixture and describes invited as sent', async () => {
+    const user = userEvent.setup();
+    render(<InviteTrackingProposal initialView="history" locale="en" />);
+    const created = within(screen.getByRole('article', { name: 'Morgan Beispiel · INV-201' }));
+    expect(created.getByRole('button', { name: /Account created · Reached/ })).toBeVisible();
+    await user.click(created.getByRole('button', { name: /Invited · Reached/ }));
+    expect(created.getByRole('note')).toHaveTextContent('the invitation email was sent');
+    expect(created.getByRole('note')).toHaveTextContent('does not prove confirmed delivery');
 });
