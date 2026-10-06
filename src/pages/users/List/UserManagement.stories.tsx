@@ -350,7 +350,9 @@ export const ConsultantsTab: Story = {
         const canvas = within(canvasElement);
         await step('status as words, centre as chip with PLZ and Ort', async () => {
             await expect(canvas.getByText('Aktiv')).toBeVisible();
-            await expect(canvas.getByText('Abwesend')).toBeVisible();
+            const lockedRow = await rowOf(canvasElement, 'Beispiel');
+            await expect(within(lockedRow).getByText('Inaktiv')).toBeVisible();
+            await expect(within(lockedRow).queryByText('Abwesend')).toBeNull();
             await expect(canvas.getByText('20095 Hamburg')).toBeVisible();
         });
         await step('arrows only where the server sorts; newest first by default', async () => {
