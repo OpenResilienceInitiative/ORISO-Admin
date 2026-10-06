@@ -70,7 +70,7 @@ const assertCopyFooterWithinViewport = async () => {
     const apply = choices.getByRole('button', { name: /Auswahl übernehmen|Use selected information/ });
     const cancel = choices.getByRole('button', { name: /Abbrechen|Cancel/ });
     const closeLabel = body.getByRole('main').getAttribute('lang') === 'en' ? 'Close' : 'Schließen';
-    const close = choices.getByRole('button', { name: closeLabel, exact: true });
+    const close = choices.getByRole('button', { name: closeLabel });
     await waitFor(() => {
         expect(apply).toBeVisible();
         expect(cancel).toBeVisible();

@@ -101,7 +101,7 @@ it.each([
             </ConfigProvider>,
         );
         const dialog = within(screen.getByRole('dialog'));
-        const close = dialog.getByRole('button', { name: closeLabel, exact: true });
+        const close = dialog.getByRole('button', { name: closeLabel });
         expect(close).toBeEnabled();
         expect(screen.getByRole('main')).toHaveAttribute('lang', locale);
         fireEvent.click(close);
