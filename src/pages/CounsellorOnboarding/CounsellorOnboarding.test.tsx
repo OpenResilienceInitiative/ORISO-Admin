@@ -699,13 +699,11 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
             async (phase) => {
                 const client = createClient({
                     getOnboardingInvite: vi.fn().mockResolvedValue({ ...FOUNDING_INVITE, alsoCounsellor: false }),
-                    registerCounsellor: vi
-                        .fn()
-                        .mockResolvedValue({
-                            consultantId: 'founder',
-                            phase,
-                            twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
-                        }),
+                    registerCounsellor: vi.fn().mockResolvedValue({
+                        consultantId: 'founder',
+                        phase,
+                        twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                    }),
                 });
                 const user = userEvent.setup();
                 render(
@@ -732,6 +730,27 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                 expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
             },
         );
+
+        it('retains the agency next step when OTP resumes after the agency was created', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...FOUNDING_INVITE,
+                    agencyExists: true,
+                    phase: 'PENDING_2FA_ACTIVATION',
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            expect(
+                await screen.findByRole('button', {
+                    name: 'counsellorOnboarding.agencySetup.finish',
+                }),
+            ).toBeInTheDocument();
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+        });
 
         it('without counselling still requires one topic for the agency and sends it', async () => {
             const client = createClient({

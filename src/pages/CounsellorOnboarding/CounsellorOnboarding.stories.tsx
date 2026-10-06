@@ -445,7 +445,7 @@ export const AgencyAdminFoundingSuccess: Story = {
         client: createStubCounsellorOnboardingClient({
             latencyMs: 0,
             inviteState: 'PENDING_2FA_ACTIVATION',
-            invite: FOUNDING_INVITE,
+            invite: { ...FOUNDING_INVITE, agencyExists: true },
         }),
     },
     play: async ({ canvas, userEvent }) => {
@@ -469,7 +469,7 @@ export const AgencyAdminFoundingSuccessMobile: Story = {
         client: createStubCounsellorOnboardingClient({
             latencyMs: 0,
             inviteState: 'PENDING_2FA_ACTIVATION',
-            invite: FOUNDING_INVITE,
+            invite: { ...FOUNDING_INVITE, agencyExists: true },
         }),
     },
     play: AgencyAdminFoundingSuccess.play,
