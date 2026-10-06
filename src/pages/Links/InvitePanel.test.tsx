@@ -74,6 +74,19 @@ describe('InvitePanel stepper (#1127)', () => {
         expect(screen.getByTestId('invite-panel-progress').querySelectorAll('[data-state="done"]')).toHaveLength(0);
     });
 
+    // The tab preselects a template when exactly one of the kind is active; that pick is real progress.
+    it('counts a selected template as done', async () => {
+        renderPanel({ templates: { list: [TEMPLATE], selectedId: TEMPLATE.id, onManage: () => {} } });
+
+        expect(await screen.findByTestId('invite-panel-summary')).toHaveTextContent(
+            'Noch offen: E-Mail & Name, Träger · 1 von 3',
+        );
+        const states = [...screen.getByTestId('invite-panel-progress').children].map((segment) =>
+            segment.getAttribute('data-state'),
+        );
+        expect(states).toEqual(['open', 'open', 'done']);
+    });
+
     it('does not count a Träger that is fixed for the viewer', async () => {
         renderPanel({ viewer: { scope: 'tenant', ownTenant: { id: 7, name: 'Caritas Südbaden' } } });
 

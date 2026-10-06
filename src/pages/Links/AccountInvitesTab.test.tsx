@@ -623,6 +623,26 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(screen.queryByRole('button', { name: /^E-Mail-Vorlage bearbeiten/ })).not.toBeInTheDocument();
     });
 
+    // #1127: the open card pushes the table a screen down on a phone, so a first visit starts folded.
+    it('starts folded on a phone and keeps the form one tap away', async () => {
+        const { matchMedia } = window;
+        window.matchMedia = ((query: string) => ({
+            ...matchMedia(query),
+            matches: query.includes('max-width: 599px'),
+        })) as typeof window.matchMedia;
+        try {
+            render(<CounsellorInvitesTab />);
+
+            const expand = await screen.findByRole('button', { name: 'Formular ausklappen' });
+            expect(screen.queryByLabelText('E-Mail')).not.toBeInTheDocument();
+
+            await userEvent.setup().click(expand);
+            expect(await screen.findByLabelText('E-Mail')).toBeVisible();
+        } finally {
+            window.matchMedia = matchMedia;
+        }
+    });
+
     // Each case types and sends a whole invite twice; the parallel CI runner exceeds the 30 s default.
     describe('"Senden & nächste"', { timeout: 90_000 }, () => {
         const chooseSendAndNext = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -758,6 +778,19 @@ describe('CounsellorInvitesTab — invite wiring', () => {
 
             await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
             expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('BST-Admin');
+
+            // The role is not only shown, it goes out with the next request.
+            await user.type(screen.getByLabelText('E-Mail'), 'bart.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Bart');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            const next = screen.getByRole('button', { name: /& nächste$/ });
+            await waitFor(() => expect(next).toBeEnabled(), { timeout: 10_000 });
+            await user.click(next);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                recipientEmail: 'bart.simpson@example.org',
+                targetRole: 'AGENCY_ADMIN',
+            });
         });
 
         it('clears nothing when the send fails', async () => {
