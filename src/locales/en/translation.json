@@ -608,6 +608,7 @@
     "userTable.person.username": "Username",
     "userTable.person.copyEmail": "Copy {{name}}'s e-mail",
     "userTable.person.emailCopied": "E-mail copied",
+    "links.inviteProgress.filterToggle": "Filter",
     "links.inviteProgress.summaryLabel": "Onboarding overview",
     "links.inviteProgress.roleMeaning.COUNSELLOR": "Counsels advice seekers in their agency.",
     "links.inviteProgress.roleMeaning.AGENCY_ADMIN": "Runs the agency: counsellors, topics and settings.",

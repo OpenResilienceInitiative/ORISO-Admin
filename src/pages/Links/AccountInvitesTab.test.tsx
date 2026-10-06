@@ -743,7 +743,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
         });
 
-        it('puts Rolle back to the default role for the next person', async () => {
+        // #1127: the next person starts from the last setup, role included; only e-mail and name are empty.
+        it('keeps the chosen Rolle for the next person', async () => {
             mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
             const user = await fill('900');
             await user.click(screen.getByRole('button', { name: /^Rolle bearbeiten/ }));
@@ -756,9 +757,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             expect(mocks.createAccountInvite.mock.calls[0][0].targetRole).toBe('AGENCY_ADMIN');
 
             await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
-            await waitFor(() =>
-                expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
-            );
+            expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('BST-Admin');
         });
 
         it('clears nothing when the send fails', async () => {
