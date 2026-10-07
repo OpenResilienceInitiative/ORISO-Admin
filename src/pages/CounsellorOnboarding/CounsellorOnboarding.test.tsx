@@ -79,6 +79,28 @@ const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
     );
 
 describe('CounsellorOnboarding', () => {
+    it('resumes at the standard email choice and completes only after invitation-scoped verification', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL', 'APP'], defaultMethod: 'EMAIL' },
+            }),
+            sendTwoFactorEmail: vi.fn().mockResolvedValue(undefined),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+        expect(await screen.findByRole('radio', { name: 'twoFactorAuth.activate.radio.label.email' })).toBeChecked();
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.email.send' }));
+        await waitFor(() => expect(client.sendTwoFactorEmail).toHaveBeenCalledWith('raw-token'));
+        expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        expect(await screen.findByTestId('onboarding-done')).toBeInTheDocument();
+        expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456', 'EMAIL');
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    });
+
     const submit = () => screen.getByRole('button', { name: 'counsellorOnboarding.submit' });
 
     it.each(['COUNSELLOR', 'AGENCY_ADMIN'] as const)(

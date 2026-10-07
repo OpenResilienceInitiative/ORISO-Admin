@@ -45,7 +45,7 @@ const meta = {
                         padding: '16px',
                     }}
                 >
-                    <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
+                    <div style={{ width: 'min(560px, 100%)', padding: '16px 0' }}>
                         <Story />
                     </div>
                 </div>
@@ -449,6 +449,7 @@ export const AgencyAdminFoundingSuccess: Story = {
         }),
     },
     play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
         await userEvent.click(
             canvas.getByRole('button', {

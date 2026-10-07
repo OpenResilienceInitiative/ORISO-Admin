@@ -13,7 +13,7 @@ import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboar
 import { CounsellorOnboarding } from './CounsellorOnboarding';
 
 /** An isolated locale instance keeps this language-switch story from changing other stories. */
-const LanguageExample = () => {
+const LanguageExample = ({ twoFactor = false }: { twoFactor?: boolean }) => {
     const { locale: storyLocale, client: storyClient } = useMemo(() => {
         const locale = createInstance();
         locale.use(initReactI18next).init({
@@ -33,7 +33,10 @@ const LanguageExample = () => {
             { id: 26, de: 'Sucht', en: 'Addiction' },
             { id: 27, de: 'Migration', en: 'Migration' },
         ];
-        const client = createStubCounsellorOnboardingClient({ latencyMs: 0 });
+        const client = createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: twoFactor ? 'PENDING_2FA_ACTIVATION' : 'VALID',
+        });
         const resolve = client.getOnboardingInvite;
         client.getOnboardingInvite = async (token) => {
             const invite = await resolve(token);
@@ -48,7 +51,7 @@ const LanguageExample = () => {
             };
         };
         return { locale, client };
-    }, []);
+    }, [twoFactor]);
     return (
         <I18nextProvider i18n={storyLocale}>
             <ThemeProvider theme={orisoMuiTheme}>
@@ -103,4 +106,19 @@ export const Phone: Story = {
     ...LanguageSwitch,
     globals: { viewport: { value: 'phone', isRotated: false } },
     parameters: { chromatic: { viewports: [390] } },
+};
+
+export const TwoFactorLanguage: Story = {
+    name: 'Email second factor — DE and EN',
+    args: { twoFactor: true },
+    play: async ({ canvas, userEvent }) => {
+        const body = within(document.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByLabelText('Einmalcode')).toBeVisible();
+        await userEvent.click(canvas.getByRole('combobox', { name: /Sprache|language/i }));
+        await userEvent.click(await body.findByText('(EN) Englisch'));
+        await expect(await canvas.findByRole('button', { name: 'Send new code' })).toBeVisible();
+        await expect(canvas.getByLabelText('One-time code')).toBeVisible();
+        await expect(canvas.getByRole('radio', { name: 'E-mail address' })).toBeChecked();
+    },
 };

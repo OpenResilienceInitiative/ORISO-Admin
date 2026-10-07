@@ -61,6 +61,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         goBackToOrganisation,
         submitAccount,
         submitTwoFactorCode,
+        sendTwoFactorEmail,
     } = useTenantAdminOnboardingFlow(inviteToken, resolvedClient);
 
     if (state.phase === 'loading') {
@@ -161,6 +162,8 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     busy={busy}
                     showCodeError={submitError === 'two-factor-code'}
                     showServiceError={submitError === 'two-factor'}
+                    email={invite?.recipientEmail}
+                    onSendEmail={resolvedClient.sendTwoFactorEmail ? sendTwoFactorEmail : undefined}
                     onSubmit={submitTwoFactorCode}
                 />
             )}

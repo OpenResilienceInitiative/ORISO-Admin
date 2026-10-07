@@ -26,11 +26,13 @@ import {
     InviteLinkErrorReason,
     isInviteLinkErrorReason,
     OnboardingPurpose,
+    OnboardingTwoFactorMethod,
+    OnboardingTwoFactorSetup,
 } from '../tenantOnboarding/tenantOnboarding';
 import { TwoFactorCodeInvalidError } from '../tenantOnboarding/TwoFactorCodeInvalidError';
 
 export { InviteLinkError, TwoFactorCodeInvalidError };
-export type { InviteLinkErrorReason };
+export type { InviteLinkErrorReason, OnboardingTwoFactorMethod, OnboardingTwoFactorSetup };
 
 /** A selectable topic of the invite's department/agency coverage. */
 export interface CounsellorTopicOption {
@@ -82,7 +84,7 @@ export interface CounsellorOnboardingInviteDTO {
      */
     phase?: 'PENDING_2FA_ACTIVATION';
     /** TOTP setup material re-issued for a resumable link (secret-only re-entry). */
-    twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor?: OnboardingTwoFactorSetup | null;
 }
 
 export interface CounsellorRegistrationRequest {
@@ -129,7 +131,7 @@ export interface CounsellorRegistrationResultDTO {
      * invite's 2FA gate was waived and the wizard skips the 2FA step.
      */
     phase: 'PENDING_2FA_ACTIVATION' | 'COMPLETED';
-    twoFactor: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor: OnboardingTwoFactorSetup | null;
 }
 
 /**
@@ -143,8 +145,10 @@ export interface CounsellorOnboardingClient {
         inviteToken: string,
         request: CounsellorRegistrationRequest,
     ): Promise<CounsellorRegistrationResultDTO>;
-    /** Confirms the TOTP setup with a first one-time password. */
-    activateTwoFactor(inviteToken: string, otp: string): Promise<void>;
+    /** Sends a code to the invite's server-bound address; never completes setup. */
+    sendTwoFactorEmail?(inviteToken: string): Promise<void>;
+    /** Confirms the selected method; absent method preserves legacy app activation. */
+    activateTwoFactor(inviteToken: string, otp: string, method?: OnboardingTwoFactorMethod): Promise<void>;
 }
 
 /** Status → link-error mapping of the public onboarding endpoints. */
@@ -222,14 +226,24 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                 }),
             ),
 
-        activateTwoFactor: async (inviteToken, otp) => {
+        sendTwoFactorEmail: (inviteToken) =>
+            run(() =>
+                fetchData({
+                    url: onboardingUrl(inviteToken, '/two-factor/email'),
+                    method: FETCH_METHODS.POST,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                }),
+            ),
+
+        activateTwoFactor: async (inviteToken, otp, method) => {
             try {
                 await fetchData({
                     url: onboardingUrl(inviteToken, '/two-factor'),
                     method: FETCH_METHODS.POST,
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
-                    bodyData: JSON.stringify({ otp }),
+                    bodyData: JSON.stringify({ otp, ...(method ? { method } : {}) }),
                 });
             } catch (error) {
                 // 400/422 = the entered one-time password was rejected;
@@ -301,6 +315,8 @@ export const createStubCounsellorOnboardingClient = (
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
         qrCodeBase64: null,
+        methods: ['EMAIL', 'APP'] as const,
+        defaultMethod: 'EMAIL' as const,
     };
 
     const assertLinkAlive = (inviteToken: string) => {
@@ -368,6 +384,12 @@ export const createStubCounsellorOnboardingClient = (
                 phase: 'PENDING_2FA_ACTIVATION',
                 twoFactor: STUB_TWO_FACTOR,
             };
+        },
+
+        sendTwoFactorEmail: async (inviteToken) => {
+            await wait(latencyMs);
+            assertLinkAlive(inviteToken);
+            if (!registered) throw new Error('Registration has not happened yet');
         },
 
         activateTwoFactor: async (inviteToken, otp) => {
