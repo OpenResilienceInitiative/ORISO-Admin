@@ -1,13 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next';
-import { ConfigProvider, Form } from 'antd';
+import { Checkbox, ConfigProvider, Form } from 'antd';
+import TextField from '@mui/material/TextField';
+import { ThemeProvider } from '@mui/material/styles';
 import deDE from 'antd/es/locale/de_DE';
 import enGB from 'antd/es/locale/en_GB';
-import { ThemeProvider } from '@mui/material/styles';
+import frFR from 'antd/es/locale/fr_FR';
+import ruRU from 'antd/es/locale/ru_RU';
+import trTR from 'antd/es/locale/tr_TR';
+import ukUA from 'antd/es/locale/uk_UA';
+import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../constants/supportedLanguages';
+import { muiFieldSx } from '../../../components/mui/fieldSx';
 import { Modal } from '../../../components/Modal';
 import { M3Button } from '../../../components/M3Button';
-import { M3Checkbox } from '../../../components/M3Checkbox';
 import { FilterChip } from '../../../components/FilterChip';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
@@ -17,7 +23,7 @@ import { resources } from './copy';
 import styles from './styles.module.scss';
 
 export interface TopicSelectionProposalProps {
-    initialLanguage?: 'de' | 'en';
+    initialLanguage?: SupportedLanguageCode;
     initialOpen?: boolean;
     permission?: CounsellorTopicPermission;
     fixed?: boolean;
@@ -25,6 +31,25 @@ export interface TopicSelectionProposalProps {
     initialSelectedIds?: number[];
     initialStatus?: 'ready' | 'loading' | 'error' | 'empty';
 }
+
+const languageNames: Record<SupportedLanguageCode, string> = {
+    de: 'Deutsch',
+    en: 'English',
+    fr: 'Français',
+    ru: 'Русский',
+    tr: 'Türkçe',
+    uk: 'Українська',
+    ti: 'ትግርኛ',
+};
+const antLocales = {
+    de: deDE,
+    en: enGB,
+    fr: frFR,
+    ru: ruRU,
+    tr: trTR,
+    uk: ukUA,
+    ti: { ...enGB, locale: 'ti', Modal: { okText: 'ኣተግብር', cancelText: 'ሰርዝ', justOkText: 'እሺ' } },
+};
 
 const TopicSelection = ({
     initialOpen = false,
@@ -35,11 +60,11 @@ const TopicSelection = ({
     initialStatus = 'ready',
 }: TopicSelectionProposalProps) => {
     const { t, i18n } = useTranslation('proposal');
-    const language = i18n.resolvedLanguage === 'en' ? 'en' : 'de';
+    const language = i18n.language as SupportedLanguageCode;
     const allowedTopics = permission === 'CREATE' ? topics : topics.filter((topic) => [101, 102].includes(topic.id));
     const lockedIds = fixed ? initialSelectedIds : requiredTopicIds;
-    const initialSelection = [...new Set([...initialSelectedIds, ...lockedIds])].filter((id) =>
-        allowedTopics.some((topic) => topic.id === id),
+    const initialSelection = [...new Set([...initialSelectedIds, ...lockedIds])].filter(
+        (id) => lockedIds.includes(id) || allowedTopics.some((topic) => topic.id === id),
     );
     const [selected, setSelected] = useState(initialSelection);
     const [draft, setDraft] = useState(initialSelection);
@@ -54,7 +79,7 @@ const TopicSelection = ({
         : { NONE: 'single', SELECT_EXISTING: 'agencyOnly', CREATE: 'catalogue' }[permission];
     const selectedTopics = topics.filter((topic) => selected.includes(topic.id));
     const matches = allowedTopics.filter((topic) =>
-        topic[language].toLocaleLowerCase(language).includes(query.trim().toLocaleLowerCase(language)),
+        topic.labels[language].toLocaleLowerCase(language).includes(query.trim().toLocaleLowerCase(language)),
     );
     const close = () => {
         setOpen(false);
@@ -69,30 +94,29 @@ const TopicSelection = ({
             return [...previous, id];
         });
     };
+    const languageControl = (
+        <TextField
+            select
+            label={t('language')}
+            value={language}
+            onChange={(event) => {
+                i18n.changeLanguage(event.target.value);
+            }}
+            slotProps={{ select: { native: true } }}
+            sx={muiFieldSx()}
+        >
+            {SUPPORTED_LANGUAGE_CODES.map((code) => (
+                <option key={code} value={code}>
+                    {languageNames[code]}
+                </option>
+            ))}
+        </TextField>
+    );
     return (
-        <ConfigProvider locale={language === 'en' ? enGB : deDE}>
-            <main className={styles.proposal} lang={language}>
+        <ConfigProvider locale={antLocales[language]}>
+            <main className={styles.proposal} lang={language} dir="ltr">
                 <p className={styles.notice}>{t('preview')}</p>
-                <div className={styles.languages} role="group" aria-label={t('language')}>
-                    <M3Button
-                        variant="outlined"
-                        aria-pressed={language === 'de'}
-                        onClick={() => {
-                            i18n.changeLanguage('de');
-                        }}
-                    >
-                        Deutsch
-                    </M3Button>
-                    <M3Button
-                        variant="outlined"
-                        aria-pressed={language === 'en'}
-                        onClick={() => {
-                            i18n.changeLanguage('en');
-                        }}
-                    >
-                        English
-                    </M3Button>
-                </div>
+                {!open && languageControl}
                 <h1>{t('title')}</h1>
                 <Form form={nameForm} layout="vertical">
                     <MuiFormField name="displayName" label={t('name')} />
@@ -101,11 +125,11 @@ const TopicSelection = ({
                     {selectedTopics.map((topic) => (
                         <FilterChip
                             key={topic.id}
-                            label={topic[language]}
+                            label={topic.labels[language]}
                             selected
                             disabled={lockedIds.includes(topic.id) || selected.length === 1}
                             className={styles.summaryChip}
-                            ariaLabel={t('remove', { name: topic[language] })}
+                            ariaLabel={t('remove', { name: topic.labels[language] })}
                             onChange={() => setSelected(selected.filter((id) => id !== topic.id))}
                         />
                     ))}
@@ -150,87 +174,77 @@ const TopicSelection = ({
                             </div>
                         }
                     >
-                        <div className={styles.languages} role="group" aria-label={t('language')}>
-                            <M3Button
-                                variant="outlined"
-                                aria-pressed={language === 'de'}
-                                onClick={() => {
-                                    i18n.changeLanguage('de');
-                                }}
-                            >
-                                Deutsch
-                            </M3Button>
-                            <M3Button
-                                variant="outlined"
-                                aria-pressed={language === 'en'}
-                                onClick={() => {
-                                    i18n.changeLanguage('en');
-                                }}
-                            >
-                                English
-                            </M3Button>
-                        </div>
-                        <Form form={searchForm} layout="vertical">
-                            <MuiFormField name="search" label={t('search')} inputProps={{ autoFocus: true }} />
-                        </Form>
-                        <p className={styles.hint}>{t(policyHint)}</p>
-                        {lockedIds.length > 0 && <p className={styles.hint}>{t('lockedHint')}</p>}
-                        <p role="status">{t('selected', { count: draft.length })}</p>
-                        <p className={styles.hint}>
-                            {topics
-                                .filter((topic) => draft.includes(topic.id))
-                                .map((topic) => topic[language])
-                                .join(' · ')}
-                        </p>
-                        <div className={styles.results}>
-                            {status === 'loading' && <p role="status">{t('loading')}</p>}
-                            {status === 'error' && (
-                                <div>
-                                    <p role="alert">{t('error')}</p>
-                                    <M3Button variant="outlined" onClick={() => setStatus('ready')}>
-                                        {t('retry')}
-                                    </M3Button>
-                                </div>
-                            )}
-                            {status === 'empty' && <p role="status">{t('empty')}</p>}
-                            {status === 'ready' &&
-                                matches.map((topic) => (
-                                    <div key={topic.id} className={styles.choice}>
-                                        <M3Checkbox
+                        <div className={styles.dialogContent} lang={language} dir="ltr">
+                            <div className={styles.toolbar}>{languageControl}</div>
+                            <Form form={searchForm} layout="vertical" className={styles.search}>
+                                <MuiFormField name="search" label={t('search')} inputProps={{ autoFocus: true }} />
+                            </Form>
+                            <div className={styles.selectionInfo}>
+                                <p className={styles.hint}>{t(policyHint)}</p>
+                                {lockedIds.length > 0 && <p className={styles.hint}>{t('lockedHint')}</p>}
+                                <p role="status">{t('selected', { count: draft.length })}</p>
+                                <p className={styles.hint}>
+                                    {topics
+                                        .filter((topic) => draft.includes(topic.id))
+                                        .map((topic) => topic.labels[language])
+                                        .join(' · ')}
+                                </p>
+                            </div>
+                            <div className={styles.results}>
+                                {status === 'loading' && <p role="status">{t('loading')}</p>}
+                                {status === 'error' && (
+                                    <div>
+                                        <p role="alert">{t('error')}</p>
+                                        <M3Button variant="outlined" onClick={() => setStatus('ready')}>
+                                            {t('retry')}
+                                        </M3Button>
+                                    </div>
+                                )}
+                                {status === 'empty' && <p role="status">{t('empty')}</p>}
+                                {status === 'ready' &&
+                                    matches.map((topic) => (
+                                        <Checkbox
+                                            key={topic.id}
+                                            className={styles.choice}
+                                            aria-label={topic.labels[language]}
                                             checked={draft.includes(topic.id)}
                                             disabled={
                                                 fixed ||
                                                 lockedIds.includes(topic.id) ||
-                                                (permission === 'NONE' && lockedIds.length > 0)
+                                                (permission === 'NONE' && lockedIds.length > 0) ||
+                                                (draft.length === 1 && draft.includes(topic.id))
                                             }
-                                            label={topic[language]}
                                             onChange={() => toggle(topic.id)}
-                                        />
-                                        {'icon' in topic ? (
-                                            <img src={topic.icon} alt="" className={styles.icon} />
-                                        ) : (
-                                            <span className={styles.noIcon} role="img" aria-label={t('noIcon')}>
-                                                —
-                                            </span>
-                                        )}
-                                        <span className={styles.topicLabel}>
-                                            {topic[language]}
-                                            {lockedIds.includes(topic.id) && (
-                                                <small className={styles.locked}>{t('locked')}</small>
+                                        >
+                                            {topic.icon ? (
+                                                <img src={topic.icon} alt="" className={styles.icon} />
+                                            ) : (
+                                                <span className={styles.noIcon} role="img" aria-label={t('noIcon')}>
+                                                    —
+                                                </span>
                                             )}
-                                        </span>
+                                            <span className={styles.topicLabel}>
+                                                {topic.labels[language]}
+                                                {lockedIds.includes(topic.id) && (
+                                                    <small className={styles.locked}>{t('locked')}</small>
+                                                )}
+                                            </span>
+                                        </Checkbox>
+                                    ))}
+                                {status === 'ready' && matches.length === 0 && (
+                                    <div className={styles.empty}>
+                                        <p>{t('noResults')}</p>
+                                        <M3Button
+                                            variant="outlined"
+                                            onClick={() => searchForm.setFieldValue('search', '')}
+                                        >
+                                            {t('clear')}
+                                        </M3Button>
                                     </div>
-                                ))}
-                            {status === 'ready' && matches.length === 0 && (
-                                <div className={styles.empty}>
-                                    <p>{t('noResults')}</p>
-                                    <M3Button variant="outlined" onClick={() => searchForm.setFieldValue('search', '')}>
-                                        {t('clear')}
-                                    </M3Button>
-                                </div>
-                            )}
+                                )}
+                            </div>
+                            {status === 'ready' && draft.length === 0 && <p role="status">{t('minimum')}</p>}
                         </div>
-                        {draft.length === 0 && <p role="status">{t('minimum')}</p>}
                     </Modal>
                 )}
             </main>
@@ -244,8 +258,11 @@ export const TopicSelectionProposal = (props: TopicSelectionProposalProps) => {
         const instance = createInstance();
         instance.use(initReactI18next).init({
             lng: props.initialLanguage ?? 'de',
-            fallbackLng: 'de',
+            fallbackLng: false,
+            supportedLngs: [...SUPPORTED_LANGUAGE_CODES],
             initImmediate: false,
+            ns: ['proposal'],
+            defaultNS: 'proposal',
             resources,
             interpolation: { escapeValue: false },
         });
