@@ -21,5 +21,12 @@
     "language.short.tr": "TR",
     "language.options.tr": "Türkçe",
     "language.short.ti": "TI",
-    "language.options.ti": "ትግርኛ"
+    "language.options.ti": "ትግርኛ",
+    "tenants.permissions.asker.channels.title": "ምልክታታት ብዓይነት ዝርርብ",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "ኢ-መይል ንምኽሪ",
+    "tenants.permissions.asker.channels.emailLiveChat": "ኢ-መይል ንቀጥታ ዝርርብ",
+    "tenants.permissions.asker.channels.emailSelfHelp": "ኢ-መይል ንጉጅለታት ርእሰ-ሓገዝ",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "መርበብ መርኣዪ ንምኽሪ",
+    "tenants.permissions.asker.channels.browserLiveChat": "መርበብ መርኣዪ ንቀጥታ ዝርርብ",
+    "tenants.permissions.asker.channels.browserSelfHelp": "መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ"
 }

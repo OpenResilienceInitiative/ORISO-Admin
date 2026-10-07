@@ -21,5 +21,12 @@
     "language.short.tr": "TR",
     "language.options.tr": "Türkçe",
     "language.short.ti": "TI",
-    "language.options.ti": "ትግርኛ"
+    "language.options.ti": "ትግርኛ",
+    "tenants.permissions.asker.channels.title": "Notifications par type de conversation",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "E-mail pour le conseil",
+    "tenants.permissions.asker.channels.emailLiveChat": "E-mail pour le chat en direct",
+    "tenants.permissions.asker.channels.emailSelfHelp": "E-mail pour les groupes d’entraide",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "Navigateur pour le conseil",
+    "tenants.permissions.asker.channels.browserLiveChat": "Navigateur pour le chat en direct",
+    "tenants.permissions.asker.channels.browserSelfHelp": "Navigateur pour les groupes d’entraide"
 }

@@ -21,5 +21,12 @@
     "language.short.tr": "TR",
     "language.options.tr": "Türkçe",
     "language.short.ti": "TI",
-    "language.options.ti": "ትግርኛ"
+    "language.options.ti": "ትግርኛ",
+    "tenants.permissions.asker.channels.title": "Görüşme türüne göre bildirimler",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "Danışmanlık için e-posta",
+    "tenants.permissions.asker.channels.emailLiveChat": "Canlı sohbet için e-posta",
+    "tenants.permissions.asker.channels.emailSelfHelp": "Öz yardım grupları için e-posta",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "Danışmanlık için tarayıcı",
+    "tenants.permissions.asker.channels.browserLiveChat": "Canlı sohbet için tarayıcı",
+    "tenants.permissions.asker.channels.browserSelfHelp": "Öz yardım grupları için tarayıcı"
 }

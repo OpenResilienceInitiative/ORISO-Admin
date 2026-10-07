@@ -21,5 +21,12 @@
     "language.short.tr": "TR",
     "language.options.tr": "Türkçe",
     "language.short.ti": "TI",
-    "language.options.ti": "ትግርኛ"
+    "language.options.ti": "ትግርኛ",
+    "tenants.permissions.asker.channels.title": "Уведомления по типу беседы",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "Электронная почта для консультаций",
+    "tenants.permissions.asker.channels.emailLiveChat": "Электронная почта для живого чата",
+    "tenants.permissions.asker.channels.emailSelfHelp": "Электронная почта для групп взаимопомощи",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "Браузер для консультаций",
+    "tenants.permissions.asker.channels.browserLiveChat": "Браузер для живого чата",
+    "tenants.permissions.asker.channels.browserSelfHelp": "Браузер для групп взаимопомощи"
 }
