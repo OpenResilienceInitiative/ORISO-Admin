@@ -5,7 +5,6 @@ import enGB from 'antd/es/locale/en_GB';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
-import HomeWorkOutlined from '@mui/icons-material/HomeWorkOutlined';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import AddRounded from '@mui/icons-material/AddRounded';
 import VerifiedUserOutlined from '@mui/icons-material/VerifiedUserOutlined';
@@ -15,6 +14,7 @@ import { M3Checkbox } from '../../../components/M3Checkbox';
 import { M3Button } from '../../../components/M3Button';
 import { Modal } from '../../../components/Modal';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { ReactComponent as CounselingIcon } from '../../../resources/img/svg/navbar/counseling_active.svg';
 import translationDe from '../../../locales/de/translation.json';
 import translationEn from '../../../locales/en/translation.json';
 import { copy, copyFields, emptyFields, firstCentre, proposalTopics } from './fixtures';
@@ -130,7 +130,7 @@ const CentreSetupExample = ({
                 <p className={styles.notice}>{text.notice}</p>
                 <header className={styles.header}>
                     <div className={styles.heroIcon} aria-hidden="true">
-                        <HomeWorkOutlined />
+                        <CounselingIcon aria-hidden="true" focusable="false" width={24} height={24} />
                     </div>
                     <div>
                         <h1>{text.title}</h1>
@@ -176,7 +176,13 @@ const CentreSetupExample = ({
                 <Card
                     titleKey={cardTitle}
                     subTitle={cardDescription}
-                    headerIcon={step === 'form' ? <HomeWorkOutlined /> : <CheckCircleOutlined />}
+                    headerIcon={
+                        step === 'form' ? (
+                            <CounselingIcon aria-hidden="true" focusable="false" />
+                        ) : (
+                            <CheckCircleOutlined />
+                        )
+                    }
                     variant="dialog"
                     autoHeight
                     dialogContentPadding
