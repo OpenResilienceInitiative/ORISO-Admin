@@ -2660,5 +2660,14 @@
     "agency.form.settings.oneTopicPerAgency.help": "Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt.",
     "agency.form.settings.oneTopicPerAgency.legacyNotice": "Diese Beratungsstelle hat noch {{count}} Themen. Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt: Sie können Themen entfernen, aber keines hinzufügen.",
     "message.error.ONE_TOPIC_PER_AGENCY": "Diese Plattform erlaubt nur ein Thema (Fachbereich) pro Beratungsstelle.",
-    "message.error.SETTINGS_UNAVAILABLE": "Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut."
+    "message.error.SETTINGS_UNAVAILABLE": "Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut.",
+    "agency.setup.title": "Beratungsstelle vervollständigen",
+    "agency.setup.description": "Ihr Benutzerkonto und die Zwei-Faktor-Anmeldung sind eingerichtet. Ergänzen Sie jetzt Adresse, Kontakt und Öffnungszeiten Ihrer Beratungsstelle.",
+    "agency.setup.finish": "Speichern und Einrichtung abschließen",
+    "agency.setup.unavailable": "Diese Beratungsstelle ist derzeit nicht für Sie verfügbar. Prüfen Sie Ihre Zuordnung oder versuchen Sie es erneut.",
+    "agency.setup.retry": "Erneut versuchen",
+    "agency.setup.myAgencies": "Meine Beratungsstellen",
+    "agency.setup.saveError": "Die Angaben konnten nicht gespeichert werden. Ihre Eingaben bleiben erhalten. Bitte versuchen Sie es erneut.",
+    "agency.setup.saved": "Die Angaben Ihrer Beratungsstelle wurden gespeichert.",
+    "counsellorOnboarding.agency.adminSetupSubtitle": "Mit dieser Einladung wird Ihre Beratungsstelle angelegt. Richten Sie zuerst Ihr Benutzerkonto und den zweiten Faktor ein. Nach der Anmeldung ergänzen Sie Adresse, Kontakt und Öffnungszeiten direkt im Einrichtungsassistenten."
 }

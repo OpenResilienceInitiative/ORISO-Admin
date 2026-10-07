@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -71,6 +71,8 @@ const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): Coun
     ...overrides,
 });
 
+const LoginDestination = () => <h1>Sign in{useLocation().search}</h1>;
+
 const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
     render(
         <MemoryRouter>
@@ -115,6 +117,32 @@ describe('CounsellorOnboarding', () => {
             expect(client.activateTwoFactor).not.toHaveBeenCalled();
         },
     );
+
+    it('continues an existing agency-admin identity to the same centre without another registration', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                targetRole: 'AGENCY_ADMIN',
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/invite']}>
+                <Routes>
+                    <Route path="/invite" element={<CounsellorOnboarding inviteToken="raw-token" client={client} />} />
+                    <Route path="/admin/login" element={<LoginDestination />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        await user.click(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+        expect(await screen.findByRole('heading', { name: 'Sign in?agencySetupId=5' })).toBeInTheDocument();
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    });
 
     it('never enters public TOTP from an incomplete setup response', async () => {
         const client = createClient({
@@ -777,7 +805,7 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                                 path="/invite"
                                 element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
                             />
-                            <Route path="/admin/login" element={<h1>Sign in</h1>} />
+                            <Route path="/admin/login" element={<LoginDestination />} />
                         </Routes>
                     </MemoryRouter>,
                 );
@@ -791,7 +819,7 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                 }
                 expect(await screen.findByText('counsellorOnboarding.agencySetup.subtitle')).toBeInTheDocument();
                 await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.agencySetup.finish' }));
-                expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+                expect(await screen.findByRole('heading', { name: 'Sign in?agencySetupId=5' })).toBeInTheDocument();
             },
         );
 
@@ -805,7 +833,17 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                 }),
             });
             const user = userEvent.setup();
-            renderFlow(client);
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<LoginDestination />} />
+                    </Routes>
+                </MemoryRouter>,
+            );
             await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
             await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
             expect(
@@ -813,6 +851,8 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                     name: 'counsellorOnboarding.agencySetup.finish',
                 }),
             ).toBeInTheDocument();
+            await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.agencySetup.finish' }));
+            expect(await screen.findByRole('heading', { name: 'Sign in?agencySetupId=5' })).toBeInTheDocument();
             expect(client.registerCounsellor).not.toHaveBeenCalled();
         });
 

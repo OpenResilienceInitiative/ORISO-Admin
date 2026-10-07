@@ -29,6 +29,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import {
     LazyAgencyList,
+    LazyAgencySetupPage,
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
     LazyCaseHandoverLogsPage,
@@ -264,6 +265,7 @@ export const App = () => {
                                     </Route>
                                 )}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
+                                <Route path={`${routePathNames.agency}/:id/setup`} element={<LazyAgencySetupPage />} />
                                 <Route
                                     path={`${routePathNames.agency}/:id`}
                                     element={<AgencyDefaultSectionRedirect />}

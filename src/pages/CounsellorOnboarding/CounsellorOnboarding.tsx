@@ -7,6 +7,7 @@ import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import routePathNames from '../../appConfig';
+import { agencySetupLoginPath } from '../../constants/agencySetupContinuation';
 import {
     CounsellorOnboardingClient,
     CounsellorTopicOption,
@@ -155,13 +156,22 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
-                    <DoneStep existingAccountSetup />
+                    <DoneStep
+                        existingAccountSetup
+                        onFinish={
+                            agencyAdminRegistration ? () => navigate(agencySetupLoginPath(invite?.agencyId)) : undefined
+                        }
+                    />
                 ) : (
                     <SuccessCard
                         titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
                         subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
                         finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
-                        onFinish={() => navigate(routePathNames.login)}
+                        onFinish={() =>
+                            navigate(
+                                agencyAdminRegistration ? agencySetupLoginPath(invite?.agencyId) : routePathNames.login,
+                            )
+                        }
                     />
                 )}
             </div>
@@ -446,7 +456,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             )}
 
             {createsAgency && (
-                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                <Section
+                    titleKey="counsellorOnboarding.agency.title"
+                    hintKey={
+                        isAgencyAdminInvite(invite)
+                            ? 'counsellorOnboarding.agency.adminSetupSubtitle'
+                            : 'counsellorOnboarding.agency.subtitle'
+                    }
+                >
                     <FloatingLabelInput
                         label={t('counsellorOnboarding.agency.name')}
                         supportingText={t('counsellorOnboarding.agency.nameHint')}

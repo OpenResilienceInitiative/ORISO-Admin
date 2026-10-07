@@ -2660,5 +2660,14 @@
     "agency.form.settings.oneTopicPerAgency.help": "Only one topic per counselling centre is allowed on this platform.",
     "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one topic per counselling centre is allowed on this platform: you can remove topics but not add one.",
     "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre.",
-    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment."
+    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment.",
+    "agency.setup.title": "Complete your counselling centre",
+    "agency.setup.description": "Your account and two-factor sign-in are ready. Add the address, contact details and opening hours of your counselling centre.",
+    "agency.setup.finish": "Save and finish setup",
+    "agency.setup.unavailable": "This counselling centre is currently unavailable to you. Check your assignment or try again.",
+    "agency.setup.retry": "Try again",
+    "agency.setup.myAgencies": "My counselling centres",
+    "agency.setup.saveError": "Your details could not be saved. Your entries have been kept. Please try again.",
+    "agency.setup.saved": "Your counselling centre details have been saved.",
+    "counsellorOnboarding.agency.adminSetupSubtitle": "This invitation creates your counselling centre. First set up your account and second factor. After signing in, add its address, contact details and opening hours directly in the setup wizard."
 }

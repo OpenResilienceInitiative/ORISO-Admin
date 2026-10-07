@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import routePathNames from '../appConfig';
 import { getTokenExpiryFromLocalStorage } from '../api/auth/accessSessionLocalStorage';
 import { bootstrapAuthSession, getAccessTokenForRequests, getRefreshTokenForRequests } from '../api/auth/auth';
+import { agencySetupLoginFromPath } from '../constants/agencySetupContinuation';
 import logout from '../api/auth/logout';
 import { Initialization } from '../components/Layout/Initialization';
 import { hasAdminPortalAccess } from '../utils/adminPortalAccess';
@@ -43,13 +44,13 @@ export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
     const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
     if (!accessToken || !refreshToken) {
-        logout(true);
-        return <Navigate to={routePathNames.login} state={{ from: location }} />;
+        logout(true, agencySetupLoginFromPath(location.pathname));
+        return <Navigate to={agencySetupLoginFromPath(location.pathname)} state={{ from: location }} />;
     }
 
     if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
-        logout(true);
-        return <Navigate to={routePathNames.login} state={{ from: location }} />;
+        logout(true, agencySetupLoginFromPath(location.pathname));
+        return <Navigate to={agencySetupLoginFromPath(location.pathname)} state={{ from: location }} />;
     }
 
     if (!hasAdminPortalAccess(accessToken)) {
