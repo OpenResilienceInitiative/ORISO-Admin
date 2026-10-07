@@ -45,7 +45,7 @@ const meta = {
                         padding: '16px',
                     }}
                 >
-                    <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
+                    <div style={{ width: '100%', maxWidth: '560px', padding: '16px 0' }}>
                         <Story />
                     </div>
                 </div>
@@ -473,4 +473,42 @@ export const AgencyAdminFoundingSuccessMobile: Story = {
         }),
     },
     play: AgencyAdminFoundingSuccess.play,
+};
+
+/** The platform limits a newly created centre, while old centres retain their topics. */
+export const NewCentreOneTopicPolicy: Story = {
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                agencyExists: false,
+                departmentId: null,
+                topicPermission: 'CREATE',
+                oneTopicPerAgencyEnabled: true,
+                topics: [],
+                availableTopics: [
+                    { id: 12, name: 'Familienberatung' },
+                    { id: 13, name: 'Schuldnerberatung' },
+                ],
+            },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        const add = await canvas.findByRole('button', { name: 'Thema hinzufügen' });
+        await userEvent.click(add);
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Familienberatung' }));
+        await expect(add).toBeDisabled();
+        const remove = canvas.getByRole('button', { name: 'Familienberatung entfernen' });
+        remove.focus();
+        await userEvent.keyboard('{Enter}');
+        await expect(add).toBeEnabled();
+        await userEvent.click(add);
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Familienberatung' }));
+        await expect(add).toBeDisabled();
+    },
+};
+
+export const NewCentreOneTopicPolicyPreview: Story = {
+    ...NewCentreOneTopicPolicy,
+    play: undefined,
 };

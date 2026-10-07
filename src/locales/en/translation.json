@@ -2649,5 +2649,13 @@
     "dpaBlocker.sign.staleVersion": "The contract has been renewed. Please reload and read the current contract before accepting it again.",
     "legal.dpa.deadline.grace": "New counselling is allowed during the renewal period. Please sign the new DPA version before the deadline.",
     "tenants.appSettings.emailPreview.branding.textWordmark": "This preview uses the organisation name as a text wordmark instead of an image.",
-    "tenants.appSettings.emailPreview.meta.organisation": "Organisation"
+    "tenants.appSettings.emailPreview.meta.organisation": "Organisation",
+    "globalSettings.oneTopicPerAgency.title": "Topics",
+    "globalSettings.oneTopicPerAgency.switch": "One topic per counselling centre",
+    "globalSettings.oneTopicPerAgency.help": "Applies to the whole platform. Counselling centres that already have several topics keep them but cannot add another.",
+    "globalSettings.oneTopicPerAgency.error.generic": "The setting “One topic per counselling centre” could not be saved.",
+    "agency.form.settings.oneTopicPerAgency.help": "Only one topic per counselling centre is allowed on this platform.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one topic per counselling centre is allowed on this platform: you can remove topics but not add one.",
+    "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre.",
+    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment."
 }
