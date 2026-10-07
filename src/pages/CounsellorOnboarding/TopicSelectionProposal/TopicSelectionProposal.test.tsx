@@ -142,3 +142,13 @@ it('disables the only selected choice and hides an unsatisfiable minimum prompt'
     render(<TopicSelectionProposal initialOpen initialStatus="empty" initialSelectedIds={[]} />);
     expect(screen.queryByText('Wählen Sie mindestens ein Thema.')).not.toBeInTheDocument();
 });
+
+it('explains single-selection replacement before a reviewer chooses another centre topic', async () => {
+    const user = userEvent.setup();
+    render(<TopicSelectionProposal permission="NONE" initialOpen />);
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Sie können genau ein Thema Ihrer Beratungsstelle wählen.')).toBeInTheDocument();
+    await user.click(dialog.getByRole('checkbox', { name: 'Schulden' }));
+    expect(dialog.getByRole('checkbox', { name: 'Eltern und Familie' })).not.toBeChecked();
+    expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toBeChecked();
+});
