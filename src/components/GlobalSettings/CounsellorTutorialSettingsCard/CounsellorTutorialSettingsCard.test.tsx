@@ -5,12 +5,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard, CounsellorTutorialSettingsCardContainer } from '.';
 
-const state = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }));
-vi.mock('../../../context/useAppConfig', () => ({ useAppConfigContext: () => ({ settings: state.settings }) }));
+const state = vi.hoisted(() => ({
+    settings: {} as Record<string, unknown>,
+    mutateSettings: vi.fn(),
+    setManualSettings: vi.fn(),
+}));
+vi.mock('../../../context/useAppConfig', () => ({
+    useAppConfigContext: () => ({ settings: state.settings, setManualSettings: state.setManualSettings }),
+}));
+vi.mock('../../../hooks/useSettingsAdminMutation.hook', () => ({
+    useSettingsAdminMutation: () => ({ mutate: state.mutateSettings, isPending: false }),
+}));
 const status = (label: string) => within(screen.getByText(label).closest('div')!).getByRole('definition');
 
 beforeEach(async () => {
     state.settings = {};
+    state.mutateSettings.mockClear();
+    state.setManualSettings.mockClear();
     await i18n.changeLanguage('de');
 });
 
@@ -71,25 +82,22 @@ describe('Counsellor tutorial settings preview', () => {
         expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten' })).toHaveProperty('checked', checked);
     });
 
-    it('does not change settings or send requests when the unavailable controls are clicked or used by keyboard', async () => {
-        const fetchSpy = vi.spyOn(globalThis, 'fetch');
-        try {
-            render(<CounsellorTutorialSettingsCard toursEnabled practiceEnabled />);
-            const controls = screen.getAllByRole('switch');
-            const before = controls.map((control) => (control as HTMLInputElement).checked);
-            controls.forEach((control) => expect(control).toBeDisabled());
-            const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
-            await userEvent.click(tours.closest('label')!);
-            tours.focus();
-            await userEvent.keyboard(' {Enter}');
-            expect(tours).not.toHaveFocus();
-            expect(controls.map((control) => (control as HTMLInputElement).checked)).toEqual(before);
-            expect(fetchSpy).not.toHaveBeenCalled();
-            expect(screen.queryByRole('button')).not.toBeInTheDocument();
-            expect(screen.getByText('Kommt bald')).toBeVisible();
-        } finally {
-            fetchSpy.mockRestore();
-        }
+    it('does not mutate server or local settings when the unavailable controls are clicked or used by keyboard', async () => {
+        state.settings = { enableWalkthrough: true, releaseToggles: { enablePracticeArea: true } };
+        render(<CounsellorTutorialSettingsCardContainer />);
+        const controls = screen.getAllByRole('switch');
+        const before = controls.map((control) => (control as HTMLInputElement).checked);
+        controls.forEach((control) => expect(control).toBeDisabled());
+        const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        await userEvent.click(tours.closest('label')!);
+        tours.focus();
+        await userEvent.keyboard(' {Enter}');
+        expect(tours).not.toHaveFocus();
+        expect(controls.map((control) => (control as HTMLInputElement).checked)).toEqual(before);
+        expect(state.mutateSettings).not.toHaveBeenCalled();
+        expect(state.setManualSettings).not.toHaveBeenCalled();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.getByText('Kommt bald')).toBeVisible();
     });
 
     it.each([
