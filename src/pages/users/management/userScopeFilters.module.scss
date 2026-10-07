@@ -1,13 +1,37 @@
 .wrapper {
     display: flex;
     flex-direction: column;
-    margin-bottom: 16px;
+    width: 100%;
+    min-width: 0;
     gap: 12px;
 }
 
 .pickers {
     display: flex;
-    flex-wrap: wrap;
-    padding-top: 6px;
-    gap: 12px;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.searchRow {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 767px) {
+    .toolbar {
+        flex-wrap: wrap;
+    }
+
+    .searchRow {
+        flex-basis: 100%;
+    }
 }
