@@ -2657,5 +2657,12 @@
     "agency.form.settings.oneTopicPerAgency.help": "Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt.",
     "agency.form.settings.oneTopicPerAgency.legacyNotice": "Diese Beratungsstelle hat noch {{count}} Themen. Auf dieser Plattform ist nur ein Thema (Fachbereich) pro Beratungsstelle erlaubt: Sie können Themen entfernen, aber keines hinzufügen.",
     "message.error.ONE_TOPIC_PER_AGENCY": "Diese Plattform erlaubt nur ein Thema (Fachbereich) pro Beratungsstelle.",
-    "message.error.SETTINGS_UNAVAILABLE": "Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut."
+    "message.error.SETTINGS_UNAVAILABLE": "Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut.",
+    "tenants.permissions.asker.channels.title": "Benachrichtigungen je Konversationstyp",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "E-Mail bei Beratung",
+    "tenants.permissions.asker.channels.emailLiveChat": "E-Mail im Live-Chat",
+    "tenants.permissions.asker.channels.emailSelfHelp": "E-Mail in Gesprächskreisen",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "Browser bei Beratung",
+    "tenants.permissions.asker.channels.browserLiveChat": "Browser im Live-Chat",
+    "tenants.permissions.asker.channels.browserSelfHelp": "Browser in Gesprächskreisen"
 }
