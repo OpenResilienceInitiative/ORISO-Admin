@@ -320,6 +320,31 @@ describe('DepartmentDataProtectionCard', () => {
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.draft')).toBeInTheDocument();
     });
 
+    /**
+     * antd's green preset paints #389e0d on #f6ffed — 3.37:1 at the tag's 12px,
+     * a serious axe `color-contrast` violation against the repo's WCAG 2.2 AA
+     * gate. The status now comes from the M3 tokens instead, so no story may
+     * reintroduce the preset.
+     */
+    it('styles the status tag from the M3 tokens, not an antd colour preset', () => {
+        const { rerender } = render(
+            <DepartmentDataProtectionCard publicationStatus="PUBLISHED" onSave={() => undefined} />,
+        );
+        const publishedTag = screen.getByText('tenants.legal.departmentDataProtection.status.published');
+
+        expect(publishedTag.className).toContain('statusTag');
+        expect(publishedTag.className).toContain('statusTagPublished');
+        expect(publishedTag.className).not.toMatch(/ant-tag-(green|default|success)/);
+
+        rerender(<DepartmentDataProtectionCard publicationStatus="DRAFT" onSave={() => undefined} />);
+        const draftTag = screen.getByText('tenants.legal.departmentDataProtection.status.draft');
+
+        // The draft chip is the neutral base only — no published modifier.
+        expect(draftTag.className).toContain('statusTag');
+        expect(draftTag.className).not.toContain('statusTagPublished');
+        expect(draftTag.className).not.toMatch(/ant-tag-(green|default|success)/);
+    });
+
     it('renders the department name when provided', () => {
         render(<DepartmentDataProtectionCard departmentName="Suchtberatung" onSave={() => undefined} />);
         expect(screen.getByText('Suchtberatung')).toBeInTheDocument();

@@ -13,6 +13,28 @@
     margin-bottom: 12px;
 }
 
+/* Publication status chip. Deliberately NOT an antd `color` preset: the v5 green
+   pair renders #389e0d on #f6ffed, which is 3.37:1 at the tag's 12px and fails
+   WCAG 1.4.3. These are the M3 status tokens, so the chip also survives a
+   re-seeded palette. The label carries the state in words — the colour only
+   reinforces it (WCAG 1.4.1). */
+
+.statusTag {
+    margin: 0;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 8px;
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.statusTagPublished {
+    border-color: var(--admin-status-success-border, #0a882f6b);
+    background: var(--admin-status-success-container, #d5e4d8);
+    color: var(--admin-status-success-on-container, #125726);
+}
+
 .translateField {
     display: flex;
     flex-direction: column;

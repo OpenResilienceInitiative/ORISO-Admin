@@ -862,7 +862,11 @@ export const M3RichTextEditor = ({
         >
             {!hideHeader && (
                 <div className={styles.header}>
-                    <IconComponent className={styles.headerIcon} />
+                    {/* Decorative: the <h2> beside it already names the document, so an
+                        accessible name here would only repeat the heading. antd's `Icon`
+                        emits role="img" with no name (axe `role-img-alt`), which MUI's
+                        SvgIcon hides by default — hiding it here covers both. */}
+                    <IconComponent className={styles.headerIcon} aria-hidden="true" />
                     <h2 className={styles.title}>{title}</h2>
                 </div>
             )}

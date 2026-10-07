@@ -6,6 +6,7 @@ const imageUploadMocks = vi.hoisted(() => ({ uploadTenantMedia: vi.fn() }));
 vi.mock('../../api/tenant/uploadTenantMedia', () => ({ uploadTenantMedia: imageUploadMocks.uploadTenantMedia }));
 
 import { M3RichTextEditor } from './M3RichTextEditor';
+import { GdprIcon } from '../CustomIcons/LegalIcons';
 
 describe('M3RichTextEditor fullscreen dialog', () => {
     // This is the first test in the file, so it pays the one-off cost of
@@ -59,6 +60,25 @@ describe('M3RichTextEditor accessibility', () => {
         await waitFor(() => {
             expect(screen.getByRole('textbox', { name: 'Impressum' })).toBeInTheDocument();
         });
+    });
+
+    /**
+     * The header icon repeats the <h2> next to it, so it is decorative. antd's
+     * `Icon` puts `role="img"` on its span without an accessible name, which axe
+     * reports as a serious `role-img-alt` violation on every card built from this
+     * shell (WCAG 1.1.1). MUI's SvgIcon hides itself by default, so this only bites
+     * with the antd-based icon sets — hence one of those as the fixture.
+     */
+    it('hides the decorative header icon from assistive tech', async () => {
+        render(<M3RichTextEditor title="Datenschutzerklärung" icon={GdprIcon} />);
+
+        await waitFor(() => {
+            expect(screen.getByRole('heading', { name: 'Datenschutzerklärung' })).toBeInTheDocument();
+        });
+
+        // Nothing in the header claims to be an image the reader must interpret.
+        expect(screen.queryByRole('img')).not.toBeInTheDocument();
+        expect(document.querySelector('[class*="headerIcon"]')).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('moves focus into the text-format menu and restores it on Escape', async () => {

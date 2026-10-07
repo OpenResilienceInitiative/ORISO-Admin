@@ -252,6 +252,17 @@
         var(--m3-surface-container-low)
     );
     --admin-status-success-border: color-mix(in srgb, var(--admin-status-success) 42%, transparent);
+
+    /* The success green is a FILL colour: on its own container it measures 3.4:1,
+       which reads fine as a 1px border or a 24px icon and fails WCAG 1.4.3 as a
+       12px status label. This is the on-container partner the family was missing
+       — dark enough for text (6.6:1), and derived from the same token so a
+       re-seeded success colour carries through instead of drifting. */
+    --admin-status-success-on-container: color-mix(
+        in srgb,
+        var(--admin-status-success) 55%,
+        var(--m3-on-surface, #1b1b1c)
+    );
     --admin-status-error: var(--form-error, #cc0000);
     --admin-status-error-container: color-mix(in srgb, var(--admin-status-error) 12%, var(--m3-surface-container-low));
     --admin-status-error-border: color-mix(in srgb, var(--admin-status-error) 42%, transparent);

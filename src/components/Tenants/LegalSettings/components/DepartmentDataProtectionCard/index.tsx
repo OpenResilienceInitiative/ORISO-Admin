@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
@@ -233,7 +234,10 @@ export const DepartmentDataProtectionCard = ({
                     <>
                         <div className={styles.header}>
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            <Tag color={published ? 'green' : 'default'}>
+                            {/* No antd `color`: its green pair (#389e0d on #f6ffed) is
+                                3.37:1 at the tag's 12px, below WCAG 1.4.3. M3 status
+                                tokens instead — same green reading, contrast that holds. */}
+                            <Tag className={classNames(styles.statusTag, published && styles.statusTagPublished)}>
                                 {published
                                     ? t('tenants.legal.departmentDataProtection.status.published')
                                     : t('tenants.legal.departmentDataProtection.status.draft')}
