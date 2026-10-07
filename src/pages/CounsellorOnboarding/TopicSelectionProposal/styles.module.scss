@@ -1,12 +1,13 @@
 .proposal {
     width: min(100%, 720px);
     margin: 0 auto;
-    padding: 16px;
+    padding: 24px;
     color: var(--m3-on-surface);
     background: var(--m3-surface-container-high);
     overflow-wrap: anywhere;
 
     h1 {
+        margin-block: 24px 16px;
         font-size: 24px;
         line-height: 32px;
     }
@@ -19,7 +20,6 @@
     color: var(--m3-on-surface-variant);
 }
 
-.languages,
 .summary,
 .actions {
     display: flex;
@@ -32,22 +32,63 @@
 }
 
 .actions {
+    gap: 12px;
     justify-content: flex-end;
+    padding-block: 8px;
+}
+
+.dialogContent {
+    display: grid;
+    gap: 24px;
+    padding-block: 16px 8px;
+}
+
+.toolbar {
+    width: min(100%, 220px);
+    justify-self: end;
+}
+
+.search {
+    width: 100%;
+}
+
+.selectionInfo {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    background: var(--m3-surface-container);
+    border-radius: 12px;
+
+    p {
+        margin: 0;
+    }
 }
 
 .results {
-    max-height: min(360px, 40dvh);
+    max-height: min(360px, 36dvh);
     overflow-y: auto;
     overscroll-behavior: contain;
 }
 
-.choice {
+.choice:global(.ant-checkbox-wrapper) {
     display: grid;
-    grid-template-columns: 40px 40px minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 64px;
     align-items: center;
-    padding: 8px 0;
+    padding: 12px 8px;
+    cursor: pointer;
+    width: 100%;
+    margin: 0;
     border-bottom: 1px solid var(--m3-outline-variant);
+
+    > span:last-child {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 0;
+    }
 }
 
 .icon {
@@ -115,5 +156,36 @@
     :global(.ant-modal-body) {
         min-height: 0;
         overflow-y: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .proposal {
+        padding: 16px;
+    }
+
+    .dialogContent {
+        gap: 20px;
+    }
+
+    .toolbar {
+        width: 100%;
+    }
+
+    .choice:global(.ant-checkbox-wrapper) {
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 8px;
+        padding-inline: 0;
+
+        > span:last-child {
+            grid-template-columns: 32px minmax(0, 1fr);
+            gap: 8px;
+        }
+    }
+
+    .icon,
+    .noIcon {
+        width: 32px;
+        height: 32px;
     }
 }

@@ -11,7 +11,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Review-only topic dialog. Example IDs and bilingual labels are fixtures, with three unmodified shared ORISO topic assets. No production route, catalogue or permissions change.',
+                    'Review-only topic dialog. Example IDs and seven-language labels are fixtures, with three unmodified shared ORISO topic assets. No production route, catalogue or permissions change.',
             },
         },
         viewport: {
@@ -38,10 +38,10 @@ export const ApplyCancelAndLanguage: Story = {
         await expect(canvas.queryByRole('checkbox', { name: 'Schulden entfernen' })).not.toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Themen auswählen' }));
         dialog = within(await body.findByRole('dialog'));
-        await expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toHaveAttribute('aria-checked', 'false');
+        await expect(dialog.getByRole('checkbox', { name: 'Schulden' })).not.toBeChecked();
         await userEvent.click(dialog.getByRole('checkbox', { name: 'Schulden' }));
-        await userEvent.click(dialog.getByRole('button', { name: 'English' }));
-        await expect(await dialog.findByRole('checkbox', { name: 'Debt' })).toHaveAttribute('aria-checked', 'true');
+        await userEvent.selectOptions(dialog.getByRole('combobox', { name: 'Sprache' }), 'en');
+        await expect(await dialog.findByRole('checkbox', { name: 'Debt' })).toBeChecked();
         await userEvent.click(dialog.getByRole('button', { name: 'Apply' }));
         await expect(canvas.getByLabelText('Display name')).toHaveValue('Georgia');
         await expect(canvas.getByRole('checkbox', { name: 'Remove Debt' })).toBeVisible();
@@ -87,3 +87,9 @@ export const NoResults: Story = {
         await expect(dialog.getByRole('button', { name: 'Suche zurücksetzen' })).toBeVisible();
     },
 };
+
+export const French: Story = { args: { initialOpen: true, initialLanguage: 'fr' } };
+export const Russian: Story = { args: { initialOpen: true, initialLanguage: 'ru' } };
+export const Turkish: Story = { args: { initialOpen: true, initialLanguage: 'tr' } };
+export const Ukrainian: Story = { args: { initialOpen: true, initialLanguage: 'uk' } };
+export const Tigrinya: Story = { args: { initialOpen: true, initialLanguage: 'ti' } };
