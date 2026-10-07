@@ -50,7 +50,15 @@ describe('tenant assistant Appearance', () => {
         expect(save.mock.calls[0][0].theming.assistantIcon).toBe('default');
     });
     it.each([
-        ['image/png', 'custom.png', 'PNG', /^data:image\/png;base64,/],
+        [
+            'image/png',
+            'custom.png',
+            Uint8Array.from(
+                atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRLsAAAAASUVORK5CYII='),
+                (c) => c.charCodeAt(0),
+            ),
+            /^data:image\/png;base64,/,
+        ],
         [
             'image/svg+xml',
             'custom.svg',
