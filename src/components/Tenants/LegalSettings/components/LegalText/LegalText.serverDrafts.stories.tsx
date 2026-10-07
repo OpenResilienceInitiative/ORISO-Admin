@@ -164,7 +164,7 @@ export const PersistedServerDraft: Story = {
 
         // The loaded draft IS the saved one: nothing to save, but it differs from the
         // live text, so publishing is offered.
-        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: /teilen|share/i })).not.toBeInTheDocument();
     },
@@ -176,9 +176,9 @@ export const LocalAndServerCollision: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
-        await expect(canvas.getByRole('button', { name: 'Entwurf speichern' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
     },
 };
@@ -188,41 +188,46 @@ export const ConflictRefresh: Story = {
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // "Entwurf speichern" appears once there is something to save.
+        // "Speichern" appears once there is something to save.
         await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten|Speichern/ }));
         await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
         await userEvent.keyboard(' Geändert.');
-        await userEvent.click(await canvas.findByRole('button', { name: 'Entwurf speichern' }));
+        await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
         await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
         await waitFor(() => expect(canvas.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
             timeout: 3000,
         });
         await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Entwurf speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     },
 };
 
-/**
- * One snackbar at a time (M3). The saved-draft status comes first; closing it lets the
- * help hint for the published imprint flip in — they never stack on top of each other.
- */
-export const DraftSnackbarGivesWayToHelpHint: Story = {
+/** Saved-draft status and help stay visible together; closing either preserves the other and the draft. */
+export const DraftAndHelpSnackbarsStack: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const draftSnackbar = await canvas.findByTestId('legal-draft-snackbar');
-        // Count snackbar roots only (CSS-module class `_hintSnackbar_…`), not their inner parts.
-        const snackbarRoots = () =>
-            [...canvasElement.querySelectorAll('div')].filter((element) =>
-                [...element.classList].some((name) => /^_?hintSnackbar_/.test(name)),
-            );
-        await expect(snackbarRoots()).toHaveLength(1);
+        const stack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
+        const helpAction = within(stack).getByRole('button', { name: 'Nicht mehr anzeigen' });
+        await expect(within(stack).getAllByRole('status')).toHaveLength(2);
+        await expect(helpAction).toBeVisible();
 
         await userEvent.click(within(draftSnackbar).getByRole('button', { name: 'Hinweis schließen' }));
 
         await waitFor(() => expect(canvas.queryByTestId('legal-draft-snackbar')).not.toBeInTheDocument());
-        await waitFor(() => expect(canvas.getByRole('button', { name: 'Nicht mehr anzeigen' })).toBeVisible());
-        await expect(snackbarRoots()).toHaveLength(1);
+        await expect(helpAction).toBeVisible();
+        await expect(within(stack).getAllByRole('status')).toHaveLength(1);
+        await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
+
+        await userEvent.click(within(stack).getByRole('button', { name: 'Hinweis ausblenden' }));
+        await waitFor(() =>
+            expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument(),
+        );
+        await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
     },
 };

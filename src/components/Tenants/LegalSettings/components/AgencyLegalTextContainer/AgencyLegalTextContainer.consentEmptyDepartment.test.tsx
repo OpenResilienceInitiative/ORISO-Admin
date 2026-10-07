@@ -103,7 +103,11 @@ import { AgencyLegalTextContainer } from '.';
 const agencyData: any = {
     id: '55',
     tenantId: '1',
-    topics: [{ id: 3, name: 'U25 Suizidprävention' }],
+    // Two Fachbereiche: with only one it is preselected and "Alle Fachbereiche" is not offered (#1066).
+    topics: [
+        { id: 3, name: 'U25 Suizidprävention' },
+        { id: 4, name: 'Schuldnerberatung' },
+    ],
     content: { privacy: { de: '<p>agency wide</p>' }, impressum: { de: '<p>agency imprint</p>' } },
 };
 

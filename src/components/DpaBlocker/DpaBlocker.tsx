@@ -12,6 +12,7 @@ import Refresh from '@mui/icons-material/Refresh';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaIcon } from '../CustomIcons/LegalIcons';
 import { DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
+import { DpaDeadlineInfo } from '../DpaLegalForm/DpaDeadlineInfo';
 import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
 import { DpaBlockerReason } from '../../utils/dpaBlockerGate';
@@ -36,8 +37,10 @@ export interface DpaBlockerProps {
     /** Published multilingual DPA content (JSON map language -> HTML) to review. */
     dpaContent?: string | null;
     dpaContentLoading?: boolean;
+    signingDeadlineAt?: string | null;
     signPending?: boolean;
     signFailed?: boolean;
+    signStale?: boolean;
     onSign?: (data: DpaBlockerSignData) => void;
     /** Delegates the signature to an authorised signer without accepting it locally. */
     onForward?: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
@@ -85,6 +88,8 @@ export const DpaBlocker = ({
     dpaContentLoading = false,
     signPending = false,
     signFailed = false,
+    signStale = false,
+    signingDeadlineAt,
     onSign,
     onForward,
     tenantId,
@@ -220,6 +225,12 @@ export const DpaBlocker = ({
                                 <DpaFormSection
                                     dpaHtml={dpaHtml}
                                     hideTextHeader
+                                    textMetadata={
+                                        <DpaDeadlineInfo
+                                            signingDeadlineAt={signingDeadlineAt}
+                                            status={reason === 'UNSIGNED' ? 'UNSIGNED' : undefined}
+                                        />
+                                    }
                                     textLabel={t('dpaBlocker.title')}
                                     textLanguage={i18n.language}
                                     accepted={dpaAccepted}
@@ -233,7 +244,7 @@ export const DpaBlocker = ({
 
                                 {signFailed && (
                                     <Alert severity="error" sx={{ mt: 2 }} role="alert">
-                                        {t('dpaBlocker.sign.error')}
+                                        {t(signStale ? 'dpaBlocker.sign.staleVersion' : 'dpaBlocker.sign.error')}
                                     </Alert>
                                 )}
 
@@ -257,7 +268,7 @@ export const DpaBlocker = ({
                                         type="submit"
                                         variant="filled"
                                         block
-                                        disabled={signPending}
+                                        disabled={signPending || signStale}
                                         icon={<Draw fontSize="small" />}
                                     >
                                         <span className={styles.actionLabel}>{t('dpaBlocker.sign.submit')}</span>

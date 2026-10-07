@@ -96,7 +96,11 @@ const publishButtonName = 'legal.m3Editor.publish';
 const draftButtonName = 'legal.m3Editor.saveDraft';
 
 describe('DepartmentDataProtectionCard', () => {
-    it('omits the language control entirely when only one content language exists', () => {
+    // Was "omits the language control entirely" until 2026-09-03. Hiding it made the
+    // field look role-dependent to the owner (Träger and Beratungsstellen-Admin saw
+    // nothing, the platform admin did) because only the main tenant has more than one
+    // active language. Admin design rule: disable, never hide.
+    it('keeps the language control visible but inert when only one content language exists', () => {
         render(
             <DepartmentDataProtectionCard
                 initialContentByLanguage={{ de: '<p>DE</p>' }}
@@ -105,7 +109,22 @@ describe('DepartmentDataProtectionCard', () => {
             />,
         );
 
-        expect(screen.getByTestId('editor')).toHaveAttribute('data-has-language-slot', 'false');
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-has-language-slot', 'true');
+        expect(screen.getByRole('button', { name: /^languages:/ })).toBeDisabled();
+    });
+
+    it('offers the switcher for real when the Träger has more than one active language', () => {
+        render(
+            <DepartmentDataProtectionCard
+                initialContentByLanguage={{ de: '<p>DE</p>', en: '<p>EN</p>' }}
+                languages={['de', 'en']}
+                onSave={vi.fn()}
+            />,
+        );
+
+        // Switching itself is covered where the menu really opens:
+        // M3RichTextEditor.language.test.tsx.
+        expect(screen.getByRole('button', { name: /^languages:/ })).toBeEnabled();
     });
 
     it('publishes the complete content map (publish=true)', async () => {
@@ -337,6 +356,16 @@ describe('DepartmentDataProtectionCard', () => {
             />,
         );
         expect(screen.getByText('tenants.legal.departmentDataProtection.status.published')).toBeInTheDocument();
+    });
+
+    // #1066 (H3): inherited text is marked as such, never as "Veröffentlicht".
+    it.each([
+        ['INHERITED_FROM_TRAEGER', 'tenants.legal.departmentDataProtection.status.inheritedFromTraeger'],
+        ['INHERITED_FROM_AGENCY', 'tenants.legal.departmentDataProtection.status.inheritedFromAgency'],
+    ] as const)('tags %s text with a neutral inherited badge', (status, label) => {
+        render(<DepartmentDataProtectionCard publicationStatus={status} onSave={() => undefined} />);
+        expect(screen.getByTestId('legal-publication-status')).toHaveTextContent(label);
+        expect(screen.queryByText('tenants.legal.departmentDataProtection.status.published')).not.toBeInTheDocument();
     });
 
     it('renders the department name when provided', () => {
