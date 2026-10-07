@@ -14,16 +14,24 @@ const renderField = ({
     formDisabled,
     disabled,
     allowIcon,
+    allowAssistantIcon,
 }: {
     formDisabled: boolean;
     disabled?: boolean;
     allowIcon?: boolean;
+    allowAssistantIcon?: boolean;
 }) => {
     const changes: Record<string, unknown>[] = [];
 
     const { container } = render(
         <Form disabled={formDisabled} onValuesChange={(changed) => changes.push(changed)}>
-            <FormFileUploaderField name="logo" labelKey="organisation.logo" disabled={disabled} allowIcon={allowIcon} />
+            <FormFileUploaderField
+                name="logo"
+                labelKey="organisation.logo"
+                disabled={disabled}
+                allowIcon={allowIcon}
+                allowAssistantIcon={allowAssistantIcon}
+            />
         </Form>,
     );
 
@@ -137,5 +145,39 @@ describe('FormFileUploaderField', () => {
         const withoutIcon = renderField({ formDisabled: false });
         expect(withoutIcon.input.accept).not.toContain('.ico');
         expect(withoutIcon.input.accept).toContain('.png');
+    });
+});
+
+describe('assistant SVG upload through the Appearance form', () => {
+    it('stores passive SVG artwork in the form and rejects active SVG artwork', async () => {
+        const { changes, input } = renderField({ formDisabled: false, allowAssistantIcon: true });
+        fireEvent.change(input, {
+            target: {
+                files: [
+                    new File(
+                        ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24z"/></svg>'],
+                        'robot.svg',
+                        { type: 'image/svg+xml' },
+                    ),
+                ],
+            },
+        });
+        await vi.waitFor(() => expect(changes).toHaveLength(1));
+        expect(String(changes[0].logo)).toMatch(/^data:image\/svg\+xml;base64,/);
+        fireEvent.change(input, {
+            target: {
+                files: [
+                    new File(
+                        ['<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'],
+                        'unsafe.svg',
+                        { type: 'image/svg+xml' },
+                    ),
+                ],
+            },
+        });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 50);
+        });
+        expect(changes).toHaveLength(1);
     });
 });

@@ -1,3 +1,4 @@
+import { AssistantIdentity } from './components/AssistantIdentity';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { useTranslation } from 'react-i18next';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -92,6 +93,11 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                 {showAppearance && (
                     <CardDeck.Item className={styles.cardSlotImages}>
                         <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showAppearance && (
+                    <CardDeck.Item>
+                        <AssistantIdentity tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
                 {showAppearance && can(PermissionAction.Update, Resource.Language) && (
