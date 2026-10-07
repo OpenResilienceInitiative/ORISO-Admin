@@ -82,6 +82,10 @@
     margin: 0;
     border-bottom: 1px solid var(--m3-outline-variant);
 
+    &:after {
+        display: none;
+    }
+
     > span:last-child {
         display: grid;
         grid-template-columns: 40px minmax(0, 1fr);
