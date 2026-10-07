@@ -227,8 +227,8 @@ export const PublishWithoutDraftStoreExplains: Story = {
     },
 };
 
-/** A restricted agency admin may only read: the card says the Träger maintains the text. */
-export const RestrictedAgencyAdminReadsOnly: Story = {
+/** #1070: a restricted agency admin (Beratungsstelle admin) edits its own text when legal content is delegated. */
+export const RestrictedAgencyAdminCanEdit: Story = {
     decorators: [
         (Story) => {
             setStoryAuth([UserRole.RestrictedAgencyAdmin], TENANT_ID);
@@ -238,8 +238,7 @@ export const RestrictedAgencyAdminReadsOnly: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/Diesen Text pflegt Ihr Träger/, {}, { timeout: 8000 })).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
-        await expect(canvas.queryByText(/Als Entwurf speichern/)).not.toBeInTheDocument();
+        await expect(await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 })).toBeVisible();
+        await expect(canvas.queryByText(/Diesen Text pflegt Ihr Träger/)).not.toBeInTheDocument();
     },
 };
