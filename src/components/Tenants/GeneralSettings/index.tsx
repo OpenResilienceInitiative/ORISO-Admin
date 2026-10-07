@@ -1,6 +1,6 @@
-import { AssistantIdentity } from './components/AssistantIdentity';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { useTranslation } from 'react-i18next';
+import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardDeck } from '../../CardDeck';
