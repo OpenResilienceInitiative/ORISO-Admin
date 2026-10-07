@@ -5,95 +5,69 @@
 
 .searchContainer {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px 24px;
+    flex-direction: column;
+    gap: 12px;
     width: 100%;
-    margin-bottom: 32px;
-}
-
-.searchWithButton {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 24px;
-    width: 100%;
-    max-width: 640px;
     min-width: 0;
-    flex: 0 1 640px;
-    overflow-x: auto;
-    padding-block: 3px;
-    margin-block: -3px;
-
-    @media (max-width: 767px) {
-        max-width: 100%;
-        flex: 1 1 100%;
-    }
-}
-
-.searchField {
-    flex: 1 1 499px;
-    min-width: 200px;
-    width: 100%;
-    max-width: 499px;
+    margin-bottom: 24px;
 }
 
 .toolbarActions {
     display: flex;
+    flex-wrap: wrap;
     flex-shrink: 0;
     align-items: center;
+    gap: 8px;
+    padding-block: 4px;
 }
 
-.createButton {
+.createButton:global(.ant-btn),
+.inviteButton {
     display: inline-flex;
-    min-width: 116px;
     height: 56px;
+    box-sizing: border-box;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 0 24px;
+    padding: 0 20px;
     border: 0;
     border-radius: 28px;
-    background: #646d78 !important;
-    border-color: #646d78 !important;
     box-shadow: none;
-    color: #ffffff;
-    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 16px;
-    font-weight: 600 !important;
-    line-height: 24px;
-    text-transform: none;
-    transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 16px/24px Inter, 'Helvetica Neue', Arial, sans-serif;
+    text-decoration: none;
+    white-space: nowrap;
 
-    &:hover,
-    &:focus {
-        background: #56616c !important;
-        border-color: #56616c !important;
-        color: #ffffff;
+    &:hover {
+        background: var(--m3-surface-container-highest, #e2e2e5);
+        color: var(--m3-on-surface, #1b1b1c);
     }
 
-    &:active {
-        background: #4a535e !important;
-        border-color: #4a535e !important;
-        transform: translateY(1px);
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #9f4143);
+        outline-offset: 2px;
     }
+
+    :global(.anticon) {
+        display: inline-flex;
+        align-items: center;
+        font-size: 18px;
+        line-height: 1;
+    }
+}
+
+.createButton:global(.ant-btn) {
+    min-width: 96px;
+    background: var(--m3-surface-container-low, #f6f3f3);
 
     &:disabled {
-        background: #d4d8de !important;
-        border-color: #d4d8de !important;
-        color: #7d8792;
-        transform: none;
+        background: var(--m3-surface-container, #eeeeef);
+        color: var(--m3-on-surface-variant, #747478);
     }
+}
 
-    :global {
-        .anticon {
-            display: inline-flex;
-            align-items: center;
-            font-size: 18px;
-            line-height: 1;
-        }
-    }
+.inviteButton {
+    background: var(--admin-search-surface, var(--m3-surface-container-high, #eae7e8));
 }
 
 .popoverTrigger {
@@ -102,42 +76,13 @@
 
 .sectionCount {
     margin-left: auto;
-    flex-shrink: 0;
     max-width: 7rem;
     font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
     font-size: 14px;
     font-weight: 400;
     line-height: 18px;
-    color: #646d78;
+    color: var(--m3-on-surface-variant, #646d78);
     text-align: right;
-    white-space: normal;
-    align-self: flex-start;
-
-    @media (min-width: 768px) {
-        align-self: center;
-    }
-}
-
-/* Outlined twin of the create button: same height and shape, second in weight. */
-.inviteButton {
-    display: inline-flex;
-    height: 56px;
-    box-sizing: border-box;
-    align-items: center;
-    padding: 0 24px;
-    border: 1px solid var(--m3-outline, #747878);
-    margin-right: 12px;
-    border-radius: 28px;
-    color: var(--m3-on-surface, #1b1b1c);
-    font: 600 16px/24px Inter, 'Helvetica Neue', Arial, sans-serif;
-    text-decoration: none;
-    white-space: nowrap;
-
-    &:hover,
-    &:focus-visible {
-        background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
-        color: var(--m3-on-surface, #1b1b1c);
-    }
 }
 
 .tableContainer {
@@ -349,16 +294,6 @@
 }
 
 @media (max-width: 767px) {
-    .toolbarActions {
-        flex-shrink: 1;
-
-        :global {
-            .ant-btn {
-                min-width: 40px;
-            }
-        }
-    }
-
     .tableContainer {
         overflow: visible;
 
