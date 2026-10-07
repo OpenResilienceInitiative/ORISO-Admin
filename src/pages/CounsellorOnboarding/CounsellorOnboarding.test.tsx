@@ -880,3 +880,24 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 });
+
+describe('CounsellorOnboarding server default', () => {
+    it('passes the supported server APP default to the shared setup', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: {
+                    secret: 'SECRET234567ABCDEFG',
+                    qrCodeBase64: null,
+                    methods: ['EMAIL', 'APP'],
+                    defaultMethod: 'APP',
+                },
+            }),
+            sendTwoFactorEmail: vi.fn().mockResolvedValue(undefined),
+        });
+        renderFlow(client);
+        expect(await screen.findByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+        expect(screen.getByTestId('totp-secret')).toBeInTheDocument();
+    });
+});

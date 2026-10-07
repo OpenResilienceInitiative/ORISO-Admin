@@ -120,3 +120,21 @@ describe('TwoFactorStep', () => {
         expect(onSubmit).toHaveBeenCalledWith('654321');
     });
 });
+
+describe('TwoFactorStep server default', () => {
+    it('passes the supported server APP default to the shared setup', () => {
+        render(
+            <TwoFactorStep
+                {...baseProps}
+                email="invite@example.org"
+                onSendEmail={async () => {}}
+                result={{
+                    ...baseProps.result,
+                    twoFactor: { ...baseProps.result.twoFactor, methods: ['EMAIL', 'APP'], defaultMethod: 'APP' },
+                }}
+            />,
+        );
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+        expect(screen.getByTestId('totp-secret')).toBeInTheDocument();
+    });
+});

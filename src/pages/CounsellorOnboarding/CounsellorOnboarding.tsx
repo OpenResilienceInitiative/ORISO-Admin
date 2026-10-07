@@ -193,6 +193,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     error={error}
                     titleKey="counsellorOnboarding.twoFactor.title"
                     descriptionKey="counsellorOnboarding.twoFactor.description"
+                    defaultMethod={state.result.twoFactor?.defaultMethod}
                     email={invite?.recipientEmail}
                     onSendEmail={
                         state.result.twoFactor?.methods?.includes('EMAIL') && resolvedClient.sendTwoFactorEmail

@@ -143,3 +143,73 @@ describe('TwoFactorSetup (onboarding context)', () => {
         expect(screen.getByRole('button', { name: 'twoFactorSetup.submit' })).toBeDisabled();
     });
 });
+
+describe('advertised onboarding method defaults and app availability', () => {
+    const emailProps = {
+        email: 'invite@example.org',
+        onSendEmail: async () => {},
+        onVerifyEmail: () => {},
+        onVerify: () => {},
+    };
+
+    it('honours a supported APP default instead of replacing it with email', () => {
+        render(<TwoFactorSetup context="onboarding" appLink={APP_LINK} defaultMethod="APP" {...emailProps} />);
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+        expect(screen.getByTestId('totp-secret')).toBeInTheDocument();
+        expect(screen.getByLabelText('twoFactorSetup.otp.label')).toBeInTheDocument();
+    });
+
+    it.each([undefined, 'EMAIL'] as const)('keeps email as the standard choice for default %s', (defaultMethod) => {
+        render(
+            <TwoFactorSetup context="onboarding" appLink={APP_LINK} defaultMethod={defaultMethod} {...emailProps} />,
+        );
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.email' })).toBeChecked();
+        expect(screen.queryByTestId('totp-secret')).not.toBeInTheDocument();
+    });
+
+    it.each([null, { secretBase32: '', qrCodeBase64: null }])(
+        'offers only email for a fresh setup without app material',
+        (appLink) => {
+            render(<TwoFactorSetup context="onboarding" appLink={appLink} defaultMethod="APP" {...emailProps} />);
+            expect(
+                screen.queryByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' }),
+            ).not.toBeInTheDocument();
+            expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.email' })).toBeChecked();
+            expect(screen.queryByLabelText('twoFactorSetup.otp.label')).not.toBeInTheDocument();
+        },
+    );
+
+    it('preserves resumed app verification when no setup material is reissued', async () => {
+        const onVerify = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <TwoFactorSetup
+                context="onboarding"
+                appLink={null}
+                resumed
+                defaultMethod="APP"
+                {...emailProps}
+                onVerify={onVerify}
+            />,
+        );
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+        expect(screen.getByTestId('two-factor-resumed-hint')).toBeInTheDocument();
+        await user.type(screen.getByLabelText('twoFactorSetup.otp.label'), '123456');
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+        await waitFor(() => expect(onVerify).toHaveBeenCalledWith('123456'));
+    });
+
+    it('does not permit fresh app verification when no method can be set up', () => {
+        render(<TwoFactorSetup context="onboarding" appLink={null} onVerify={() => {}} />);
+        expect(screen.queryByLabelText('twoFactorSetup.otp.label')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'twoFactorSetup.submit' })).not.toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.error.service');
+    });
+});
+
+it('falls back to the legacy app flow when email is not available', () => {
+    render(<TwoFactorSetup context="onboarding" appLink={APP_LINK} defaultMethod="EMAIL" onVerify={() => {}} />);
+    expect(screen.getByTestId('totp-secret')).toBeInTheDocument();
+    expect(screen.getByLabelText('twoFactorSetup.otp.label')).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+});

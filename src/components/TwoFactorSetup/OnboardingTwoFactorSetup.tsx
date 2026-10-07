@@ -10,6 +10,7 @@ import { TwoFactorAppConnect, TwoFactorAppLink } from './TwoFactorAppConnect';
 import { OTP_LENGTH } from './twoFactorSetupFlow';
 import { TwoFactorAuthTypeButtons } from './TwoFactorAuthTypeButtons';
 import { TwoFactorType } from '../../enums/TwoFactorType';
+import type { OnboardingTwoFactorMethod } from '../../api/tenantOnboarding/tenantOnboarding';
 import styles from './styles.module.scss';
 
 /** Retryable error surfaced by the inline variant (Frontend taxonomy: invalidCode / appSetup). */
@@ -18,8 +19,8 @@ export type TwoFactorSetupInlineError = 'invalid-code' | 'service' | null;
 export interface OnboardingTwoFactorSetupProps {
     /**
      * TOTP link data from the injected backend seam (secret already base32).
-     * `null` = verify-only: a resumed link without re-issued setup material —
-     * the authenticator app was already connected in the original attempt.
+     * A resumed link without material may verify an app already connected.
+     * A fresh link without material cannot start app setup.
      */
     appLink: TwoFactorAppLink | null;
     /** True when the step was re-entered by resuming a 2FA-pending link (#569). */
@@ -29,6 +30,8 @@ export interface OnboardingTwoFactorSetupProps {
     /** Context copy — defaults to the shared canonical keys. */
     titleKey?: string;
     descriptionKey?: string;
+    /** Preferred server method, honoured only when it can be set up here. */
+    defaultMethod?: OnboardingTwoFactorMethod;
     /** The server-owned invitation address; never editable during public setup. */
     email?: string;
     /** Present only when the onboarding server advertises EMAIL support. */
@@ -50,6 +53,7 @@ export const OnboardingTwoFactorSetup = ({
     error = null,
     titleKey = 'twoFactorSetup.title',
     descriptionKey = 'twoFactorSetup.description',
+    defaultMethod,
     email,
     onSendEmail,
     onVerifyEmail,
@@ -58,14 +62,17 @@ export const OnboardingTwoFactorSetup = ({
     const { t } = useTranslation();
     const [form] = Form.useForm<{ otp: string }>();
     const supportsEmail = Boolean(email && onSendEmail && onVerifyEmail);
-    const [method, setMethod] = useState(supportsEmail ? TwoFactorType.Email : TwoFactorType.App);
+    const supportsApp = Boolean(appLink?.secretBase32 || resumed);
+    const [method, setMethod] = useState(
+        supportsEmail && (!supportsApp || defaultMethod !== 'APP') ? TwoFactorType.Email : TwoFactorType.App,
+    );
     const [emailSent, setEmailSent] = useState(false);
     const [sending, setSending] = useState(false);
     const [sendError, setSendError] = useState(false);
     const [hideVerificationError, setHideVerificationError] = useState(false);
     const emailSelected = supportsEmail && method === TwoFactorType.Email;
     const pending = busy || sending;
-    const canVerify = !emailSelected || emailSent;
+    const canVerify = emailSelected ? emailSent : supportsApp;
 
     const sendEmail = async () => {
         if (pending || !onSendEmail) return;
@@ -112,6 +119,7 @@ export const OnboardingTwoFactorSetup = ({
                     </Typography>
                     <TwoFactorAuthTypeButtons
                         twoFactorType={method}
+                        showApp={supportsApp}
                         setTwoFactorType={(next) => {
                             form.resetFields();
                             setHideVerificationError(true);
@@ -139,6 +147,11 @@ export const OnboardingTwoFactorSetup = ({
                 </>
             ) : (
                 appLink && <TwoFactorAppConnect appLink={appLink} />
+            )}
+            {!supportsEmail && !supportsApp && (
+                <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                    {t('twoFactorSetup.error.service')}
+                </Typography>
             )}
             {sendError && (
                 <Typography role="alert" color="error" sx={{ mt: 2 }}>
