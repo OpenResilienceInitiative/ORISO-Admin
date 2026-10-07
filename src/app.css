@@ -252,10 +252,25 @@
         var(--m3-surface-container-low)
     );
     --admin-status-success-border: color-mix(in srgb, var(--admin-status-success) 42%, transparent);
+
+    /* Readable foreground for text sitting ON --admin-status-success-container.
+       --admin-status-success itself is a fill/icon colour: at the 12px of a status
+       chip it renders ~3.4:1 on its own container, under WCAG 1.4.3 (4.5:1). */
+    --admin-status-success-on-container: color-mix(in srgb, var(--admin-status-success) 65%, #000000);
     --admin-status-error: var(--form-error, #cc0000);
     --admin-status-error-container: color-mix(in srgb, var(--admin-status-error) 12%, var(--m3-surface-container-low));
     --admin-status-error-border: color-mix(in srgb, var(--admin-status-error) 42%, transparent);
     --admin-status-warning: var(--warning-dark, #ff9f00);
+    --admin-status-warning-container: color-mix(
+        in srgb,
+        var(--admin-status-warning) 18%,
+        var(--m3-surface-container-low)
+    );
+    --admin-status-warning-border: color-mix(in srgb, var(--admin-status-warning) 55%, transparent);
+
+    /* #ff9f00 is a mid-tone amber — unusable as text on its own tint, so the
+       on-container role darkens it to clear 4.5:1 on the container above. */
+    --admin-status-warning-on-container: color-mix(in srgb, var(--admin-status-warning) 45%, #000000);
     --admin-status-muted: var(--m3-outline, #747878);
 
     /* YELLOW THEME */

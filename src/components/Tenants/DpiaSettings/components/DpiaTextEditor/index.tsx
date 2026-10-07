@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Button, Modal, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import classNames from 'classnames';
 import { DpiaIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
@@ -159,10 +160,14 @@ export const DpiaTextEditor = ({
                                         : `${t('dpia.editor.chapter')} ${section.chapter}`}
                                 </span>
                             )}
-                            <Tag color={published ? 'green' : 'default'}>
+                            <Tag className={classNames(styles.statusTag, published && styles.statusTagPublished)}>
                                 {published ? t('dpia.editor.status.published') : t('dpia.editor.status.draft')}
                             </Tag>
-                            {isDirty && <Tag color="orange">{t('dpia.editor.status.unsaved')}</Tag>}
+                            {isDirty && (
+                                <Tag className={classNames(styles.statusTag, styles.statusTagUnsaved)}>
+                                    {t('dpia.editor.status.unsaved')}
+                                </Tag>
+                            )}
                         </div>
                         <EditorHelpText text={section ? t(section.helpKey) : ''} />
                     </>

@@ -36,7 +36,14 @@ export const SplitDropdown = ({ icon, label, menu, title, disabled = false }: Sp
                 aria-expanded={open && !disabled}
             >
                 <span className={styles.versionLeading}>
-                    {icon}
+                    {/* The glyph repeats what `title` already says, so it is decorative. antd
+                        icons render as `role="img"`, which unnamed is an axe `role-img-alt`
+                        violation (WCAG 1.1.1). Hiding via a wrapper rather than cloning an
+                        `aria-hidden` onto the icon works whatever the caller passes in; the
+                        wrapper is `display: contents`, so it adds no box to the flex row. */}
+                    <span className={styles.decorativeIcon} aria-hidden="true">
+                        {icon}
+                    </span>
                     <span>{label}</span>
                 </span>
                 <span className={styles.versionTrailing}>

@@ -1,3 +1,5 @@
+@use '../../../../../styles/statusTag' as status;
+
 .header {
     display: flex;
     align-items: center;
@@ -33,4 +35,12 @@
     min-width: 0;
     max-width: 960px;
     box-sizing: border-box;
+}
+
+.statusTag {
+    @include status.status-tag;
+}
+
+.statusTagPublished {
+    @include status.status-tag-published;
 }

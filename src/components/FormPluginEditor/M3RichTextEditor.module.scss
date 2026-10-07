@@ -1170,6 +1170,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
+/* aria-hidden wrapper around a decorative split-button glyph. `display: contents`
+   keeps it out of the layout entirely, so the icon stays a direct flex child of
+   `.versionLeading` and the sizing rules above still reach it. */
+
+.decorativeIcon {
+    display: contents;
+}
+
 .versionTrailing {
     justify-content: center;
     width: 40px;

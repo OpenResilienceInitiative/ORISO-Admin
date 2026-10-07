@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import classNames from 'classnames';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -233,7 +234,7 @@ export const DepartmentDataProtectionCard = ({
                     <>
                         <div className={styles.header}>
                             {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            <Tag color={published ? 'green' : 'default'}>
+                            <Tag className={classNames(styles.statusTag, published && styles.statusTagPublished)}>
                                 {published
                                     ? t('tenants.legal.departmentDataProtection.status.published')
                                     : t('tenants.legal.departmentDataProtection.status.draft')}

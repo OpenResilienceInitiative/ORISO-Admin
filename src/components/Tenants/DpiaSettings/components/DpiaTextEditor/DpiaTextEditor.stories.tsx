@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { DpiaTextEditor } from './index';
 import { seedDpiaDefaults } from '../../utils/dpiaDefaults';
 
@@ -103,4 +105,30 @@ export const MobileViewport: Story = {
         },
     },
     globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+/**
+ * Unsaved changes: typing into a chapter raises the amber "nicht gespeichert" tag next to the
+ * status tag. It only appears after a real edit, so without this story the amber tag shipped
+ * uncovered — which is how it kept antd's `color="orange"` preset (3.34:1, below WCAG 1.4.3)
+ * through every a11y sweep.
+ */
+export const UnsavedChanges: Story = {
+    args: {
+        initialTexts: { governance: GOVERNANCE },
+        statusBySection: { governance: 'PUBLISHED' },
+    },
+    play: async ({ canvasElement }) => {
+        const editorNode = await waitFor(() => {
+            const node = canvasElement.querySelector<HTMLElement>('.ProseMirror');
+            expect(node).not.toBeNull();
+            return node!;
+        });
+
+        await userEvent.click(editorNode);
+        await userEvent.keyboard(' Nachtrag.');
+
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText(/nicht gespeichert|unsaved/i)).toBeInTheDocument());
+    },
 };

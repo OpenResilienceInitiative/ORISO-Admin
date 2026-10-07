@@ -1,0 +1,36 @@
+/* Status chips for the legal / DPIA editor headers.
+ *
+ * antd's tag colour presets are not accessible at the chip's 12px: `color="green"`
+ * renders #389e0d on #f6ffed = 3.37:1 and `color="orange"` is no better, both under
+ * the 4.5:1 that WCAG 1.4.3 requires. These tonal pairs carry the same meaning
+ * through the `--admin-status-*` scale instead.
+ *
+ * The scale is deliberately NOT seed-derived: the ORISO palette is tenant-seeded, so
+ * a status painted in the seed would change meaning-free from tenant to tenant.
+ * The chip's own text ("Published" / "Draft" / "Unsaved") stays the primary cue —
+ * colour only reinforces it.
+ */
+
+/* Neutral default — draft and any other unremarkable state. */
+@mixin status-tag {
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 30px;
+    margin: 0;
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+    font-weight: 500;
+}
+
+/* Published — the one state that has earned a role colour. */
+@mixin status-tag-published {
+    border-color: var(--admin-status-success-border);
+    background: var(--admin-status-success-container);
+    color: var(--admin-status-success-on-container);
+}
+
+/* Unsaved changes — a warning the user is expected to act on. */
+@mixin status-tag-unsaved {
+    border-color: var(--admin-status-warning-border);
+    background: var(--admin-status-warning-container);
+    color: var(--admin-status-warning-on-container);
+}

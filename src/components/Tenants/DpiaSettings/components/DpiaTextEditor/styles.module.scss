@@ -1,4 +1,5 @@
 @use '../../../../../styles/muiSpacing' as mui;
+@use '../../../../../styles/statusTag' as status;
 
 /* DSFA free-text editor: same comfortable reading column as the legal editor cards —
    never narrower than a small phone (375), never wider than a long-form text column.
@@ -20,4 +21,16 @@
 
 .chapter {
     font-weight: 600;
+}
+
+.statusTag {
+    @include status.status-tag;
+}
+
+.statusTagPublished {
+    @include status.status-tag-published;
+}
+
+.statusTagUnsaved {
+    @include status.status-tag-unsaved;
 }
