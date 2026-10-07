@@ -74,9 +74,6 @@ const TopicSelection = ({
     const [searchForm] = Form.useForm();
     const query = (Form.useWatch('search', searchForm) ?? '') as string;
     const trigger = useRef<HTMLDivElement>(null);
-    const policyHint = fixed
-        ? 'fixed'
-        : { NONE: 'single', SELECT_EXISTING: 'agencyOnly', CREATE: 'catalogue' }[permission];
     const selectedTopics = topics.filter((topic) => selected.includes(topic.id));
     const matches = allowedTopics.filter((topic) =>
         topic.labels[language].toLocaleLowerCase(language).includes(query.trim().toLocaleLowerCase(language)),
@@ -180,8 +177,6 @@ const TopicSelection = ({
                                 <MuiFormField name="search" label={t('search')} inputProps={{ autoFocus: true }} />
                             </Form>
                             <div className={styles.selectionInfo}>
-                                <p className={styles.hint}>{t(policyHint)}</p>
-                                {lockedIds.length > 0 && <p className={styles.hint}>{t('lockedHint')}</p>}
                                 <p role="status">{t('selected', { count: draft.length })}</p>
                                 <p className={styles.hint}>
                                     {topics
