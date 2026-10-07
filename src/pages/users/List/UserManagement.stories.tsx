@@ -609,6 +609,7 @@ const WIDTHS = {
     viewport: {
         options: {
             laptop1024: { name: 'Laptop 1024', styles: { width: '1024px', height: '800px' } },
+            tablet960: { name: 'Tablet 960', styles: { width: '960px', height: '1112px' } },
             tablet834: { name: 'iPad portrait 834', styles: { width: '834px', height: '1112px' } },
         },
     },
@@ -661,13 +662,13 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
-export const ConsultantsTabAt834: Story = {
+export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
         ...WIDTHS,
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
-    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    globals: { viewport: { value: 'tablet960', isRotated: false } },
     decorators: [withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
@@ -703,8 +704,8 @@ export const ConsultantsTabAt834: Story = {
 };
 
 /** 768–1023 hides the date column; the name pill then shows and offers "Zuletzt aktualisiert". */
-export const ConsultantsTabAt834SortedByDate: Story = {
-    ...ConsultantsTabAt834,
+export const ConsultantsTabAt960SortedByDate: Story = {
+    ...ConsultantsTabAt960,
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -768,9 +769,9 @@ export const PlatformAdminsTabAt1280: Story = {
     },
 };
 
-export const PlatformAdminsTabAt834: Story = {
+export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
-    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    globals: { viewport: { value: 'tablet960', isRotated: false } },
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -1246,3 +1247,82 @@ export const PreferencesUnavailable: Story = {
         await expect(fallbackSpy.last().searchParams.get('order')).toBe('DESC');
     },
 };
+
+/** A desktop viewport may still give this page only enough room for account cards. */
+export const AccountsInNarrowDesktopContainer: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
+    },
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 767, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getAllByRole('article')).toHaveLength(2));
+        await expect(canvas.queryByRole('table')).toBeNull();
+        await expect(canvas.getByRole('button', { name: 'Anna Muster bearbeiten' })).toBeVisible();
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBeLessThan(600);
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+};
+
+/** At the first table width the remaining columns must fit, with actions still reachable. */
+export const AccountsAtCardBoundary: Story = {
+    ...AccountsInNarrowDesktopContainer,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 768, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByRole('table')).toBeVisible());
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBe(600);
+        await expect(canvas.queryByRole('article')).toBeNull();
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+};
+
+export const AccountsOnTablet834: Story = {
+    ...AccountsInNarrowDesktopContainer,
+    parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
+    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    decorators: [withSidebarRail],
+};
+
+const accountsBoundary = (width: number, columns: number): Story => ({
+    ...AccountsInNarrowDesktopContainer,
+    decorators: [
+        (Story) => (
+            <div style={{ width: width + 168, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await waitFor(() => expect(canvas.getAllByRole('columnheader')).toHaveLength(columns));
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBe(width);
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+});
+
+export const AccountsAt727 = accountsBoundary(727, 4);
+export const AccountsAt728 = accountsBoundary(728, 5);
+export const AccountsAt983 = accountsBoundary(983, 5);
+export const AccountsAt984 = accountsBoundary(984, 6);
