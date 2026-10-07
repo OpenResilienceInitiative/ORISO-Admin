@@ -40,6 +40,34 @@ describe('tenant assistant Appearance', () => {
             assistantIcon: 'robot-1184077',
         });
     });
+
+    it('saves the default identity without a broken upload preview', async () => {
+        const { container } = render(<AssistantIdentity tenantId="1" />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        expect(container.querySelector('.ant-upload img')).toBeNull();
+        fireEvent.click(screen.getByText('card.edit.save'));
+        await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+        expect(save.mock.calls[0][0].theming.assistantIcon).toBe('default');
+    });
+    it.each([
+        ['image/png', 'custom.png', 'PNG', /^data:image\/png;base64,/],
+        [
+            'image/svg+xml',
+            'custom.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"/></svg>',
+            /^data:image\/svg\+xml;base64,/,
+        ],
+    ])('previews and saves a custom %s through the Appearance form', async (type, name, artwork, prefix) => {
+        const { container } = render(<AssistantIdentity tenantId="1" />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const input = container.querySelector('input[type="file"]');
+        expect(input).toBeTruthy();
+        fireEvent.change(input!, { target: { files: [new File([artwork], name, { type })] } });
+        await waitFor(() => expect(container.querySelector('.ant-upload img')?.getAttribute('src')).toMatch(prefix));
+        fireEvent.click(screen.getByText('card.edit.save'));
+        await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+        expect(save.mock.calls[0][0].theming.assistantIcon).toMatch(prefix);
+    });
     it('keeps a restricted Appearance card read-only', () => {
         const { container } = render(<AssistantIdentity tenantId="1" readOnly />);
         expect(screen.queryByRole('button', { name: 'edit' })).toBeNull();

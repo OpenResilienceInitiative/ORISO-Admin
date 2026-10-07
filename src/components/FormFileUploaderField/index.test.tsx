@@ -15,16 +15,22 @@ const renderField = ({
     disabled,
     allowIcon,
     allowAssistantIcon,
+    value,
 }: {
     formDisabled: boolean;
     disabled?: boolean;
     allowIcon?: boolean;
     allowAssistantIcon?: boolean;
+    value?: string;
 }) => {
     const changes: Record<string, unknown>[] = [];
 
     const { container } = render(
-        <Form disabled={formDisabled} onValuesChange={(changed) => changes.push(changed)}>
+        <Form
+            initialValues={{ logo: value }}
+            disabled={formDisabled}
+            onValuesChange={(changed) => changes.push(changed)}
+        >
             <FormFileUploaderField
                 name="logo"
                 labelKey="organisation.logo"
@@ -40,7 +46,7 @@ const renderField = ({
     const input = container.querySelector('.ant-upload input[type="file"]');
     expect(input).not.toBeNull();
 
-    return { changes, input: input as HTMLInputElement };
+    return { container, changes, input: input as HTMLInputElement };
 };
 
 const pickFile = (input: HTMLInputElement, name: string, type: string) =>
@@ -179,5 +185,28 @@ describe('assistant SVG upload through the Appearance form', () => {
             setTimeout(resolve, 50);
         });
         expect(changes).toHaveLength(1);
+    });
+});
+
+describe('assistant preset and uploaded previews', () => {
+    it.each(['default', 'robot-7341990', 'robot-1184077', 'robot-3548536', 'robot-5475944'])(
+        'offers upload without making a relative image request for %s',
+        (value) => {
+            const { container } = renderField({ formDisabled: false, allowAssistantIcon: true, value });
+            expect(container.querySelector('.ant-upload img')).toBeNull();
+            expect(container.querySelector('.ant-upload')).toHaveTextContent('btn.upload');
+        },
+    );
+    it.each(['data:image/png;base64,iVBORw0KGgo=', 'data:image/svg+xml;base64,PHN2Zy8+'])(
+        'previews an uploaded image %s',
+        (value) => {
+            const { container } = renderField({ formDisabled: false, allowAssistantIcon: true, value });
+            expect(container.querySelector('.ant-upload img')).toHaveAttribute('src', value);
+        },
+    );
+    it('preserves the existing ordinary branding URL preview', () => {
+        const value = 'https://example.test/logo.png';
+        const { container } = renderField({ formDisabled: false, value });
+        expect(container.querySelector('.ant-upload img')).toHaveAttribute('src', value);
     });
 });

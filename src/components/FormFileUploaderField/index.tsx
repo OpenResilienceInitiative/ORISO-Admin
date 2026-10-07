@@ -162,7 +162,7 @@ const FormFileUploaderLocal = ({
             beforeUpload={beforeUpload}
             disabled={isDisabled}
         >
-            {value ? (
+            {value && (!allowAssistantIcon || /^data:image\/(?:png|svg\+xml);base64,/i.test(decodeHTML(value))) ? (
                 <img src={decodeHTML(value)} className={styles.image} alt="" />
             ) : (
                 <div className={styles.uploadButton}>{t('btn.upload')}</div>
