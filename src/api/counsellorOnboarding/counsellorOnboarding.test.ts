@@ -252,6 +252,51 @@ describe('createHttpCounsellorOnboardingClient', () => {
     });
 });
 
+describe('public onboarding email second factor', () => {
+    beforeEach(() => mocks.fetchData.mockReset());
+
+    it('sends to the server-bound invite address without exposing an email input', async () => {
+        const client = createHttpCounsellorOnboardingClient();
+        mocks.fetchData.mockResolvedValue(undefined);
+        await client.sendTwoFactorEmail!('raw-token');
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: `${publicAccountInvitesEndpoint}/raw-token/onboarding/two-factor/email`,
+                method: FETCH_METHODS.POST,
+                skipAuth: true,
+            }),
+        );
+        expect(mocks.fetchData.mock.calls[0][0]).not.toHaveProperty('bodyData');
+    });
+
+    it('activates email explicitly while preserving the legacy app request', async () => {
+        const client = createHttpCounsellorOnboardingClient();
+        mocks.fetchData.mockResolvedValue(undefined);
+        await client.activateTwoFactor('raw-token', '123456', 'EMAIL');
+        expect(mocks.fetchData).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                bodyData: JSON.stringify({ otp: '123456', method: 'EMAIL' }),
+            }),
+        );
+        await client.activateTwoFactor('raw-token', '123456');
+        expect(mocks.fetchData).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                bodyData: JSON.stringify({ otp: '123456' }),
+            }),
+        );
+    });
+
+    it('preserves link death when sending and typed invalid-code errors when validating email', async () => {
+        const client = createHttpCounsellorOnboardingClient();
+        mocks.fetchData.mockRejectedValueOnce(new Response(null, { status: 410 }));
+        await expect(client.sendTwoFactorEmail!('raw-token')).rejects.toBeInstanceOf(InviteLinkError);
+        mocks.fetchData.mockRejectedValueOnce(new Response(null, { status: 400 }));
+        await expect(client.activateTwoFactor('raw-token', '000000', 'EMAIL')).rejects.toBeInstanceOf(
+            TwoFactorCodeInvalidError,
+        );
+    });
+});
+
 describe('onboarding topic policy errors', () => {
     it('keeps a rejected topic choice distinct from a consumed invite', async () => {
         mocks.fetchData.mockRejectedValueOnce(

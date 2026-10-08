@@ -10,7 +10,7 @@ vi.mock('../../utils/getLocationVariables', () => ({
     default: vi.fn(() => ({ subdomain: 'tenant1', host: '', protocol: '', origin: '' })),
 }));
 
-import getPublicTenantData from './getPublicTenantData';
+import getPublicTenantData, { getPublicTenantDataById } from './getPublicTenantData';
 import { fetchData, FETCH_METHODS } from '../fetchData';
 import getLocationVariables from '../../utils/getLocationVariables';
 import { baseTenantPublicEndpoint } from '../../appConfig';
@@ -45,6 +45,19 @@ describe('getPublicTenantData', () => {
         } as never);
 
         expect(fetchMock).toHaveBeenCalledWith(expect.objectContaining({ url: `${baseTenantPublicEndpoint}/main` }));
+    });
+
+    it('reads effective identity for the edited id independently of the main tenant slug', async () => {
+        fetchMock.mockResolvedValue({ id: 1, theming: { assistantName: 'Platform helper' } });
+        const result = await getPublicTenantDataById('1');
+        expect(fetchMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: `${baseTenantPublicEndpoint}/id/1`,
+                method: FETCH_METHODS.GET,
+                skipAuth: true,
+            }),
+        );
+        expect(result).toEqual({ id: 1, theming: { assistantName: 'Platform helper' } });
     });
 
     it('resolves to null without fetching when there is no slug', async () => {
