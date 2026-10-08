@@ -1,6 +1,7 @@
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
 import { TwoFactorStepData } from './useTenantAdminOnboardingFlow';
+import type { OnboardingTwoFactorMethod } from '../../api/tenantOnboarding/tenantOnboarding';
 
 interface TwoFactorStepProps {
     result: TwoFactorStepData;
@@ -9,7 +10,9 @@ interface TwoFactorStepProps {
     showCodeError: boolean;
     /** The activation failed technically (retryable). */
     showServiceError: boolean;
-    onSubmit: (otp: string) => void;
+    email?: string;
+    onSendEmail?: () => Promise<void>;
+    onSubmit: (otp: string, method?: OnboardingTwoFactorMethod) => void;
 }
 
 /**
@@ -23,7 +26,15 @@ interface TwoFactorStepProps {
  * re-issued setup material, `appLink` is null and the canonical component
  * renders the verify-only variant.
  */
-export const TwoFactorStep = ({ result, busy, showCodeError, showServiceError, onSubmit }: TwoFactorStepProps) => {
+export const TwoFactorStep = ({
+    result,
+    busy,
+    showCodeError,
+    showServiceError,
+    email,
+    onSendEmail,
+    onSubmit,
+}: TwoFactorStepProps) => {
     let error: TwoFactorSetupInlineError = null;
     if (showCodeError) {
         error = 'invalid-code';
@@ -35,7 +46,7 @@ export const TwoFactorStep = ({ result, busy, showCodeError, showServiceError, o
         <TwoFactorSetup
             context="onboarding"
             appLink={
-                result.twoFactor
+                result.twoFactor?.secret
                     ? {
                           secretBase32: toBase32Secret(result.twoFactor.secret),
                           qrCodeBase64: result.twoFactor.qrCodeBase64,
@@ -47,6 +58,11 @@ export const TwoFactorStep = ({ result, busy, showCodeError, showServiceError, o
             error={error}
             titleKey="tenantOnboarding.twoFactor.title"
             descriptionKey="tenantOnboarding.twoFactor.description"
+            defaultMethod={result.twoFactor?.defaultMethod}
+            methods={result.twoFactor?.methods}
+            email={email}
+            onSendEmail={result.twoFactor?.methods?.includes('EMAIL') ? onSendEmail : undefined}
+            onVerifyEmail={(otp) => onSubmit(otp, 'EMAIL')}
             onVerify={onSubmit}
         />
     );

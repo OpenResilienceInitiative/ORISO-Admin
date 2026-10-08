@@ -46,6 +46,16 @@ export type InviteLinkErrorReason =
 
 export type OnboardingPurpose = 'INVITE' | 'EXISTING_ACCOUNT_SETUP';
 
+export type OnboardingTwoFactorMethod = 'APP' | 'EMAIL';
+
+/** Server-advertised methods; omitted capabilities retain the legacy app flow. */
+export interface OnboardingTwoFactorSetup {
+    secret: string | null;
+    qrCodeBase64: string | null;
+    methods?: readonly OnboardingTwoFactorMethod[];
+    defaultMethod?: OnboardingTwoFactorMethod;
+}
+
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
     readonly reason: InviteLinkErrorReason;
@@ -122,7 +132,7 @@ export interface TenantAdminOnboardingInviteDTO {
      * nothing new). `null`/absent when the backend does not re-issue it — the
      * 2FA step then renders the verify-only variant.
      */
-    twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor?: OnboardingTwoFactorSetup | null;
     /**
      * When step 1 forwarded the contract documents (ISO local date-time).
      * Recorded on the invite, so a reload restores the waiting view (#1065).
@@ -189,12 +199,7 @@ export interface TenantAdminNewTenantRegistrationRequest {
 export interface TenantAdminRegistrationResultDTO {
     /** The created (inactive) tenant — equals the reserved ID; absent for a join that names no Träger. */
     tenantId?: number;
-    twoFactor: {
-        /** Base32 TOTP secret to show/link in the authenticator app. */
-        secret: string;
-        /** QR code PNG (base64) when the backend provides one. */
-        qrCodeBase64: string | null;
-    };
+    twoFactor: OnboardingTwoFactorSetup;
 }
 
 /**
@@ -215,8 +220,10 @@ export interface TenantAdminOnboardingClient {
         inviteToken: string,
         request: TenantAdminRegistrationRequest,
     ): Promise<TenantAdminRegistrationResultDTO>;
-    /** Confirms the TOTP setup with a first one-time password. */
-    activateTwoFactor(inviteToken: string, otp: string): Promise<void>;
+    /** Sends a code to the invite's server-bound address; never completes setup. */
+    sendTwoFactorEmail?(inviteToken: string): Promise<void>;
+    /** Confirms the selected method; absent method preserves legacy app activation. */
+    activateTwoFactor(inviteToken: string, otp: string, method?: OnboardingTwoFactorMethod): Promise<void>;
 }
 
 /** Status → link-error mapping of the public onboarding endpoints (U3/U6). */
@@ -373,14 +380,24 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
                 }),
             ),
 
-        activateTwoFactor: async (inviteToken, otp) => {
+        sendTwoFactorEmail: (inviteToken) =>
+            run(() =>
+                fetchData({
+                    url: onboardingUrl(inviteToken, '/two-factor/email'),
+                    method: FETCH_METHODS.POST,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                }),
+            ),
+
+        activateTwoFactor: async (inviteToken, otp, method) => {
             try {
                 await fetchData({
                     url: onboardingUrl(inviteToken, '/two-factor'),
                     method: FETCH_METHODS.POST,
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
-                    bodyData: JSON.stringify({ otp }),
+                    bodyData: JSON.stringify({ otp, ...(method ? { method } : {}) }),
                 });
             } catch (error) {
                 // 400/422 = the entered one-time password was rejected;
@@ -458,6 +475,8 @@ export const createStubTenantAdminOnboardingClient = (
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
         qrCodeBase64: null,
+        methods: ['EMAIL', 'APP'] as const,
+        defaultMethod: 'EMAIL' as const,
     };
 
     const assertLinkAlive = (inviteToken: string) => {
@@ -523,6 +542,12 @@ export const createStubTenantAdminOnboardingClient = (
                 tenantId: invite.reservedTenantId,
                 twoFactor: STUB_TWO_FACTOR,
             };
+        },
+
+        sendTwoFactorEmail: async (inviteToken) => {
+            await wait(latencyMs);
+            assertLinkAlive(inviteToken);
+            if (!registered) throw new Error('Registration has not happened yet');
         },
 
         activateTwoFactor: async (inviteToken, otp) => {

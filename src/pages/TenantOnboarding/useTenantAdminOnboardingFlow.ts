@@ -4,6 +4,8 @@ import {
     DpaAcceptanceData,
     InviteLinkError,
     InviteLinkErrorReason,
+    OnboardingTwoFactorMethod,
+    OnboardingTwoFactorSetup,
     OrganisationData,
     TenantAdminOnboardingClient,
     TenantAdminOnboardingInviteDTO,
@@ -17,7 +19,7 @@ import { TwoFactorCodeInvalidError } from '../../api/tenantOnboarding/TwoFactorC
 export interface TwoFactorStepData {
     /** Unknown when a resumed invite names no Träger. */
     tenantId?: number;
-    twoFactor: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor: OnboardingTwoFactorSetup | null;
     /** True when the step was entered by resuming a consumed-but-2FA-pending link. */
     resumed: boolean;
 }
@@ -104,6 +106,20 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     const busyRef = useRef(false);
     const inviteTokenRef = useRef(inviteToken);
     inviteTokenRef.current = inviteToken;
+    // A token may change A → B → A while a request is pending; identity alone
+    // cannot tell that the original flow is gone.
+    const twoFactorGenerationRef = useRef({ token: inviteToken, generation: 0 });
+    if (twoFactorGenerationRef.current.token !== inviteToken) {
+        twoFactorGenerationRef.current = {
+            token: inviteToken,
+            generation: twoFactorGenerationRef.current.generation + 1,
+        };
+    }
+    useEffect(() => {
+        busyRef.current = false;
+        setBusy(false);
+        setSubmitError(null);
+    }, [inviteToken]);
 
     useEffect(() => {
         let cancelled = false;
@@ -293,27 +309,69 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         [client, inviteToken, invite, organisation, dpa, dpaForward, dpaConfirmed],
     );
 
+    const sendTwoFactorEmail = useCallback(async () => {
+        const { current } = stateRef;
+        if (
+            inviteTokenRef.current !== inviteToken ||
+            current.phase !== 'two-factor' ||
+            busyRef.current ||
+            !current.result.twoFactor?.methods?.includes('EMAIL') ||
+            !client.sendTwoFactorEmail
+        ) {
+            throw new Error('Email second-factor setup is not available');
+        }
+        const { generation } = twoFactorGenerationRef.current;
+        busyRef.current = true;
+        setBusy(true);
+        setSubmitError(null);
+        try {
+            await client.sendTwoFactorEmail(inviteToken);
+            if (twoFactorGenerationRef.current.generation !== generation) {
+                throw new Error('The onboarding link changed during email setup');
+            }
+        } catch (error) {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                failFlow(error, 'two-factor');
+            }
+            throw error;
+        } finally {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        }
+    }, [client, inviteToken]);
+
     const submitTwoFactorCode = useCallback(
-        async (otp: string) => {
+        async (otp: string, method?: OnboardingTwoFactorMethod) => {
             const { current } = stateRef;
-            if (current.phase !== 'two-factor' || busyRef.current) {
+            if (inviteTokenRef.current !== inviteToken || current.phase !== 'two-factor' || busyRef.current) {
                 return;
             }
+            const { generation } = twoFactorGenerationRef.current;
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
-                await client.activateTwoFactor(inviteToken, otp);
+                if (method) {
+                    await client.activateTwoFactor(inviteToken, otp, method);
+                } else {
+                    await client.activateTwoFactor(inviteToken, otp);
+                }
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 setState({ phase: 'done', tenantId: current.result.tenantId });
             } catch (error) {
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 if (error instanceof TwoFactorCodeInvalidError) {
                     setSubmitError('two-factor-code');
                 } else {
                     failFlow(error, 'two-factor');
                 }
             } finally {
-                busyRef.current = false;
-                setBusy(false);
+                if (twoFactorGenerationRef.current.generation === generation) {
+                    busyRef.current = false;
+                    setBusy(false);
+                }
             }
         },
         [client, inviteToken],
@@ -333,6 +391,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         submitOrganisationDpa,
         goBackToOrganisation,
         submitAccount,
+        sendTwoFactorEmail,
         submitTwoFactorCode,
     };
 };
