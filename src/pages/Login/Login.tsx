@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
 import { Col, Row } from 'antd';
 import Stage from './Stage';
@@ -12,6 +12,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { UserRole } from '../../enums/UserRole';
 import { useAppConfigContext } from '../../context/useAppConfig';
+import { agencySetupFromSearch } from '../../constants/agencySetupContinuation';
 import { isAgencyScopedAdmin } from '../../constants/agencyAdminLanding';
 
 export interface LoginSurfaceProps {
@@ -46,6 +47,8 @@ export const LoginSurface = ({ logo }: LoginSurfaceProps) => (
  */
 export const Login = () => {
     const { settings } = useAppConfigContext();
+    const { search } = useLocation();
+    const setupDestination = agencySetupFromSearch(search);
     const [sessionReady, setSessionReady] = useState(false);
     const accessToken = getAccessTokenForRequests();
     const currentTime = Date.now();
@@ -92,7 +95,9 @@ export const Login = () => {
             return;
         }
 
-        if (isTenantAdmin) {
+        if (setupDestination) {
+            setRedirectUrl(setupDestination);
+        } else if (isTenantAdmin) {
             setRedirectUrl(routePathNames.consultants);
         } else if (isAgencyAdminOnly) {
             // A Beratungsstellen-Admin has nothing to do on the Träger settings screen (every tab
@@ -109,6 +114,7 @@ export const Login = () => {
         }
     }, [
         sessionReady,
+        setupDestination,
         accessToken,
         accessTokenValidInMs,
         refreshTokenValidInMs,

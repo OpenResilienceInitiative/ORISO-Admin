@@ -128,7 +128,7 @@ describe('updateAgencyData — postcode range preservation', () => {
         const postCodes = [{ from: '10115', until: '10179' }];
         await updateAgencyData(agencyModel, { ...agencyModel, online: true, postCodes } as any);
 
-        expect(mocks.updateAgencyPostCodeRange).toHaveBeenCalledWith('55', postCodes, '');
+        expect(mocks.updateAgencyPostCodeRange).toHaveBeenCalledWith('55', postCodes, 'POST');
     });
 });
 

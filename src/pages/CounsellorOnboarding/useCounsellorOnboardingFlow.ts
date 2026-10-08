@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeLanguage } from '../../utils/language';
 import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
+import { completeExistingAccountSetup } from '../../api/tenantOnboarding/tenantOnboarding';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -8,6 +9,8 @@ import {
     CounsellorTopicPermission,
     InviteLinkError,
     InviteLinkErrorReason,
+    OnboardingTwoFactorMethod,
+    OnboardingTwoFactorSetup,
     TwoFactorCodeInvalidError,
 } from '../../api/counsellorOnboarding/counsellorOnboarding';
 
@@ -16,7 +19,7 @@ import {
  * re-issue the setup material — the step then renders verify-only.
  */
 export interface CounsellorTwoFactorStepData {
-    twoFactor: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor: OnboardingTwoFactorSetup | null;
     /** True when the step was entered by resuming a consumed-but-2FA-pending link. */
     resumed: boolean;
 }
@@ -41,7 +44,7 @@ export type CounsellorOnboardingState =
     | { phase: 'done' };
 
 /** Which submit failed retryably; link-death is modelled in the state instead. */
-export type CounsellorOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
+export type CounsellorOnboardingSubmitError = 'registration' | 'topic-policy' | 'two-factor-code' | 'two-factor' | null;
 
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
@@ -120,6 +123,22 @@ export const useCounsellorOnboardingFlow = (
     const stateRef = useRef(state);
     stateRef.current = state;
     const busyRef = useRef(false);
+    const inviteTokenRef = useRef(inviteToken);
+    inviteTokenRef.current = inviteToken;
+    // A token may change A → B → A while a request is pending; identity alone
+    // cannot tell that the original flow is gone.
+    const twoFactorGenerationRef = useRef({ token: inviteToken, generation: 0 });
+    if (twoFactorGenerationRef.current.token !== inviteToken) {
+        twoFactorGenerationRef.current = {
+            token: inviteToken,
+            generation: twoFactorGenerationRef.current.generation + 1,
+        };
+    }
+    useEffect(() => {
+        busyRef.current = false;
+        setBusy(false);
+        setSubmitError(null);
+    }, [inviteToken]);
     // Submits read the freshest collected data through a ref — the callbacks
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
@@ -145,6 +164,13 @@ export const useCounsellorOnboardingFlow = (
                 if (cancelled) return;
                 loadedTopics.current = { token: inviteToken, language: requestedLanguage };
                 setInvite(loaded);
+                if (loaded.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP') {
+                    // The server bound the identity already; profile, topics and public TOTP stay untouched.
+                    setData(EMPTY_DATA);
+                    setSubmitError(null);
+                    setState({ phase: 'form' });
+                    return;
+                }
                 if (loaded.phase === 'PENDING_2FA_ACTIVATION') {
                     // Resume (#569 contract): the registration already
                     // happened; only the 2FA activation is open.
@@ -297,7 +323,11 @@ export const useCounsellorOnboardingFlow = (
     };
 
     const submitRegistration = useCallback(async () => {
-        if (stateRef.current.phase !== 'form' || busyRef.current) {
+        if (
+            stateRef.current.phase !== 'form' ||
+            busyRef.current ||
+            inviteRef.current?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP'
+        ) {
             return;
         }
         busyRef.current = true;
@@ -349,33 +379,109 @@ export const useCounsellorOnboardingFlow = (
                 result: { twoFactor: result.twoFactor, resumed: false },
             });
         } catch (error) {
-            failFlow(error, 'registration');
+            if (error instanceof Error && error.message === 'ONE_TOPIC_PER_AGENCY') {
+                setInvite((current) => (current ? { ...current, oneTopicPerAgencyEnabled: true } : current));
+                setSubmitError('topic-policy');
+            } else {
+                failFlow(error, 'registration');
+            }
         } finally {
             busyRef.current = false;
             setBusy(false);
         }
     }, [client, inviteToken]);
 
-    const submitTwoFactorCode = useCallback(
-        async (otp: string) => {
-            if (stateRef.current.phase !== 'two-factor' || busyRef.current) {
+    const submitAccountSetup = useCallback(
+        async (password: string) => {
+            if (
+                stateRef.current.phase !== 'form' ||
+                busyRef.current ||
+                inviteRef.current?.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP'
+            ) {
                 return;
             }
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
-                await client.activateTwoFactor(inviteToken, otp);
+                await completeExistingAccountSetup(inviteToken, password);
+                if (inviteTokenRef.current === inviteToken) {
+                    setState({ phase: 'done' });
+                }
+            } catch (error) {
+                if (inviteTokenRef.current === inviteToken) {
+                    failFlow(error, 'registration');
+                }
+            } finally {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        },
+        [inviteToken],
+    );
+
+    const sendTwoFactorEmail = useCallback(async () => {
+        const { current } = stateRef;
+        if (
+            inviteTokenRef.current !== inviteToken ||
+            current.phase !== 'two-factor' ||
+            busyRef.current ||
+            !current.result.twoFactor?.methods?.includes('EMAIL') ||
+            !client.sendTwoFactorEmail
+        ) {
+            throw new Error('Email second-factor setup is not available');
+        }
+        const { generation } = twoFactorGenerationRef.current;
+        busyRef.current = true;
+        setBusy(true);
+        setSubmitError(null);
+        try {
+            await client.sendTwoFactorEmail(inviteToken);
+            if (twoFactorGenerationRef.current.generation !== generation) {
+                throw new Error('The onboarding link changed during email setup');
+            }
+        } catch (error) {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                failFlow(error, 'two-factor');
+            }
+            throw error;
+        } finally {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        }
+    }, [client, inviteToken]);
+
+    const submitTwoFactorCode = useCallback(
+        async (otp: string, method?: OnboardingTwoFactorMethod) => {
+            if (inviteTokenRef.current !== inviteToken || stateRef.current.phase !== 'two-factor' || busyRef.current) {
+                return;
+            }
+            const { generation } = twoFactorGenerationRef.current;
+            busyRef.current = true;
+            setBusy(true);
+            setSubmitError(null);
+            try {
+                if (method) {
+                    await client.activateTwoFactor(inviteToken, otp, method);
+                } else {
+                    await client.activateTwoFactor(inviteToken, otp);
+                }
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 setState({ phase: 'done' });
             } catch (error) {
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 if (error instanceof TwoFactorCodeInvalidError) {
                     setSubmitError('two-factor-code');
                 } else {
                     failFlow(error, 'two-factor');
                 }
             } finally {
-                busyRef.current = false;
-                setBusy(false);
+                if (twoFactorGenerationRef.current.generation === generation) {
+                    busyRef.current = false;
+                    setBusy(false);
+                }
             }
         },
         [client, inviteToken],
@@ -399,6 +505,8 @@ export const useCounsellorOnboardingFlow = (
         toggleTopic,
         setAlsoCounsellor,
         submitRegistration,
+        submitAccountSetup,
+        sendTwoFactorEmail,
         submitTwoFactorCode,
     };
 };

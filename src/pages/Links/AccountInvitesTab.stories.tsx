@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
-import { TenantInvitesTab } from './AccountInvitesTab';
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
+import { invitePanelStorageKey } from './InvitePanel';
+import styles from './styles.module.scss';
 
 const INVITES_ENDPOINT = '*/service/useradmin/account-invites';
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -165,7 +168,8 @@ const meta = {
     decorators: [
         withAdminProviders,
         (Story) => {
-            setStoryAuth([UserRole.TenantAdmin]);
+            // Tenant id 0 with both admin roles is the platform operator.
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin]);
             return <Story />;
         },
     ],
@@ -260,6 +264,236 @@ export const SmtpCredentialsMissing: Story = {
                     'SMTP-Zugangsdaten fehlen',
                 ),
             { timeout: 10_000 },
+        );
+    },
+};
+
+/**
+ * The invite card folded to its 80px rail (#1117): the table takes the width,
+ * and the fold survives a reload because it is stored per tab. The rail's
+ * toggle opens the card again.
+ */
+export const FoldedRail: Story = {
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => {
+            window.localStorage.setItem(invitePanelStorageKey('TENANT_ADMIN'), 'true');
+            return <Story />;
+        },
+    ],
+    play: async ({ canvas }) => {
+        const toggle = await canvas.findByRole('button', { name: /^(Formular ausklappen|Expand form)$/ });
+        await expect(canvas.queryByRole('textbox', { name: /^(E-Mail|E-mail)$/ })).not.toBeInTheDocument();
+        await userEvent.click(toggle);
+        await expect(await canvas.findByRole('textbox', { name: /^(E-Mail|E-mail)$/ })).toBeVisible();
+        await expect(window.localStorage.getItem(invitePanelStorageKey('TENANT_ADMIN'))).toBe('false');
+    },
+};
+
+// Purpose comes from the protected server list. The setup row points to an
+// already-created identity; it uses canonical setup mail, never a legacy template.
+const setupResendRow: AccountInviteDTO & { onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' } = {
+    ...INVITES[0],
+    onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+    recipientEmail: 'existing.account@example.org',
+    firstName: null,
+    lastName: null,
+    tenantIdAllocationMode: null,
+    agencyIdAllocationMode: null,
+    provisioningStatus: 'PENDING',
+    provisionedUserId: 'fixture-existing-identity',
+    expiresAt: null,
+    createDate: '2026-09-30T09:00:00Z',
+};
+const setupResendRequests: unknown[] = [];
+let setupListReads = 0;
+
+/** Existing setup recovery must work before an ordinary invitation template exists. */
+export const SetupResendWithoutTemplates: Story = {
+    beforeEach: () => {
+        message.destroy();
+        setupResendRequests.length = 0;
+        setupListReads = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => {
+                    setupListReads += 1;
+                    return invitesResponse([
+                        {
+                            ...setupResendRow,
+                            ...(setupResendRequests.length ? { id: 91, createDate: '2026-10-01T09:00:00Z' } : {}),
+                        },
+                    ]);
+                }),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+                http.post(`${INVITES_ENDPOINT}/11/resend`, async ({ request }) => {
+                    setupResendRequests.push(await request.json());
+                    return HttpResponse.json({
+                        ...setupResendRow,
+                        id: 91,
+                        createDate: '2026-10-01T09:00:00Z',
+                        rawToken: null,
+                        acceptUrl: null,
+                    });
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('existing.account@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Erinnerung erneut senden|Resend reminder/ }));
+        await waitFor(() => expect(setupResendRequests).toEqual([{}]));
+        await waitFor(() => expect(setupListReads).toBeGreaterThan(1));
+        await waitFor(() => expect(canvasElement.querySelector('time[datetime="2026-10-01T09:00:00Z"]')).toBeVisible());
+        await expect(canvasElement.querySelector('time[datetime="2026-09-30T09:00:00Z"]')).not.toBeInTheDocument();
+    },
+};
+
+const ordinaryResendRequests: unknown[] = [];
+/** The setup exemption must not remove the existing ordinary invitation guard. */
+export const OrdinaryResendStillRequiresTemplate: Story = {
+    beforeEach: () => {
+        message.destroy();
+        ordinaryResendRequests.length = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => invitesResponse([{ ...INVITES[0], expiresAt: null }])),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+                http.post(`${INVITES_ENDPOINT}/11/resend`, async ({ request }) => {
+                    ordinaryResendRequests.push(await request.json());
+                    return HttpResponse.json(INVITES[0]);
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Erinnerung erneut senden|Resend reminder/ }));
+        await waitFor(() =>
+            expect(
+                within(document.body).getByText(/Bitte zuerst ein Template auswählen|Select a template first/),
+            ).toBeVisible(),
+        );
+        await expect(ordinaryResendRequests).toEqual([]);
+    },
+};
+
+/** A collapsed role pill must not be mistaken for the entire folded composer. */
+export const IntermediateWidth: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 920, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        const panel = canvasElement.querySelector(`.${styles.invitesPanel}`)!;
+        const board = canvasElement.querySelector(`.${styles.invitesBoard}`)!;
+        await waitFor(() =>
+            expect(board.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom),
+        );
+        await expect(board.getBoundingClientRect().width).toBeGreaterThan(600);
+        const search = canvas.getByRole('searchbox');
+        const menu = canvas.getByRole('button', { name: /More actions|Weitere Aktionen/ });
+        const center = (element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            return rect.y + rect.height / 2;
+        };
+        const pager = canvas.getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        await expect(Math.abs(center(search) - center(menu))).toBeLessThan(1);
+        await expect(Math.abs(center(pager) - center(menu))).toBeLessThan(1);
+        const table = canvas.getByRole('table');
+        await expect(getComputedStyle(table.parentElement!).overflowX).toBe('visible');
+    },
+};
+
+/** A tenant administrator sees their own carrier's name without an agency lookup. */
+export const OwnTenantCounsellor: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenantadmin/25', () => HttpResponse.json({ id: 25, name: 'Caritas Südbaden' })),
+                ...defaultHandlers,
+            ],
+        },
+    },
+    render: () => {
+        setStoryAuth([UserRole.TenantAdmin], 25);
+        return <CounsellorInvitesTab />;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Caritas Südbaden');
+        const field = canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ });
+        await expect(field).toBeDisabled();
+        await expect(field).toHaveValue('Nr. 25');
+    },
+};
+
+/** The longer tenant row switches to cards before it can overflow a tablet-width board. */
+export const TabletWidth: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 820, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await waitFor(() => expect(getComputedStyle(canvas.getByRole('table')).display).toBe('block'));
+        const board = canvasElement.querySelector(`.${styles.invitesBoard}`)!;
+        expect(board.scrollWidth).toBeLessThanOrEqual(board.clientWidth);
+    },
+};
+
+/** The entire phone toolbar scrolls locally while the rest of the page stays contained. */
+export const PhoneToolbar: Story = {
+    ...IntermediateWidth,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 390, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        const search = canvas.getByRole('searchbox');
+        const pager = canvas.getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        const menu = canvas.getByRole('button', { name: /More actions|Weitere Aktionen/ });
+        const toolbar = search.closest('[class*="toolbarRow"]') as HTMLElement;
+        const center = (element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            return rect.top + rect.height / 2;
+        };
+        await expect(Math.abs(center(search) - center(pager))).toBeLessThan(1);
+        await expect(Math.abs(center(pager) - center(menu))).toBeLessThan(1);
+        await expect(getComputedStyle(toolbar).flexWrap).toBe('nowrap');
+        await expect(getComputedStyle(toolbar).overflowX).toBe('auto');
+        await expect(toolbar.scrollWidth).toBeGreaterThan(toolbar.clientWidth);
+        toolbar.scrollLeft = toolbar.scrollWidth;
+        await waitFor(() =>
+            expect(menu.getBoundingClientRect().right).toBeLessThanOrEqual(toolbar.getBoundingClientRect().right + 1),
         );
     },
 };

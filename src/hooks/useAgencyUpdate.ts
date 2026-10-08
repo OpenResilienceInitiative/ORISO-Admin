@@ -24,6 +24,11 @@ export const useAgencyUpdate = (id: string) => {
                 return objValue instanceof Array ? srcValue : undefined;
             }) as AgencyData;
 
+            // Geographic coverage belongs to this card submission, not the merged agency
+            // snapshot. Do not replay a previous registration save during a delayed refetch.
+            mergedAgencyData.postCodes = data.postCodes;
+            mergedAgencyData.postCodeRangesActive = data.postCodeRangesActive;
+
             // These language maps are complete legal-document snapshots. Deep-merging them would
             // resurrect a removed language (and turn an explicit empty consent map back into the
             // previously published wording). Replace only maps that the narrow patch supplied;
@@ -42,8 +47,7 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
-            // Cache the accepted main write at once: if a follow-up request (postcode ranges) fails and
-            // the recovery refetch fails too, a queued save still merges into what the server holds.
+            // Cache the accepted main write at once so a queued save uses what the server holds.
             const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
                 queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
             );
@@ -53,8 +57,8 @@ export const useAgencyUpdate = (id: string) => {
             queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
             return response;
         },
-        // A write can fail after the main PUT went through (e.g. the postcode-range request). Reload
-        // the agency so the next card save merges into what the server accepted, not an old snapshot.
+        // Preparation writes (coverage or counsellor assignment) may succeed before the main PUT
+        // fails. Reload so the next card save uses the server's confirmed state.
         // Returned so the mutation settles only after the refetch: a queued save must not merge into
         // the old snapshot in between.
         onError: () =>

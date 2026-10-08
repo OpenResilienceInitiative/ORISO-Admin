@@ -4,6 +4,7 @@ export const LazyTenantSettingsLayout = lazyNamed(() => import('./TenantSettings
 export const LazyTopicList = lazyNamed(() => import('./Topics/List/TopicList'), 'TopicList');
 export const LazyStatistic = lazyNamed(() => import('./Statistic'), 'Statistic');
 export const LazyUserProfile = lazyNamed(() => import('./Profile/UserProfile'), 'UserProfile');
+export const LazyAgencySetupPage = lazyNamed(() => import('./Agency/AgencySetupPage'), 'AgencySetupPage');
 export const LazyAgencyList = lazyNamed(() => import('./Agency/List'), 'AgencyList');
 export const LazyTenantsList = lazyNamed(() => import('./Tenants/List'), 'TenantsList');
 export const LazyAgencyPageEdit = lazyNamed(() => import('./Agency/Edit'), 'AgencyPageEdit');

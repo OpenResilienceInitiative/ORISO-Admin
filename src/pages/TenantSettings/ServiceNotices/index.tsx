@@ -12,6 +12,7 @@ import { MuiFormField } from '../../../components/mui/MuiFormField';
 import { EmailPreviewFrame } from '../../../components/EmailPreview/EmailPreviewFrame';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useServiceNoticeDraft } from '../../../hooks/useServiceNoticeDraft.hook';
+import { ServiceNoticeSend } from './ServiceNoticeSend';
 import {
     SERVICE_NOTICE_VARIANTS,
     serviceNoticeErrorKey,
@@ -201,6 +202,8 @@ export const ServiceNoticesPage = () => {
                     </Stack>
                 </Card>
             )}
+            {/* Keyed by draft so a newly saved or opened draft never inherits an old count. */}
+            {draft && <ServiceNoticeSend key={`${draft.campaignKey}:${draft.status}`} draft={draft} />}
         </Stack>
     );
 };

@@ -256,7 +256,10 @@ export const useInviteDraft = ({
     const templateValid = sendMode === 'createOnly' || selectedTemplate != null;
     // A counsellor account cannot be provisioned without names.
     const namesValid = !requireNames || (firstName.trim().length > 0 && lastName.trim().length > 0);
+    // The server lets an agency admin invite counsellors only, so the Träger tab is read-only for them.
+    const mayNotInvite = tenantTab && viewer.scope === 'agency';
     const isValid =
+        !mayNotInvite &&
         emailValid &&
         !emailTaken &&
         tenantIdValid &&
@@ -271,7 +274,7 @@ export const useInviteDraft = ({
         email: emailValid && !emailTaken,
         firstName: firstName.trim().length > 0,
         lastName: lastName.trim().length > 0,
-        tenant: tenantTab ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
+        tenant: tenantMayBeNew ? tenantAllocation.canSubmit : tenantAllocation.mode === 'existing',
         agency: agencyPicked,
         role: true,
         alsoCounsellor: true,
@@ -325,6 +328,12 @@ export const useInviteDraft = ({
     // The first unmet precondition, in the order an admin fills the row.
     const blockReason = (() => {
         if (isValid || submitting) return undefined;
+        if (mayNotInvite) {
+            return t(
+                'links.composer.blocked.tenantTabAgencyAdmin',
+                'Nur Träger- und Plattform-Admins können Träger-Admins einladen.',
+            );
+        }
         if (!emailValid) return t('links.composer.blocked.email', 'Bitte eine gültige E-Mail-Adresse eingeben.');
         if (emailTaken) {
             return t(
@@ -423,10 +432,13 @@ export const useInviteDraft = ({
     const resetAfterSend = (created?: InviteCreated) => {
         clearPerson();
         if (sendAndNext) {
-            // The next person joins the same unit with the same template and topic level.
-            setRoleState(pickRole(defaultRole));
-            setRoleBeforeGuidedSwitch(null);
-            setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
+            // The next person starts from the same setup: role, unit, template and topic level (#1127).
+            // Only the guided BST-Admin switch covers one founding invite, so the next person is a counsellor again.
+            if (roleBeforeGuidedSwitch) {
+                setRoleState(roleBeforeGuidedSwitch);
+                setRoleBeforeGuidedSwitch(null);
+                setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
+            }
             setCollapsedKeys(new Set<CollapsibleKey>(['tenant', 'agency', 'topics', 'template']));
             // A just-reserved number is re-checked so the next counsellor waits for it; "Neu" takes the assigned one.
             if (tenantAllocation.mode === 'manual') tenantAllocation.setManualValue(tenantAllocation.value);
@@ -452,32 +464,40 @@ export const useInviteDraft = ({
         else agencyAllocation.resetToAuto();
     };
 
+    // The render-time `submitting` lags a fast double press (rail or send button); this closes that gap.
+    const sendingRef = useRef(false);
+
     const send = async () => {
-        if (!isValid || submitting) return;
-        const outcome = await onSubmit(
-            toCreateInviteRequest(
-                {
-                    kind: 'draft',
-                    role,
-                    recipientEmail: recipientEmail.trim(),
-                    firstName: firstName.trim() || undefined,
-                    lastName: lastName.trim() || undefined,
-                    tenant: { mode: tenantAllocation.mode, id: tenantAllocation.value },
-                    agency: { mode: agencyAllocation.mode, id: agencyAllocation.value },
-                    alsoCounsellor,
-                    topicPermission,
-                    templateId,
-                },
-                { tab, viewer: viewer.scope, sendMode },
-            ),
-        );
-        if (outcome === 'emailTaken') {
-            // Keep everything the admin typed; only the address needs correcting.
-            setEmailTakenAddress(recipientEmail.trim().toLowerCase());
-            setEmailTouched(true);
-            return;
+        if (!isValid || submitting || sendingRef.current) return;
+        sendingRef.current = true;
+        try {
+            const outcome = await onSubmit(
+                toCreateInviteRequest(
+                    {
+                        kind: 'draft',
+                        role,
+                        recipientEmail: recipientEmail.trim(),
+                        firstName: firstName.trim() || undefined,
+                        lastName: lastName.trim() || undefined,
+                        tenant: { mode: tenantAllocation.mode, id: tenantAllocation.value },
+                        agency: { mode: agencyAllocation.mode, id: agencyAllocation.value },
+                        alsoCounsellor,
+                        topicPermission,
+                        templateId,
+                    },
+                    { tab, viewer: viewer.scope, sendMode },
+                ),
+            );
+            if (outcome === 'emailTaken') {
+                // Keep everything the admin typed; only the address needs correcting.
+                setEmailTakenAddress(recipientEmail.trim().toLowerCase());
+                setEmailTouched(true);
+                return;
+            }
+            if (outcome) resetAfterSend(typeof outcome === 'object' ? outcome : undefined);
+        } finally {
+            sendingRef.current = false;
         }
-        if (outcome) resetAfterSend(typeof outcome === 'object' ? outcome : undefined);
     };
 
     const unitLabel = (allocation: UseIdAllocationResult) => {
@@ -521,8 +541,8 @@ export const useInviteDraft = ({
         },
         topics: { value: topicPermission, set: chooseTopicPermission },
         alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
-        /** Which fields show as pills, and which select menu is open. */
-        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect },
+        /** Which fields show as pills, which select menu is open, and which fields hold a valid value. */
+        pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect, valid: fieldValid },
         submit: {
             mode: sendMode,
             andNext: sendAndNext,

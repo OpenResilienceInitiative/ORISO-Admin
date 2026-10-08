@@ -260,6 +260,44 @@ describe('derivePhases — Berater (COUNSELLOR)', () => {
     });
 });
 
+describe('derivePhases — BST admin joining an existing centre', () => {
+    it('tracks account and security completion without inferring a centre-creation milestone', () => {
+        const joining = invite({
+            targetRole: 'AGENCY_ADMIN',
+            agencyId: 5,
+            agencyIdAllocationMode: 'EXISTING',
+            waitingForUnit: null,
+            unitCreatedAt: null,
+            sentAt: '2026-09-30T10:00:00Z',
+            twoFactorStatus: 'PENDING_SETUP',
+            accessGateStatus: 'BLOCKED_INVITE',
+        });
+        expect(states(joining)).toEqual(['invited:done', 'accountCreated:current', 'completed:pending']);
+
+        const registered = {
+            ...joining,
+            inviteStatus: 'ACCEPTED' as const,
+            acceptedAt: '2026-09-30T10:05:00Z',
+            accountCreatedAt: '2026-09-30T10:05:00Z',
+            accessGateStatus: 'BLOCKED_TWO_FACTOR' as const,
+        };
+        expect(states(registered)).toEqual(['invited:done', 'accountCreated:done', 'completed:current']);
+        expect(phaseReachedAt('accountCreated', registered)).toBe('2026-09-30T10:05:00Z');
+        expect(phaseReachedAt('agencyUnitCreated', registered)).toBeNull();
+
+        const secured = {
+            ...registered,
+            twoFactorStatus: 'ACTIVE' as const,
+            twoFactorDoneAt: '2026-09-30T10:06:00Z',
+            accessGateStatus: 'READY' as const,
+            completedAt: '2026-09-30T10:06:00Z',
+        };
+        expect(states(secured)).toEqual(['invited:done', 'accountCreated:done', 'completed:done']);
+        expect(phaseReachedAt('completed', secured)).toBe('2026-09-30T10:06:00Z');
+        expect(phaseReachedAt('agencyUnitCreated', secured)).toBeNull();
+    });
+});
+
 describe('lifecycleOf (the five tiles, phase from the server)', () => {
     const read = (overrides: Partial<AccountInviteDTO>) => lifecycleOf(invite(overrides));
 

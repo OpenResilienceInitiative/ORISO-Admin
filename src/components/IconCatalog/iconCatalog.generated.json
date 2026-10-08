@@ -1057,11 +1057,7 @@
         "fileName": "face_nod.svg",
         "sourcePath": "src/resources/img/svg/face_nod.svg",
         "exportNames": [],
-        "usageFiles": [
-            "src/components/cards/CaseTakeoverCard/index.tsx",
-            "src/components/cards/SuccessCard/index.tsx",
-            "src/pages/Logs/LogsTabsLayout.tsx"
-        ],
+        "usageFiles": ["src/components/cards/CaseTakeoverCard/index.tsx", "src/pages/Logs/LogsTabsLayout.tsx"],
         "usage": "app-used"
     },
     {
@@ -1341,7 +1337,7 @@
         "fileName": "counseling_active.svg",
         "sourcePath": "src/resources/img/svg/navbar/counseling_active.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx", "src/pages/Agency/AgencySetupPage.tsx"],
         "usage": "app-used"
     },
     {
@@ -1796,7 +1792,7 @@
         "fileName": "arrow_menu_open_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/arrow_menu_open_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx"],
+        "usageFiles": ["src/components/GlobalSearch/GlobalSearchBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1907,7 +1903,7 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx"],
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -1920,8 +1916,8 @@
         "fileName": "mail_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:nearby-conv-type:200",
@@ -2024,8 +2020,8 @@
         "fileName": "send_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_400_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:send:filled",
@@ -2037,8 +2033,8 @@
         "fileName": "send_filled_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/send_filled_24px.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:oriso:silent:400",
@@ -2658,7 +2654,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2775,7 +2776,7 @@
         "fileName": "row_expand_200.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_200.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2788,7 +2789,7 @@
         "fileName": "row_expand_400.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_400.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2801,7 +2802,7 @@
         "fileName": "row_expand_filled.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_filled.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx", "src/pages/users/management/useUserTableColumns.tsx"],
+        "usageFiles": ["src/pages/Agency/List/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2840,7 +2841,12 @@
         "fileName": "topic.svg",
         "sourcePath": "src/resources/img/svg/topic.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/LegalIcons.tsx", "src/pages/Statistic.tsx"],
+        "usageFiles": [
+            "src/components/CustomIcons/LegalIcons.tsx",
+            "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
+            "src/pages/Statistic.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2951,6 +2957,7 @@
             "src/components/PillSelect/index.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",
+            "src/pages/Links/InvitePanel.tsx",
             "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
         ],
         "usage": "app-used"

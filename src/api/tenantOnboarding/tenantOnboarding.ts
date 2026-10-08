@@ -35,7 +35,26 @@ import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
  * "something is missing above" sends them nowhere, while "use the link from
  * the newest e-mail" is the whole remedy.
  */
-export type InviteLinkErrorReason = 'CONSUMED' | 'REVOKED' | 'EXPIRED' | 'SUPERSEDED' | 'INVALID';
+export type InviteLinkErrorReason =
+    | 'CONSUMED'
+    | 'REVOKED'
+    | 'EXPIRED'
+    | 'SUPERSEDED'
+    | 'INVALID'
+    | 'SETUP_IN_PROGRESS'
+    | 'SETUP_OPERATOR_REVIEW_REQUIRED';
+
+export type OnboardingPurpose = 'INVITE' | 'EXISTING_ACCOUNT_SETUP';
+
+export type OnboardingTwoFactorMethod = 'APP' | 'EMAIL';
+
+/** Server-advertised methods; omitted capabilities retain the legacy app flow. */
+export interface OnboardingTwoFactorSetup {
+    secret: string | null;
+    qrCodeBase64: string | null;
+    methods?: readonly OnboardingTwoFactorMethod[];
+    defaultMethod?: OnboardingTwoFactorMethod;
+}
 
 /** The link is not usable — consumed, revoked, expired or unknown. */
 export class InviteLinkError extends Error {
@@ -66,6 +85,8 @@ export type DpaUnavailableReason = 'NOT_PUBLISHED' | 'UPSTREAM_ERROR';
 
 /** Resolved state of a tenant-admin invite link, keyed by the raw invite token. */
 export interface TenantAdminOnboardingInviteDTO {
+    /** Server-bound existing account setup; absent keeps ordinary provisioning. */
+    onboardingPurpose?: OnboardingPurpose;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
@@ -111,7 +132,7 @@ export interface TenantAdminOnboardingInviteDTO {
      * nothing new). `null`/absent when the backend does not re-issue it — the
      * 2FA step then renders the verify-only variant.
      */
-    twoFactor?: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor?: OnboardingTwoFactorSetup | null;
     /**
      * When step 1 forwarded the contract documents (ISO local date-time).
      * Recorded on the invite, so a reload restores the waiting view (#1065).
@@ -178,12 +199,7 @@ export interface TenantAdminNewTenantRegistrationRequest {
 export interface TenantAdminRegistrationResultDTO {
     /** The created (inactive) tenant — equals the reserved ID; absent for a join that names no Träger. */
     tenantId?: number;
-    twoFactor: {
-        /** Base32 TOTP secret to show/link in the authenticator app. */
-        secret: string;
-        /** QR code PNG (base64) when the backend provides one. */
-        qrCodeBase64: string | null;
-    };
+    twoFactor: OnboardingTwoFactorSetup;
 }
 
 /**
@@ -204,8 +220,10 @@ export interface TenantAdminOnboardingClient {
         inviteToken: string,
         request: TenantAdminRegistrationRequest,
     ): Promise<TenantAdminRegistrationResultDTO>;
-    /** Confirms the TOTP setup with a first one-time password. */
-    activateTwoFactor(inviteToken: string, otp: string): Promise<void>;
+    /** Sends a code to the invite's server-bound address; never completes setup. */
+    sendTwoFactorEmail?(inviteToken: string): Promise<void>;
+    /** Confirms the selected method; absent method preserves legacy app activation. */
+    activateTwoFactor(inviteToken: string, otp: string, method?: OnboardingTwoFactorMethod): Promise<void>;
 }
 
 /** Status → link-error mapping of the public onboarding endpoints (U3/U6). */
@@ -216,8 +234,14 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
     423: 'REVOKED',
 };
 
-const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
+export const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
+    value === 'CONSUMED' ||
+    value === 'REVOKED' ||
+    value === 'EXPIRED' ||
+    value === 'SUPERSEDED' ||
+    value === 'INVALID' ||
+    value === 'SETUP_IN_PROGRESS' ||
+    value === 'SETUP_OPERATOR_REVIEW_REQUIRED';
 
 /**
  * Translates a rejected public-endpoint call into the typed client errors: an
@@ -289,6 +313,24 @@ const probeTwoFactorResume = async (inviteToken: string): Promise<TenantAdminOnb
 // the authenticated /admin/access-denied page.
 const PUBLIC_RESPONSE_HANDLING = [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT];
 
+/** Sets the password of the token-bound existing account; never provisions or starts a session. */
+export const completeExistingAccountSetup = async (inviteToken: string, password: string): Promise<void> => {
+    try {
+        const result = await fetchData({
+            url: `${publicAccountInvitesEndpoint}/${encodeURIComponent(inviteToken)}/setup`,
+            method: FETCH_METHODS.POST,
+            skipAuth: true,
+            responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
+            bodyData: JSON.stringify({ password }),
+        });
+        if (result?.phase !== 'COMPLETED') {
+            throw new Error('ACCOUNT_SETUP_INCOMPLETE');
+        }
+    } catch (error) {
+        throw await toOnboardingError(error);
+    }
+};
+
 /**
  * Production client for the public tenant-admin onboarding endpoints
  * (UserService U3/U6). All calls are unauthenticated (`skipAuth`) — the whole
@@ -338,14 +380,24 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
                 }),
             ),
 
-        activateTwoFactor: async (inviteToken, otp) => {
+        sendTwoFactorEmail: (inviteToken) =>
+            run(() =>
+                fetchData({
+                    url: onboardingUrl(inviteToken, '/two-factor/email'),
+                    method: FETCH_METHODS.POST,
+                    skipAuth: true,
+                    responseHandling: PUBLIC_RESPONSE_HANDLING,
+                }),
+            ),
+
+        activateTwoFactor: async (inviteToken, otp, method) => {
             try {
                 await fetchData({
                     url: onboardingUrl(inviteToken, '/two-factor'),
                     method: FETCH_METHODS.POST,
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
-                    bodyData: JSON.stringify({ otp }),
+                    bodyData: JSON.stringify({ otp, ...(method ? { method } : {}) }),
                 });
             } catch (error) {
                 // 400/422 = the entered one-time password was rejected;
@@ -423,6 +475,8 @@ export const createStubTenantAdminOnboardingClient = (
     const STUB_TWO_FACTOR = {
         secret: 'ORISOSTUBTOTPSECRET234567ABCDEFG',
         qrCodeBase64: null,
+        methods: ['EMAIL', 'APP'] as const,
+        defaultMethod: 'EMAIL' as const,
     };
 
     const assertLinkAlive = (inviteToken: string) => {
@@ -488,6 +542,12 @@ export const createStubTenantAdminOnboardingClient = (
                 tenantId: invite.reservedTenantId,
                 twoFactor: STUB_TWO_FACTOR,
             };
+        },
+
+        sendTwoFactorEmail: async (inviteToken) => {
+            await wait(latencyMs);
+            assertLinkAlive(inviteToken);
+            if (!registered) throw new Error('Registration has not happened yet');
         },
 
         activateTwoFactor: async (inviteToken, otp) => {

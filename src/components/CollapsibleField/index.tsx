@@ -21,6 +21,12 @@ export interface CollapsibleFieldProps {
     /** The full field. Its first `input` (else first button) gets focus after expanding; caret at the end. */
     children: ReactNode;
     className?: string;
+    /** Leading glyph that replaces the ✓ (e.g. the field's domain icon). */
+    icon?: ReactNode;
+    /** `row`: a full-width pill with label over value, for stacked forms like the invite card. */
+    layout?: 'inline' | 'row';
+    /** Trailing glyph inside the row pill, e.g. a chevron on select fields. */
+    trailing?: ReactNode;
 }
 
 const WIDTH_TRANSITION = 'width 200ms cubic-bezier(0.2, 0, 0, 1)';
@@ -79,6 +85,9 @@ export const CollapsibleField = ({
     fieldKey,
     children,
     className,
+    icon,
+    layout = 'inline',
+    trailing,
 }: CollapsibleFieldProps) => {
     const { t } = useTranslation();
     const slotRef = useRef<HTMLDivElement>(null);
@@ -148,7 +157,7 @@ export const CollapsibleField = ({
     return (
         <div
             ref={slotRef}
-            className={classNames(styles.slot, className)}
+            className={classNames(styles.slot, { [styles.slotRow]: layout === 'row' }, className)}
             data-collapsed={collapsed || undefined}
             data-field-key={fieldKey}
         >
@@ -171,13 +180,24 @@ export const CollapsibleField = ({
                         onExpand();
                     }}
                 >
-                    <CheckGlyph />
+                    {icon ? (
+                        <span className={styles.icon} aria-hidden>
+                            {icon}
+                        </span>
+                    ) : (
+                        <CheckGlyph />
+                    )}
                     <span className={styles.label}>{pillText ?? label}</span>
                     {/* Phone checklist row (<600px): label and value side by side; CSS picks one of the two. */}
                     <span className={styles.rowText}>
                         <span className={styles.rowLabel}>{label}</span>
                         {valueSummary && <span className={styles.rowValue}>{valueSummary}</span>}
                     </span>
+                    {trailing && layout === 'row' && (
+                        <span className={styles.trailing} aria-hidden>
+                            {trailing}
+                        </span>
+                    )}
                 </button>
             )}
             {/* Hidden, not unmounted: input refs, caret and open requests must survive. */}

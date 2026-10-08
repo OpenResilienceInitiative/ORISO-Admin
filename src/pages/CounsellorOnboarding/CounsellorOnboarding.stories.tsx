@@ -45,7 +45,7 @@ const meta = {
                         padding: '16px',
                     }}
                 >
-                    <div style={{ width: 'min(560px, 96vw)', padding: '16px 0' }}>
+                    <div style={{ width: '100%', maxWidth: '560px', padding: '16px 0' }}>
                         <Story />
                     </div>
                 </div>
@@ -371,6 +371,7 @@ export const AgencyAdminAlsoCounsellorOffMobile: Story = {
 // A founding admin gives the new agency a topic even without counselling: its queued counsellors pick from it.
 const FOUNDING_INVITE = {
     ...AGENCY_ADMIN,
+    agencyIdAllocationMode: 'AUTO' as const,
     agencyId: 13,
     departmentId: null,
     agencyExists: false,
@@ -435,5 +436,156 @@ export const AgencyAdminFoundingWithoutCounselling: Story = {
         await userEvent.click(canvas.getByRole('button', { name: 'Thema hinzufügen' }));
         await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
         await expect(submit).toBeEnabled();
+    },
+};
+
+/** The founding admin's next step after successful two-factor activation. */
+export const AgencyAdminFoundingSuccess: Story = {
+    name: 'Agency admin founding — sign in and complete agency',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...FOUNDING_INVITE, agencyExists: true },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(
+            await canvas.findByRole('button', {
+                name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
+            }),
+        ).toBeVisible();
+    },
+};
+
+export const AgencyAdminFoundingSuccessMobile: Story = {
+    ...PHONE_390,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...FOUNDING_INVITE, agencyExists: true },
+        }),
+    },
+    play: AgencyAdminFoundingSuccess.play,
+};
+
+/** The platform limits a newly created centre, while old centres retain their topics. */
+export const NewCentreOneTopicPolicy: Story = {
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            invite: {
+                agencyExists: false,
+                departmentId: null,
+                topicPermission: 'CREATE',
+                oneTopicPerAgencyEnabled: true,
+                topics: [],
+                availableTopics: [
+                    { id: 12, name: 'Familienberatung' },
+                    { id: 13, name: 'Schuldnerberatung' },
+                ],
+            },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        const add = await canvas.findByRole('button', { name: 'Thema hinzufügen' });
+        await userEvent.click(add);
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Familienberatung' }));
+        await expect(add).toBeDisabled();
+        const remove = canvas.getByRole('button', { name: 'Familienberatung entfernen' });
+        remove.focus();
+        await userEvent.keyboard('{Enter}');
+        await expect(add).toBeEnabled();
+        await userEvent.click(add);
+        await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Familienberatung' }));
+        await expect(add).toBeDisabled();
+    },
+};
+
+export const NewCentreOneTopicPolicyPreview: Story = {
+    ...NewCentreOneTopicPolicy,
+    play: undefined,
+};
+
+/** Joining an existing centre completes registration without the full centre-profile step. */
+export const AgencyAdminExistingCentreSuccess: Story = {
+    name: 'Agency admin joins existing centre — normal completion',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
+        await expect(
+            canvas.queryByRole('button', {
+                name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
+            }),
+        ).not.toBeInTheDocument();
+    },
+};
+
+export const AgencyAdminExistingCentreSuccessMobile: Story = {
+    ...AgencyAdminExistingCentreSuccess,
+    ...PHONE_390,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+};
+
+/** A manually reserved ID has the same immutable founding origin as AUTO on resume. */
+export const AgencyAdminManualFoundingSuccess: Story = {
+    ...AgencyAdminFoundingSuccess,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...FOUNDING_INVITE, agencyExists: true, agencyIdAllocationMode: 'MANUAL' },
+        }),
+    },
+};
+
+/** A resumed counsellor invite reaches public counselling guidance after OTP activation. */
+export const CounsellorCompletionGuide: Story = {
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' }) },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
+        await expect(canvas.getByText(/^Anfragen sichten:|^Review enquiries:/)).toBeVisible();
+        await expect(
+            canvas.queryByText(/^Beratungsstelle vervollständigen:|^Complete your counselling centre:/),
+        ).toBeNull();
+        const summary = canvas.getByText(/Kurzanleitung: Ihre ersten Schritte|Quick start: your first steps/);
+        summary.focus();
+        await userEvent.click(summary);
+        await waitFor(() => expect(summary.closest('details')).toHaveAttribute('open'));
+        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };

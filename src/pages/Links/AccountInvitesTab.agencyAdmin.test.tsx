@@ -67,6 +67,7 @@ const mocks = vi.hoisted(() => ({
     nextFreeAgencyId: vi.fn(),
     useUserRoles: vi.fn(),
     searchInviteAgencies: vi.fn(),
+    findInviteTenant: vi.fn(),
 }));
 
 vi.mock('../../hooks/useUserRoles.hook', () => ({ useUserRoles: mocks.useUserRoles }));
@@ -98,6 +99,8 @@ vi.mock('../../api/agency/getAgencyById', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/agency/getAgencyById')>()),
     default: mocks.getAgencyDataById,
 }));
+
+vi.mock('../../api/tenant/findInviteTenant', () => ({ findInviteTenant: mocks.findInviteTenant }));
 
 vi.mock('../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: mocks.parseUserAuthInfo,
@@ -216,25 +219,24 @@ describe.each([
         render(<CounsellorInvitesTab />);
 
         const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
-        await waitFor(() => expect(agency).toHaveValue('Caritas Suchtberatung Freiburg · 101'), SLOW);
+        await waitFor(() => expect(agency).toHaveValue('Nr. 101'), SLOW);
         expect(agency).toBeDisabled();
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
         expect(tenant).toBeDisabled();
-        expect(tenant).toHaveValue('Caritas Freiburg · 40');
-        // A fresh page shows Rolle expanded: one role on offer, so the select is disabled.
-        const role = screen.getByRole('combobox', { name: 'Rolle' });
-        expect(role.closest('.ant-select')).toHaveTextContent('Berater:in');
-        expect(role).toBeDisabled();
+        expect(tenant).toHaveValue('Nr. 40');
+        expect(screen.getByText('Caritas Freiburg')).toBeInTheDocument();
+        expect(mocks.findInviteTenant).not.toHaveBeenCalled();
+        expect(screen.getByText('Caritas Suchtberatung Freiburg')).toBeInTheDocument();
+        // One role on offer: the card shows it as a disabled value pill, not a dead select.
+        expect(screen.getByRole('button', { name: 'Rolle bearbeiten: Berater:in' })).toBeDisabled();
+        expect(screen.queryByRole('combobox', { name: 'Rolle' })).not.toBeInTheDocument();
     });
 
     it('sends a counsellor invite into the own agency as EXISTING', async () => {
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
         await waitFor(
-            () =>
-                expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue(
-                    'Caritas Suchtberatung Freiburg · 101',
-                ),
+            () => expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Nr. 101'),
             SLOW,
         );
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
@@ -394,9 +396,9 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
         await user.click(agency);
         await user.click(await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW));
 
-        // The Träger follows the agency, as an existing unit, folded into its pill.
-        const tenantPill = await screen.findByRole('button', { name: /^Träger bearbeiten/ }, SLOW);
-        expect(tenantPill).toHaveAttribute('title', 'Caritas Südbaden (7)');
+        // The Träger follows the agency as an existing unit; the card keeps its field open.
+        const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        await waitFor(() => expect(tenant).toHaveValue('Caritas Südbaden · 7'), SLOW);
 
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
         await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
@@ -412,13 +414,7 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
             tenantIdAllocationMode: 'EXISTING',
         });
         await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
-        expect(screen.getByRole('button', { name: /^Träger bearbeiten/ })).toHaveAttribute(
-            'title',
-            'Caritas Südbaden (7)',
-        );
-        expect(screen.getByRole('button', { name: /^Beratungsstelle bearbeiten/ })).toHaveAttribute(
-            'title',
-            'Mail v2 Einzeltest (14)',
-        );
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Caritas Südbaden · 7');
+        expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Mail v2 Einzeltest · 14');
     });
 });
