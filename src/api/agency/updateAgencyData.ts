@@ -25,6 +25,13 @@ export const updateAgencyData = async (
         throw Error('agency id must be set');
     }
 
+    // Reject an incomplete range selection before type or counsellor preparation writes.
+    const postCodes =
+        formInput.postCodeRangesActive === false ? [{ from: '00000', until: '99999' }] : formInput.postCodes;
+    if (formInput.postCodeRangesActive === true && !postCodes?.length) {
+        throw new Error('Selected postal-code ranges are missing');
+    }
+
     // Same absent-vs-empty rule as `topicIds` and `online` below: `updateAgencyType` itself skips
     // the `/changetype` call for a patch that carries no `teamAgency` field, and normalises both
     // sides before comparing so an unchanged type cannot produce a 409.
@@ -92,11 +99,6 @@ export const updateAgencyData = async (
     // AgencyService requires persisted coverage before accepting offline=false. The all-areas
     // choice unmounts the range inputs, so postCodes can be absent even on a registration save.
     // POST replaces coverage transactionally; DELETE then POST can leave the centre with no rows.
-    const postCodes =
-        formInput.postCodeRangesActive === false ? [{ from: '00000', until: '99999' }] : formInput.postCodes;
-    if (formInput.postCodeRangesActive === true && !postCodes?.length) {
-        throw new Error('Selected postal-code ranges are missing');
-    }
     if (postCodes !== undefined) {
         await updateAgencyPostCodeRange(agencyId, postCodes, 'POST');
     }

@@ -115,7 +115,14 @@ describe('agency visibility with persisted geographic coverage', () => {
     it.each([undefined, []])('does not replace missing explicit ranges with all areas (%s)', async (postCodes) => {
         coverage = '10115-10179;';
         await expect(
-            updateAgencyData(agency, { ...agency, online: true, postCodeRangesActive: true, postCodes }),
+            updateAgencyData(agency, {
+                ...agency,
+                online: true,
+                teamAgency: true,
+                consultantIds: ['first-counsellor'],
+                postCodeRangesActive: true,
+                postCodes,
+            }),
         ).rejects.toThrow('Selected postal-code ranges are missing');
 
         expect(coverage).toBe('10115-10179;');
