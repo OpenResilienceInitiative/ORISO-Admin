@@ -54,6 +54,7 @@
 
 .invitesPanel {
     display: flex;
+    min-width: 0;
     flex-shrink: 0;
 }
 
@@ -64,7 +65,7 @@
 
 /* A folded card stays a rail beside the table: folding is how a laptop gets the full table width. */
 @container invites (max-width: 1199px) {
-    .invitesRow:not(:has([data-collapsed])) {
+    .invitesRow:not(:has(> .invitesPanel > section[data-collapsed])) {
         flex-direction: column;
         align-items: stretch;
     }

@@ -18,6 +18,8 @@ export interface DataTableColumn {
     width?: string | number;
     /** Direction of the first click, e.g. `desc` for "newest first" date columns. */
     firstDirection?: DataTableSortDirection;
+    /** Control next to the label inside the header cell, e.g. a sort-field pill. */
+    addon?: ReactNode;
 }
 
 export interface DataTableHeaderProps {

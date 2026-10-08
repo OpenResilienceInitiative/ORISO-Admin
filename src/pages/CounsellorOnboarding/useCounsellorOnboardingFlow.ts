@@ -42,7 +42,7 @@ export type CounsellorOnboardingState =
     | { phase: 'done' };
 
 /** Which submit failed retryably; link-death is modelled in the state instead. */
-export type CounsellorOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
+export type CounsellorOnboardingSubmitError = 'registration' | 'topic-policy' | 'two-factor-code' | 'two-factor' | null;
 
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
@@ -363,7 +363,12 @@ export const useCounsellorOnboardingFlow = (
                 result: { twoFactor: result.twoFactor, resumed: false },
             });
         } catch (error) {
-            failFlow(error, 'registration');
+            if (error instanceof Error && error.message === 'ONE_TOPIC_PER_AGENCY') {
+                setInvite((current) => (current ? { ...current, oneTopicPerAgencyEnabled: true } : current));
+                setSubmitError('topic-policy');
+            } else {
+                failFlow(error, 'registration');
+            }
         } finally {
             busyRef.current = false;
             setBusy(false);

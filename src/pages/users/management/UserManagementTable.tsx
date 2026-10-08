@@ -1,19 +1,20 @@
 import { Alert, Button, Grid, Popover, notification } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
-import { PlusOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
-import { PageMobileActions } from '../../../components/Page/PageMobileActions';
+import { SortNotice } from '../../../components/UserTable/SortNotice';
+import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
+import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
@@ -26,12 +27,23 @@ import { CounselorData } from '../../../types/counselor';
 import { TenantData } from '../../../types/tenant';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
+import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
-import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
-import { normalizeTenantAdminSortField } from '../../../constants/userTableSort';
+import { mapSorterToApiField } from './useUserTableColumns';
+import { TenantTable } from './TenantTable';
+import { UserDataTable } from './UserDataTable';
+import { UserScopeFilters, useScopeFilterAvailability } from './UserScopeFilters';
+import {
+    normalizeTenantAdminSortField,
+    USER_TABLE_API_SAFE_ORDER,
+    USER_TABLE_API_SAFE_SORT,
+} from '../../../constants/userTableSort';
+import type { UserSearchResult } from '../../../utils/fetchUserSearchWithSortFallback';
 import styles from './UserManagementTable.module.scss';
+
+const NO_FILTERS: UserSearchFilters = {};
 
 interface UserManagementTableProps {
     figmaTableHeader?: boolean;
@@ -42,7 +54,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;
     const config = USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants];
-    const isOrganizations = config.sectionKind === 'organizations';
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
@@ -54,7 +65,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const { t } = useTranslation();
     const { can } = useUserPermissions();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
     const { isEnabled } = useReleasesToggle();
     const { settings } = useAppConfigContext();
     const { data: tenantData } = useTenantData();
@@ -62,7 +73,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
     const [search, setSearch] = useState('');
-    const [openRows, setOpenRows] = useState<string[]>([]);
     const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
@@ -73,17 +83,24 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         order: config.defaultSort.order,
         pageSize: 10,
     });
+    // The page remounts this table per tab (keyed by tab), so plain state is already per tab.
+    const [pickedSort, setPickedSort] = useState<{ sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
+    const [filters, setFilters] = useState<UserSearchFilters>(NO_FILTERS);
+    const scopeFilters = useScopeFilterAvailability(sectionId);
 
-    useEffect(() => {
-        setTableState({
-            current: 1,
-            sortBy: config.defaultSort.field,
-            order: config.defaultSort.order,
-            pageSize: 10,
-        });
-        setOpenRows([]);
-        setSearch('');
-    }, [sectionId, config.defaultSort.field, config.defaultSort.order]);
+    // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
+    const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
+    const saveSort = useSaveAdminListSort();
+    const preferencesPending = !isTenants && preferencesQuery.isLoading;
+    const savedSort = preferencesQuery.data?.sorts?.[sectionId];
+    const userSort = isTenants
+        ? { sortBy: tableState.sortBy, order: tableState.order }
+        : pickedSort ??
+          (savedSort && { sortBy: savedSort.field, order: savedSort.order }) ?? {
+              sortBy: config.defaultSort.field,
+              order: config.defaultSort.order,
+          };
+    const userQueryState = { ...tableState, sortBy: userSort.sortBy, order: userSort.order };
 
     const tenantsQuery = useTenantsData({
         page: tableState.current,
@@ -96,21 +113,24 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const consultantsQuery = useConsultantsOrAdminsData({
         search,
-        ...tableState,
+        ...userQueryState,
+        filters,
         typeOfUser: consultantsSectionId,
-        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
+        rethrowOnFailure: true,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants && !preferencesPending,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
         search,
-        ...tableState,
-        enabled: isTenantAdmins,
+        ...userQueryState,
+        filters,
+        enabled: isTenantAdmins && !preferencesPending,
     });
 
     const platformAdminsQuery = usePlatformAdminsData({
         search,
-        ...tableState,
-        enabled: isPlatformAdmins,
+        ...userQueryState,
+        enabled: isPlatformAdmins && !preferencesPending,
     });
 
     const activeQuery = (() => {
@@ -120,6 +140,10 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         return consultantsQuery;
     })();
     const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
+    // When the server refused the chosen order, the arrow follows the rows it actually sent.
+    const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
+    const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : userQueryState.sortBy;
+    const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : userQueryState.order;
 
     const { mutate: deleteTenant } = useDeleteTenant({
         onSuccess: () => {
@@ -150,10 +174,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const canEditOrDelete =
         can([PermissionAction.Update, PermissionAction.Delete], config.updateResource) && canManageSection;
 
-    const onToggleRow = useCallback((id: string) => {
-        setOpenRows((current) => (current.includes(id) ? current.filter((rowId) => rowId !== id) : [...current, id]));
-    }, []);
-
     const onEditUser = useCallback(
         (record: CounselorData) => {
             navigate(`${config.editPathPrefix}/${record.id}`);
@@ -182,24 +202,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const onDeleteTenant = useCallback((record: TenantData) => {
         setTenantToDelete(record);
     }, []);
-
-    const columns = useUserTableColumns({
-        sectionId,
-        showTenant: showTenantColumn,
-        showSubdomain,
-        openRows,
-        onToggleRow,
-        onEditUser,
-        onDeleteUser,
-        onEditTenant: isTenants ? onEditTenant : undefined,
-        onDeleteTenant: isTenants ? onDeleteTenant : undefined,
-        canEditOrDelete,
-        mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
-        figmaTableHeader: figmaTableHeader && !isOrganizations,
-        fixActionsColumn: !isMobile,
-        sortBy: tableState.sortBy,
-        order: tableState.order,
-    }).filter((column) => column.key !== 'status' || config.showStatus);
 
     const updateSearch = useCallback((value: string) => {
         setTableState((state) => ({ ...state, current: 1 }));
@@ -235,20 +237,29 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [sectionId],
     );
 
+    const onUserSortChange = useCallback(
+        (sortBy: string, order: 'ASC' | 'DESC') => {
+            setPickedSort({ sortBy, order });
+            setTableState((prev) => ({ ...prev, current: 1 }));
+            saveSort(sectionId, { field: sortBy, order });
+        },
+        [saveSort, sectionId],
+    );
+
+    const onFiltersChange = useCallback((next: UserSearchFilters) => {
+        setFilters(next);
+        setTableState((prev) => ({ ...prev, current: 1 }));
+    }, []);
+
+    // Links only invites counsellors, and Träger (with their admin) for a platform admin.
+    const canInvite =
+        (isConsultants && canSeeLinksSection({ isSuperAdmin, hasRole })) || (isTenantAdmins && isSuperAdmin);
+
     const onCloseDelete = useCallback(() => {
         setDeleteUserId(null);
         setDeleteTenantAdmin(null);
         refetch();
     }, [refetch]);
-
-    const rowClassName = useCallback(
-        (record: CounselorData | TenantData) =>
-            classNames({
-                'counselorList__row--expanded':
-                    !isOrganizations && openRows.includes(String((record as CounselorData).id)),
-            }),
-        [isOrganizations, openRows],
-    );
 
     const pagination = useMemo(
         () => ({
@@ -261,8 +272,19 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [responseList?.total, tableState.current, tableState.pageSize],
     );
 
-    const consultantCount = responseList?.total ?? 0;
-    const atConsultantLimit = isConsultants && allowedNumberOfUsers > 0 && consultantCount >= allowedNumberOfUsers;
+    const countLicences = isConsultants && allowedNumberOfUsers > 0;
+    const narrowed = !!search || hasUserSearchFilters(filters);
+    // The licence counts every counsellor, not the searched or filtered list.
+    const unfilteredCount = useConsultantsOrAdminsData({
+        typeOfUser: TypeOfUser.Consultants,
+        current: 1,
+        pageSize: 1,
+        sortBy: USER_TABLE_API_SAFE_SORT,
+        order: USER_TABLE_API_SAFE_ORDER,
+        enabled: countLicences && narrowed,
+    });
+    const consultantCount = narrowed ? unfilteredCount.data?.total : responseList?.total;
+    const atConsultantLimit = countLicences && consultantCount != null && consultantCount >= allowedNumberOfUsers;
 
     const createButton = useMemo(() => {
         if (isTenants) {
@@ -324,61 +346,49 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     return (
         <div className={classNames('counselorList', styles.wrapper)}>
-            <PageMobileActions
-                id="users"
-                search={{
-                    label: t(config.searchPlaceholderKey),
-                    placeholder: t(config.searchPlaceholderKey),
-                    onSearch: updateSearch,
-                }}
-                add={
-                    canCreate && !atConsultantLimit
-                        ? {
-                              label: t(config.createLabelKey ?? 'new'),
-                              onAdd: () =>
-                                  navigate(
-                                      isTenants
-                                          ? `${config.editPathPrefix}/add/general${
-                                                responseList?.total === 0 ? '?main=true' : ''
-                                            }`
-                                          : `${config.editPathPrefix}/add`,
-                                  ),
-                          }
-                        : undefined
-                }
-            >
-                <div className={styles.searchContainer}>
-                    <GlobalSearchBar
-                        className={styles.searchWithButton}
-                        expandedWidth={499}
-                        onSearch={updateSearch}
-                        onSearchChange={setSearchDebounced}
-                        searchPlaceholder={t(config.searchPlaceholderKey)}
-                    >
-                        {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
-                    </GlobalSearchBar>
-                    {isConsultants && allowedNumberOfUsers > 0 && (
-                        <span className={styles.sectionCount}>
-                            {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
-                        </span>
-                    )}
-                    {isAgencyAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('agencyAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenantAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenantAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenants && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenants.subTitle', { count: responseList.total })}
-                        </span>
-                    )}
-                </div>
-            </PageMobileActions>
+            <div className={styles.searchContainer}>
+                <UserScopeFilters
+                    sectionId={sectionId}
+                    filters={filters}
+                    onChange={onFiltersChange}
+                    search={{
+                        onSearch: updateSearch,
+                        onSearchChange: setSearchDebounced,
+                        searchPlaceholder: t(config.searchPlaceholderKey),
+                    }}
+                    actions={
+                        (canCreate || canInvite) && (
+                            <div className={styles.toolbarActions}>
+                                {canInvite && (
+                                    <Link to={routePathNames.links} className={styles.inviteButton}>
+                                        {t('userTable.goToInvitations')}
+                                        <ArrowRightOutlined aria-hidden />
+                                    </Link>
+                                )}
+                                {canCreate && createButton}
+                            </div>
+                        )
+                    }
+                />
+                {countLicences && consultantCount != null && (
+                    <span className={styles.sectionCount}>
+                        {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
+                    </span>
+                )}
+                {isAgencyAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('agencyAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenantAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('tenantAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenants && responseList?.total != null && (
+                    <span className={styles.sectionCount}>{t('tenants.subTitle', { count: responseList.total })}</span>
+                )}
+            </div>
             {isError && (
                 <Alert
                     message={t('error.loading')}
@@ -388,18 +398,54 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     style={{ marginBottom: 16 }}
                 />
             )}
-            <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
-                <ResizeTable
-                    rowKey="id"
+            {rejectedSort && <SortNotice shownOrder={t('userTable.sortNotice.safeOrder', 'Vorname A–Z')} />}
+            {!isTenants && (
+                <UserDataTable
+                    sectionId={sectionId}
+                    rows={tableData as CounselorData[]}
+                    loading={isLoading || preferencesPending}
+                    showTenant={showTenantColumn}
+                    showSubdomain={showSubdomain}
+                    canEditOrDelete={canEditOrDelete}
+                    sortBy={shownSortBy}
+                    order={shownOrder}
+                    onSortChange={onUserSortChange}
+                    onEdit={onEditUser}
+                    onDelete={onDeleteUser}
+                    page={tableState.current}
+                    pageSize={tableState.pageSize}
+                    total={responseList?.total ?? 0}
+                    onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
+                    onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
+                    onTenantClick={
+                        scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
+                    }
+                    onAgencyClick={
+                        scopeFilters.canListAgencies
+                            ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
+                            : undefined
+                    }
+                    ariaLabel={t(config.searchPlaceholderKey)}
+                />
+            )}
+            {isTenants && (
+                <TenantTable
+                    rows={tenantsQuery.data?.data ?? []}
                     loading={isLoading}
-                    columns={columns}
-                    dataSource={tableData}
                     pagination={pagination}
                     onChange={handleTableAction}
-                    rowClassName={isOrganizations ? undefined : rowClassName}
-                    locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
+                    emptyTextKey={config.emptyTextKey}
+                    figmaTableHeader={figmaTableHeader}
+                    showSubdomain={showSubdomain}
+                    canEditOrDelete={canEditOrDelete}
+                    mainTenantSubdomain={settings.mainTenantSubdomainForSingleDomainMultitenancy}
+                    fixActionsColumn={!isMobile}
+                    sortBy={shownSortBy}
+                    order={shownOrder}
+                    onEdit={onEditTenant}
+                    onDelete={onDeleteTenant}
                 />
-            </div>
+            )}
             {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
                 <DeleteUserModal
                     deleteUserId={deleteUserId}

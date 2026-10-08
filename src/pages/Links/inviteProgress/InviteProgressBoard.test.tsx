@@ -163,6 +163,26 @@ describe('InviteProgressBoard', () => {
         expect(within(row).queryByText(/– abgeschlossen/)).not.toBeInTheDocument();
     });
 
+    // #1127: on a phone the five chips fill half a screen. They fold behind a toggle (CSS hides
+    // them below 768px while folded; a selected chip stays visible so a filter is never hidden).
+    it('folds the filter chips behind a toggle that reports and controls their state', async () => {
+        const user = userEvent.setup();
+        render(<InviteProgressBoard {...baseProps()} />);
+
+        const toggle = screen.getByRole('button', { name: 'Filter' });
+        const chips = screen.getByRole('group', { name: 'Onboarding-Übersicht' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).toHaveAttribute('aria-controls', chips.id);
+        expect(chips).toHaveAttribute('data-collapsed', 'true');
+
+        await user.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(chips).toHaveAttribute('data-collapsed', 'false');
+
+        await user.click(toggle);
+        expect(chips).toHaveAttribute('data-collapsed', 'true');
+    });
+
     it('filters the table via a phase chip and clears on the second click', async () => {
         const user = userEvent.setup();
         render(<InviteProgressBoard {...baseProps()} />);
@@ -971,6 +991,13 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
 
         const headers = () => screen.getAllByRole('columnheader').map((header) => header.textContent);
 
+        it.each([767, 768, 831, 832])('uses cards below the counsellor table fit boundary at %ipx', (measuredWidth) => {
+            width = measuredWidth;
+            render(<InviteProgressBoard {...baseProps()} targetRole="COUNSELLOR" />);
+            const table = screen.getByRole('table');
+            expect(table.closest('[class*="stackedAlways"]') != null).toBe(measuredWidth < 832);
+        });
+
         it('reflows a narrow counsellor board to five columns: date over activity, status over actions', () => {
             width = 846;
             const counsellor = invite(50, {
@@ -994,8 +1021,8 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             expect(cells[3].querySelectorAll('time')).toHaveLength(2);
             expect(within(cells[4]).getByText('Gesendet')).toBeInTheDocument();
             expect(within(cells[4]).getByRole('button', { name: 'Einladung widerrufen' })).toBeInTheDocument();
-            // Four counsellor steps at three per line: the track wraps instead of widening the table.
-            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('3');
+            // The bounded track keeps a single scrollable line instead of forcing line breaks.
+            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
         });
 
         it('keeps all seven columns once the counsellor board is wide enough', () => {
@@ -1004,7 +1031,7 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             expect(headers()).toHaveLength(7);
         });
 
-        it('needs a wider board on the Träger tab, and wraps its track at four per line', () => {
+        it('needs a wider board on the Träger tab and leaves its track on one scrollable line', () => {
             width = 1400;
             render(
                 <InviteProgressBoard
@@ -1023,7 +1050,7 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             );
             expect(headers()).toHaveLength(5);
             const row = screen.getByText('person51@example.org').closest('tr') as HTMLElement;
-            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('4');
+            expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
         });
     });
 });

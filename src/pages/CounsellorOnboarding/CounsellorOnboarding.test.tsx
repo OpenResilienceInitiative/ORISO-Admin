@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -374,6 +374,70 @@ describe('CounsellorOnboarding', () => {
         );
     });
 
+    it('allows only one topic when founding a centre under the platform policy', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                agencyExists: false,
+                oneTopicPerAgencyEnabled: true,
+                departmentId: null,
+                topics: [],
+            }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+        await screen.findByLabelText('cards.advisorAccount.username');
+        await addTopic(user, 'Familienberatung');
+        expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeDisabled();
+        await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+        await user.click(within(screen.getAllByTestId('input-chip')[0]).getByRole('button'));
+        expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeEnabled();
+        await addTopic(user, 'Schuldnerberatung');
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(1);
+    });
+
+    it('retains a stale multi-topic draft after a policy rejection so the invitee can correct it', async () => {
+        const register = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('ONE_TOPIC_PER_AGENCY'))
+            .mockResolvedValue({ consultantId: 'consultant-1', phase: 'COMPLETED', twoFactor: null });
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, agencyExists: false }),
+            registerCounsellor: register,
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'New centre');
+        await user.click(submit());
+        expect(await screen.findByTestId('wizard-topic-policy-error')).toHaveTextContent(
+            'message.error.ONE_TOPIC_PER_AGENCY',
+        );
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(2);
+        expect(submit()).toBeDisabled();
+        await user.click(within(screen.getAllByTestId('input-chip')[0]).getByRole('button'));
+        expect(submit()).toBeEnabled();
+        await user.click(submit());
+        await waitFor(() =>
+            expect(register).toHaveBeenLastCalledWith('raw-token', expect.objectContaining({ topicIds: [13] })),
+        );
+    });
+
+    it('keeps the legacy centre topic picker unrestricted by the new-centre policy', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi
+                .fn()
+                .mockResolvedValue({ ...INVITE, agencyExists: true, oneTopicPerAgencyEnabled: true }),
+        });
+        const user = userEvent.setup();
+        renderFlow(client);
+        await screen.findByLabelText('cards.advisorAccount.username');
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(2);
+        await addTopic(user, 'Suchtberatung');
+        expect(screen.getAllByTestId('input-chip')).toHaveLength(3);
+    });
+
     describe('topic permission', () => {
         const fillAccount = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
@@ -693,6 +757,64 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         };
         const nameAgency = async (user: ReturnType<typeof userEvent.setup>) =>
             user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Suchtberatung Nord');
+
+        it.each(['COMPLETED', 'PENDING_2FA_ACTIVATION'] as const)(
+            'guides the founding admin to the agency profile after %s',
+            async (phase) => {
+                const client = createClient({
+                    getOnboardingInvite: vi.fn().mockResolvedValue({ ...FOUNDING_INVITE, alsoCounsellor: false }),
+                    registerCounsellor: vi.fn().mockResolvedValue({
+                        consultantId: 'founder',
+                        phase,
+                        twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                    }),
+                });
+                const user = userEvent.setup();
+                render(
+                    <MemoryRouter initialEntries={['/invite']}>
+                        <Routes>
+                            <Route
+                                path="/invite"
+                                element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                            />
+                            <Route path="/admin/login" element={<h1>Sign in</h1>} />
+                        </Routes>
+                    </MemoryRouter>,
+                );
+                await fillAccount(user);
+                await nameAgency(user);
+                await addTopic(user, 'Suchtberatung');
+                await user.click(submit());
+                if (phase === 'PENDING_2FA_ACTIVATION') {
+                    await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+                    await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+                }
+                expect(await screen.findByText('counsellorOnboarding.agencySetup.subtitle')).toBeInTheDocument();
+                await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.agencySetup.finish' }));
+                expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+            },
+        );
+
+        it('retains the agency next step when OTP resumes after the agency was created', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...FOUNDING_INVITE,
+                    agencyExists: true,
+                    phase: 'PENDING_2FA_ACTIVATION',
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            expect(
+                await screen.findByRole('button', {
+                    name: 'counsellorOnboarding.agencySetup.finish',
+                }),
+            ).toBeInTheDocument();
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+        });
 
         it('without counselling still requires one topic for the agency and sends it', async () => {
             const client = createClient({

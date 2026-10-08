@@ -42,6 +42,21 @@ const getKeycloakAccessToken = (loginProps: {
                             }),
                         );
                     });
+                } else if (response.status === 429) {
+                    // #1338: Keycloak now refuses a code request that is over the
+                    // per-window ceiling, and it has always refused a code that was
+                    // guessed too often. Both are 429. Without this branch they fell
+                    // into the final `else` and the form claimed a network problem,
+                    // which sent people to reload and retype instead of waiting.
+                    // The body carries `resendAvailableInSeconds` for the first case.
+                    response
+                        .json()
+                        .then((data) => {
+                            reject(new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data }));
+                        })
+                        .catch(() => {
+                            reject(new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data: {} }));
+                        });
                 } else if (response.status === 401) {
                     if (!tryUnencryptedForEmail) {
                         getKeycloakAccessToken({
