@@ -290,6 +290,9 @@ export type M3RichTextEditorProps = {
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
+// Formality is an internal content key, not part of an HTML language tag.
+const toHtmlLanguage = (language: string | undefined) => (language === 'de@informal' ? 'de' : language);
+
 /**
  * Stacking level of the fullscreen reading dialog (#594.9).
  *
@@ -1313,7 +1316,7 @@ export const M3RichTextEditor = ({
                             aria-label={comparison.title}
                             // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the scrollable reference
                             tabIndex={0}
-                            lang={comparison.language}
+                            lang={toHtmlLanguage(comparison.language)}
                             // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
                         />
@@ -1354,7 +1357,7 @@ export const M3RichTextEditor = ({
                                 no dictionary without it. */}
                             <div
                                 className={styles.editorContentScroll}
-                                lang={contentLanguage ?? language}
+                                lang={toHtmlLanguage(contentLanguage ?? language)}
                                 {...(!editorEditable ? { role: 'region', 'aria-label': title } : {})}
                                 {...(!editorEditable && scrollsInternally
                                     ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
@@ -1696,7 +1699,7 @@ export const M3RichTextEditor = ({
                     className={`${styles.comparisonDocument} ${styles.templateDialogDocument}`}
                     role="region"
                     aria-label={comparison.title}
-                    lang={comparison.language}
+                    lang={toHtmlLanguage(comparison.language)}
                     // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the full scrollable template
                     tabIndex={0}
                     // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
