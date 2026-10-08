@@ -35,10 +35,10 @@ const Sampler = () => (
             <Button type="primary">Speichern</Button>
             <Button>Abbrechen</Button>
         </Space>
-        <Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
-        <Input placeholder="Suche…" />
+        <Select aria-label="Thema" defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
+        <Input aria-label="Suche" placeholder="Suche…" />
         <Space>
-            <Switch defaultChecked />
+            <Switch aria-label="Aktiv" defaultChecked />
             <Tag color="error">Legal violation</Tag>
             <Tag>Holiday</Tag>
         </Space>

@@ -82,6 +82,12 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             colorSuccessText: greenText,
             // Surfaces + text.
             colorTextBase: t('--m3-on-surface', '#1a1c1e'),
+            // Explanatory copy is content, not the45%opacity disabled-control tone.
+            colorTextDescription: t('--m3-on-surface-variant', '#444748'),
+            // Placeholder and read-only selected values remain legible. Disabled
+            // behavior and surface/border cues still identify unavailable controls.
+            colorTextPlaceholder: t('--m3-on-surface-variant', '#444748'),
+            colorTextDisabled: t('--m3-on-surface-variant', '#444748'),
             colorBgBase: t('--m3-surface', '#fcf9f9'),
             colorBgContainer: t('--m3-surface-container-low', '#f7f3f4'),
             colorBgElevated: t('--m3-surface-container', '#f0edee'),

@@ -47,6 +47,17 @@ describe('buildAdminAntdTheme', () => {
             const token = antdTheme.getDesignToken(buildAdminAntdTheme({ scheme }));
             expect(contrastRatio(token.green7, token.green1)).toBeGreaterThanOrEqual(4.5);
             expect(token.green1).toBe(original.green1);
+            expect(
+                contrastRatio(
+                    compositeText(token.colorTextDescription, token.colorBgContainer),
+                    token.colorBgContainer,
+                ),
+            ).toBeGreaterThanOrEqual(4.5);
+            [token.colorTextPlaceholder, token.colorTextDisabled].forEach((color) => {
+                expect(
+                    contrastRatio(compositeText(color, token.colorBgContainer), token.colorBgContainer),
+                ).toBeGreaterThanOrEqual(4.5);
+            });
             expect(contrastRatio(token.colorSuccessText, token.colorSuccessBg)).toBeGreaterThanOrEqual(4.5);
             expect(token.colorSuccessBg).toBe(original.colorSuccessBg);
             const theme = buildAdminAntdTheme({ scheme });

@@ -87,3 +87,21 @@ describe('DoneStep', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/admin/login');
     });
 });
+
+it('lets the owning flow choose login while preserving existing-account completion copy', async () => {
+    mocks.navigate.mockClear();
+    const login = vi.fn();
+    const user = userEvent.setup();
+    render(
+        <MemoryRouter>
+            <DoneStep existingAccountSetup onLogin={login} />
+        </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { name: 'accountSetup.completedTitle' })).toBeInTheDocument();
+    expect(screen.getByTestId('onboarding-done-description')).toHaveTextContent('accountSetup.success');
+    expect(screen.queryByTestId('onboarding-done-tenant-id')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('onboarding-done-next-step')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+});

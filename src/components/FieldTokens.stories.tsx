@@ -77,38 +77,62 @@ export const FieldAnatomy: StoryObj = {
         <Workspace>
             <Row title="Input">
                 <Cell label="Default (hover to preview hover surface)">
-                    <Input placeholder="Suche…" />
+                    <Input aria-label="Suche" placeholder="Suche…" />
                 </Cell>
                 <Cell label="Filled">
-                    <Input defaultValue="Beratungsstelle Mitte" />
+                    <Input aria-label="Beratungsstelle" defaultValue="Beratungsstelle Mitte" />
                 </Cell>
                 <Cell label="Focus (primary outline)">
-                    <Input autoFocus placeholder="Fokussiert…" />
+                    <Input aria-label="Fokussiertes Feld" autoFocus placeholder="Fokussiert…" />
                 </Cell>
                 <Cell label="Disabled">
-                    <Input disabled defaultValue="Nicht änderbar" />
+                    <Input aria-label="Nicht änderbares Feld" disabled defaultValue="Nicht änderbar" />
                 </Cell>
             </Row>
             <Row title="Select">
                 <Cell label="Default">
-                    <Select placeholder="Thema wählen…" options={selectOptions} style={{ width: '100%' }} />
+                    <Select
+                        virtual={false}
+                        aria-label="Thema"
+                        placeholder="Thema wählen…"
+                        options={selectOptions}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
                 <Cell label="Filled">
-                    <Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
+                    <Select
+                        virtual={false}
+                        aria-label="Gewähltes Thema"
+                        defaultValue="illness"
+                        options={selectOptions}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
                 <Cell label="Disabled">
-                    <Select disabled defaultValue="advice" options={selectOptions} style={{ width: '100%' }} />
+                    <Select
+                        virtual={false}
+                        aria-label="Nicht änderbares Thema"
+                        disabled
+                        defaultValue="advice"
+                        options={selectOptions}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
             </Row>
             <Row title="InputNumber">
                 <Cell label="Default">
-                    <InputNumber placeholder="0" style={{ width: '100%' }} />
+                    <InputNumber aria-label="Anzahl" placeholder="0" style={{ width: '100%' }} />
                 </Cell>
                 <Cell label="Filled">
-                    <InputNumber defaultValue={25} style={{ width: '100%' }} />
+                    <InputNumber aria-label="Gewählte Anzahl" defaultValue={25} style={{ width: '100%' }} />
                 </Cell>
                 <Cell label="Disabled">
-                    <InputNumber disabled defaultValue={5} style={{ width: '100%' }} />
+                    <InputNumber
+                        aria-label="Nicht änderbare Anzahl"
+                        disabled
+                        defaultValue={5}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
             </Row>
             <Row title="Token values (seed #A5000A)">
@@ -142,6 +166,8 @@ export const TonalSelection: StoryObj = {
             <Row title="Select — open, with tonal selected item">
                 <div style={{ width: 260 }}>
                     <Select
+                        aria-label="Thema"
+                        virtual={false}
                         open
                         defaultValue="advice"
                         options={selectOptions}

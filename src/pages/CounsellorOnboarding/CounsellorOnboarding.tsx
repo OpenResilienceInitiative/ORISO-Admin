@@ -6,7 +6,7 @@ import Refresh from '@mui/icons-material/Refresh';
 import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import routePathNames from '../../appConfig';
+import routePathNames, { appURL } from '../../appConfig';
 import {
     CounsellorOnboardingClient,
     CounsellorTopicOption,
@@ -156,16 +156,21 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     if (state.phase === 'done') {
         // After registration, a resumed invite already reports its newly created agency as existing.
         const agencyAdminRegistration = isAgencyAdminInvite(invite);
+        const signIn = () => {
+            if (agencyAdminRegistration) navigate(routePathNames.login);
+            else window.location.assign(`${appURL.replace(/\/$/, '')}/login`);
+        };
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
-                    <DoneStep existingAccountSetup />
+                    <DoneStep existingAccountSetup onLogin={signIn} />
                 ) : (
                     <SuccessCard
+                        audience={agencyAdminRegistration ? 'agencyAdmin' : 'counsellor'}
                         titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
                         subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
                         finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
-                        onFinish={() => navigate(routePathNames.login)}
+                        onFinish={signIn}
                     />
                 )}
             </div>
@@ -407,6 +412,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
                 {counselling && (
                     <FloatingLabelSelect
+                        virtual={false}
                         label={t('cards.personalInfo.salutation')}
                         options={SALUTATION_KEYS.map((key) => ({
                             value: key,
