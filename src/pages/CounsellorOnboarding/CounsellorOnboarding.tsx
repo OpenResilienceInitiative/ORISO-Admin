@@ -108,6 +108,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitRegistration,
         submitAccountSetup,
         submitTwoFactorCode,
+        sendTwoFactorEmail,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient, i18n.resolvedLanguage ?? i18n.language);
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
@@ -185,7 +186,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 <TwoFactorSetup
                     context="onboarding"
                     appLink={
-                        state.result.twoFactor
+                        state.result.twoFactor?.secret
                             ? {
                                   secretBase32: toBase32Secret(state.result.twoFactor.secret),
                                   qrCodeBase64: state.result.twoFactor.qrCodeBase64,
@@ -197,6 +198,15 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     error={error}
                     titleKey="counsellorOnboarding.twoFactor.title"
                     descriptionKey="counsellorOnboarding.twoFactor.description"
+                    defaultMethod={state.result.twoFactor?.defaultMethod}
+                    methods={state.result.twoFactor?.methods}
+                    email={invite?.recipientEmail}
+                    onSendEmail={
+                        state.result.twoFactor?.methods?.includes('EMAIL') && resolvedClient.sendTwoFactorEmail
+                            ? sendTwoFactorEmail
+                            : undefined
+                    }
+                    onVerifyEmail={(otp) => submitTwoFactorCode(otp, 'EMAIL')}
                     onVerify={submitTwoFactorCode}
                 />
             </div>

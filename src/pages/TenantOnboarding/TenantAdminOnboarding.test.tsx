@@ -755,6 +755,7 @@ describe('TenantAdminOnboarding — joining an existing Träger', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+        await user.click(await screen.findByRole('button', { name: 'twoFactorSetup.email.send' }));
         await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
         await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
 
