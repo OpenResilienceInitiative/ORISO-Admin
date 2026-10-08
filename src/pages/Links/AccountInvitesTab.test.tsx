@@ -917,6 +917,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(mocks.createAccountInvite).not.toHaveBeenCalled();
     });
 
+    // Lookups wait up to 10s like the rest of this file: the debounced search is slow on a shared runner.
+    const SLOW = { timeout: 10_000 };
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {
         const agencyPage = {
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
@@ -942,7 +944,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         });
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        await user.type(await screen.findByLabelText('E-Mail', undefined, SLOW), 'lisa.simpson@example.org');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
@@ -957,12 +959,12 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         });
         await user.click(screen.getByRole('option', { name: /Diakonie Lahr/ }));
 
-        expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
+        expect((await screen.findAllByText('Darf weitere Themen anlegen', undefined, SLOW)).length).toBeGreaterThan(0);
         const sendButton = screen.getByRole('button', { name: 'Einladen' });
-        await waitFor(() => expect(sendButton).toBeEnabled());
+        await waitFor(() => expect(sendButton).toBeEnabled(), SLOW);
         await user.click(sendButton);
 
-        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1), SLOW);
         expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
             agencyId: 14,
             agencyIdAllocationMode: 'EXISTING',
@@ -971,8 +973,6 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     // Riccardo's #1036 review: a late agency default must not overwrite the admin's own choice.
-    // Lookups wait up to 10s like the rest of this file: the debounced search is slow on a shared runner.
-    const SLOW = { timeout: 10_000 };
     it('keeps a topic permission chosen while the agency default is still loading', async () => {
         mocks.searchInviteAgencies.mockResolvedValue({
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
