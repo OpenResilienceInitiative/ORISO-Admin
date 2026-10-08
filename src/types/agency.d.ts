@@ -87,6 +87,8 @@ export interface AgencyData {
     createDate?: string; // Already returned by backend
     updateDate?: string; // Already returned by backend
     postCodes?: PostCodeRange[];
+    /** Registration-card choice: false means all postal-code areas. Absent on other card patches. */
+    postCodeRangesActive?: boolean;
     dataProtection: {
         dataProtectionResponsibleEntity:
             | 'AGENCY_RESPONSIBLE'
