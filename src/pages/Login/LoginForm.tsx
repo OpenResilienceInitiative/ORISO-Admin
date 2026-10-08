@@ -3,6 +3,7 @@ import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
@@ -48,6 +49,16 @@ const waitMessage = (seconds: number): [string, Record<string, number>] => {
         : ['message.error.auth.tooManyCodesWaitMinutes', { minutes }];
 };
 
+/**
+ * Keycloak answers the password grant of an account that still carries a required
+ * action (e.g. `UPDATE_PASSWORD` for an admin-chosen password) with 400 invalid_grant
+ * "Account is not fully set up". The password matched: retyping it can never work,
+ * only the invitation link or a password reset finishes the setup
+ * (ORISO-Frontend#1670). Keycloak says this only after the password matched, so
+ * naming it reveals nothing about whether an account exists.
+ */
+const SETUP_INCOMPLETE_DESCRIPTION = /account is not fully set up/i;
+
 const positiveSeconds = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 
@@ -61,6 +72,7 @@ const LoginForm = () => {
     const { mutateAsync: loginAsync } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
+    const [showSetupIncomplete, setShowSetupIncomplete] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
     // What the realm last said about asking for another code (#1338). Undefined
@@ -141,6 +153,7 @@ const LoginForm = () => {
     const onFinish = async (values: any) => {
         setPostLoading(true);
         setShowCredentialsHint(false);
+        setShowSetupIncomplete(false);
 
         try {
             await loginAsync(values);
@@ -151,7 +164,15 @@ const LoginForm = () => {
             const otpSubmitted = Boolean(values?.otp);
             const stage = otpSubmitted ? 'otp' : 'password';
             setResendCooldownSeconds(positiveSeconds(error.options?.data?.resendAvailableInSeconds));
-            if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
+            const description = error.options?.data?.error_description;
+            if (
+                error.message === FETCH_ERRORS.BAD_REQUEST &&
+                typeof description === 'string' &&
+                SETUP_INCOMPLETE_DESCRIPTION.test(description)
+            ) {
+                setShowSetupIncomplete(true);
+                recordLoginFailure({ outcome: 'setup_incomplete', transport: 'bad_request', stage });
+            } else if (error.message === FETCH_ERRORS.BAD_REQUEST && otpType && !otpSubmitted) {
                 // The password was right, the realm asks for the second factor.
                 setOtpDisabled(false);
                 setTwoFactorType(otpType);
@@ -244,6 +265,11 @@ const LoginForm = () => {
                     )}
 
                     {showCredentialsHint && <LoginCredentialsHint />}
+                    {showSetupIncomplete && (
+                        <Alert severity="error" role="alert" sx={{ mb: 2 }} data-testid="login-setup-incomplete-hint">
+                            {t('message.error.auth.setupIncomplete')}
+                        </Alert>
+                    )}
 
                     <a href={routePathNames.passwordReset} className="forgotPW">
                         {t('password.forgot')}

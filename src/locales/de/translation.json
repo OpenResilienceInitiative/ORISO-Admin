@@ -326,6 +326,7 @@
     "message.error.unexpected": "Der Vorgang wurde abgebrochen.",
     "message.error.auth.login": "Login fehlgeschlagen. Bitte überprüfen Sie Benutzernamen/E-Mail und Passwort.",
     "message.error.auth.credentialsOrInvite": "Die Anmeldung war nicht möglich. Bitte prüfen Sie Benutzername/E-Mail und Passwort. Falls Sie zu dieser Plattform eingeladen wurden, schließen Sie bitte zuerst die Registrierung über den Einladungslink aus Ihrer E-Mail ab.",
+    "message.error.auth.setupIncomplete": "Ihr Konto ist noch nicht vollständig eingerichtet. Bitte nutzen Sie den Link aus Ihrer Einladungs-E-Mail oder setzen Sie Ihr Passwort über „Passwort vergessen?“ zurück, um die Einrichtung abzuschließen.",
     "message.error.auth.adminOnly": "Dieses Konto kann nicht auf die Verwaltung zugreifen. Bitte verwenden Sie ein Admin-Konto.",
     "message.error.auth.tenantAccessDenied": "Ihr Konto hat keinen Zugriff auf diesen Verwaltungsbereich. Bitte prüfen Sie, ob Sie sich beim richtigen Mandanten anmelden, oder kontaktieren Sie Ihren Admin.",
     "message.error.auth.network": "Der Server ist derzeit nicht erreichbar. Bitte versuchen Sie es später erneut.",
