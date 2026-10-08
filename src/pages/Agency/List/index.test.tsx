@@ -113,8 +113,16 @@ vi.mock('../../../resources/img/svg/table-actions/row_expand_filled.svg', () => 
 }));
 
 vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
-        <div data-testid="global-search">{children}</div>
+    GlobalSearchBar: ({ children, onSearch }: { children?: React.ReactNode; onSearch?: (query: string) => void }) => (
+        <div data-testid="global-search">
+            <input
+                aria-label="Search agencies"
+                onKeyDown={(event) => {
+                    if (event.key === 'Enter') onSearch?.(event.currentTarget.value);
+                }}
+            />
+            {children}
+        </div>
     ),
 }));
 
@@ -139,12 +147,19 @@ vi.mock('../../../components/ResizableTable', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
-    useAgenciesData: () => ({
-        data: mocks.isError ? undefined : { total: mocks.agencies.length, data: mocks.agencies },
-        isLoading: mocks.isLoading,
-        isError: mocks.isError,
-        refetch: mocks.refetch,
-    }),
+    useAgenciesData: ({ search }: { search?: string }) => {
+        const agencies = search
+            ? mocks.agencies.filter((agency) =>
+                  `${agency.name} ${agency.city}`.toLowerCase().includes(search.toLowerCase()),
+              )
+            : mocks.agencies;
+        return {
+            data: mocks.isError ? undefined : { total: agencies.length, data: agencies },
+            isLoading: mocks.isLoading,
+            isError: mocks.isError,
+            refetch: mocks.refetch,
+        };
+    },
 }));
 
 vi.mock('../../../hooks/useTenantsData', () => ({
@@ -189,7 +204,7 @@ vi.mock('./AgencyDeletionModal', () => ({
     AgencyDeletionModal: () => <div data-testid="agency-deletion-modal" />,
 }));
 
-const buildAgency = (topics: Array<{ id: number | null; name: string }>) =>
+const buildAgency = (topics: Array<{ id: number | null; name: string }>, overrides: Record<string, unknown> = {}) =>
     ({
         id: 'agency-1',
         name: 'Agency One',
@@ -213,7 +228,26 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>) =>
             dataProtectionOfficerContact: null,
         },
         agencyLogo: null,
+        ...overrides,
     } as any);
+
+// The toolbar is desktop-only now — on a phone its search and create action
+// move into the bottom navigation — and the setup stub answers every media
+// query with `matches: false`, i.e. mobile.
+const withDesktopLayout = () => {
+    const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
+
+    stub.mockImplementation((query: string) => ({
+        matches: query.includes('min-width: 768px'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    }));
+};
 
 describe('AgencyList topic rendering', () => {
     beforeEach(() => {
@@ -305,24 +339,6 @@ describe('AgencyList topic rendering', () => {
         expect(screen.getByTestId('table-empty')).toHaveTextContent('No data available');
     });
 
-    // The toolbar is desktop-only now — on a phone its search and create action
-    // move into the bottom navigation — and the setup stub answers every media
-    // query with `matches: false`, i.e. mobile.
-    const withDesktopLayout = () => {
-        const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
-
-        stub.mockImplementation((query: string) => ({
-            matches: query.includes('min-width: 768px'),
-            media: query,
-            onchange: null,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        }));
-    };
-
     it('disables agency creation until the tenant DPA is signed', () => {
         withDesktopLayout();
         mocks.dpaGate = { dpaPublished: true, dpaSigned: false };
@@ -349,46 +365,82 @@ describe('AgencyList landing for a Beratungsstellen-Admin (ORISO-Admin#917)', ()
         mocks.userDataError = false;
     });
 
-    it('forwards straight into the settings of the single assigned agency', () => {
-        mocks.userData = { agencies: [{ id: 42, name: 'Beratungsstelle Nord' }] };
+    it('forwards straight into the settings of the single administered agency', () => {
+        mocks.agencies = [buildAgency([{ id: 1, name: 'Topic A' }], { id: 42, name: 'Beratungsstelle Nord' })];
 
         render(<AgencyList />);
 
         const navigate = screen.getByTestId('navigate');
         expect(navigate).toHaveAttribute('data-to', '/admin/agency/42');
         expect(navigate).toHaveAttribute('data-replace', 'true');
-        expect(screen.queryByText('Agency One')).not.toBeInTheDocument();
     });
 
-    it('stays on the list when several agencies are assigned', () => {
-        mocks.userData = { agencies: [{ id: 42 }, { id: 43 }] };
+    it('stays on the list when several agencies are administered', () => {
+        mocks.agencies = [
+            buildAgency([{ id: 1, name: 'Topic A' }], { id: 42 }),
+            buildAgency([{ id: 1, name: 'Topic A' }], { id: 43 }),
+        ];
 
         render(<AgencyList />);
 
         expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
-        expect(screen.getByTestId('actions-agency-1')).toBeInTheDocument();
+        expect(screen.getByTestId('actions-42')).toBeInTheDocument();
     });
 
-    it('renders nothing while the assignment is still loading, so the list does not flash', () => {
-        mocks.userDataLoading = true;
+    it('renders nothing while the administered agencies are still loading, so the list does not flash', () => {
+        mocks.isLoading = true;
 
         const { container } = render(<AgencyList />);
 
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('falls back to the list when the assignment cannot be loaded', () => {
-        mocks.userDataError = true;
+    it('falls back to the list when the administered agencies cannot be loaded', () => {
+        mocks.isError = true;
 
         render(<AgencyList />);
 
         expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
-        expect(screen.getByTestId('actions-agency-1')).toBeInTheDocument();
+        expect(screen.getByTestId('table-empty')).toHaveTextContent('Something went wrong. Please try again.');
     });
 
-    it('never forwards a Träger admin, whatever the user data says', () => {
+    it('keeps an active search on the list when two administered agencies narrow to one', () => {
+        withDesktopLayout();
+        mocks.agencies = [
+            buildAgency([], { id: 42, name: 'North centre' }),
+            buildAgency([], { id: 43, name: 'South centre' }),
+        ];
+        render(<AgencyList />);
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+        expect(screen.getByTestId('actions-42')).toBeInTheDocument();
+        expect(screen.getByTestId('actions-43')).toBeInTheDocument();
+
+        const search = screen.getByRole('textbox', { name: 'Search agencies' });
+        fireEvent.change(search, { target: { value: 'North' } });
+        fireEvent.keyDown(search, { key: 'Enter' });
+
+        expect(screen.getByTestId('actions-42')).toBeInTheDocument();
+        expect(screen.queryByTestId('actions-43')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+    });
+
+    it('ignores the consultant assignment, which names a centre the admin does not administer', () => {
+        // The regression: /service/users/data listed one CONSULTANT agency while the admin
+        // administers two others, and the landing forwarded into that consultant agency (#917).
+        mocks.userData = { agencies: [{ id: 24, name: 'Centre they only counsel in' }] };
+        mocks.agencies = [
+            buildAgency([{ id: 1, name: 'Topic A' }], { id: 2 }),
+            buildAgency([{ id: 1, name: 'Topic A' }], { id: 22 }),
+        ];
+
+        render(<AgencyList />);
+
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+    });
+
+    it('never forwards a Träger admin, whatever the assignment says', () => {
         mocks.roles = ['tenant-admin', 'restricted-agency-admin'];
-        mocks.userData = { agencies: [{ id: 42 }] };
+        mocks.agencies = [buildAgency([{ id: 1, name: 'Topic A' }], { id: 42 })];
 
         render(<AgencyList />);
 
