@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "Email for self-help groups",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Browser for counselling",
     "tenants.permissions.asker.channels.browserLiveChat": "Browser for live chat",
-    "tenants.permissions.asker.channels.browserSelfHelp": "Browser for self-help groups"
+    "tenants.permissions.asker.channels.browserSelfHelp": "Browser for self-help groups",
+    "settings.assistant.inherit": "Use inherited setting",
+    "settings.assistant.inheritedIcon": "Inherited icon",
+    "settings.assistant.loadError": "The settings could not be loaded. Please try again."
 }

@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "Öz yardım grupları için e-posta",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Danışmanlık için tarayıcı",
     "tenants.permissions.asker.channels.browserLiveChat": "Canlı sohbet için tarayıcı",
-    "tenants.permissions.asker.channels.browserSelfHelp": "Öz yardım grupları için tarayıcı"
+    "tenants.permissions.asker.channels.browserSelfHelp": "Öz yardım grupları için tarayıcı",
+    "settings.assistant.inherit": "Devralınan ayarı kullan",
+    "settings.assistant.inheritedIcon": "Devralınan simge",
+    "settings.assistant.loadError": "Ayarlar yüklenemedi. Lütfen tekrar deneyin."
 }

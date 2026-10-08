@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "E-mail pour les groupes d’entraide",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Navigateur pour le conseil",
     "tenants.permissions.asker.channels.browserLiveChat": "Navigateur pour le chat en direct",
-    "tenants.permissions.asker.channels.browserSelfHelp": "Navigateur pour les groupes d’entraide"
+    "tenants.permissions.asker.channels.browserSelfHelp": "Navigateur pour les groupes d’entraide",
+    "settings.assistant.inherit": "Utiliser le réglage hérité",
+    "settings.assistant.inheritedIcon": "Icône héritée",
+    "settings.assistant.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer."
 }

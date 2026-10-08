@@ -1,13 +1,15 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
 .presets {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: mui.$mui-unit * 2;
 }
 
 .preset {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: mui.$mui-unit;
 }
 
 .preset img,

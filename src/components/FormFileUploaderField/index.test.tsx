@@ -1,6 +1,7 @@
-import { Form } from 'antd';
+import { Form, message } from 'antd';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
 import { FormFileUploaderField } from './index';
 import { getSafeFaviconUrl } from '../../utils/getSafeFaviconUrl';
 
@@ -36,7 +37,7 @@ const renderField = ({
                 labelKey="organisation.logo"
                 disabled={disabled}
                 allowIcon={allowIcon}
-                allowAssistantIcon={allowAssistantIcon}
+                uploadPolicy={allowAssistantIcon ? assistantIconUploadPolicy : undefined}
             />
         </Form>,
     );
@@ -208,5 +209,35 @@ describe('assistant preset and uploaded previews', () => {
         const value = 'https://example.test/logo.png';
         const { container } = renderField({ formDisabled: false, value });
         expect(container.querySelector('.ant-upload img')).toHaveAttribute('src', value);
+    });
+});
+
+describe('assistant namespace validation', () => {
+    it.each([
+        '<svg xmlns="urn:foreign"><path/></svg>',
+        '<svg xmlns="http://www.w3.org/2000/svg"><path xmlns="urn:foreign"/></svg>',
+    ])('rejects foreign artwork %s', async (source) => {
+        const { changes, input } = renderField({ formDisabled: false, allowAssistantIcon: true });
+        fireEvent.change(input, { target: { files: [new File([source], 'foreign.svg', { type: 'image/svg+xml' })] } });
+        await settle();
+        expect(changes).toHaveLength(0);
+    });
+});
+
+describe('assistant read failure feedback', () => {
+    it.each(['error', 'abort'])('shows an error for a FileReader %s without changing the form', async (event) => {
+        const feedback = vi.spyOn(message, 'error').mockImplementation(() => undefined);
+        const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function failRead() {
+            this.dispatchEvent(new Event(event));
+        });
+        try {
+            const { changes, input } = renderField({ formDisabled: false, allowAssistantIcon: true });
+            pickFile(input, 'robot.svg', 'image/svg+xml');
+            await vi.waitFor(() => expect(feedback).toHaveBeenCalledOnce());
+            expect(changes).toHaveLength(0);
+        } finally {
+            read.mockRestore();
+            feedback.mockRestore();
+        }
     });
 });

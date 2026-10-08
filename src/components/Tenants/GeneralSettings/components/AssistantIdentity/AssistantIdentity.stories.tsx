@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { AssistantIdentity } from './index';
 import { TENANT_DATA_KEY } from '../../../../../hooks/useTenantData.hook';
-import { tenantAdminEndpoint } from '../../../../../appConfig';
+import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../appConfig';
 
 const storageKey = 'storybook:assistant-1150';
 const defaultTenant = {
@@ -41,10 +41,14 @@ const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
 const meta = {
     title: 'Organisms/Tenants/AssistantIdentity',
     component: Harness,
+    beforeEach: () => {
+        localStorage.removeItem(storageKey);
+    },
     parameters: {
         layout: 'padded',
         msw: {
             handlers: [
+                http.get(`${baseTenantPublicEndpoint}/id/1`, () => HttpResponse.json(tenant())),
                 http.get(`${tenantAdminEndpoint}/1`, () => HttpResponse.json(tenant())),
                 http.put(`${tenantAdminEndpoint}/1`, async ({ request }) => {
                     const saved = await request.json();

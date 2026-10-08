@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "Электронная почта для групп взаимопомощи",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Браузер для консультаций",
     "tenants.permissions.asker.channels.browserLiveChat": "Браузер для живого чата",
-    "tenants.permissions.asker.channels.browserSelfHelp": "Браузер для групп взаимопомощи"
+    "tenants.permissions.asker.channels.browserSelfHelp": "Браузер для групп взаимопомощи",
+    "settings.assistant.inherit": "Использовать унаследованную настройку",
+    "settings.assistant.inheritedIcon": "Унаследованный значок",
+    "settings.assistant.loadError": "Не удалось загрузить настройки. Попробуйте ещё раз."
 }

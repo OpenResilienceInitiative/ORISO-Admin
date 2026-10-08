@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "E-Mail für Selbsthilfegruppen",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Browser für Beratung",
     "tenants.permissions.asker.channels.browserLiveChat": "Browser für Live-Chat",
-    "tenants.permissions.asker.channels.browserSelfHelp": "Browser für Selbsthilfegruppen"
+    "tenants.permissions.asker.channels.browserSelfHelp": "Browser für Selbsthilfegruppen",
+    "settings.assistant.inherit": "Standardeinstellung verwenden",
+    "settings.assistant.inheritedIcon": "Übernommenes Symbol",
+    "settings.assistant.loadError": "Die Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
 }

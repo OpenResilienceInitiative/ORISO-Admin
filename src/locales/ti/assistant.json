@@ -28,5 +28,8 @@
     "tenants.permissions.asker.channels.emailSelfHelp": "ኢ-መይል ንጉጅለታት ርእሰ-ሓገዝ",
     "tenants.permissions.asker.channels.browserAgencyCounselling": "መርበብ መርኣዪ ንምኽሪ",
     "tenants.permissions.asker.channels.browserLiveChat": "መርበብ መርኣዪ ንቀጥታ ዝርርብ",
-    "tenants.permissions.asker.channels.browserSelfHelp": "መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ"
+    "tenants.permissions.asker.channels.browserSelfHelp": "መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ",
+    "settings.assistant.inherit": "ዝተወርሰ ቅጥዒ ተጠቐም",
+    "settings.assistant.inheritedIcon": "ዝተወርሰ ምልክት",
+    "settings.assistant.loadError": "ቅጥዕታት ክጽዓኑ ኣይከኣሉን። በጃኹም እንደገና ፈትኑ።"
 }
