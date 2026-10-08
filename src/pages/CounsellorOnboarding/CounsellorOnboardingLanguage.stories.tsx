@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { createInstance } from 'i18next';
-import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { I18nextProvider, getI18n } from 'react-i18next';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
+import appI18n from '../../i18n';
 import translationDe from '../../locales/de/translation.json';
 import translationEn from '../../locales/en/translation.json';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -16,7 +17,8 @@ import { CounsellorOnboarding } from './CounsellorOnboarding';
 const LanguageExample = ({ twoFactor = false }: { twoFactor?: boolean }) => {
     const { locale: storyLocale, client: storyClient } = useMemo(() => {
         const locale = createInstance();
-        locale.use(initReactI18next).init({
+        // The provider supplies this instance; the React plugin would replace the app-wide default.
+        locale.init({
             lng: 'de',
             fallbackLng: 'de',
             initImmediate: false,
@@ -120,5 +122,6 @@ export const TwoFactorLanguage: Story = {
         await expect(await canvas.findByRole('button', { name: 'Send new code' })).toBeVisible();
         await expect(canvas.getByLabelText('One-time code')).toBeVisible();
         await expect(canvas.getByRole('radio', { name: 'E-mail address' })).toBeChecked();
+        await expect(getI18n()).toBe(appI18n);
     },
 };
