@@ -150,7 +150,8 @@ const MuiSelectControl = ({
         if (isMulti) {
             return (Array.isArray(value) ? value : []).map(toOption).filter(Boolean) as ResolvedOption[];
         }
-        return toOption(value);
+        // A single-select may be handed a list (e.g. a field that was multi-select before).
+        return toOption(Array.isArray(value) ? value[0] : value);
     }, [isMulti, toOption, value]);
 
     const emit = (option: ResolvedOption) =>

@@ -32,6 +32,8 @@ export interface OnboardingTwoFactorSetupProps {
     descriptionKey?: string;
     /** Preferred server method, honoured only when it can be set up here. */
     defaultMethod?: OnboardingTwoFactorMethod;
+    /** Advertised methods; absent for legacy onboarding servers. */
+    methods?: readonly OnboardingTwoFactorMethod[];
     /** The server-owned invitation address; never editable during public setup. */
     email?: string;
     /** Present only when the onboarding server advertises EMAIL support. */
@@ -54,6 +56,7 @@ export const OnboardingTwoFactorSetup = ({
     titleKey = 'twoFactorSetup.title',
     descriptionKey = 'twoFactorSetup.description',
     defaultMethod,
+    methods,
     email,
     onSendEmail,
     onVerifyEmail,
@@ -62,7 +65,7 @@ export const OnboardingTwoFactorSetup = ({
     const { t } = useTranslation();
     const [form] = Form.useForm<{ otp: string }>();
     const supportsEmail = Boolean(email && onSendEmail && onVerifyEmail);
-    const supportsApp = Boolean(appLink?.secretBase32 || resumed);
+    const supportsApp = Boolean(appLink?.secretBase32 || (resumed && (!methods || methods.includes('APP'))));
     const [method, setMethod] = useState(
         supportsEmail && (!supportsApp || defaultMethod !== 'APP') ? TwoFactorType.Email : TwoFactorType.App,
     );

@@ -59,6 +59,7 @@ export const TwoFactorStep = ({
             titleKey="tenantOnboarding.twoFactor.title"
             descriptionKey="tenantOnboarding.twoFactor.description"
             defaultMethod={result.twoFactor?.defaultMethod}
+            methods={result.twoFactor?.methods}
             email={email}
             onSendEmail={result.twoFactor?.methods?.includes('EMAIL') ? onSendEmail : undefined}
             onVerifyEmail={(otp) => onSubmit(otp, 'EMAIL')}

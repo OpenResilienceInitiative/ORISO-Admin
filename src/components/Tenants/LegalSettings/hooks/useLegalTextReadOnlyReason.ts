@@ -14,7 +14,7 @@ export interface LegalTextReadOnlyReason {
  * right through `legalContentChangesBySingleTenantAdminsAllowed` (userRolesToPermissions), so only
  * for them is the platform-wide lock the honest reason; everyone else is blocked by their role.
  */
-const LOCK_GOVERNED_ROLES = [UserRole.AgencyAdmin, UserRole.SingleTenantAdmin];
+const LOCK_GOVERNED_ROLES = [UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin, UserRole.SingleTenantAdmin];
 
 export const useLegalTextReadOnlyReason = (): LegalTextReadOnlyReason => {
     const { settings } = useAppConfigContext();

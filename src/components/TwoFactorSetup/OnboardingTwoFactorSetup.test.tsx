@@ -179,24 +179,53 @@ describe('advertised onboarding method defaults and app availability', () => {
         },
     );
 
-    it('preserves resumed app verification when no setup material is reissued', async () => {
+    it.each([undefined, ['APP'] as const])(
+        'preserves resumed app verification for legacy or APP-advertising servers (%s)',
+        async (methods) => {
+            const onVerify = vi.fn();
+            const user = userEvent.setup();
+            render(
+                <TwoFactorSetup
+                    context="onboarding"
+                    appLink={null}
+                    resumed
+                    methods={methods ? [...methods] : undefined}
+                    defaultMethod="APP"
+                    {...emailProps}
+                    onVerify={onVerify}
+                />,
+            );
+            expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+            expect(screen.getByTestId('two-factor-resumed-hint')).toBeInTheDocument();
+            await user.type(screen.getByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            await waitFor(() => expect(onVerify).toHaveBeenCalledWith('123456'));
+        },
+    );
+
+    it('keeps resumed email-only invitations from offering unsupported app verification', async () => {
         const onVerify = vi.fn();
+        const onVerifyEmail = vi.fn();
         const user = userEvent.setup();
         render(
             <TwoFactorSetup
                 context="onboarding"
                 appLink={null}
                 resumed
+                methods={['EMAIL']}
                 defaultMethod="APP"
                 {...emailProps}
                 onVerify={onVerify}
+                onVerifyEmail={onVerifyEmail}
             />,
         );
-        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
-        expect(screen.getByTestId('two-factor-resumed-hint')).toBeInTheDocument();
-        await user.type(screen.getByLabelText('twoFactorSetup.otp.label'), '123456');
+        expect(screen.queryByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).not.toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.email' })).toBeChecked();
+        await user.click(screen.getByRole('button', { name: 'twoFactorSetup.email.send' }));
+        await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
         await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
-        await waitFor(() => expect(onVerify).toHaveBeenCalledWith('123456'));
+        await waitFor(() => expect(onVerifyEmail).toHaveBeenCalledWith('123456'));
+        expect(onVerify).not.toHaveBeenCalled();
     });
 
     it('does not permit fresh app verification when no method can be set up', () => {

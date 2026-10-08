@@ -312,3 +312,21 @@ export const OnboardingResumedAppWithoutMaterial: Story = {
         await expect(canvas.queryByTestId('totp-secret')).not.toBeInTheDocument();
     },
 };
+
+/** An email-only resumed invitation never enables unsupported App verification. */
+export const OnboardingResumedEmailOnly: Story = {
+    ...OnboardingFreshEmailOnly,
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            resumed
+            methods={['EMAIL']}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+};

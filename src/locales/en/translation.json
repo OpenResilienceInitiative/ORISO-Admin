@@ -590,6 +590,8 @@
     "userTable.filter.tenant": "Provider",
     "userTable.filter.agency": "Agency",
     "userTable.filter.label": "Filter the list",
+    "userTable.filter.all.tenant": "All providers",
+    "userTable.filter.all.agency": "All agencies",
     "userTable.tabScroller.left": "Scroll tabs left",
     "userTable.tabScroller.right": "Scroll tabs right",
     "userTable.card.details": "Details for {{name}}",
@@ -603,6 +605,7 @@
     "userTable.centres.hide": "Hide {{name}}'s counselling centres",
     "userTable.centres.topicsHere": "Counsels here on",
     "userTable.invite": "Invite",
+    "userTable.goToInvitations": "Go to invitations",
     "userTable.loadMore.count": "{{shown}} of {{total}}",
     "userTable.loadMore.button": "Load more",
     "userTable.rowMenu.label": "More actions for {{name}}",
@@ -2654,5 +2657,13 @@
     "twoFactorSetup.email.description": "We will send a one-time code to the email address from your invitation.",
     "twoFactorSetup.email.sent": "The code has been sent. Enter the code from your email.",
     "twoFactorSetup.email.send": "Send code by email",
-    "twoFactorSetup.email.error": "The code could not be sent. Please try again."
+    "twoFactorSetup.email.error": "The code could not be sent. Please try again.",
+    "globalSettings.oneTopicPerAgency.title": "Topics",
+    "globalSettings.oneTopicPerAgency.switch": "One topic per counselling centre",
+    "globalSettings.oneTopicPerAgency.help": "Applies to the whole platform. Counselling centres that already have several topics keep them but cannot add another.",
+    "globalSettings.oneTopicPerAgency.error.generic": "The setting “One topic per counselling centre” could not be saved.",
+    "agency.form.settings.oneTopicPerAgency.help": "Only one topic per counselling centre is allowed on this platform.",
+    "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one topic per counselling centre is allowed on this platform: you can remove topics but not add one.",
+    "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre.",
+    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment."
 }

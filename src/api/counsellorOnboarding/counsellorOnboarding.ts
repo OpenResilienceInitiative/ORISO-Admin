@@ -66,6 +66,8 @@ export interface CounsellorOnboardingInviteDTO {
      * as its owner (the composer's "new agency" case). Absent = existing agency.
      */
     agencyExists?: boolean;
+    /** Only limits topic configuration when the invite creates a new centre. */
+    oneTopicPerAgencyEnabled?: boolean;
     /**
      * The tenant's active topics. The invitee may ADD any of them to the
      * preselected coverage (owner decision 2026-09-17: a counsellor must be able
@@ -169,6 +171,9 @@ const toOnboardingError = async (error: unknown): Promise<unknown> => {
         bodyReason = (await error.clone().json())?.reason;
     } catch {
         // No JSON error body — fall back to the status mapping.
+    }
+    if (bodyReason === 'ONE_TOPIC_PER_AGENCY') {
+        return new Error('ONE_TOPIC_PER_AGENCY');
     }
     if (isInviteLinkErrorReason(bodyReason)) {
         return new InviteLinkError(bodyReason);
@@ -366,6 +371,14 @@ export const createStubCounsellorOnboardingClient = (
             }
             if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
                 throw new Error('EXACTLY_ONE_TOPIC');
+            }
+            // Like the backend: while the rule is on, a new centre starts with one topic; the link stays usable.
+            if (
+                invite.agencyExists === false &&
+                invite.oneTopicPerAgencyEnabled === true &&
+                request.topicIds.length > 1
+            ) {
+                throw new Error('ONE_TOPIC_PER_AGENCY');
             }
             if (invite.agencyExists === false && !request.agency?.name?.trim()) {
                 throw new Error('AGENCY_NAME_MISSING');
