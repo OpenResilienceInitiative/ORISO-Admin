@@ -11,6 +11,6 @@
 
 .help {
     margin: 4px 0 0;
-    color: rgb(68 71 72 / 80%);
+    color: var(--admin-form-muted-text, #444748);
     font-size: 12px;
 }

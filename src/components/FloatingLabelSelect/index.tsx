@@ -1,8 +1,9 @@
-import { FocusEvent, useId, useState } from 'react';
+import { FocusEvent, useCallback, useId, useRef, useState, type ReactElement } from 'react';
 import { ConfigProvider, Form, Select } from 'antd';
 import type { BaseOptionType, DefaultOptionType, SelectProps } from 'antd/es/select';
 import classNames from 'classnames';
 import styles from './floatingLabelSelect.module.scss';
+import { AccessibleVirtualSelectPopup, useRequiredComboboxBoundary } from './selectAriaBoundary';
 
 export interface FloatingLabelSelectProps<
     ValueType = any,
@@ -47,6 +48,15 @@ export const FloatingLabelSelect = <
     onChange,
     ...selectProps
 }: FloatingLabelSelectProps<ValueType, OptionType>) => {
+    const root = useRef<HTMLDivElement>(null);
+    useRequiredComboboxBoundary(root);
+    const callerPopupRender = selectProps.popupRender;
+    const renderPopup = useCallback(
+        (menu: ReactElement) => (
+            <AccessibleVirtualSelectPopup menu={callerPopupRender ? callerPopupRender(menu) : menu} />
+        ),
+        [callerPopupRender],
+    );
     const generatedId = useId();
     const fieldId = id ?? generatedId;
     const supportingTextId = `${fieldId}-supporting-text`;
@@ -85,6 +95,7 @@ export const FloatingLabelSelect = <
 
     return (
         <div
+            ref={root}
             className={classNames(
                 styles.field,
                 {
@@ -107,6 +118,7 @@ export const FloatingLabelSelect = <
                 )}
                 <Select<ValueType, OptionType>
                     {...selectProps}
+                    popupRender={renderPopup}
                     id={fieldId}
                     className={styles.select}
                     classNames={{ popup: { root: styles.dropdown } }}

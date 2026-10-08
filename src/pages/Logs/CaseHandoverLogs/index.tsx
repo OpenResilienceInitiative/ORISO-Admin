@@ -45,7 +45,18 @@ export const CaseHandoverLogsPage = () => {
                 dataIndex: 'status',
                 key: 'status',
                 width: 180,
-                render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
+                render: (value: string) => (
+                    <Tag
+                        color={statusColor(value)}
+                        style={
+                            statusColor(value) === 'gold'
+                                ? { color: 'var(--admin-warning-tag-text, #874d00)' }
+                                : undefined
+                        }
+                    >
+                        {value}
+                    </Tag>
+                ),
             },
             {
                 title: t('caseHandoverLogs.table.sessionId'),
@@ -91,6 +102,7 @@ export const CaseHandoverLogsPage = () => {
         <>
             {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
             <ListingTable<CaseHandoverLogEntry>
+                scrollRegionLabel={t('caseHandoverLogs.title')}
                 rowKey={(row) => `${row.requestId}`}
                 loading={isLoading}
                 columns={columns}

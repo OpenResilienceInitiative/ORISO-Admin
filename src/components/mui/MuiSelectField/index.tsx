@@ -111,6 +111,7 @@ const MuiSelectControl = ({
     validateStatus,
     className,
 }: MuiSelectControlProps) => {
+    const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
@@ -209,7 +210,9 @@ const MuiSelectControl = ({
                             ...params.slotProps.input,
                             endAdornment: (
                                 <>
-                                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                                    {loading ? (
+                                        <CircularProgress color="inherit" size={18} aria-label={t('loading')} />
+                                    ) : null}
                                     {params.slotProps.input.endAdornment}
                                 </>
                             ),
