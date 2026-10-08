@@ -3,12 +3,12 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { ThemeProvider } from '@mui/material/styles';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
-import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { useTenantData } from '../../hooks/useTenantData.hook';
@@ -18,6 +18,9 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { sendGlobalSmtpTestEmail } from '../../api/settings/sendGlobalSmtpTestEmail';
+import { usePlatformSmtpSettings } from '../../hooks/usePlatformSmtpSettings';
+import { useSmtpSyncStatus } from '../../hooks/useSmtpSyncStatus';
+import { SmtpSyncStatus } from '../../api/settings/getSmtpSyncStatus';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
 import styles from './styles.module.scss';
@@ -26,6 +29,15 @@ import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
+import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
+
+const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
+    UNKNOWN: 'globalSettings.smtp.sync.unknown',
+    SMTP_SYNC_PENDING: 'globalSettings.smtp.sync.pending',
+    APPLIED: 'globalSettings.smtp.sync.applied',
+    DISABLED_OR_INCOMPLETE: 'globalSettings.smtp.sync.disabled',
+};
 
 export const GlobalLoginSettingsPage = () => {
     const { t } = useTranslation();
@@ -81,9 +93,21 @@ export const GlobalLoginSettingsPage = () => {
                             </CardEditable>
                         </ThemeProvider>
                     </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <OneTopicPerAgencySettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
                     <section className={styles.translationCardSlot}>
                         <TranslationApiKeysCardContainer />
                     </section>
+                    {isSuperAdmin && (
+                        <section className={styles.globalConfigCardSlot}>
+                            <ThemeProvider theme={orisoMuiTheme}>
+                                <AccountInactivitySettingsCardContainer />
+                            </ThemeProvider>
+                        </section>
+                    )}
                     {isSuperAdmin && (
                         <section className={styles.globalConfigCardSlot}>
                             <ThemeProvider theme={orisoMuiTheme}>
@@ -117,7 +141,15 @@ export const GlobalSmtpSettingsPage = () => {
     const { settings } = useAppConfigContext();
     const { data: userData } = useUserData();
     const { mutate, isPending } = useSettingsAdminMutation();
+    const { data: platformSmtp, isLoading, isFetching, isError, refetch } = usePlatformSmtpSettings();
+    const { data: persistedSync, refetch: refetchSync } = useSmtpSyncStatus();
+    const [savedSync, setSavedSync] = useState<{ status: SmtpSyncStatus; revision: number | null } | null>(null);
     const [isTestSending, setIsTestSending] = useState(false);
+    useEffect(() => {
+        if (userData?.email && !testForm.getFieldValue('recipientEmail')) {
+            testForm.setFieldValue('recipientEmail', userData.email);
+        }
+    }, [testForm, userData?.email]);
     const initialValues = useMemo(
         () => ({
             globalFeatureSystemNotificationEmailsEnabled:
@@ -135,72 +167,90 @@ export const GlobalSmtpSettingsPage = () => {
         }),
         [settings],
     );
-    // Set-only credentials: an empty username/password field means "keep the
-    // stored value", so the key must not appear in the PATCH body at all — an
-    // empty string would destroy the stored credential server-side (CTS-C01).
-    // Whitespace-only input is deliberately treated the same as empty: the
-    // settings PATCH contract (ORISO-ConsultingTypeService#98, CTS PR #138)
-    // treats blank/whitespace-only credential values as "unchanged", so
-    // sending "  " would be a no-op server-side while the UI pretended a
-    // credential change happened.
+    const [savedValues, setSavedValues] = useState(initialValues);
+    useEffect(() => {
+        if (!form.isFieldsTouched()) {
+            setSavedValues(initialValues);
+            form.setFields(Object.entries(initialValues).map(([name, value]) => ({ name, value, touched: false })));
+        }
+    }, [form, initialValues]);
+    const currentValues = Form.useWatch([], form);
+    const hasChangedSavedSettings = useCallback(
+        (values: Record<string, unknown>) =>
+            Object.entries(savedValues).some(([name, savedValue]) => {
+                const currentValue = values[name];
+                // Settings store the port as text; the number field emits a number after editing.
+                return name === 'globalSmtpPort'
+                    ? String(currentValue ?? '') !== String(savedValue ?? '')
+                    : currentValue !== savedValue;
+            }),
+        [savedValues],
+    );
+    const hasUnsavedChanges = currentValues !== undefined && hasChangedSavedSettings(currentValues);
+    const isSummaryLoading = isLoading || isFetching;
+    const isTestBlocked = hasUnsavedChanges || isPending || isSummaryLoading || isError || !platformSmtp;
+    const syncStatus = useMemo(() => {
+        if (!savedSync) return persistedSync?.status;
+        if (savedSync.revision !== null && persistedSync && persistedSync.revision >= savedSync.revision)
+            return persistedSync.status;
+        return savedSync.status;
+    }, [persistedSync, savedSync]);
     const handleSave = useCallback(
         (formData: unknown, options?: { onError?: () => void }) => {
-            const { globalSmtpUsername, globalSmtpPassword, ...rest } = (formData ?? {}) as Record<string, unknown>;
+            const submittedValues = formData as typeof initialValues;
+            const { globalSmtpUsername, globalSmtpPassword, ...rest } = submittedValues;
+            // Credentials are write-only: blank means retain the saved secret.
             mutate(
                 {
                     ...rest,
-                    ...(typeof globalSmtpUsername === 'string' && globalSmtpUsername.trim() !== ''
-                        ? { globalSmtpUsername }
-                        : {}),
-                    ...(typeof globalSmtpPassword === 'string' && globalSmtpPassword.trim() !== ''
-                        ? { globalSmtpPassword }
-                        : {}),
+                    ...(globalSmtpUsername?.trim() ? { globalSmtpUsername } : {}),
+                    ...(globalSmtpPassword?.trim() ? { globalSmtpPassword } : {}),
                 },
                 {
                     ...options,
-                    // Once a credential is saved it must not linger in the DOM:
-                    // the fields would still hold the typed values when the card
-                    // is reopened, and the next unrelated save would re-send
-                    // them. Reset both to their (empty) initial values — same
-                    // write-only pattern as the tenant SMTP card (#730).
-                    onSuccess: () => {
-                        form.resetFields([['globalSmtpUsername'], ['globalSmtpPassword']]);
+                    onSuccess: async (responseData) => {
+                        const response = responseData instanceof Response ? responseData : null;
+                        const rawStatus = response?.headers.get('X-Smtp-Sync-Status');
+                        const rawRevision = response?.headers.get('X-Smtp-Revision');
+                        const parsedRevision = rawRevision && /^\d+$/.test(rawRevision) ? Number(rawRevision) : null;
+                        const revision =
+                            parsedRevision !== null && Number.isSafeInteger(parsedRevision) ? parsedRevision : null;
+                        const status: SmtpSyncStatus =
+                            revision !== null &&
+                            (rawStatus === 'SMTP_SYNC_PENDING' ||
+                                rawStatus === 'APPLIED' ||
+                                rawStatus === 'DISABLED_OR_INCOMPLETE')
+                                ? rawStatus
+                                : 'UNKNOWN';
+                        setSavedSync({ status, revision });
+                        const acknowledgedValues = {
+                            ...submittedValues,
+                            globalSmtpUsername: '',
+                            globalSmtpPassword: '',
+                        };
+                        form.setFieldsValue(acknowledgedValues);
+                        setSavedValues(acknowledgedValues);
+                        // Testing remains blocked until the saved snapshot has been refreshed.
+                        await Promise.all([refetch(), refetchSync()]);
                     },
                 },
             );
         },
-        [form, mutate],
+        [form, mutate, refetch, refetchSync],
     );
     const handleSendTestEmail = useCallback(async () => {
-        const values = form.getFieldsValue(true);
+        if (isTestBlocked) return;
         const { recipientEmail } = await testForm.validateFields();
+        // Check the live form too, so async validation cannot test a newly changed draft.
+        if (hasChangedSavedSettings(form.getFieldsValue(true))) return;
         const cleanedRecipientEmail = (recipientEmail || '').trim();
-
         if (!cleanedRecipientEmail) {
             message.error(t('globalSettings.smtp.test.errorMissingRecipient'));
             return;
         }
-
-        // Only the connection fields are required here. The backend test
-        // endpoint reads the STORED credentials and ignores whatever the
-        // request carries, so empty username/password fields (set-only since
-        // CTS-C01) must never block the test mail. If no credentials are
-        // stored, the server answers with a clear error that is surfaced below.
-        if (!values.globalSmtpHost || !values.globalSmtpPort || !values.globalSmtpFrom) {
-            message.error(t('globalSettings.smtp.test.errorMissingConnection'));
-            return;
-        }
         setIsTestSending(true);
         try {
-            await sendGlobalSmtpTestEmail({
-                host: values.globalSmtpHost || '',
-                port: Number(values.globalSmtpPort || 0),
-                secure: !!values.globalSmtpSecure,
-                username: values.globalSmtpUsername || '',
-                password: values.globalSmtpPassword || '',
-                from: values.globalSmtpFrom || '',
-                recipientEmail: cleanedRecipientEmail,
-            });
+            await sendGlobalSmtpTestEmail({ recipientEmail: cleanedRecipientEmail });
             message.success(t('globalSettings.smtp.test.success', { email: cleanedRecipientEmail }));
         } catch (error) {
             const errorMessage = await extractApiErrorMessage(error, 'globalSettings.smtp.test.error');
@@ -208,7 +258,7 @@ export const GlobalSmtpSettingsPage = () => {
         } finally {
             setIsTestSending(false);
         }
-    }, [form, t, testForm]);
+    }, [form, hasChangedSavedSettings, isTestBlocked, t, testForm]);
     const renderSwitchLabel = useCallback(
         (titleKey: string, descriptionKey: string) => (
             <span className={styles.switchCopy}>
@@ -218,6 +268,9 @@ export const GlobalSmtpSettingsPage = () => {
         ),
         [t],
     );
+
+    const display = (value: string | number | null | undefined) =>
+        value == null || value === '' ? t('globalSettings.smtp.saved.unavailable') : String(value);
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
@@ -233,7 +286,8 @@ export const GlobalSmtpSettingsPage = () => {
                         variant="dialog"
                         headerIcon={<EmailOutlinedIcon />}
                         isLoading={isPending}
-                        initialValues={initialValues}
+                        allowEdit={!isPending}
+                        initialValues={savedValues}
                         titleKey="globalSettings.smtp.title"
                         subTitleKey="globalSettings.smtp.description"
                         onSave={handleSave}
@@ -293,17 +347,96 @@ export const GlobalSmtpSettingsPage = () => {
                     <Card
                         className={styles.smtpCard}
                         variant="dialog"
+                        headerIcon={<EmailOutlinedIcon />}
+                        titleKey="globalSettings.smtp.saved.title"
+                        subTitleKey="globalSettings.smtp.saved.description"
+                    >
+                        {isSummaryLoading && (
+                            <p className={styles.smtpReadStatus} role="status">
+                                {t('globalSettings.smtp.saved.loading')}
+                            </p>
+                        )}
+                        {!isSummaryLoading && (isError || !platformSmtp) && (
+                            <div className={styles.smtpReadStatus} role="alert">
+                                <p>{t('globalSettings.smtp.saved.error')}</p>
+                                <Button
+                                    onClick={() => {
+                                        refetch();
+                                    }}
+                                >
+                                    {t('globalSettings.smtp.saved.retry')}
+                                </Button>
+                            </div>
+                        )}
+                        {!isSummaryLoading && !isError && platformSmtp && (
+                            <dl className={styles.smtpReadOnly}>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.host')}</dt>
+                                    <dd>{display(platformSmtp.host)}</dd>
+                                </div>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.port')}</dt>
+                                    <dd>{display(platformSmtp.port)}</dd>
+                                </div>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.secure')}</dt>
+                                    <dd>
+                                        {platformSmtp.secure == null
+                                            ? display(null)
+                                            : t(
+                                                  platformSmtp.secure
+                                                      ? 'globalSettings.smtp.saved.yes'
+                                                      : 'globalSettings.smtp.saved.no',
+                                              )}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.from')}</dt>
+                                    <dd>{display(platformSmtp.from)}</dd>
+                                </div>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.saved.credentials')}</dt>
+                                    <dd>
+                                        {t(
+                                            platformSmtp.credentialsPresent
+                                                ? 'globalSettings.smtp.saved.yes'
+                                                : 'globalSettings.smtp.saved.no',
+                                        )}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{t('globalSettings.smtp.saved.configured')}</dt>
+                                    <dd>
+                                        {t(
+                                            platformSmtp.configured
+                                                ? 'globalSettings.smtp.saved.yes'
+                                                : 'globalSettings.smtp.saved.no',
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+                        )}
+                        {syncStatus && (
+                            <p className={styles.smtpReadStatus} role="status">
+                                {t(smtpSyncMessageKeys[syncStatus])}
+                            </p>
+                        )}
+                    </Card>
+                </CardDeck.Item>
+                <CardDeck.Item className={styles.smtpCardSlot}>
+                    <Card
+                        className={styles.smtpCard}
+                        variant="dialog"
                         headerIcon={<SendOutlinedIcon />}
                         titleKey="globalSettings.smtp.test.title"
                         subTitleKey="globalSettings.smtp.test.description"
                     >
+                        <p className={styles.settingDescription}>{t('globalSettings.smtp.test.saveFirst')}</p>
                         <Form
                             className={styles.testForm}
                             form={testForm}
                             layout="vertical"
-                            initialValues={{
-                                recipientEmail: userData?.email ?? '',
-                            }}
+                            initialValues={{ recipientEmail: userData?.email ?? '' }}
                         >
                             <MuiFormField
                                 label={t('globalSettings.smtp.test.recipientEmail')}
@@ -314,6 +447,7 @@ export const GlobalSmtpSettingsPage = () => {
                             <div className={styles.testAction}>
                                 <Button
                                     className={styles.smtpActionButton}
+                                    disabled={isTestBlocked}
                                     loading={isTestSending}
                                     onClick={handleSendTestEmail}
                                 >

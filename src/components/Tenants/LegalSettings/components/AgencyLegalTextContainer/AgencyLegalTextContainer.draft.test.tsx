@@ -1,11 +1,24 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const h = vi.hoisted(() => ({
-    card: vi.fn(),
-    saveAgencyWide: vi.fn(),
-}));
+const h = vi.hoisted(() => ({ card: vi.fn(), saveAgencyWide: vi.fn(), serverSave: vi.fn() }));
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: h.serverSave,
+        discard: vi.fn(),
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -22,9 +35,14 @@ vi.mock('../../../../../hooks/usePublishDepartmentImprint.hook', () => ({
     usePublishDepartmentImprint: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('../../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({ data: undefined, isLoading: false }),
+    useSingleTenantData: () => ({
+        data: { content: { privacyConsent: { de: 'published consent' } } },
+        isLoading: false,
+    }),
 }));
-vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData: () => ({ data: undefined }) }));
+vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({
+    useTenantAdminData: () => ({ data: { settings: { activeLanguages: ['de'] } } }),
+}));
 vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
     useTranslateLegalContent: () => ({ translate: vi.fn() }),
 }));
@@ -49,117 +67,64 @@ import { AgencyLegalTextContainer } from '.';
 const agencyData: any = {
     id: '55',
     tenantId: '1',
-    topics: [{ id: 3, name: 'U25 Suizidprävention' }],
-    content: { privacy: { de: '<p>agency wide</p>' } },
+    topics: [],
+    content: { privacy: { de: '<p>published</p>' } },
 };
-
-const renderContainer = (props: Record<string, unknown> = {}) =>
-    render(
-        <AgencyLegalTextContainer
-            agencyData={agencyData}
-            field="privacy"
-            onSaveAgencyWide={h.saveAgencyWide}
-            {...(props as any)}
-        />,
+const localKey = 'oriso-admin.legal.draft.privacy.1:user-7:agency:55';
+const renderContainer = () =>
+    render(<AgencyLegalTextContainer agencyData={agencyData} field="privacy" onSaveAgencyWide={h.saveAgencyWide} />);
+const cardProps = () => h.card.mock.calls.at(-1)?.[0];
+const storeLocalDraft = () =>
+    window.localStorage.setItem(
+        localKey,
+        JSON.stringify({
+            content: { de: '<p>local work</p>' },
+            consent: { de: 'local consent' },
+            savedAt: '2026-09-17T13:00:00.000Z',
+        }),
     );
 
-const cardProps = () => h.card.mock.calls.at(-1)?.[0];
+describe('agency-wide local draft migration', () => {
+    beforeEach(() => {
+        window.localStorage.clear();
+        h.card.mockReset();
+        h.saveAgencyWide.mockReset().mockResolvedValue(undefined);
+        h.serverSave.mockReset();
+    });
+    afterEach(() => window.localStorage.clear());
 
-/*
- * jsdom's Storage does NOT enumerate through `Object.keys` — it returns [] even when
- * `length` is 1. Read it through the Storage API instead, or this helper silently
- * reports "nothing was saved" for a draft that was saved perfectly well.
- */
-const draftKeys = () =>
-    Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index))
-        .filter((key): key is string => !!key)
-        .filter((key) => key.startsWith('oriso-admin.legal.draft.'));
-
-beforeEach(() => {
-    window.localStorage.clear();
-    h.card.mockClear();
-    h.saveAgencyWide.mockClear();
-});
-afterEach(() => window.localStorage.clear());
-
-/*
- * "Alle Fachbereiche" used to hand `onSave(content, publish=false)` — the editor's
- * "Save draft" action — straight to `onSaveAgencyWide`, which writes the agency
- * record. The `publish` argument was dropped on the floor, so the button published
- * the live legal text with no confirmation and a label promising the opposite.
- *
- * The fix follows the house answer to the identical problem one level up
- * (`LegalText` + `useLegalDraft`): the agency record has no draft state, so the
- * draft is device-local, and only Publish touches the record.
- */
-describe('agency-wide draft — "Save draft" must not publish', () => {
-    it('does not write the agency record when the editor saves a draft', async () => {
+    it('loads existing device-local work as the editable source', async () => {
+        storeLocalDraft();
         renderContainer();
         await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
+        expect(cardProps().initialContentByLanguage).toEqual({ de: '<p>local work</p>' });
+        expect(window.localStorage.getItem(localKey)).not.toBeNull();
+    });
 
-        cardProps().onSave({ de: '<p>work in progress</p>' }, false);
+    it('clears local work only after the server save succeeds', async () => {
+        storeLocalDraft();
+        h.serverSave.mockResolvedValue({
+            kind: 'DPP',
+            content: { de: '<p>normalized</p>' },
+            consentText: { de: 'local consent' },
+            revision: 'draft-id:0',
+            savedAt: '2026-09-17T14:00:00',
+        });
+        renderContainer();
+        await act(async () => cardProps().onSave({ de: '<p>local work</p>' }, false));
+        expect(h.serverSave).toHaveBeenCalledWith({
+            content: { de: '<p>local work</p>' },
+            consentText: { de: 'local consent' },
+        });
+        expect(window.localStorage.getItem(localKey)).toBeNull();
+    });
 
+    it('preserves local work when the server save fails', async () => {
+        storeLocalDraft();
+        h.serverSave.mockRejectedValue(new Error('offline'));
+        renderContainer();
+        await act(async () => cardProps().onSave({ de: '<p>local work</p>' }, false));
+        expect(window.localStorage.getItem(localKey)).not.toBeNull();
         expect(h.saveAgencyWide).not.toHaveBeenCalled();
-    });
-
-    it('parks the draft on the device instead', async () => {
-        renderContainer();
-        await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
-
-        cardProps().onSave({ de: '<p>work in progress</p>' }, false, { de: 'consent {{legal_links}}' });
-
-        await waitFor(() => expect(draftKeys()).toHaveLength(1));
-        const stored = JSON.parse(window.localStorage.getItem(draftKeys()[0]) as string);
-        expect(stored.content).toEqual({ de: '<p>work in progress</p>' });
-        expect(stored.consent).toEqual({ de: 'consent {{legal_links}}' });
-    });
-
-    it('scopes the draft to the agency so it cannot collide with the tenant-level draft', async () => {
-        // Both are `privacy` for the same user; only the agency id separates them.
-        // Without it, editing a Beratungsstelle would silently overwrite the
-        // Träger's parked wording, or vice versa.
-        renderContainer();
-        await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
-
-        cardProps().onSave({ de: '<p>x</p>' }, false);
-
-        await waitFor(() => expect(draftKeys()).toHaveLength(1));
-        expect(draftKeys()[0]).toContain('55');
-        expect(draftKeys()[0]).not.toBe('oriso-admin.legal.draft.privacy.1:user-7');
-    });
-
-    it('still writes the agency record when the editor publishes', async () => {
-        renderContainer();
-        await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
-
-        cardProps().onSave({ de: '<p>final</p>' }, true);
-
-        expect(h.saveAgencyWide).toHaveBeenCalledTimes(1);
-        expect(h.saveAgencyWide.mock.calls[0][0]).toEqual({ content: { privacy: { de: '<p>final</p>' } } });
-    });
-
-    it('clears the parked draft once the text is published', async () => {
-        renderContainer();
-        await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
-
-        cardProps().onSave({ de: '<p>draft</p>' }, false);
-        await waitFor(() => expect(draftKeys()).toHaveLength(1));
-
-        cardProps().onSave({ de: '<p>final</p>' }, true);
-
-        await waitFor(() => expect(draftKeys()).toHaveLength(0));
-    });
-
-    it('seeds the editor from a parked draft on the next mount', async () => {
-        renderContainer();
-        await waitFor(() => expect(screen.getByTestId('legal-editor')).toBeInTheDocument());
-        cardProps().onSave({ de: '<p>parked wording</p>' }, false);
-        await waitFor(() => expect(draftKeys()).toHaveLength(1));
-
-        h.card.mockClear();
-        renderContainer();
-        await waitFor(() => expect(h.card).toHaveBeenCalled());
-
-        expect(cardProps().initialContentByLanguage).toMatchObject({ de: '<p>parked wording</p>' });
     });
 });

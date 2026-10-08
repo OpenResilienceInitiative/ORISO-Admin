@@ -19,7 +19,6 @@ const translations: Record<string, string> = {
     email: 'Email',
     'counselor.username': 'Username',
     'counselor.password': 'Password',
-    'counselor.passwordConfirmation': 'Confirm password',
     'message.error.username.format': 'Username contains invalid characters',
     'message.error.username.required': 'Username is required',
     'message.error.email.incorrect': 'Enter a valid email',
@@ -118,7 +117,6 @@ describe('consultant form validation (#717)', () => {
         await user.type(screen.getByLabelText('Email'), 'lisa@example.org');
         await user.type(screen.getByLabelText('Username'), 'lisa.simpson');
         await user.type(screen.getByLabelText('Password'), 'Strong!Pass1');
-        await user.type(screen.getByLabelText('Confirm password'), 'Strong!Pass1');
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         expect(await screen.findByText('Username contains invalid characters')).toBeVisible();

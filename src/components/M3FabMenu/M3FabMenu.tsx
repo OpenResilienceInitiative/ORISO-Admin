@@ -14,6 +14,12 @@ export interface M3FabMenuItem {
     selectedIcon?: ReactNode;
     /** Route. Without it the pill renders as a plain button. */
     to?: string;
+    /**
+     * Colour of this pill in an action menu. The tone follows the ACTION, not
+     * the current value: "activate" is primary, "deactivate" is neutral, whatever
+     * the feature is set to right now (#992). Falls back to the menu `tone`.
+     */
+    tone?: 'primary' | 'neutral';
 }
 
 export interface M3FabMenuProps {
@@ -35,7 +41,10 @@ export interface M3FabMenuProps {
     className?: string;
     /** Navigation keeps the existing palette; action menus use the compact policy-control palette. */
     variant?: 'navigation' | 'action';
-    /** Closed/action colour communicates the selected boolean value without relying on the glyph. */
+    /**
+     * Closed/action colour of the FAB communicates the selected boolean value
+     * without relying on the glyph. Items without their own `tone` inherit it.
+     */
     tone?: 'primary' | 'neutral';
     /** Optional value glyph for an action FAB; menu entries retain their own policy-mode glyphs. */
     triggerIcon?: ReactNode;
@@ -215,6 +224,7 @@ export const M3FabMenu = ({
         const itemClassName = classNames(styles.item, {
             [styles.itemActive]: isActive,
             [styles.itemFooter]: isFooter,
+            [styles.itemNeutral]: (item.tone ?? tone) === 'neutral',
         });
 
         if (item.to) {

@@ -68,3 +68,32 @@ export const Narrow: Story = {
         ),
     ],
 };
+
+/**
+ * A Beratungsstelle without a single Fachbereich (#914). The consent segment of
+ * the function bar used to be empty here; it now carries the stand-in that opens
+ * the operator disclaimer.
+ */
+export const ConsentUnavailableNoDepartments: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Datenschutzerklärung</h1><p>Beratungsstellenweite Fassung.</p>',
+        },
+        languages: ['de'],
+        consentUnavailableReason: 'noDepartments',
+    },
+};
+
+/**
+ * Fachbereiche exist, the switcher is on "Alle Fachbereiche" — consent-free by
+ * decision (#862). The stand-in explains that the sentence lives one level down.
+ */
+export const ConsentUnavailableAllDepartments: Story = {
+    args: {
+        initialContentByLanguage: {
+            de: '<h1>Datenschutzerklärung</h1><p>Beratungsstellenweite Fassung, von allen Fachbereichen geerbt.</p>',
+        },
+        languages: ['de'],
+        consentUnavailableReason: 'allDepartments',
+    },
+};

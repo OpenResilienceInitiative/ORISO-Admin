@@ -58,9 +58,33 @@
     gap: mui.$mui-unit * 0.5;
 }
 
+/* Toolbar variant: sits inline next to search and actions, no band of its own. */
+.compact {
+    flex-wrap: nowrap;
+    padding: 0;
+    gap: mui.$mui-unit;
+
+    .pageSizeLabel {
+        position: absolute;
+        overflow: hidden;
+        width: 1px;
+        height: 1px;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .nav {
+        gap: 0;
+    }
+}
+
 @media (max-width: 767px) {
     .pagination {
         justify-content: space-between;
         padding: mui.$mui-unit mui.$mui-unit mui.$mui-unit mui.$mui-unit * 2;
+    }
+
+    .pagination.compact {
+        padding: 0;
     }
 }

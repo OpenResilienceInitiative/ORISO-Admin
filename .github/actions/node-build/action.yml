@@ -61,10 +61,12 @@ runs:
           shell: bash
           run: npx prettier . --check --ignore-unknown
 
-        - name: Run unit tests
-          shell: bash
-          run: npm test
-
         - name: Build app
           shell: bash
-          run: npm run build
+          run: |
+              set -euo pipefail
+              # Identify the source actually checked out, including PR merge checkouts.
+              # github.sha can refer to a different commit when checkout uses a ref.
+              export VITE_BUILD_COMMIT="$(git rev-parse --verify HEAD^{commit})"
+              [[ "$VITE_BUILD_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+              npm run build

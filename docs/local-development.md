@@ -73,7 +73,7 @@ Open:
 
 Production and Kubernetes deployments can keep the current broad API configuration:
 
-    VITE_API_URL=https://api.oriso.org
+    VITE_API_URL=https://api.example.org
 
 With no service-specific origins set, Admin keeps generating the same broad API URLs as before.
 

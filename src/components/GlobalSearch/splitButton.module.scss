@@ -435,3 +435,23 @@
 .chevronUp {
     transform: rotate(180deg);
 }
+
+/* `fullWidth`: the group fills a stacked form's column; the main segment takes the spare width. */
+.fullWidth {
+    /* A narrow column needs the label room more than the pill needs its side padding. */
+    --sb-pad-left: 16px;
+    --sb-pad-right: 16px;
+
+    display: flex;
+    width: 100%;
+
+    .main {
+        min-width: 0;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .label {
+        max-width: none;
+    }
+}
