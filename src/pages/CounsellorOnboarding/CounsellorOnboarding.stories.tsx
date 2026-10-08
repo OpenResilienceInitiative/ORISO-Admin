@@ -449,6 +449,7 @@ export const AgencyAdminFoundingSuccess: Story = {
         }),
     },
     play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
         await userEvent.click(
             canvas.getByRole('button', {

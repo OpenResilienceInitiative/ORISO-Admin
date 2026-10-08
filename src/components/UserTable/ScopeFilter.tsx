@@ -1,5 +1,6 @@
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { muiFieldSx } from '../mui/fieldSx';
 import type { ScopeKind } from './ScopeChip';
@@ -29,11 +30,12 @@ const LABEL_FALLBACKS = { tenant: 'Träger', agency: 'Beratungsstelle' } as cons
 export const ScopeFilter = ({ kind, options, value, onChange, multiple, disabled, loading }: ScopeFilterProps) => {
     const { t } = useTranslation();
     const label = t(`userTable.filter.${kind}`, LABEL_FALLBACKS[kind]);
+    const placeholder = t(`userTable.filter.all.${kind}`);
     // An id the options do not know (yet) keeps a placeholder, so the selection never silently drops.
     const selected = value.map((id) => options.find((option) => option.id === id) ?? { id, name: id });
 
     return (
-        <div className={styles.filter}>
+        <div className={classNames(styles.filter, { [styles.tenant]: kind === 'tenant' })}>
             <Autocomplete<ScopeFilterOption, boolean>
                 multiple={multiple}
                 limitTags={1}
@@ -64,7 +66,16 @@ export const ScopeFilter = ({ kind, options, value, onChange, multiple, disabled
                         </span>
                     </li>
                 )}
-                renderInput={(params) => <TextField {...params} label={label} />}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        placeholder={placeholder}
+                        slotProps={{
+                            ...params.slotProps,
+                            htmlInput: { ...params.slotProps.htmlInput, 'aria-label': label },
+                        }}
+                    />
+                )}
                 sx={muiFieldSx(disabled)}
             />
         </div>
