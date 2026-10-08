@@ -1936,6 +1936,8 @@
     "legal.dpa.sign.openLink": "Confirm contract documents now",
     "legal.dpa.sign.complete": "The contract documents have been confirmed. Counselling centres can now be created.",
     "legal.dpa.sign.confirmedAt": "Confirmed on",
+    "legal.dpa.sign.previousRetained": "Your earlier signature is retained. The current version still needs confirmation.",
+    "legal.dpa.sign.signedVersion": "Signed version from {{version}}",
     "legal.dpa.sign.detailsLoadError": "The confirmation details could not be loaded.",
     "legal.dpa.sign.gateLoadError": "The contract documents status could not be loaded.",
     "legal.dpa.sign.by": "by",

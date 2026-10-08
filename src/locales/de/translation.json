@@ -1427,6 +1427,8 @@
     "legal.dpa.sign.openLink": "Vertragsunterlagen jetzt bestätigen",
     "legal.dpa.sign.complete": "Die Vertragsunterlagen wurden bestätigt. Beratungsstellen können jetzt angelegt werden.",
     "legal.dpa.sign.confirmedAt": "Bestätigt am",
+    "legal.dpa.sign.previousRetained": "Frühere Unterschrift bleibt erhalten. Die aktuelle Fassung ist noch offen.",
+    "legal.dpa.sign.signedVersion": "Unterschriebene Fassung vom {{version}}",
     "legal.dpa.sign.detailsLoadError": "Die Bestätigungsdetails konnten nicht geladen werden.",
     "legal.dpa.sign.gateLoadError": "Der Status der Vertragsunterlagen konnte nicht geladen werden.",
     "legal.dpa.sign.by": "durch",
