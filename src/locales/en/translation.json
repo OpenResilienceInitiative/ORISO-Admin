@@ -2660,5 +2660,12 @@
     "agency.form.settings.oneTopicPerAgency.help": "Only one topic per counselling centre is allowed on this platform.",
     "agency.form.settings.oneTopicPerAgency.legacyNotice": "This counselling centre still has {{count}} topics. Only one topic per counselling centre is allowed on this platform: you can remove topics but not add one.",
     "message.error.ONE_TOPIC_PER_AGENCY": "This platform allows only one topic per counselling centre.",
-    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment."
+    "message.error.SETTINGS_UNAVAILABLE": "The setting “one topic per counselling centre” could not be checked just now. Please try again in a moment.",
+    "tenants.permissions.asker.channels.title": "Notifications by conversation type",
+    "tenants.permissions.asker.channels.emailAgencyCounselling": "Email for counselling",
+    "tenants.permissions.asker.channels.emailLiveChat": "Email for live chat",
+    "tenants.permissions.asker.channels.emailSelfHelp": "Email for self-help groups",
+    "tenants.permissions.asker.channels.browserAgencyCounselling": "Browser for counselling",
+    "tenants.permissions.asker.channels.browserLiveChat": "Browser for live chat",
+    "tenants.permissions.asker.channels.browserSelfHelp": "Browser for self-help groups"
 }
