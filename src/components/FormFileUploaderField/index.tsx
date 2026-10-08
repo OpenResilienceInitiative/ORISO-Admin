@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import { ConfigProvider, Form, message, Upload } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { UploadFileProps } from '../../types/uploadFiles';
+import { UploadFileProps, UploadValidationPolicy } from '../../types/uploadFiles';
 import decodeHTML from '../../utils/decodeHTML';
 import getBase64 from '../../utils/getBase64';
 import { normalizeIconDataUrl } from '../../utils/normalizeIconDataUrl';
@@ -12,6 +12,7 @@ interface FormFileUploaderFieldProps {
     labelKey?: string;
     name?: string | string[];
     allowIcon?: boolean;
+    uploadPolicy?: UploadValidationPolicy;
     tooltip?: string;
     disabled?: boolean;
 }
@@ -20,6 +21,7 @@ interface FormRichTextEditorProps {
     onChange?: (value: string) => void;
     value?: string;
     allowIcon: boolean;
+    uploadPolicy?: UploadValidationPolicy;
     disabled?: boolean;
 }
 
@@ -42,7 +44,7 @@ const isAcceptedFile = (file: UploadFileProps, allowIcon: boolean) => {
 const acceptedFormats = (allowIcon: boolean) =>
     allowIcon ? '.jpg,.jpeg,.png,.ico,image/jpeg,image/png,image/x-icon' : '.jpg,.jpeg,.png,image/jpeg,image/png';
 
-const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRichTextEditorProps) => {
+const FormFileUploaderLocal = ({ onChange, value, allowIcon, uploadPolicy, disabled }: FormRichTextEditorProps) => {
     const { t } = useTranslation();
     // CardEditable disables its <Form> while the card is in view mode, which antd
     // publishes as `componentDisabled`. antd merges `customDisabled ?? contextDisabled`,
@@ -56,8 +58,8 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
         if (isDisabled) {
             return false;
         }
-        if (!isAcceptedFile(file, allowIcon)) {
-            message.error(t('message.error.upload.filetype'));
+        if (!(uploadPolicy ? uploadPolicy.mimeTypes.includes(file.type) : isAcceptedFile(file, allowIcon))) {
+            message.error(t(uploadPolicy ? uploadPolicy.invalidMessageKey : 'message.error.upload.filetype'));
             return false;
         }
         const isLarger500kb = file.size / 1024 > 512;
@@ -70,7 +72,22 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
         // The stored value is what later becomes `link[rel=icon][href]`, so an
         // .ico whose MIME type the host could not map has to be relabelled here
         // rather than admitted by loosening `getSafeFaviconUrl`.
-        getBase64(file, (result) => onChange(normalizeIconDataUrl(result, file.name)));
+        getBase64(
+            file,
+            (result) => {
+                if (uploadPolicy) {
+                    const safe = uploadPolicy.validate(result, file);
+                    if (!safe) {
+                        message.error(t(uploadPolicy.invalidMessageKey));
+                        return;
+                    }
+                }
+                onChange(normalizeIconDataUrl(result, file.name));
+            },
+            () => {
+                message.error(t(uploadPolicy?.invalidMessageKey ?? 'message.error.upload.filetype'));
+            },
+        );
         return false;
     };
 
@@ -79,12 +96,12 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, disabled }: FormRic
             name="upload"
             listType="picture-card"
             className="fileUploader"
-            accept={acceptedFormats(allowIcon)}
+            accept={uploadPolicy ? uploadPolicy.accept : acceptedFormats(allowIcon)}
             showUploadList={false}
             beforeUpload={beforeUpload}
             disabled={isDisabled}
         >
-            {value ? (
+            {value && (!uploadPolicy || uploadPolicy.canPreview(decodeHTML(value))) ? (
                 <img src={decodeHTML(value)} className={styles.image} alt="" />
             ) : (
                 <div className={styles.uploadButton}>{t('btn.upload')}</div>
@@ -98,6 +115,7 @@ export const FormFileUploaderField = ({
     labelKey,
     className,
     allowIcon,
+    uploadPolicy,
     tooltip,
     disabled,
 }: FormFileUploaderFieldProps) => {
@@ -109,7 +127,7 @@ export const FormFileUploaderField = ({
             className={classNames(className, styles.richEditor)}
             tooltip={tooltip}
         >
-            <FormFileUploaderLocal allowIcon={allowIcon} disabled={disabled} />
+            <FormFileUploaderLocal allowIcon={allowIcon} uploadPolicy={uploadPolicy} disabled={disabled} />
         </Form.Item>
     );
 };

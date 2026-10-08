@@ -1,4 +1,4 @@
-import { Fragment, useId, useState, type ReactNode } from 'react';
+import { Fragment, useId, useRef, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
@@ -101,7 +101,8 @@ export const UserDataTable = ({
     const centresId = (row: CounselorData) => `${tableId}-centres-${row.id}`;
     const [pickedNameField, setPickedNameField] = useState<NameSortField>('lastname');
 
-    const layout = useUserTableLayout();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const layout = useUserTableLayout(containerRef);
     const narrow = layout === 'compact' || layout === 'tablet';
 
     const config = USER_TABLE_CONFIGS[sectionId];
@@ -372,55 +373,55 @@ export const UserDataTable = ({
         );
     };
 
-    if (layout === 'phone') {
-        return (
-            <UserCardList
-                rows={rows}
-                loading={loading}
-                page={page}
-                total={total}
-                onLoadMore={() => onPageChange(page + 1)}
-                onEdit={canEdit ? onEdit : undefined}
-                onDelete={canDelete ? onDelete : undefined}
-                details={cardFacts}
-                ariaLabel={ariaLabel}
-            />
-        );
-    }
-
     return (
-        <DataTable
-            ariaLabel={ariaLabel}
-            className={classNames(styles.table, { [styles.narrow]: narrow })}
-            header={<DataTableHeader columns={columns} sort={sort} onSortChange={handleSort} sortRequired />}
-            loading={loading}
-            skeletonColumns={columns.length}
-            isEmpty={rows.length === 0}
-            empty={<AdminEmpty />}
-            footer={
-                <DataTablePagination
+        <div ref={containerRef} className={styles.responsiveContainer} data-testid="account-list">
+            {layout === 'phone' ? (
+                <UserCardList
+                    rows={rows}
+                    loading={loading}
                     page={page}
-                    pageSize={pageSize}
                     total={total}
-                    onPageChange={onPageChange}
-                    onPageSizeChange={onPageSizeChange}
+                    onLoadMore={() => onPageChange(page + 1)}
+                    onEdit={canEdit ? onEdit : undefined}
+                    onDelete={canDelete ? onDelete : undefined}
+                    details={cardFacts}
+                    ariaLabel={ariaLabel}
                 />
-            }
-        >
-            {rows.map((row) => (
-                <DataTableRow
-                    key={row.id}
-                    expanded={openRows.includes(row.id)}
-                    expandedContent={<CentreList row={row} id={centresId(row)} />}
-                    expansionColSpan={columns.length}
+            ) : (
+                <DataTable
+                    ariaLabel={ariaLabel}
+                    className={classNames(styles.table, { [styles.narrow]: narrow })}
+                    header={<DataTableHeader columns={columns} sort={sort} onSortChange={handleSort} sortRequired />}
+                    loading={loading}
+                    skeletonColumns={columns.length}
+                    isEmpty={rows.length === 0}
+                    empty={<AdminEmpty />}
+                    footer={
+                        <DataTablePagination
+                            page={page}
+                            pageSize={pageSize}
+                            total={total}
+                            onPageChange={onPageChange}
+                            onPageSizeChange={onPageSizeChange}
+                        />
+                    }
                 >
-                    {columns.map((column) => (
-                        <DataTableCell key={column.key} align={column.align}>
-                            {renderCell(column.key, row)}
-                        </DataTableCell>
+                    {rows.map((row) => (
+                        <DataTableRow
+                            key={row.id}
+                            expanded={openRows.includes(row.id)}
+                            expandedContent={<CentreList row={row} id={centresId(row)} />}
+                            expansionColSpan={columns.length}
+                        >
+                            {columns.map((column) => (
+                                <DataTableCell key={column.key} align={column.align}>
+                                    {renderCell(column.key, row)}
+                                </DataTableCell>
+                            ))}
+                        </DataTableRow>
                     ))}
-                </DataTableRow>
-            ))}
-        </DataTable>
+                </DataTable>
+            )}
+        </div>
     );
 };

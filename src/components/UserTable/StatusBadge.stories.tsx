@@ -40,7 +40,7 @@ const ALL: DisplayStatus[] = [
     'IN_DELETION',
 ];
 
-/** Every state `resolveDisplayStatus` can produce. */
+/** Badge variants, including legacy states supported by the shared component. */
 export const AllStates: Story = {
     render: () => (
         <div

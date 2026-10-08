@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAgencyScopedAdmin, resolveAgencyAdminLanding } from './agencyAdminLanding';
+import { canOpenTenantLegalSettings, isAgencyScopedAdmin, resolveAgencyAdminLanding } from './agencyAdminLanding';
 import { hasRoleFor } from '../components/Layout/adminNavFixtures';
 import routePathNames from '../appConfig';
 import { UserRole } from '../enums/UserRole';
@@ -18,6 +18,26 @@ describe('isAgencyScopedAdmin', () => {
     it('is false without the restricted role', () => {
         expect(isAgencyScopedAdmin(hasRoleFor(UserRole.UserAdmin))).toBe(false);
         expect(isAgencyScopedAdmin(hasRoleFor())).toBe(false);
+    });
+});
+
+describe('canOpenTenantLegalSettings', () => {
+    it('keeps a Beratungsstellen-Admin with legal-text access out of the Träger legal settings', () => {
+        // Since #1070 this role reads legal texts; the Träger page would answer 403 → access-denied.
+        expect(canOpenTenantLegalSettings(true, hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin))).toBe(
+            false,
+        );
+    });
+
+    it('opens them for tenant-level admins with legal-text access', () => {
+        expect(canOpenTenantLegalSettings(true, hasRoleFor(UserRole.TenantAdmin))).toBe(true);
+        expect(canOpenTenantLegalSettings(true, hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.TenantAdmin))).toBe(
+            true,
+        );
+    });
+
+    it('stays closed without legal-text access', () => {
+        expect(canOpenTenantLegalSettings(false, hasRoleFor(UserRole.TenantAdmin))).toBe(false);
     });
 });
 

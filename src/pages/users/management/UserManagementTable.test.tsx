@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import type { UserScopeFiltersProps } from './UserScopeFilters';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from './UserManagementTable';
 
@@ -12,7 +13,9 @@ vi.mock('react-router-dom', async (original) => ({
     useNavigate: () => state.navigate,
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin }) }));
+vi.mock('../../../hooks/useUserRoles.hook', () => ({
+    useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin, hasRole: () => true }),
+}));
 vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => true }) }));
 vi.mock('../../../hooks/useTenantData.hook', () => ({ useTenantData: () => ({ data: { id: 2, licensing: {} } }) }));
 vi.mock('../../../hooks/useReleasesToggle.hook', () => ({ useReleasesToggle: () => ({ isEnabled: () => true }) }));
@@ -65,7 +68,12 @@ vi.mock('../../../hooks/useAdminListPreferences', () => ({
     useSaveAdminListSort: () => vi.fn(),
 }));
 vi.mock('./UserScopeFilters', () => ({
-    UserScopeFilters: () => null,
+    UserScopeFilters: ({ actions, search }: UserScopeFiltersProps) => (
+        <div role="group" aria-label="account toolbar">
+            {search && <input aria-label={search.searchPlaceholder} />}
+            {actions}
+        </div>
+    ),
     useScopeFilterAvailability: () => ({ tenant: false, agency: false, canListAgencies: false }),
 }));
 vi.mock('../../../hooks/useDeleteTenant', () => ({ useDeleteTenant: () => ({ mutate: vi.fn() }) }));
@@ -110,6 +118,22 @@ describe('UserManagementTable section authorization', () => {
         expect(state.navigate).toHaveBeenLastCalledWith(expect.stringContaining('/42'));
         fireEvent.click(row.getByRole('button', { name: 'userTable.card.delete', exact: true }));
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
+    });
+
+    it('renders search and permitted actions together exactly once', () => {
+        show();
+        const toolbar = within(screen.getByRole('group', { name: 'account toolbar' }));
+        expect(toolbar.getByRole('textbox')).toBeInTheDocument();
+        expect(toolbar.getByRole('button', { name: /new$/ })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /new$/ })).toHaveLength(1);
+    });
+
+    it('labels invitations as navigation and points to the invitations section', () => {
+        state.isSuperAdmin = true;
+        show();
+        const link = screen.getByRole('link', { name: 'userTable.goToInvitations' });
+        expect(link).toHaveAttribute('href', '/admin/links');
+        expect(within(screen.getByRole('group', { name: 'account toolbar' })).getByRole('link')).toBe(link);
     });
 
     it('preserves platform-admin actions for super admins', () => {

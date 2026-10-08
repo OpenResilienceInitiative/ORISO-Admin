@@ -539,6 +539,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 79 });
+        mocks.findInviteTenant.mockResolvedValue(null);
         mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
@@ -546,6 +547,15 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'FREE' });
         mocks.searchInviteAgencies.mockResolvedValue({ hits: [], total: 0, hasMore: false, page: 1 });
         mocks.superAdmin = false;
+    });
+
+    it('resolves the own carrier name even when this viewer has no agency lookup', async () => {
+        mocks.findInviteTenant.mockResolvedValue({ id: 79, name: 'Caritas Freiburg' });
+        render(<CounsellorInvitesTab />);
+        await waitFor(() => expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Nr. 79'));
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toBeDisabled();
+        expect(await screen.findByText('Caritas Freiburg')).toBeInTheDocument();
+        expect(mocks.findInviteTenant).toHaveBeenCalledWith(79);
     });
 
     /** Fill E-Mail, names and a manual Beratungsstellen-Nr. */

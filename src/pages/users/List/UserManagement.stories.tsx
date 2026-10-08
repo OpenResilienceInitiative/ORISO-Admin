@@ -1,4 +1,5 @@
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
+import i18n from 'i18next';
 import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -350,7 +351,9 @@ export const ConsultantsTab: Story = {
         const canvas = within(canvasElement);
         await step('status as words, centre as chip with PLZ and Ort', async () => {
             await expect(canvas.getByText('Aktiv')).toBeVisible();
-            await expect(canvas.getByText('Abwesend')).toBeVisible();
+            const lockedRow = await rowOf(canvasElement, 'Beispiel');
+            await expect(within(lockedRow).getByText('Inaktiv')).toBeVisible();
+            await expect(within(lockedRow).queryByText('Abwesend')).toBeNull();
             await expect(canvas.getByText('20095 Hamburg')).toBeVisible();
         });
         await step('arrows only where the server sorts; newest first by default', async () => {
@@ -367,8 +370,8 @@ export const ConsultantsTab: Story = {
         await step('person cell: @username, copy, "Auch Träger-Admin" next to the name', () =>
             expectPersonCell(canvasElement, 'Auch Träger-Admin'),
         );
-        await step('"Einladen" leads to the Links section', async () => {
-            await expect(canvas.getByRole('link', { name: /Einladen/ })).toHaveAttribute('href', '/admin/links');
+        await step('"Zu Einladungen" leads to the Links section', async () => {
+            await expect(canvas.getByRole('link', { name: 'Zu Einladungen' })).toHaveAttribute('href', '/admin/links');
         });
         await step('delete asks with the counsellor dialog', () =>
             expectDeleteDialog(canvasElement, /Berater wirklich löschen/),
@@ -609,6 +612,7 @@ const WIDTHS = {
     viewport: {
         options: {
             laptop1024: { name: 'Laptop 1024', styles: { width: '1024px', height: '800px' } },
+            tablet960: { name: 'Tablet 960', styles: { width: '960px', height: '1112px' } },
             tablet834: { name: 'iPad portrait 834', styles: { width: '834px', height: '1112px' } },
         },
     },
@@ -661,13 +665,13 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
-export const ConsultantsTabAt834: Story = {
+export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
         ...WIDTHS,
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
-    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    globals: { viewport: { value: 'tablet960', isRotated: false } },
     decorators: [withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
@@ -703,8 +707,8 @@ export const ConsultantsTabAt834: Story = {
 };
 
 /** 768–1023 hides the date column; the name pill then shows and offers "Zuletzt aktualisiert". */
-export const ConsultantsTabAt834SortedByDate: Story = {
-    ...ConsultantsTabAt834,
+export const ConsultantsTabAt960SortedByDate: Story = {
+    ...ConsultantsTabAt960,
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -768,9 +772,9 @@ export const PlatformAdminsTabAt1280: Story = {
     },
 };
 
-export const PlatformAdminsTabAt834: Story = {
+export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
-    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    globals: { viewport: { value: 'tablet960', isRotated: false } },
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -1245,4 +1249,303 @@ export const PreferencesUnavailable: Story = {
         await waitFor(() => expect(fallbackSpy.last().searchParams.get('field')).toBe('UPDATE_DATE'));
         await expect(fallbackSpy.last().searchParams.get('order')).toBe('DESC');
     },
+};
+
+/** A desktop viewport may still give this page only enough room for account cards. */
+export const AccountsInNarrowDesktopContainer: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
+    },
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 767, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getAllByRole('article')).toHaveLength(2));
+        await expect(canvas.queryByRole('table')).toBeNull();
+        await expect(canvas.getByRole('button', { name: 'Anna Muster bearbeiten' })).toBeVisible();
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBeLessThan(600);
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+};
+
+/** At the first table width the remaining columns must fit, with actions still reachable. */
+export const AccountsAtCardBoundary: Story = {
+    ...AccountsInNarrowDesktopContainer,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 768, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByRole('table')).toBeVisible());
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBe(600);
+        await expect(canvas.queryByRole('article')).toBeNull();
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+};
+
+export const AccountsOnTablet834: Story = {
+    ...AccountsInNarrowDesktopContainer,
+    parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
+    globals: { viewport: { value: 'tablet834', isRotated: false } },
+    decorators: [withSidebarRail],
+};
+
+const accountsBoundary = (width: number, columns: number): Story => ({
+    ...AccountsInNarrowDesktopContainer,
+    decorators: [
+        (Story) => (
+            <div style={{ width: width + 168, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await waitFor(() => expect(canvas.getAllByRole('columnheader')).toHaveLength(columns));
+        const container = canvas.getByTestId('account-list');
+        await expect(container.clientWidth).toBe(width);
+        await expect(container.scrollWidth).toBeLessThanOrEqual(container.clientWidth);
+        await noSideScroll(canvasElement);
+    },
+});
+
+export const AccountsAt727 = accountsBoundary(727, 4);
+export const AccountsAt728 = accountsBoundary(728, 5);
+export const AccountsAt983 = accountsBoundary(983, 5);
+export const AccountsAt984 = accountsBoundary(984, 6);
+
+// ---- The account toolbar keeps scope filters beside search, including on phones.
+
+const toolbarSpy = searchSpy(CONSULTANTS_ENDPOINT, CONSULTANTS, CONSULTANTS.length);
+const toolbarLanguage = (language: 'de' | 'en') => async () => {
+    const previous = i18n.language;
+    toolbarSpy.urls.length = 0;
+    await i18n.changeLanguage(language);
+    return () => {
+        i18n.changeLanguage(previous);
+    };
+};
+
+const toolbarLabels = {
+    de: {
+        tenant: 'Träger',
+        centre: 'Beratungsstelle',
+        expand: 'Suche ausklappen',
+        collapse: 'Suche einklappen',
+        invitations: 'Zu Einladungen',
+        create: 'Neu',
+    },
+    en: {
+        tenant: 'Provider',
+        centre: 'Agency',
+        expand: 'Expand search',
+        collapse: 'Collapse search',
+        invitations: 'Go to invitations',
+        create: 'New',
+    },
+};
+
+const sameControlRow = async (controls: HTMLElement[]) => {
+    const centres = controls.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.top + rect.height / 2;
+    });
+    await expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(8);
+};
+
+const toolbarPlay =
+    (language: 'de' | 'en', phone = false): Story['play'] =>
+    async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        const labels = toolbarLabels[language];
+        await canvas.findByText('Anna Muster');
+        const tenant = canvas.getByRole('combobox', { name: labels.tenant });
+        const centre = canvas.getByRole('combobox', { name: labels.centre });
+        const expand = canvas.getByRole('button', { name: labels.expand });
+        const invitations = canvas.getByRole('link', { name: labels.invitations });
+        await expect(invitations).toHaveAttribute('href', '/admin/links');
+        await expect(canvas.getAllByRole('button', { name: new RegExp(`${labels.create}$`) })).toHaveLength(1);
+        await sameControlRow([expand, tenant, centre]);
+        await user.click(expand);
+        const search = canvas.getByRole('textbox');
+        await waitFor(() => expect(search).toBeVisible());
+        await user.type(search, 'Anna');
+        await waitFor(() => expect(toolbarSpy.last().searchParams.get('query')).toBe('Anna'));
+        await user.click(canvas.getByRole('button', { name: labels.collapse }));
+        await user.click(canvas.getByRole('button', { name: labels.expand }));
+        await expect(canvas.getByRole('textbox')).toHaveValue('Anna');
+        await sameControlRow([canvas.getByRole('textbox'), tenant, centre]);
+        if (phone) {
+            // Only the controls row scrolls; the page and account cards stay inside the viewport.
+            let scroller: HTMLElement | null = centre.parentElement;
+            while (scroller) {
+                const overflow = getComputedStyle(scroller).overflowX;
+                if (['auto', 'scroll'].includes(overflow) && scroller.scrollWidth > scroller.clientWidth) break;
+                scroller = scroller.parentElement;
+            }
+            await expect(scroller).not.toBeNull();
+            if (!scroller) return;
+            scroller.scrollLeft = scroller.scrollWidth;
+            await expect(scroller.scrollLeft).toBeGreaterThan(0);
+            await noSideScroll(canvasElement);
+        }
+        await pick(canvasElement, labels.centre, /Jugendberatung Mitte/);
+        await waitFor(() => expect(toolbarSpy.last().searchParams.get('agencyId')).toBe('102'));
+    };
+
+/** Wide layout: one calm row; invitations is clearly navigation, not a send action. */
+export const UnifiedToolbarDesktop: Story = {
+    render: onTab('consultants'),
+    parameters: { msw: { handlers: withDefaults([toolbarSpy.handler]) } },
+    beforeEach: toolbarLanguage('de'),
+    play: toolbarPlay('de'),
+};
+
+/** Phone: search, Träger and centres remain in the same locally scrollable row. */
+export const UnifiedToolbarPhone390: Story = {
+    ...UnifiedToolbarDesktop,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: toolbarPlay('de', true),
+};
+
+/** The smaller phone also covers the longer English navigation and filter labels. */
+export const UnifiedToolbarPhone360English: Story = {
+    ...UnifiedToolbarDesktop,
+    globals: { viewport: { value: 'phoneSmall', isRotated: false } },
+    beforeEach: toolbarLanguage('en'),
+    play: toolbarPlay('en', true),
+};
+
+/** Träger admins keep only their centre filter; search and navigation remain available. */
+export const UnifiedToolbarTraegerPhone390: Story = {
+    ...CentreFilterForTraegerAdmin,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    beforeEach: toolbarLanguage('de'),
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
+        const centre = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
+        const search = canvas.getByRole('button', { name: 'Suche ausklappen' });
+        await expect(centre).toBeEnabled();
+        await sameControlRow([search, centre]);
+        await expect(canvas.getByRole('link', { name: 'Zu Einladungen' })).toHaveAttribute('href', '/admin/links');
+        await user.click(search);
+        await waitFor(() => expect(canvas.getByRole('textbox')).toBeVisible());
+        await noSideScroll(canvasElement);
+    },
+};
+
+/** Follow the labelled link rather than creating or sending an invitation on the user list. */
+export const UnifiedToolbarInvitationsNavigation: Story = {
+    ...UnifiedToolbarDesktop,
+    play: async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await user.click(canvas.getByRole('link', { name: 'Zu Einladungen' }));
+        await expect(await canvas.findByTestId('edit-target')).toHaveTextContent('/admin/links');
+    },
+};
+
+const MANY_LONG_CENTRES = [
+    { id: 201, tenantId: 3, name: 'Beratungsstelle für Kinder, Jugendliche und Familien Hamburg Nord' },
+    { id: 202, tenantId: 3, name: 'Psychosoziale Beratung und Begleitung für Menschen in besonderen Lebenslagen' },
+    { id: 203, tenantId: 3, name: 'Interkulturelle Familienberatung mit mehrsprachigen Beratungsangeboten' },
+    { id: 204, tenantId: 3, name: 'Beratungsstelle für weitere Unterstützungsangebote und Lebensberatung' },
+    { id: 205, tenantId: 3, name: 'Beratung für berufliche Orientierung und soziale Teilhabe Hamburg West' },
+    { id: 206, tenantId: 3, name: 'Fachberatungsstelle für Gesundheit und psychosoziale Unterstützung' },
+    { id: 207, tenantId: 3, name: 'Regionale Beratungsstelle für Eltern, Kinder und Jugendliche Süd' },
+    { id: 208, tenantId: 3, name: 'Beratung und Vermittlung für Menschen mit vielfältigen Unterstützungsbedarfen' },
+    { id: 209, tenantId: 3, name: 'Zusätzliche Beratungsstelle für weitere Unterstützungsangebote' },
+];
+const manyCentresSpy = searchSpy(CONSULTANTS_ENDPOINT, CONSULTANTS, CONSULTANTS.length);
+
+const manyLongCentresPlay =
+    (count: number): Story['play'] =>
+    async ({ canvasElement, userEvent: user }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await MANY_LONG_CENTRES.slice(0, count).reduce(
+            (previous, centre) => previous.then(() => pick(canvasElement, 'Beratungsstelle', new RegExp(centre.name))),
+            Promise.resolve(),
+        );
+        await waitFor(() =>
+            expect(manyCentresSpy.last().searchParams.get('agencyId')).toBe(
+                MANY_LONG_CENTRES.slice(0, count)
+                    .map(({ id }) => id)
+                    .join(','),
+            ),
+        );
+        const input = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
+        await user.click(input);
+        await user.type(input, 'Zusätzliche');
+        await expect(input).toHaveValue('Zusätzliche');
+        const inputBox = input.getBoundingClientRect();
+        const field = input.closest('.MuiOutlinedInput-root') as HTMLElement;
+        const fieldBox = field.getBoundingClientRect();
+        await expect(inputBox.width).toBeGreaterThan(0);
+        await expect(inputBox.left).toBeGreaterThanOrEqual(fieldBox.left);
+        await expect(inputBox.right).toBeLessThanOrEqual(fieldBox.right);
+        await expect(inputBox.bottom).toBeLessThanOrEqual(fieldBox.bottom);
+        // Each visible remove icon must be a separate, reachable target, even with many selections.
+        const removes = [...field.querySelectorAll('.MuiChip-deleteIcon')].map((icon) => icon.getBoundingClientRect());
+        await Promise.all(
+            removes.slice(1).map((remove, index) => expect(remove.left).toBeGreaterThanOrEqual(removes[index].right)),
+        );
+        await expect(
+            await within(canvasElement.ownerDocument.body).findByRole('option', {
+                name: /Zusätzliche Beratungsstelle/,
+            }),
+        ).toBeVisible();
+        await user.clear(input);
+        await user.keyboard('{Escape}{Backspace}');
+        await waitFor(() =>
+            expect(manyCentresSpy.last().searchParams.get('agencyId')).toBe(
+                MANY_LONG_CENTRES.slice(0, count - 1)
+                    .map(({ id }) => id)
+                    .join(','),
+            ),
+        );
+        await noSideScroll(canvasElement);
+    };
+
+/** A focused multiselect must still accept typing and deletion after three long selections. */
+export const UnifiedToolbarManyLongCentresPhone390: Story = {
+    ...UnifiedToolbarDesktop,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    parameters: {
+        msw: {
+            handlers: withDefaults([
+                manyCentresSpy.handler,
+                http.get(AGENCIES_ENDPOINT, () => halList(MANY_LONG_CENTRES)),
+            ]),
+        },
+    },
+    beforeEach: async () => {
+        manyCentresSpy.urls.length = 0;
+        return toolbarLanguage('de')();
+    },
+    play: manyLongCentresPlay(3),
+};
+
+/** Stress the same focused multiselect with eight long centre names. */
+export const UnifiedToolbarEightLongCentresPhone390: Story = {
+    ...UnifiedToolbarManyLongCentresPhone390,
+    play: manyLongCentresPlay(8),
 };

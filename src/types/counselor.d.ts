@@ -7,7 +7,8 @@ export interface CounselorData {
     lastname: string;
     firstname: string;
     email: string;
-    active: boolean;
+    /** Read-only login flag; null/omitted means that the identity status is unknown. */
+    active?: boolean | null;
     gender: string;
     id: string;
     phone: string;

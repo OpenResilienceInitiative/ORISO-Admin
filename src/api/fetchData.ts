@@ -5,7 +5,7 @@ import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
 import logout from './auth/logout';
-import routePathNames, { CSRF_WHITELIST_HEADER } from '../appConfig';
+import { CSRF_WHITELIST_HEADER } from '../appConfig';
 
 const isLocalDevelopment = import.meta.env.DEV;
 
@@ -71,6 +71,10 @@ export const X_REASON = {
     CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE:
         'CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE',
     PASSWORD_NOT_VALID: 'PASSWORD_NOT_VALID',
+    // AgencyService 409: the global one-topic-per-agency switch rejected the save (UserService#1264).
+    ONE_TOPIC_PER_AGENCY: 'ONE_TOPIC_PER_AGENCY',
+    // AgencyService 503: the switch could not be read, so a topic-adding save is refused; retry helps.
+    SETTINGS_UNAVAILABLE: 'SETTINGS_UNAVAILABLE',
 };
 
 export const FETCH_SUCCESS = {
@@ -288,7 +292,7 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
                 duration: 8,
                 key: 'session-expired',
             });
-            logout(true, routePathNames.login);
+            logout(true);
         }
 
         throw error;

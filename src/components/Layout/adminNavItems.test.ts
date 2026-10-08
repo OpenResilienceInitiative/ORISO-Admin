@@ -122,6 +122,32 @@ describe('buildAdminNavItems', () => {
         expect(agency?.label).toBe(labels.agency);
     });
 
+    it('offers no Träger settings to a Beratungsstellen-Admin who reads legal texts', () => {
+        // #1070 gave this role LegalText.read; the Träger legal page denies it and ended on access-denied.
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            can: canFor(Resource.Agency, Resource.Consultant, Resource.LegalText),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.some((item) => item.key === 'theme')).toBe(false);
+        expect(items.some((item) => item.key === 'agency')).toBe(true);
+    });
+
+    it('keeps the Träger settings for a tenant admin who only reads legal texts', () => {
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.TenantAdmin),
+            can: canFor(Resource.LegalText),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.find((item) => item.key === 'theme')?.to).toBe('/admin/theme-settings/legal');
+    });
+
     it('hides the Beratungsstellen entry from an admin without Agency read', () => {
         const items = build({
             isSuperAdmin: false,
