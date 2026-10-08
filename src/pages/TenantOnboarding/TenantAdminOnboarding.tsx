@@ -68,7 +68,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         return (
             <Sheet>
                 <div className={styles.loading} role="status" aria-label={t('tenantOnboarding.loading')}>
-                    <CircularProgress />
+                    <CircularProgress aria-hidden="true" />
                 </div>
             </Sheet>
         );

@@ -1,8 +1,11 @@
 import * as React from 'react';
+// eslint-disable-next-line import/no-unresolved -- Storybook subpath export.
+import { expect, userEvent, within } from 'storybook/test';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Button, Card, ConfigProvider, Input, Select, Space, Switch, Table, Tag, Tabs, type ThemeConfig } from 'antd';
 
 import { buildAdminAntdTheme } from './antdM3Theme';
+import { renderAccessibleAntdTabBar } from './accessibleAntdTabBar';
 
 /**
  * Side-by-side proof that the M3 token bridge recolours every antd component
@@ -43,6 +46,7 @@ const Sampler = () => (
             <Tag>Holiday</Tag>
         </Space>
         <Tabs
+            renderTabBar={renderAccessibleAntdTabBar}
             items={[
                 { key: 'a', label: 'Erscheinungsbild' },
                 { key: 'b', label: 'Rechtliches' },
@@ -80,4 +84,21 @@ export const BeforeAfter: StoryObj = {
             <Column title="Nachher — M3 bridge (#A5000A)" theme={buildAdminAntdTheme()} />
         </div>
     ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const lists = canvas.getAllByRole('tablist');
+        await expect(lists).toHaveLength(2);
+        lists.forEach((list) => {
+            expect(list).toHaveClass('ant-tabs-nav-list');
+            expect(list).toHaveAttribute('aria-orientation', 'horizontal');
+            expect(within(list).getAllByRole('tab')).toHaveLength(3);
+            expect(list.querySelector('button')).toBeNull();
+        });
+        const first = lists[0];
+        await userEvent.click(within(first).getByRole('tab', { name: 'Erscheinungsbild' }));
+        await userEvent.click(within(first).getByRole('tab', { name: /Rechtliches/ }));
+        await expect(within(first).getByRole('tab', { name: /Rechtliches/ })).toHaveAttribute('aria-selected', 'true');
+        const more = first.closest('.ant-tabs-nav')!.querySelector<HTMLButtonElement>('.ant-tabs-nav-more')!;
+        await expect(first.contains(more)).toBe(false);
+    },
 };
