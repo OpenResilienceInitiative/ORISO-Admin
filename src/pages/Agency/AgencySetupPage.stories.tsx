@@ -36,14 +36,22 @@ const centre = {
     topics: [{ id: 12, name: 'Familienberatung' }],
     content: { impressum: { de: 'Existing legal text' } },
 };
-const requests: { reads: number; writes: Record<string, unknown>[] } = { reads: 0, writes: [] };
-const handlers = (saveFails = false, unavailable = false) => [
+const requests: { reads: number; writes: Record<string, unknown>[]; recoveryDenied: boolean } = {
+    reads: 0,
+    writes: [],
+    recoveryDenied: false,
+};
+const handlers = (saveFails = false, unavailable = false, denyRecoveryOnce = false) => [
     http.get('*/service/users/data', () =>
         HttpResponse.json({ agencies: [{ id: 5 }], twoFactorAuth: { isActive: true } }),
     ),
     http.get('*/service/agencyadmin/agencies/:id', () => {
         requests.reads += 1;
-        return unavailable ? new HttpResponse(null, { status: 403 }) : HttpResponse.json({ _embedded: centre });
+        if (unavailable || (denyRecoveryOnce && requests.writes.length > 0 && !requests.recoveryDenied)) {
+            requests.recoveryDenied = true;
+            return new HttpResponse(null, { status: 403 });
+        }
+        return HttpResponse.json({ _embedded: centre });
     }),
     http.put('*/service/agencyadmin/agencies/:id', async ({ request }) => {
         const patch = (await request.json()) as Record<string, unknown>;
@@ -91,6 +99,7 @@ const meta = {
         setTokenExpiryInLocalStorage(REFRESH_TOKEN_VALID_UNTIL_KEY, 3600);
         requests.reads = 0;
         requests.writes = [];
+        requests.recoveryDenied = false;
         await i18n.changeLanguage('de');
         return () => {
             setSessionTokens(previousAccess, previousRefresh);
@@ -154,5 +163,22 @@ export const RevokedCentre: Story = {
     parameters: { msw: { handlers: handlers(false, true) } },
     play: async ({ canvasElement }) => {
         await within(canvasElement).findByRole('alert');
+    },
+};
+
+export const DeniedThenRestored: Story = {
+    parameters: { msw: { handlers: handlers(true, false, true) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.type(await canvas.findByLabelText('Telefon'), '03012345');
+        await userEvent.click(canvas.getByRole('button', { name: 'Speichern und Einrichtung abschließen' }));
+        await waitFor(() =>
+            expect(canvas.getByRole('alert')).toHaveTextContent(
+                'Diese Beratungsstelle ist derzeit nicht für Sie verfügbar',
+            ),
+        );
+        await expect(canvas.queryByLabelText('Telefon')).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Erneut versuchen' }));
+        await expect(await canvas.findByLabelText('Telefon')).toHaveValue('03012345');
     },
 };

@@ -143,6 +143,66 @@ describe('the authenticated first-centre setup', () => {
         expect(screen.getByLabelText('agency.edit.general.address.phone')).toHaveValue('03012345');
     });
 
+    it.each([FETCH_ERRORS.NOT_ALLOWED, FETCH_ERRORS.NO_MATCH])(
+        'restores edits after a failed save and inaccessible recovery GET %s without displaying denied details',
+        async (accessError) => {
+            let denied = false;
+            let saving = false;
+            mocks.fetchData.mockImplementation(async ({ url, method }) => {
+                if (url.endsWith('/service/users/data')) return { agencies: [{ id: 5 }] };
+                if (method === 'PUT' && !saving) {
+                    saving = true;
+                    denied = true;
+                    throw new Error('failed-write');
+                }
+                if (method === 'GET' && denied) throw new Error(accessError);
+                return { _embedded: original };
+            });
+            renderPage();
+            const user = userEvent.setup();
+            const phone = await screen.findByLabelText('agency.edit.general.address.phone');
+            await user.type(phone, '03012345');
+            await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
+            expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+            expect(screen.queryByDisplayValue('Beratung Nord')).not.toBeInTheDocument();
+            expect(screen.queryByLabelText('agency.edit.general.address.phone')).not.toBeInTheDocument();
+            denied = false;
+            await user.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
+            expect(await screen.findByLabelText('agency.edit.general.address.phone')).toHaveValue('03012345');
+            await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
+            await screen.findByRole('heading', { name: 'Agency settings' });
+            expect(JSON.parse(writes()[1][0].bodyData)).toMatchObject({ phone: '03012345' });
+        },
+    );
+
+    it('does not reload denied details after assignment is revoked, and restores the draft only after assignment returns', async () => {
+        let assigned = true;
+        let denied = false;
+        mocks.fetchData.mockImplementation(async ({ url, method }) => {
+            if (url.endsWith('/service/users/data')) return { agencies: assigned ? [{ id: 5 }] : [] };
+            if (method === 'PUT') {
+                denied = true;
+                throw new Error('failed-write');
+            }
+            if (denied) throw new Error(FETCH_ERRORS.NOT_ALLOWED);
+            return { _embedded: original };
+        });
+        renderPage();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('agency.edit.general.address.phone'), '03012345');
+        await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        const readsBeforeRetry = agencyReads().length;
+        assigned = false;
+        await user.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
+        expect(screen.queryByDisplayValue('Beratung Nord')).not.toBeInTheDocument();
+        expect(agencyReads()).toHaveLength(readsBeforeRetry);
+        assigned = true;
+        denied = false;
+        await user.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
+        expect(await screen.findByLabelText('agency.edit.general.address.phone')).toHaveValue('03012345');
+    });
+
     it('offers retry for unavailable assignment instead of creating a centre', async () => {
         mocks.fetchData.mockRejectedValueOnce(new Error('offline'));
         renderPage();

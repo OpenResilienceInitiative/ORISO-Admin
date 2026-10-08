@@ -37,7 +37,17 @@ const Recovery = ({ retry }: { retry: () => void }) => {
 };
 
 /** Rendered only after the authenticated assignment check, before any agency GET. */
-const AssignedAgencySetup = ({ id }: { id: string }) => {
+const AssignedAgencySetup = ({
+    id,
+    draft,
+    onDraftChange,
+    retryAssignment,
+}: {
+    id: string;
+    draft?: Partial<AgencyData>;
+    onDraftChange: (changed: Partial<AgencyData>) => void;
+    retryAssignment: () => Promise<boolean>;
+}) => {
     const { data, isLoading, error, refetch } = useAgencyData({ id });
     const { mutateAsync, isPending } = useAgencyUpdate(id);
     const [saveFailed, setSaveFailed] = useState(false);
@@ -47,8 +57,9 @@ const AssignedAgencySetup = ({ id }: { id: string }) => {
     if (error instanceof AgencyAccessError || !data || validAgencySetupId(data.id) !== id)
         return (
             <Recovery
-                retry={() => {
-                    refetch();
+                retry={async () => {
+                    // A retry must recheck assignment before the tenant-filtered GET.
+                    if (await retryAssignment()) await refetch();
                 }}
             />
         );
@@ -61,7 +72,7 @@ const AssignedAgencySetup = ({ id }: { id: string }) => {
             await mutateAsync(values);
             navigate(`${routePathNames.agency}/${id}/general`);
         } catch {
-            // Keep this Form mounted: query recovery must not discard the user's input.
+            // The parent retains edits even when denied access temporarily hides this Form.
             setSaveFailed(true);
         }
     };
@@ -69,7 +80,13 @@ const AssignedAgencySetup = ({ id }: { id: string }) => {
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <div className={styles.setup}>
-                <Form layout="vertical" initialValues={data} onFinish={save} scrollToFirstError>
+                <Form
+                    layout="vertical"
+                    initialValues={{ ...data, ...draft }}
+                    onValuesChange={onDraftChange}
+                    onFinish={save}
+                    scrollToFirstError
+                >
                     <Card
                         autoHeight
                         dialogContentPadding
@@ -93,7 +110,11 @@ const AssignedAgencySetup = ({ id }: { id: string }) => {
 };
 
 /** The URL is a hint. Only the signed-in BST admin's actual assignment authorizes access. */
+const hasAssignedAgency = (agencies: unknown, id: string | null): boolean =>
+    Array.isArray(agencies) && agencies.some((agency: { id?: unknown }) => validAgencySetupId(agency?.id) === id);
+
 export const AgencySetupPage = () => {
+    const [draft, setDraft] = useState<{ id: string; values: Partial<AgencyData> } | null>(null);
     const { id: rawId } = useParams();
     const id = validAgencySetupId(rawId);
     const { hasRole, isTechnicalAccount, tokenUnreadable } = useUserRoles();
@@ -101,9 +122,7 @@ export const AgencySetupPage = () => {
         refetchOnMount: 'always',
     });
     if (isLoading || (!isFetchedAfterMount && isFetching)) return <Initialization />;
-    const assigned =
-        Array.isArray(data?.agencies) &&
-        data.agencies.some((agency: { id?: unknown }) => validAgencySetupId(agency?.id) === id);
+    const assigned = hasAssignedAgency(data?.agencies, id);
     if (!id || tokenUnreadable || isTechnicalAccount || !isAgencyScopedAdmin(hasRole) || isError || !assigned) {
         return (
             <Recovery
@@ -113,5 +132,22 @@ export const AgencySetupPage = () => {
             />
         );
     }
-    return <AssignedAgencySetup key={id} id={id} />;
+    return (
+        <AssignedAgencySetup
+            key={id}
+            id={id}
+            draft={draft?.id === id ? draft.values : undefined}
+            onDraftChange={(changed) =>
+                setDraft((previous) => ({
+                    id,
+                    // Retain edited information only, scoped to this centre and this mounted session.
+                    values: { ...(previous?.id === id ? previous.values : {}), ...changed },
+                }))
+            }
+            retryAssignment={async () => {
+                const result = await refetch();
+                return !result.isError && hasAssignedAgency(result.data?.agencies, id);
+            }}
+        />
+    );
 };

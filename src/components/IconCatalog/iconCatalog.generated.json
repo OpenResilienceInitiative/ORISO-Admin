@@ -1341,7 +1341,7 @@
         "fileName": "counseling_active.svg",
         "sourcePath": "src/resources/img/svg/navbar/counseling_active.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx", "src/pages/Agency/AgencySetupPage.tsx"],
         "usage": "app-used"
     },
     {
