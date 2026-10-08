@@ -479,7 +479,14 @@ const Toolbar = ({
                 mobile fullscreen) — only the rest of the bar scrolls sideways. */}
             {leading}
             {leading && <span className={styles.vDivider} />}
-            <div className={styles.toolbarScroll}>
+            <div
+                className={styles.toolbarScroll}
+                role="region"
+                aria-label={t('editor.toolbar.region', 'Textformatierung')}
+                // A disabled fieldset has no tab stops; keep its overflowing strip scrollable.
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                tabIndex={disabled ? 0 : undefined}
+            >
                 {/* A disabled fieldset natively disables every formatting control inside
                 (read mode / version look-back) without touching each button. */}
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
@@ -1248,7 +1255,7 @@ export const M3RichTextEditor = ({
         >
             {!hideHeader && (
                 <div className={styles.header}>
-                    <IconComponent className={styles.headerIcon} />
+                    <IconComponent className={styles.headerIcon} aria-hidden="true" />
                     <h2 className={styles.title}>{title}</h2>
                 </div>
             )}
@@ -1302,6 +1309,10 @@ export const M3RichTextEditor = ({
                         {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
                         <div
                             className={styles.comparisonDocument}
+                            role="region"
+                            aria-label={comparison.title}
+                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the scrollable reference
+                            tabIndex={0}
                             lang={comparison.language}
                             // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
@@ -1382,7 +1393,7 @@ export const M3RichTextEditor = ({
                         editor={editor}
                         pluginKey="anchorLinkBubble"
                         updateDelay={150}
-                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
+                        tippyOptions={{ placement: 'top', maxWidth: 'none', aria: { expanded: false } }}
                         shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
                     >
                         <div className={styles.anchorBubble}>

@@ -2,6 +2,7 @@ import { theme as antdTheme, type ThemeConfig } from 'antd';
 
 import { computeOrisoPalette, type OrisoSchemeName } from '../utils/theme/orisoScheme';
 import type { TenantSeeds } from '../utils/themeSeeds';
+import { contrastRatio } from '../utils/contrastRatio';
 
 /**
  * Bridges the M3/OrisoScheme design tokens into antd's ConfigProvider theme.
@@ -58,8 +59,18 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
     const fieldSelectedSurface = t('--admin-field-selected-surface', '#ffdad5');
     const fieldSelectedText = t('--admin-field-selected-text', '#930008');
 
+    const algorithm = scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+    const preset = antdTheme.getDesignToken({ algorithm });
+    // Antd's green status tags use green7 on green1: the light defaults only
+    // reach 3.37:1. Keep the same palette/background and choose its first
+    // readable text tone, rather than inventing a second status colour.
+    const greenText =
+        [preset.green7, preset.green8, preset.green9, preset.green10].find(
+            (color) => contrastRatio(color, preset.green1) >= 4.5,
+        ) ?? preset.green10;
+
     return {
-        algorithm: scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        algorithm,
         token: {
             // Brand + semantic colours, straight from the M3 scheme.
             colorPrimary: primary,
@@ -67,6 +78,8 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             colorInfo: primary,
             colorError: t('--m3-error', '#b1005e'),
             colorWarning: t('--m3-warning', '#410001'),
+            green7: greenText,
+            colorSuccessText: greenText,
             // Surfaces + text.
             colorTextBase: t('--m3-on-surface', '#1a1c1e'),
             colorBgBase: t('--m3-surface', '#fcf9f9'),
@@ -89,6 +102,12 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             controlHeight: M3_CONTROL_HEIGHT,
         },
         components: {
+            // Status Tag uses colorSuccess itself, while other text uses its alias.
+            // Override only the Tag text so success icons retain their signal colour.
+            Tag: { colorSuccess: greenText },
+            // The very dark warning seed otherwise generates a mid-tone Alert
+            // fill. Reuse the scheme's tonal surface for readable warning copy.
+            Alert: { colorWarningBg: t('--m3-primary-container', '#ffdad5') },
             // antd's Layout component keeps its own dark-navy defaults
             // (headerBg/footerBg) independent of the global token set above,
             // so without this override SiteHeader/SiteFooter render near-black

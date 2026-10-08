@@ -460,6 +460,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 // The scrolling part of the toolbar (everything after the pinned button).
 .toolbarScroll {
+    &:focus-visible {
+        outline: 2px solid $m3-primary;
+        outline-offset: -2px;
+    }
+
     display: flex;
     min-width: 0;
     flex: 1;
@@ -1759,7 +1764,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     small {
         display: block;
         max-width: 210px;
-        color: rgb(68 71 72 / 72%);
+        color: var(--m3-on-surface-variant, #444748);
         font-size: 11px;
         line-height: 14px;
         white-space: normal;
