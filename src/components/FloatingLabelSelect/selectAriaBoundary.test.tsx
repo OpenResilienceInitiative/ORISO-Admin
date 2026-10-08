@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { FloatingLabelSelect } from './index';
 import {
     AccessibleVirtualSelectPopup,
@@ -15,6 +16,40 @@ describe('select semantic state boundaries', () => {
         const combo = screen.getByRole('combobox', { name: 'Topics' });
         expect(combo).toHaveAttribute('aria-required', 'true');
         await waitFor(() => expect(container.querySelector('.ant-select')).not.toHaveAttribute('aria-required'));
+    });
+
+    it('preserves deprecated dropdownRender and gives popupRender precedence when both are supplied', async () => {
+        const legacy = vi.fn((menu) => (
+            <>
+                {menu}
+                <button type="button">Legacy footer</button>
+            </>
+        ));
+        const current = vi.fn((menu) => (
+            <>
+                {menu}
+                <button type="button">Current footer</button>
+            </>
+        ));
+        const user = userEvent.setup();
+        const { rerender } = render(
+            <FloatingLabelSelect label="Topics" options={[{ value: 'a', label: 'Alpha' }]} dropdownRender={legacy} />,
+        );
+        await user.click(screen.getByRole('combobox'));
+        expect(await screen.findByRole('button', { name: 'Legacy footer' })).toBeInTheDocument();
+        expect(legacy).toHaveBeenCalled();
+        rerender(
+            <FloatingLabelSelect
+                label="Topics"
+                options={[{ value: 'a', label: 'Alpha' }]}
+                dropdownRender={legacy}
+                popupRender={current}
+            />,
+        );
+        expect(await screen.findByRole('button', { name: 'Current footer' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Legacy footer' })).not.toBeInTheDocument();
+        expect(current).toHaveBeenCalled();
+        expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
 
     it('refuses required cleanup when actual widget state differs', () => {

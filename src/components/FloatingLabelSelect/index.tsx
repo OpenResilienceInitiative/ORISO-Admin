@@ -50,7 +50,7 @@ export const FloatingLabelSelect = <
 }: FloatingLabelSelectProps<ValueType, OptionType>) => {
     const root = useRef<HTMLDivElement>(null);
     useRequiredComboboxBoundary(root);
-    const callerPopupRender = selectProps.popupRender;
+    const callerPopupRender = selectProps.popupRender ?? selectProps.dropdownRender;
     const renderPopup = useCallback(
         (menu: ReactElement) => (
             <AccessibleVirtualSelectPopup menu={callerPopupRender ? callerPopupRender(menu) : menu} />
