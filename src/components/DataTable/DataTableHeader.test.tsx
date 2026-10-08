@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import axe from 'axe-core';
 import { DataTable } from './DataTable';
 import { DataTableHeader, DataTableSort } from './DataTableHeader';
 
@@ -64,5 +65,15 @@ describe('DataTableHeader', () => {
 
         expect(screen.queryByRole('button', { name: 'Name' })).not.toBeInTheDocument();
         expect(screen.getByRole('columnheader', { name: 'Name' })).not.toHaveAttribute('aria-sort');
+    });
+});
+
+describe('DataTableHeader accessible column names', () => {
+    it('names an unlabelled selection column on the header rather than a generic span', async () => {
+        const { container } = render(
+            <DataTable header={<DataTableHeader columns={[{ key: 'select', ariaLabel: 'Auswahl' }]} />} />,
+        );
+        expect(screen.getByRole('columnheader', { name: 'Auswahl' })).toBeInTheDocument();
+        expect((await axe.run(container, { runOnly: ['aria-prohibited-attr'] })).violations).toHaveLength(0);
     });
 });
