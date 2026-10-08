@@ -44,7 +44,7 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
     const { t, i18n } = useTranslation();
     const location = useLocation();
     const handleLogout = () => {
-        logout(true);
+        logout(true, routePathNames.login);
     };
     const { isEnabled, toggleFeature } = useFeatureContext();
     const isDesktopLayout = useIsDesktopLayout();
