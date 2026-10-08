@@ -215,7 +215,8 @@
     }
 
     :global(.ant-select-item-option-selected .ant-select-item-option-content) {
-        color: var(--m3-on-surface, #1b1b1c);
+        // Pair the neutral selected surface with dark text in both colour schemes.
+        color: var(--admin-select-selected-text, #1b1b1c);
     }
 
     :global(.ant-select-item-option-selected .ant-select-item-option-content):before {
