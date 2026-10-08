@@ -6,6 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import appI18n from '../../i18n';
+import { getInitialLanguage, LANGUAGE_COOKIE_KEY, LANGUAGE_STORAGE_KEY } from '../../utils/language';
 import translationDe from '../../locales/de/translation.json';
 import translationEn from '../../locales/en/translation.json';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -114,14 +115,32 @@ export const TwoFactorLanguage: Story = {
     name: 'Email second factor — DE and EN',
     args: { twoFactor: true },
     play: async ({ canvas, userEvent }) => {
-        const body = within(document.body);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Code per E-Mail senden' }));
-        await expect(await canvas.findByLabelText('Einmalcode')).toBeVisible();
-        await userEvent.click(canvas.getByRole('combobox', { name: /Sprache|language/i }));
-        await userEvent.click(await body.findByText('(EN) Englisch'));
-        await expect(await canvas.findByRole('button', { name: 'Send new code' })).toBeVisible();
-        await expect(canvas.getByLabelText('One-time code')).toBeVisible();
-        await expect(canvas.getByRole('radio', { name: 'E-mail address' })).toBeChecked();
-        await expect(getI18n()).toBe(appI18n);
+        const initialLanguage = getInitialLanguage();
+        const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        const languageCookie = document.cookie
+            .split('; ')
+            .find((cookie) => cookie.startsWith(`${LANGUAGE_COOKIE_KEY}=`));
+        try {
+            const body = within(document.body);
+            await userEvent.click(await canvas.findByRole('button', { name: 'Code per E-Mail senden' }));
+            await expect(await canvas.findByLabelText('Einmalcode')).toBeVisible();
+            await userEvent.click(canvas.getByRole('combobox', { name: /Sprache|language/i }));
+            await userEvent.click(await body.findByText('(EN) Englisch'));
+            await expect(await canvas.findByRole('button', { name: 'Send new code' })).toBeVisible();
+            await expect(canvas.getByLabelText('One-time code')).toBeVisible();
+            await expect(canvas.getByRole('radio', { name: 'E-mail address' })).toBeChecked();
+            await expect(getI18n()).toBe(appI18n);
+        } finally {
+            // Later story contexts initialize the app from these shared browser preferences.
+            if (storedLanguage === null) {
+                localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+            } else {
+                localStorage.setItem(LANGUAGE_STORAGE_KEY, storedLanguage);
+            }
+            document.cookie = languageCookie
+                ? `${languageCookie};path=/;SameSite=Lax`
+                : `${LANGUAGE_COOKIE_KEY}=;path=/;Max-Age=0`;
+        }
+        await expect(getInitialLanguage()).toBe(initialLanguage);
     },
 };
