@@ -17,7 +17,7 @@ import { assignAgencyToConsultants } from './assignAgencyToConsultants';
 export const updateAgencyData = async (
     agencyModel: AgencyData,
     formInput: AgencyData,
-    /** Called once the main PUT is accepted, before follow-up requests that may still fail. */
+    /** Called once the main PUT is accepted. */
     onMainWritten?: () => void,
 ) => {
     const agencyId = agencyModel.id;
@@ -89,6 +89,18 @@ export const updateAgencyData = async (
         }
     }
 
+    // AgencyService requires persisted coverage before accepting offline=false. The all-areas
+    // choice unmounts the range inputs, so postCodes can be absent even on a registration save.
+    // POST replaces coverage transactionally; DELETE then POST can leave the centre with no rows.
+    const postCodes =
+        formInput.postCodeRangesActive === false ? [{ from: '00000', until: '99999' }] : formInput.postCodes;
+    if (formInput.postCodeRangesActive === true && !postCodes?.length) {
+        throw new Error('Selected postal-code ranges are missing');
+    }
+    if (postCodes !== undefined) {
+        await updateAgencyPostCodeRange(agencyId, postCodes, 'POST');
+    }
+
     return fetchData({
         url: `${agencyEndpointBase}/${agencyModel.id}`,
         method: FETCH_METHODS.PUT,
@@ -97,13 +109,6 @@ export const updateAgencyData = async (
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
         onMainWritten?.();
-        // Card-based agency edits submit narrow patches. The regular agency GET
-        // does not contain postcode ranges, so treating an absent `postCodes`
-        // field as an empty selection silently replaces the stored range with
-        // 00000-99999. Only the registration card may mutate postcode ranges.
-        if (formInput.postCodes !== undefined) {
-            await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
-        }
         // eslint-disable-next-line no-underscore-dangle
         const updatedAgency = response?._embedded;
 
