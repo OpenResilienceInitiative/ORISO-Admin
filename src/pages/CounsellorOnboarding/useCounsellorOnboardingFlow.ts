@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeLanguage } from '../../utils/language';
+import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
+import { completeExistingAccountSetup } from '../../api/tenantOnboarding/tenantOnboarding';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
     CounsellorRegistrationRequest,
+    CounsellorTopicPermission,
     InviteLinkError,
     InviteLinkErrorReason,
+    OnboardingTwoFactorMethod,
+    OnboardingTwoFactorSetup,
     TwoFactorCodeInvalidError,
 } from '../../api/counsellorOnboarding/counsellorOnboarding';
 
@@ -13,7 +19,7 @@ import {
  * re-issue the setup material — the step then renders verify-only.
  */
 export interface CounsellorTwoFactorStepData {
-    twoFactor: { secret: string; qrCodeBase64: string | null } | null;
+    twoFactor: OnboardingTwoFactorSetup | null;
     /** True when the step was entered by resuming a consumed-but-2FA-pending link. */
     resumed: boolean;
 }
@@ -38,27 +44,71 @@ export type CounsellorOnboardingState =
     | { phase: 'done' };
 
 /** Which submit failed retryably; link-death is modelled in the state instead. */
-export type CounsellorOnboardingSubmitError = 'registration' | 'two-factor-code' | 'two-factor' | null;
+export type CounsellorOnboardingSubmitError = 'registration' | 'topic-policy' | 'two-factor-code' | 'two-factor' | null;
 
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
     account: { username: string; password: string };
     person: { salutation?: string; position: string; title: string };
     names: { publicName: string; internalName: string };
+    /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
+    avatar: CounsellorAvatarValue;
     topicIds: number[];
+    /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
+    agency: { name: string };
+    /** Agency-admin invites only: "Berät auch", prefilled with the inviter's proposal. */
+    alsoCounsellor: boolean;
 }
 
 const EMPTY_DATA: CounsellorWizardData = {
     account: { username: '', password: '' },
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
+    avatar: {},
     topicIds: [],
+    agency: { name: '' },
+    alsoCounsellor: true,
+};
+
+/** An agency-admin invite runs this wizard with the "Berät auch" switch. */
+export const isAgencyAdminInvite = (invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole'> | null | undefined) =>
+    invite?.targetRole === 'AGENCY_ADMIN';
+
+/** Whether the invitee ends up counselling: always for a counsellor invite, by choice for an agency admin. */
+export const counsels = (
+    invite: CounsellorOnboardingInviteDTO | null,
+    data: Pick<CounsellorWizardData, 'alsoCounsellor'>,
+) => !isAgencyAdminInvite(invite) || data.alsoCounsellor;
+
+/** An agency admin always gets CREATE: they administer or found the agency and bring its topics. */
+export const effectiveTopicPermission = (
+    invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole' | 'topicPermission'>,
+): CounsellorTopicPermission => (invite.targetRole === 'AGENCY_ADMIN' ? 'CREATE' : invite.topicPermission ?? 'CREATE');
+
+/** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
+export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
+    const coverage = invite.topics.map((topic) => topic.id);
+    if (effectiveTopicPermission(invite) === 'CREATE') {
+        return coverage;
+    }
+    if (coverage.length === 1) {
+        return coverage;
+    }
+    return invite.departmentId != null && coverage.includes(invite.departmentId) ? [invite.departmentId] : [];
 };
 
 /** Single source: the shared consultant credential policy (also used by the admin form). */
 export { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from '../../utils/consultantCredentialRules';
 
-export const useCounsellorOnboardingFlow = (inviteToken: string, client: CounsellorOnboardingClient) => {
+export const useCounsellorOnboardingFlow = (
+    inviteToken: string,
+    client: CounsellorOnboardingClient,
+    language = 'de',
+) => {
+    const topicLanguage = normalizeLanguage(language) ?? 'de';
+    const loadedTopics = useRef<{ token: string; language: string } | null>(null);
+    const [topicLanguageError, setTopicLanguageError] = useState(false);
+    const [topicNamesAttempt, setTopicNamesAttempt] = useState(0);
     const [state, setState] = useState<CounsellorOnboardingState>({ phase: 'loading' });
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
@@ -73,10 +123,28 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     const stateRef = useRef(state);
     stateRef.current = state;
     const busyRef = useRef(false);
+    const inviteTokenRef = useRef(inviteToken);
+    inviteTokenRef.current = inviteToken;
+    // A token may change A → B → A while a request is pending; identity alone
+    // cannot tell that the original flow is gone.
+    const twoFactorGenerationRef = useRef({ token: inviteToken, generation: 0 });
+    if (twoFactorGenerationRef.current.token !== inviteToken) {
+        twoFactorGenerationRef.current = {
+            token: inviteToken,
+            generation: twoFactorGenerationRef.current.generation + 1,
+        };
+    }
+    useEffect(() => {
+        busyRef.current = false;
+        setBusy(false);
+        setSubmitError(null);
+    }, [inviteToken]);
     // Submits read the freshest collected data through a ref — the callbacks
     // stay stable while every keystroke updates `data`.
     const dataRef = useRef(data);
     dataRef.current = data;
+    const inviteRef = useRef(invite);
+    inviteRef.current = invite;
 
     useEffect(() => {
         let cancelled = false;
@@ -87,11 +155,22 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         }
 
         setState({ phase: 'loading' });
+        setTopicLanguageError(false);
+        loadedTopics.current = null;
+        const requestedLanguage = topicLanguage;
         client
             .getOnboardingInvite(inviteToken)
             .then((loaded) => {
                 if (cancelled) return;
+                loadedTopics.current = { token: inviteToken, language: requestedLanguage };
                 setInvite(loaded);
+                if (loaded.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP') {
+                    // The server bound the identity already; profile, topics and public TOTP stay untouched.
+                    setData(EMPTY_DATA);
+                    setSubmitError(null);
+                    setState({ phase: 'form' });
+                    return;
+                }
                 if (loaded.phase === 'PENDING_2FA_ACTIVATION') {
                     // Resume (#569 contract): the registration already
                     // happened; only the 2FA activation is open.
@@ -101,11 +180,17 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                     });
                     return;
                 }
-                // A single covered topic is preselected — it is the routed
-                // department and the only possible choice.
-                if (loaded.topics.length === 1) {
-                    setData((current) => ({ ...current, topicIds: [loaded.topics[0].id] }));
-                }
+                // Every resolve starts from a clean sheet: a token switch must not
+                // carry a previous invite's topics or agency name into this one.
+                // The invite's coverage arrives preselected (owner decision
+                // 2026-09-17): the invitee removes chips or adds further tenant
+                // topics instead of starting from an empty selection.
+                setData({
+                    ...EMPTY_DATA,
+                    topicIds: initialTopicSelection(loaded),
+                    // The inviter's proposal; the backend default is "also counsels".
+                    alsoCounsellor: loaded.alsoCounsellor ?? true,
+                });
                 setState({ phase: 'form' });
             })
             .catch((error: unknown) => {
@@ -124,6 +209,65 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         // The invite is resolved once per token/attempt; the client is stable by contract.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [inviteToken, loadAttempt]);
+
+    // A locale change refreshes labels without resetting the form, while still
+    // honouring terminal/resumed invite states. Re-running the initial resolve
+    // would erase the account, avatar, names and topic selection already entered.
+    useEffect(() => {
+        let cancelled = false;
+        setTopicLanguageError(false);
+        if (
+            state.phase !== 'form' ||
+            busy ||
+            loadedTopics.current?.token !== inviteToken ||
+            loadedTopics.current.language === topicLanguage
+        ) {
+            return undefined;
+        }
+        client
+            .getOnboardingInvite(inviteToken)
+            .then((localized) => {
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
+                if (localized.phase === 'PENDING_2FA_ACTIVATION') {
+                    setState({
+                        phase: 'two-factor',
+                        result: { twoFactor: localized.twoFactor ?? null, resumed: true },
+                    });
+                    return;
+                }
+                const names = new Map(
+                    [...localized.topics, ...(localized.availableTopics ?? [])].map((topic) => [topic.id, topic]),
+                );
+                loadedTopics.current = { token: inviteToken, language: topicLanguage };
+                setInvite((current) => {
+                    if (!current || cancelled) return current;
+                    const localize = (topic: CounsellorOnboardingInviteDTO['topics'][number]) => {
+                        const translated = names.get(topic.id);
+                        return translated ? { ...topic, name: translated.name } : topic;
+                    };
+                    return {
+                        ...current,
+                        topics: current.topics.map(localize),
+                        availableTopics: current.availableTopics?.map(localize),
+                    };
+                });
+            })
+            .catch((error: unknown) => {
+                if (cancelled || stateRef.current.phase !== 'form' || busyRef.current) return;
+                if (error instanceof InviteLinkError) {
+                    setState({ phase: 'link-error', reason: error.reason });
+                    return;
+                }
+                setTopicLanguageError(true);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [client, inviteToken, topicLanguage, topicNamesAttempt, state.phase, busy]);
+
+    const retryTopicNames = useCallback(() => {
+        setTopicNamesAttempt((attempt) => attempt + 1);
+    }, []);
 
     const retryLoad = useCallback(() => {
         if (stateRef.current.phase !== 'load-error') {
@@ -144,6 +288,23 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
+        setData((current) => ({ ...current, avatar }));
+    }, []);
+
+    const updateAgency = useCallback((patch: Partial<CounsellorWizardData['agency']>) => {
+        setData((current) => ({ ...current, agency: { ...current.agency, ...patch } }));
+    }, []);
+
+    const setAlsoCounsellor = useCallback((alsoCounsellor: boolean) => {
+        setData((current) => ({ ...current, alsoCounsellor }));
+    }, []);
+
+    /** Replaces the whole selection — the multi-select reports its full value on every change. */
+    const setTopics = useCallback((topicIds: number[]) => {
+        setData((current) => ({ ...current, topicIds }));
+    }, []);
+
     const toggleTopic = useCallback((topicId: number) => {
         setData((current) => ({
             ...current,
@@ -162,26 +323,50 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
     };
 
     const submitRegistration = useCallback(async () => {
-        if (stateRef.current.phase !== 'form' || busyRef.current) {
+        if (
+            stateRef.current.phase !== 'form' ||
+            busyRef.current ||
+            inviteRef.current?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP'
+        ) {
             return;
         }
         busyRef.current = true;
         setBusy(true);
         setSubmitError(null);
         try {
-            const { account, person, names, topicIds } = dataRef.current;
+            const { account, person, names, avatar, topicIds, agency, alsoCounsellor } = dataRef.current;
+            const agencyAdmin = isAgencyAdminInvite(inviteRef.current);
+            // An agency admin who does not counsel gets a login only: no consultant profile.
+            const withProfile = !agencyAdmin || alsoCounsellor;
+            // Normalises a half choice away; `{}` (no choice) sends no avatar block at all.
+            const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
+            const createsAgency = inviteRef.current?.agencyExists === false;
+            // A founding admin gives the new agency its topics even without counselling:
+            // the counsellors queued for it pick from them.
+            const withTopics = withProfile || createsAgency;
             const request: CounsellorRegistrationRequest = {
                 account: { username: account.username.trim(), password: account.password },
-                person: {
-                    salutation: person.salutation,
-                    position: person.position.trim() || undefined,
-                    title: person.title.trim() || undefined,
-                },
-                names: {
-                    publicName: names.publicName.trim() || undefined,
-                    internalDisplayName: names.internalName.trim() || undefined,
-                },
-                topicIds,
+                person: withProfile
+                    ? {
+                          salutation: person.salutation,
+                          position: person.position.trim() || undefined,
+                          title: person.title.trim() || undefined,
+                      }
+                    : {},
+                names: withProfile
+                    ? {
+                          publicName: names.publicName.trim() || undefined,
+                          internalDisplayName: names.internalName.trim() || undefined,
+                      }
+                    : {},
+                ...(withProfile && avatarKind
+                    ? { avatar: { kind: avatarKind, ...(avatarId ? { id: avatarId } : {}) } }
+                    : {}),
+                topicIds: withTopics ? topicIds : [],
+                ...(agencyAdmin ? { alsoCounsellor } : {}),
+                // Present only for a reserved (not yet existing) agency — the
+                // backend rejects the field for an existing one.
+                ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
             if (result.phase === 'COMPLETED') {
@@ -194,33 +379,109 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
                 result: { twoFactor: result.twoFactor, resumed: false },
             });
         } catch (error) {
-            failFlow(error, 'registration');
+            if (error instanceof Error && error.message === 'ONE_TOPIC_PER_AGENCY') {
+                setInvite((current) => (current ? { ...current, oneTopicPerAgencyEnabled: true } : current));
+                setSubmitError('topic-policy');
+            } else {
+                failFlow(error, 'registration');
+            }
         } finally {
             busyRef.current = false;
             setBusy(false);
         }
     }, [client, inviteToken]);
 
-    const submitTwoFactorCode = useCallback(
-        async (otp: string) => {
-            if (stateRef.current.phase !== 'two-factor' || busyRef.current) {
+    const submitAccountSetup = useCallback(
+        async (password: string) => {
+            if (
+                stateRef.current.phase !== 'form' ||
+                busyRef.current ||
+                inviteRef.current?.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP'
+            ) {
                 return;
             }
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
             try {
-                await client.activateTwoFactor(inviteToken, otp);
+                await completeExistingAccountSetup(inviteToken, password);
+                if (inviteTokenRef.current === inviteToken) {
+                    setState({ phase: 'done' });
+                }
+            } catch (error) {
+                if (inviteTokenRef.current === inviteToken) {
+                    failFlow(error, 'registration');
+                }
+            } finally {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        },
+        [inviteToken],
+    );
+
+    const sendTwoFactorEmail = useCallback(async () => {
+        const { current } = stateRef;
+        if (
+            inviteTokenRef.current !== inviteToken ||
+            current.phase !== 'two-factor' ||
+            busyRef.current ||
+            !current.result.twoFactor?.methods?.includes('EMAIL') ||
+            !client.sendTwoFactorEmail
+        ) {
+            throw new Error('Email second-factor setup is not available');
+        }
+        const { generation } = twoFactorGenerationRef.current;
+        busyRef.current = true;
+        setBusy(true);
+        setSubmitError(null);
+        try {
+            await client.sendTwoFactorEmail(inviteToken);
+            if (twoFactorGenerationRef.current.generation !== generation) {
+                throw new Error('The onboarding link changed during email setup');
+            }
+        } catch (error) {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                failFlow(error, 'two-factor');
+            }
+            throw error;
+        } finally {
+            if (twoFactorGenerationRef.current.generation === generation) {
+                busyRef.current = false;
+                setBusy(false);
+            }
+        }
+    }, [client, inviteToken]);
+
+    const submitTwoFactorCode = useCallback(
+        async (otp: string, method?: OnboardingTwoFactorMethod) => {
+            if (inviteTokenRef.current !== inviteToken || stateRef.current.phase !== 'two-factor' || busyRef.current) {
+                return;
+            }
+            const { generation } = twoFactorGenerationRef.current;
+            busyRef.current = true;
+            setBusy(true);
+            setSubmitError(null);
+            try {
+                if (method) {
+                    await client.activateTwoFactor(inviteToken, otp, method);
+                } else {
+                    await client.activateTwoFactor(inviteToken, otp);
+                }
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 setState({ phase: 'done' });
             } catch (error) {
+                if (twoFactorGenerationRef.current.generation !== generation) return;
                 if (error instanceof TwoFactorCodeInvalidError) {
                     setSubmitError('two-factor-code');
                 } else {
                     failFlow(error, 'two-factor');
                 }
             } finally {
-                busyRef.current = false;
-                setBusy(false);
+                if (twoFactorGenerationRef.current.generation === generation) {
+                    busyRef.current = false;
+                    setBusy(false);
+                }
             }
         },
         [client, inviteToken],
@@ -233,11 +494,19 @@ export const useCounsellorOnboardingFlow = (inviteToken: string, client: Counsel
         submitError,
         busy,
         retryLoad,
+        topicLanguageError,
+        retryTopicNames,
         updateAccount,
         updatePerson,
         updateNames,
+        updateAvatar,
+        updateAgency,
+        setTopics,
         toggleTopic,
+        setAlsoCounsellor,
         submitRegistration,
+        submitAccountSetup,
+        sendTwoFactorEmail,
         submitTwoFactorCode,
     };
 };

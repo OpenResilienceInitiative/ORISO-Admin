@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+// @vitest-environment-options {"url":"https://admin.example.test/admin/"}
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     BACKEND_LANGUAGE_COOKIE_KEY,
     DEFAULT_LANGUAGE,
@@ -13,6 +14,10 @@ import {
     SupportedLanguage,
     updateDocumentLanguage,
 } from './language';
+
+vi.mock('../config/runtimeConfig', () => ({
+    runtimeConfig: { cookieDomain: '.example.test', cookieSecure: true },
+}));
 
 const readCookie = (name: string): string | null => {
     const match = decodeURIComponent(document.cookie)
@@ -43,9 +48,12 @@ describe('language utilities', () => {
 
     it('normalizes supported locale strings', () => {
         expect(isSupportedLanguage('de')).toBe(true);
-        expect(isSupportedLanguage('fr')).toBe(false);
+        expect(isSupportedLanguage('fr')).toBe(true);
         expect(normalizeLanguage('de-DE')).toBe('de');
-        expect(normalizeLanguage('fr-FR')).toBeNull();
+        expect(normalizeLanguage('fr-FR')).toBe('fr');
+        expect(normalizeLanguage('de@informal')).toBe('de@informal');
+        expect(normalizeLanguage('ti-ER')).toBe('ti');
+        expect(normalizeLanguage('es')).toBeNull();
     });
 
     it('stores and reads the preferred language from cookie/localStorage', () => {
@@ -56,7 +64,7 @@ describe('language utilities', () => {
         expect(getInitialLanguage()).toBe('de');
     });
 
-    it.each<SupportedLanguage>(['en', 'de'])(
+    it.each<SupportedLanguage>(['en', 'de', 'de@informal', 'fr', 'ru', 'tr', 'ti'])(
         'mirrors the stored language into the backend `lang` cookie for %s',
         (language) => {
             // ConsultingTypeService resolves localized topic names from the `lang`

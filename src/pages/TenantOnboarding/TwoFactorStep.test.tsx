@@ -120,3 +120,34 @@ describe('TwoFactorStep', () => {
         expect(onSubmit).toHaveBeenCalledWith('654321');
     });
 });
+
+describe('TwoFactorStep server default', () => {
+    it('passes the supported server APP default to the shared setup', () => {
+        render(
+            <TwoFactorStep
+                {...baseProps}
+                email="invite@example.org"
+                onSendEmail={async () => {}}
+                result={{
+                    ...baseProps.result,
+                    twoFactor: { ...baseProps.result.twoFactor, methods: ['EMAIL', 'APP'], defaultMethod: 'APP' },
+                }}
+            />,
+        );
+        expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).toBeChecked();
+        expect(screen.getByTestId('totp-secret')).toBeInTheDocument();
+    });
+});
+
+it('passes EMAIL-only resume capabilities to the shared setup', () => {
+    render(
+        <TwoFactorStep
+            {...baseProps}
+            email="invite@example.org"
+            onSendEmail={async () => {}}
+            result={{ tenantId: 7, twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL'] }, resumed: true }}
+        />,
+    );
+    expect(screen.queryByRole('radio', { name: 'twoFactorAuth.activate.radio.label.app' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'twoFactorAuth.activate.radio.label.email' })).toBeChecked();
+});

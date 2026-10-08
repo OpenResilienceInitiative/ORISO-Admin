@@ -24,7 +24,7 @@ const PREVIEW: InviteEmailPreviewDTO = {
     subject: 'Ihre Einladung zu ORISO',
     html: HTML,
     plainText: 'ORISO\n=====',
-    sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+    sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
 };
 
 const renderView = (props: Partial<React.ComponentProps<typeof BrandedEmailPreviewView>> = {}) =>
@@ -72,32 +72,45 @@ describe('BrandedEmailPreviewView', () => {
         expect(screen.queryByTestId('branded-email-preview-frame')).not.toBeInTheDocument();
     });
 
-    it('explains the wordmark fallback when the tenant has no logo', () => {
-        renderView({ logoFallbackReason: 'NO_LOGO' });
-
-        expect(screen.getByText('tenants.appSettings.emailPreview.branding.noLogo')).toBeInTheDocument();
-        expect(screen.getByTestId('branded-email-preview-frame')).toBeInTheDocument();
+    it('shows the actual organisation and selected text wordmark', () => {
+        renderView({
+            preview: {
+                ...PREVIEW,
+                branding: {
+                    brandName: 'Resolved charity',
+                    logoUrl: null,
+                    accentColor: '#246b45',
+                    primaryColor: '#0f3b8f',
+                    logoRendering: 'TEXT_WORDMARK',
+                },
+            },
+        });
+        expect(screen.getByText('Resolved charity')).toBeInTheDocument();
+        expect(screen.getByText('tenants.appSettings.emailPreview.branding.textWordmark')).toBeInTheDocument();
+        expect(screen.getByTestId('branded-email-preview-frame')).toHaveAttribute('srcdoc', HTML);
     });
 
-    it('distinguishes an unusable (non-remote) logo from a missing one', () => {
-        renderView({ logoFallbackReason: 'LOGO_NOT_REMOTE' });
-
-        expect(screen.getByText('tenants.appSettings.emailPreview.branding.logoNotRemote')).toBeInTheDocument();
-    });
-
-    it('shows no branding hint for the platform preview or a tenant with a usable logo', () => {
-        const { rerender } = renderView({ logoFallbackReason: undefined });
+    it('does not claim a logo failure for an image result or an older unknown result', () => {
+        const { rerender } = renderView();
         expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
-
         rerender(
             <BrandedEmailPreviewView
-                preview={PREVIEW}
+                preview={{
+                    ...PREVIEW,
+                    branding: {
+                        brandName: 'Image charity',
+                        logoUrl: 'https://app.example.org/service/tenant/public/branding/7/logo',
+                        accentColor: '#246b45',
+                        primaryColor: '#0f3b8f',
+                        logoRendering: 'IMAGE',
+                    },
+                }}
                 isLoading={false}
                 isError={false}
                 onRetry={vi.fn()}
-                logoFallbackReason={null}
             />,
         );
+        expect(screen.getByText('Image charity')).toBeInTheDocument();
         expect(screen.queryByText(/emailPreview\.branding/)).not.toBeInTheDocument();
     });
 

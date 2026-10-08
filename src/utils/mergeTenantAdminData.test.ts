@@ -102,4 +102,48 @@ describe('serializeTenantAdminDataUpdate', () => {
     it('does not materialize missing licensing', () => {
         expect(JSON.parse(serializeTenantAdminDataUpdate(baseTenantAdminData(), {}))).not.toHaveProperty('licensing');
     });
+
+    it('replaces legal language maps instead of restoring removed languages', () => {
+        const current = {
+            content: {
+                impressum: { de: 'Impressum', en: 'Imprint' },
+                privacyConsent: { de: 'Ja', en: 'Yes' },
+                claim: { de: 'Claim' },
+            },
+        } as any;
+        const merged = mergeTenantAdminData(current, {
+            content: { impressum: { de: 'Neu' }, privacyConsent: {} },
+        } as any);
+        expect(merged.content.impressum).toEqual({ de: 'Neu' });
+        expect(merged.content.privacyConsent).toEqual({});
+        expect(merged.content.claim).toEqual({ de: 'Claim' });
+    });
+
+    it("does not write a partial legal map into the caller's data", () => {
+        const current = { content: { impressum: { de: 'Alt', en: 'Old' } } } as any;
+        const merged = mergeTenantAdminData(current, { content: { impressum: { de: 'Neu' } } } as any);
+        expect(merged.content.impressum).toEqual({ de: 'Neu' });
+        expect(current.content.impressum).toEqual({ de: 'Alt', en: 'Old' });
+    });
+});
+
+describe('assistant override updates', () => {
+    it('preserves an untouched own icon in the full PUT when only the name changes', () => {
+        const current = baseTenantAdminData();
+        current.theming.assistantName = 'Own assistant';
+        current.theming.assistantIcon = 'robot-1184077';
+        const saved = JSON.parse(serializeTenantAdminDataUpdate(current, { theming: { assistantName: 'New name' } }));
+        expect(saved.theming.assistantName).toBe('New name');
+        expect(saved.theming.assistantIcon).toBe('robot-1184077');
+    });
+    it('keeps explicit null resets in the full PUT rather than restoring overrides', () => {
+        const current = baseTenantAdminData();
+        current.theming.assistantName = 'Own assistant';
+        current.theming.assistantIcon = 'robot-1184077';
+        const saved = JSON.parse(
+            serializeTenantAdminDataUpdate(current, { theming: { assistantName: null, assistantIcon: null } }),
+        );
+        expect(saved.theming.assistantName).toBeNull();
+        expect(saved.theming.assistantIcon).toBeNull();
+    });
 });

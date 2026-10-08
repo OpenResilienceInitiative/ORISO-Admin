@@ -50,4 +50,16 @@ describe('useTenantAdminsData', () => {
             data: [expect.objectContaining({ id: 'tenant-two', tenantId: '2' })],
         });
     });
+
+    it('narrows to one Träger and never sends centres, which tenant admins do not have', async () => {
+        fetchMock.mockResolvedValue({ total: 0, data: [] } as never);
+        const { result } = renderHook(() => useTenantAdminsData({ filters: { tenantId: '7', agencyIds: ['101'] } }), {
+            wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+        const params = new URL(fetchMock.mock.calls[0][0].url, 'https://example.org').searchParams;
+        expect(params.get('tenantId')).toBe('7');
+        expect(params.has('agencyId')).toBe(false);
+    });
 });

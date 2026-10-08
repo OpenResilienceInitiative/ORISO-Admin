@@ -1,6 +1,12 @@
 import mergeWith from 'lodash.mergewith';
 import { TenantAdminData } from '../types/TenantAdminData';
 
+/**
+ * Legal language maps are snapshots: a published draft that no longer has a language or a
+ * consent entry must replace the stored map, or a deep merge would restore the removed wording.
+ */
+const REPLACED_CONTENT_MAPS = ['impressum', 'privacy', 'privacyConsent'] as const;
+
 export const mergeTenantAdminData = (
     currentTenantData: TenantAdminData | undefined,
     formData: Partial<TenantAdminData>,
@@ -10,6 +16,13 @@ export const mergeTenantAdminData = (
         ...base,
         content: { ...(base.content ?? {}) },
     };
+    // mergeWith writes into its destination; without a copy a partial map would edit the caller's cache.
+    REPLACED_CONTENT_MAPS.forEach((key) => {
+        const existing = (tmp.content as Record<string, unknown>)[key];
+        if (existing && typeof existing === 'object') {
+            (tmp.content as Record<string, unknown>)[key] = { ...(existing as Record<string, unknown>) };
+        }
+    });
 
     Object.keys(tmp.content).forEach((key) => {
         if (typeof tmp.content[key] === 'boolean') {
@@ -20,6 +33,16 @@ export const mergeTenantAdminData = (
     const finalData = mergeWith(tmp, formData, (objValue, srcValue) => {
         return objValue instanceof Array ? srcValue : undefined;
     }) as TenantAdminData;
+
+    const formContent = formData.content as Record<string, unknown> | undefined;
+    if (finalData.content && formContent) {
+        REPLACED_CONTENT_MAPS.forEach((key) => {
+            const replacement = formContent[key];
+            if (replacement && typeof replacement === 'object') {
+                (finalData.content as Record<string, unknown>)[key] = { ...(replacement as Record<string, unknown>) };
+            }
+        });
+    }
 
     if (finalData.content) {
         Object.keys(finalData.content).forEach((key) => {
@@ -36,6 +59,12 @@ export const serializeTenantAdminDataUpdate = (
     formData: Partial<TenantAdminData>,
 ): string => {
     const payload = mergeTenantAdminData(currentTenantData, formData);
+    if (formData.settings?.smtpMode === 'PLATFORM' && formData.settings.smtp) {
+        // The SMTP editor explicitly projects PLATFORM to disabled transport plus
+        // theme colour. Deep-merging would restore the stored OWN server fields.
+        // Mode-only and unrelated updates keep their normal preservation behaviour.
+        payload.settings = { ...payload.settings, smtp: { ...formData.settings.smtp } };
+    }
     if (
         !Object.prototype.hasOwnProperty.call(formData, 'licensing') &&
         payload.licensing?.allowedNumberOfUsers === null &&

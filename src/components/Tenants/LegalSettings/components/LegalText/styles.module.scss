@@ -1,15 +1,26 @@
 /* M3 shell: same reading-width constraints as the other legal cards. */
 .card {
     width: 100%;
-    min-width: 375px;
+    min-width: 0;
     max-width: 960px;
 }
 
 .description {
-    margin: 0 0 12px;
     padding: 0 24px;
+    margin: 0 0 12px;
     color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
     letter-spacing: 0.4px;
     line-height: 16px;
+}
+
+/* Persistent publication state above the help text, same padding as the help block (#1066). */
+.publicationStatus {
+    padding: 0 24px;
+    margin-bottom: 8px;
+}
+
+/* #1070: the left/right compare needs more than the single-editor reading width. */
+.card:has([data-legal-compare-open='true']) {
+    max-width: none;
 }

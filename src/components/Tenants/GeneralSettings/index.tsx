@@ -1,5 +1,6 @@
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { useTranslation } from 'react-i18next';
+import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardDeck } from '../../CardDeck';
@@ -94,6 +95,11 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                         <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
+                {showAppearance && (
+                    <CardDeck.Item>
+                        <AssistantIdentity tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
                 {showAppearance && can(PermissionAction.Update, Resource.Language) && (
                     <CardDeck.Item>
                         <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
@@ -104,7 +110,17 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                         <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
-                {showAppearance && (
+                {showMasterData && (
+                    <CardDeck.Item>
+                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
+                    <CardDeck.Item>
+                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showMasterData && (
                     <CardDeck.Item>
                         <CardEditable
                             key={`tenant-master-data-editable-${appearanceEditable}`}
@@ -137,16 +153,6 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                                 switchVariant="m3"
                             />
                         </CardEditable>
-                    </CardDeck.Item>
-                )}
-                {showMasterData && (
-                    <CardDeck.Item>
-                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
             </CardDeck>

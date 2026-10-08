@@ -10,6 +10,7 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
 import { DoneStep } from './DoneStep';
+import { dpaMailPreviewStoryHandlers } from '../../components/DpaForwardDialog/dpaMailPreviewStory';
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -24,7 +25,7 @@ import { DoneStep } from './DoneStep';
 const meta = {
     title: 'Pages/TenantOnboarding/Flow',
     component: TenantAdminOnboarding,
-    parameters: { layout: 'centered' },
+    parameters: { layout: 'centered', msw: { handlers: dpaMailPreviewStoryHandlers } },
     decorators: [
         // The preview decorator already provides a MemoryRouter (Link in the done state).
         (Story) => (
@@ -152,7 +153,7 @@ export const OrganisationDpaForwardDialogMobile: Story = {
 
 /**
  * After confirming the forward the step flips to the calm on-hold state
- * (#723): success notice, "Weitergeleitet — wartet auf Unterschrift", no
+ * (#723): success notice, "Weitergeleitet — wartet auf Bestätigung", no
  * signer fields, no consent box — Continue works with the organisation data
  * alone.
  */
@@ -187,9 +188,109 @@ export const OrganisationDpaForwardedOnHoldMobile: Story = {
     play: OrganisationDpaForwardedOnHold.play,
 };
 
-/** A consumed link: distinct terminal state, no form, nothing resubmittable. */
+/**
+ * Reopened after a forward (#1065): the server recorded the forward, so the
+ * waiting view comes back on reload instead of the consent step.
+ */
+export const OrganisationDpaForwardedAfterReload: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { dpaForwardedAt: '2026-09-24T16:05:30' },
+        }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('dpa-forwarded-onhold')).toBeVisible();
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+    },
+};
+
+/**
+ * Reopened after the representative confirmed (#1065): "Vertragsunterlagen
+ * bestätigt", no consent block, Continue goes straight to the account step.
+ */
+export const OrganisationDpaConfirmed: Story = {
+    args: {
+        client: createStubTenantAdminOnboardingClient({
+            latencyMs: 0,
+            invite: { dpaForwardedAt: '2026-09-24T16:05:30', dpaSignedAt: '2026-09-25T09:12:00' },
+        }),
+        forwardClient: createStubDpaForwardClient({ latencyMs: 0 }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByTestId('dpa-confirmed-notice')).toBeVisible();
+        await expect(canvas.queryByRole('checkbox')).toBeNull();
+        await expect(canvas.queryByTestId('dpa-forwarded-onhold')).toBeNull();
+    },
+};
+
+/** The confirmed state at 390×844. */
+export const OrganisationDpaConfirmedMobile: Story = {
+    args: OrganisationDpaConfirmed.args,
+    ...PHONE_390,
+    play: OrganisationDpaConfirmed.play,
+};
+
+/** A Träger that exists already: the invitee joins it with a password only. */
+const JOIN_EXISTING = {
+    joinsExistingTenant: true,
+    tenantId: 40,
+    reservedTenantId: undefined,
+    tenantIdReservationToken: undefined,
+    dpaContent: null,
+    recipientEmail: 'paula.zweite@example.org',
+    firstName: 'Paula',
+    lastName: 'Zweite',
+};
+
+/** Join an existing Träger: step 1 of 2 is the password, nothing else. */
+export const JoinExistingTraeger: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, invite: JOIN_EXISTING }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Träger beitreten|Join a tenant/)).toBeInTheDocument();
+        await expect(canvas.getByText(/Schritt 1 von 2|Step 1 of 2/)).toBeInTheDocument();
+        await expect(canvas.getByText('paula.zweite@example.org')).toBeInTheDocument();
+        await expect(canvas.queryByTestId('organisation-master-data-title')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /Zurück|Back/ })).toBeNull();
+    },
+};
+
+/** The same on a phone (390 px). */
+export const JoinExistingTraegerMobile: Story = {
+    args: JoinExistingTraeger.args,
+    ...PHONE_390,
+    play: JoinExistingTraeger.play,
+};
+
+/** Join an existing Träger, walked through: password → 2FA → done without the activation promise. */
+export const JoinExistingTraegerDone: Story = {
+    args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, invite: JOIN_EXISTING }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const password = await canvas.findByLabelText(/^(Passwort|Password)$/);
+        await userEvent.type(password, 'SecurePass1!');
+        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePass1!');
+        await userEvent.click(canvas.getByRole('button', { name: /Konto erstellen|Create account/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', { name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor/ }),
+        );
+        await waitFor(() => expect(canvas.getByTestId('onboarding-done-tenant-id')).toHaveTextContent('40'));
+    },
+};
+
+/** A consumed link: distinct terminal state, no form — only the way to the login (#1065). */
 export const LinkConsumed: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, inviteState: 'CONSUMED' }) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('button', { name: /Zum Login|Go to login/ })).toBeVisible();
+    },
 };
 
 /** A revoked link. */

@@ -23,6 +23,8 @@ interface DepartmentSelectProps {
     /** `ALL_DEPARTMENTS` or a topic id. */
     value: number | typeof ALL_DEPARTMENTS;
     onChange: (value: number | typeof ALL_DEPARTMENTS) => void;
+    /** Blocks switching while a save or publish of the current text is in flight. */
+    disabled?: boolean;
 }
 
 /**
@@ -45,7 +47,7 @@ interface DepartmentSelectProps {
  * the admin never opened. Where the backend does not report it, entries carry no marker rather
  * than a wrong one.
  */
-export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSelectProps) => {
+export const DepartmentSelect = ({ departments, value, onChange, disabled = false }: DepartmentSelectProps) => {
     const { t } = useTranslation();
 
     // With no departments there is only the agency-wide text — a one-entry switcher is noise.
@@ -59,9 +61,34 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
     // How many will NOT receive a change to the agency-wide text. Shown on the
     // "Alle Fachbereiche" entry, where that number is the actual decision input.
     const withOwnText = departments.filter(({ hasOwnText }) => hasOwnText).length;
+    // One Fachbereich: the agency-wide text and that Fachbereich are the same choice (#1066, H4),
+    // so the container preselects it and the menu does not offer the redundant entry.
+    const allEntries =
+        departments.length > 1
+            ? [
+                  {
+                      key: ALL_DEPARTMENTS,
+                      label: (
+                          <span className={styles.entry}>
+                              <span>{allLabel}</span>
+                              {withOwnText > 0 && (
+                                  <span className={styles.excludedHint} data-testid="departments-with-own-text">
+                                      {t('agency.legal.department.notInheriting', {
+                                          count: withOwnText,
+                                          defaultValue: '{{count}} mit eigenem Text',
+                                      })}
+                                  </span>
+                              )}
+                          </span>
+                      ),
+                  },
+                  { type: 'divider' as const },
+              ]
+            : [];
 
     return (
         <SplitDropdown
+            disabled={disabled}
             // The house Fachbereich/topic glyph (Icons Master File `topic_400_24px`),
             // not MUI's `Groups`: this control picks a THEME, not a group of people, and
             // the legal editors draw from the ORISO set (LegalIcons) rather than MUI.
@@ -80,26 +107,7 @@ export const DepartmentSelect = ({ departments, value, onChange }: DepartmentSel
                         type: 'group' as const,
                         label: t('agency.legal.department.menuHeader', 'Fachbereich auswählen'),
                         children: [
-                            {
-                                key: ALL_DEPARTMENTS,
-                                label: (
-                                    <span className={styles.entry}>
-                                        <span>{allLabel}</span>
-                                        {withOwnText > 0 && (
-                                            <span
-                                                className={styles.excludedHint}
-                                                data-testid="departments-with-own-text"
-                                            >
-                                                {t('agency.legal.department.notInheriting', {
-                                                    count: withOwnText,
-                                                    defaultValue: '{{count}} mit eigenem Text',
-                                                })}
-                                            </span>
-                                        )}
-                                    </span>
-                                ),
-                            },
-                            { type: 'divider' as const },
+                            ...allEntries,
                             ...departments.map(({ id, name, hasOwnText }) => ({
                                 key: String(id),
                                 label: (

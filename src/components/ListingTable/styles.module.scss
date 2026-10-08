@@ -69,6 +69,15 @@
             }
         }
 
+        /* antd rounds the header cells with its own 16px token; follow the table's radius instead (#1127). */
+        .ant-table-thead > tr > th:first-child {
+            border-start-start-radius: var(--admin-table-radius) !important;
+        }
+
+        .ant-table-thead > tr > th:last-child {
+            border-start-end-radius: var(--admin-table-radius) !important;
+        }
+
         .ant-table-tbody > tr > td {
             text-align: center;
             border-bottom: 1px solid var(--admin-table-border, #eae7e8);
@@ -301,5 +310,12 @@
         --admin-table-radius: 0;
 
         padding-bottom: 0;
+    }
+
+    /* Inside a dialog the table is inset in a card, not full-bleed: it keeps its corners (#1127). */
+    :global(.ant-modal) .listingTable {
+        --admin-table-radius: 16px;
+
+        padding-bottom: 24px;
     }
 }

@@ -9,3 +9,10 @@
     line-height: 20px;
     color: var(--black-60);
 }
+
+/* ORISO-Admin#988 / Frank 2026-09-16: the supervision feature toggles sit indented under their
+   own master switch, inside the "Other functions" card next to "Allow group chat". */
+
+.supervisionChild {
+    margin-left: 24px;
+}

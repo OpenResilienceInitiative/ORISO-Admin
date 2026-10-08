@@ -1,0 +1,20 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+.presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: mui.$mui-unit * 2;
+}
+
+.preset {
+    display: inline-flex;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.preset img,
+.preset svg {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}

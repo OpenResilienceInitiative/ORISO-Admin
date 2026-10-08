@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    ACCESS_TOKEN_VALID_UNTIL_KEY,
+    REFRESH_TOKEN_VALID_UNTIL_KEY,
     getLocalStorageItem,
     getTokenExpiryFromLocalStorage,
     removeTokenExpiryFromLocalStorage,
@@ -31,16 +33,16 @@ describe('access session local storage helpers', () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-06-29T10:00:00.000Z'));
 
-        setTokenExpiryInLocalStorage('auth.access_token_valid_until', 30);
+        setTokenExpiryInLocalStorage(ACCESS_TOKEN_VALID_UNTIL_KEY, 30);
 
-        expect(getLocalStorageItem('auth.access_token_valid_until')).toBe(
+        expect(getLocalStorageItem(ACCESS_TOKEN_VALID_UNTIL_KEY)).toBe(
             String(new Date('2026-06-29T10:00:30.000Z').getTime()),
         );
     });
 
     it('returns parsed access and refresh token expiry timestamps', () => {
-        localStorage.setItem('auth.access_token_valid_until', '1000');
-        localStorage.setItem('auth.refresh_token_valid_until', '2000');
+        localStorage.setItem(ACCESS_TOKEN_VALID_UNTIL_KEY, '1000');
+        localStorage.setItem(REFRESH_TOKEN_VALID_UNTIL_KEY, '2000');
 
         expect(getTokenExpiryFromLocalStorage()).toEqual({
             accessTokenValidUntilTime: 1000,
@@ -49,12 +51,30 @@ describe('access session local storage helpers', () => {
     });
 
     it('removes both stored token expiry values', () => {
-        localStorage.setItem('auth.access_token_valid_until', '1000');
-        localStorage.setItem('auth.refresh_token_valid_until', '2000');
+        localStorage.setItem(ACCESS_TOKEN_VALID_UNTIL_KEY, '1000');
+        localStorage.setItem(REFRESH_TOKEN_VALID_UNTIL_KEY, '2000');
 
         removeTokenExpiryFromLocalStorage();
 
-        expect(localStorage.getItem('auth.access_token_valid_until')).toBeNull();
-        expect(localStorage.getItem('auth.refresh_token_valid_until')).toBeNull();
+        expect(localStorage.getItem(ACCESS_TOKEN_VALID_UNTIL_KEY)).toBeNull();
+        expect(localStorage.getItem(REFRESH_TOKEN_VALID_UNTIL_KEY)).toBeNull();
+    });
+
+    // The counselling app on the same host keeps its own expiry under `auth.*`. Sharing those keys
+    // meant an Admin login rewrote the app's session timers and an Admin logout ended the app
+    // session.
+    it('keeps its expiry apart from the counselling app on the same host', () => {
+        localStorage.setItem('auth.access_token_valid_until', '111');
+        localStorage.setItem('auth.refresh_token_valid_until', '222');
+
+        expect(ACCESS_TOKEN_VALID_UNTIL_KEY).not.toBe('auth.access_token_valid_until');
+        expect(REFRESH_TOKEN_VALID_UNTIL_KEY).not.toBe('auth.refresh_token_valid_until');
+        expect(Number.isNaN(getTokenExpiryFromLocalStorage().accessTokenValidUntilTime)).toBe(true);
+
+        setTokenExpiryInLocalStorage(ACCESS_TOKEN_VALID_UNTIL_KEY, 30);
+        removeTokenExpiryFromLocalStorage();
+
+        expect(localStorage.getItem('auth.access_token_valid_until')).toBe('111');
+        expect(localStorage.getItem('auth.refresh_token_valid_until')).toBe('222');
     });
 });

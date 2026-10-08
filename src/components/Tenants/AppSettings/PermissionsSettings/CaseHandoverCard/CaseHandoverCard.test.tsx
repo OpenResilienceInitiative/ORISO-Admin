@@ -5,6 +5,26 @@ import { CaseHandoverCard } from './index';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    defaultPolicies: [
+        {
+            code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+            label: 'Counsellor asked for advice',
+            clientConsentRequired: true,
+            accessAllowed: true,
+            enabled: true,
+            displayOrder: 10,
+            policyAuthority: '',
+        },
+        {
+            code: 'COUNSELLOR_IS_ILL',
+            label: 'Counsellor is ill',
+            clientConsentRequired: false,
+            accessAllowed: true,
+            enabled: true,
+            displayOrder: 40,
+            policyAuthority: 'platform-admin-default-case-handover-policy',
+        },
+    ],
     policies: [
         {
             code: 'COUNSELLOR_ASKED_FOR_ADVICE',
@@ -67,6 +87,7 @@ vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
 describe('CaseHandoverCard', () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.policies = mocks.defaultPolicies;
         mocks.dataState.isError = false;
         mocks.mutationState.isPending = false;
     });
@@ -125,6 +146,34 @@ describe('CaseHandoverCard', () => {
                 expect.anything(),
             );
         });
+    });
+
+    // Exactly what GET /service/users/case-handover/reason-policies answers: `clientConsent` as
+    // the bare enum string, the mode beside it. The card used to read only the policy-object
+    // shape, so a saved Opt-Out came back looking unset — UserService #1131.
+    it('shows the stored consent policy after a reload of the UserService wire shape', async () => {
+        mocks.policies = [
+            {
+                code: 'COUNSELLOR_ASKED_FOR_ADVICE',
+                label: 'Counsellor asked for advice',
+                clientConsent: 'OPT_OUT',
+                clientConsentMode: 'ENFORCED',
+                clientConsentRequired: false,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 10,
+                policyAuthority: 'tenant-admin-case-handover-policy',
+                maxAccessDurationMinutes: 90,
+            },
+        ];
+        render(<CaseHandoverCard />);
+
+        expect(
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu – tenants.permissions.consent.optOutEnforced/,
+            }),
+        ).toBeTruthy();
+        expect(screen.getByDisplayValue('1 h 30 min')).toBeTruthy();
     });
 
     it('persists an edited notification template on blur (PUT payload carries the language map)', async () => {
@@ -265,5 +314,76 @@ describe('CaseHandoverCard', () => {
 
         expect(screen.getByTestId('case-handover-card-error')).toBeInTheDocument();
         expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
+    });
+
+    // After US#1245 the endpoint answers the neutral codes only.
+    describe('with the neutral reason codes', () => {
+        const neutralPolicies = [
+            {
+                code: 'ADVICE_REQUESTED',
+                label: 'Advice requested',
+                clientConsentRequired: true,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 10,
+                policyAuthority: null,
+                maxAccessDurationMinutes: 120,
+            },
+            {
+                code: 'UNPLANNED_ABSENCE',
+                label: 'Unplanned absence',
+                clientConsentRequired: false,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 40,
+                policyAuthority: null,
+            },
+        ];
+
+        const advisorConsentButton = () =>
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+            });
+
+        beforeEach(() => {
+            mocks.policies = neutralPolicies;
+        });
+
+        it('shows and saves the advice time limit on ADVICE_REQUESTED', async () => {
+            const user = userEvent.setup();
+            render(<CaseHandoverCard />);
+
+            expect(screen.getByDisplayValue('2 h')).toBeTruthy();
+            await user.click(screen.getByRole('button', { name: 'm3NumberField.increase' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+            const payload = mocks.mutate.mock.calls.at(-1)?.[0];
+            expect(payload.find((policy: { code: string }) => policy.code === 'ADVICE_REQUESTED')).toEqual(
+                expect.objectContaining({ maxAccessDurationMinutes: 135 }),
+            );
+        });
+
+        it('shows counsellor consent as given for ADVICE_REQUESTED and absent otherwise', async () => {
+            const user = userEvent.setup();
+            render(<CaseHandoverCard />);
+
+            expect(advisorConsentButton().querySelector('[data-icon="switch-on"]')).not.toBeNull();
+
+            await user.click(screen.getByRole('tab', { name: 'Unplanned absence' }));
+            expect(advisorConsentButton().querySelector('[data-icon="silent"]')).not.toBeNull();
+            expect(screen.queryByRole('button', { name: 'm3NumberField.increase' })).not.toBeInTheDocument();
+        });
+    });
+
+    it('still shows counsellor consent as given for the retired advice code', () => {
+        render(<CaseHandoverCard />);
+
+        expect(
+            screen
+                .getByRole('button', {
+                    name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+                })
+                .querySelector('[data-icon="switch-on"]'),
+        ).not.toBeNull();
     });
 });

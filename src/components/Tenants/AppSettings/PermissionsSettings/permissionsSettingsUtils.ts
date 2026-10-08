@@ -20,9 +20,18 @@ export const resolvePermissionPolicy = (
     );
 };
 
+/**
+ * Initial platform preset (ORISO-TenantService#251): the values a platform that has never touched
+ * its preset starts from — every conversation feature on, AI scan off. It is a *seed*, never a
+ * stand-in for a value the backend already holds: wherever a stored platform policy or a stored
+ * Träger value exists, that value wins (ORISO-Admin#989).
+ */
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
     featureGroupChatV2Enabled: true,
+    // ORISO-Admin#988: the two group cards' own masters, separate from featureGroupChatV2Enabled.
+    featureInternalGroupChatEnabled: true,
+    featureSelfHelpGroupsEnabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,
@@ -81,6 +90,9 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureAudioCallsGroupChatsEnabled',
         'featureVoiceMessagesGroupChatsEnabled',
         'featureThreadsGroupChatsEnabled',
+        // ORISO-Admin#988: both group formats are locked off with the group chat family.
+        'featureInternalGroupChatEnabled',
+        'featureSelfHelpGroupsEnabled',
     ],
     calls: ['featureCallsEnabled'],
     supervision: [
@@ -299,6 +311,24 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
         },
     );
 
+    return settings;
+};
+
+/**
+ * The platform preset as concrete feature values: the initial preset, overridden by the legacy
+ * allowed toggles, overridden by the stored per-feature platform policies. Used by the platform
+ * view so a stored policy (e.g. group chats off) is never contradicted by the hard-coded seed.
+ */
+export const platformPresetValues = (controls?: {
+    allowedPermissionToggles?: PermissionToggleVisibility;
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+}) => {
+    const settings = applyVisibleTogglesAsValues(controls?.allowedPermissionToggles);
+    Object.entries(controls?.permissionPolicies ?? {}).forEach(([fieldKey, policy]) => {
+        if (typeof policy?.value === 'boolean') {
+            settings[fieldKey] = policy.value;
+        }
+    });
     return settings;
 };
 

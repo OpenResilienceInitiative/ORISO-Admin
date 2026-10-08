@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, waitFor } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { TwoFactorSetup } from './TwoFactorSetup';
@@ -85,6 +87,71 @@ export const ProfileInactive: Story = {
     },
 };
 
+/**
+ * Mandatory setup (#891/#1068): what a new Träger or Beratungsstelle admin sees
+ * on first login — the stepped overlay opens by itself. M3 primary steps and
+ * button, admin font on the step labels.
+ */
+export const ProfileMandatoryOverlay: Story = {
+    render: () => <TwoFactorSetup context="profile" required />,
+    play: async () => {
+        // The overlay portals into #overlay, outside the story canvas.
+        const next = await waitFor(() => {
+            const button = document.querySelector<HTMLElement>('.twoFactorAuth__overlay .button__primary');
+            if (!button) throw new Error('2FA overlay not open yet');
+            return button;
+        });
+        const stepIcon = document.querySelector<HTMLElement>('.overlay__step--active .overlay__stepIcon');
+        const stepLabel = document.querySelector<HTMLElement>('.overlay__step .text');
+        const navy = 'rgb(39, 50, 112)';
+        const slate = 'rgb(76, 85, 95)';
+        await expect(getComputedStyle(next).backgroundColor).not.toBe(slate);
+        await expect(getComputedStyle(next).backgroundColor).toBe('rgb(165, 0, 10)');
+        await expect(getComputedStyle(stepIcon!).backgroundColor).not.toBe(navy);
+        await expect(getComputedStyle(stepLabel!).fontFamily).not.toMatch(/RobotoSlab/);
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/users/data', () =>
+                    HttpResponse.json(
+                        userData({
+                            isEnabled: true,
+                            isActive: false,
+                            isToEncourage: true,
+                            qrCode: '',
+                            secret: 'profile-secret',
+                            type: 'APP',
+                        }),
+                    ),
+                ),
+            ],
+        },
+    },
+};
+
+/** Failed setup lookup: enrollment must not advance with neither key nor QR. */
+export const ProfileMissingSetupData: Story = {
+    render: () => <TwoFactorSetup context="profile" required />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/users/data', () =>
+                    HttpResponse.json(
+                        userData({
+                            isEnabled: true,
+                            isActive: false,
+                            qrCode: '',
+                            secret: '',
+                            type: 'APP',
+                        }),
+                    ),
+                ),
+            ],
+        },
+    },
+};
+
 /** Profile context with active app 2FA: switch is on and shows the configured type. */
 export const ProfileActive: Story = {
     render: () => <TwoFactorSetup context="profile" />,
@@ -134,4 +201,132 @@ export const OnboardingMobile: Story = {
         },
     },
     globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+/** Public setup with server-advertised email support; email is the standard choice. */
+export const OnboardingEmail: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+};
+
+/** A retryable delivery failure must not offer activation before a code is sent. */
+export const OnboardingEmailSendFailure: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {
+                throw new Error('mail unavailable');
+            }}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('alert')).toBeVisible();
+        await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
+    },
+};
+
+/** E-mail verification state with resend and code input, no authenticator secret shown. */
+export const OnboardingEmailCode: Story = {
+    ...OnboardingEmail,
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Neuen Code senden' })).toBeVisible();
+    },
+};
+
+/** A supported server default selects the app while email remains available. */
+export const OnboardingServerAppDefault: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await expect(canvas.getByRole('radio', { name: 'App' })).toBeChecked();
+        await expect(canvas.getByTestId('totp-secret')).toBeVisible();
+        await userEvent.click(canvas.getByRole('radio', { name: 'E-Mail-Adresse' }));
+        await expect(canvas.getByRole('button', { name: 'Code per E-Mail senden' })).toBeVisible();
+    },
+};
+
+/** Fresh accounts without app material retain a usable email setup route. */
+export const OnboardingFreshEmailOnly: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await expect(canvas.queryByRole('radio', { name: 'App' })).not.toBeInTheDocument();
+        await expect(canvas.getByRole('radio', { name: 'E-Mail-Adresse' })).toBeChecked();
+        await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+    },
+};
+
+/** Resumed accounts may verify an app connected during their earlier setup attempt. */
+export const OnboardingResumedAppWithoutMaterial: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            resumed
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('radio', { name: 'App' })).toBeChecked();
+        await expect(canvas.getByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+        await expect(canvas.getByTestId('two-factor-resumed-hint')).toBeVisible();
+        await expect(canvas.queryByTestId('totp-secret')).not.toBeInTheDocument();
+    },
+};
+
+/** An email-only resumed invitation never enables unsupported App verification. */
+export const OnboardingResumedEmailOnly: Story = {
+    ...OnboardingFreshEmailOnly,
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            resumed
+            methods={['EMAIL']}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
 };

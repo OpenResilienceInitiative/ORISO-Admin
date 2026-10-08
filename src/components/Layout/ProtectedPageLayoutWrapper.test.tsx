@@ -21,6 +21,7 @@ vi.mock('../../api/auth/auth', () => ({ handleTokenRefresh: vi.fn() }));
 vi.mock('../../api/auth/logout', () => ({ default: vi.fn() }));
 vi.mock('../../api/tenant/getPublicTenantData', () => ({ default: vi.fn() }));
 vi.mock('../../config/runtimeConfig', () => ({
+    getBuildCommit: () => 'a'.repeat(40),
     keycloakAuthPath: (path: string) => path,
     runtimeConfig: {
         apiBaseUrl: '',
@@ -110,7 +111,7 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByRole('menuitem', { name: 'footer.label.imprint' })).toBeVisible();
         expect(screen.getByRole('menuitem', { name: 'footer.label.privacy' })).toBeVisible();
         expect(screen.getByRole('button', { name: /language\.selectAriaLabel/ })).toBeVisible();
-        expect(screen.getByText('v-test')).toBeVisible();
+        expect(screen.getByText('v-test - aaaaaaa')).toBeVisible();
     });
 
     it('omits the footer from authenticated pages', () => {

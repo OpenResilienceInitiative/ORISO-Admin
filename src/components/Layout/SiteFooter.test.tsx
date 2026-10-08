@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SiteFooter from './SiteFooter';
+import { runtimeConfig } from '../../config/runtimeConfig';
 
 const changeLanguage = vi.fn();
 
@@ -37,6 +38,41 @@ const menuItems = () => screen.getAllByRole('menuitem').map((item) => item.textC
  * the space the form column needs to centre (#594.16a).
  */
 describe('SiteFooter', () => {
+    it.each(['default', 'stage'] as const)('shows the full identity in the %s footer', (variant) => {
+        vi.stubEnv('VITE_BUILD_COMMIT', 'a6b74669b6fe20a515c277228bdb42d67eb5a9a9');
+        const previousRelease = runtimeConfig.platformVersion;
+        runtimeConfig.platformVersion = 'v2.0.6';
+        try {
+            render(<SiteFooter variant={variant} />);
+            const identity = screen.getByText('v2.0.6 - a6b7466');
+            expect(identity).toHaveAttribute('data-build-commit', 'a6b74669b6fe20a515c277228bdb42d67eb5a9a9');
+            expect(identity).toHaveAttribute('data-platform-version', 'v2.0.6');
+        } finally {
+            runtimeConfig.platformVersion = previousRelease;
+            vi.unstubAllEnvs();
+        }
+    });
+
+    it('changes the displayed identity between builds with the same release', () => {
+        const previousRelease = runtimeConfig.platformVersion;
+        runtimeConfig.platformVersion = 'v2.0.6';
+        vi.stubEnv('VITE_BUILD_COMMIT', 'a'.repeat(40));
+        try {
+            const { rerender } = render(<SiteFooter />);
+            expect(screen.getByTestId('build-identity')).toHaveTextContent('v2.0.6 - aaaaaaa');
+            vi.stubEnv('VITE_BUILD_COMMIT', 'b'.repeat(40));
+            rerender(<SiteFooter />);
+            expect(screen.getByTestId('build-identity')).toHaveTextContent('v2.0.6 - bbbbbbb');
+            vi.stubEnv('VITE_BUILD_COMMIT', 'invalid');
+            rerender(<SiteFooter />);
+            expect(screen.getByTestId('build-identity')).toHaveTextContent('v2.0.6 - unknown');
+            expect(screen.getByTestId('build-identity')).toHaveAttribute('data-build-commit', '');
+        } finally {
+            runtimeConfig.platformVersion = previousRelease;
+            vi.unstubAllEnvs();
+        }
+    });
+
     it('opens the imprint in its own dialog instead of doing nothing', async () => {
         render(<SiteFooter />);
 

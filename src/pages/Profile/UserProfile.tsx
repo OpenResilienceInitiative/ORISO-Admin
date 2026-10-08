@@ -8,6 +8,7 @@ import { TourOverviewSection } from '../../components/productTour/TourOverviewSe
 import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
+import { SelfConsultantIdentity } from './SelfConsultantIdentity';
 import { Card } from '../../components/Card';
 import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
 
@@ -29,6 +30,7 @@ export const UserProfile = () => {
 
                 <Col xs={24} sm={24} md={12} lg={8} xl={6}>
                     <TourOverviewSection />
+                    <SelfConsultantIdentity />
                 </Col>
 
                 <Col xs={24} sm={24} md={12} lg={8} xl={6}>
