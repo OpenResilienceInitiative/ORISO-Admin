@@ -35,7 +35,7 @@ export const Gallery: Story = {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
             {ICONS.map(({ name, Component }) => (
                 <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <Component style={{ fontSize: 28 }} />
+                    <Component aria-hidden="true" style={{ fontSize: 28 }} />
                     <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{name}</span>
                 </div>
             ))}
@@ -47,9 +47,9 @@ export const Gallery: Story = {
 export const Colored: Story = {
     render: () => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <Info style={{ fontSize: 20, color: 'var(--primary)' }} />
-            <Info style={{ fontSize: 28, color: 'var(--error)' }} />
-            <Info style={{ fontSize: 36, color: 'var(--on-surface-variant)' }} />
+            <Info aria-label="Information" style={{ fontSize: 20, color: 'var(--primary)' }} />
+            <Info aria-label="Information" style={{ fontSize: 28, color: 'var(--error)' }} />
+            <Info aria-label="Information" style={{ fontSize: 36, color: 'var(--on-surface-variant)' }} />
         </div>
     ),
 };

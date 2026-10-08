@@ -91,6 +91,7 @@ export const PersonalInfoCard = ({
                     onChange={(e) => onChange({ lastName: e.target.value })}
                 />
                 <FloatingLabelSelect
+                    virtual={false}
                     label={t('cards.personalInfo.salutation')}
                     options={SALUTATION_KEYS.map((key) => ({
                         value: key,

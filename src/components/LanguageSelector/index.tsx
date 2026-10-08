@@ -31,6 +31,7 @@ export const LanguageSelector = ({
         <div className={classNames(styles.wrapper, styles[variant], className)}>
             {showIcon && <LanguageIcon className={styles.icon} aria-hidden />}
             <Select
+                virtual={false}
                 className={classNames(styles.select, {
                     loginLanguageSelector__select: isLoginVariant,
                 })}
