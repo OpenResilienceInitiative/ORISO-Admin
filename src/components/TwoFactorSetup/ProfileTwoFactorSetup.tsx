@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { M3Switch } from '../M3Switch';
+import { M3Button } from '../M3Button';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../overlay/Overlay';
 import { BUTTON_TYPES } from '../button/Button';
@@ -333,6 +334,8 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
         [userData?.twoFactorAuth?.secret, userData?.twoFactorAuth?.qrCode],
     );
 
+    const hasAppLink = Boolean(appLink.secretBase32 || appLink.qrCodeBase64);
+
     const twoFactorAuthStepsOverlayApp: OverlayItem[] = useMemo(
         () => [
             {
@@ -359,7 +362,16 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
             {
                 headline: t('twoFactorAuth.activate.app.step3.title'),
                 copy: t('twoFactorAuth.activate.app.step3.copy'),
-                nestedComponent: <TwoFactorAppConnect appLink={appLink} />,
+                nestedComponent: hasAppLink ? (
+                    <TwoFactorAppConnect appLink={appLink} />
+                ) : (
+                    <div role="alert">
+                        <p>{t('error.loading')}</p>
+                        <M3Button variant="outlined" onClick={() => window.location.reload()}>
+                            {t('errorBoundary.reload')}
+                        </M3Button>
+                    </div>
+                ),
                 buttonSet: [
                     {
                         label: t('twoFactorAuth.overlayButton.back'),
@@ -367,6 +379,7 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                         type: BUTTON_TYPES.SECONDARY,
                     },
                     {
+                        disabled: !hasAppLink,
                         label: t('twoFactorAuth.overlayButton.next'),
                         function: OVERLAY_FUNCTIONS.NEXT_STEP,
                         type: BUTTON_TYPES.PRIMARY,
@@ -400,7 +413,7 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                 },
             },
         ],
-        [appLink, handleOtpChange, otpInputItem, otpLabelState],
+        [appLink, hasAppLink, handleOtpChange, otpInputItem, otpLabelState],
     );
 
     const setOverlayByType = useCallback(() => {

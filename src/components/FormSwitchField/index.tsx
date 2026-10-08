@@ -54,16 +54,9 @@ const FormSwitchFieldLocal = ({
 
     return (
         <div className="formSwitchField__container">
-            <M3Switch
-                disabled={isDisabled}
-                label={switchLabel}
-                onChange={onSwitchChange}
-                checked={fieldChecked}
-            />
+            <M3Switch disabled={isDisabled} label={switchLabel} onChange={onSwitchChange} checked={fieldChecked} />
             {!disableLabels && (
-                <span className="formSwitchField__stateLabel">
-                    {t(fieldChecked ? checkedKey : unCheckedKey)}
-                </span>
+                <span className="formSwitchField__stateLabel">{t(fieldChecked ? checkedKey : unCheckedKey)}</span>
             )}
             {paragraphKey && <Paragraph className="desc__toggleText">{t(paragraphKey)}</Paragraph>}
         </div>

@@ -1,3 +1,4 @@
+import { CounsellorAvatarKind } from '../utils/counsellorAvatar';
 import { AgencyData } from './agency';
 import { Status } from './status';
 import { TopicData } from './topic';
@@ -6,7 +7,8 @@ export interface CounselorData {
     lastname: string;
     firstname: string;
     email: string;
-    active: boolean;
+    /** Read-only login flag; null/omitted means that the identity status is unknown. */
+    active?: boolean | null;
     gender: string;
     id: string;
     phone: string;
@@ -35,6 +37,14 @@ export interface CounselorData {
     salutation?: string;
     position?: string;
     title?: string;
+    /**
+     * The counsellor avatar (#1046) — the PUBLIC face shown to advice seekers.
+     * `ICON` carries a motif id in `avatarId`; `INITIALS` carries none;
+     * `PICTURE` is the reserved extension point for the upload of #1048/#1049.
+     * Both absent = the counsellor never chose; rendering falls back to initials.
+     */
+    avatarKind?: CounsellorAvatarKind | null;
+    avatarId?: string | null;
     /** Only present/writable for tenant-level admins (tenant admin / platform admin). */
     adminRemarks?: string;
     publicSlug?: string;

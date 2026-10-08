@@ -1,0 +1,104 @@
+/* M3 input chips (selected values with a trailing x) + one assist chip ("+")
+   that opens the menu of the remaining options. Geometry follows FilterChip:
+   height 32, radius 8, label-large. Every colour is an ORISO M3 token. */
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.chip,
+.add {
+    display: inline-flex;
+    height: 32px;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 8px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+}
+
+/* Input chip: selected value, tonal fill, x at the trailing edge. */
+.chip {
+    padding: 0 4px 0 12px;
+    border-color: transparent;
+    background: var(--m3-secondary-container, #dae2ee);
+    color: var(--m3-on-secondary-container, #171c22);
+}
+
+.label {
+    white-space: nowrap;
+}
+
+.remove {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: background 160ms ease;
+}
+
+.remove:not(:disabled):hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.remove:focus-visible,
+.add:focus-visible {
+    outline: 2px solid var(--m3-primary, #a5000a);
+    outline-offset: 2px;
+}
+
+.remove:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+/* Assist chip: outlined, leading plus, opens the menu. */
+.add {
+    padding: 0 16px 0 8px;
+    background: transparent;
+    cursor: pointer;
+    transition: background 160ms ease;
+}
+
+.add:not(:disabled):hover {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}
+
+.add:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+}
+
+/* Menu surface: same M3 menu treatment as the pill selects. */
+.menu :global(.ant-dropdown-menu) {
+    min-width: 220px;
+    padding: 8px 0;
+    border-radius: 4px;
+    background: var(--m3-surface-container, #eeeeef);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+}
+
+.menu :global(.ant-dropdown-menu-item) {
+    height: 48px;
+    padding: 0 12px;
+    border-radius: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
+
+.menu :global(.ant-dropdown-menu-item:hover) {
+    background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
+}

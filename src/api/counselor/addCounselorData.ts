@@ -1,6 +1,7 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { counselorEndpoint } from '../../appConfig';
 import { CounselorData } from '../../types/counselor';
+import { normaliseAvatarValue } from '../../utils/counsellorAvatar';
 
 /**
  * add new counselor
@@ -36,6 +37,7 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         formalLanguage,
         email,
         absent,
+        absenceMessage,
         username,
         password,
         twoFactorAuth,
@@ -48,6 +50,8 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         position,
         title,
         adminRemarks,
+        avatarKind,
+        avatarId,
     } = counselorData;
 
     const topicIds = parseTopicIds(counselorData);
@@ -71,9 +75,17 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
         salutation,
         position,
         title,
+        // A half choice must never reach the backend: an INITIALS pick drops any
+        // motif id, an ICON pick without one degrades to INITIALS. An untouched
+        // form yields {} and stays omitted.
+        ...normaliseAvatarValue({ avatarKind, avatarId }),
         // Only send remarks when the form rendered the field (tenant-level admins);
         // the backend ignores it for other callers anyway.
         ...(adminRemarks !== undefined && { adminRemarks }),
+        // Only when there IS a note: the endpoint refuses a blank one for an absent
+        // counsellor (`UserAccountInputValidator#validateAbsence`, plus `@Size(min = 1)` on
+        // the DTO), and it means nothing for a counsellor who is present.
+        ...(absent && absenceMessage ? { absenceMessage } : {}),
         ...(topicIds && { topicIds }),
         ...(agencyIds && { agencyIds }),
     };

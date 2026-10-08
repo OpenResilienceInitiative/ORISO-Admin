@@ -6,21 +6,8 @@ import { FloatingLabelInput } from '../../FloatingLabelInput';
 import { FloatingLabelSelect } from '../../FloatingLabelSelect';
 import { M3Button } from '../../M3Button';
 import { ReactComponent as ShieldIcon } from '../../../resources/img/svg/verified.svg';
+import { SALUTATION_KEYS } from '../../../utils/salutationKeys';
 import styles from './styles.module.scss';
-
-/**
- * Stable salutation keys (#994) — persisted as-is, rendered via i18n. Must
- * stay identical to the option list of the normal admin consultant form
- * (`src/pages/users/Edit`), so a wizard-created consultant reads back
- * identically there.
- */
-export const SALUTATION_KEYS = [
-    'counsellor_female',
-    'counsellor_male',
-    'counselling_person',
-    'counsellor_gender_neutral',
-    'not_specified',
-] as const;
 
 export interface PersonalInfo {
     firstName: string;

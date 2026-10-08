@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import { M3Tooltip } from '../M3Tooltip';
@@ -9,6 +10,12 @@ export interface PhaseStepperPhase {
     key: string;
     label: string;
     state: PhaseStepperState;
+    /** Overrides the generic state word screen readers hear, e.g. „Zustellproblem" for `warning`. */
+    stateLabel?: string;
+    /** Overrides the generic tooltip sentence for this phase's state. */
+    stateHint?: string;
+    /** When the step was reached: `short` shows under the bead, `full` goes into its tooltip. */
+    at?: { short: string; full: string };
 }
 
 export interface PhaseStepperProps {
@@ -23,8 +30,15 @@ export interface PhaseStepperProps {
      * track renders no label at all in that state.
      */
     idleLabel?: string;
+    /**
+     * Wraps a dated track after this many steps (narrow tables); the track
+     * visibly continues on the next line. Undefined keeps one line.
+     */
+    maxPerLine?: number;
     className?: string;
 }
+
+const REACHED_STATES: readonly PhaseStepperState[] = ['done', 'current', 'warning', 'error'];
 
 const STATE_FALLBACKS: Record<PhaseStepperState, string> = {
     done: 'abgeschlossen',
@@ -74,22 +88,42 @@ export const PhaseStepper = ({
     ariaLabel,
     showActiveLabel = true,
     idleLabel,
+    maxPerLine,
     className,
 }: PhaseStepperProps) => {
     const { t } = useTranslation();
     const active = activePhase(phases);
     const allDone = phases.length > 0 && phases.every((phase) => phase.state === 'done');
+    // Dated steps stand in columns so each date sits under its own bead.
+    const dated = phases.some((phase) => phase.at);
+    // Only the fixed 88px columns line up across lines; an undated track is short enough for one.
+    const perLine = dated && maxPerLine != null && maxPerLine > 0 && phases.length > maxPerLine ? maxPerLine : null;
 
     return (
         <div className={classNames(styles.stepper, className)}>
-            <ol className={styles.track} aria-label={ariaLabel}>
-                {phases.map((phase) => (
-                    <li key={phase.key} className={classNames(styles.phase, styles[phase.state])}>
+            <ol
+                className={classNames(styles.track, { [styles.trackDated]: dated, [styles.trackWrapped]: perLine })}
+                style={perLine ? ({ '--phase-stepper-per-line': perLine } as CSSProperties) : undefined}
+                aria-label={ariaLabel}
+            >
+                {phases.map((phase, index) => (
+                    <li
+                        key={phase.key}
+                        className={classNames(styles.phase, styles[phase.state], {
+                            [styles.lineStart]: perLine && index > 0 && index % perLine === 0,
+                            [styles.lineEnd]: perLine && index < phases.length - 1 && index % perLine === perLine - 1,
+                            // The stub to the next line takes the colour of the connector it replaces.
+                            [styles.nextReached]:
+                                perLine &&
+                                index < phases.length - 1 &&
+                                REACHED_STATES.includes(phases[index + 1].state),
+                        })}
+                    >
                         <M3Tooltip
-                            text={`${phase.label}: ${t(
-                                `dataTable.phase.stateHint.${phase.state}`,
-                                STATE_HINT_FALLBACKS[phase.state],
-                            )}`}
+                            text={`${phase.label}: ${
+                                phase.stateHint ??
+                                t(`dataTable.phase.stateHint.${phase.state}`, STATE_HINT_FALLBACKS[phase.state])
+                            }${phase.at ? ` ${phase.at.full}` : ''}`}
                         >
                             {/* The bead is the hover target AND the focus target:
                                 the explanation is the only place the colour code
@@ -105,10 +139,17 @@ export const PhaseStepper = ({
                                 <span className={styles.srOnly}>
                                     {phase.label}
                                     {' – '}
-                                    {t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                    {phase.stateLabel ??
+                                        t(`dataTable.phase.state.${phase.state}`, STATE_FALLBACKS[phase.state])}
+                                    {phase.at && `, ${phase.at.full}`}
                                 </span>
                             </span>
                         </M3Tooltip>
+                        {dated && (
+                            <span aria-hidden className={styles.stamp}>
+                                {phase.at?.short}
+                            </span>
+                        )}
                     </li>
                 ))}
             </ol>

@@ -51,6 +51,13 @@ OTEL_METRICS_URL=$(pick VITE_OTEL_METRICS_URL REACT_APP_OTEL_METRICS_URL || true
 OTEL_EXPORT_INTERVAL_MS=$(pick VITE_OTEL_EXPORT_INTERVAL_MS REACT_APP_OTEL_EXPORT_INTERVAL_MS || true)
 PLATFORM_VERSION=$(pick VITE_PLATFORM_VERSION REACT_APP_PLATFORM_VERSION || true)
 
+# ORISO-Helm#368: never guess the API host. Without it the browser would fall back to its own
+# origin and the auth BFF would have no login endpoint, so stop here and name the variable.
+if [ -z "$(printf '%s' "$API_URL" | tr -d '[:space:]')" ]; then
+    echo "ERROR: VITE_API_URL (or REACT_APP_API_URL) is not set. Refusing to start the Admin without an API URL." >&2
+    exit 1
+fi
+
 mkdir -p "$(dirname "$TARGET")"
 
 {

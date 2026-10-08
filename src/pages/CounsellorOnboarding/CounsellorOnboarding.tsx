@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
+import PersonOffOutlined from '@mui/icons-material/PersonOffOutlined';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Refresh from '@mui/icons-material/Refresh';
@@ -12,16 +13,28 @@ import {
     createHttpCounsellorOnboardingClient,
 } from '../../api/counsellorOnboarding/counsellorOnboarding';
 import { M3Button } from '../../components/M3Button';
+import { DialogButton, Modal } from '../../components/Modal';
 import { FloatingLabelInput } from '../../components/FloatingLabelInput';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
+import { InputChipPicker } from '../../components/InputChipPicker';
 import { FilterChip } from '../../components/FilterChip';
+import { M3Switch } from '../../components/M3Switch';
+import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
-import { SALUTATION_KEYS } from '../../components/cards/PersonalInfoCard';
+import { SALUTATION_KEYS } from '../../utils/salutationKeys';
 import { SuccessCard } from '../../components/cards/SuccessCard';
-import { passwordErrorKey, usernameErrorKey } from '../../utils/consultantCredentialRules';
+import { passwordErrorKey, passwordFormRules, usernameErrorKey } from '../../utils/consultantCredentialRules';
 import { LinkErrorState } from '../TenantOnboarding/LinkErrorState';
-import { MIN_PASSWORD_LENGTH, useCounsellorOnboardingFlow } from './useCounsellorOnboardingFlow';
+import { AccountStep } from '../TenantOnboarding/AccountStep';
+import { DoneStep } from '../TenantOnboarding/DoneStep';
+import {
+    counsels,
+    effectiveTopicPermission,
+    isAgencyAdminInvite,
+    MIN_PASSWORD_LENGTH,
+    useCounsellorOnboardingFlow,
+} from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
 
@@ -71,7 +84,8 @@ const Section = ({
  * to the tenant-admin onboarding).
  */
 export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardingProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const alsoCounsellorId = useId();
     const navigate = useNavigate();
     const resolvedClient = useMemo(() => client ?? createHttpCounsellorOnboardingClient(), [client]);
     const {
@@ -81,13 +95,23 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitError,
         busy,
         retryLoad,
+        topicLanguageError,
+        retryTopicNames,
         updateAccount,
         updatePerson,
         updateNames,
+        updateAvatar,
+        updateAgency,
+        setTopics,
         toggleTopic,
+        setAlsoCounsellor,
         submitRegistration,
+        submitAccountSetup,
         submitTwoFactorCode,
-    } = useCounsellorOnboardingFlow(inviteToken, resolvedClient);
+    } = useCounsellorOnboardingFlow(inviteToken, resolvedClient, i18n.resolvedLanguage ?? i18n.language);
+    // Switching "Berät auch" off while founding an agency asks first.
+    const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
+    const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
 
     if (state.phase === 'loading') {
         return (
@@ -126,9 +150,20 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
+        // After registration, a resumed invite already reports its newly created agency as existing.
+        const agencyAdminRegistration = isAgencyAdminInvite(invite);
         return (
-            <div className={styles.wizard} data-testid="onboarding-done">
-                <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+            <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
+                {existingAccountSetup ? (
+                    <DoneStep existingAccountSetup />
+                ) : (
+                    <SuccessCard
+                        titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        onFinish={() => navigate(routePathNames.login)}
+                    />
+                )}
             </div>
         );
     }
@@ -167,16 +202,88 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         return null;
     }
 
+    if (existingAccountSetup) {
+        return (
+            <div className={styles.wizard}>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
+                    {t('accountSetup.title')}
+                </Typography>
+                <AccountStep
+                    invite={invite}
+                    busy={busy}
+                    showRegistrationError={submitError === 'registration'}
+                    existingAccountSetup
+                    passwordRules={passwordFormRules(t)}
+                    passwordHintKey="cards.advisorAccount.passwordHint"
+                    onSubmit={submitAccountSetup}
+                />
+            </div>
+        );
+    }
+
     const { topics } = invite;
     const topicFallback = t('counsellorOnboarding.topics.fallbackLabel');
+    // A reserved Beratungsstellen-ID (composer AUTO/free id): the agency does not
+    // exist yet — the invitee names it and becomes its owner on registration.
+    const createsAgency = invite.agencyExists === false;
+    const singleNewAgencyTopic = createsAgency && invite.oneTopicPerAgencyEnabled === true;
+    // Selectable = the invite's coverage (preselected) plus every active tenant
+    // topic: the invitee drops preselected chips by their x and adds further
+    // platform-defined topics via "+" (owner decision 2026-09-17).
+    const hasCoverage = topics.length > 0;
+    const selectableTopics = [...topics, ...(invite.availableTopics ?? [])].filter(
+        (topic, index, all) => all.findIndex((other) => other.id === topic.id) === index,
+    );
+    const topicOptions = selectableTopics.map((topic) => ({
+        value: topic.id,
+        label: topicLabel(topic, topicFallback),
+    }));
+    // Without CREATE there is no "+": the invitee only picks among the agency's own topics.
+    const topicPermission = effectiveTopicPermission(invite);
+    const agencyTopicsOnly = topicPermission !== 'CREATE';
+    const singleAgencyTopic = agencyTopicsOnly && topics.length === 1;
+    const pickExactlyOne = topicPermission === 'NONE' && !singleAgencyTopic;
+    // Emptiness is judged on the list this mode renders: without CREATE, only the agency's own topics.
+    const renderedTopicCount = agencyTopicsOnly ? topics.length : selectableTopics.length;
+    let topicHintKey: string | undefined;
+    // Founding without counselling: the topics are the new agency's, not the person's.
+    const foundsWithoutCounselling = createsAgency && !counsels(invite, data);
+    if (renderedTopicCount === 0) {
+        // No hint over an empty row — the alert below carries the explanation.
+        topicHintKey = undefined;
+    } else if (singleNewAgencyTopic) {
+        topicHintKey = 'counsellorOnboarding.topics.pickOneHint';
+    } else if (singleAgencyTopic) {
+        topicHintKey = 'counsellorOnboarding.topics.fixedHint';
+    } else if (pickExactlyOne) {
+        topicHintKey = 'counsellorOnboarding.topics.pickOneHint';
+    } else if (agencyTopicsOnly) {
+        topicHintKey = 'counsellorOnboarding.topics.selectExistingHint';
+    } else if (foundsWithoutCounselling) {
+        topicHintKey = 'counsellorOnboarding.topics.agencyTopicsHint';
+    } else {
+        topicHintKey = hasCoverage ? 'counsellorOnboarding.topics.addHint' : 'counsellorOnboarding.topics.chooseHint';
+    }
 
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
     // accept a credential that form would reject.
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
-    const topicsValid = data.topicIds.length > 0;
-    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && !busy;
+    // An agency admin who does not counsel needs no counsellor profile,
+    // but a founding one still gives the new agency at least one topic.
+    const agencyAdmin = isAgencyAdminInvite(invite);
+    const counselling = counsels(invite, data);
+    const needsTopics = counselling || createsAgency;
+    const topicsValid =
+        (!needsTopics || data.topicIds.length > 0) && (!singleNewAgencyTopic || data.topicIds.length <= 1);
+    // The hint names what is still missing; without a topic step no topic is.
+    let submitHintKey = createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint';
+    if (!needsTopics) {
+        submitHintKey = 'counsellorOnboarding.submitHintNoTopics';
+    }
+    const agencyValid = !createsAgency || data.agency.name.trim().length > 0;
+    const canSubmit = usernameErrKey === null && passwordErrKey === null && topicsValid && agencyValid && !busy;
     // Field-specific inline errors appear while the field HAS content but
     // violates the policy; empty required fields are carried by the submit
     // hint instead of shouting at an untouched form.
@@ -203,12 +310,41 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     <CounsellorGlyph width={32} height={32} />
                 </span>
                 <Typography variant="h4" component="h1" className={styles.pageTitle} sx={{ fontWeight: 700, mb: 1 }}>
-                    {t('counsellorOnboarding.title')}
+                    {agencyAdmin ? t('counsellorOnboarding.agencyAdminTitle') : t('counsellorOnboarding.title')}
                 </Typography>
                 <Typography color="text.secondary" className={styles.pageIntro} sx={{ mb: 1 }}>
-                    {t('counsellorOnboarding.intro')}
+                    {agencyAdmin ? t('counsellorOnboarding.agencyAdminIntro') : t('counsellorOnboarding.intro')}
                 </Typography>
             </header>
+
+            {agencyAdmin && (
+                <Section
+                    titleKey="counsellorOnboarding.alsoCounsellor.title"
+                    hintKey="counsellorOnboarding.alsoCounsellor.hint"
+                >
+                    <div className={styles.switchRow}>
+                        {/* Clicking the text toggles the switch; the switch itself carries the accessible name. */}
+                        <label htmlFor={alsoCounsellorId} className={styles.switchLabel} aria-hidden="true">
+                            {t('counsellorOnboarding.alsoCounsellor.label')}
+                        </label>
+                        <M3Switch
+                            id={alsoCounsellorId}
+                            checked={data.alsoCounsellor}
+                            disabled={busy}
+                            label={t('counsellorOnboarding.alsoCounsellor.label')}
+                            onChange={(next) => {
+                                // Founding without counselling is allowed, but the agency still
+                                // needs a topic — say so before the switch goes off.
+                                if (!next && createsAgency) {
+                                    setConfirmNoCounselling(true);
+                                    return;
+                                }
+                                setAlsoCounsellor(next);
+                            }}
+                        />
+                    </div>
+                </Section>
+            )}
 
             <Section titleKey="cards.advisorAccount.title" hintKey="cards.advisorAccount.subtitle">
                 <FloatingLabelInput
@@ -251,59 +387,172 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     readOnly
                     disabled
                 />
-                <FloatingLabelSelect
-                    label={t('cards.personalInfo.salutation')}
-                    options={SALUTATION_KEYS.map((key) => ({
-                        value: key,
-                        label: t(`counselor.salutation.option.${key}`),
-                    }))}
-                    value={data.person.salutation}
-                    onChange={(salutation) => updatePerson({ ...data.person, salutation })}
-                    showSearch
-                />
-                <FloatingLabelInput
-                    label={t('cards.personalInfo.position')}
-                    value={data.person.position}
-                    onChange={(e) => updatePerson({ ...data.person, position: e.target.value })}
-                />
-                <FloatingLabelInput
-                    label={t('cards.personalInfo.jobTitle')}
-                    allowClear
-                    value={data.person.title}
-                    onChange={(e) => updatePerson({ ...data.person, title: e.target.value })}
-                />
+                {counselling && (
+                    <FloatingLabelSelect
+                        label={t('cards.personalInfo.salutation')}
+                        options={SALUTATION_KEYS.map((key) => ({
+                            value: key,
+                            label: t(`counselor.salutation.option.${key}`),
+                        }))}
+                        value={data.person.salutation}
+                        onChange={(salutation) => updatePerson({ ...data.person, salutation })}
+                        showSearch
+                    />
+                )}
+                {counselling && (
+                    <FloatingLabelInput
+                        label={t('cards.personalInfo.position')}
+                        value={data.person.position}
+                        onChange={(e) => updatePerson({ ...data.person, position: e.target.value })}
+                    />
+                )}
+                {counselling && (
+                    <FloatingLabelInput
+                        label={t('cards.personalInfo.jobTitle')}
+                        allowClear
+                        value={data.person.title}
+                        onChange={(e) => updatePerson({ ...data.person, title: e.target.value })}
+                    />
+                )}
             </Section>
 
-            {/* Names only (#997): the avatar grid and picture upload return with #995. */}
-            <Section titleKey="cards.avatarName.titleNamesOnly" hintKey="cards.avatarName.subtitle">
-                <FloatingLabelInput
-                    label={t('cards.avatarName.publicName')}
-                    supportingText={t('cards.avatarName.publicNameHint')}
-                    value={data.names.publicName}
-                    onChange={(e) => updateNames({ ...data.names, publicName: e.target.value })}
-                />
-                <FloatingLabelInput
-                    label={t('cards.avatarName.internalName')}
-                    supportingText={t('cards.avatarName.internalNameHint')}
-                    value={data.names.internalName}
-                    onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
-                />
-            </Section>
+            {/*
+              #1047: the avatar step is ON. Still one plain single-column section —
+              the picker sits above the two names, exactly where the Figma card puts
+              it. The own-picture upload is the only part still missing (#1049).
+            */}
+            {counselling && (
+                <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
+                    <CounsellorAvatarField
+                        value={data.avatar}
+                        onChange={updateAvatar}
+                        displayName={data.names.publicName}
+                        firstname={invite.firstName}
+                        lastname={invite.lastName}
+                    />
+                    <FloatingLabelInput
+                        label={t('cards.avatarName.publicName')}
+                        supportingText={t('cards.avatarName.publicNameHint')}
+                        value={data.names.publicName}
+                        onChange={(e) => updateNames({ ...data.names, publicName: e.target.value })}
+                    />
+                    <FloatingLabelInput
+                        label={t('cards.avatarName.internalName')}
+                        supportingText={t('cards.avatarName.internalNameHint')}
+                        value={data.names.internalName}
+                        onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
+                    />
+                </Section>
+            )}
 
-            <Section titleKey="cards.focusTopics.title" hintKey="cards.focusTopics.subtitle">
-                <div className={styles.chips}>
-                    {topics.map((topic) => (
-                        <FilterChip
-                            key={topic.id}
-                            label={topicLabel(topic, topicFallback)}
-                            selected={data.topicIds.includes(topic.id)}
-                            onChange={() => toggleTopic(topic.id)}
+            {createsAgency && (
+                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                    <FloatingLabelInput
+                        label={t('counsellorOnboarding.agency.name')}
+                        supportingText={t('counsellorOnboarding.agency.nameHint')}
+                        value={data.agency.name}
+                        maxLength={100}
+                        autoComplete="organization"
+                        onChange={(e) => updateAgency({ name: e.target.value })}
+                    />
+                </Section>
+            )}
+
+            {needsTopics && (
+                <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
+                    {topicLanguageError && (
+                        <div role="alert">
+                            <Typography variant="body2">{t('counsellorOnboarding.topics.languageError')}</Typography>
+                            <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={retryTopicNames}>
+                                {t('counsellorOnboarding.loadError.retry')}
+                            </M3Button>
+                        </div>
+                    )}
+                    {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
+                    {renderedTopicCount === 0 ? (
+                        // Neither coverage nor tenant topics: say so instead of leaving a
+                        // submit that can never be enabled.
+                        <Typography
+                            role="alert"
+                            variant="body2"
+                            color="text.secondary"
+                            data-testid="wizard-topics-none"
+                        >
+                            {t('counsellorOnboarding.topics.none')}
+                        </Typography>
+                    ) : agencyTopicsOnly ? (
+                        <div
+                            className={styles.topicChipRow}
+                            role="group"
+                            aria-label={t('cards.focusTopics.title')}
+                            data-testid="wizard-agency-topics"
+                        >
+                            {topics.map((topic) => {
+                                const selected = data.topicIds.includes(topic.id);
+                                return (
+                                    <FilterChip
+                                        key={topic.id}
+                                        label={topicLabel(topic, topicFallback)}
+                                        selected={selected}
+                                        disabled={singleAgencyTopic || busy}
+                                        onChange={(next) => {
+                                            if (pickExactlyOne) {
+                                                setTopics(next ? [topic.id] : []);
+                                            } else {
+                                                toggleTopic(topic.id);
+                                            }
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <InputChipPicker
+                            options={topicOptions}
+                            value={data.topicIds}
+                            onChange={setTopics}
+                            maxSelected={singleNewAgencyTopic ? 1 : undefined}
+                            addLabel={t('counsellorOnboarding.topics.add')}
+                            removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
+                            ariaLabel={t('cards.focusTopics.title')}
                         />
-                    ))}
-                </div>
-            </Section>
+                    )}
+                </Section>
+            )}
+
+            {confirmNoCounselling && (
+                <Modal
+                    icon={<PersonOffOutlined />}
+                    titleKey="counsellorOnboarding.alsoCounsellorOff.title"
+                    contentKey="counsellorOnboarding.alsoCounsellorOff.body"
+                    width={520}
+                    // X, Escape and the mask keep counselling on — the safe way out.
+                    onClose={() => setConfirmNoCounselling(false)}
+                    footer={
+                        <>
+                            <DialogButton onClick={() => setConfirmNoCounselling(false)}>
+                                {t('counsellorOnboarding.alsoCounsellorOff.keep')}
+                            </DialogButton>
+                            <DialogButton
+                                primary
+                                onClick={() => {
+                                    setConfirmNoCounselling(false);
+                                    setAlsoCounsellor(false);
+                                }}
+                            >
+                                {t('counsellorOnboarding.alsoCounsellorOff.confirm')}
+                            </DialogButton>
+                        </>
+                    }
+                />
+            )}
 
             <div className={styles.submitRow}>
+                {submitError === 'topic-policy' && (
+                    <Typography role="alert" color="error" data-testid="wizard-topic-policy-error">
+                        {t('message.error.ONE_TOPIC_PER_AGENCY')}
+                    </Typography>
+                )}
                 {submitError === 'registration' && (
                     <Typography role="alert" color="error" data-testid="wizard-registration-error">
                         {t('counsellorOnboarding.registrationError')}
@@ -311,7 +560,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">
-                        {t('counsellorOnboarding.submitHint', { minLength: MIN_PASSWORD_LENGTH })}
+                        {t(submitHintKey, { minLength: MIN_PASSWORD_LENGTH })}
                     </Typography>
                 )}
                 <M3Button type="submit" variant="filled" disabled={!canSubmit} loading={busy}>

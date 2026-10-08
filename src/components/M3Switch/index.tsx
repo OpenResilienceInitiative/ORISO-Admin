@@ -2,6 +2,8 @@ import classNames from 'classnames';
 import styles from './styles.module.scss';
 
 interface M3SwitchProps {
+    /** Lets a visible <label htmlFor> pass clicks on its text to the switch. */
+    id?: string;
     checked?: boolean;
     disabled?: boolean;
     label: string;
@@ -80,7 +82,7 @@ const switchIcon = (checked: boolean, disabled: boolean) => {
     return <OnEnabledIcon />;
 };
 
-export const M3Switch = ({ checked = false, disabled = false, label, className, onChange }: M3SwitchProps) => {
+export const M3Switch = ({ id, checked = false, disabled = false, label, className, onChange }: M3SwitchProps) => {
     const handleToggle = () => {
         if (disabled) {
             return;
@@ -91,6 +93,7 @@ export const M3Switch = ({ checked = false, disabled = false, label, className, 
 
     return (
         <button
+            id={id}
             type="button"
             role="switch"
             aria-checked={checked}

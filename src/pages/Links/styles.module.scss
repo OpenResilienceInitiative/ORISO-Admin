@@ -23,3 +23,57 @@
 .inboundField {
     min-width: 220px;
 }
+
+/* Role-change snackbar: the sentence plus one text action ("Erneut senden"). */
+.snackbar {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.snackbarAction {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+}
+
+/* Invite tabs (#1117): the invite card left, the table card right; stacked below 1200px of page width. */
+.invitesPage {
+    container: invites / inline-size;
+}
+
+.invitesRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+}
+
+.invitesPanel {
+    display: flex;
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.invitesBoard {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* A folded card stays a rail beside the table: folding is how a laptop gets the full table width. */
+@container invites (max-width: 1199px) {
+    .invitesRow:not(:has(> .invitesPanel > section[data-collapsed])) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+@container invites (max-width: 599px) {
+    .invitesRow {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

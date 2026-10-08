@@ -1,4 +1,9 @@
-export type LocalStorageKey = 'auth.access_token_valid_until' | 'auth.refresh_token_valid_until';
+// The counselling app on the same host keeps its own expiry under `auth.*`; these keys are the
+// Admin's alone, so logging in or out here never touches the app's session timers.
+export const ACCESS_TOKEN_VALID_UNTIL_KEY = 'oriso-admin.auth.access_token_valid_until';
+export const REFRESH_TOKEN_VALID_UNTIL_KEY = 'oriso-admin.auth.refresh_token_valid_until';
+
+export type LocalStorageKey = typeof ACCESS_TOKEN_VALID_UNTIL_KEY | typeof REFRESH_TOKEN_VALID_UNTIL_KEY;
 
 export const getLocalStorageItem = (key: LocalStorageKey): string => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -16,11 +21,11 @@ export const setTokenExpiryInLocalStorage = (key: LocalStorageKey, expiresInMs =
 };
 
 export const getTokenExpiryFromLocalStorage = () => ({
-    accessTokenValidUntilTime: parseInt(getLocalStorageItem('auth.access_token_valid_until'), 10),
-    refreshTokenValidUntilTime: parseInt(getLocalStorageItem('auth.refresh_token_valid_until'), 10),
+    accessTokenValidUntilTime: parseInt(getLocalStorageItem(ACCESS_TOKEN_VALID_UNTIL_KEY), 10),
+    refreshTokenValidUntilTime: parseInt(getLocalStorageItem(REFRESH_TOKEN_VALID_UNTIL_KEY), 10),
 });
 
 export const removeTokenExpiryFromLocalStorage = () => {
-    removeLocalStorageItem('auth.access_token_valid_until');
-    removeLocalStorageItem('auth.refresh_token_valid_until');
+    removeLocalStorageItem(ACCESS_TOKEN_VALID_UNTIL_KEY);
+    removeLocalStorageItem(REFRESH_TOKEN_VALID_UNTIL_KEY);
 };

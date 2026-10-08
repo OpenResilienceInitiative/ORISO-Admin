@@ -21,6 +21,7 @@ jobs:
         name: validate, tag and publish release images
         if: ${{ github.event.deleted == false }}
         runs-on: ubuntu-latest
+        timeout-minutes: 45
 
         steps:
             - name: Checkout release branch

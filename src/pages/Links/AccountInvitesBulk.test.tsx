@@ -268,7 +268,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         expect(await screen.findByText('2 Einladungen gesendet')).toBeInTheDocument();
         await waitFor(() => expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument());
         // Back in single-create mode once nothing is selected.
-        expect(await screen.findByRole('button', { name: 'Direkt Versenden' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Anlegen & einladen' })).toBeInTheDocument();
     });
     // A3 / B3 / B4: the counter is the ONLY send affordance in multi-select, so
     // a dead one has to look dead. Tonal is reserved for "this can fire now".
@@ -330,8 +330,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('karla.fischer@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'fisch');
+        await user.type(await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }), 'fisch');
 
         await waitFor(() => expect(screen.queryByText('ronny.bauer@example.org')).not.toBeInTheDocument());
         expect(screen.getByText('Karla Fischer')).toBeInTheDocument();
@@ -350,8 +349,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person22@example.org'));
         expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }), 'person21@');
+        await user.type(await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }), 'person21@');
 
         // Only person21 is still listed, so only person21 is still selected.
         await waitFor(() => expect(screen.queryByText('person22@example.org')).not.toBeInTheDocument());
@@ -365,9 +363,8 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person21@example.org'));
         expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
         await user.type(
-            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }),
             'kein-treffer-fuer-diese-abfrage',
         );
 
@@ -412,8 +409,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+        const search = await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' });
 
         const onlyAminaVisible = async () => {
             await waitFor(() => expect(screen.queryByText('bruno.schmidt@example.org')).not.toBeInTheDocument());
@@ -449,9 +445,8 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         const user = userEvent.setup();
 
         await screen.findByText('amina.yildiz@example.org');
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
         await user.type(
-            await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' }),
+            await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' }),
             'kein-solcher-treffer',
         );
 
@@ -473,8 +468,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         await user.click(await rowCheckbox('person21@example.org')); // DRAFT
         expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const search = await screen.findByRole('textbox', { name: 'Einladungen durchsuchen' });
+        const search = await screen.findByRole('searchbox', { name: 'Einladungen durchsuchen' });
         await user.type(search, 'kein-treffer-fuer-diese-abfrage');
         await waitFor(() => expect(screen.queryByText('person21@example.org')).not.toBeInTheDocument());
         expect(screen.queryByText('1 ausgewählt')).not.toBeInTheDocument();
@@ -520,7 +514,7 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         await user.click(await rowResendButton('person22@example.org'));
 
         expect(await screen.findByText('Only platform admins can create administrative accounts')).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
     });
 
     it('falls back to the counsellor wording on a bodyless resend 403', { timeout: 90_000 }, async () => {
@@ -531,9 +525,9 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         await user.click(await rowResendButton('person22@example.org'));
 
         expect(
-            await screen.findByText('Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen.'),
+            await screen.findByText('Ihre Rolle ist nicht berechtigt, Berater:innen einzuladen.'),
         ).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
     });
 
     it('keeps the generic resend-failed toast for non-403 failures', { timeout: 90_000 }, async () => {
@@ -543,64 +537,56 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
 
         await user.click(await rowResendButton('person22@example.org'));
 
-        expect(await screen.findByText('Could not resend invite')).toBeInTheDocument();
+        expect(await screen.findByText('Die Einladung konnte nicht erneut gesendet werden.')).toBeInTheDocument();
     });
 
-    it(
-        'stops after the first role-level 403 — one toast, no request for the condemned rows',
-        { timeout: 90_000 },
-        async () => {
-            mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
-            mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
-            await renderCounsellorTab();
-            const user = userEvent.setup();
+    it('keeps going after a 403 — one toast, every selected row still tried', { timeout: 90_000 }, async () => {
+        mocks.sendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        await renderCounsellorTab();
+        const user = userEvent.setup();
 
-            await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
-            await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
+        await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send
+        await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend
 
-            const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
-            await waitFor(() => expect(sendButton).toBeEnabled());
-            await user.click(sendButton);
+        const sendButton = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        await waitFor(() => expect(sendButton).toBeEnabled());
+        await user.click(sendButton);
 
-            // The first 403 already answers for every remaining row (same
-            // early-stop as the CSV import): /resend is never even attempted.
-            await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
-            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
-            const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
-            expect(roleToasts).toHaveLength(1);
-            // The count summary stays — the cause toast comes ON TOP of it, and
-            // the skipped row counts as failed.
-            expect(
-                await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
-            ).toBeInTheDocument();
-        },
-    );
+        // A 403 is that invite's own (its unit may be foreign), so the next row still goes out.
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
+        const roleToasts = await screen.findAllByText('Only platform admins can create administrative accounts');
+        expect(roleToasts).toHaveLength(1);
+        // The count summary stays — the cause toast comes ON TOP of it.
+        expect(
+            await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
+        ).toBeInTheDocument();
+    });
 
-    it('delivers up to the 403, then stops: one call per row before it, none after', { timeout: 90_000 }, async () => {
+    it('fails only the row with the 403 and delivers the rows after it', { timeout: 90_000 }, async () => {
         mocks.listAccountInvites.mockResolvedValue(
             invitesPage([invite(21, 'DRAFT'), invite(22, 'EMAIL_SENT'), invite(25, 'EMAIL_SENT')]),
         );
         mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));
-        mocks.resendAccountInvite.mockRejectedValue(forbiddenWithMessage());
+        mocks.resendAccountInvite.mockImplementation((id: number) =>
+            id === 22 ? Promise.reject(forbiddenWithMessage()) : Promise.resolve(invite(id, 'EMAIL_SENT')),
+        );
         await renderCounsellorTab();
         const user = userEvent.setup();
 
         await user.click(await rowCheckbox('person21@example.org')); // DRAFT -> /send, succeeds
         await user.click(await rowCheckbox('person22@example.org')); // EMAIL_SENT -> /resend, 403
-        await user.click(await rowCheckbox('person25@example.org')); // EMAIL_SENT -> never attempted
+        await user.click(await rowCheckbox('person25@example.org')); // EMAIL_SENT -> /resend, succeeds
 
         const sendButton = await screen.findByRole('button', { name: '3 ausgewählte senden' });
         await waitFor(() => expect(sendButton).toBeEnabled());
         await user.click(sendButton);
 
-        await waitFor(() => expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
         expect(mocks.sendAccountInvite).toHaveBeenCalledWith(21, expect.anything());
-        // Exactly ONE resend: the 403 on person22 condemns person25 without a request.
-        expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1);
-        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(22, expect.anything());
-        expect(
-            await screen.findByText('1 gesendet, 2 fehlgeschlagen: person22@example.org, person25@example.org'),
-        ).toBeInTheDocument();
+        expect(mocks.resendAccountInvite).toHaveBeenCalledWith(25, expect.anything());
+        expect(await screen.findByText('2 gesendet, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
     });
 
     it(
@@ -609,6 +595,10 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
         async () => {
             mocks.sendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
             mocks.resendAccountInvite.mockRejectedValue(new Response(null, { status: 403 }));
+            // The Träger tab lists only the invites that found a Träger.
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage(MIXED_INVITES.map((row) => ({ ...row, targetRole: 'TENANT_ADMIN' }))),
+            );
             await renderTenantTab();
             const user = userEvent.setup();
 
@@ -622,16 +612,15 @@ describe('403 role surfacing on resend and bulk send (UserService#1006)', () => 
             expect(
                 await screen.findByText('Nur Plattform-Administratoren können Träger-Admins einladen.'),
             ).toBeInTheDocument();
-            // Early-stop on the tenant tab too: the first 403 ends the run.
+            await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(1));
             expect(mocks.sendAccountInvite).toHaveBeenCalledTimes(1);
-            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
         },
     );
 });
 
 /*
  * UserService#1160: SMTP is a PLATFORM-wide setting, so a 502 on the first row
- * condemns every remaining one exactly like the role 403 does. Firing one doomed
+ * condemns every remaining one. Firing one doomed
  * request per selected row helps nobody and risks a partial mail burst.
  */
 describe('SMTP delivery failures on resend and bulk send (UserService#1160)', () => {
@@ -666,7 +655,7 @@ describe('SMTP delivery failures on resend and bulk send (UserService#1160)', ()
         await user.click(await rowResendButton('person22@example.org'));
 
         expect(await screen.findByText(CREDENTIALS_MISSING)).toBeInTheDocument();
-        expect(screen.queryByText('Could not resend invite')).not.toBeInTheDocument();
+        expect(screen.queryByText('Die Einladung konnte nicht erneut gesendet werden.')).not.toBeInTheDocument();
     });
 
     it('stops after the first 502 — one cause toast on top of the count summary', { timeout: 90_000 }, async () => {
@@ -688,5 +677,118 @@ describe('SMTP delivery failures on resend and bulk send (UserService#1160)', ()
         expect(
             await screen.findByText('0 gesendet, 2 fehlgeschlagen: person21@example.org, person22@example.org'),
         ).toBeInTheDocument();
+    });
+});
+
+// The setup purpose is server-declared. Both the real selection toolbar and the
+// hook must preserve ordinary invite guards while sending canonical setup mail.
+describe('AccountInvitesTab bulk existing-account setup reminders (#1058)', () => {
+    const setupInvite = (id: number, status: string) => ({
+        ...invite(id, status),
+        onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+        provisionedUserId: `existing-identity-${id}`,
+        provisioningStatus: 'PENDING',
+    });
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([]);
+        mocks.sendAccountInvite.mockImplementation(async (id: number) => invite(id, 'EMAIL_SENT'));
+        mocks.resendAccountInvite.mockImplementation(async (id: number) => invite(id, 'EMAIL_SENT'));
+    });
+
+    it('enables setup-only bulk reminders without templates and resends even a DRAFT setup row', async () => {
+        const rows = [setupInvite(31, 'DRAFT'), setupInvite(32, 'EMAIL_SENT')];
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(rows));
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person32@example.org'));
+
+        const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        expect(send).toBeEnabled();
+        expect(send).not.toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(1, 31, undefined);
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(2, 32, undefined);
+        expect(mocks.sendAccountInvite).not.toHaveBeenCalled();
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(await screen.findByRole('button', { name: 'Anlegen & einladen' })).toBeInTheDocument();
+    });
+
+    it.each([undefined, 'INVITE', 'FUTURE_PURPOSE'])(
+        'keeps a mixed batch blocked without a template for purpose %s',
+        async (purpose) => {
+            mocks.listAccountInvites.mockResolvedValue(
+                invitesPage([setupInvite(31, 'EMAIL_SENT'), { ...invite(33, 'DRAFT'), onboardingPurpose: purpose }]),
+            );
+            renderCounsellorTab();
+            const user = userEvent.setup();
+            await user.click(await rowCheckbox('person31@example.org'));
+            await user.click(await rowCheckbox('person33@example.org'));
+
+            const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+            expect(send).toBeDisabled();
+            expect(send).toHaveAccessibleDescription('Bitte zuerst eine E-Mail-Vorlage auswählen.');
+            await user.click(send);
+            expect(mocks.sendAccountInvite).not.toHaveBeenCalled();
+            expect(mocks.resendAccountInvite).not.toHaveBeenCalled();
+        },
+    );
+
+    it('uses canonical setup resend and preserves ordinary DRAFT/send and sent/resend payloads in a mixed batch', async () => {
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(
+            invitesPage([
+                setupInvite(31, 'DRAFT'),
+                invite(33, 'DRAFT'),
+                { ...invite(34, 'EMAIL_SENT'), onboardingPurpose: 'FUTURE_PURPOSE' },
+            ]),
+        );
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person33@example.org'));
+        await user.click(await rowCheckbox('person34@example.org'));
+        const send = await screen.findByRole('button', { name: '3 ausgewählte senden' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledTimes(2));
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(1, 31, undefined);
+        expect(mocks.sendAccountInvite).toHaveBeenCalledWith(33, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: TEMPLATE.id,
+        });
+        expect(mocks.resendAccountInvite).toHaveBeenNthCalledWith(2, 34, {
+            acceptBaseUrl: 'https://admin.example/account-invite',
+            templateId: TEMPLATE.id,
+        });
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+    });
+
+    it('keeps only a failed setup reminder selected after list refresh', async () => {
+        const rows = [setupInvite(31, 'DRAFT'), setupInvite(32, 'EMAIL_SENT')];
+        mocks.listAccountInvites.mockResolvedValue(invitesPage(rows));
+        mocks.resendAccountInvite.mockImplementation(async (id: number) => {
+            if (id === 31) throw new Error('fixture delivery failure');
+            return setupInvite(id, 'EMAIL_SENT');
+        });
+        renderCounsellorTab();
+        const user = userEvent.setup();
+        await user.click(await rowCheckbox('person31@example.org'));
+        await user.click(await rowCheckbox('person32@example.org'));
+        const send = await screen.findByRole('button', { name: '2 ausgewählte senden' });
+        expect(send).toBeEnabled();
+        await user.click(send);
+
+        await waitFor(() => expect(mocks.listAccountInvites).toHaveBeenCalledTimes(2));
+        expect(await rowCheckbox('person31@example.org')).toBeChecked();
+        expect(await rowCheckbox('person32@example.org')).not.toBeChecked();
+        expect(screen.getByRole('button', { name: '1 ausgewählte senden' })).toBeEnabled();
     });
 });

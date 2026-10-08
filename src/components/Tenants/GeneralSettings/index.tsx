@@ -104,7 +104,17 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                         <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
-                {showAppearance && (
+                {showMasterData && (
+                    <CardDeck.Item>
+                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
+                    <CardDeck.Item>
+                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
+                    </CardDeck.Item>
+                )}
+                {showMasterData && (
                     <CardDeck.Item>
                         <CardEditable
                             key={`tenant-master-data-editable-${appearanceEditable}`}
@@ -136,16 +146,6 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                                 switchLabel={t('settings.masterData.editable.toggle')}
                             />
                         </CardEditable>
-                    </CardDeck.Item>
-                )}
-                {showMasterData && (
-                    <CardDeck.Item>
-                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
                     </CardDeck.Item>
                 )}
             </CardDeck>
