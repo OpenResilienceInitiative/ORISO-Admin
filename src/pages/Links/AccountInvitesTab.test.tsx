@@ -539,6 +539,7 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({ tenantId: 79 });
+        mocks.findInviteTenant.mockResolvedValue(null);
         mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
         mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
         mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
@@ -546,6 +547,15 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'FREE' });
         mocks.searchInviteAgencies.mockResolvedValue({ hits: [], total: 0, hasMore: false, page: 1 });
         mocks.superAdmin = false;
+    });
+
+    it('resolves the own carrier name even when this viewer has no agency lookup', async () => {
+        mocks.findInviteTenant.mockResolvedValue({ id: 79, name: 'Caritas Freiburg' });
+        render(<CounsellorInvitesTab />);
+        await waitFor(() => expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Nr. 79'));
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toBeDisabled();
+        expect(await screen.findByText('Caritas Freiburg')).toBeInTheDocument();
+        expect(mocks.findInviteTenant).toHaveBeenCalledWith(79);
     });
 
     /** Fill E-Mail, names and a manual Beratungsstellen-Nr. */
@@ -621,6 +631,26 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         expect(screen.queryByRole('combobox', { name: 'Rolle' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /^E-Mail-Vorlage bearbeiten/ })).not.toBeInTheDocument();
+    });
+
+    // #1127: the open card pushes the table a screen down on a phone, so a first visit starts folded.
+    it('starts folded on a phone and keeps the form one tap away', async () => {
+        const { matchMedia } = window;
+        window.matchMedia = ((query: string) => ({
+            ...matchMedia(query),
+            matches: query.includes('max-width: 599px'),
+        })) as typeof window.matchMedia;
+        try {
+            render(<CounsellorInvitesTab />);
+
+            const expand = await screen.findByRole('button', { name: 'Formular ausklappen' });
+            expect(screen.queryByLabelText('E-Mail')).not.toBeInTheDocument();
+
+            await userEvent.setup().click(expand);
+            expect(await screen.findByLabelText('E-Mail')).toBeVisible();
+        } finally {
+            window.matchMedia = matchMedia;
+        }
     });
 
     // Each case types and sends a whole invite twice; the parallel CI runner exceeds the 30 s default.
@@ -743,7 +773,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             expect(screen.getByRole('button', { name: 'Anlegen, einladen & nächste' })).toBeInTheDocument();
         });
 
-        it('puts Rolle back to the default role for the next person', async () => {
+        // #1127: the next person starts from the last setup, role included; only e-mail and name are empty.
+        it('keeps the chosen Rolle for the next person', async () => {
             mocks.checkAgencyIdAvailability.mockResolvedValue({ state: 'RESERVED' });
             const user = await fill('900');
             await user.click(screen.getByRole('button', { name: /^Rolle bearbeiten/ }));
@@ -756,9 +787,20 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             expect(mocks.createAccountInvite.mock.calls[0][0].targetRole).toBe('AGENCY_ADMIN');
 
             await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
-            await waitFor(() =>
-                expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
-            );
+            expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('BST-Admin');
+
+            // The role is not only shown, it goes out with the next request.
+            await user.type(screen.getByLabelText('E-Mail'), 'bart.simpson@example.org');
+            await user.type(screen.getByLabelText('Vorname'), 'Bart');
+            await user.type(screen.getByLabelText('Name'), 'Simpson');
+            const next = screen.getByRole('button', { name: /& nächste$/ });
+            await waitFor(() => expect(next).toBeEnabled(), { timeout: 10_000 });
+            await user.click(next);
+            await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.createAccountInvite.mock.calls[1][0]).toMatchObject({
+                recipientEmail: 'bart.simpson@example.org',
+                targetRole: 'AGENCY_ADMIN',
+            });
         });
 
         it('clears nothing when the send fails', async () => {
@@ -876,11 +918,24 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('prefills the topic permission from the chosen agency and sends the value shown', async () => {
-        mocks.searchInviteAgencies.mockResolvedValue({
+        const agencyPage = {
             hits: [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }],
             total: 1,
             hasMore: false,
             page: 1,
+        };
+        let requestSearch!: () => void;
+        const searchRequested = new Promise<void>((resolve) => {
+            requestSearch = resolve;
+        });
+        let answerSearch!: (page: typeof agencyPage) => void;
+        const searchResponse = new Promise<typeof agencyPage>((resolve) => {
+            answerSearch = resolve;
+        });
+        mocks.searchInviteAgencies.mockImplementation((query: string) => {
+            if (query !== 'Diak') return Promise.resolve({ ...agencyPage, hits: [], total: 0 });
+            requestSearch();
+            return searchResponse;
         });
         mocks.getAgencyDataById.mockResolvedValue({
             _embedded: { id: 14, settings: { counsellorTopicPermission: 'CREATE' } },
@@ -891,7 +946,16 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
         await user.type(screen.getByRole('combobox', { name: 'Beratungsstelle' }), 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }));
+        // Await the real debounced request, then answer it and let React paint the menu.
+        // Polling for the option before the request starts races the search on a busy CI shard.
+        await act(async () => {
+            await searchRequested;
+        });
+        expect(screen.queryByRole('option', { name: /Diakonie Lahr/ })).not.toBeInTheDocument();
+        await act(async () => {
+            answerSearch(agencyPage);
+        });
+        await user.click(screen.getByRole('option', { name: /Diakonie Lahr/ }));
 
         expect((await screen.findAllByText('Darf weitere Themen anlegen')).length).toBeGreaterThan(0);
         const sendButton = screen.getByRole('button', { name: 'Einladen' });

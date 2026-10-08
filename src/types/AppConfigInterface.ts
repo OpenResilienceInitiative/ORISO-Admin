@@ -23,6 +23,8 @@ export interface AppConfigInterface {
     releaseToggles?: Record<string, boolean>;
     /** Global SMTP settings for superadmin auth-related mails */
     globalFeatureSystemNotificationEmailsEnabled?: boolean;
+    /** Platform policy (ADR-014 amendment 2026-09-25): every agency holds at most one topic. */
+    oneTopicPerAgencyEnabled?: boolean;
     globalSmtpEnabled?: boolean;
     globalSmtpHost?: string;
     globalSmtpPort?: string;

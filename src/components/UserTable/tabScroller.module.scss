@@ -1,0 +1,21 @@
+.scroller {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+}
+
+.viewport {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.track {
+    width: max-content;
+}

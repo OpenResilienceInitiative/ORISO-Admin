@@ -46,6 +46,11 @@ export const FETCH_ERRORS = {
     FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
     TIMEOUT: 'TIMEOUT',
+    // The auth server refused because a limit was hit, not because the credentials
+    // were wrong: Keycloak answers 429 both for "too many codes requested" and for
+    // "too many failed attempts on this code" (ORISO-UserService#1338). Without this
+    // code a 429 fell into the catch-all and the login screen said "network error".
+    TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
     UNAUTHORIZED: 'UNAUTHORIZED',
     PRECONDITION_FAILED: 'PRECONDITION FAILED',
     NOT_ALLOWED: 'NOT_ALLOWED',
@@ -66,6 +71,10 @@ export const X_REASON = {
     CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE:
         'CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE',
     PASSWORD_NOT_VALID: 'PASSWORD_NOT_VALID',
+    // AgencyService 409: the global one-topic-per-agency switch rejected the save (UserService#1264).
+    ONE_TOPIC_PER_AGENCY: 'ONE_TOPIC_PER_AGENCY',
+    // AgencyService 503: the switch could not be read, so a topic-adding save is refused; retry helps.
+    SETTINGS_UNAVAILABLE: 'SETTINGS_UNAVAILABLE',
 };
 
 export const FETCH_SUCCESS = {

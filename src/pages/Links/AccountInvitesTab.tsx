@@ -150,7 +150,22 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                 : undefined,
         [ownAgencies, ownAgencyTotal],
     );
-    const ownTenantName = ownAgencies.find((agency) => agency.tenantName)?.tenantName;
+    const knownOwnTenantName = ownAgencies.find((agency) => agency.tenantName)?.tenantName;
+    const [resolvedOwnTenant, setResolvedOwnTenant] = useState<IdUnitOption>();
+    useEffect(() => {
+        // Agency viewers resolve their own units in the scoped agency search above.
+        if (currentTenantId == null || isAgencyViewer || knownOwnTenantName) return undefined;
+        let cancelled = false;
+        findInviteTenant(currentTenantId).then((tenant) => {
+            if (!cancelled) setResolvedOwnTenant(tenant ?? undefined);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [currentTenantId, isAgencyViewer, knownOwnTenantName]);
+    const ownTenantName =
+        knownOwnTenantName ??
+        (resolvedOwnTenant && resolvedOwnTenant.id === currentTenantId ? resolvedOwnTenant.name : undefined);
 
     // Client-side taken-id knowledge (existing tenants + still-active
     // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now

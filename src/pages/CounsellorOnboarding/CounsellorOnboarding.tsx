@@ -108,6 +108,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         submitRegistration,
         submitAccountSetup,
         submitTwoFactorCode,
+        sendTwoFactorEmail,
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient, i18n.resolvedLanguage ?? i18n.language);
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
@@ -150,12 +151,19 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
+        // After registration, a resumed invite already reports its newly created agency as existing.
+        const agencyAdminRegistration = isAgencyAdminInvite(invite);
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
                     <DoneStep existingAccountSetup />
                 ) : (
-                    <SuccessCard onFinish={() => navigate(routePathNames.login)} />
+                    <SuccessCard
+                        titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        onFinish={() => navigate(routePathNames.login)}
+                    />
                 )}
             </div>
         );
@@ -173,7 +181,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 <TwoFactorSetup
                     context="onboarding"
                     appLink={
-                        state.result.twoFactor
+                        state.result.twoFactor?.secret
                             ? {
                                   secretBase32: toBase32Secret(state.result.twoFactor.secret),
                                   qrCodeBase64: state.result.twoFactor.qrCodeBase64,
@@ -185,6 +193,15 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     error={error}
                     titleKey="counsellorOnboarding.twoFactor.title"
                     descriptionKey="counsellorOnboarding.twoFactor.description"
+                    defaultMethod={state.result.twoFactor?.defaultMethod}
+                    methods={state.result.twoFactor?.methods}
+                    email={invite?.recipientEmail}
+                    onSendEmail={
+                        state.result.twoFactor?.methods?.includes('EMAIL') && resolvedClient.sendTwoFactorEmail
+                            ? sendTwoFactorEmail
+                            : undefined
+                    }
+                    onVerifyEmail={(otp) => submitTwoFactorCode(otp, 'EMAIL')}
                     onVerify={submitTwoFactorCode}
                 />
             </div>
@@ -219,6 +236,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // A reserved Beratungsstellen-ID (composer AUTO/free id): the agency does not
     // exist yet — the invitee names it and becomes its owner on registration.
     const createsAgency = invite.agencyExists === false;
+    const singleNewAgencyTopic = createsAgency && invite.oneTopicPerAgencyEnabled === true;
     // Selectable = the invite's coverage (preselected) plus every active tenant
     // topic: the invitee drops preselected chips by their x and adds further
     // platform-defined topics via "+" (owner decision 2026-09-17).
@@ -243,6 +261,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     if (renderedTopicCount === 0) {
         // No hint over an empty row — the alert below carries the explanation.
         topicHintKey = undefined;
+    } else if (singleNewAgencyTopic) {
+        topicHintKey = 'counsellorOnboarding.topics.pickOneHint';
     } else if (singleAgencyTopic) {
         topicHintKey = 'counsellorOnboarding.topics.fixedHint';
     } else if (pickExactlyOne) {
@@ -265,7 +285,8 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     const agencyAdmin = isAgencyAdminInvite(invite);
     const counselling = counsels(invite, data);
     const needsTopics = counselling || createsAgency;
-    const topicsValid = !needsTopics || data.topicIds.length > 0;
+    const topicsValid =
+        (!needsTopics || data.topicIds.length > 0) && (!singleNewAgencyTopic || data.topicIds.length <= 1);
     // The hint names what is still missing; without a topic step no topic is.
     let submitHintKey = createsAgency ? 'counsellorOnboarding.submitHintAgency' : 'counsellorOnboarding.submitHint';
     if (!needsTopics) {
@@ -500,6 +521,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                             options={topicOptions}
                             value={data.topicIds}
                             onChange={setTopics}
+                            maxSelected={singleNewAgencyTopic ? 1 : undefined}
                             addLabel={t('counsellorOnboarding.topics.add')}
                             removeLabel={(label) => t('counsellorOnboarding.topics.remove', { topic: label })}
                             ariaLabel={t('cards.focusTopics.title')}
@@ -536,6 +558,11 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             )}
 
             <div className={styles.submitRow}>
+                {submitError === 'topic-policy' && (
+                    <Typography role="alert" color="error" data-testid="wizard-topic-policy-error">
+                        {t('message.error.ONE_TOPIC_PER_AGENCY')}
+                    </Typography>
+                )}
                 {submitError === 'registration' && (
                     <Typography role="alert" color="error" data-testid="wizard-registration-error">
                         {t('counsellorOnboarding.registrationError')}

@@ -113,8 +113,16 @@ vi.mock('../../../resources/img/svg/table-actions/row_expand_filled.svg', () => 
 }));
 
 vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
-        <div data-testid="global-search">{children}</div>
+    GlobalSearchBar: ({ children, onSearch }: { children?: React.ReactNode; onSearch?: (query: string) => void }) => (
+        <div data-testid="global-search">
+            <input
+                aria-label="Search agencies"
+                onKeyDown={(event) => {
+                    if (event.key === 'Enter') onSearch?.(event.currentTarget.value);
+                }}
+            />
+            {children}
+        </div>
     ),
 }));
 
@@ -139,12 +147,19 @@ vi.mock('../../../components/ResizableTable', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
-    useAgenciesData: () => ({
-        data: mocks.isError ? undefined : { total: mocks.agencies.length, data: mocks.agencies },
-        isLoading: mocks.isLoading,
-        isError: mocks.isError,
-        refetch: mocks.refetch,
-    }),
+    useAgenciesData: ({ search }: { search?: string }) => {
+        const agencies = search
+            ? mocks.agencies.filter((agency) =>
+                  `${agency.name} ${agency.city}`.toLowerCase().includes(search.toLowerCase()),
+              )
+            : mocks.agencies;
+        return {
+            data: mocks.isError ? undefined : { total: agencies.length, data: agencies },
+            isLoading: mocks.isLoading,
+            isError: mocks.isError,
+            refetch: mocks.refetch,
+        };
+    },
 }));
 
 vi.mock('../../../hooks/useTenantsData', () => ({
@@ -215,6 +230,24 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>, overrid
         agencyLogo: null,
         ...overrides,
     } as any);
+
+// The toolbar is desktop-only now — on a phone its search and create action
+// move into the bottom navigation — and the setup stub answers every media
+// query with `matches: false`, i.e. mobile.
+const withDesktopLayout = () => {
+    const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
+
+    stub.mockImplementation((query: string) => ({
+        matches: query.includes('min-width: 768px'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    }));
+};
 
 describe('AgencyList topic rendering', () => {
     beforeEach(() => {
@@ -306,24 +339,6 @@ describe('AgencyList topic rendering', () => {
         expect(screen.getByTestId('table-empty')).toHaveTextContent('No data available');
     });
 
-    // The toolbar is desktop-only now — on a phone its search and create action
-    // move into the bottom navigation — and the setup stub answers every media
-    // query with `matches: false`, i.e. mobile.
-    const withDesktopLayout = () => {
-        const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
-
-        stub.mockImplementation((query: string) => ({
-            matches: query.includes('min-width: 768px'),
-            media: query,
-            onchange: null,
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        }));
-    };
-
     it('disables agency creation until the tenant DPA is signed', () => {
         withDesktopLayout();
         mocks.dpaGate = { dpaPublished: true, dpaSigned: false };
@@ -385,6 +400,27 @@ describe('AgencyList landing for a Beratungsstellen-Admin (ORISO-Admin#917)', ()
 
         render(<AgencyList />);
 
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+        expect(screen.getByTestId('table-empty')).toHaveTextContent('Something went wrong. Please try again.');
+    });
+
+    it('keeps an active search on the list when two administered agencies narrow to one', () => {
+        withDesktopLayout();
+        mocks.agencies = [
+            buildAgency([], { id: 42, name: 'North centre' }),
+            buildAgency([], { id: 43, name: 'South centre' }),
+        ];
+        render(<AgencyList />);
+        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
+        expect(screen.getByTestId('actions-42')).toBeInTheDocument();
+        expect(screen.getByTestId('actions-43')).toBeInTheDocument();
+
+        const search = screen.getByRole('textbox', { name: 'Search agencies' });
+        fireEvent.change(search, { target: { value: 'North' } });
+        fireEvent.keyDown(search, { key: 'Enter' });
+
+        expect(screen.getByTestId('actions-42')).toBeInTheDocument();
+        expect(screen.queryByTestId('actions-43')).not.toBeInTheDocument();
         expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
     });
 
