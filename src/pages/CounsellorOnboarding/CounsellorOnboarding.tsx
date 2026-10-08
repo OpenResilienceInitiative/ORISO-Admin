@@ -7,6 +7,7 @@ import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import routePathNames, { appURL } from '../../appConfig';
+import { agencySetupLoginForInvite } from '../../constants/agencySetupContinuation';
 import {
     CounsellorOnboardingClient,
     CounsellorTopicOption,
@@ -116,6 +117,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
     const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+    const agencySetupDestination = agencySetupLoginForInvite(invite);
 
     if (state.phase === 'loading') {
         return (
@@ -154,10 +156,11 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
-        // After registration, a resumed invite already reports its newly created agency as existing.
+        // The persisted allocation origin survives registration and pending-2FA resume.
+        // Joining an existing centre and unknown legacy origins retain normal completion.
         const agencyAdminRegistration = isAgencyAdminInvite(invite);
         const signIn = () => {
-            if (agencyAdminRegistration) navigate(routePathNames.login);
+            if (agencyAdminRegistration) navigate(agencySetupDestination ?? routePathNames.login);
             else window.location.assign(`${appURL.replace(/\/$/, '')}/login`);
         };
         return (
@@ -167,9 +170,9 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 ) : (
                     <SuccessCard
                         audience={agencyAdminRegistration ? 'agencyAdmin' : 'counsellor'}
-                        titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
-                        subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
-                        finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        titleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.finish' : undefined}
                         onFinish={signIn}
                     />
                 )}
@@ -480,7 +483,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             </Section>
 
             {createsAgency && (
-                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                <Section
+                    titleKey="counsellorOnboarding.agency.title"
+                    hintKey={
+                        agencySetupDestination
+                            ? 'counsellorOnboarding.agency.adminSetupSubtitle'
+                            : 'counsellorOnboarding.agency.subtitle'
+                    }
+                >
                     <FloatingLabelInput
                         label={t('counsellorOnboarding.agency.name')}
                         supportingText={t('counsellorOnboarding.agency.nameHint')}

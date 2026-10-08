@@ -5,7 +5,7 @@ import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 
 import logout from './auth/logout';
-import routePathNames, { CSRF_WHITELIST_HEADER } from '../appConfig';
+import { CSRF_WHITELIST_HEADER } from '../appConfig';
 
 const isLocalDevelopment = import.meta.env.DEV;
 
@@ -308,7 +308,7 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
                 duration: 8,
                 key: 'session-expired',
             });
-            logout(true, routePathNames.login);
+            logout(true);
         }
 
         throw error;

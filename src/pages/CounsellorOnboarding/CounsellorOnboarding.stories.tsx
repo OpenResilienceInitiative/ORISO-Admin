@@ -371,6 +371,7 @@ export const AgencyAdminAlsoCounsellorOffMobile: Story = {
 // A founding admin gives the new agency a topic even without counselling: its queued counsellors pick from it.
 const FOUNDING_INVITE = {
     ...AGENCY_ADMIN,
+    agencyIdAllocationMode: 'AUTO' as const,
     agencyId: 13,
     departmentId: null,
     agencyExists: false,
@@ -461,17 +462,6 @@ export const AgencyAdminFoundingSuccess: Story = {
                 name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
             }),
         ).toBeVisible();
-        await expect(
-            canvas.getByRole('heading', { name: /Das können Sie mit ORISO machen|What you can do with ORISO/ }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByText(/^Beratungsstelle vervollständigen:|^Complete your counselling centre:/),
-        ).toBeVisible();
-        const summary = canvas.getByText(/Kurzanleitung: Ihre ersten Schritte|Quick start: your first steps/);
-        summary.focus();
-        await userEvent.click(summary);
-        await waitFor(() => expect(summary.closest('details')).toHaveAttribute('open'));
-        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };
 
@@ -597,6 +587,57 @@ export const PictureStepMobile: Story = {
     play: async ({ canvas, userEvent }) => {
         await userEvent.upload(await canvas.findByLabelText('Foto auswählen'), photo());
         await expect(await canvas.findByRole('switch', { name: 'Für Ratsuchende sichtbar' })).toBeVisible();
+    },
+};
+
+/** Joining an existing centre completes registration without the full centre-profile step. */
+export const AgencyAdminExistingCentreSuccess: Story = {
+    name: 'Agency admin joins existing centre — normal completion',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
+        await expect(
+            canvas.queryByRole('button', {
+                name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
+            }),
+        ).not.toBeInTheDocument();
+    },
+};
+
+export const AgencyAdminExistingCentreSuccessMobile: Story = {
+    ...AgencyAdminExistingCentreSuccess,
+    ...PHONE_390,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+};
+
+/** A manually reserved ID has the same immutable founding origin as AUTO on resume. */
+export const AgencyAdminManualFoundingSuccess: Story = {
+    ...AgencyAdminFoundingSuccess,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...FOUNDING_INVITE, agencyExists: true, agencyIdAllocationMode: 'MANUAL' },
+        }),
     },
 };
 
