@@ -12,6 +12,14 @@ export const isAgencyScopedAdmin = (hasRole: HasRoleFn): boolean =>
     hasRole(UserRole.RestrictedAgencyAdmin) && !hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
 
 /**
+ * Whether legal-text access opens the Träger legal settings (`/theme-settings/legal`). A
+ * Beratungsstellen-Admin reads legal texts since #1070, but edits them on its own agency's legal tab;
+ * the Träger page reads Träger drafts, which the server denies, so it would end on access-denied.
+ */
+export const canOpenTenantLegalSettings = (canReadLegalText: boolean, hasRole: HasRoleFn): boolean =>
+    canReadLegalText && !isAgencyScopedAdmin(hasRole);
+
+/**
  * Where an agency-scoped admin lands: with exactly one assigned agency straight into that agency's
  * settings, otherwise on the (server-side filtered) Beratungsstellen list.
  *

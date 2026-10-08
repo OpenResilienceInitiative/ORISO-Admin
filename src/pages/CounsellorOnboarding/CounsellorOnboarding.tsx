@@ -6,7 +6,7 @@ import Refresh from '@mui/icons-material/Refresh';
 import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import routePathNames from '../../appConfig';
+import routePathNames, { appURL } from '../../appConfig';
 import { agencySetupLoginForInvite } from '../../constants/agencySetupContinuation';
 import {
     CounsellorOnboardingClient,
@@ -155,16 +155,22 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     if (state.phase === 'done') {
         // The persisted allocation origin survives registration and pending-2FA resume.
         // Joining an existing centre and unknown legacy origins retain normal completion.
+        const agencyAdminRegistration = isAgencyAdminInvite(invite);
+        const signIn = () => {
+            if (agencyAdminRegistration) navigate(agencySetupDestination ?? routePathNames.login);
+            else window.location.assign(`${appURL.replace(/\/$/, '')}/login`);
+        };
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
-                    <DoneStep existingAccountSetup />
+                    <DoneStep existingAccountSetup onLogin={signIn} />
                 ) : (
                     <SuccessCard
+                        audience={agencyAdminRegistration ? 'agencyAdmin' : 'counsellor'}
                         titleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.title' : undefined}
                         subtitleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
                         finishKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.finish' : undefined}
-                        onFinish={() => navigate(agencySetupDestination ?? routePathNames.login)}
+                        onFinish={signIn}
                     />
                 )}
             </div>

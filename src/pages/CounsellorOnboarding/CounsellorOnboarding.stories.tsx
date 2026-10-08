@@ -533,9 +533,7 @@ export const AgencyAdminExistingCentreSuccess: Story = {
                 name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
             }),
         );
-        await expect(
-            await canvas.findByRole('button', { name: /Registrierung abschließen|Finish registration/ }),
-        ).toBeVisible();
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
         await expect(
             canvas.queryByRole('button', {
                 name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
@@ -565,5 +563,29 @@ export const AgencyAdminManualFoundingSuccess: Story = {
             inviteState: 'PENDING_2FA_ACTIVATION',
             invite: { ...FOUNDING_INVITE, agencyExists: true, agencyIdAllocationMode: 'MANUAL' },
         }),
+    },
+};
+
+/** A resumed counsellor invite reaches public counselling guidance after OTP activation. */
+export const CounsellorCompletionGuide: Story = {
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' }) },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
+        await expect(canvas.getByText(/^Anfragen sichten:|^Review enquiries:/)).toBeVisible();
+        await expect(
+            canvas.queryByText(/^Beratungsstelle vervollständigen:|^Complete your counselling centre:/),
+        ).toBeNull();
+        const summary = canvas.getByText(/Kurzanleitung: Ihre ersten Schritte|Quick start: your first steps/);
+        summary.focus();
+        await userEvent.click(summary);
+        await waitFor(() => expect(summary.closest('details')).toHaveAttribute('open'));
+        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };
