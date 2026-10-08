@@ -461,6 +461,17 @@ export const AgencyAdminFoundingSuccess: Story = {
                 name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
             }),
         ).toBeVisible();
+        await expect(
+            canvas.getByRole('heading', { name: /Das können Sie mit ORISO machen|What you can do with ORISO/ }),
+        ).toBeVisible();
+        await expect(
+            canvas.getByText(/^Beratungsstelle vervollständigen:|^Complete your counselling centre:/),
+        ).toBeVisible();
+        const summary = canvas.getByText(/Kurzanleitung: Ihre ersten Schritte|Quick start: your first steps/);
+        summary.focus();
+        await userEvent.click(summary);
+        await waitFor(() => expect(summary.closest('details')).toHaveAttribute('open'));
+        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };
 
@@ -512,4 +523,28 @@ export const NewCentreOneTopicPolicy: Story = {
 export const NewCentreOneTopicPolicyPreview: Story = {
     ...NewCentreOneTopicPolicy,
     play: undefined,
+};
+
+/** A resumed counsellor invite reaches public counselling guidance after OTP activation. */
+export const CounsellorCompletionGuide: Story = {
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' }) },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(await canvas.findByRole('button', { name: /Jetzt anmelden|Sign in now/ })).toBeVisible();
+        await expect(canvas.getByText(/^Anfragen sichten:|^Review enquiries:/)).toBeVisible();
+        await expect(
+            canvas.queryByText(/^Beratungsstelle vervollständigen:|^Complete your counselling centre:/),
+        ).toBeNull();
+        const summary = canvas.getByText(/Kurzanleitung: Ihre ersten Schritte|Quick start: your first steps/);
+        summary.focus();
+        await userEvent.click(summary);
+        await waitFor(() => expect(summary.closest('details')).toHaveAttribute('open'));
+        await expect(canvas.queryByRole('textbox')).toBeNull();
+    },
 };
