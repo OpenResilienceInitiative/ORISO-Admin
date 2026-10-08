@@ -126,3 +126,24 @@ describe('serializeTenantAdminDataUpdate', () => {
         expect(current.content.impressum).toEqual({ de: 'Alt', en: 'Old' });
     });
 });
+
+describe('assistant override updates', () => {
+    it('preserves an untouched own icon in the full PUT when only the name changes', () => {
+        const current = baseTenantAdminData();
+        current.theming.assistantName = 'Own assistant';
+        current.theming.assistantIcon = 'robot-1184077';
+        const saved = JSON.parse(serializeTenantAdminDataUpdate(current, { theming: { assistantName: 'New name' } }));
+        expect(saved.theming.assistantName).toBe('New name');
+        expect(saved.theming.assistantIcon).toBe('robot-1184077');
+    });
+    it('keeps explicit null resets in the full PUT rather than restoring overrides', () => {
+        const current = baseTenantAdminData();
+        current.theming.assistantName = 'Own assistant';
+        current.theming.assistantIcon = 'robot-1184077';
+        const saved = JSON.parse(
+            serializeTenantAdminDataUpdate(current, { theming: { assistantName: null, assistantIcon: null } }),
+        );
+        expect(saved.theming.assistantName).toBeNull();
+        expect(saved.theming.assistantIcon).toBeNull();
+    });
+});
