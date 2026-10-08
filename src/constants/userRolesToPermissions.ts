@@ -100,6 +100,10 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: false },
             Agency: { read: true, create: false, update: true, delete: false },
             AgencyAdminUser: { read: false, create: false, update: false, delete: false },
+            // #1070: a Beratungsstelle admin (restricted-agency-admin, usually with user-admin) adopts
+            // and saves its own legal texts under the same delegation switch as the full agency
+            // admin. Reading is always allowed. The server still checks the assigned agency.
+            LegalText: { read: true, update: singleCanEditLegalText },
         },
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
