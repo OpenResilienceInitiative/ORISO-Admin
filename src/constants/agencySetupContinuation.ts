@@ -1,4 +1,5 @@
 import routePathNames from '../appConfig';
+import type { CounsellorOnboardingInviteDTO } from '../api/counsellorOnboarding/counsellorOnboarding';
 
 /** An internal destination hint, never an authority or an arbitrary return URL. */
 export const validAgencySetupId = (value: unknown): string | null => {
@@ -22,4 +23,25 @@ export const agencySetupFromSearch = (search: string): string | null => {
 export const agencySetupLoginFromPath = (pathname: string): string => {
     const match = /^\/admin\/agency\/([1-9]\d*)\/setup$/.exec(pathname);
     return agencySetupLoginPath(match?.[1]);
+};
+
+/** Only a server-resolved founding invitation continues into the full centre setup. */
+export const agencySetupLoginForInvite = (
+    invite:
+        | Pick<
+              CounsellorOnboardingInviteDTO,
+              'onboardingPurpose' | 'targetRole' | 'agencyIdAllocationMode' | 'agencyId'
+          >
+        | null
+        | undefined,
+): string | null => {
+    if (
+        invite?.onboardingPurpose !== 'INVITE' ||
+        invite.targetRole !== 'AGENCY_ADMIN' ||
+        (invite.agencyIdAllocationMode !== 'AUTO' && invite.agencyIdAllocationMode !== 'MANUAL')
+    ) {
+        return null;
+    }
+    const id = validAgencySetupId(invite.agencyId);
+    return id ? agencySetupLoginPath(id) : null;
 };

@@ -371,6 +371,7 @@ export const AgencyAdminAlsoCounsellorOffMobile: Story = {
 // A founding admin gives the new agency a topic even without counselling: its queued counsellors pick from it.
 const FOUNDING_INVITE = {
     ...AGENCY_ADMIN,
+    agencyIdAllocationMode: 'AUTO' as const,
     agencyId: 13,
     departmentId: null,
     agencyExists: false,
@@ -511,4 +512,56 @@ export const NewCentreOneTopicPolicy: Story = {
 export const NewCentreOneTopicPolicyPreview: Story = {
     ...NewCentreOneTopicPolicy,
     play: undefined,
+};
+
+/** Joining an existing centre completes registration without the full centre-profile step. */
+export const AgencyAdminExistingCentreSuccess: Story = {
+    name: 'Agency admin joins existing centre — normal completion',
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
+        await userEvent.click(
+            canvas.getByRole('button', {
+                name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor authentication/,
+            }),
+        );
+        await expect(
+            await canvas.findByRole('button', { name: /Registrierung abschließen|Finish registration/ }),
+        ).toBeVisible();
+        await expect(
+            canvas.queryByRole('button', {
+                name: /Anmelden und Beratungsstelle vervollständigen|Sign in and complete your agency/,
+            }),
+        ).not.toBeInTheDocument();
+    },
+};
+
+export const AgencyAdminExistingCentreSuccessMobile: Story = {
+    ...AgencyAdminExistingCentreSuccess,
+    ...PHONE_390,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...AGENCY_ADMIN, agencyExists: true, agencyIdAllocationMode: 'EXISTING' },
+        }),
+    },
+};
+
+/** A manually reserved ID has the same immutable founding origin as AUTO on resume. */
+export const AgencyAdminManualFoundingSuccess: Story = {
+    ...AgencyAdminFoundingSuccess,
+    args: {
+        client: createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: 'PENDING_2FA_ACTIVATION',
+            invite: { ...FOUNDING_INVITE, agencyExists: true, agencyIdAllocationMode: 'MANUAL' },
+        }),
+    },
 };
