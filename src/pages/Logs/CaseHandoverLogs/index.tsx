@@ -45,18 +45,7 @@ export const CaseHandoverLogsPage = () => {
                 dataIndex: 'status',
                 key: 'status',
                 width: 180,
-                render: (value: string) => (
-                    <Tag
-                        color={statusColor(value)}
-                        style={
-                            statusColor(value) === 'gold'
-                                ? { color: 'var(--admin-warning-tag-text, #874d00)' }
-                                : undefined
-                        }
-                    >
-                        {value}
-                    </Tag>
-                ),
+                render: (value: string) => <Tag color={statusColor(value)}>{value}</Tag>,
             },
             {
                 title: t('caseHandoverLogs.table.sessionId'),

@@ -426,11 +426,7 @@ export const InviteCsvImportModal = ({
         }
         switch (row.state) {
             case 'creating':
-                return (
-                    <Tag color="gold" style={{ color: 'var(--admin-warning-tag-text, #874d00)' }}>
-                        {t('links.csvImport.status.creating', 'Wird angelegt …')}
-                    </Tag>
-                );
+                return <Tag color="gold">{t('links.csvImport.status.creating', 'Wird angelegt …')}</Tag>;
             case 'created': {
                 const { waiting, noUnitAdmin } = liveQueueState(row);
                 if (waiting) {

@@ -40,6 +40,17 @@ const compositeText = (foreground: string, background: string) => {
 
 describe('buildAdminAntdTheme', () => {
     it.each(['light', 'inverted'] as const)(
+        'keeps gold status words readable on unchanged %s gold backgrounds',
+        (scheme) => {
+            const algorithm = scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+            const original = antdTheme.getDesignToken({ algorithm });
+            const token = antdTheme.getDesignToken(buildAdminAntdTheme({ scheme }));
+            expect(contrastRatio(token.gold7, token.gold1)).toBeGreaterThanOrEqual(4.5);
+            expect(token.gold1).toBe(original.gold1);
+            expect(token.gold3).toBe(original.gold3);
+        },
+    );
+    it.each(['light', 'inverted'] as const)(
         'keeps green status text readable on its %s preset background',
         (scheme) => {
             const algorithm = scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
