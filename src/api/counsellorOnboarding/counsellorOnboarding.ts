@@ -50,6 +50,8 @@ export interface CounsellorOnboardingInviteDTO {
     onboardingPurpose?: OnboardingPurpose;
     /** Absent (older backend) means `COUNSELLOR`. */
     targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
+    /** Immutable server invitation origin; absent/null is unknown, never inferred from agencyExists. */
+    agencyIdAllocationMode?: 'AUTO' | 'MANUAL' | 'EXISTING' | null;
     /** Agency-admin invites only: the inviter's proposal, shown as a switch the invitee may change. */
     alsoCounsellor?: boolean | null;
     recipientEmail: string;
@@ -273,6 +275,8 @@ export interface StubCounsellorOnboardingOptions {
 }
 
 const STUB_INVITE: CounsellorOnboardingInviteDTO = {
+    onboardingPurpose: 'INVITE',
+    agencyIdAllocationMode: 'EXISTING',
     recipientEmail: 'lena.beraterin@example.org',
     firstName: 'Lena',
     lastName: 'Beispiel',

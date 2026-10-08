@@ -2,8 +2,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import authLogout from '../../api/auth/logout';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
+import routePathNames from '../../appConfig';
 import ProtectedPageLayoutWrapper from './ProtectedPageLayoutWrapper';
 import PublicPageLayoutWrapper from './PublicPageLayoutWrapper';
 
@@ -41,7 +45,7 @@ vi.mock('../../context/FeatureContext', () => ({
 vi.mock('../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: true } }),
 }));
-vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: () => true }));
+vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: vi.fn(() => true) }));
 vi.mock('../../hooks/useLanguage', () => ({
     useLanguage: () => ({
         language: 'de',
@@ -160,5 +164,36 @@ describe('Admin layout footer ownership', () => {
 
         expect(screen.getByText('Footerless public content')).toBeVisible();
         expect(screen.queryByRole('contentinfo')).toBeNull();
+    });
+});
+
+// The user can abandon a centre continuation from either navigation surface,
+// including the logout-only shell shown by the mandatory two-factor gate.
+// Session-loss callers retain their default destination in agencySetupSessionExpiry.test.ts.
+describe('deliberate logout from centre setup', () => {
+    afterEach(() => {
+        vi.mocked(useIsDesktopLayout).mockReturnValue(true);
+    });
+
+    it.each([
+        { desktop: true, restricted: false },
+        { desktop: false, restricted: false },
+        { desktop: true, restricted: true },
+        { desktop: false, restricted: true },
+    ])('abandons the previous centre on desktop=$desktop, restricted=$restricted', async ({ desktop, restricted }) => {
+        vi.mocked(authLogout).mockClear();
+        vi.mocked(useIsDesktopLayout).mockReturnValue(desktop);
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/admin/agency/5/setup']}>
+                <ProtectedPageLayoutWrapper restricted={restricted}>
+                    <main>Centre setup</main>
+                </ProtectedPageLayoutWrapper>
+            </MemoryRouter>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'logout' }));
+
+        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login);
     });
 });
