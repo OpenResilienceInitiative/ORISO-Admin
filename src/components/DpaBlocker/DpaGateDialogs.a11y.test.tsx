@@ -31,7 +31,7 @@ describe('DPA gate dialogs — accessibility', () => {
             <DpaPendingSignatureDialog
                 ensureSignLink={async () => LINK}
                 forward={async () => ({ link: LINK, mailFailed: false })}
-                onDismiss={() => {}}
+                onLogout={() => {}}
             />,
         );
 

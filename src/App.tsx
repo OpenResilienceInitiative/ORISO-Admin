@@ -45,6 +45,7 @@ import {
     LazySingleLegalSettings,
     LazyStatistic,
     LazySupervisorLogsPage,
+    LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
     LazyTenantEditOrAdd,
@@ -96,6 +97,7 @@ export const App = () => {
      * would be the very bypass this gate exists to close.
      */
     const mustProveTwoFactor = tokenUnreadable || (!isTechnicalAccount && hasMandatoryTwoFactorRole(roles));
+    const canManageServiceNotices = isSuperAdmin && !isTechnicalAccount && !tokenUnreadable;
     const { can } = useUserPermissions();
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
@@ -105,6 +107,7 @@ export const App = () => {
 
     const defaultSettingsPath = getDefaultSettingsPath({
         isSuperAdmin,
+        canManageServiceNotices,
         shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled: isReleaseEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
@@ -144,7 +147,6 @@ export const App = () => {
     const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
-    // Platform admin: all Links tabs; tenant admin: counsellor invites only; agency admins: none.
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
@@ -179,14 +181,12 @@ export const App = () => {
     if (requiresTwoFactorSetup) {
         return (
             <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-                {/* The second factor comes first (#990): an admin created via
-                    "Träger anlegen" secures the account before anything else,
-                    as the tenant-invite wizard does. This screen offers nothing
-                    but the 2FA setup and logout; the DPA gate follows once the
-                    factor is active (it wraps the protected tree below). */}
-                <ProtectedPageLayoutWrapper restricted>
-                    <MandatoryTwoFactorSetup />
-                </ProtectedPageLayoutWrapper>
+                {/* The DPA gate applies to tenant-scoped admins; agency admins are exempt. If both gates apply to a tenant admin, the DPA lock wins. */}
+                <DpaBlockerGate>
+                    <ProtectedPageLayoutWrapper restricted>
+                        <MandatoryTwoFactorSetup />
+                    </ProtectedPageLayoutWrapper>
+                </DpaBlockerGate>
             </FeatureProvider>
         );
     }
@@ -250,6 +250,16 @@ export const App = () => {
                                                 element={<LazyPermissionsSettingsPage />}
                                             />
                                         )}
+                                        <Route
+                                            path={routePathNames.serviceNotices}
+                                            element={
+                                                canManageServiceNotices ? (
+                                                    <LazyServiceNoticesPage />
+                                                ) : (
+                                                    <Navigate to="/admin/access-denied" replace />
+                                                )
+                                            }
+                                        />
                                         <Route index element={<Navigate to={defaultSettingsPath} replace />} />
                                     </Route>
                                 )}

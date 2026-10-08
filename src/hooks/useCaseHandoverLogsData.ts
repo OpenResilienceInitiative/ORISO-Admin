@@ -1,5 +1,6 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { withUtcInstants } from '../utils/backendInstant';
 import { caseHandoverLogsEndpoint } from '../appConfig';
 import { CaseHandoverLogsResponse } from '../types/caseHandoverLogs';
 
@@ -17,7 +18,7 @@ export const useCaseHandoverLogsData = ({ page, perPage, ...options }: CaseHando
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
                 responseHandling: [],
-            }),
+            }).then(withUtcInstants),
         ...(options as object),
         retry: false,
         refetchOnWindowFocus: false,

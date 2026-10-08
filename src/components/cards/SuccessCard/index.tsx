@@ -17,23 +17,34 @@ export interface SuccessCardProps {
     onNotesChange?: (value: string) => void;
     onFinish?: () => void;
     className?: string;
+    titleKey?: string;
+    subtitleKey?: string;
+    finishKey?: string;
 }
 
 /**
  * Counsellor Setup Wizard — "All done" final step (Figma 1-34805). Card skeleton
  * + an optional notes textarea + a single primary finish action.
  */
-export const SuccessCard = ({ notes, onNotesChange, onFinish, className }: SuccessCardProps) => {
+export const SuccessCard = ({
+    notes,
+    onNotesChange,
+    onFinish,
+    className,
+    titleKey,
+    subtitleKey,
+    finishKey,
+}: SuccessCardProps) => {
     const { t } = useTranslation();
     return (
         <Card
             className={classNames(styles.card, className)}
             headerIcon={<FaceIcon />}
-            titleKey="cards.success.title"
-            subTitle={onNotesChange ? t('cards.success.subtitleWithNotes') : t('cards.success.subtitle')}
+            titleKey={titleKey ?? 'cards.success.title'}
+            subTitle={t(subtitleKey ?? (onNotesChange ? 'cards.success.subtitleWithNotes' : 'cards.success.subtitle'))}
             footer={
                 <M3Button variant="text" className={styles.finish} onClick={onFinish}>
-                    {t('cards.success.finish')}
+                    {t(finishKey ?? 'cards.success.finish')}
                 </M3Button>
             }
         >

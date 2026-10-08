@@ -21,6 +21,7 @@ export interface DpaLegalReaderProps {
     /** Language the legal text is written in — drives hyphenation of long compounds. */
     contentLanguage?: string;
     testId?: string;
+    metadata?: React.ReactNode;
 }
 
 /**
@@ -51,6 +52,7 @@ export const DpaLegalReader = ({
     hideHeader,
     contentLanguage,
     testId = 'dpa-text',
+    metadata,
 }: DpaLegalReaderProps) => {
     const anchoredHtml = useMemo(() => ensureHeadingAnchorIds(html), [html]);
 
@@ -65,6 +67,7 @@ export const DpaLegalReader = ({
                 title={label}
                 icon={GavelOutlined}
                 value={anchoredHtml}
+                aboveEditorSlot={metadata}
                 helpSlot={description ? <EditorHelpText text={description} /> : undefined}
             />
         </div>

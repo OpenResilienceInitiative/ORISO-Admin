@@ -4,6 +4,9 @@ import {
     applyClientConsentPolicy,
     applyModuleEnabled,
     buildDisplayReasons,
+    canonicalReasonCode,
+    isAdviceRequestReason,
+    isAdvisorAbsentReason,
     isAdvisorConsentImplicit,
     isHandoverModuleEnabled,
     LEGAL_VIOLATION_PLACEHOLDER_CODE,
@@ -11,9 +14,11 @@ import {
     sortPoliciesByDisplayOrder,
     applyNotificationTemplate,
     getNotificationTemplate,
+    reasonTranslationKey,
     resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type { CaseHandoverConsentPolicy } from '../../../../../types/permissionPolicy';
 
 const policy = (overrides: Partial<CaseHandoverReasonPolicy>): CaseHandoverReasonPolicy => ({
     code: 'COUNSELLOR_IS_ILL',
@@ -76,6 +81,50 @@ describe('caseHandoverCardUtils', () => {
         );
     });
 
+    // The UserService answers `clientConsent` as the bare enum string plus a separate
+    // `clientConsentMode` (CaseHandoverService.CaseHandoverReason) — never as the policy
+    // object the card writes. Reading only the object is what made a saved Opt-Out look
+    // unsaved after a reload (UserService #1131).
+    it('reads back the wire shape the UserService actually sends', () => {
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'OPT_OUT' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentMode: 'ENFORCED',
+                    clientConsentRequired: false,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_OUT', mode: 'ENFORCED' });
+
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'OPT_IN' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentRequired: true,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_IN', mode: 'SUGGESTED' });
+    });
+
+    it('ignores an unusable consent value instead of rendering an empty control', () => {
+        expect(
+            resolvedClientConsentPolicy(
+                policy({
+                    clientConsent: 'MAYBE' as unknown as CaseHandoverConsentPolicy,
+                    clientConsentRequired: true,
+                }),
+            ),
+        ).toEqual({ value: 'OPT_IN', mode: 'SUGGESTED' });
+    });
+
+    it('sends a self-consistent payload so the stale mode cannot overwrite the new one', () => {
+        const result = applyClientConsentPolicy([policy({ code: 'B', clientConsentMode: 'SUGGESTED' })], 'B', {
+            value: 'OPT_OUT',
+            mode: 'ENFORCED',
+        });
+        expect(result[0].clientConsentMode).toBe('ENFORCED');
+    });
+
     it('appends the legal-violation placeholder tab unless the backend seeds it', () => {
         const reasons = buildDisplayReasons([policy({ code: 'A', displayOrder: 10 })]);
         expect(reasons.map((r) => r.code)).toEqual(['A', LEGAL_VIOLATION_PLACEHOLDER_CODE]);
@@ -125,5 +174,121 @@ describe('caseHandoverCardUtils', () => {
 
     it('uses the complete canonical language registry', () => {
         expect(NOTIFICATION_LANGUAGES).toEqual(['de', 'en', 'fr', 'ru', 'tr', 'uk', 'ti']);
+    });
+
+    // UserService (US#1245) serves the neutral codes; TenantService still keys by the retired ones.
+    describe('neutral and retired reason codes', () => {
+        const RETIRED_TO_NEUTRAL = [
+            ['COUNSELLOR_ASKED_FOR_ADVICE', 'ADVICE_REQUESTED'],
+            ['COUNSELLOR_ON_HOLIDAY', 'PLANNED_ABSENCE'],
+            ['COUNSELLOR_IS_ILL', 'UNPLANNED_ABSENCE'],
+            ['COUNSELLOR_LEFT', 'ASSIGNMENT_ENDED'],
+        ] as const;
+
+        it.each(RETIRED_TO_NEUTRAL)('maps %s to %s, as UserService does', (retired, neutral) => {
+            expect(canonicalReasonCode(retired)).toBe(neutral);
+            expect(canonicalReasonCode(neutral)).toBe(neutral);
+        });
+
+        it('passes codes without a successor through unchanged', () => {
+            expect(canonicalReasonCode('OTHER_EMERGENCY')).toBe('OTHER_EMERGENCY');
+            expect(canonicalReasonCode(LEGAL_VIOLATION_PLACEHOLDER_CODE)).toBe(LEGAL_VIOLATION_PLACEHOLDER_CODE);
+        });
+
+        it.each(['ADVICE_REQUESTED', 'COUNSELLOR_ASKED_FOR_ADVICE'])('treats %s as the advice request', (code) => {
+            expect(isAdviceRequestReason(code)).toBe(true);
+            expect(isAdvisorConsentImplicit(code)).toBe(true);
+            expect(isAdvisorAbsentReason(code)).toBe(false);
+        });
+
+        it.each([
+            'PLANNED_ABSENCE',
+            'UNPLANNED_ABSENCE',
+            'ASSIGNMENT_ENDED',
+            'COUNSELLOR_ON_HOLIDAY',
+            'COUNSELLOR_IS_ILL',
+            'COUNSELLOR_LEFT',
+        ])('treats %s as an absence reason', (code) => {
+            expect(isAdviceRequestReason(code)).toBe(false);
+            expect(isAdvisorConsentImplicit(code)).toBe(false);
+            expect(isAdvisorAbsentReason(code)).toBe(true);
+        });
+
+        it('labels a retired code with the translation of its neutral successor', () => {
+            expect(reasonTranslationKey('COUNSELLOR_IS_ILL')).toBe(
+                'tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE',
+            );
+            expect(reasonTranslationKey('UNPLANNED_ABSENCE')).toBe(
+                'tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE',
+            );
+        });
+
+        it('shows the four neutral reasons from UserService in display order', () => {
+            const reasons = buildDisplayReasons([
+                policy({ code: 'ASSIGNMENT_ENDED', displayOrder: 50 }),
+                policy({ code: 'ADVICE_REQUESTED', displayOrder: 10 }),
+                policy({ code: 'UNPLANNED_ABSENCE', displayOrder: 40 }),
+                policy({ code: 'PLANNED_ABSENCE', displayOrder: 20 }),
+            ]);
+            expect(reasons.map((reason) => reason.code)).toEqual([
+                'ADVICE_REQUESTED',
+                'PLANNED_ABSENCE',
+                'UNPLANNED_ABSENCE',
+                'ASSIGNMENT_ENDED',
+                LEGAL_VIOLATION_PLACEHOLDER_CODE,
+            ]);
+        });
+
+        it('keeps retired codes as tabs while they have no neutral successor in the list', () => {
+            const reasons = buildDisplayReasons([
+                policy({ code: 'COUNSELLOR_ASKED_FOR_ADVICE', displayOrder: 10 }),
+                policy({ code: 'COUNSELLOR_IS_ILL', displayOrder: 40 }),
+            ]);
+            expect(reasons.map((reason) => reason.code)).toEqual([
+                'COUNSELLOR_ASKED_FOR_ADVICE',
+                'COUNSELLOR_IS_ILL',
+                LEGAL_VIOLATION_PLACEHOLDER_CODE,
+            ]);
+        });
+
+        it('hides a retired row once its neutral successor is present', () => {
+            const reasons = buildDisplayReasons([
+                policy({ code: 'COUNSELLOR_IS_ILL', displayOrder: 40, enabled: false }),
+                policy({ code: 'UNPLANNED_ABSENCE', displayOrder: 40 }),
+            ]);
+            expect(reasons.map((reason) => reason.code)).toEqual([
+                'UNPLANNED_ABSENCE',
+                LEGAL_VIOLATION_PLACEHOLDER_CODE,
+            ]);
+        });
+
+        it('module toggle leaves superseded retired rows disabled', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: false }),
+                ],
+                true,
+            );
+            expect(next.map((p) => [p.code, p.enabled])).toEqual([
+                ['COUNSELLOR_IS_ILL', false],
+                ['UNPLANNED_ABSENCE', true],
+            ]);
+        });
+
+        it('module off also disables an enabled superseded retired row', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'COUNSELLOR_IS_ILL', enabled: true }),
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: true }),
+                ],
+                false,
+            );
+            expect(next.map((p) => [p.code, p.enabled])).toEqual([
+                ['COUNSELLOR_IS_ILL', false],
+                ['UNPLANNED_ABSENCE', false],
+            ]);
+            expect(isHandoverModuleEnabled(next)).toBe(false);
+        });
     });
 });

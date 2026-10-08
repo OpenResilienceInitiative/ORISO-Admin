@@ -1,56 +1,41 @@
-.smtpCardShell {
-    width: min(560px, 100%);
+/* #903: same card layout as the platform SMTP card (pages/GlobalSettings/styles.module.scss),
+   copied rather than imported so the two pages can evolve without reaching across routes. */
+
+.smtpPage {
+    --card-deck-gap: 24px;
+    --card-deck-item-width: 425px;
+    --card-deck-item-max-width: 425px;
+}
+
+.smtpCardSlot {
+    display: flex;
 }
 
 .smtpCard {
-    --dialog-card-height: clamp(700px, 82vh, 1040px);
+    width: 100%;
 
-    :global([class*='dialogCardSubTitle']) {
-        margin-top: 24px;
+    :global([class*='dialogCardTitle']) {
+        min-height: 112px;
     }
 
-    :global([class*='dialogForm']) {
-        padding-bottom: 24px;
+    :global([class*='dialogTitleContainer']) {
+        min-height: 88px;
     }
 }
 
 .smtpSwitch {
     margin-bottom: 18px;
 
-    :global(.ant-form-item-row) {
+    :global(.MuiFormControlLabel-root) {
         align-items: flex-start;
-        flex-wrap: nowrap;
-        gap: 16px;
     }
 
-    :global(.ant-form-item-label) {
-        min-width: 0;
+    :global(.MuiFormControlLabel-label) {
         max-width: calc(100% - 76px);
-        flex: 1 1 calc(100% - 76px);
-        overflow: visible;
-        text-align: left;
-        white-space: normal;
     }
 
-    :global(.ant-form-item-label > label) {
-        display: block;
-        width: 100%;
-        padding-bottom: 0;
-        white-space: normal;
-    }
-
-    :global(.ant-col.ant-form-item-control) {
-        max-width: 60px;
-        flex: 0 0 60px;
-        padding-top: 0;
-    }
-
-    :global(.ant-form-item-control-input) {
-        min-height: 48px;
-    }
-
-    :global(.formSwitchField__container) {
-        justify-content: flex-end;
+    :global(.MuiSwitch-root) {
+        margin-top: 0;
     }
 }
 
@@ -62,37 +47,28 @@
 }
 
 .switchTitle {
-    color: var(--m3-on-surface, #1b1b1c);
+    color: #1b1b1c;
     font-family: var(--m3-body-font-family);
     font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0;
-    line-height: 20px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    line-height: 24px;
 }
 
 .switchDescription {
-    color: var(--m3-on-surface-variant, #444748);
+    color: #444748;
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     font-weight: 400;
-    letter-spacing: 0;
-    line-height: 20px;
-}
-
-.passwordHint {
-    display: block;
-    margin: -8px 0 18px;
-    color: var(--m3-on-surface-variant, #444748);
-    font-family: var(--m3-body-font-family);
-    font-size: 14px;
-    font-weight: 400;
-    letter-spacing: 0;
+    letter-spacing: 0.25px;
     line-height: 20px;
 }
 
 .fieldGrid {
+    /* Unlike the platform card, every field here carries help text; the outlined label of the
+       next field sits ~8px above its box, so the rows need room or a two-line hint runs into it. */
     display: grid;
-    gap: 0;
+    gap: 16px 0;
     grid-template-columns: 1fr;
 }
 
@@ -103,8 +79,8 @@
     :global(.colorSelector) {
         width: 100%;
         padding: 0;
-        background: transparent;
         border-radius: 0;
+        background: transparent;
         gap: 16px;
     }
 
@@ -138,9 +114,15 @@
     }
 }
 
+@media only screen and (max-width: 1000px) {
+    .smtpPage {
+        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
+    }
+}
+
 @media only screen and (max-width: 640px) {
-    .smtpCardShell {
-        width: 100%;
+    .smtpPage {
+        max-width: 100%;
     }
 
     .smtpCard {

@@ -18,10 +18,14 @@ import { metrics, type Counter } from '@opentelemetry/api';
  * Deliberately NOT included, ever: username, e-mail, tenant, IP, user agent,
  * or anything else that could identify who failed to sign in. The three
  * attributes describe the health of the login path, not a person (ADR-011).
+ *
+ * `rate_limited` / `too_many_requests` came with #1338: a refused code mail is
+ * neither a credential problem nor an outage, and counting it as either hid the
+ * real one. ORISO-Frontend uses the same values, so one panel covers both logins.
  */
-export type LoginFailureOutcome = 'credentials' | 'otp_required' | 'access_denied' | 'unavailable';
+export type LoginFailureOutcome = 'credentials' | 'otp_required' | 'access_denied' | 'unavailable' | 'rate_limited';
 
-export type LoginFailureTransport = 'bad_request' | 'unauthorized' | 'network' | 'unexpected';
+export type LoginFailureTransport = 'bad_request' | 'unauthorized' | 'network' | 'too_many_requests' | 'unexpected';
 
 export interface LoginFailureRecord {
     outcome: LoginFailureOutcome;

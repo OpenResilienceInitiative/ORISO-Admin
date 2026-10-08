@@ -1,9 +1,7 @@
-ORISO
-==============================================================
+Willkommen im Beratungsteam, Maren
+================================================================
 
-Willkommen im Beratungsteam, Erika
-
-Herzlich willkommen, Erika Musterfrau
+Herzlich willkommen, Maren Muster
 
 Sie wurden als Beraterin oder Berater für die ORISO-Plattform
 freigeschaltet. Damit Sie gut starten können, haben wir die wichtigsten
@@ -45,10 +43,18 @@ automatisch erzeugt.
 Wir freuen uns auf die Zusammenarbeit.
 
 Einladung annehmen:
-https://app.oriso.org/account-invite/SAMPLE-PREVIEW-TOKEN
+https://admin.example.org/admin/counsellor-onboarding/SAMPLE-PREVIEW-TOKEN
 
---------------------------------------------------------------
+----------------------------------------------------------------
+Wir fragen Sie nie per E-Mail nach Ihrem Passwort. Geben Sie diesen Link an niemanden weiter.
+
 ORISO
-Impressum: https://app.oriso.org/impressum
-Datenschutz: https://app.oriso.org/datenschutz
-Diese E-Mail wurde automatisch versendet. Bitte antworten Sie nicht darauf.
+Musterstraße 1, 12345 Musterstadt
+kontakt@example.org
+
+ORISO ist ein Angebot von ORISO.
+
+Datenschutz: https://app.example.org/datenschutz
+Impressum: https://app.example.org/impressum
+
+Diese E-Mail gehört zu Ihrer Einladung und lässt sich nicht abbestellen. Bitte antworten Sie nicht darauf.

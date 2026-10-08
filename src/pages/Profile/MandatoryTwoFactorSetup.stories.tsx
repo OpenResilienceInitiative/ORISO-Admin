@@ -12,8 +12,8 @@ import { MandatoryTwoFactorSetup } from './MandatoryTwoFactorSetup';
  * can be stuck in: enrolment available, and enrolment unavailable because the
  * account has no 2FA capability at all.
  *
- * There is no "skip" story because there is no skip: the enrolment popup has no
- * close icon, and its only other action is "Abmelden" (#990).
+ * There is no "skip" story because there is no skip: the only ways off this
+ * screen are completing enrolment or logging out through the sidebar.
  */
 const meta = {
     title: 'Pages/MandatoryTwoFactorSetup',

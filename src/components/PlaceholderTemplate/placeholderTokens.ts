@@ -120,3 +120,54 @@ export const LEGAL_CONSENT_TOKENS: PlaceholderTokenDef[] = [
         sample: 'Datenschutzerklärung und Nutzungsbedingungen',
     },
 ];
+
+/**
+ * Tokens a legal text (Impressum, Datenschutzerklärung) may carry. AgencyService fills them per
+ * Beratungsstelle when a help-seeker reads the text, so a Träger or platform template can name each
+ * Beratungsstelle's own name and address. Samples show the admin what will appear.
+ */
+export const LEGAL_TEXT_TOKENS: PlaceholderTokenDef[] = [
+    {
+        key: 'Beratungsstelle',
+        labelKey: 'placeholderTemplate.token.beratungsstelle',
+        labelFallback: 'Beratungsstelle',
+        sample: 'Musterberatungsstelle',
+    },
+    {
+        key: 'Adresse',
+        labelKey: 'placeholderTemplate.token.adresse',
+        labelFallback: 'Adresse',
+        sample: 'Musterstraße 1, 12345 Musterstadt',
+    },
+    { key: 'Thema', labelKey: 'placeholderTemplate.token.thema', labelFallback: 'Thema', sample: 'Suchtberatung' },
+];
+
+/**
+ * The Datenschutzbeauftragte:r of the Beratungsstelle, else of its Träger (inherited), else empty —
+ * resolved by AgencyService (ORISO-Admin#1067).
+ */
+export const DPO_TOKEN: PlaceholderTokenDef = {
+    key: 'Datenschutzbeauftragte',
+    labelKey: 'placeholderTemplate.token.datenschutzbeauftragte',
+    labelFallback: 'Datenschutzbeauftragte:r',
+    sample: 'Dr. Maria Muster, datenschutz@beispiel.de',
+};
+
+/** The platform's DPO: platform texts only, never passed down (filled by TenantService). */
+export const PLATFORM_DPO_TOKEN: PlaceholderTokenDef = {
+    key: 'Plattform_Datenschutzbeauftragte',
+    labelKey: 'placeholderTemplate.token.plattformDatenschutzbeauftragte',
+    labelFallback: 'Datenschutzbeauftragte:r der Plattform (zuständig für die Plattform, nicht für Beratungsstellen)',
+    sample: 'Dr. Paula Plattform',
+};
+
+export type LegalTextLevel = 'platform' | 'traeger' | 'agency';
+
+/** Tokens a legal editor offers: the DPO only on Datenschutz texts, platform-labelled on the platform. */
+export const legalTextTokensFor = (
+    legalType: 'privacy' | 'imprint' | undefined,
+    level: LegalTextLevel,
+): PlaceholderTokenDef[] => {
+    if (legalType !== 'privacy') return LEGAL_TEXT_TOKENS;
+    return [...LEGAL_TEXT_TOKENS, level === 'platform' ? PLATFORM_DPO_TOKEN : DPO_TOKEN];
+};

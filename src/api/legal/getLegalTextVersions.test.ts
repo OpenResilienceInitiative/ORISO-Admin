@@ -62,11 +62,30 @@ describe('getLegalTextVersions', () => {
         );
     });
 
-    it('reports the unimplemented tenant 404 as unsupported instead of claiming the history is empty', async () => {
+    it('reports a 404 from a TenantService older than #1070 as unsupported instead of an empty history', async () => {
         fetchData.mockRejectedValueOnce(new Error('NO_MATCH'));
         await expect(getLegalTextVersions({ level: 'tenant', tenantId: 7, kind: 'DPP' })).resolves.toEqual({
             state: 'unsupported',
         });
+    });
+
+    it('reads the TenantService history shape (PLATFORM/TENANT owner, no consentText) as available', async () => {
+        const version = {
+            id: 42,
+            kind: 'DPP',
+            ownerLevel: 'TENANT',
+            ownerId: 7,
+            content: '{"de":"<p>Datenschutz</p>"}',
+            publishedAt: '2026-09-25T14:30:00',
+        };
+        fetchData.mockResolvedValueOnce([version] as never);
+        await expect(getLegalTextVersions({ level: 'tenant', tenantId: 7, kind: 'DPP' })).resolves.toEqual({
+            state: 'available',
+            versions: [version],
+        });
+        expect(legalTextVersionsUrl({ level: 'tenant', tenantId: 0, kind: 'IMPRINT' })).toBe(
+            '/service/tenantadmin/0/legal-versions?kind=IMPRINT',
+        );
     });
 
     it('keeps an agency or department 404 as an error rather than guessing its availability', async () => {

@@ -34,6 +34,7 @@ interface TenantAdminOnboardingProps {
 }
 
 const STEP_ORDER = { organisation: 1, account: 2, 'two-factor': 3 } as const;
+const JOIN_STEP_ORDER = { account: 1, 'two-factor': 2 } as const;
 
 /**
  * Public tenant-admin onboarding flow (TEN-INV U8, #571): the invite link
@@ -51,6 +52,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         organisation,
         dpa,
         dpaForward,
+        dpaConfirmed,
         submitError,
         busy,
         retryLoad,
@@ -99,30 +101,44 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         );
     }
 
+    const joins = invite?.joinsExistingTenant === true;
+    const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+    const invitationTitleKey = joins ? 'tenantOnboarding.join.title' : 'tenantOnboarding.title';
+    const titleKey = existingAccountSetup ? 'accountSetup.title' : invitationTitleKey;
+
     if (state.phase === 'done') {
         return (
             <Sheet>
-                <DoneStep tenantId={state.tenantId} forwarded={dpaForward !== null} />
+                <DoneStep
+                    tenantId={state.tenantId}
+                    forwarded={dpaForward !== null}
+                    joinedExisting={joins}
+                    existingAccountSetup={existingAccountSetup}
+                />
             </Sheet>
         );
     }
 
-    const step = STEP_ORDER[state.phase];
+    // Joining an existing Träger is two steps: account and 2FA.
+    const step = joins ? JOIN_STEP_ORDER[state.phase as keyof typeof JOIN_STEP_ORDER] : STEP_ORDER[state.phase];
 
     return (
         <Sheet>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                {t('tenantOnboarding.title')}
+                {t(titleKey)}
             </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-                {t('tenantOnboarding.stepIndicator', { current: step, total: 3 })}
-            </Typography>
+            {!existingAccountSetup && (
+                <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    {t('tenantOnboarding.stepIndicator', { current: step, total: joins ? 2 : 3 })}
+                </Typography>
+            )}
             {state.phase === 'organisation' && invite && (
                 <OrganisationDpaStep
                     invite={invite}
                     initialOrganisation={organisation}
                     initialDpa={dpa}
                     forward={dpaForward}
+                    confirmed={dpaConfirmed}
                     inviteToken={inviteToken}
                     forwardClient={resolvedForwardClient}
                     onForwarded={markDpaForwarded}
@@ -134,7 +150,8 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
-                    onBack={goBackToOrganisation}
+                    existingAccountSetup={existingAccountSetup}
+                    onBack={joins || existingAccountSetup ? undefined : goBackToOrganisation}
                     onSubmit={submitAccount}
                 />
             )}

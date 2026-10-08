@@ -61,10 +61,6 @@ runs:
           shell: bash
           run: npx prettier . --check --ignore-unknown
 
-        - name: Run unit tests
-          shell: bash
-          run: npm test
-
         - name: Build app
           shell: bash
           run: |

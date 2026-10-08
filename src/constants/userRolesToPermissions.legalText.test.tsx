@@ -79,3 +79,51 @@ describe('agency admin — legal-text permission (#609)', () => {
         expect(permissions.LegalText?.update).toBe(true);
     });
 });
+
+/**
+ * #1070: a Beratungsstelle admin is a restricted-agency-admin (usually with user-admin). It had no
+ * `LegalText` entry, so it could neither adopt a received template nor save its own text even when
+ * the platform delegated legal content. It now follows the same delegation switch as the agency admin.
+ */
+describe('restricted agency admin — legal-text permission (#1070)', () => {
+    it('may change legal content in a deployment without single-domain multitenancy', () => {
+        const permissions = setup({ roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin] });
+        expect(permissions.LegalText?.update).toBe(true);
+    });
+
+    it('may not change it when single-domain multitenancy withholds the delegation', () => {
+        const permissions = setup({
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            multitenancyWithSingleDomainEnabled: true,
+            legalContentChangesBySingleTenantAdminsAllowed: false,
+        });
+        expect(permissions.LegalText?.update).toBe(false);
+    });
+
+    it('may change it once the Träger delegates legal content', () => {
+        const permissions = setup({
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            multitenancyWithSingleDomainEnabled: true,
+            legalContentChangesBySingleTenantAdminsAllowed: true,
+        });
+        expect(permissions.LegalText?.update).toBe(true);
+    });
+
+    it('can always read the text', () => {
+        const permissions = setup({
+            roles: [UserRole.RestrictedAgencyAdmin],
+            multitenancyWithSingleDomainEnabled: true,
+            legalContentChangesBySingleTenantAdminsAllowed: false,
+        });
+        expect(permissions.LegalText?.read).toBe(true);
+    });
+
+    it('still cannot manage agency admins or see statistics', () => {
+        const permissions = setup({
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            legalContentChangesBySingleTenantAdminsAllowed: true,
+        });
+        expect(permissions.AgencyAdminUser?.create).toBe(false);
+        expect(permissions.Statistic?.read).toBe(false);
+    });
+});

@@ -21,7 +21,12 @@
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
-import { InviteLinkError, InviteLinkErrorReason } from '../tenantOnboarding/tenantOnboarding';
+import {
+    InviteLinkError,
+    InviteLinkErrorReason,
+    isInviteLinkErrorReason,
+    OnboardingPurpose,
+} from '../tenantOnboarding/tenantOnboarding';
 import { TwoFactorCodeInvalidError } from '../tenantOnboarding/TwoFactorCodeInvalidError';
 
 export { InviteLinkError, TwoFactorCodeInvalidError };
@@ -34,8 +39,17 @@ export interface CounsellorTopicOption {
     name: string | null;
 }
 
+/** CREATE: "+" adds Träger topics. SELECT_EXISTING: agency topics only. NONE: assigned one, else exactly one. */
+export type CounsellorTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
+
 /** Resolved state of a counsellor invite link, keyed by the raw invite token. */
 export interface CounsellorOnboardingInviteDTO {
+    /** Server-bound existing account setup; absent keeps ordinary provisioning. */
+    onboardingPurpose?: OnboardingPurpose;
+    /** Absent (older backend) means `COUNSELLOR`. */
+    targetRole?: 'COUNSELLOR' | 'AGENCY_ADMIN';
+    /** Agency-admin invites only: the inviter's proposal, shown as a switch the invitee may change. */
+    alsoCounsellor?: boolean | null;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
@@ -50,6 +64,8 @@ export interface CounsellorOnboardingInviteDTO {
      * as its owner (the composer's "new agency" case). Absent = existing agency.
      */
     agencyExists?: boolean;
+    /** Only limits topic configuration when the invite creates a new centre. */
+    oneTopicPerAgencyEnabled?: boolean;
     /**
      * The tenant's active topics. The invitee may ADD any of them to the
      * preselected coverage (owner decision 2026-09-17: a counsellor must be able
@@ -57,6 +73,8 @@ export interface CounsellorOnboardingInviteDTO {
      * coverage is selectable.
      */
     availableTopics?: CounsellorTopicOption[];
+    /** Absent (older backend) means `CREATE`. */
+    topicPermission?: CounsellorTopicPermission;
     /** ISO timestamp after which the link expires; null = no expiry. */
     expiresAt: string | null;
     /**
@@ -101,6 +119,8 @@ export interface CounsellorRegistrationRequest {
      * as its departments; the invitee becomes its owner.
      */
     agency?: { name: string };
+    /** Agency-admin invites only. Off = an admin login only: no consultant, topics optional. */
+    alsoCounsellor?: boolean;
 }
 
 export interface CounsellorRegistrationResultDTO {
@@ -145,9 +165,6 @@ const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
     423: 'REVOKED',
 };
 
-const isInviteLinkErrorReason = (value: unknown): value is InviteLinkErrorReason =>
-    value === 'CONSUMED' || value === 'REVOKED' || value === 'EXPIRED' || value === 'SUPERSEDED' || value === 'INVALID';
-
 /** Body-first error mapping — an explicit `reason` wins over the status code. */
 const toOnboardingError = async (error: unknown): Promise<unknown> => {
     if (!(error instanceof Response)) {
@@ -158,6 +175,9 @@ const toOnboardingError = async (error: unknown): Promise<unknown> => {
         bodyReason = (await error.clone().json())?.reason;
     } catch {
         // No JSON error body — fall back to the status mapping.
+    }
+    if (bodyReason === 'ONE_TOPIC_PER_AGENCY') {
+        return new Error('ONE_TOPIC_PER_AGENCY');
     }
     if (isInviteLinkErrorReason(bodyReason)) {
         return new InviteLinkError(bodyReason);
@@ -196,7 +216,12 @@ export const createHttpCounsellorOnboardingClient = (): CounsellorOnboardingClie
                     skipAuth: true,
                     responseHandling: PUBLIC_RESPONSE_HANDLING,
                 });
-                return { ...invite, topics: invite.topics ?? [], availableTopics: invite.availableTopics ?? [] };
+                return {
+                    ...invite,
+                    topics: invite.topics ?? [],
+                    availableTopics: invite.availableTopics ?? [],
+                    topicPermission: invite.topicPermission ?? 'CREATE',
+                };
             }),
 
         registerCounsellor: (inviteToken, request) =>
@@ -355,10 +380,28 @@ export const createStubCounsellorOnboardingClient = (
             if (!request.account.username || !request.account.password) {
                 throw new Error('ACCOUNT_DATA_MISSING');
             }
-            // Like the backend: coverage plus every active tenant topic is selectable.
-            const coveredIds = new Set([...invite.topics, ...(invite.availableTopics ?? [])].map(({ id }) => id));
-            if (request.topicIds.length === 0 || request.topicIds.some((id) => !coveredIds.has(id))) {
+            // Like the backend and the wizard: a topic is needed to counsel or to found an agency; agency admins get CREATE.
+            const agencyAdmin = invite.targetRole === 'AGENCY_ADMIN';
+            const counselling = !agencyAdmin || (request.alsoCounsellor ?? invite.alsoCounsellor ?? true);
+            const needsTopics = counselling || invite.agencyExists === false;
+            // Like the backend: coverage plus — with CREATE only — every active tenant topic.
+            const permission = agencyAdmin ? 'CREATE' : invite.topicPermission ?? 'CREATE';
+            const selectable =
+                permission === 'CREATE' ? [...invite.topics, ...(invite.availableTopics ?? [])] : invite.topics;
+            const coveredIds = new Set(selectable.map(({ id }) => id));
+            if ((needsTopics && request.topicIds.length === 0) || request.topicIds.some((id) => !coveredIds.has(id))) {
                 throw new Error('TOPICS_OUTSIDE_COVERAGE');
+            }
+            if (permission === 'NONE' && invite.departmentId == null && request.topicIds.length > 1) {
+                throw new Error('EXACTLY_ONE_TOPIC');
+            }
+            // Like the backend: while the rule is on, a new centre starts with one topic; the link stays usable.
+            if (
+                invite.agencyExists === false &&
+                invite.oneTopicPerAgencyEnabled === true &&
+                request.topicIds.length > 1
+            ) {
+                throw new Error('ONE_TOPIC_PER_AGENCY');
             }
             if (invite.agencyExists === false && !request.agency?.name?.trim()) {
                 throw new Error('AGENCY_NAME_MISSING');

@@ -11,7 +11,7 @@ const serviceOriginKeys = [
 ];
 
 // Every runtime-config key, so the test is hermetic and ignores any ambient
-// .env (e.g. a local api.oriso.org config) — config is driven solely by
+// .env (e.g. a local api.example.org config) — config is driven solely by
 // window.__APP_CONFIG__ below.
 const runtimeEnvKeys = [
     ...serviceOriginKeys,
@@ -35,7 +35,7 @@ const loadAppConfig = async (config: AppRuntimeConfig = {}) => {
         vi.stubEnv(`REACT_APP_${key}`, '');
     });
     window.__APP_CONFIG__ = {
-        API_URL: 'https://api.oriso.org',
+        API_URL: 'https://api.example.org',
         KEYCLOAK_URL: '',
         ...config,
     };
@@ -74,12 +74,12 @@ describe('appConfig service origins', () => {
     it('falls back to the broad API origin when service origins are absent', async () => {
         const config = await loadAppConfig();
 
-        expect(config.userDataEndpoint).toBe('https://api.oriso.org/service/users/data');
-        expect(config.tenantAdminEndpoint).toBe('https://api.oriso.org/service/tenantadmin');
-        expect(config.agencyEndpointBase).toBe('https://api.oriso.org/service/agencyadmin/agencies');
-        expect(config.consultingTypeEndpoint).toBe('https://api.oriso.org/service/consultingtypes');
+        expect(config.userDataEndpoint).toBe('https://api.example.org/service/users/data');
+        expect(config.tenantAdminEndpoint).toBe('https://api.example.org/service/tenantadmin');
+        expect(config.agencyEndpointBase).toBe('https://api.example.org/service/agencyadmin/agencies');
+        expect(config.consultingTypeEndpoint).toBe('https://api.example.org/service/consultingtypes');
         expect(config.loginEndpoint).toBe(
-            'https://api.oriso.org/auth/realms/online-beratung/protocol/openid-connect/token',
+            'https://api.example.org/auth/realms/online-beratung/protocol/openid-connect/token',
         );
     });
 
@@ -88,6 +88,6 @@ describe('appConfig service origins', () => {
             USE_HTTPS: 'false',
         });
 
-        expect(config.tenantAccessEndpoint).toBe('https://api.oriso.org/service/tenant/access');
+        expect(config.tenantAccessEndpoint).toBe('https://api.example.org/service/tenant/access');
     });
 });

@@ -19,6 +19,22 @@ const STRINGS: Record<string, string> = {
     'legal.consent.template.platform.text': 'Ich habe die {{legal_links}} zur Kenntnis genommen.',
 };
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: vi.fn(),
+        discard: vi.fn(),
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         i18n: { language: 'de' },
@@ -87,7 +103,11 @@ import { AgencyLegalTextContainer } from '.';
 const agencyData: any = {
     id: '55',
     tenantId: '1',
-    topics: [{ id: 3, name: 'U25 Suizidprävention' }],
+    // Two Fachbereiche: with only one it is preselected and "Alle Fachbereiche" is not offered (#1066).
+    topics: [
+        { id: 3, name: 'U25 Suizidprävention' },
+        { id: 4, name: 'Schuldnerberatung' },
+    ],
     content: { privacy: { de: '<p>agency wide</p>' }, impressum: { de: '<p>agency imprint</p>' } },
 };
 
@@ -160,11 +180,14 @@ describe('AgencyLegalTextContainer → DepartmentDataProtectionCard — the firs
         // … and it goes live with the policy it belongs to, unblocked.
         await userEvent.click(screen.getByRole('button', { name: 'publish' }));
         expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
-        expect(h.publishDpp).toHaveBeenCalledWith({
-            content: { de: '<p>own</p>' },
-            publish: true,
-            consentText: { de: STRINGS['legal.consent.template.platform.text'] },
-        });
+        expect(h.publishDpp).toHaveBeenCalledWith(
+            {
+                content: { de: '<p>own</p>' },
+                publish: true,
+                consentText: { de: STRINGS['legal.consent.template.platform.text'] },
+            },
+            expect.anything(),
+        );
     });
 
     it('still shows a stored sentence rather than an empty field', async () => {

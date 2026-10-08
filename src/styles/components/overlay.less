@@ -104,7 +104,7 @@
         margin: 0 auto 36px;
 
         .text {
-            color: var(--skin-color-primary-contrast-safe, @primary);
+            color: var(--m3-primary, var(--skin-color-primary-contrast-safe, @primary));
             text-transform: uppercase;
             display: none;
 
@@ -139,11 +139,13 @@
             fill: var(--m3-primary, var(--skin-color-primary, @primary));
         }
 
+        // Step labels use the admin font, not the legacy serif divider face (#1068).
         .text {
             margin-top: @grid-base;
             text-align: center;
             min-width: 104px;
             max-width: 110px;
+            font-family: var(--m3-body-font-family, @font-family-sans-serif);
         }
 
         &--active {
@@ -351,6 +353,23 @@
 
         &__item {
             width: 100%;
+        }
+
+        // button.less forces a slate primary with !important; the overlay is the
+        // only legacy-Button dialog left, so it follows the M3 filled button (#1068).
+        &__primary {
+            background: var(--m3-primary, #a5000a) !important;
+            color: var(--m3-on-primary, #ffffff) !important;
+
+            &:hover {
+                background: color-mix(in srgb, var(--m3-on-primary, #ffffff) 8%, var(--m3-primary, #a5000a)) !important;
+            }
+
+            &:disabled,
+            &[disabled] {
+                background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent) !important;
+                color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent) !important;
+            }
         }
     }
 }

@@ -49,6 +49,8 @@ export interface TenantSettings {
     featureMediaAiScanGroupChatsEnabled?: boolean | null;
     featureMediaAiScanSupervisionChatsEnabled?: boolean | null;
     featureSystemNotificationEmailsEnabled?: boolean | null;
+    /** Missing on legacy tenants until their mail route has been audited. */
+    smtpMode?: 'PLATFORM' | 'OWN' | null;
     smtp?: {
         enabled?: boolean | null;
         host?: string | null;
@@ -100,6 +102,16 @@ interface TenantAdminPermissionToggles {
     voiceMessagesSupervisionChats?: boolean | null;
 }
 
+/** Same shape as an agency's `dataProtectionOfficerContact`. */
+export interface TenantDataProtectionOfficer {
+    nameAndLegalForm?: string | null;
+    street?: string | null;
+    postcode?: string | null;
+    city?: string | null;
+    phoneNumber?: string | null;
+    email?: string | null;
+}
+
 export interface BasicTenantData {
     id: number | null;
     key?: number | null;
@@ -110,6 +122,20 @@ export interface BasicTenantData {
     address?: string;
     /** Optional free-text description of the tenant (NEW shared API field). */
     description?: string;
+    /**
+     * Mail-footer sender block of the Träger (TenantService, Frank 2026-09-23), all optional.
+     * Full legal name, e.g. "Caritasverband für die Erzdiözese Musterstadt e.V." (max 255).
+     */
+    legalName?: string | null;
+    /** Contact e-mail address (max 255). */
+    contactEmail?: string | null;
+    /** Contact phone number (max 64). */
+    contactPhone?: string | null;
+    /**
+     * Optional DPO of the Träger (Admin#1067), inherited by Beratungsstellen without their own.
+     * Absent keeps the stored value; all fields blank clears it.
+     */
+    dataProtectionOfficer?: TenantDataProtectionOfficer | null;
     createDate?: string;
     startServiceDate?: string; // to-do: show startServiceDate instead of createDate
     updateDate?: string;
@@ -140,5 +166,8 @@ export interface TenantData extends BasicTenantData {
         privacy: string | null;
         termsAndConditions: string | null;
         claim: string;
+        /** Stored language maps next to the resolved strings (TenantService `Content`). */
+        impressumLanguages?: Record<string, string> | null;
+        privacyLanguages?: Record<string, string> | null;
     };
 }

@@ -33,13 +33,15 @@ const globalStyles = readFileSync(resolve(__dirname, './FormPluginEditor.styles.
  * PR that introduced it first.
  */
 describe('read-mode legal reader — text inset (before-state H1/H2, 2026-08-18)', () => {
-    it('gives the reading text an 8px side inset inside the read-mode card', () => {
+    // Owner call 2026-09-21: 8px left the text 9px from the card edge; it now matches the header (24px, 16px on phones).
+    it("gives the reading text the header's 24px side inset inside the read-mode card", () => {
         // The inset lives on `.editorContentScroll` (the text viewport), NOT on
         // `.editor`: the chapter bar is a sibling inside `.editor` and must
         // keep spanning the full surface so its opaque sticky background masks
         // the text scrolling underneath it.
         const readMode = moduleStyles.match(/\.readMode\s*{[\s\S]*?\n}/)?.[0] ?? '';
-        expect(readMode).toMatch(/\.editorContentScroll\s*{[^}]*padding-inline:\s*8px;/);
+        expect(readMode).toMatch(/\.editorContentScroll\s*{[^}]*padding-inline:\s*24px;/);
+        expect(readMode).toMatch(/@media \(max-width: 599px\)\s*{\s*padding-inline:\s*16px;/);
     });
 
     it('keeps the 8px vertical padding of the read-mode text surface', () => {
@@ -135,7 +137,7 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
      * The owner reported the maximize control "abgeschnitten … in der oberen
      * rechten Ecke" on the public onboarding reader.
      *
-     * Measured live on predev.oriso.org (tenant-onboarding wizard, 1440x900,
+     * Measured live on predev.example.org (tenant-onboarding wizard, 1440x900,
      * getComputedStyle) BEFORE the fix:
      *
      *   .maximizeToolBtn   28x28, border-radius 50%, rect top 235 / right 1328
@@ -177,5 +179,27 @@ describe('boxless fluid reader — no vestigial corner radius (owner report 2026
         const base = moduleStyles.match(/^\.module\s*{[\s\S]*?\n}/m)?.[0] ?? '';
         expect(base).toMatch(/border-radius:\s*28px;/);
         expect(base).toMatch(/box-shadow:/);
+    });
+});
+
+describe('lower function bar — every control stays reachable (#1066)', () => {
+    // Wide cards can wrap. On narrow cards the owner wants a single swipable
+    // row with visible scroll controls so the version menu stays reachable.
+    const bar = moduleStyles.match(/\n\.functionBar\s*{[\s\S]*?\n}/)?.[0] ?? '';
+
+    it('wraps on wide cards and scrolls a single row on narrow cards', () => {
+        expect(bar).toMatch(/flex-wrap:\s*wrap;/);
+        expect(bar).toMatch(/@container \(max-width: 599px\)\s*{[^}]*flex-wrap:\s*nowrap;[^}]*overflow-x:\s*auto;/);
+        expect(moduleStyles).toMatch(/\.functionBarScrollCueRight\s*{/);
+    });
+
+    it('lets the text surface of the fixed 740px card give way to a wrapped bar', () => {
+        // With two bar rows the 280px floor pushed the white surface 24px over the bar.
+        const fixedCard = moduleStyles.match(/&:not\(\.inDialog\)\s*{[\s\S]*?\n {8}}/)?.[0] ?? '';
+        expect(fixedCard).toMatch(/\.editor\s*{[^}]*min-height:\s*0;/);
+    });
+
+    it('lets a single control shrink to the bar width, truncating its label', () => {
+        expect(bar).toMatch(/>\s*\*\s*{[^}]*min-width:\s*0;[^}]*max-width:\s*100%;/);
     });
 });

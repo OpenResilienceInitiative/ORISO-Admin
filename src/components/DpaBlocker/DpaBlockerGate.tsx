@@ -8,14 +8,15 @@ import { DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dp
 import { Initialization } from '../Layout/Initialization';
 import { UserRole } from '../../enums/UserRole';
 import { DPA_STATUS_KEY, useDpaStatus } from '../../hooks/useDpaStatus.hook';
-import { useDpaVersions } from '../../hooks/useDpaVersions.hook';
-import { useUserData } from '../../hooks/useUserData.hook';
+import { DPA_VERSIONS_KEY, useDpaVersions } from '../../hooks/useDpaVersions.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
-import { DpaAdminSignRequest } from '../../types/dpa';
+import { DpaAdminSignRequest, DpaVersion, TenantDpaStatusInfo } from '../../types/dpa';
 import { deriveDpaGateDecision, resolveDpaGateSubject } from '../../utils/dpaBlockerGate';
 import { DpaBlocker, DpaBlockerSignData } from './DpaBlocker';
 import { DpaPendingSignatureDialog } from './DpaPendingSignatureDialog';
 import { DpaUnlockDialog } from './DpaUnlockDialog';
+import { useDpaOperationScope } from '../../hooks/useDpaOperationScope.hook';
+import { parseBackendInstant } from '../../utils/backendInstant';
 
 /**
  * Global route guard for TEN-INV-U10 (#572): wraps the ENTIRE protected admin
@@ -26,19 +27,19 @@ import { DpaUnlockDialog } from './DpaUnlockDialog';
  * - blocked  -> the non-bypassable {@link DpaBlocker} INSTEAD of the routes —
  *               a direct URL to any admin page hits this same gate,
  * - inactive -> children (status VALID, or the account is not tenant-scoped),
- * - forwarded-pending (#724, reopened by #990) -> children PLUS the
- *               dismissible {@link DpaPendingSignatureDialog}. The signature
- *               was handed to an authorised signatory, so the Träger admin
- *               sets up their organisation while they wait — the same
- *               experience the tenant-invite wizard gives. Legal-gated writes
- *               stay guarded by the backend. The trigger is the additive
- *               `forwardPending` flag on the status DTO (#723 contract
- *               correction — the `status` enum itself has no
+ * - forwarded-pending (#724, hardened by JOB7) -> the
+ *               {@link DpaPendingSignatureDialog} INSTEAD of the routes. The
+ *               signature was handed to an authorised signatory, so the tenant
+ *               gets the calm waiting screen with the sign link rather than
+ *               the sign form — but it is still a GATE: the admin area is not
+ *               rendered behind it and the only exit is logout. The trigger is
+ *               the additive `forwardPending` flag on the status DTO (#723
+ *               contract correction — the `status` enum itself has no
  *               `PENDING_FORWARDED` value); absent or false it keeps the
  *               strict #572 blocker,
  * - unlock-confirm (JOB8/JOB9) -> the signature landed WHILE the tenant was
- *               waiting. {@link DpaUnlockDialog} reports it over the app, and
- *               its button re-asks the backend before the notice goes away.
+ *               waiting. {@link DpaUnlockDialog} asks for one explicit click,
+ *               and that click re-asks the backend before the app opens.
  *
  * Signing writes the returned status back into the query cache, so a
  * successful signature lifts the block immediately and permanently.
@@ -48,7 +49,11 @@ import { DpaUnlockDialog } from './DpaUnlockDialog';
  * sign endpoint the admin themselves submits. Nothing here fabricates a
  * consent or signature record.
  */
-export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
+const ScopedDpaBlockerGate = ({
+    children,
+    scope,
+    isCurrent,
+}: { children: JSX.Element } & ReturnType<typeof useDpaOperationScope>) => {
     const { hasRole, isSuperAdmin, tenantId, tokenUnreadable } = useUserRoles();
     const queryClient = useQueryClient();
     /**
@@ -60,23 +65,10 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     /** The re-check confirmed the signature — the app may render. */
     const [platformUnlocked, setPlatformUnlocked] = useState(false);
     /** Link created on this screen, reused by the pending gate instead of spending another slot. */
-    const [forwardedLink, setForwardedLink] = useState<DpaForwardLink | null>(null);
+    const [forwardedLink, setForwardedLink] = useState<{ link: DpaForwardLink; version?: string | null } | null>(null);
     const [recheckPending, setRecheckPending] = useState(false);
     /** The re-check came back without a signature — explained on the gate. */
     const [recheckRejected, setRecheckRejected] = useState(false);
-    /**
-     * The waiting notice was dismissed ("Später") or the admin has just
-     * completed a forward and seen its confirmation. Per app load: a fresh
-     * login shows the notice again (#724/#990).
-     */
-    const [pendingDismissed, setPendingDismissed] = useState(false);
-    /**
-     * The blocker's forward dialog is open. Minting a link flips the status to
-     * `forwardPending` on the next read (poll, focus, refetch), and swapping
-     * the blocker out at that moment would unmount the dialog in the middle
-     * of its confirmation (#990). The blocker stays until the dialog closes.
-     */
-    const [blockerForwardOpen, setBlockerForwardOpen] = useState(false);
 
     // FAIL-CLOSED (#569 hardening): 'indeterminate' (malformed token /
     // tenant-admin without a usable tenantId claim) blocks instead of
@@ -89,17 +81,12 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
         tokenUnreadable,
     });
 
-    // Already loaded by the app shell (2FA gate); used only to prefill the
-    // sign form with what "Träger anlegen" captured (#990).
-    const { data: userData } = useUserData({ enabled: subjectKind === 'subject' });
-    // UserService answers camelCase (`UserDataResponseDTO.firstName`); the
-    // lowercase pair is the legacy shape the local `UserData` type still names.
-    const signerName = [userData?.firstName ?? userData?.firstname, userData?.lastName ?? userData?.lastname]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-
     const statusQuery = useDpaStatus(tenantId ?? 0, subjectKind === 'subject');
+    const { isCurrent: isPublicationCurrent } = useDpaOperationScope(
+        tenantId,
+        undefined,
+        statusQuery.data?.currentDpaVersion,
+    );
 
     const decision = deriveDpaGateDecision({
         subjectKind,
@@ -123,24 +110,30 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     useEffect(() => {
         if (decision.kind === 'inactive' || decision.kind === 'unlock-confirm') {
             setForwardedLink(null);
-            setBlockerForwardOpen(false);
         }
     }, [decision.kind]);
 
-    // A held blocker (forward dialog still open, #990) keeps its DPA text.
-    const blockedSignable =
-        (decision.kind === 'blocked' && decision.signable) ||
-        (decision.kind === 'forwarded-pending' && blockerForwardOpen);
+    const blockedSignable = decision.kind === 'blocked' && decision.signable;
     // silent: a versions failure renders the blocker's inline error — never
     // the global toast or the /admin/access-denied redirect (#569 hardening).
     const versionsQuery = useDpaVersions(tenantId ?? 0, blockedSignable, { silent: true });
 
     const signMutation = useMutation({
-        mutationFn: (body: DpaAdminSignRequest) => signDpaAdmin(tenantId ?? 0, body),
-        onSuccess: (statusInfo) => {
+        mutationFn: (operation: { tenantId: number; body: DpaAdminSignRequest }) =>
+            signDpaAdmin(operation.tenantId, operation.body),
+        onSuccess: (statusInfo, operation) => {
             // The sign endpoint answers with the resulting authoritative status
             // (VALID) — write it into the cache so the block lifts right away.
-            queryClient.setQueryData([DPA_STATUS_KEY, tenantId], statusInfo);
+            const current = queryClient.getQueryData<TenantDpaStatusInfo>([DPA_STATUS_KEY, operation.tenantId]);
+            const currentDocument = queryClient.getQueryData<DpaVersion[]>([DPA_VERSIONS_KEY, operation.tenantId])?.[0];
+            if (
+                isCurrent() &&
+                statusInfo.tenantId === operation.tenantId &&
+                (!current?.currentDpaVersion || current.currentDpaVersion === operation.body.dpaVersion) &&
+                (!currentDocument || currentDocument.activationDate === operation.body.dpaVersion)
+            ) {
+                queryClient.setQueryData([DPA_STATUS_KEY, operation.tenantId], statusInfo);
+            }
         },
     });
 
@@ -148,12 +141,15 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
     // read reports `forwardPending`, which renders the dedicated waiting gate
     // until the authorised signer has completed the agreement.
     const mintLink = async (): Promise<DpaForwardLink> => {
-        const invite = await createDpaSignInvite(tenantId ?? 0);
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
+        const invite = await createDpaSignInvite(scope.tenantId ?? 0);
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
         return { signUrl: resolveDpaSignLink(invite.signLink), expiresAt: invite.expiresAt ?? null };
     };
 
     const forward = async ({ recipientEmail }: { recipientEmail?: string }): Promise<DpaForwardOutcome> => {
         const link = await mintLink();
+        if (!isCurrent() || !isPublicationCurrent()) throw new Error('DPA_VIEW_CHANGED');
         if (!recipientEmail) {
             return { link, mailFailed: false };
         }
@@ -161,7 +157,7 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             // The authenticated delivery endpoint (UserService #530) carries no
             // recipient name — the salutation falls back to the template default.
             await sendDpaInviteEmail({
-                tenantId: tenantId ?? 0,
+                tenantId: scope.tenantId ?? 0,
                 recipientEmail,
                 signLink: link.signUrl,
                 expiresAt: link.expiresAt ?? '',
@@ -199,57 +195,65 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
             setRecheckPending(true);
             setRecheckRejected(false);
             const verified = await statusQuery.refetch();
+            if (!isCurrent()) return;
             setRecheckPending(false);
             if (verified.isError || verified.data?.status !== 'VALID') {
                 setRecheckRejected(!verified.isError);
-                // Bring the waiting notice back so the reason is visible.
-                setPendingDismissed(false);
                 return;
             }
             setPlatformUnlocked(true);
         };
 
         return (
-            <>
-                {children}
-                <DpaUnlockDialog onUnlock={onUnlockPlatform} checking={recheckPending || statusQuery.isFetching} />
-            </>
+            <DpaUnlockDialog
+                onUnlock={onUnlockPlatform}
+                onLogout={() => logout(true)}
+                checking={recheckPending || statusQuery.isFetching}
+            />
         );
     }
 
-    if (decision.kind === 'forwarded-pending' && !blockerForwardOpen) {
+    if (decision.kind === 'forwarded-pending') {
         // Post-login there is no "read the active link" endpoint: issuing a
         // fresh one is the supported way, and every issued link stays valid
         // until a signature lands (#723 contract).
+        // No `children`: an unsigned tenant may not reach the admin area at
+        // all, so there is nothing behind the dialog to click (JOB7).
         return (
-            <>
-                {children}
-                {!pendingDismissed && (
-                    <DpaPendingSignatureDialog
-                        ensureSignLink={mintLink}
-                        initialLink={forwardedLink ?? undefined}
-                        forward={forward}
-                        onDismiss={() => setPendingDismissed(true)}
-                        onForwardCompleted={() => setPendingDismissed(true)}
-                        recheckRejected={recheckRejected}
-                    />
-                )}
-            </>
+            <DpaPendingSignatureDialog
+                key={statusQuery.data?.currentDpaVersion ?? ''}
+                ensureSignLink={mintLink}
+                initialLink={
+                    forwardedLink?.version === statusQuery.data?.currentDpaVersion &&
+                    forwardedLink?.link.expiresAt &&
+                    parseBackendInstant(forwardedLink.link.expiresAt).getTime() > Date.now()
+                        ? forwardedLink.link
+                        : undefined
+                }
+                forward={forward}
+                tenantId={tenantId}
+                onLogout={() => logout(true)}
+                recheckRejected={recheckRejected}
+            />
         );
     }
 
-    // Only reachable for `forwarded-pending` while the blocker's own forward
-    // dialog is still open — keep rendering that blocker until it closes.
-    const blockerSignable = decision.kind === 'forwarded-pending' || decision.signable;
-
+    const displayedVersion = versionsQuery.data?.[0]?.activationDate;
+    const signStale =
+        signMutation.isError && signMutation.error instanceof Response && signMutation.error.status === 409;
     const onSign = (data: DpaBlockerSignData) => {
+        if (!displayedVersion || signStale) return;
         signMutation.mutate({
-            signerName: data.signerName,
-            signerPosition: data.signerPosition,
-            signerEmail: data.signerEmail,
-            signerOrganisation: data.signerOrganisation,
-            accepted: data.accepted,
-            language: data.language,
+            tenantId: scope.tenantId ?? 0,
+            body: {
+                dpaVersion: displayedVersion,
+                signerName: data.signerName,
+                signerPosition: data.signerPosition,
+                signerEmail: data.signerEmail,
+                signerOrganisation: data.signerOrganisation,
+                accepted: data.accepted,
+                language: data.language,
+            },
         });
     };
 
@@ -263,26 +267,41 @@ export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
 
     return (
         <DpaBlocker
+            key={`${tenantId}:${displayedVersion ?? ''}`}
             reason={decision.reason}
-            signable={blockerSignable}
+            signable={decision.signable}
             dpaContent={versionsQuery.data?.[0]?.content ?? null}
+            signingDeadlineAt={
+                versionsQuery.data?.[0]?.signingDeadlineAt ??
+                (statusQuery.data?.currentDpaVersion === displayedVersion
+                    ? statusQuery.data?.signingDeadlineAt
+                    : undefined)
+            }
             dpaContentLoading={blockedSignable && versionsQuery.isLoading}
             signPending={signMutation.isPending}
             signFailed={signMutation.isError}
+            signStale={signStale}
             onSign={onSign}
-            onForward={blockerSignable ? forward : undefined}
-            onForwardOpenChange={setBlockerForwardOpen}
-            signerDefaults={{ signerName, signerEmail: userData?.email ?? '' }}
+            onForward={blockedSignable ? forward : undefined}
+            tenantId={tenantId}
             onForwarded={(result) => {
-                setForwardedLink(result.link);
-                // The admin has just seen the forward confirmation — go
-                // straight to the app instead of repeating it as a notice.
-                setPendingDismissed(true);
+                if (!isCurrent() || !isPublicationCurrent()) return;
+                setForwardedLink({ link: result.link, version: statusQuery.data?.currentDpaVersion });
                 statusQuery.refetch();
             }}
             onRetry={onRetry}
             retryPending={statusQuery.isFetching}
             onLogout={() => logout(true)}
         />
+    );
+};
+
+export const DpaBlockerGate = ({ children }: { children: JSX.Element }) => {
+    const { tenantId } = useUserRoles();
+    const operationScope = useDpaOperationScope(tenantId);
+    return (
+        <ScopedDpaBlockerGate key={JSON.stringify(operationScope.scope)} {...operationScope}>
+            {children}
+        </ScopedDpaBlockerGate>
     );
 };

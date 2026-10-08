@@ -44,17 +44,25 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
         avatarId,
     } = formData;
 
-    const topicIds = parseTopicIds(formData);
+    // #1026: absent means the form never showed topics; `[]` would wipe them (a 400 after UserService#1213).
+    const hasTopicField = formData?.topicIds !== undefined || formData?.topics !== undefined;
 
     const strippedCounselor = {
         firstname,
         lastname,
         formalLanguage,
         email,
+        // Required by the endpoint (`@NotNull`, primitive column), so unlike the flags below
+        // it cannot be omitted. The shared field set carries it hidden where no switch is
+        // offered, so this `!!` only defaults an untouched CREATE form.
         absent: !!absent,
-        isGroupchatConsultant: !!isGroupchatConsultant,
+        // A flag the form did not submit means "leave it alone", never `false` — the rule
+        // `src/hooks/topicRequestBody.ts` carries a scar for, and the one `updateAgencyData`
+        // already follows. `false` here REMOVES the group-chat role in Keycloak, so an edit
+        // screen that never rendered the switch must not send it at all.
+        ...(isGroupchatConsultant !== undefined && { isGroupchatConsultant: !!isGroupchatConsultant }),
         isSupervisor: !!isSupervisor,
-        topicIds,
+        ...(hasTopicField && { topicIds: parseTopicIds(formData) }),
         publicSlug,
         rejectPendingPublicSlug: !!rejectPendingPublicSlug,
         // Backend semantics: null/omitted leaves the stored value untouched, '' clears it.
