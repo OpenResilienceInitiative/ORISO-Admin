@@ -69,6 +69,11 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             (color) => contrastRatio(color, preset.green1) >= 4.5,
         ) ?? preset.green10;
 
+    const goldText =
+        [preset.gold7, preset.gold8, preset.gold9, preset.gold10].find(
+            (color) => contrastRatio(color, preset.gold1) >= 4.5,
+        ) ?? preset.gold10;
+
     return {
         algorithm,
         token: {
@@ -79,6 +84,7 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             colorError: t('--m3-error', '#b1005e'),
             colorWarning: t('--m3-warning', '#410001'),
             green7: greenText,
+            gold7: goldText,
             colorSuccessText: greenText,
             // Surfaces + text.
             colorTextBase: t('--m3-on-surface', '#1a1c1e'),
