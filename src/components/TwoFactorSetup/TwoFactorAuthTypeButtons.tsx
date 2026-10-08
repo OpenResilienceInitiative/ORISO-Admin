@@ -6,25 +6,33 @@ import { TwoFactorType } from '../../enums/TwoFactorType';
 
 interface TwoFactorAuthTypeButtonsProps {
     twoFactorType: TwoFactorType;
+    /** Public setup may lack fresh app material; profile keeps both options. */
+    showApp?: boolean;
     setTwoFactorType: (type: TwoFactorType) => void;
 }
 
-export const TwoFactorAuthTypeButtons = ({ twoFactorType, setTwoFactorType }: TwoFactorAuthTypeButtonsProps) => {
+export const TwoFactorAuthTypeButtons = ({
+    twoFactorType,
+    setTwoFactorType,
+    showApp = true,
+}: TwoFactorAuthTypeButtonsProps) => {
     const { t } = useTranslation();
     return (
         <div className="twoFactorAuth__selectType">
-            <div className="twoFactorAuth__radioWrapper">
-                <RadioButton
-                    checked={twoFactorType === TwoFactorType.App}
-                    handleRadioButton={() => setTwoFactorType(TwoFactorType.App)}
-                    label={t('twoFactorAuth.activate.radio.label.app')}
-                    inputId="radio_2fa_app"
-                    name="radio_2fa"
-                    type="default"
-                    value={TwoFactorType.App}
-                />
-                <Tooltip trigger={<InfoIcon />}>{t('twoFactorAuth.activate.radio.tooltip.app')}</Tooltip>
-            </div>
+            {showApp && (
+                <div className="twoFactorAuth__radioWrapper">
+                    <RadioButton
+                        checked={twoFactorType === TwoFactorType.App}
+                        handleRadioButton={() => setTwoFactorType(TwoFactorType.App)}
+                        label={t('twoFactorAuth.activate.radio.label.app')}
+                        inputId="radio_2fa_app"
+                        name="radio_2fa"
+                        type="default"
+                        value={TwoFactorType.App}
+                    />
+                    <Tooltip trigger={<InfoIcon />}>{t('twoFactorAuth.activate.radio.tooltip.app')}</Tooltip>
+                </div>
+            )}
             <div className="twoFactorAuth__radioWrapper">
                 <RadioButton
                     checked={twoFactorType === TwoFactorType.Email}
