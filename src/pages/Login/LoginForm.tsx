@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -12,6 +12,7 @@ import { M3Button } from '../../components/M3Button';
 import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import routePathNames from '../../appConfig';
+import { agencySetupFromSearch } from '../../constants/agencySetupContinuation';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import { LoginFailureTransport, recordLoginFailure } from '../../observability/loginFailureTracker';
 import {
@@ -54,6 +55,8 @@ const LoginForm = () => {
     const [form] = Form.useForm();
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
+    const { search } = useLocation();
+    const successDestination = agencySetupFromSearch(search) ?? routePathNames.root;
     const { t } = useTranslation();
     const { mutateAsync: loginAsync } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
@@ -111,7 +114,7 @@ const LoginForm = () => {
             await loginAsync({ username, password, otp: '' });
             // A realm that stopped asking for a second factor mid-session:
             // nothing to resend, the user is simply in.
-            navigate('/admin');
+            navigate(successDestination);
             return undefined;
         } catch (caught) {
             const error = caught as ErrorLogin;
@@ -141,7 +144,7 @@ const LoginForm = () => {
 
         try {
             await loginAsync(values);
-            navigate('/admin');
+            navigate(successDestination);
         } catch (caught) {
             const error = caught as ErrorLogin;
             const otpType = error.options?.data?.otpType;
