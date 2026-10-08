@@ -1,4 +1,5 @@
 import routePathNames from '../../appConfig';
+import { canOpenTenantLegalSettings } from '../../constants/agencyAdminLanding';
 import {
     canReadCaseHandoverAdmin,
     canSeeSupervisorLogs,
@@ -87,7 +88,8 @@ export const buildAdminNavItems = ({
     const items: AdminSidebarNavItem[] = [];
 
     const canSeeSettingsMenu =
-        can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
+        can(PermissionAction.Read, Resource.Tenant) ||
+        canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);

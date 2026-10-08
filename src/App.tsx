@@ -7,7 +7,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
-import { isAgencyScopedAdmin } from './constants/agencyAdminLanding';
+import { canOpenTenantLegalSettings, isAgencyScopedAdmin } from './constants/agencyAdminLanding';
 import { Initialization } from './components/Layout/Initialization';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
@@ -120,7 +120,10 @@ export const App = () => {
                 navigate(routePathNames.tenants);
                 return;
             }
-            if (can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText)) {
+            if (
+                can(PermissionAction.Read, Resource.Tenant) ||
+                canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole)
+            ) {
                 navigate(defaultSettingsPath);
                 return;
             }
@@ -144,7 +147,7 @@ export const App = () => {
     }, []);
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
-    const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canReadLegalText = canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
@@ -226,7 +229,7 @@ export const App = () => {
                                                 element={<LazyGeneralSettingsPage section="appearance" />}
                                             />
                                         )}
-                                        {can(PermissionAction.Read, Resource.LegalText) && (
+                                        {canReadLegalText && (
                                             <Route
                                                 path={`${routePathNames.themeSettings}/legal`}
                                                 element={<LazyLegalSettingsPage />}
