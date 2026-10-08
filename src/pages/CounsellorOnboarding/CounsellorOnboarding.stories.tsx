@@ -529,6 +529,7 @@ export const NewCentreOneTopicPolicyPreview: Story = {
 export const CounsellorCompletionGuide: Story = {
     args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, inviteState: 'PENDING_2FA_ACTIVATION' }) },
     play: async ({ canvas, userEvent }) => {
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
         await userEvent.click(
             canvas.getByRole('button', {
