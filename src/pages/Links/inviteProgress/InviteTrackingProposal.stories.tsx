@@ -51,6 +51,9 @@ export const ClosedHistory: Story = {
         await userEvent.keyboard('{Escape}');
         await expect(row.getByRole('button', { name: 'Ersetzt · Erklärung' })).toHaveFocus();
         await expect(row.queryByRole('note')).not.toBeInTheDocument();
+        row.getByRole('button', { name: /Neuere Einladung ansehen/ }).focus();
+        await userEvent.keyboard('{Enter}');
+        await expect(canvas.getByRole('article', { name: 'Frida Beispiel · INV-205' })).toHaveFocus();
     },
 };
 export const RoleAndExplicitResend: Story = {
@@ -58,6 +61,7 @@ export const RoleAndExplicitResend: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const row = within(canvas.getByRole('article', { name: 'Frida Beispiel · INV-205' }));
+        await expect(canvas.queryByRole('button', { name: /Geschlossene Historie/ })).not.toBeInTheDocument();
         await userEvent.selectOptions(row.getByRole('combobox', { name: 'Rolle' }), 'admin');
         await expect(canvas.getByRole('status')).toHaveTextContent('Es wurde keine E-Mail gesendet');
         await userEvent.click(row.getByRole('button', { name: 'Erneut senden' }));
@@ -75,9 +79,34 @@ export const ExistingAccountAssignment: Story = {
 };
 export const CompletedAccountAssignment: Story = { args: { onlyStatus: 'done' } };
 export const Revoked: Story = { args: { onlyStatus: 'revoked', initialView: 'history' } };
-export const Expired: Story = { args: { onlyStatus: 'expired' } };
+export const Expired: Story = {
+    args: { onlyStatus: 'expired' },
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('button', { name: /Konto angelegt · Noch nicht erreicht/ })).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: /Nächster Schritt/ })).not.toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: /Eingeladen · Erreicht/ })).toBeVisible();
+    },
+};
 export const DeliveryFailure: Story = { args: { onlyStatus: 'failure' } };
-export const PasswordSetup: Story = { args: { onlyStatus: 'sent', locale: 'en' } };
+export const PasswordSetup: Story = {
+    args: { onlyStatus: 'sent', onlyPurpose: 'password', locale: 'en' },
+    play: async ({ canvas }) => {
+        await expect(canvas.getAllByRole('article')).toHaveLength(1);
+        await expect(canvas.getByRole('article', { name: 'Ari Beispiel · INV-211' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Password set up · Next step/ })).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: /Account created/ })).not.toBeInTheDocument();
+    },
+};
 export const Recovery: Story = { args: { onlyStatus: 'recovery' } };
 
-export const SetupFailure: Story = { args: { onlyStatus: 'setupFailure' } };
+export const SetupFailure: Story = {
+    args: { onlyStatus: 'setupFailure' },
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('button', { name: /Konto angelegt · Erreicht/ })).toBeVisible();
+        await expect(
+            canvas.getByRole('button', { name: /Einrichtung abgeschlossen · Noch nicht erreicht/ }),
+        ).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: /Nächster Schritt/ })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Erneut senden' })).not.toBeInTheDocument();
+    },
+};

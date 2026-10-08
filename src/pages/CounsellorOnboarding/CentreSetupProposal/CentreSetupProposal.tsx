@@ -140,8 +140,9 @@ const CentreSetupExample = ({
                 <details className={styles.invitation} open>
                     <summary>{text.inviter}</summary>
                     <p>{text.carrier}</p>
-                    <div className={styles.choice}>
+                    <label className={styles.choice} htmlFor={`${controlId}-grant`}>
                         <M3Checkbox
+                            id={`${controlId}-grant`}
                             label={text.grant}
                             describedById={`${controlId}-grant-hint`}
                             checked={allowed}
@@ -151,7 +152,7 @@ const CentreSetupExample = ({
                             {text.grant}
                             <small id={`${controlId}-grant-hint`}>{text.grantHint}</small>
                         </span>
-                    </div>
+                    </label>
                 </details>
                 <div className={styles.secure}>
                     <VerifiedUserOutlined aria-hidden="true" />
@@ -248,14 +249,19 @@ const CentreSetupExample = ({
                                             <span>{topic[locale]}</span>
                                         </label>
                                     ) : (
-                                        <div key={topic.id} className={styles.choice}>
+                                        <label
+                                            key={topic.id}
+                                            className={styles.choice}
+                                            htmlFor={`${controlId}-topic-${topic.id}`}
+                                        >
                                             <M3Checkbox
+                                                id={`${controlId}-topic-${topic.id}`}
                                                 label={topic[locale]}
                                                 checked={topicIds.includes(topic.id)}
                                                 onChange={selectTopic}
                                             />
                                             <span>{topic[locale]}</span>
-                                        </div>
+                                        </label>
                                     );
                                 })}
                                 {topicIds.length === 0 && <p className={styles.helper}>{text.topicRequired}</p>}
@@ -305,8 +311,9 @@ const CentreSetupExample = ({
                     >
                         <p className={styles.helper}>{text.review}</p>
                         {(['address', 'contact', 'hours', 'topics'] as const).map((block) => (
-                            <div key={block} className={styles.copyChoice}>
+                            <label key={block} className={styles.copyChoice} htmlFor={`${controlId}-copy-${block}`}>
                                 <M3Checkbox
+                                    id={`${controlId}-copy-${block}`}
                                     label={text[block === 'topics' ? 'topicsCopy' : block]}
                                     describedById={`${controlId}-copy-${block}-hint`}
                                     checked={blocks.includes(block)}
@@ -324,7 +331,7 @@ const CentreSetupExample = ({
                                         {text[`${block === 'topics' ? 'topics' : block}Detail`]}
                                     </small>
                                 </span>
-                            </div>
+                            </label>
                         ))}
                         <p className={styles.notice}>{text.source}</p>
                     </Modal>

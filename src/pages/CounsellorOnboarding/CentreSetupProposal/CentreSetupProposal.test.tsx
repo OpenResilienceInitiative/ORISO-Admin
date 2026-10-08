@@ -108,3 +108,34 @@ it.each([
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     },
 );
+
+it('activates the grant from its visible text exactly once', () => {
+    render(<CentreSetupProposal />);
+    const checkbox = screen.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(screen.getByText('Weitere Beratungsstellen im eigenen Träger erlauben', { exact: true }));
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+});
+
+it('activates a multi-topic choice from its visible text exactly once', () => {
+    render(<CentreSetupProposal />);
+    const checkbox = screen.getByRole('checkbox', { name: 'Eltern und Familie' });
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(screen.getByText('Eltern und Familie', { exact: true }));
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+});
+
+it('activates a copy choice from its visible text exactly once', () => {
+    render(<CentreSetupProposal initialStep="copy" />);
+    const dialog = within(screen.getByRole('dialog'));
+    const checkbox = dialog.getByRole('checkbox', { name: /Adresse/ });
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(dialog.getByText('Adresse', { exact: true }));
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+});

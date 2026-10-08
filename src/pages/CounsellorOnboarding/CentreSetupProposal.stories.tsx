@@ -32,7 +32,8 @@ export const AddressCopyJourney: Story = {
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
         await userEvent.click(await canvas.findByRole('button', { name: 'Weitere Beratungsstelle' }));
         const dialog = within(await within(document.body).findByRole('dialog'));
-        await userEvent.click(dialog.getByRole('checkbox', { name: /Adresse/ }));
+        await userEvent.click(dialog.getByText('Adresse', { exact: true }));
+        await expect(dialog.getByRole('checkbox', { name: /Adresse/ })).toBeChecked();
         await userEvent.click(dialog.getByRole('button', { name: 'Auswahl übernehmen' }));
         await expect(canvas.getByRole('textbox', { name: /^Name/ })).toHaveValue('');
         await expect(canvas.getByRole('textbox', { name: /^Telefon$/ })).toHaveValue('');
@@ -95,7 +96,8 @@ export const SingleTopic: Story = { args: { singleTopic: true } };
 export const MultipleTopics: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(canvas.getByRole('checkbox', { name: 'Eltern und Familie' }));
+        await userEvent.click(canvas.getByText('Eltern und Familie', { exact: true }));
+        await expect(canvas.getByRole('checkbox', { name: 'Eltern und Familie' })).toBeChecked();
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
         await expect(await canvas.findByText('Allgemeine Sozialberatung · Eltern und Familie')).toBeVisible();
     },
@@ -153,9 +155,10 @@ export const PermissionDenied: Story = {
         await userEvent.click(canvas.getByRole('button', { name: 'Weitere Beratungsstelle' }));
         const dialog = within(await within(document.body).findByRole('dialog'));
         await userEvent.click(dialog.getByRole('button', { name: 'Auswahl übernehmen' }));
-        await userEvent.click(
+        await userEvent.click(canvas.getByText('Weitere Beratungsstellen im eigenen Träger erlauben', { exact: true }));
+        await expect(
             canvas.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ }),
-        );
+        ).not.toBeChecked();
         await expect(canvas.getByRole('button', { name: 'Beratungsstelle speichern' })).toBeDisabled();
         await expect(canvas.getByRole('alert')).toHaveTextContent(
             'Bereits gespeicherte Beratungsstellen bleiben erhalten',

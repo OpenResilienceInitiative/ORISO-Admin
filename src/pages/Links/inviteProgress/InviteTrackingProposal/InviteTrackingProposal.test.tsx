@@ -81,3 +81,55 @@ it('retains evidenced account creation in a separate closed fixture and describe
     expect(created.getByRole('note')).toHaveTextContent('the invitation email was sent');
     expect(created.getByRole('note')).toHaveTextContent('does not prove confirmed delivery');
 });
+
+it.each([
+    ['expired', 'Lee Beispiel · INV-210', 'Konto angelegt'],
+    ['setupFailure', 'Dana Beispiel · INV-213', 'Einrichtung abgeschlossen'],
+] as const)('keeps the blocked %s milestone pending while retaining reached events', (onlyStatus, name, stage) => {
+    render(<InviteTrackingProposal onlyStatus={onlyStatus} />);
+    const row = within(screen.getByRole('article', { name }));
+    expect(row.queryByRole('button', { name: new RegExp(`${stage} · Nächster Schritt`) })).not.toBeInTheDocument();
+    expect(row.getByRole('button', { name: new RegExp(`${stage} · Noch nicht erreicht`) })).toBeVisible();
+    expect(row.getByRole('button', { name: /Eingeladen · Erreicht/ })).toBeVisible();
+});
+
+it('isolates password setup without showing new-account onboarding', () => {
+    render(<InviteTrackingProposal onlyStatus="sent" onlyPurpose="password" locale="en" />);
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByRole('article', { name: 'Ari Beispiel · INV-211' })).toBeVisible();
+    expect(screen.queryByRole('article', { name: 'Frida Beispiel · INV-205' })).not.toBeInTheDocument();
+});
+
+it.each(['draft', 'sent', 'expired', 'revoked'] as const)(
+    'does not expose misleading view switches in an isolated %s story',
+    (onlyStatus) => {
+        render(<InviteTrackingProposal onlyStatus={onlyStatus} />);
+        expect(screen.queryByRole('button', { name: /Geschlossene Historie/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^Aktuell/ })).not.toBeInTheDocument();
+        expect(screen.getAllByRole('article').length).toBeGreaterThan(0);
+    },
+);
+
+it('names the unrestricted invitation view controls as a semantic group', () => {
+    render(<InviteTrackingProposal />);
+    const group = within(screen.getByRole('group', { name: 'Einladungen filtern' }));
+    expect(group.getByRole('button', { name: /^Aktuell/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(group.getByRole('button', { name: /Geschlossene Historie/ })).toHaveAttribute('aria-pressed', 'false');
+});
+
+it('does not offer ordinary resend for a confirmed setup failure with an existing account', () => {
+    render(<InviteTrackingProposal onlyStatus="setupFailure" />);
+    const row = within(screen.getByRole('article', { name: 'Dana Beispiel · INV-213' }));
+    expect(row.getByRole('button', { name: /Konto angelegt · Erreicht/ })).toBeVisible();
+    expect(row.queryByRole('button', { name: 'Erneut senden' })).not.toBeInTheDocument();
+});
+
+it('moves keyboard focus to the referenced newer invitation after leaving history', async () => {
+    const user = userEvent.setup();
+    render(<InviteTrackingProposal initialView="history" />);
+    const row = within(screen.getByRole('article', { name: 'Frida Beispiel · INV-204' }));
+    row.getByRole('button', { name: /Neuere Einladung ansehen/ }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('article', { name: 'Frida Beispiel · INV-205' })).toHaveFocus();
+    expect(screen.queryByRole('article', { name: 'Frida Beispiel · INV-204' })).not.toBeInTheDocument();
+});

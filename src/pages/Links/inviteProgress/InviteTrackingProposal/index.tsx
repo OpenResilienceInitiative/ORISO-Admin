@@ -266,6 +266,7 @@ export interface InviteTrackingProposalProps {
     locale?: Locale;
     initialView?: View;
     onlyStatus?: Status;
+    onlyPurpose?: Fixture['purpose'];
 }
 
 /** Story-only proposal: explicit fixtures, no service imports or production status derivation. */
@@ -273,16 +274,26 @@ export const InviteTrackingProposal = ({
     locale = 'de',
     initialView = 'active',
     onlyStatus,
+    onlyPurpose,
 }: InviteTrackingProposalProps) => {
     const c = copy[locale];
     const [view, setView] = useState<View>(initialView);
     const [explanation, setExplanation] = useState<{ id: string; text: string } | null>(null);
     const [roles, setRoles] = useState<Record<string, string>>({});
     const [notice, setNotice] = useState('');
-    const visible = fixtures.filter((fixture) =>
-        onlyStatus
-            ? fixture.status === onlyStatus
-            : (fixture.status === 'replaced' || fixture.status === 'revoked') === (view === 'history'),
+    const [focusInvitationId, setFocusInvitationId] = useState<string | null>(null);
+    const invitationElements = useRef<Record<string, HTMLElement | null>>({});
+    useEffect(() => {
+        if (!focusInvitationId) return;
+        invitationElements.current[focusInvitationId]?.focus();
+        setFocusInvitationId(null);
+    }, [view, focusInvitationId]);
+    const visible = fixtures.filter(
+        (fixture) =>
+            (!onlyPurpose || fixture.purpose === onlyPurpose) &&
+            (onlyStatus
+                ? fixture.status === onlyStatus
+                : (fixture.status === 'replaced' || fixture.status === 'revoked') === (view === 'history')),
     );
     const activeCount = fixtures.filter(
         (fixture) => fixture.status !== 'replaced' && fixture.status !== 'revoked',
@@ -316,28 +327,34 @@ export const InviteTrackingProposal = ({
                 <h1>{c.title}</h1>
                 <p>{c.intro}</p>
             </header>
-            <div className={styles.toolbar} aria-label={locale === 'de' ? 'Einladungen filtern' : 'Filter invitations'}>
-                <M3Button
-                    variant={view === 'active' ? 'tonal' : 'outlined'}
-                    aria-pressed={view === 'active'}
-                    onClick={() => {
-                        setView('active');
-                        setExplanation(null);
-                    }}
+            {!onlyStatus && (
+                <div
+                    role="group"
+                    className={styles.toolbar}
+                    aria-label={locale === 'de' ? 'Einladungen filtern' : 'Filter invitations'}
                 >
-                    {c.active} · {activeCount}
-                </M3Button>
-                <M3Button
-                    variant={view === 'history' ? 'tonal' : 'outlined'}
-                    aria-pressed={view === 'history'}
-                    onClick={() => {
-                        setView('history');
-                        setExplanation(null);
-                    }}
-                >
-                    {c.history} · {fixtures.length - activeCount}
-                </M3Button>
-            </div>
+                    <M3Button
+                        variant={view === 'active' ? 'tonal' : 'outlined'}
+                        aria-pressed={view === 'active'}
+                        onClick={() => {
+                            setView('active');
+                            setExplanation(null);
+                        }}
+                    >
+                        {c.active} · {activeCount}
+                    </M3Button>
+                    <M3Button
+                        variant={view === 'history' ? 'tonal' : 'outlined'}
+                        aria-pressed={view === 'history'}
+                        onClick={() => {
+                            setView('history');
+                            setExplanation(null);
+                        }}
+                    >
+                        {c.history} · {fixtures.length - activeCount}
+                    </M3Button>
+                </div>
+            )}
             <p className={styles.reviewNote}>{c.designChoice}</p>
             <p className={styles.help}>{c.help}</p>
             {notice && (
@@ -360,6 +377,10 @@ export const InviteTrackingProposal = ({
                     return (
                         <article
                             key={fixture.id}
+                            ref={(element) => {
+                                invitationElements.current[fixture.id] = element;
+                            }}
+                            tabIndex={-1}
                             className={styles.invitation}
                             aria-label={`${fixture.name} · ${fixture.id}`}
                         >
@@ -386,6 +407,8 @@ export const InviteTrackingProposal = ({
                                             !closed &&
                                             fixture.status !== 'draft' &&
                                             fixture.status !== 'failure' &&
+                                            fixture.status !== 'expired' &&
+                                            fixture.status !== 'setupFailure' &&
                                             stage === firstPending;
                                         let stateLabel = c.pending;
                                         let beadClass = styles.pending;
@@ -471,11 +494,13 @@ export const InviteTrackingProposal = ({
                                                 {c.assign}
                                             </M3Button>
                                         )}
-                                        {fixture.status !== 'done' && fixture.purpose !== 'existing' && (
-                                            <M3Button variant="outlined" onClick={() => setNotice(c.simulation)}>
-                                                {fixture.status === 'draft' ? c.send : c.resend}
-                                            </M3Button>
-                                        )}
+                                        {fixture.status !== 'done' &&
+                                            fixture.status !== 'setupFailure' &&
+                                            fixture.purpose !== 'existing' && (
+                                                <M3Button variant="outlined" onClick={() => setNotice(c.simulation)}>
+                                                    {fixture.status === 'draft' ? c.send : c.resend}
+                                                </M3Button>
+                                            )}
                                         <span className={styles.roleHint}>{c.roleHint}</span>
                                     </div>
                                 )}
@@ -484,6 +509,7 @@ export const InviteTrackingProposal = ({
                                         <M3Button
                                             variant="text"
                                             onClick={() => {
+                                                setFocusInvitationId(fixture.replacementId ?? null);
                                                 setView('active');
                                                 setNotice(c.selectedReference);
                                                 setExplanation(null);
