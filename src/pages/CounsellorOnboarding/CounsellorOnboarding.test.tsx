@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -28,6 +28,12 @@ vi.mock('../../api/fetchData', async () => {
         fetchData: mocks.fetchData,
     };
 });
+
+vi.mock('../../appConfig', async (original) => ({
+    ...(await original<typeof import('../../appConfig')>()),
+    appURL: 'https://counselling.example.test/',
+}));
+afterEach(() => vi.unstubAllGlobals());
 
 const INVITE: CounsellorOnboardingInviteDTO = {
     recipientEmail: 'lena@tenant.example',
@@ -944,6 +950,97 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 });
+
+describe('registration completion login destinations', () => {
+    it.each([
+        { targetRole: 'COUNSELLOR' as const, alsoCounsellor: true },
+        { targetRole: 'AGENCY_ADMIN' as const, alsoCounsellor: false },
+        { targetRole: 'AGENCY_ADMIN' as const, alsoCounsellor: true },
+    ])(
+        'keeps $targetRole (alsoCounsellor=$alsoCounsellor) on the correct login and guide',
+        async ({ targetRole, alsoCounsellor }) => {
+            const assign = vi.fn();
+            vi.stubGlobal('location', { assign });
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    targetRole,
+                    alsoCounsellor,
+                    phase: 'PENDING_2FA_ACTIVATION',
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<h1>Admin sign in</h1>} />
+                    </Routes>
+                </MemoryRouter>,
+            );
+            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            const agencyAdmin = targetRole === 'AGENCY_ADMIN';
+            expect(
+                await screen.findByText(`registrationGuide.${agencyAdmin ? 'agencyAdmin' : 'counsellor'}.features.1`),
+            ).toBeInTheDocument();
+            await user.click(
+                screen.getByRole('button', {
+                    name: agencyAdmin ? 'counsellorOnboarding.agencySetup.finish' : 'cards.success.finish',
+                }),
+            );
+            if (agencyAdmin) {
+                expect(await screen.findByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
+                expect(assign).not.toHaveBeenCalled();
+            } else {
+                expect(assign).toHaveBeenCalledExactlyOnceWith('https://counselling.example.test/login');
+                expect(screen.queryByRole('heading', { name: 'Admin sign in' })).not.toBeInTheDocument();
+            }
+        },
+    );
+});
+
+it.each(['COUNSELLOR', 'AGENCY_ADMIN'] as const)(
+    'keeps an existing %s account on its own login after password setup',
+    async (targetRole) => {
+        const assign = vi.fn();
+        vi.stubGlobal('location', { assign });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                targetRole,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/invite']}>
+                <Routes>
+                    <Route path="/invite" element={<CounsellorOnboarding inviteToken="raw-token" client={client} />} />
+                    <Route path="/admin/login" element={<h1>Admin sign in</h1>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByText('accountSetup.success')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+        if (targetRole === 'COUNSELLOR') {
+            expect(assign).toHaveBeenCalledExactlyOnceWith('https://counselling.example.test/login');
+            expect(screen.queryByRole('heading', { name: 'Admin sign in' })).not.toBeInTheDocument();
+        } else {
+            expect(await screen.findByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
+            expect(assign).not.toHaveBeenCalled();
+        }
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    },
+);
 
 describe('CounsellorOnboarding server default', () => {
     it('passes the supported server APP default to the shared setup', async () => {

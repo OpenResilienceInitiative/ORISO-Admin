@@ -20,6 +20,8 @@ interface DoneStepProps {
     /** The admin joined an existing Träger: nothing was created, nothing awaits activation. */
     joinedExisting?: boolean;
     existingAccountSetup?: boolean;
+    /** A public flow can choose its role-specific portal without changing this default Admin action. */
+    onLogin?: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export const DoneStep = ({
     forwarded = false,
     joinedExisting = false,
     existingAccountSetup = false,
+    onLogin,
 }: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -88,7 +91,7 @@ export const DoneStep = ({
             <M3Button
                 variant="filled"
                 icon={<LoginRounded fontSize="small" />}
-                onClick={() => navigate(routePathNames.login)}
+                onClick={onLogin ?? (() => navigate(routePathNames.login))}
             >
                 {t('tenantOnboarding.done.toLogin')}
             </M3Button>
