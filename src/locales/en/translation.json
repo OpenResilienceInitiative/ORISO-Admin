@@ -302,6 +302,7 @@
     "message.error.auth.tooManyCodesWaitMinutes": "Too many attempts. Please wait about {{minutes}} minutes before trying again.",
     "message.error.auth.login": "Login failed. Please check username/email and password.",
     "message.error.auth.credentialsOrInvite": "Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.",
+    "message.error.auth.setupIncomplete": "Your account is not fully set up yet. Please use the link in your invitation email, or reset your password via \"Forgot password?\" to finish the setup.",
     "message.error.auth.adminOnly": "This account cannot access the admin portal. Please use an admin account.",
     "message.error.password.minLength": "Password must be at least 8 characters long.",
     "message.error.password.policy": "Password must include upper and lower case letters, at least one number, and at least one special character.",
