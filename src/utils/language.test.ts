@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+// @vitest-environment-options {"url":"https://admin.example.test/admin/"}
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+    BACKEND_LANGUAGE_COOKIE_KEY,
     DEFAULT_LANGUAGE,
     LANGUAGE_COOKIE_KEY,
     LANGUAGE_STORAGE_KEY,
@@ -9,8 +11,21 @@ import {
     isSupportedLanguage,
     normalizeLanguage,
     storeLanguage,
+    SupportedLanguage,
     updateDocumentLanguage,
 } from './language';
+
+vi.mock('../config/runtimeConfig', () => ({
+    runtimeConfig: { cookieDomain: '.example.test', cookieSecure: true },
+}));
+
+const readCookie = (name: string): string | null => {
+    const match = decodeURIComponent(document.cookie)
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name}=`));
+    return match ? match.substring(name.length + 1) : null;
+};
 
 const storage: Record<string, string> = {};
 
@@ -27,6 +42,7 @@ describe('language utilities', () => {
             },
         });
         document.cookie = `${LANGUAGE_COOKIE_KEY}=;path=/;Max-Age=0`;
+        document.cookie = `${BACKEND_LANGUAGE_COOKIE_KEY}=;path=/;Max-Age=0`;
         document.documentElement.lang = '';
     });
 
@@ -47,6 +63,18 @@ describe('language utilities', () => {
         expect(getStoredLanguage()).toBe('de');
         expect(getInitialLanguage()).toBe('de');
     });
+
+    it.each<SupportedLanguage>(['en', 'de', 'de@informal', 'fr', 'ru', 'tr', 'ti'])(
+        'mirrors the stored language into the backend `lang` cookie for %s',
+        (language) => {
+            // ConsultingTypeService resolves localized topic names from the `lang`
+            // cookie only, so storeLanguage must keep it in sync with the UI (#564).
+            storeLanguage(language);
+
+            expect(readCookie(BACKEND_LANGUAGE_COOKIE_KEY)).toBe(language);
+            expect(readCookie(LANGUAGE_COOKIE_KEY)).toBe(language);
+        },
+    );
 
     it('updates the document language attribute', () => {
         updateDocumentLanguage('en');
