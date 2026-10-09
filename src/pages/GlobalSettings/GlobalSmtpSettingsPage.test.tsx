@@ -127,6 +127,92 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         expect(screen.queryByText('globalSettings.smtp.sync.applied')).not.toBeInTheDocument();
     });
 
+    it('tells the admin after a pending save that the mail settings apply within about 5 minutes', async () => {
+        mocks.fetchData.mockImplementation(({ url }) => {
+            if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+            if (url === smtpSyncStatusEndpoint)
+                return Promise.resolve({ revision: 3, appliedRevision: 3, status: 'APPLIED' });
+            if (url === serverSettingsAdminEndpoint)
+                return Promise.resolve(
+                    new Response(null, {
+                        status: 204,
+                        headers: { 'X-Smtp-Sync-Status': 'SMTP_SYNC_PENDING', 'X-Smtp-Revision': '4' },
+                    }),
+                );
+            return Promise.resolve({});
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByText(savedSummary.host);
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        expect(await screen.findByText('globalSettings.smtp.sync.savedPendingSnackbar')).toBeInTheDocument();
+        expect(screen.queryByText('message.success.setting.update')).not.toBeInTheDocument();
+    });
+
+    it('rechecks a pending synchronization every 30 seconds until it is applied, without a reload', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            let syncState = { revision: 3, appliedRevision: 2, status: 'SMTP_SYNC_PENDING' };
+            mocks.fetchData.mockImplementation(({ url }) => {
+                if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+                if (url === smtpSyncStatusEndpoint) return Promise.resolve(syncState);
+                return Promise.resolve({});
+            });
+            const statusReads = () =>
+                mocks.fetchData.mock.calls.filter(([args]) => args.url === smtpSyncStatusEndpoint).length;
+            renderPage();
+            expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+            expect(statusReads()).toBe(1);
+
+            await vi.advanceTimersByTimeAsync(30_000);
+            await waitFor(() => expect(statusReads()).toBe(2));
+            expect(screen.getByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+
+            syncState = { revision: 3, appliedRevision: 3, status: 'APPLIED' };
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
+            expect(statusReads()).toBe(3);
+
+            await vi.advanceTimersByTimeAsync(90_000);
+            expect(statusReads()).toBe(3);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('keeps rechecking after a pending save while the status still reports the previous revision', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            let syncState = { revision: 3, appliedRevision: 3, status: 'APPLIED' };
+            mocks.fetchData.mockImplementation(({ url }) => {
+                if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+                if (url === smtpSyncStatusEndpoint) return Promise.resolve(syncState);
+                if (url === serverSettingsAdminEndpoint)
+                    return Promise.resolve(
+                        new Response(null, {
+                            status: 204,
+                            headers: { 'X-Smtp-Sync-Status': 'SMTP_SYNC_PENDING', 'X-Smtp-Revision': '4' },
+                        }),
+                    );
+                return Promise.resolve({});
+            });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+            renderPage();
+            await screen.findByText(savedSummary.host);
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+            await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+            expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+
+            syncState = { revision: 4, appliedRevision: 4, status: 'APPLIED' };
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('shows applied only when the persisted status confirms the current revision', async () => {
         mocks.fetchData.mockImplementation(({ url }) => {
             if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);

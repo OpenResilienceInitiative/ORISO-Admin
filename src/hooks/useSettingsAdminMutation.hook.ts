@@ -6,7 +6,11 @@ import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { serverSettingsAdminEndpoint } from '../appConfig';
 import { useAppConfigContext } from '../context/useAppConfig';
 
-export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<unknown>, unknown, Partial<unknown>>) => {
+export const useSettingsAdminMutation = (
+    options?: UseMutationOptions<Partial<unknown>, unknown, Partial<unknown>>,
+    // Lets a page replace the generic success notice with its own.
+    { silentSuccess = false }: { silentSuccess?: boolean } = {},
+) => {
     const { t } = useTranslation();
     const { settings, setManualSettings, setServerSettings } = useAppConfigContext();
 
@@ -34,10 +38,11 @@ export const useSettingsAdminMutation = (options?: UseMutationOptions<Partial<un
                 ...updatedData,
             });
             apiServerSettings().then(setServerSettings);
-            message.success({
-                content: t('message.success.setting.update'),
-                duration: 3,
-            });
+            if (!silentSuccess)
+                message.success({
+                    content: t('message.success.setting.update'),
+                    duration: 3,
+                });
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
     });
