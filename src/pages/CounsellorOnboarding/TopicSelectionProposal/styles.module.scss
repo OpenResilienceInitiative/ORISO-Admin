@@ -1,0 +1,196 @@
+.proposal {
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: 24px;
+    color: var(--m3-on-surface);
+    background: var(--m3-surface-container-high);
+    overflow-wrap: anywhere;
+
+    h1 {
+        margin-block: 24px 16px;
+        font-size: 24px;
+        line-height: 32px;
+    }
+}
+
+.notice,
+.hint {
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--m3-on-surface-variant);
+}
+
+.summary,
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.summary {
+    margin: 16px 0;
+}
+
+.actions {
+    gap: 12px;
+    justify-content: flex-end;
+    padding-block: 8px;
+}
+
+.dialogContent {
+    display: grid;
+    gap: 24px;
+    padding-block: 16px 8px;
+}
+
+.toolbar {
+    width: min(100%, 220px);
+    justify-self: end;
+}
+
+.search {
+    width: 100%;
+}
+
+.selectionInfo {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    background: var(--m3-surface-container);
+    border-radius: 12px;
+
+    p {
+        margin: 0;
+    }
+}
+
+.results {
+    max-height: min(360px, 36dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.choice:global(.ant-checkbox-wrapper) {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 64px;
+    align-items: center;
+    padding: 12px 8px;
+    cursor: pointer;
+    width: 100%;
+    margin: 0;
+    border-bottom: 1px solid var(--m3-outline-variant);
+
+    &:after {
+        display: none;
+    }
+
+    > span:last-child {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+        padding: 0;
+    }
+}
+
+.icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.noIcon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--m3-on-surface-variant);
+    background: var(--m3-surface-container);
+    border-radius: 50%;
+}
+
+.topicLabel {
+    color: var(--m3-on-surface);
+    overflow-wrap: anywhere;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.empty {
+    padding: 16px 0;
+}
+
+.summaryChip {
+    max-width: 100%;
+    min-height: 40px;
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    > span {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
+
+.locked {
+    display: block;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--m3-on-surface-variant);
+}
+
+.dialog {
+    top: 16px;
+    max-width: calc(100vw - 16px);
+
+    :global(.ant-modal-content) {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100dvh - 32px);
+        overflow: hidden;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex-shrink: 0;
+    }
+
+    :global(.ant-modal-body) {
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .proposal {
+        padding: 16px;
+    }
+
+    .dialogContent {
+        gap: 20px;
+    }
+
+    .toolbar {
+        width: 100%;
+    }
+
+    .choice:global(.ant-checkbox-wrapper) {
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 8px;
+        padding-inline: 0;
+
+        > span:last-child {
+            grid-template-columns: 32px minmax(0, 1fr);
+            gap: 8px;
+        }
+    }
+
+    .icon,
+    .noIcon {
+        width: 32px;
+        height: 32px;
+    }
+}

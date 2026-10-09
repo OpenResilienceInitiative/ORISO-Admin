@@ -58,3 +58,23 @@ describe('M3Checkbox', () => {
         expect(screen.getByRole('checkbox', { name: 'Activated' })).toBeDisabled();
     });
 });
+
+it.each([false, true])('associates a visible label by optional id and preserves disabled=%s', async (disabled) => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const { container } = render(
+        <M3Checkbox id="labelled-choice" label="Accessible choice" disabled={disabled} onChange={onChange} />,
+    );
+    const visibleLabel = document.createElement('label');
+    visibleLabel.htmlFor = 'labelled-choice';
+    visibleLabel.textContent = 'Visible choice';
+    container.append(visibleLabel);
+    const checkbox = screen.getByRole('checkbox', { name: 'Accessible choice' });
+    expect(checkbox).toHaveAttribute('id', 'labelled-choice');
+    await user.click(screen.getByText('Visible choice'));
+    if (disabled) expect(onChange).not.toHaveBeenCalled();
+    else {
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(onChange).toHaveBeenCalledWith(true);
+    }
+});
