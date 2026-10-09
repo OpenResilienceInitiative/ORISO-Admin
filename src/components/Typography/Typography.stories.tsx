@@ -35,7 +35,7 @@ export const Scale: StoryObj = {
                 >
                     <div>
                         <code style={{ fontSize: 12, color: 'var(--m3-primary, #a5000a)' }}>{variant}</code>
-                        <div style={{ fontSize: 11, color: '#8a8d8e' }}>{spec}</div>
+                        <div style={{ fontSize: 11, color: 'var(--admin-form-muted-text, #444748)' }}>{spec}</div>
                     </div>
                     <Typography variant={variant}>{sample}</Typography>
                 </div>

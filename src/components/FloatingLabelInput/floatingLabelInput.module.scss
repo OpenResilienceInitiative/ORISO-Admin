@@ -43,7 +43,11 @@
 }
 
 .fieldDisabled {
-    opacity: 0.38;
+    cursor: not-allowed;
+
+    .outline {
+        border-color: color-mix(in srgb, var(--m3-outline, #747878) 38%, transparent);
+    }
 }
 
 .fieldMultiline .outline {

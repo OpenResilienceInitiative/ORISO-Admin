@@ -117,7 +117,10 @@ export const OnboardingTwoFactorSetup = ({
             )}
             {supportsEmail && (
                 <Box component="fieldset" disabled={pending} sx={{ border: 0, m: 0, p: 0, mb: 2 }}>
-                    <Typography component="legend" sx={{ mb: 1 }}>
+                    <Typography
+                        component="legend"
+                        sx={{ mb: 1, '&&': { color: 'var(--m3-on-surface-variant, #444748)' } }}
+                    >
                         {t('twoFactorSetup.method')}
                     </Typography>
                     <TwoFactorAuthTypeButtons

@@ -18,7 +18,6 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
     fontFamily: 'var(--m3-body-font-family)',
     ...(isDisabled
         ? {
-              opacity: 0.5,
               cursor: 'not-allowed',
               pointerEvents: 'auto',
               '&:hover': { cursor: 'not-allowed' },
@@ -49,6 +48,7 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         color: 'var(--form-error, #cc0000)',
     },
     '& .MuiInputLabel-root.Mui-disabled': {
+        opacity: 0.5,
         color: 'var(--label-color)',
     },
     '& .MuiOutlinedInput-notchedOutline': {
@@ -81,6 +81,7 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         borderWidth: 2,
     },
     '& .MuiInputBase-root.Mui-disabled': {
+        opacity: 0.5,
         color: 'var(--admin-form-field-text)',
         cursor: 'not-allowed',
         WebkitTextFillColor: 'var(--admin-form-field-text)',
@@ -93,6 +94,9 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         color: 'var(--admin-form-muted-text)',
         fontFamily: 'var(--m3-body-font-family)',
         overflowWrap: 'anywhere',
+    },
+    '& .MuiFormHelperText-root.Mui-disabled': {
+        color: 'var(--admin-form-muted-text)',
     },
     '& .MuiFormHelperText-root.Mui-error': {
         color: 'var(--form-error, #cc0000)',
