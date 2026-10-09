@@ -77,7 +77,6 @@ export const Default: Story = {
                                 disableLabels
                                 className={styles.masterDataToggle}
                                 switchLabel="Bearbeitung durch Träger-Admins erlauben"
-                                switchVariant="m3"
                             />
                         </CardEditable>
                     </CardDeck.Item>
