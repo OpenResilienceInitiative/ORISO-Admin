@@ -5,7 +5,7 @@ import { getSmtpSyncStatus, SmtpSyncState } from '../api/settings/getSmtpSyncSta
 export const SMTP_SYNC_POLL_MS = 30_000;
 
 const isOutstanding = (data: SmtpSyncState | null | undefined, awaitedRevision: number | null) =>
-    data?.status === 'SMTP_SYNC_PENDING' || (awaitedRevision !== null && !!data && data.revision < awaitedRevision);
+    data?.status === 'SMTP_SYNC_PENDING' || (awaitedRevision !== null && (!data || data.revision < awaitedRevision));
 
 /** @param awaitedRevision revision a save reported as pending; polls until the status reaches it. */
 export const useSmtpSyncStatus = (awaitedRevision: number | null = null) =>

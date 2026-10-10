@@ -213,6 +213,40 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         }
     });
 
+    it('keeps rechecking after a pending save when status reads fail until one succeeds', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        try {
+            let statusAvailable = false;
+            mocks.fetchData.mockImplementation(({ url }) => {
+                if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
+                if (url === smtpSyncStatusEndpoint)
+                    return statusAvailable
+                        ? Promise.resolve({ revision: 4, appliedRevision: 4, status: 'APPLIED' })
+                        : Promise.reject(new Error('status unavailable'));
+                if (url === serverSettingsAdminEndpoint)
+                    return Promise.resolve(
+                        new Response(null, {
+                            status: 204,
+                            headers: { 'X-Smtp-Sync-Status': 'SMTP_SYNC_PENDING', 'X-Smtp-Revision': '4' },
+                        }),
+                    );
+                return Promise.resolve({});
+            });
+            const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+            renderPage();
+            await screen.findByText(savedSummary.host);
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+            await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+            expect(await screen.findByText('globalSettings.smtp.sync.pending')).toBeInTheDocument();
+
+            statusAvailable = true;
+            await vi.advanceTimersByTimeAsync(30_000);
+            expect(await screen.findByText('globalSettings.smtp.sync.applied')).toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('shows applied only when the persisted status confirms the current revision', async () => {
         mocks.fetchData.mockImplementation(({ url }) => {
             if (url === globalSmtpPlatformSettingsEndpoint) return Promise.resolve(savedSummary);
