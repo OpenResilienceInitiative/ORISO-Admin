@@ -155,8 +155,13 @@ export const PendingAfterSave: Story = {
         await userEvent.type(host, 'smtp.changed.example');
         await userEvent.click(canvas.getByRole('button', { name: /Speichern|Save/ }));
         await expect(
+            await within(canvasElement.ownerDocument.body).findByText(
+                /Saved\. The new mail settings will be applied within about 5 minutes\.|Gespeichert\. Die neuen Mail-Einstellungen werden innerhalb von etwa 5 Minuten übernommen\./,
+            ),
+        ).toBeInTheDocument();
+        await expect(
             await canvas.findByText(
-                /Keycloak mail settings have not been applied yet|Übernahme für Keycloak-E-Mails steht noch aus/,
+                /applied to Keycloak mail within about 5 minutes|innerhalb von etwa 5 Minuten für Keycloak/,
             ),
         ).toBeInTheDocument();
         await waitFor(() =>

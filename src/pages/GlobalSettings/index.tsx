@@ -140,10 +140,12 @@ export const GlobalSmtpSettingsPage = () => {
     const [testForm] = Form.useForm();
     const { settings } = useAppConfigContext();
     const { data: userData } = useUserData();
-    const { mutate, isPending } = useSettingsAdminMutation();
+    const { mutate, isPending } = useSettingsAdminMutation(undefined, { silentSuccess: true });
     const { data: platformSmtp, isLoading, isFetching, isError, refetch } = usePlatformSmtpSettings();
-    const { data: persistedSync, refetch: refetchSync } = useSmtpSyncStatus();
     const [savedSync, setSavedSync] = useState<{ status: SmtpSyncStatus; revision: number | null } | null>(null);
+    const { data: persistedSync, refetch: refetchSync } = useSmtpSyncStatus(
+        savedSync?.status === 'SMTP_SYNC_PENDING' ? savedSync.revision : null,
+    );
     const [isTestSending, setIsTestSending] = useState(false);
     useEffect(() => {
         if (userData?.email && !testForm.getFieldValue('recipientEmail')) {
@@ -223,6 +225,10 @@ export const GlobalSmtpSettingsPage = () => {
                                 ? rawStatus
                                 : 'UNKNOWN';
                         setSavedSync({ status, revision });
+                        // Keycloak picks up SMTP changes via a periodic Job, so say how long that takes.
+                        if (status === 'SMTP_SYNC_PENDING')
+                            message.info({ content: t('globalSettings.smtp.sync.savedPendingSnackbar'), duration: 8 });
+                        else message.success({ content: t('message.success.setting.update'), duration: 3 });
                         const acknowledgedValues = {
                             ...submittedValues,
                             globalSmtpUsername: '',
@@ -236,7 +242,7 @@ export const GlobalSmtpSettingsPage = () => {
                 },
             );
         },
-        [form, mutate, refetch, refetchSync],
+        [form, mutate, refetch, refetchSync, t],
     );
     const handleSendTestEmail = useCallback(async () => {
         if (isTestBlocked) return;
