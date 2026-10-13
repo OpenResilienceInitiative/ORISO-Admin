@@ -94,7 +94,13 @@ export const AlignmentVsLegacy: StoryObj = {
     render: () => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <div>
-                <div style={{ font: '500 12px/16px var(--m3-body-font-family)', color: '#8a8d8e', marginBottom: 12 }}>
+                <div
+                    style={{
+                        font: '500 12px/16px var(--m3-body-font-family)',
+                        color: 'var(--m3-on-surface-variant, #444748)',
+                        marginBottom: 12,
+                    }}
+                >
                     Today — legacy Button (button.less)
                 </div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -104,7 +110,13 @@ export const AlignmentVsLegacy: StoryObj = {
                 </div>
             </div>
             <div>
-                <div style={{ font: '500 12px/16px var(--m3-body-font-family)', color: '#8a8d8e', marginBottom: 12 }}>
+                <div
+                    style={{
+                        font: '500 12px/16px var(--m3-body-font-family)',
+                        color: 'var(--m3-on-surface-variant, #444748)',
+                        marginBottom: 12,
+                    }}
+                >
                     Figma-aligned — M3Button
                 </div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>

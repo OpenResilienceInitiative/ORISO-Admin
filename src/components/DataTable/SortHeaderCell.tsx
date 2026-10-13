@@ -58,6 +58,7 @@ export const SortHeaderCell = ({ column, sort, onSortChange, sortRequired = fals
     return (
         <th
             scope="col"
+            aria-label={!sortable ? column.ariaLabel : undefined}
             aria-sort={sortable ? ariaSortValue(column, sort) : undefined}
             style={column.width != null ? { width: column.width } : undefined}
             className={classNames({
@@ -76,7 +77,7 @@ export const SortHeaderCell = ({ column, sort, onSortChange, sortRequired = fals
                     <SortIcon column={column} sort={sort} />
                 </button>
             ) : (
-                <span aria-label={column.ariaLabel}>{column.label}</span>
+                <span>{column.label}</span>
             )}
             {column.addon}
         </th>
