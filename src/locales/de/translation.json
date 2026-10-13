@@ -2778,5 +2778,7 @@
     "entityStatus.restrictions.deleted": "Die Beratungsstelle ist gelöscht.",
     "entityStatus.kind.account": "Konto",
     "entityStatus.kind.tenant": "Träger",
-    "entityStatus.kind.agency": "Beratungsstelle"
+    "entityStatus.kind.agency": "Beratungsstelle",
+    "entityStatus.error.assignCounsellor": "Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.",
+    "entityStatus.error.postcodeCoverage": "Hinterlege zuerst den Einzugsbereich der Beratungsstelle."
 }

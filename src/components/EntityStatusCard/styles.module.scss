@@ -1,7 +1,9 @@
+@use '../../styles/muiSpacing' as mui;
+
 .body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: mui.$mui-unit * 2;
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -15,13 +17,13 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 8px;
+    gap: mui.$mui-unit;
 }
 
 .metadata {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px 16px;
+    gap: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
     margin: 0;
 
     dd {

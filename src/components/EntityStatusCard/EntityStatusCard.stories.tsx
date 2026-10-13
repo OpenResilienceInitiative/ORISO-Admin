@@ -638,3 +638,47 @@ export const FailedPutEnglish390: Story = {
     parameters: { msw: { handlers: failedPutHandlers() } },
     play: failedPutPlay,
 };
+
+const prerequisiteRefusal = (reason: string, instruction: string): Story => ({
+    args: { entityKind: 'agency', entityId: '7', entityName: 'Selected counselling centre', targetTenantId: 1 },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/agencyadmin/agencies/7/status', () =>
+                    HttpResponse.json({
+                        agencyId: 7,
+                        active: false,
+                        ownActive: false,
+                        tenantActive: true,
+                        restrictions: [],
+                    }),
+                ),
+                http.put('*/service/agencyadmin/agencies/7/status', () =>
+                    HttpResponse.json({ reason }, { status: 400, headers: { 'X-Reason': reason } }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
+        await userEvent.click(canvas.getByRole('switch'));
+        await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
+        await expect(await canvas.findByRole('alert')).toHaveTextContent(instruction);
+        await expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+    },
+});
+export const ActivationNeedsCounsellor: Story = prerequisiteRefusal(
+    'AGENCY_CONTAINS_NO_CONSULTANTS',
+    'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+);
+export const ActivationNeedsPostcodeCoverageEnglish: Story = {
+    ...prerequisiteRefusal('INVALID_OFFLINE_STATUS', 'Set the counselling centre’s postcode coverage first.'),
+    beforeEach: async () => {
+        setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
+        await i18n.changeLanguage('en');
+    },
+};

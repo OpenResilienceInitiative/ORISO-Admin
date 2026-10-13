@@ -2778,5 +2778,7 @@
     "entityStatus.restrictions.deleted": "The counselling centre is deleted.",
     "entityStatus.kind.account": "Account",
     "entityStatus.kind.tenant": "Organisation",
-    "entityStatus.kind.agency": "Counselling centre"
+    "entityStatus.kind.agency": "Counselling centre",
+    "entityStatus.error.assignCounsellor": "Assign at least one counsellor to this counselling centre first.",
+    "entityStatus.error.postcodeCoverage": "Set the counselling centre’s postcode coverage first."
 }

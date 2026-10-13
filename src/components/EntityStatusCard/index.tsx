@@ -15,7 +15,12 @@ import styles from './styles.module.scss';
 import { statusValue as state, statusLabel } from './presentation';
 import { useStatusPermission } from './useStatusPermission';
 
-const errorKey = (error: unknown) => {
+const errorKey = (error: unknown, kind: EntityKind) => {
+    if (kind === 'agency' && error instanceof Response && error.status === 400) {
+        const reason = error.headers.get('X-Reason');
+        if (reason === 'AGENCY_CONTAINS_NO_CONSULTANTS') return 'entityStatus.error.assignCounsellor';
+        if (reason === 'INVALID_OFFLINE_STATUS') return 'entityStatus.error.postcodeCoverage';
+    }
     if (error instanceof Response && error.status === 403) return 'entityStatus.error.forbidden';
     if (error instanceof Response && error.status === 409) return 'entityStatus.error.restricted';
     return 'entityStatus.error.save';
@@ -171,7 +176,7 @@ export const EntityStatusCard = ({
                     )}
                     {(loadError || saveError) && (
                         <p role="alert" data-testid="entity-status-error">
-                            {t(loadError ? 'entityStatus.error.load' : errorKey(saveError))}
+                            {t(loadError ? 'entityStatus.error.load' : errorKey(saveError, entityKind))}
                         </p>
                     )}
                     {entityKind === 'account' && (
