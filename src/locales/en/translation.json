@@ -2700,7 +2700,7 @@
     "registrationGuide.agencyAdmin.tutorials": "You can read this quick start without signing in. If you also provide counselling, enabled tours are available in the counselling app under Help → Tours.",
     "links.templates.existingTemplates": "Existing templates",
     "links.templates.loadTemplate": "Load template",
-    "links.templates.languageAutomatic": "Interface language",
+    "links.templates.languageAutomatic": "Email language",
     "links.templates.overwriteTitle": "Overwrite template?",
     "links.templates.overwriteDescription": "These changes replace the saved template. Invitations already sent stay unchanged.",
     "links.templates.overwriteCancel": "Cancel",

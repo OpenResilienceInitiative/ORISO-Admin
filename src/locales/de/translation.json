@@ -2700,7 +2700,7 @@
     "registrationGuide.agencyAdmin.tutorials": "Diese Kurzanleitung ist ohne Anmeldung verfügbar. Wenn Sie auch beraten, finden Sie freigeschaltete Rundgänge in der Beratungs-App unter Hilfe → Rundgänge.",
     "links.templates.existingTemplates": "Bisherige Vorlagen",
     "links.templates.loadTemplate": "Vorlage laden",
-    "links.templates.languageAutomatic": "Sprache der Oberfläche",
+    "links.templates.languageAutomatic": "Sprache der E-Mail",
     "links.templates.overwriteTitle": "Vorlage überschreiben?",
     "links.templates.overwriteDescription": "Die Änderungen ersetzen die gespeicherte Vorlage. Bereits versendete Einladungen bleiben unverändert.",
     "links.templates.overwriteCancel": "Abbrechen",
