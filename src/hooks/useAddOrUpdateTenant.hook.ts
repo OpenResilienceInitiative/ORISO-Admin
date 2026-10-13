@@ -31,8 +31,11 @@ export const buildTenantRequestBody = (
     const senderFields = Object.fromEntries(
         SENDER_FIELDS.filter((field) => formData[field] !== undefined).map((field) => [field, formData[field]]),
     );
+    const metadata = { ...stored };
+    // Operational status has its own command; a stale metadata form must never replay it.
+    delete metadata.active;
     return {
-        ...stored,
+        ...metadata,
         name: formData.name,
         subdomain,
         // NEW optional shared API fields. `topic` is FE-only and intentionally

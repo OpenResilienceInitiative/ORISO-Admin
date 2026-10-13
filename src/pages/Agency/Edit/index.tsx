@@ -41,6 +41,7 @@ import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSet
 import pageStyles from '../../../components/Page/styles.module.scss';
 import styles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
@@ -429,6 +430,15 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         previousLabel={t('agency.cardDeck.previous')}
                         nextLabel={t('agency.cardDeck.next')}
                     >
+                        <CardDeck.Item>
+                            <ManagedEntityStatus
+                                entityKind="agency"
+                                entityName={agencyData?.name}
+                                entityId={id}
+                                canManage
+                                targetTenantId={agencyTenantId}
+                            />
+                        </CardDeck.Item>
                         <CardDeck.Item>
                             <CardEditable
                                 allowUnsavedChanges

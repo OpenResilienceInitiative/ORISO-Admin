@@ -34,6 +34,8 @@ export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
+export const accountStatusEndpoint = (accountId: string) =>
+    `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
 // SigNoz via UserService's existing structured logger.

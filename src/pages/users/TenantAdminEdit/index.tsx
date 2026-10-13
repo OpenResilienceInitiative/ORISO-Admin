@@ -9,6 +9,7 @@ import { Page } from '../../../components/Page';
 import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -170,6 +171,17 @@ const TenantAdminEditor = () => {
                     initialValues={{ tenantId, ...data }}
                 >
                     <Row gutter={[24, 24]}>
+                        {isEditing && data && (
+                            <Col xs={24} lg={12}>
+                                <ManagedEntityStatus
+                                    entityKind="account"
+                                    entityName={`${data.firstname ?? ''} ${data.lastname ?? ''}`.trim()}
+                                    entityId={id}
+                                    canManage={canUpdate}
+                                    targetTenantId={data.tenantId}
+                                />
+                            </Col>
+                        )}
                         <Col xs={24} lg={12}>
                             <Card titleKey="tenantAdmins.card.personalDataTitle">
                                 <MuiFormField
