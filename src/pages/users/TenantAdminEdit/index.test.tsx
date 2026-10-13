@@ -1,6 +1,8 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TenantAdminEditOrAdd } from './index';
@@ -84,7 +86,7 @@ vi.mock('../../../components/Page', () => {
         return (
             <div>
                 <h1>{title}</h1>
-                {children}
+                <div data-testid="profile-actions">{children}</div>
             </div>
         );
     };
@@ -166,7 +168,25 @@ vi.mock('../../../components/mui/MuiSelectField', async () => {
     return { MuiSelectField };
 });
 
-const renderPage = () => render(<TenantAdminEditOrAdd />);
+const renderPage = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(<TenantAdminEditOrAdd />, {
+        wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    });
+};
+const profileActions = () => within(screen.getByTestId('profile-actions'));
+const hasRoles = (roles: UserRole[]) => (wanted: UserRole | UserRole[]) =>
+    (Array.isArray(wanted) ? wanted : [wanted]).some((role) => roles.includes(role));
+vi.mock('../../../api/fetchData', async (original) => ({
+    ...(await original<typeof import('../../../api/fetchData')>()),
+    fetchData: vi.fn(async ({ url }: { url: string }) => ({
+        accountId: /accounts\/([^/]+)\/status/.exec(url)?.[1],
+        active: true,
+        paused: false,
+        restrictions: [],
+        twoFactor: { required: true, configured: false, active: false },
+    })),
+}));
 
 const grantAllPermissions = () => mocks.can.mockReturnValue(true);
 const denyUpdatePermission = () =>
@@ -176,9 +196,23 @@ const denyUpdatePermission = () =>
     );
 
 const asTenantScopedAdmin = () =>
-    mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, isTenantScopedAdmin: true, tenantId: 2 });
+    mocks.useUserRoles.mockReturnValue({
+        isSuperAdmin: false,
+        isTenantScopedAdmin: true,
+        tenantId: 2,
+        hasRole: hasRoles([UserRole.TenantAdmin]),
+        isTechnicalAccount: false,
+        tokenUnreadable: false,
+    });
 const asSuperAdmin = () =>
-    mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, isTenantScopedAdmin: false, tenantId: 0 });
+    mocks.useUserRoles.mockReturnValue({
+        isSuperAdmin: true,
+        isTenantScopedAdmin: false,
+        tenantId: 0,
+        hasRole: hasRoles([UserRole.TenantAdmin, UserRole.AgencyAdmin, UserRole.UserAdmin]),
+        isTechnicalAccount: false,
+        tokenUnreadable: false,
+    });
 
 describe('TenantAdminEditOrAdd', () => {
     beforeEach(() => {
@@ -263,7 +297,14 @@ describe('TenantAdminEditOrAdd', () => {
         });
 
         it('fails closed without a valid own tenant even with a crafted query', () => {
-            mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, isTenantScopedAdmin: false, tenantId: null });
+            mocks.useUserRoles.mockReturnValue({
+                isSuperAdmin: false,
+                isTenantScopedAdmin: false,
+                tenantId: null,
+                hasRole: hasRoles([]),
+                isTechnicalAccount: false,
+                tokenUnreadable: false,
+            });
             mocks.location.search = '?tenantId=7';
             renderPage();
             expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
@@ -299,7 +340,7 @@ describe('TenantAdminEditOrAdd', () => {
             mocks.location.pathname = '/admin/users/tenant-admins/42';
             mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '2' }, isLoading: false });
             renderPage();
-            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.click(profileActions().getByRole('button', { name: 'edit' }));
             fireEvent.click(screen.getByRole('button', { name: 'save' }));
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '2' })));
         });
@@ -327,7 +368,7 @@ describe('TenantAdminEditOrAdd', () => {
             mocks.location.pathname = '/admin/users/tenant-admins/42';
             mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '2' }, isLoading: false });
             const { container } = renderPage();
-            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.click(profileActions().getByRole('button', { name: 'edit' }));
             fireEvent.change(screen.getByLabelText('tenant-select'), { target: { value: '7' } });
             expect(screen.getByLabelText('tenant-select')).toHaveValue('7');
             await act(async () => {
@@ -384,6 +425,7 @@ describe('TenantAdminEditOrAdd', () => {
             mocks.location.pathname = '/admin/users/tenant-admins/42';
             mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '7' }, isLoading: false });
             renderPage();
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
             expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
         });
     });
@@ -425,7 +467,7 @@ describe('TenantAdminEditOrAdd', () => {
                 isLoading: false,
             });
             const { rerender } = renderPage();
-            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.click(profileActions().getByRole('button', { name: 'edit' }));
             fireEvent.change(screen.getByLabelText('firstname'), { target: { value: 'Unsaved' } });
             mocks.params.id = '43';
             mocks.location.pathname = '/admin/users/tenant-admins/43';
@@ -437,7 +479,7 @@ describe('TenantAdminEditOrAdd', () => {
             expect(screen.getByRole('heading', { name: 'Berta Second' })).toBeInTheDocument();
             expect(screen.getByLabelText('firstname')).toHaveValue('Berta');
             expect(screen.getByLabelText('email')).toHaveValue('second@example.test');
-            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(profileActions().getByRole('button', { name: 'edit' })).toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
         });
 
@@ -470,7 +512,7 @@ describe('TenantAdminEditOrAdd', () => {
             });
             rerender(<TenantAdminEditOrAdd />);
             expect(screen.getByLabelText('firstname')).toHaveValue('Anna');
-            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(profileActions().getByRole('button', { name: 'edit' })).toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
         });
     });
@@ -491,7 +533,7 @@ describe('TenantAdminEditOrAdd', () => {
 
             renderPage();
 
-            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(profileActions().getByRole('button', { name: 'edit' })).toBeInTheDocument();
         });
 
         it('hides the Edit action without the update permission', () => {
@@ -500,7 +542,7 @@ describe('TenantAdminEditOrAdd', () => {
 
             renderPage();
 
-            expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
+            expect(profileActions().queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
         });
 
         it('hides the Edit action on the platform-admins route for a non-super tenant admin', () => {
@@ -510,6 +552,7 @@ describe('TenantAdminEditOrAdd', () => {
 
             renderPage();
 
+            expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
             expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
         });
 
@@ -520,7 +563,7 @@ describe('TenantAdminEditOrAdd', () => {
 
             renderPage();
 
-            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
+            expect(profileActions().getByRole('button', { name: 'edit' })).toBeInTheDocument();
         });
     });
 });

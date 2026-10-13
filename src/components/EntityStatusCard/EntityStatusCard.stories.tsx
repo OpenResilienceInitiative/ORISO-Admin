@@ -682,3 +682,94 @@ export const ActivationNeedsPostcodeCoverageEnglish: Story = {
         await i18n.changeLanguage('en');
     },
 };
+
+const topiclessCentre = { ...centreFixture, online: false, offline: true };
+const offeredTopic = { id: 19, name: 'Counselling topic', status: 'ACTIVE' };
+let topiclessActive = false;
+let topiclessCommands: unknown[] = [];
+export const TopiclessCentreActivationConfirmation: Story = {
+    ...CentreDetailsMobile,
+    beforeEach: async () => {
+        await ownTenantAuth();
+        topiclessActive = false;
+        topiclessCommands = [];
+    },
+    render: () =>
+        withSeededAdminProviders(
+            () => (
+                <Routes>
+                    <Route path="/" element={<Navigate to="/admin/agency/7/general" replace />} />
+                    <Route path="/admin/agency/:id/general" element={<AgencyPageEdit />} />
+                </Routes>
+            ),
+            (client) => {
+                client.setQueryData(['AGENCY', '7'], topiclessCentre);
+                client.setQueryData(['AGENCY_POST_CODES', '7'], []);
+                client.setQueryData(['ALL_TOPICS', true], [offeredTopic]);
+                client.setQueryData(['TRAEGER_DPO', 1], null);
+            },
+        ),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/agencyadmin/agencies/7/status', () =>
+                    HttpResponse.json({
+                        agencyId: 7,
+                        active: topiclessActive,
+                        ownActive: topiclessActive,
+                        tenantActive: true,
+                        restrictions: [],
+                    }),
+                ),
+                http.put('*/service/agencyadmin/agencies/7/status', async ({ request }) => {
+                    const command = await request.json();
+                    expect(command).toEqual({ active: true });
+                    topiclessCommands.push(command);
+                    topiclessActive = true;
+                    return HttpResponse.json({
+                        agencyId: 7,
+                        active: true,
+                        ownActive: true,
+                        tenantActive: true,
+                        restrictions: [],
+                    });
+                }),
+                http.get('*/service/agencyadmin/agencies/7', () => HttpResponse.json({ _embedded: topiclessCentre })),
+                http.put('*/service/agencyadmin/agencies/7', () => {
+                    throw new Error('Status approval must not write centre metadata');
+                }),
+                http.get('*/service/agencyadmin/agencies/7/*', () => HttpResponse.json([])),
+                http.get('*/service/tenantadmin/*', () => HttpResponse.json(tenantFixture)),
+                http.get('*/service/topic*', () => HttpResponse.json([offeredTopic])),
+                http.get('*/service/tenant/public/*', () => HttpResponse.json(tenantFixture)),
+                http.get('*/service/useradmin/consultants/search*', () =>
+                    HttpResponse.json({ _embedded: [], total: 0 }),
+                ),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
+        await userEvent.click(within(canvas.getByTestId('entity-status-switch')).getByRole('switch'));
+        await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
+        let dialog = await body.findByRole('dialog');
+        await expect(topiclessCommands).toHaveLength(0);
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+        await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
+        await expect(topiclessCommands).toHaveLength(0);
+        await expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+        await waitFor(() => expect(within(canvas.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled());
+        await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
+        dialog = await body.findByRole('dialog');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        await expect(topiclessCommands).toEqual([{ active: true }]);
+    },
+};

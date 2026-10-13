@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import de from '../../locales/de/translation.json';
 import en from '../../locales/en/translation.json';
@@ -61,5 +61,30 @@ describe('activation refusal in the actual status card', () => {
     });
     it('keeps unknown server reasons generic and the confirmed state inactive', async () => {
         expect(await attempt('PRIVATE_UNKNOWN_REASON')).toHaveTextContent(de['entityStatus.error.save']);
+    });
+});
+
+describe('status confirmation cancellation', () => {
+    it('keeps the draft editable and the confirmed state unchanged after cancellation', async () => {
+        const save = vi.fn(async () => false);
+        render(
+            <EntityStatusCard
+                entityKind="agency"
+                entityId="7"
+                canManage
+                isLoading={false}
+                data={{ active: false, ownActive: false, restrictions: [] }}
+                onSave={save}
+                onReload={vi.fn()}
+            />,
+        );
+        fireEvent.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        fireEvent.click(screen.getByRole('switch'));
+        fireEvent.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+        await waitFor(() => expect(save).toHaveBeenCalledWith(true));
+        await waitFor(() => expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled());
+        expect(screen.getByRole('switch')).toBeChecked();
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });

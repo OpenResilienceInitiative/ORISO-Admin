@@ -33,7 +33,7 @@ interface Props {
     isLoading: boolean;
     loadError?: unknown;
     canManage: boolean;
-    onSave: (active: boolean) => Promise<void>;
+    onSave: (active: boolean) => Promise<void | boolean>;
     onReload: () => void;
 }
 export const EntityStatusCard = ({
@@ -59,8 +59,8 @@ export const EntityStatusCard = ({
         setSaving(true);
         setSaveError(undefined);
         try {
-            await onSave(draft);
-            setEditing(false);
+            const saved = await onSave(draft);
+            if (saved !== false) setEditing(false);
         } catch (error) {
             setSaveError(error);
         } finally {
@@ -213,8 +213,16 @@ interface ManagedProps {
     entityId: string;
     canManage: boolean;
     targetTenantId?: number | string;
+    onBeforeChange?: (active: boolean, currentActive: boolean) => Promise<boolean>;
 }
-export const ManagedEntityStatus = ({ entityKind, entityId, entityName, canManage, targetTenantId }: ManagedProps) => {
+export const ManagedEntityStatus = ({
+    entityKind,
+    entityId,
+    entityName,
+    canManage,
+    targetTenantId,
+    onBeforeChange,
+}: ManagedProps) => {
     const scopeAllowed = useStatusPermission(entityKind, entityId, targetTenantId);
     const client = useQueryClient();
     const key = ['entity-status', entityKind, entityId];
@@ -226,6 +234,7 @@ export const ManagedEntityStatus = ({ entityKind, entityId, entityName, canManag
         enabled: Boolean(entityId) && entityId !== 'add',
     });
     const save = async (active: boolean) => {
+        if (onBeforeChange && !(await onBeforeChange(active, query.data?.ownActive === true))) return false;
         try {
             const confirmed = await writeEntityStatus(entityKind, entityId, active);
             client.setQueryData(key, confirmed);
@@ -238,6 +247,7 @@ export const ManagedEntityStatus = ({ entityKind, entityId, entityName, canManag
                 ...Object.values(TypeOfUser).map((value) => value.toUpperCase()),
             ]);
             await client.invalidateQueries({ predicate: (cached) => roots.has(String(cached.queryKey[0])) });
+            return true;
         } catch (error) {
             // A timed-out write may have committed. Read again before displaying a saved status.
             await query.refetch();
