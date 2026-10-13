@@ -589,3 +589,52 @@ export const CentreMetadataPreservesStatus: Story = {
         );
     },
 };
+
+const failedPutHandlers = () => [
+    http.get('*/service/useradmin/accounts/account-1197/status', () =>
+        HttpResponse.json({ ...account, active: false, paused: true }),
+    ),
+    http.put('*/service/useradmin/accounts/account-1197/status', () => HttpResponse.json({}, { status: 502 })),
+];
+const failedPutPlay = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'));
+    await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
+    await userEvent.click(canvas.getByRole('switch'));
+    await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
+    const error = await canvas.findByTestId('entity-status-error');
+    await expect(error).toHaveTextContent(i18n.t('entityStatus.error.save'));
+    await expect(error).toBeVisible();
+    await expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+    await expect(canvas.getByRole('switch')).toBeChecked();
+    await expect(within(canvas.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled();
+    const card = canvas.getByTestId('entity-status-card');
+    await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
+    await expect(error.scrollWidth).toBeLessThanOrEqual(error.clientWidth);
+    await expect(error.getBoundingClientRect().height).toBeGreaterThan(
+        Number.parseFloat(getComputedStyle(error).lineHeight),
+    );
+};
+export const FailedPutGerman320: Story = {
+    decorators: [
+        (Story) => (
+            <div style={{ width: 320, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    parameters: { msw: { handlers: failedPutHandlers() } },
+    play: failedPutPlay,
+};
+export const FailedPutEnglish390: Story = {
+    beforeEach: English.beforeEach,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 390, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    parameters: { msw: { handlers: failedPutHandlers() } },
+    play: failedPutPlay,
+};
