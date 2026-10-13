@@ -68,6 +68,7 @@ export const UserCardList = ({
                         email={row.email}
                         username={row.username && displayUsername(row.username)}
                         status={resolveDisplayStatus(row)}
+                        accountStatus={row}
                         actionsDisabled={pending}
                         onEdit={onEdit && (() => onEdit(row))}
                         onDelete={onDelete && (() => onDelete(row))}

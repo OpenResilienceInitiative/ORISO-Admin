@@ -23,7 +23,6 @@ import { RelativeTime } from '../../../components/UserTable/RelativeTime';
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
 import { SortPill, type NameSortField, type SortPillValue } from '../../../components/UserTable/SortPill';
 import { StatusBadge } from '../../../components/UserTable/StatusBadge';
-import { statusValue } from '../../../components/EntityStatusCard/presentation';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
@@ -248,16 +247,7 @@ export const UserDataTable = ({
                 );
             }
             case 'status':
-                return (
-                    <span
-                        data-testid="entity-status-list"
-                        data-entity-kind="account"
-                        data-entity-id={row.id}
-                        data-active={statusValue(row.active)}
-                    >
-                        <StatusBadge status={resolveDisplayStatus(row)} />
-                    </span>
-                );
+                return <StatusBadge status={resolveDisplayStatus(row)} accountStatus={row} />;
             case 'lastUpdated': {
                 const date = getLastUpdatedAt(row);
                 return date ? <RelativeTime value={date.toISOString()} /> : '—';
