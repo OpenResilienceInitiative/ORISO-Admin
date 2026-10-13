@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../Card';
@@ -50,6 +50,7 @@ export const EntityStatusCard = ({
     onReload,
 }: Props) => {
     const { t, i18n } = useTranslation();
+    const metadataId = useId();
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -78,17 +79,57 @@ export const EntityStatusCard = ({
         return new Date(value).toLocaleString(i18n.language);
     };
     return (
-        <section data-testid="entity-status-card" data-entity-kind={entityKind} aria-busy={isLoading || saving}>
+        <section
+            className={styles.card}
+            data-testid="entity-status-card"
+            data-entity-kind={entityKind}
+            aria-busy={isLoading || saving}
+        >
             <Card
-                variant="dialog"
                 titleKey="entityStatus.title"
+                cardTitleClassName={styles.header}
+                cardTitleChildren={
+                    <output
+                        className={`${styles.confirmed} m3-label-large`}
+                        aria-label={t('entityStatus.confirmed')}
+                        aria-live="polite"
+                        data-testid="entity-status-confirmed"
+                        data-active={state(active)}
+                    >
+                        {t(statusLabel(active))}
+                    </output>
+                }
                 footer={
-                    <div className={styles.actions}>
-                        {loadError && (
-                            <M3Button onClick={onReload} disabled={isLoading}>
-                                {t('entityStatus.reload')}
-                            </M3Button>
-                        )}
+                    editing && (
+                        <div className={styles.actions} data-testid="entity-status-actions">
+                            <span data-testid="entity-status-cancel">
+                                <M3Button
+                                    block
+                                    variant="outlined"
+                                    disabled={saving}
+                                    onClick={() => {
+                                        setEditing(false);
+                                        setSaveError(undefined);
+                                    }}
+                                >
+                                    {t('btn.cancel')}
+                                </M3Button>
+                            </span>
+                            <span data-testid="entity-status-save">
+                                <M3Button block variant="filled" disabled={!canSave} loading={saving} onClick={save}>
+                                    {t('save')}
+                                </M3Button>
+                            </span>
+                        </div>
+                    )
+                }
+            >
+                <div className={`${styles.body} m3-body-medium`}>
+                    <div className={styles.context}>
+                        <p data-testid="entity-status-context">
+                            <span className={styles.contextLabel}>{t(`entityStatus.kind.${entityKind}`)}</span>
+                            <span>{entityName || entityId}</span>
+                        </p>
                         {!editing && canEdit && (
                             <span data-testid="entity-status-edit">
                                 <M3Button
@@ -102,33 +143,7 @@ export const EntityStatusCard = ({
                                 </M3Button>
                             </span>
                         )}
-                        {editing && (
-                            <>
-                                <span data-testid="entity-status-cancel">
-                                    <M3Button
-                                        disabled={saving}
-                                        onClick={() => {
-                                            setEditing(false);
-                                            setSaveError(undefined);
-                                        }}
-                                    >
-                                        {t('btn.cancel')}
-                                    </M3Button>
-                                </span>
-                                <span data-testid="entity-status-save">
-                                    <M3Button variant="filled" disabled={!canSave} loading={saving} onClick={save}>
-                                        {t('save')}
-                                    </M3Button>
-                                </span>
-                            </>
-                        )}
                     </div>
-                }
-            >
-                <div className={styles.body}>
-                    <p data-testid="entity-status-context">
-                        {t(`entityStatus.kind.${entityKind}`)}: <strong>{entityName || entityId}</strong>
-                    </p>
                     {isLoading && (
                         <p role="status" data-testid="entity-status-pending">
                             {t('entityStatus.loading')}
@@ -139,17 +154,21 @@ export const EntityStatusCard = ({
                             {t('entityStatus.saving')}
                         </p>
                     )}
+                    {(loadError || saveError) && (
+                        <div className={styles.error} role="alert" data-testid="entity-status-error">
+                            <p>{t(loadError ? 'entityStatus.error.load' : errorKey(saveError, entityKind))}</p>
+                            {loadError && (
+                                <M3Button variant="outlined" onClick={onReload} disabled={isLoading}>
+                                    {t('entityStatus.reload')}
+                                </M3Button>
+                            )}
+                        </div>
+                    )}
                     {activationBlocked && (
                         <p role="status" data-testid="entity-status-activation-blocked">
                             {t(activationBlocked)}
                         </p>
                     )}
-                    <p className={styles.confirmed}>
-                        {t('entityStatus.confirmed')}:{' '}
-                        <output aria-live="polite" data-testid="entity-status-confirmed" data-active={state(active)}>
-                            {t(statusLabel(active))}
-                        </output>
-                    </p>
                     {data?.ownActive !== active && !loadError && typeof data?.ownActive === 'boolean' && (
                         <p>
                             {t('entityStatus.own')}:{' '}
@@ -158,7 +177,7 @@ export const EntityStatusCard = ({
                             </output>
                         </p>
                     )}
-                    <div data-testid="entity-status-switch">
+                    <div className={styles.switch} data-testid="entity-status-switch">
                         {known ? (
                             <ToggleRow
                                 label={t('entityStatus.control')}
@@ -168,7 +187,7 @@ export const EntityStatusCard = ({
                                 onCheckedChange={setDraft}
                             />
                         ) : (
-                            <p>{t('entityStatus.unknownNotice')}</p>
+                            !loadError && <p>{t('entityStatus.unknownNotice')}</p>
                         )}
                     </div>
                     {!canManage && <p>{t('entityStatus.readOnly')}</p>}
@@ -183,33 +202,43 @@ export const EntityStatusCard = ({
                             ))}
                         </ul>
                     )}
-                    {(loadError || saveError) && (
-                        <p role="alert" data-testid="entity-status-error">
-                            {t(loadError ? 'entityStatus.error.load' : errorKey(saveError, entityKind))}
-                        </p>
-                    )}
                     {entityKind === 'account' && (
-                        <dl data-testid="account-security-info" className={styles.metadata}>
-                            <dt>{t('entityStatus.username')}</dt>
-                            <dd>{account?.username ?? t('entityStatus.unknown')}</dd>
-                            <dt>{t('entityStatus.created')}</dt>
-                            <dd>{formatDate(account?.createDate)}</dd>
-                            <dt>{t('entityStatus.updated')}</dt>
-                            <dd>{formatDate(account?.updateDate)}</dd>
-                            {(['required', 'configured', 'active'] as const).map((field) => (
-                                <div className={styles.metadataRow} key={field}>
-                                    <dt>{t(`entityStatus.twoFactor.${field}`)}</dt>
-                                    <dd>
-                                        <output
-                                            data-testid={`2fa-${field}`}
-                                            data-state={state(account?.twoFactor[field])}
-                                        >
-                                            {t(`entityStatus.boolean.${state(account?.twoFactor[field])}`)}
-                                        </output>
-                                    </dd>
-                                </div>
-                            ))}
-                        </dl>
+                        <div data-testid="account-security-info" className={styles.accountInfo}>
+                            <div role="group" aria-labelledby={`${metadataId}-account`} className={styles.group}>
+                                <h6 id={`${metadataId}-account`} className="m3-title-small">
+                                    {t('entityStatus.accountDetails')}
+                                </h6>
+                                <dl className={styles.metadata}>
+                                    <dt>{t('entityStatus.username')}</dt>
+                                    <dd>{account?.username ?? t('entityStatus.unknown')}</dd>
+                                    <dt>{t('entityStatus.created')}</dt>
+                                    <dd>{formatDate(account?.createDate)}</dd>
+                                    <dt>{t('entityStatus.updated')}</dt>
+                                    <dd>{formatDate(account?.updateDate)}</dd>
+                                </dl>
+                            </div>
+                            <div role="group" aria-labelledby={`${metadataId}-two-factor`} className={styles.group}>
+                                <h6 id={`${metadataId}-two-factor`} className="m3-title-small">
+                                    {t('entityStatus.twoFactor.title')}
+                                </h6>
+                                <dl className={styles.metadata}>
+                                    {(['required', 'configured', 'active'] as const).map((field) => (
+                                        <div className={styles.metadataRow} key={field}>
+                                            <dt>{t(`entityStatus.twoFactor.short.${field}`)}</dt>
+                                            <dd>
+                                                <output
+                                                    className={`${styles.valueBadge} m3-body-small`}
+                                                    data-testid={`2fa-${field}`}
+                                                    data-state={state(account?.twoFactor[field])}
+                                                >
+                                                    {t(`entityStatus.boolean.${state(account?.twoFactor[field])}`)}
+                                                </output>
+                                            </dd>
+                                        </div>
+                                    ))}
+                                </dl>
+                            </div>
+                        </div>
                     )}
                 </div>
             </Card>

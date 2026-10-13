@@ -388,7 +388,9 @@ export const English: Story = {
         const canvas = within(canvasElement);
         await waitFor(() => expect(canvas.getByTestId('account-security-info')).toHaveTextContent('selected-account'));
         await expect(canvas.getByTestId('entity-status-confirmed')).toHaveTextContent('Active');
-        await expect(canvas.getByText('2FA configured')).toBeVisible();
+        await expect(
+            within(canvas.getByRole('group', { name: 'Two-factor authentication' })).getByText('Configured'),
+        ).toBeVisible();
         await expect(within(canvas.getByTestId('entity-status-edit')).getByRole('button')).toHaveAccessibleName('Edit');
     },
 };

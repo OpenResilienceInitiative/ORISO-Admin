@@ -175,15 +175,18 @@ vi.mock('../../../components/Card', () => ({
     Card: function Card({
         children,
         titleKey,
+        cardTitleChildren,
         footer,
     }: {
         children: React.ReactNode;
         titleKey: string;
+        cardTitleChildren?: React.ReactNode;
         footer?: React.ReactNode;
     }) {
         return (
             <section>
                 <h2>{t(titleKey)}</h2>
+                {cardTitleChildren}
                 {children}
                 {footer}
             </section>

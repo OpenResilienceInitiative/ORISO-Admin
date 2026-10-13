@@ -2782,5 +2782,10 @@
     "entityStatus.kind.tenant": "Träger",
     "entityStatus.kind.agency": "Beratungsstelle",
     "entityStatus.error.assignCounsellor": "Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.",
-    "entityStatus.error.postcodeCoverage": "Hinterlegen Sie zuerst den Einzugsbereich der Beratungsstelle."
+    "entityStatus.error.postcodeCoverage": "Hinterlegen Sie zuerst den Einzugsbereich der Beratungsstelle.",
+    "entityStatus.accountDetails": "Kontodaten",
+    "entityStatus.twoFactor.title": "Zwei-Faktor-Authentifizierung",
+    "entityStatus.twoFactor.short.required": "Erforderlich",
+    "entityStatus.twoFactor.short.configured": "Eingerichtet",
+    "entityStatus.twoFactor.short.active": "Aktiv"
 }

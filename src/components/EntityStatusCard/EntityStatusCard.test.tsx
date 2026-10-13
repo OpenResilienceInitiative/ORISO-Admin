@@ -88,3 +88,82 @@ describe('status confirmation cancellation', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });
+
+describe('compact status settings presentation', () => {
+    beforeEach(() => {
+        state.language = 'de';
+    });
+    const accountData = {
+        active: false,
+        ownActive: false,
+        restrictions: [],
+        account: {
+            username: 'Selected account',
+            createDate: null,
+            updateDate: null,
+            twoFactor: { required: true, configured: false, active: null },
+        },
+    };
+    const props = {
+        entityKind: 'account' as const,
+        entityId: 'selected',
+        entityName: 'Selected person',
+        canManage: true,
+        isLoading: false,
+        onSave: vi.fn(async () => {}),
+        onReload: vi.fn(),
+    };
+
+    it('uses one actionable load notice without duplicate unknown copy or stale security facts', () => {
+        render(<EntityStatusCard {...props} data={accountData} loadError={new Error('unavailable')} />);
+        const error = screen.getByRole('alert');
+        expect(error).toHaveTextContent(de['entityStatus.error.load']);
+        expect(within(error).getByRole('button', { name: de['entityStatus.reload'] })).toBeEnabled();
+        expect(screen.getAllByRole('alert')).toHaveLength(1);
+        expect(screen.queryByText(de['entityStatus.unknownNotice'])).not.toBeInTheDocument();
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'unknown');
+        ['required', 'configured', 'active'].forEach((field) =>
+            expect(screen.getByTestId(`2fa-${field}`)).toHaveAttribute('data-state', 'unknown'),
+        );
+        expect(screen.queryByTestId('entity-status-actions')).not.toBeInTheDocument();
+    });
+
+    it('recovers through the inline reload action and edits with just two footer actions', () => {
+        const reload = vi.fn();
+        const page = render(<EntityStatusCard {...props} onReload={reload} loadError={new Error('unavailable')} />);
+        fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: de['entityStatus.reload'] }));
+        expect(reload).toHaveBeenCalledTimes(1);
+        page.rerender(<EntityStatusCard {...props} onReload={reload} data={accountData} />);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        fireEvent.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        const actions = screen.getByTestId('entity-status-actions');
+        expect(within(actions).getAllByRole('button')).toHaveLength(2);
+        expect(within(actions).getByRole('button', { name: de.save })).toBeEnabled();
+        page.rerender(
+            <EntityStatusCard {...props} onReload={reload} data={accountData} loadError={new Error('readback')} />,
+        );
+        expect(within(screen.getByTestId('entity-status-actions')).getAllByRole('button')).toHaveLength(2);
+        expect(
+            within(screen.getByTestId('entity-status-actions')).queryByRole('button', {
+                name: de['entityStatus.reload'],
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('entity-status-actions')).getByRole('button', { name: de.save }),
+        ).toBeDisabled();
+    });
+
+    it('gives short 2FA labels an accessible group context while keeping all three facts separate', () => {
+        render(<EntityStatusCard {...props} data={accountData} />);
+        expect(
+            within(screen.getByRole('group', { name: de['entityStatus.accountDetails'] })).getByText(
+                'Selected account',
+            ),
+        ).toBeInTheDocument();
+        const group = screen.getByRole('group', { name: de['entityStatus.twoFactor.title'] });
+        expect(within(group).getByText(de['entityStatus.twoFactor.short.required'])).toBeInTheDocument();
+        expect(within(group).getByTestId('2fa-required')).toHaveAttribute('data-state', 'true');
+        expect(within(group).getByTestId('2fa-configured')).toHaveAttribute('data-state', 'false');
+        expect(within(group).getByTestId('2fa-active')).toHaveAttribute('data-state', 'unknown');
+    });
+});

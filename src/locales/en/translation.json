@@ -2782,5 +2782,10 @@
     "entityStatus.kind.tenant": "Organisation",
     "entityStatus.kind.agency": "Counselling centre",
     "entityStatus.error.assignCounsellor": "Assign at least one counsellor to this counselling centre first.",
-    "entityStatus.error.postcodeCoverage": "Set the counselling centre’s postcode coverage first."
+    "entityStatus.error.postcodeCoverage": "Set the counselling centre’s postcode coverage first.",
+    "entityStatus.accountDetails": "Account details",
+    "entityStatus.twoFactor.title": "Two-factor authentication",
+    "entityStatus.twoFactor.short.required": "Required",
+    "entityStatus.twoFactor.short.configured": "Configured",
+    "entityStatus.twoFactor.short.active": "Active"
 }
