@@ -5,6 +5,7 @@ import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { useDepartmentImprint } from '../../../../../hooks/useDepartmentImprint.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
 import { usePublishDepartmentImprint } from '../../../../../hooks/usePublishDepartmentImprint.hook';
+import { useRevertDepartmentLegalText } from '../../../../../hooks/useRevertDepartmentLegalText.hook';
 import { useSingleTenantData } from '../../../../../hooks/useSingleTenantData';
 import { useTenantAdminData } from '../../../../../hooks/useTenantAdminData.hook';
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
@@ -157,6 +158,7 @@ export const AgencyLegalTextContainer = ({
     const publishDpp = usePublishDepartmentDpp(agencyId, topicId as number);
     const publishImprint = usePublishDepartmentImprint(agencyId, topicId as number);
     const departmentPublish = field === 'privacy' ? publishDpp : publishImprint;
+    const revertDepartment = useRevertDepartmentLegalText(field, agencyId, topicId as number);
 
     const agencyContentKey = AGENCY_CONTENT_KEY[field];
     const traegerContent = tenantData?.content?.[agencyContentKey] as Record<string, string> | undefined;
@@ -526,6 +528,22 @@ export const AgencyLegalTextContainer = ({
         );
     }
 
+    // Only a Fachbereich that really holds a published text of its own can go back to the inherited
+    // one (#916); a draft or an already inheriting department has nothing to clear.
+    const canRevertToInherited =
+        isDepartment && canEditLegalText && hasOwnText && departmentQuery.data?.publicationStatus === 'PUBLISHED';
+    const revertToInherited = async () => {
+        try {
+            const result = await revertDepartment.mutateAsync();
+            notification.success({
+                message: t(result?.reverted === false ? 'legal.revert.unchanged' : 'legal.revert.success'),
+                duration: 5,
+            });
+        } catch {
+            notification.error({ message: t('legal.revert.error'), duration: 6 });
+        }
+    };
+
     // A Fachbereich without its own text shows the level above's, and says whose it is.
     let departmentStatus: DepartmentPublicationStatus | undefined = departmentQuery.data?.publicationStatus;
     if (!hasOwnText) {
@@ -687,6 +705,7 @@ export const AgencyLegalTextContainer = ({
             onSave={onSave}
             saving={saving || departmentPublish.isPending || draftActionPending}
             onTranslate={translate}
+            onRevertToInherited={canRevertToInherited ? revertToInherited : undefined}
             departmentSlot={
                 <DepartmentSelect
                     departments={departments}

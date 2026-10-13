@@ -108,6 +108,10 @@ vi.mock('../DepartmentDataProtectionCard', async () => {
     };
 });
 
+vi.mock('../../../../../hooks/useRevertDepartmentLegalText.hook', () => ({
+    useRevertDepartmentLegalText: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 import { AgencyLegalTextContainer } from '.';
 
 // Two Fachbereiche: a single one would be preselected and hide "Alle Fachbereiche" (#1066).

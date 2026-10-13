@@ -10,6 +10,7 @@ import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
 import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
+import { RevertToInheritedModal } from '../RevertToInheritedModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
 import { EditorSnackbarQueue, editorSnackbarItems } from '../../../../FormPluginEditor/EditorSnackbarQueue';
@@ -131,6 +132,11 @@ interface DepartmentDataProtectionCardProps {
     readOnly?: boolean;
     /** Replaces the description when the card is read-only, saying who maintains the text instead. */
     readOnlyReason?: string;
+    /**
+     * Clears the Fachbereich's own text so it inherits the agency text again (#916). Passed only
+     * while the Fachbereich has a published text of its own; the card asks for confirmation first.
+     */
+    onRevertToInherited?: () => Promise<void> | void;
 }
 
 /**
@@ -163,8 +169,21 @@ export const DepartmentDataProtectionCard = ({
     consentUnavailableReason,
     readOnly = false,
     readOnlyReason,
+    onRevertToInherited,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
+    const [revertOpen, setRevertOpen] = useState(false);
+    const [reverting, setReverting] = useState(false);
+    const confirmRevert = async () => {
+        if (!onRevertToInherited || reverting) return;
+        setReverting(true);
+        try {
+            await onRevertToInherited();
+        } finally {
+            setReverting(false);
+            setRevertOpen(false);
+        }
+    };
     const locale = i18n?.language?.split('-')[0] || 'de';
     const published = publicationStatus === 'PUBLISHED';
     const documentKeyPrefix = documentScope === 'agency' ? 'tenants.legal.agency' : 'tenants.legal.department';
@@ -462,6 +481,22 @@ export const DepartmentDataProtectionCard = ({
                 }
                 belowSlot={
                     <>
+                        {onRevertToInherited && !readOnly && documentScope === 'department' && (
+                            <Button
+                                type="link"
+                                size="small"
+                                data-testid="legal-revert-to-inherited"
+                                onClick={() => setRevertOpen(true)}
+                            >
+                                {t('legal.revert.button')}
+                            </Button>
+                        )}
+                        <RevertToInheritedModal
+                            open={revertOpen}
+                            pending={reverting}
+                            onConfirm={confirmRevert}
+                            onCancel={() => setRevertOpen(false)}
+                        />
                         <PublishSourceWarningModal
                             open={sourceWarningOpen}
                             sourceLanguage={sourceLanguage}

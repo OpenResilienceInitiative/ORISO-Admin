@@ -73,6 +73,10 @@ vi.mock('../DepartmentDataProtectionCard', async () => {
     };
 });
 
+vi.mock('../../../../../hooks/useRevertDepartmentLegalText.hook', () => ({
+    useRevertDepartmentLegalText: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 import { AgencyLegalTextContainer } from '.';
 
 const agencyData: any = {

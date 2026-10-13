@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, fn, screen, userEvent, within } from 'storybook/test';
 import { DepartmentDataProtectionCard } from './index';
 
 const meta = {
@@ -95,5 +97,23 @@ export const ConsentUnavailableAllDepartments: Story = {
         },
         languages: ['de'],
         consentUnavailableReason: 'allDepartments',
+    },
+};
+
+/** #916: a Fachbereich with its own published text can go back to the inherited one, after a warning. */
+export const RevertToInherited: Story = {
+    args: {
+        departmentName: 'Schwangerschaftsberatung',
+        publicationStatus: 'PUBLISHED',
+        initialContentByLanguage: { de: '<p>Eigener Text des Fachbereichs.</p>' },
+        languages: ['de'],
+        onRevertToInherited: fn(),
+    },
+    play: async ({ args, canvasElement }) => {
+        await userEvent.click(await within(canvasElement).findByTestId('legal-revert-to-inherited'));
+        await expect(await screen.findByText(/Der eigene Text dieses Fachbereichs wird geleert/)).toBeInTheDocument();
+        await expect(args.onRevertToInherited).not.toHaveBeenCalled();
+        await userEvent.click(await screen.findByRole('button', { name: 'Eigenen Text leeren' }));
+        await expect(args.onRevertToInherited).toHaveBeenCalledTimes(1);
     },
 };

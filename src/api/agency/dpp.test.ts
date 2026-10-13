@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { fetchData } = vi.hoisted(() => ({ fetchData: vi.fn(() => Promise.resolve({})) }));
 vi.mock('../fetchData', () => ({
     FETCH_ERRORS: { CATCH_ALL: 'CATCH_ALL' },
-    FETCH_METHODS: { GET: 'GET', PUT: 'PUT' },
+    FETCH_METHODS: { GET: 'GET', PUT: 'PUT', POST: 'POST' },
     fetchData,
 }));
 vi.mock('../../appConfig', () => ({ agencyEndpointBase: '/service/agencyadmin/agencies' }));
@@ -13,6 +13,8 @@ vi.mock('../../appConfig', () => ({ agencyEndpointBase: '/service/agencyadmin/ag
 import { publishDepartmentDpp } from './publishDepartmentDpp';
 // eslint-disable-next-line import/first
 import { getDepartmentDpp } from './getDepartmentDpp';
+// eslint-disable-next-line import/first
+import { revertDepartmentLegalText } from './revertDepartmentLegalText';
 
 beforeEach(() => fetchData.mockClear());
 
@@ -48,6 +50,29 @@ describe('publishDepartmentDpp', () => {
             expect.objectContaining({
                 url: '/service/agencyadmin/agencies/1/topics/2/dpp',
                 bodyData: JSON.stringify({ content: { de: '<p>draft</p>' }, publish: false }),
+            }),
+        );
+    });
+});
+
+describe('revertDepartmentLegalText', () => {
+    it('POSTs the dpp revert endpoint for the privacy statement', () => {
+        revertDepartmentLegalText('privacy', 7, 42);
+        expect(fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: '/service/agencyadmin/agencies/7/topics/42/dpp/revert',
+                method: 'POST',
+                skipAuth: false,
+            }),
+        );
+    });
+
+    it('POSTs the imprint revert endpoint for the imprint', () => {
+        revertDepartmentLegalText('imprint', 7, 42);
+        expect(fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: '/service/agencyadmin/agencies/7/topics/42/imprint/revert',
+                method: 'POST',
             }),
         );
     });
