@@ -1,4 +1,4 @@
-export const SUPPORTED_LANGUAGES = ['en', 'de'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'de', 'de@informal', 'fr', 'ru', 'tr', 'ti'] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -19,6 +19,11 @@ export const LANGUAGE_OPTIONS = [
         shortLabelKey: 'language.short.de',
         labelKey: 'language.options.de',
     },
+    { value: 'de@informal', shortLabelKey: 'language.short.de@informal', labelKey: 'language.options.de@informal' },
+    { value: 'fr', shortLabelKey: 'language.short.fr', labelKey: 'language.options.fr' },
+    { value: 'ru', shortLabelKey: 'language.short.ru', labelKey: 'language.options.ru' },
+    { value: 'tr', shortLabelKey: 'language.short.tr', labelKey: 'language.options.tr' },
+    { value: 'ti', shortLabelKey: 'language.short.ti', labelKey: 'language.options.ti' },
 ] as const;
 
 export const isSupportedLanguage = (value: unknown): value is SupportedLanguage => {
@@ -40,7 +45,7 @@ export const detectBrowserLanguage = (): SupportedLanguage => {
     }
 
     const browserLanguage = navigator.languages?.[0] || navigator.language || '';
-    return browserLanguage.toLowerCase().startsWith('de') ? 'de' : DEFAULT_LANGUAGE;
+    return normalizeLanguage(browserLanguage) || DEFAULT_LANGUAGE;
 };
 
 const getCookieValue = (name: string): string | null => {
@@ -113,5 +118,5 @@ export const updateDocumentLanguage = (language: SupportedLanguage): void => {
         return;
     }
 
-    document.documentElement.lang = language;
+    document.documentElement.lang = language === 'de@informal' ? 'de' : language;
 };

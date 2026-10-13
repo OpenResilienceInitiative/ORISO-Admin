@@ -11,6 +11,10 @@ import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
 
+/** The list is asked per kind; a Träger admin asks for the Träger kind too, which these stories leave empty. */
+const emptyUnlessBerater = (request: Request) =>
+    new URL(request.url).searchParams.get('kind') === 'COUNSELLOR_INVITE' ? undefined : HttpResponse.json([]);
+
 const TEMPLATES: InviteEmailTemplateDTO[] = [
     {
         id: 1,
@@ -212,23 +216,26 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
     parameters: {
         msw: {
             handlers: [
-                http.get(TEMPLATES_ENDPOINT, () =>
-                    HttpResponse.json([
-                        {
-                            ...TEMPLATES[3],
-                            id: 31,
-                            name: 'Unsere eigene Berater-Einladung',
-                            tenantId: 1,
-                            editable: true,
-                        },
-                        {
-                            ...TEMPLATES[3],
-                            id: 32,
-                            name: 'Berater-Willkommen (Plattform)',
-                            tenantId: null,
-                            editable: false,
-                        },
-                    ]),
+                http.get(
+                    TEMPLATES_ENDPOINT,
+                    ({ request }) =>
+                        emptyUnlessBerater(request) ??
+                        HttpResponse.json([
+                            {
+                                ...TEMPLATES[3],
+                                id: 31,
+                                name: 'Unsere eigene Berater-Einladung',
+                                tenantId: 1,
+                                editable: true,
+                            },
+                            {
+                                ...TEMPLATES[3],
+                                id: 32,
+                                name: 'Berater-Willkommen (Plattform)',
+                                tenantId: null,
+                                editable: false,
+                            },
+                        ]),
                 ),
                 createdTemplate,
             ],
@@ -274,10 +281,15 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
     parameters: {
         msw: {
             handlers: [
-                http.get(TEMPLATES_ENDPOINT, () =>
-                    HttpResponse.json(
-                        Array.from({ length: 8 }, (_, index) => lockedRow(40 + index, `Geteilte Vorlage ${index + 1}`)),
-                    ),
+                http.get(
+                    TEMPLATES_ENDPOINT,
+                    ({ request }) =>
+                        emptyUnlessBerater(request) ??
+                        HttpResponse.json(
+                            Array.from({ length: 8 }, (_, index) =>
+                                lockedRow(40 + index, `Geteilte Vorlage ${index + 1}`),
+                            ),
+                        ),
                 ),
             ],
         },

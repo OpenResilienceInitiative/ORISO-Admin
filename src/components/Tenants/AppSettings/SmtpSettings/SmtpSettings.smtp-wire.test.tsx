@@ -165,6 +165,30 @@ describe('OWN transport decisions through the real component, mutation, serializ
         await waitFor(() => expect(message.success).toHaveBeenCalledWith('tenants.appSettings.smtp.test.success'));
     });
 
+    it.each([
+        [403, 'tenants.appSettings.smtp.test.errorVerifiedEmail'],
+        [404, 'tenants.appSettings.smtp.test.error'],
+        [422, 'tenants.appSettings.smtp.test.errorConfiguration'],
+        [429, 'tenants.appSettings.smtp.test.errorCooldown'],
+        [502, 'tenants.appSettings.smtp.test.errorDelivery'],
+    ])('explains a %i test response in place', async (status, key) => {
+        vi.spyOn(message, 'error').mockImplementation(vi.fn());
+        vi.mocked(fetch).mockImplementation(async (request: Request) => {
+            requests.push(request);
+            return request.method === 'GET'
+                ? new Response(JSON.stringify(tenant), { status: 200, headers: { 'Content-Type': 'application/json' } })
+                : new Response(null, { status, headers: status === 429 ? { 'Retry-After': '60' } : {} });
+        });
+        const page = window.location.href;
+        renderStoredSettings();
+        fireEvent.click(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' }));
+
+        await waitFor(() => expect(message.error).toHaveBeenCalledWith(key));
+        expect(message.success).not.toHaveBeenCalled();
+        expect(writeRequests()).toHaveLength(1);
+        expect(window.location.href).toBe(page);
+    });
+
     it.each(['PLATFORM', 'missing-password'] as const)(
         'does not test %s merely because the editor has draft values',
         (state) => {

@@ -80,7 +80,7 @@ export const enforceRestrictedAgencyAdminCeiling = (
 };
 
 export const useUserRolesToPermission = () => {
-    const { roles, isSuperAdmin } = useUserRoles();
+    const { roles, isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
@@ -100,6 +100,10 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: false },
             Agency: { read: true, create: false, update: true, delete: false },
             AgencyAdminUser: { read: false, create: false, update: false, delete: false },
+            // #1070: a Beratungsstelle admin (restricted-agency-admin, usually with user-admin) adopts
+            // and saves its own legal texts under the same delegation switch as the full agency
+            // admin. Reading is always allowed. The server still checks the assigned agency.
+            LegalText: { read: true, update: singleCanEditLegalText },
         },
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
@@ -120,9 +124,9 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: true },
             TenantAdminUser: {
                 read: true,
-                create: isSuperAdmin,
-                update: isSuperAdmin,
-                delete: isSuperAdmin,
+                create: isTenantScopedAdmin || isSuperAdmin,
+                update: isTenantScopedAdmin || isSuperAdmin,
+                delete: isTenantScopedAdmin || isSuperAdmin,
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse, delay } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { GlobalLoginSettingsPage } from '.';
@@ -27,18 +27,30 @@ const okHandlers = (settings: Record<string, unknown>) => [
     http.get(TENANT_ADMIN, () => HttpResponse.json(tenant(settings))),
 ];
 
+// The platform admin also loads the superadmin-only cards. `dpia` must precede TENANT_ADMIN,
+// whose `:id` would otherwise answer it with a tenant.
+const platformAdminHandlers = [
+    http.get('*/service/tenantadmin/dpia', () => HttpResponse.json({})),
+    http.get('*/service/tenantadmin/translation/keys', () => HttpResponse.json({})),
+    http.get('*/service/tenantadmin/controls/account-inactivity', () =>
+        HttpResponse.json({ askerMonths: 24, consultantMonths: 24, otherMonths: 24, revision: 0 }),
+    ),
+    http.get('*/service/tenantadmin/controls/chat-recovery', () =>
+        HttpResponse.json({ asker: 'LOGIN_PASSWORD', consultant: 'RECOVERY_KEY', revision: 0 }),
+    ),
+    ...okHandlers({ featureAnonymousChatEnabled: true }),
+];
+
+const oneTopicSwitchName = /genau einen Fachbereich/;
+
 const meta = {
     title: 'Organisms/Pages/Settings/GlobalLoginSettings',
     component: GlobalLoginSettingsPage,
     parameters: { layout: 'fullscreen' },
-    decorators: [
-        (Story) => {
-            // Tenant-scoped admin (not super-admin) so the superadmin-only translation-keys
-            // request is not fired; the API-keys card renders visible-but-disabled.
-            setStoryAuth([UserRole.TenantAdmin, UserRole.SingleTenantAdmin], 1);
-            return withAdminProviders(Story);
-        },
-    ],
+    // Tenant-scoped admin (not super-admin) so the superadmin-only translation-keys
+    // request is not fired; the API-keys card renders visible-but-disabled.
+    beforeEach: () => setStoryAuth([UserRole.TenantAdmin, UserRole.SingleTenantAdmin], 1),
+    decorators: [(Story) => withAdminProviders(Story)],
 } satisfies Meta<typeof GlobalLoginSettingsPage>;
 
 export default meta;
@@ -101,6 +113,32 @@ export const Filled: Story = {
 /** Tenant loaded with default (empty) settings — toggles off. */
 export const Empty: Story = {
     parameters: { msw: { handlers: okHandlers({}) } },
+};
+
+// Every card sits in its own <section>; the login card next to it has its own edit button.
+const oneTopicCard = (oneTopicSwitch: HTMLElement) => within(oneTopicSwitch.closest('section') as HTMLElement);
+
+/** Platform admin: the platform-only cards render, and the one-topic-per-agency switch is editable. */
+export const PlatformAdmin: Story = {
+    beforeEach: () => setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin], 0),
+    parameters: { msw: { handlers: platformAdminHandlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Eine Beratungsstelle hat genau einen Fachbereich')).toBeVisible();
+        const oneTopicSwitch = canvas.getByRole('switch', { name: oneTopicSwitchName });
+        await expect(oneTopicCard(oneTopicSwitch).getByRole('button', { name: /edit|bearbeiten/i })).toBeVisible();
+    },
+};
+
+/** Tenant admin: the platform-wide one-topic switch is visible but disabled (ORISO rule: never hidden). */
+export const TenantAdmin: Story = {
+    parameters: { msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const oneTopicSwitch = await canvas.findByRole('switch', { name: oneTopicSwitchName });
+        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicCard(oneTopicSwitch).queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
+    },
 };
 
 /** Tenant request in flight — the editable card renders its loading state. */

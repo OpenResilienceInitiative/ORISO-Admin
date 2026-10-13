@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { CreateAccountInviteRequest } from '../../api/accountInvites/accountInvites';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import { InviteBarFields, InviteSendButton, InviteSendHint } from './InviteBar';
+import { InvitePanel } from './InvitePanel';
+import type { InviteSendMode } from './inviteModel';
 import type { InviteTab } from './inviteRules';
 import {
     InviteToolbar,
@@ -39,6 +42,13 @@ export interface InviteComposerProps {
     /** Prefill; valid prefilled fields start collapsed. */
     initialValues?: InviteInitialValues;
     className?: string;
+    /** `toolbar`: one wrapping row with search and ⋮ menu. `panel`: the stacked card beside the table. */
+    layout?: 'toolbar' | 'panel';
+    /** Panel only: folded to its rail; uncontrolled when omitted. */
+    panelCollapsed?: boolean;
+    onPanelCollapsedChange?: (next: boolean) => void;
+    /** The page's CSV import (outside the panel) needs the chosen send mode. */
+    onSendModeChange?: (mode: InviteSendMode) => void;
 }
 
 /** The invite row: the bar's fields inside the toolbar, which adds search, CSV, bulk and templates. */
@@ -56,7 +66,12 @@ export const InviteComposer = ({
     submitting = false,
     initialValues,
     className,
+    layout = 'toolbar',
+    panelCollapsed,
+    onPanelCollapsedChange,
+    onSendModeChange,
 }: InviteComposerProps) => {
+    const [ownCollapsed, setOwnCollapsed] = useState(false);
     const draft = useInviteDraft({
         tab,
         persistKey,
@@ -69,6 +84,26 @@ export const InviteComposer = ({
         onSubmit,
     });
     const hintId = `invite-composer-send-hint-${persistKey}`;
+    const sendMode = draft.submit.mode;
+    useEffect(() => onSendModeChange?.(sendMode), [onSendModeChange, sendMode]);
+
+    if (layout === 'panel') {
+        return (
+            <InvitePanel
+                bulk={bulk}
+                className={className}
+                clients={clients}
+                collapsed={panelCollapsed ?? ownCollapsed}
+                draft={draft}
+                hintId={hintId}
+                submitting={submitting}
+                tab={tab}
+                templates={templates}
+                onCollapsedChange={onPanelCollapsedChange ?? setOwnCollapsed}
+                onSelfAssign={onSelfAssign}
+            />
+        );
+    }
 
     return (
         <InviteToolbar

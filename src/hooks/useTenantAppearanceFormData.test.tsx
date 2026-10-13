@@ -72,6 +72,35 @@ describe('useTenantAppearanceFormData', () => {
         expect(result.current.data?.content?.claim?.de).toBe('Claim DE');
     });
 
+    it('reads raw own overrides when the public current-tenant identity is inherited', async () => {
+        useTenantDataMock.mockReturnValue({
+            data: {
+                ...currentTenant,
+                theming: { ...currentTenant.theming, assistantName: 'Platform helper', assistantIcon: 'robot-1184077' },
+            },
+            isLoading: false,
+        } as never);
+        getSingleTenantDataMock.mockResolvedValue({
+            id: 1,
+            name: 'Current tenant',
+            theming: { assistantName: null, assistantIcon: null },
+        } as never);
+        const { result } = renderHook(() => useTenantAppearanceFormData('1', { ownOverrides: true }), {
+            wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(getSingleTenantDataMock).toHaveBeenCalledWith('1'));
+        await waitFor(() => expect(result.current.data?.theming.assistantName).toBeNull());
+        expect(result.current.data?.theming.assistantIcon).toBeNull();
+    });
+    it('does not expose an invented empty own identity after a caught raw-read failure', async () => {
+        getSingleTenantDataMock.mockResolvedValue({ name: '' } as never);
+        const { result } = renderHook(() => useTenantAppearanceFormData('1', { ownOverrides: true }), {
+            wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        expect(result.current.isError).toBe(true);
+        expect(result.current.data).toBeUndefined();
+    });
     it('still fetches tenantadmin data when editing a different tenant id', async () => {
         getSingleTenantDataMock.mockResolvedValue({
             id: 5,

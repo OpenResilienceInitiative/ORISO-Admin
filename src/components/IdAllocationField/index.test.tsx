@@ -352,6 +352,8 @@ describe('IdAllocationField', () => {
         );
 
         expect(screen.getByRole('combobox', { name: 'Träger' })).toBeDisabled();
+        expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Nr. 7');
+        expect(screen.getByText('Caritas Südbaden')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Wert erhöhen' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Wert verringern' })).toBeDisabled();
     });

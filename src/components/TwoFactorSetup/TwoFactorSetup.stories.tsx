@@ -202,3 +202,131 @@ export const OnboardingMobile: Story = {
     },
     globals: { viewport: { value: 'phone390', isRotated: false } },
 };
+
+/** Public setup with server-advertised email support; email is the standard choice. */
+export const OnboardingEmail: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+};
+
+/** A retryable delivery failure must not offer activation before a code is sent. */
+export const OnboardingEmailSendFailure: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {
+                throw new Error('mail unavailable');
+            }}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('alert')).toBeVisible();
+        await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
+    },
+};
+
+/** E-mail verification state with resend and code input, no authenticator secret shown. */
+export const OnboardingEmailCode: Story = {
+    ...OnboardingEmail,
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Neuen Code senden' })).toBeVisible();
+    },
+};
+
+/** A supported server default selects the app while email remains available. */
+export const OnboardingServerAppDefault: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={APP_LINK}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await expect(canvas.getByRole('radio', { name: 'App' })).toBeChecked();
+        await expect(canvas.getByTestId('totp-secret')).toBeVisible();
+        await userEvent.click(canvas.getByRole('radio', { name: 'E-Mail-Adresse' }));
+        await expect(canvas.getByRole('button', { name: 'Code per E-Mail senden' })).toBeVisible();
+    },
+};
+
+/** Fresh accounts without app material retain a usable email setup route. */
+export const OnboardingFreshEmailOnly: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await expect(canvas.queryByRole('radio', { name: 'App' })).not.toBeInTheDocument();
+        await expect(canvas.getByRole('radio', { name: 'E-Mail-Adresse' })).toBeChecked();
+        await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
+        await expect(await canvas.findByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+    },
+};
+
+/** Resumed accounts may verify an app connected during their earlier setup attempt. */
+export const OnboardingResumedAppWithoutMaterial: Story = {
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            resumed
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('radio', { name: 'App' })).toBeChecked();
+        await expect(canvas.getByRole('textbox', { name: 'Einmalcode' })).toBeVisible();
+        await expect(canvas.getByTestId('two-factor-resumed-hint')).toBeVisible();
+        await expect(canvas.queryByTestId('totp-secret')).not.toBeInTheDocument();
+    },
+};
+
+/** An email-only resumed invitation never enables unsupported App verification. */
+export const OnboardingResumedEmailOnly: Story = {
+    ...OnboardingFreshEmailOnly,
+    render: () => (
+        <TwoFactorSetup
+            context="onboarding"
+            appLink={null}
+            resumed
+            methods={['EMAIL']}
+            defaultMethod="APP"
+            email="lena.beraterin@example.org"
+            onSendEmail={async () => {}}
+            onVerifyEmail={() => {}}
+            onVerify={() => {}}
+        />
+    ),
+};

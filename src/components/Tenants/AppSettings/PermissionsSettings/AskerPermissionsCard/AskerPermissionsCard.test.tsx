@@ -107,3 +107,17 @@ describe('AskerPermissionsCard per-feature policies', () => {
         ).toBeEnabled();
     });
 });
+
+it('offers independent email and browser policies for the real live-chat conversation type', () => {
+    renderCard();
+    expect(
+        screen.getByRole('button', {
+            name: /tenants.permissions.asker.channels.emailLiveChat: tenants.permissions.policy.openMenu/,
+        }),
+    ).toBeTruthy();
+    expect(
+        screen.getByRole('button', {
+            name: /tenants.permissions.asker.channels.browserLiveChat: tenants.permissions.policy.openMenu/,
+        }),
+    ).toBeTruthy();
+});

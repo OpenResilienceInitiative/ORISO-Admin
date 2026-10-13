@@ -196,6 +196,8 @@ export const SaveReopenAndSevenPreviews: Story = {
         await expect(canvas.getAllByRole('button').map((button) => button.textContent)).toEqual([
             'Entwurf speichern',
             'Gespeicherten Entwurf öffnen',
+            // Saving offers counting only; sending needs a count and a confirmation first.
+            'Empfänger zählen',
         ]);
     },
 };

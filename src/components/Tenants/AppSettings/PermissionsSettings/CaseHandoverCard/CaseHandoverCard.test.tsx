@@ -315,4 +315,75 @@ describe('CaseHandoverCard', () => {
         expect(screen.getByTestId('case-handover-card-error')).toBeInTheDocument();
         expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
     });
+
+    // After US#1245 the endpoint answers the neutral codes only.
+    describe('with the neutral reason codes', () => {
+        const neutralPolicies = [
+            {
+                code: 'ADVICE_REQUESTED',
+                label: 'Advice requested',
+                clientConsentRequired: true,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 10,
+                policyAuthority: null,
+                maxAccessDurationMinutes: 120,
+            },
+            {
+                code: 'UNPLANNED_ABSENCE',
+                label: 'Unplanned absence',
+                clientConsentRequired: false,
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 40,
+                policyAuthority: null,
+            },
+        ];
+
+        const advisorConsentButton = () =>
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+            });
+
+        beforeEach(() => {
+            mocks.policies = neutralPolicies;
+        });
+
+        it('shows and saves the advice time limit on ADVICE_REQUESTED', async () => {
+            const user = userEvent.setup();
+            render(<CaseHandoverCard />);
+
+            expect(screen.getByDisplayValue('2 h')).toBeTruthy();
+            await user.click(screen.getByRole('button', { name: 'm3NumberField.increase' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+            const payload = mocks.mutate.mock.calls.at(-1)?.[0];
+            expect(payload.find((policy: { code: string }) => policy.code === 'ADVICE_REQUESTED')).toEqual(
+                expect.objectContaining({ maxAccessDurationMinutes: 135 }),
+            );
+        });
+
+        it('shows counsellor consent as given for ADVICE_REQUESTED and absent otherwise', async () => {
+            const user = userEvent.setup();
+            render(<CaseHandoverCard />);
+
+            expect(advisorConsentButton().querySelector('[data-icon="switch-on"]')).not.toBeNull();
+
+            await user.click(screen.getByRole('tab', { name: 'Unplanned absence' }));
+            expect(advisorConsentButton().querySelector('[data-icon="silent"]')).not.toBeNull();
+            expect(screen.queryByRole('button', { name: 'm3NumberField.increase' })).not.toBeInTheDocument();
+        });
+    });
+
+    it('still shows counsellor consent as given for the retired advice code', () => {
+        render(<CaseHandoverCard />);
+
+        expect(
+            screen
+                .getByRole('button', {
+                    name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+                })
+                .querySelector('[data-icon="switch-on"]'),
+        ).not.toBeNull();
+    });
 });

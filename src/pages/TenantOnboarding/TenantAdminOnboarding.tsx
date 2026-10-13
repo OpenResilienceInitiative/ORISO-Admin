@@ -61,6 +61,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         goBackToOrganisation,
         submitAccount,
         submitTwoFactorCode,
+        sendTwoFactorEmail,
     } = useTenantAdminOnboardingFlow(inviteToken, resolvedClient);
 
     if (state.phase === 'loading') {
@@ -102,11 +103,19 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
     }
 
     const joins = invite?.joinsExistingTenant === true;
+    const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+    const invitationTitleKey = joins ? 'tenantOnboarding.join.title' : 'tenantOnboarding.title';
+    const titleKey = existingAccountSetup ? 'accountSetup.title' : invitationTitleKey;
 
     if (state.phase === 'done') {
         return (
             <Sheet>
-                <DoneStep tenantId={state.tenantId} forwarded={dpaForward !== null} joinedExisting={joins} />
+                <DoneStep
+                    tenantId={state.tenantId}
+                    forwarded={dpaForward !== null}
+                    joinedExisting={joins}
+                    existingAccountSetup={existingAccountSetup}
+                />
             </Sheet>
         );
     }
@@ -117,11 +126,13 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
     return (
         <Sheet>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                {joins ? t('tenantOnboarding.join.title') : t('tenantOnboarding.title')}
+                {t(titleKey)}
             </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-                {t('tenantOnboarding.stepIndicator', { current: step, total: joins ? 2 : 3 })}
-            </Typography>
+            {!existingAccountSetup && (
+                <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    {t('tenantOnboarding.stepIndicator', { current: step, total: joins ? 2 : 3 })}
+                </Typography>
+            )}
             {state.phase === 'organisation' && invite && (
                 <OrganisationDpaStep
                     invite={invite}
@@ -140,7 +151,8 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
-                    onBack={joins ? undefined : goBackToOrganisation}
+                    existingAccountSetup={existingAccountSetup}
+                    onBack={joins || existingAccountSetup ? undefined : goBackToOrganisation}
                     onSubmit={submitAccount}
                 />
             )}
@@ -150,6 +162,8 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     busy={busy}
                     showCodeError={submitError === 'two-factor-code'}
                     showServiceError={submitError === 'two-factor'}
+                    email={invite?.recipientEmail}
+                    onSendEmail={resolvedClient.sendTwoFactorEmail ? sendTwoFactorEmail : undefined}
                     onSubmit={submitTwoFactorCode}
                 />
             )}

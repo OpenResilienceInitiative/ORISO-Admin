@@ -16,6 +16,8 @@ export interface DataTablePaginationProps {
     /** Omit to hide the rows-per-page select. Callers reset `page` themselves. */
     onPageSizeChange?: (pageSize: number) => void;
     disabled?: boolean;
+    /** Toolbar variant: no footer band padding, 32px controls, the rows-per-page label screen-reader-only. */
+    compact?: boolean;
     className?: string;
 }
 
@@ -32,6 +34,7 @@ export const DataTablePagination = ({
     onPageChange,
     onPageSizeChange,
     disabled = false,
+    compact = false,
     className,
 }: DataTablePaginationProps) => {
     const { t } = useTranslation();
@@ -46,7 +49,7 @@ export const DataTablePagination = ({
     const to = Math.min(total, safePage * pageSize);
 
     return (
-        <div className={classNames(styles.pagination, className)}>
+        <div className={classNames(styles.pagination, { [styles.compact]: compact }, className)}>
             {onPageSizeChange && (
                 <label className={styles.pageSize} htmlFor={selectId}>
                     <span className={styles.pageSizeLabel}>
@@ -75,12 +78,14 @@ export const DataTablePagination = ({
                     icon={<ChevronLeftIcon />}
                     ariaLabel={t('dataTable.pagination.previous', 'Vorherige Seite')}
                     disabled={disabled || safePage <= 1}
+                    size={compact ? 32 : undefined}
                     onClick={() => onPageChange(safePage - 1)}
                 />
                 <IconButton
                     icon={<ChevronRightIcon />}
                     ariaLabel={t('dataTable.pagination.next', 'Nächste Seite')}
                     disabled={disabled || safePage >= pageCount}
+                    size={compact ? 32 : undefined}
                     onClick={() => onPageChange(safePage + 1)}
                 />
             </div>

@@ -73,6 +73,8 @@ interface TemplateDraftBaseline extends TemplateDraftMeta {
     body: string;
 }
 
+const isPhone = () => typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 599px)').matches;
+
 /**
  * Manage-templates dialog opened from the invite tabs' template select. Two views:
  * the template list (house list Modal) and the create/edit form, which is the
@@ -402,69 +404,85 @@ export const EmailTemplatesDialog = ({
         t,
     ]);
 
+    const renderName = useCallback(
+        (value: string, template: InviteEmailTemplateDTO) => {
+            const selected = template.id === selectedTemplateId;
+            const mark = selected ? (
+                <CheckRoundedIcon className={styles.selectedMark} fontSize="small" aria-hidden />
+            ) : null;
+
+            if (!isSelectable(template)) {
+                return (
+                    <Tooltip
+                        title={
+                            onSelect
+                                ? t(
+                                      'links.templates.notSelectable',
+                                      'Nur aktive Vorlagen dieser Art können ausgewählt werden.',
+                                  )
+                                : undefined
+                        }
+                    >
+                        <span className={styles.templateName}>
+                            {mark}
+                            {value}
+                        </span>
+                    </Tooltip>
+                );
+            }
+
+            return (
+                <button
+                    aria-current={selected ? 'true' : undefined}
+                    className={classNames(styles.templateName, styles.selectButton, {
+                        [styles.selectedName]: selected,
+                    })}
+                    type="button"
+                    onClick={() => onSelect?.(template)}
+                >
+                    {mark}
+                    {value}
+                </button>
+            );
+        },
+        [isSelectable, onSelect, selectedTemplateId, t],
+    );
+
     const columns = useMemo(
         () => [
             {
                 title: t('links.templates.col.kind', 'Kind'),
                 dataIndex: 'kind',
                 key: 'kind',
+                className: styles.hideOnPhone,
                 render: (value: InviteEmailTemplateKind) => kindLabel(value),
             },
             {
                 title: t('links.templates.col.name', 'Name'),
                 dataIndex: 'name',
                 key: 'name',
-                render: (value: string, template: InviteEmailTemplateDTO) => {
-                    const selected = template.id === selectedTemplateId;
-                    const mark = selected ? (
-                        <CheckRoundedIcon className={styles.selectedMark} fontSize="small" aria-hidden />
-                    ) : null;
-
-                    if (!isSelectable(template)) {
-                        return (
-                            <Tooltip
-                                title={
-                                    onSelect
-                                        ? t(
-                                              'links.templates.notSelectable',
-                                              'Nur aktive Vorlagen dieser Art können ausgewählt werden.',
-                                          )
-                                        : undefined
-                                }
-                            >
-                                <span className={styles.templateName}>
-                                    {mark}
-                                    {value}
-                                </span>
-                            </Tooltip>
-                        );
-                    }
-
-                    return (
-                        <button
-                            aria-current={selected ? 'true' : undefined}
-                            className={classNames(styles.templateName, styles.selectButton, {
-                                [styles.selectedName]: selected,
-                            })}
-                            type="button"
-                            onClick={() => onSelect?.(template)}
-                        >
-                            {mark}
-                            {value}
-                        </button>
-                    );
-                },
+                render: (value: string, template: InviteEmailTemplateDTO) => (
+                    <span className={styles.nameStack}>
+                        {renderName(value, template)}
+                        {/* The Kind column is hidden on phones; this line keeps the information (#1127). */}
+                        <span className={styles.kindLine} data-testid="template-kind-line">
+                            {kindLabel(template.kind)}
+                        </span>
+                    </span>
+                ),
             },
             {
                 title: t('links.templates.col.language', 'Language'),
                 dataIndex: 'language',
                 key: 'language',
+                className: styles.hideOnPhone,
                 render: (value: string | null) => value || '—',
             },
             {
                 title: t('links.templates.col.subject', 'Subject'),
                 dataIndex: 'subject',
                 key: 'subject',
+                className: styles.hideOnPhone,
             },
             {
                 title: t('links.templates.col.active', 'Active'),
@@ -511,7 +529,7 @@ export const EmailTemplatesDialog = ({
                 ),
             },
         ],
-        [isSelectable, kindLabel, lockReasonFor, mayEditTemplate, onSelect, openEditForm, selectedTemplateId, t],
+        [kindLabel, lockReasonFor, mayEditTemplate, openEditForm, renderName, t],
     );
 
     const listFooter = (
@@ -750,13 +768,15 @@ export const EmailTemplatesDialog = ({
                     }),
                     // The whole row is a hit area for picking, but its own
                     // buttons (name, edit) keep their meaning.
-                    onClick: isSelectable(template)
-                        ? (event: MouseEvent<HTMLElement>) => {
-                              if (!(event.target as HTMLElement).closest('button')) {
-                                  onSelect?.(template);
-                              }
-                          }
-                        : undefined,
+                    onClick: (event: MouseEvent<HTMLElement>) => {
+                        if ((event.target as HTMLElement).closest('button')) return;
+                        if (isSelectable(template)) {
+                            onSelect?.(template);
+                        } else if (!onSelect && mayEditTemplate(template) && isPhone()) {
+                            // No double-click on a touch screen (a double tap zooms): one tap edits (#1127).
+                            openEditForm(template);
+                        }
+                    },
                     // Manager-only mode: without picking, a row click is free
                     // for the edit shortcut — for whoever may edit at all.
                     onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),

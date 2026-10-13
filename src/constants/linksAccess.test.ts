@@ -16,18 +16,18 @@ describe('linksAccess', () => {
         expect(canSeeLinksSection(context)).toBe(true);
     });
 
-    it('tenant admin sees only counsellor invites (no tenant invites, no external inbounds)', () => {
+    it('tenant admin sees Träger and Berater invites, never external inbounds', () => {
         const context = { isSuperAdmin: false, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) };
-        expect(resolveVisibleLinksTabs(context)).toEqual(['counsellor']);
+        expect(resolveVisibleLinksTabs(context)).toEqual(['tenants', 'counsellor']);
         expect(canSeeLinksSection(context)).toBe(true);
     });
 
     it.each([
         ['agency admin', [UserRole.AgencyAdmin, UserRole.UserAdmin]],
         ['restricted agency admin', [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin]],
-    ])('%s sees only counsellor invites', (_label, roles) => {
+    ])('%s sees Träger and Berater invites, never external inbounds', (_label, roles) => {
         const context = { isSuperAdmin: false, hasRole: hasRoleFor(...roles) };
-        expect(resolveVisibleLinksTabs(context)).toEqual(['counsellor']);
+        expect(resolveVisibleLinksTabs(context)).toEqual(['tenants', 'counsellor']);
         expect(canSeeLinksSection(context)).toBe(true);
     });
 
@@ -83,21 +83,28 @@ describe('linksAccess — invite e-mail templates', () => {
         ]);
     });
 
-    it('shows a tenant admin only the counsellor invite — the one tab they have', () => {
-        // Tenant invites create tenants and the contract forward belongs to the
-        // platform operator; neither is a tenant admin's to see or pick.
-        expect(resolveVisibleTemplateKinds(tenantAdmin)).toEqual(['COUNSELLOR_INVITE']);
+    it('shows a tenant admin the Träger and Berater invites, not the contract forward', () => {
+        expect(resolveVisibleTemplateKinds(tenantAdmin)).toEqual(['TENANT_INVITE', 'COUNSELLOR_INVITE']);
     });
 
-    it('shows a Beratungsstellen admin the counsellor invite too', () => {
-        // Whoever may send invites may also write templates for them.
+    it('shows a Beratungsstellen admin the Berater invite only', () => {
+        // A BST admin sees the Träger tab but sends nothing there, so they get no Träger template either.
         expect(resolveVisibleTemplateKinds(agencyAdmin)).toEqual(['COUNSELLOR_INVITE']);
+        expect(
+            resolveVisibleTemplateKinds({
+                isSuperAdmin: false,
+                hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            }),
+        ).toEqual(['COUNSELLOR_INVITE']);
     });
 
-    it('still lets no Links admin see the platform operator’s kinds', () => {
-        // Creating tenants and forwarding contracts stay the platform operator's work.
-        expect(resolveVisibleTemplateKinds(tenantAdmin)).not.toContain('TENANT_INVITE');
+    it('keeps the contract forward with the platform operator', () => {
+        expect(resolveVisibleTemplateKinds(tenantAdmin)).not.toContain('DPA_FORWARD');
         expect(resolveVisibleTemplateKinds(agencyAdmin)).not.toContain('DPA_FORWARD');
+    });
+
+    it('shows an account without admin roles no template at all', () => {
+        expect(resolveVisibleTemplateKinds({ isSuperAdmin: false, hasRole: hasRoleFor() })).toEqual([]);
     });
 
     it('lets only the platform admin change a shared template', () => {

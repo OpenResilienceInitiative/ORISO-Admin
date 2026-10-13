@@ -101,17 +101,17 @@ const handlers = [
     http.get(`${BASE}/legal-draft-archives`, () => HttpResponse.json([])),
 ];
 
-/** The platform-wide switch "Einstellungen Rechtstexte" turned off. */
-const LockedPlatform = ({ children }: { children: ReactNode }): ReactNode => {
+/** Set the real delegation policy before mounting the template actions. */
+const LegalDelegation = ({ allowed = false, children }: { allowed?: boolean; children: ReactNode }): ReactNode => {
     const { setManualSettings } = useAppConfigContext();
     const [ready, setReady] = useState(false);
     useEffect(() => {
         setManualSettings({
             multitenancyWithSingleDomainEnabled: true,
-            legalContentChangesBySingleTenantAdminsAllowed: false,
+            legalContentChangesBySingleTenantAdminsAllowed: allowed,
         });
         setReady(true);
-    }, [setManualSettings]);
+    }, [allowed, setManualSettings]);
     return ready ? children : null;
 };
 
@@ -174,9 +174,9 @@ export const AgencyReadOnlyUnderPlatformLock: Story = {
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
     decorators: [
         (Story) => (
-            <LockedPlatform>
+            <LegalDelegation>
                 <Story />
-            </LockedPlatform>
+            </LegalDelegation>
         ),
     ],
     play: async ({ canvasElement }) => {
@@ -190,6 +190,32 @@ export const AgencyReadOnlyUnderPlatformLock: Story = {
         await expect(within(region).getByRole('note')).toHaveTextContent(/plattformweit gesperrt/);
         await expect(within(region).getByRole('button', { name: 'Vorlage übernehmen' })).toBeDisabled();
         await expect(within(region).getByRole('button', { name: 'Verwerfen' })).toBeDisabled();
+    },
+};
+
+/** #1070: the normal Beratungsstelle-admin bundle adopts a received template into an unpublished draft. */
+export const RestrictedAgencyAdminAdoptsTemplate: Story = {
+    ...AgencyAdoptsTemplate,
+    beforeEach: () => setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID),
+    decorators: [
+        (Story) => (
+            <LegalDelegation allowed>
+                <Story />
+            </LegalDelegation>
+        ),
+    ],
+};
+
+/** #1070: the same role can read the offer under the platform lock, but cannot adopt or dismiss it. */
+export const RestrictedAgencyAdminReadOnlyUnderPlatformLock: Story = {
+    ...AgencyReadOnlyUnderPlatformLock,
+    beforeEach: () => setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID),
+    play: async (context) => {
+        await AgencyReadOnlyUnderPlatformLock.play?.(context);
+        const canvas = within(context.canvasElement);
+        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        await expect(adopted).toHaveLength(0);
     },
 };
 

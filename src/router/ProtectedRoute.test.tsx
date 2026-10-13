@@ -1,7 +1,7 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 
 const mocks = vi.hoisted(() => ({
@@ -71,6 +71,29 @@ describe('ProtectedRoute', () => {
         mocks.hasAdminPortalAccess.mockReturnValue(true);
     });
 
+    it('keeps only the internal centre ID when setup requires sign-in again', async () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('');
+        mocks.getRefreshTokenForRequests.mockReturnValue('');
+        const Destination = () => <h1>Login{useLocation().search}</h1>;
+        render(
+            <MemoryRouter initialEntries={['/admin/agency/5/setup']}>
+                <Routes>
+                    <Route
+                        path="/admin/agency/:id/setup"
+                        element={
+                            <ProtectedRoute>
+                                <div>Setup</div>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="/admin/login" element={<Destination />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        expect(await screen.findByRole('heading', { name: 'Login?agencySetupId=5' })).toBeInTheDocument();
+        expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login?agencySetupId=5');
+    });
+
     it('shows the initialization state while the auth session bootstraps', () => {
         mocks.bootstrapAuthSession.mockReturnValue(
             new Promise(() => {
@@ -96,7 +119,7 @@ describe('ProtectedRoute', () => {
         renderProtectedRoute();
 
         expect(await screen.findByText('Login page')).toBeInTheDocument();
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login');
     });
 
     it('redirects to login when the tokens are expired', async () => {
@@ -108,7 +131,7 @@ describe('ProtectedRoute', () => {
         renderProtectedRoute();
 
         expect(await screen.findByText('Login page')).toBeInTheDocument();
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login');
     });
 
     it('logs out and redirects when the token has no admin portal access', async () => {

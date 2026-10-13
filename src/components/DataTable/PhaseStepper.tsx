@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import { M3Tooltip } from '../M3Tooltip';
@@ -29,8 +30,15 @@ export interface PhaseStepperProps {
      * track renders no label at all in that state.
      */
     idleLabel?: string;
+    /**
+     * Wraps a dated track after this many steps (narrow tables); the track
+     * visibly continues on the next line. Undefined keeps one line.
+     */
+    maxPerLine?: number;
     className?: string;
 }
+
+const REACHED_STATES: readonly PhaseStepperState[] = ['done', 'current', 'warning', 'error'];
 
 const STATE_FALLBACKS: Record<PhaseStepperState, string> = {
     done: 'abgeschlossen',
@@ -80,6 +88,7 @@ export const PhaseStepper = ({
     ariaLabel,
     showActiveLabel = true,
     idleLabel,
+    maxPerLine,
     className,
 }: PhaseStepperProps) => {
     const { t } = useTranslation();
@@ -87,12 +96,29 @@ export const PhaseStepper = ({
     const allDone = phases.length > 0 && phases.every((phase) => phase.state === 'done');
     // Dated steps stand in columns so each date sits under its own bead.
     const dated = phases.some((phase) => phase.at);
+    // Only the fixed 88px columns line up across lines; an undated track is short enough for one.
+    const perLine = dated && maxPerLine != null && maxPerLine > 0 && phases.length > maxPerLine ? maxPerLine : null;
 
     return (
         <div className={classNames(styles.stepper, className)}>
-            <ol className={classNames(styles.track, { [styles.trackDated]: dated })} aria-label={ariaLabel}>
-                {phases.map((phase) => (
-                    <li key={phase.key} className={classNames(styles.phase, styles[phase.state])}>
+            <ol
+                className={classNames(styles.track, { [styles.trackDated]: dated, [styles.trackWrapped]: perLine })}
+                style={perLine ? ({ '--phase-stepper-per-line': perLine } as CSSProperties) : undefined}
+                aria-label={ariaLabel}
+            >
+                {phases.map((phase, index) => (
+                    <li
+                        key={phase.key}
+                        className={classNames(styles.phase, styles[phase.state], {
+                            [styles.lineStart]: perLine && index > 0 && index % perLine === 0,
+                            [styles.lineEnd]: perLine && index < phases.length - 1 && index % perLine === perLine - 1,
+                            // The stub to the next line takes the colour of the connector it replaces.
+                            [styles.nextReached]:
+                                perLine &&
+                                index < phases.length - 1 &&
+                                REACHED_STATES.includes(phases[index + 1].state),
+                        })}
+                    >
                         <M3Tooltip
                             text={`${phase.label}: ${
                                 phase.stateHint ??

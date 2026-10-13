@@ -1,0 +1,53 @@
+.filter {
+    width: 256px;
+    flex-shrink: 0;
+
+    :global {
+        .MuiAutocomplete-root .MuiOutlinedInput-root {
+            height: 56px;
+            flex-wrap: nowrap;
+            padding-inline-start: 16px;
+            border-radius: 28px;
+            background: var(--admin-search-surface, var(--m3-surface-container-high, #eae7e8));
+        }
+
+        .MuiAutocomplete-root .MuiOutlinedInput-notchedOutline {
+            border-color: transparent;
+        }
+
+        .MuiAutocomplete-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+            border-color: var(--m3-outline, #747878);
+        }
+
+        .MuiAutocomplete-root .MuiAutocomplete-tag {
+            min-width: 0;
+            max-width: calc(100% - 32px);
+            flex-shrink: 1;
+        }
+
+        .MuiAutocomplete-root .MuiAutocomplete-input {
+            min-width: 32px;
+
+            &::placeholder {
+                color: var(--m3-on-surface-variant, #444748);
+                opacity: 1;
+            }
+        }
+    }
+}
+
+.tenant {
+    width: 224px;
+}
+
+.option {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.detail {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}

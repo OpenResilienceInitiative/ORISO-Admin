@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, Col, Row, Form, notification } from 'antd';
@@ -10,6 +10,8 @@ import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
 import { useTenantsData } from '../../../hooks/useTenantsData';
+import { useTenantData } from '../../../hooks/useTenantData.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import routePathNames from '../../../appConfig';
 import { useAddOrUpdateTenantAdmin } from '../../../hooks/useAddOrUpdateTenantAdmin.hook';
 import styles from './styles.module.scss';
@@ -21,13 +23,23 @@ import { Resource } from '../../../enums/Resource';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
+import { CounselorData } from '../../../types/counselor';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 
-export const TenantAdminEditOrAdd = () => {
+const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
     const isPlatformAdmin = pathname.includes('/platform-admins/');
-    const tenantId = isPlatformAdmin ? '0' : new URLSearchParams(search).get('tenantId');
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId: ownTenantId } = useUserRoles();
+    // A scoped admin always uses their own tenant, regardless of query parameters.
+    const queryTenantId = new URLSearchParams(search).get('tenantId');
+    const lockTenantToOwn = isTenantScopedAdmin && !isPlatformAdmin;
+    const tenantId = (() => {
+        if (isPlatformAdmin) return '0';
+        if (lockTenantToOwn && ownTenantId !== null) return String(ownTenantId);
+        return queryTenantId;
+    })();
     const listPath = isPlatformAdmin ? routePathNames.platformAdmins : routePathNames.tenantAdmins;
     const { can } = useUserPermissions();
     const navigate = useNavigate();
@@ -36,11 +48,41 @@ export const TenantAdminEditOrAdd = () => {
     const { id } = useParams<{ id: string }>();
     const isEditing = id !== 'add';
     const [isReadOnly, setReadOnly] = useState(isEditing);
-    const { data, isLoading: isLoadingConsultants } = useTenantUserAdminData({ id, enabled: isEditing });
-    const { data: tenants, isLoading } = useTenantsData({ perPage: 1000, enabled: !isPlatformAdmin });
+    const hasOwnTenant = isTenantScopedAdmin && ownTenantId !== null && ownTenantId > 0;
+    const scopeAllowed = isSuperAdmin || (!isPlatformAdmin && hasOwnTenant);
+    const canRead = scopeAllowed && can(PermissionAction.Read, Resource.TenantAdminUser);
+    const {
+        data,
+        isLoading: isLoadingConsultants,
+        isError: isRecordError,
+    } = useTenantUserAdminData({
+        id,
+        enabled: isEditing && canRead,
+    });
+    // Tenant-scoped admins may not list all tenants — and the locked field only ever
+    // shows their own, which useTenantData already provides.
+    const { data: tenants, isLoading } = useTenantsData({
+        perPage: 1000,
+        enabled: !isPlatformAdmin && isSuperAdmin && canRead,
+    });
+    const { data: ownTenant, isLoading: isLoadingOwnTenant, isError: isOwnTenantError } = useTenantData();
+    const recordAllowed =
+        !isEditing || (data != null && (isSuperAdmin || String(data.tenantId) === String(ownTenantId)));
+    const ownTenantReady = isSuperAdmin || (!isLoadingOwnTenant && !isOwnTenantError && ownTenant?.id === ownTenantId);
+    const canCreate = scopeAllowed && ownTenantReady && can(PermissionAction.Create, Resource.TenantAdminUser);
+    const canUpdate =
+        scopeAllowed && ownTenantReady && recordAllowed && can(PermissionAction.Update, Resource.TenantAdminUser);
+    const canWrite = isEditing ? canUpdate : canCreate;
+
+    const tenantOptions = useMemo(() => {
+        if (lockTenantToOwn) {
+            return ownTenant?.id === ownTenantId ? [{ id: ownTenant.id, name: ownTenant.name }] : [];
+        }
+        return tenants?.data ?? [];
+    }, [lockTenantToOwn, ownTenantId, ownTenant?.id, ownTenant?.name, tenants?.data]);
 
     const { mutate } = useAddOrUpdateTenantAdmin({
-        id: id !== 'add' ? id : '',
+        id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
             notification.success({
@@ -57,8 +99,12 @@ export const TenantAdminEditOrAdd = () => {
     });
 
     const onSave = useCallback(
-        (tmp: any) => mutate(isPlatformAdmin ? { ...tmp, tenantId: '0' } : tmp),
-        [isPlatformAdmin],
+        (values: CounselorData) => {
+            if (!canWrite || isReadOnly) return;
+            if (!isSuperAdmin && String(values.tenantId) !== String(ownTenantId)) return;
+            mutate(isPlatformAdmin ? { ...values, tenantId: '0' } : values);
+        },
+        [canWrite, isReadOnly, isSuperAdmin, ownTenantId, mutate, isPlatformAdmin],
     );
     const onCancel = useCallback(() => {
         if (isEditing) {
@@ -66,13 +112,25 @@ export const TenantAdminEditOrAdd = () => {
         } else {
             navigate(listPath);
         }
-    }, [isEditing, listPath]);
+    }, [isEditing, listPath, navigate]);
+
+    // Never pass an inaccessible or foreign cached record to the title or form,
+    // including while a background refetch is still running.
+    if (
+        !canRead ||
+        (isEditing && ((data != null && !recordAllowed) || (!isLoadingConsultants && (isRecordError || !data))))
+    ) {
+        return <AccessDenied />;
+    }
 
     const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
     const requiredRule = { required: true, message: t('form.errors.required') };
     // Platform admins stay excluded from the grant mechanism (route is shared).
     const showGrantConsultantIdentity =
-        !isPlatformAdmin && canGrantConsultantIdentity(isEditing, TypeOfUser.TenantAdmins, data);
+        !isPlatformAdmin &&
+        scopeAllowed &&
+        recordAllowed &&
+        canGrantConsultantIdentity(isEditing, TypeOfUser.TenantAdmins, data);
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
@@ -84,12 +142,12 @@ export const TenantAdminEditOrAdd = () => {
                         onSuccess={() => navigate(listPath)}
                     />
                 )}
-                {isReadOnly && (
+                {isReadOnly && canUpdate && (
                     <Button type="primary" onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
-                {!isReadOnly && (
+                {!isReadOnly && canWrite && (
                     <>
                         <Button type="text" className="admin-m3-text-button" onClick={onCancel}>
                             {t('btn.cancel')}
@@ -103,7 +161,7 @@ export const TenantAdminEditOrAdd = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || !canWrite}
                     labelAlign="left"
                     labelWrap
                     layout="vertical"
@@ -169,10 +227,10 @@ export const TenantAdminEditOrAdd = () => {
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
-                                        disabled={isReadOnly || !can(PermissionAction.Update, Resource.TenantAdminUser)}
+                                        disabled={isReadOnly || lockTenantToOwn || !canWrite}
                                         className={styles.select}
                                     >
-                                        {tenants?.data.map((option) => (
+                                        {tenantOptions.map((option) => (
                                             <MuiSelectField.Option
                                                 key={option.id}
                                                 className={styles.option}
@@ -196,4 +254,9 @@ export const TenantAdminEditOrAdd = () => {
             </ThemeProvider>
         </Page>
     );
+};
+
+export const TenantAdminEditOrAdd = () => {
+    const { pathname, search } = useLocation();
+    return <TenantAdminEditor key={`${pathname}${search}`} />;
 };

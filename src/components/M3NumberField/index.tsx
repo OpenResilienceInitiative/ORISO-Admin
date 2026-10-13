@@ -63,6 +63,8 @@ interface M3NumberFieldProps {
     inputRef?: Ref<HTMLInputElement>;
     /** Size the main segment to its content instead of the input's default 20-character width. */
     fitContent?: boolean;
+    /** Stretch the group to its container (stacked forms); the main segment takes the spare width. */
+    fullWidth?: boolean;
 }
 
 /** Integers only (optional leading minus); everything else is ignored while typing. */
@@ -113,6 +115,7 @@ export const M3NumberField = ({
     inputProps,
     inputRef,
     fitContent = false,
+    fullWidth = false,
 }: M3NumberFieldProps) => {
     const { t } = useTranslation();
     const inputId = useId();
@@ -218,7 +221,7 @@ export const M3NumberField = ({
     };
 
     return (
-        <div className={classNames(styles.root, className)}>
+        <div className={classNames(styles.root, { [styles.rootFull]: fullWidth }, className)}>
             <div
                 className={classNames(styles.field, styles[variant], {
                     [styles.fieldDisabled]: disabled,

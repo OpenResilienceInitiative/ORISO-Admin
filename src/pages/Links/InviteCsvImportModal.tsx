@@ -21,7 +21,7 @@ import {
 } from './inviteModel';
 import { explainInviteError } from './explainInviteError';
 import type { InviteCsvCreateRow } from './inviteRequest';
-import { csvSendOrder, invitableRoles, OPEN_STATUSES } from './inviteRules';
+import { csvInvitableRoles, csvSendOrder, invitableRoles, OPEN_STATUSES } from './inviteRules';
 import styles from './inviteCsvImport.module.scss';
 
 export type { InviteCsvCreateRow } from './inviteRequest';
@@ -151,7 +151,7 @@ export const InviteCsvImportModal = ({
         ? t('links.accountInvites.tenantId', 'Träger-ID')
         : t('links.accountInvites.agencyId', 'Beratungsstellen-ID');
     const roleLabel = (role: InviteRole) => t(...ROLE_LABEL_KEYS[role]);
-    const allowedRoles = invitableRoles(viewerScope, isTenantId ? 'tenant' : 'counsellor');
+    const allowedRoles = isTenantId ? invitableRoles(viewerScope, 'tenant') : csvInvitableRoles(viewerScope);
 
     const findTemplate = (raw: string) => {
         const wanted = raw.trim().toLowerCase();
@@ -164,7 +164,7 @@ export const InviteCsvImportModal = ({
     const rowIssue = (row: ImportRow): string | undefined => {
         const role = row.role ?? tabRole;
         const line = { line: row.line };
-        if (!invitableRoles(viewerScope, 'counsellor').includes(role)) {
+        if (!csvInvitableRoles(viewerScope).includes(role)) {
             return t(
                 'links.csvImport.issue.roleNotAllowed',
                 'Die Rolle „{{role}}“ dürfen Sie nicht vergeben (Zeile {{line}}).',

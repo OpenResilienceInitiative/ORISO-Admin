@@ -220,6 +220,7 @@
 .back {
     position: relative;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-start;
     gap: 32px;
@@ -238,6 +239,7 @@
 
 .backLink {
     display: flex;
+    max-width: 100%;
     align-items: center;
     flex: 0 0 auto;
     gap: 16px;
@@ -263,6 +265,7 @@
 }
 
 .backHeadline {
+    min-width: 0;
     color: var(--admin-table-header-text, #1b1b1c);
     font-family: var(--m3-body-font-family);
     margin-bottom: 0;
@@ -273,7 +276,9 @@
 
 .actions {
     display: flex;
+    max-width: 100%;
     flex: 0 0 auto;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 16px;
 }

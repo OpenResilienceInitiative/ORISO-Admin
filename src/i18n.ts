@@ -1,5 +1,12 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import assistant0 from './locales/en/assistant.json';
+import assistant1 from './locales/de/assistant.json';
+import assistant2 from './locales/de@informal/assistant.json';
+import assistant3 from './locales/fr/assistant.json';
+import assistant4 from './locales/ru/assistant.json';
+import assistant5 from './locales/tr/assistant.json';
+import assistant6 from './locales/ti/assistant.json';
 
 import translationDe from './locales/de/translation.json';
 import translationEn from './locales/en/translation.json';
@@ -26,11 +33,17 @@ i18n.use(initReactI18next).init({
     },
 
     resources: {
+        'de@informal': { translations: assistant2 },
+        fr: { translations: assistant3 },
+        ru: { translations: assistant4 },
+        tr: { translations: assistant5 },
+        ti: { translations: assistant6 },
+
         en: {
-            translations: translationEn,
+            translations: { ...translationEn, ...assistant0 },
         },
         de: {
-            translations: translationDe,
+            translations: { ...translationDe, ...assistant1 },
         },
     },
     // have a common namespace used around the full app

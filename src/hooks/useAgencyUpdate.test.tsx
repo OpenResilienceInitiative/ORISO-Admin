@@ -28,6 +28,28 @@ describe('useAgencyUpdate sequential card saves', () => {
         mocks.updateAgencyData.mockClear();
     });
 
+    it('does not replay geographic coverage from a previous card while the refetch is pending', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({
+            online: true,
+            postCodeRangesActive: false,
+            postCodes: [{ from: '00000', until: '99999' }],
+        } as never);
+        await result.current.mutateAsync({ name: 'Updated name' } as never);
+
+        const laterUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(laterUpdate.postCodeRangesActive).toBeUndefined();
+        expect(laterUpdate.postCodes).toBeUndefined();
+        expect(laterUpdate.name).toBe('Updated name');
+    });
+
     it('merges a later card patch with the latest optimistic agency state', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], mocks.agency);

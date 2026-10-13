@@ -1,0 +1,14 @@
+.setup {
+    width: 100%;
+    max-width: 960px;
+    box-sizing: border-box;
+    padding: clamp(16px, 3vw, 32px);
+    margin-inline: auto;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-block-start: 24px;
+}

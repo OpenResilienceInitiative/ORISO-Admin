@@ -1,0 +1,147 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, spyOn, waitFor, within } from 'storybook/test';
+import { PersonCell } from './PersonCell';
+
+/**
+ * Name column of the account tables. Line 1: name + "Auch …" chip. Line 2:
+ * e-mail, copy button, @username. Long values are cut; the full value is in the tooltip.
+ */
+const meta = {
+    title: 'Molecules/UserTable/PersonCell',
+    component: PersonCell,
+    parameters: { layout: 'padded' },
+    args: { name: 'Maria Huber', email: 'maria.huber@caritas-berlin.de', username: 'mhuber' },
+} satisfies Meta<typeof PersonCell>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+    play: async ({ canvas }) => {
+        await expect(canvas.getByText('Maria Huber')).toBeVisible();
+        await expect(canvas.getByText('maria.huber@caritas-berlin.de')).toBeVisible();
+        const username = canvas.getByText('@mhuber');
+        await expect(username).toBeVisible();
+        await expect(username.getAttribute('title')).toMatch(/@mhuber/);
+    },
+};
+
+/** Without a name the e-mail moves up and is shown only once. */
+export const EmailOnly: Story = {
+    args: { name: '' },
+    play: async ({ canvas }) => {
+        await expect(canvas.getAllByText('maria.huber@caritas-berlin.de')).toHaveLength(1);
+    },
+};
+
+/** The "Auch …" mark sits as a small chip on the name line, not in its own column. */
+export const AlsoOtherRole: Story = {
+    args: { alsoLabel: 'Auch Träger-Admin' },
+    play: async ({ canvas }) => {
+        const chip = canvas.getByText('Auch Träger-Admin');
+        const name = canvas.getByText('Maria Huber');
+        await expect(chip).toBeVisible();
+        await expect(chip.parentElement).toBe(name.parentElement);
+    },
+};
+
+/** The button names whose e-mail it copies; the result shows as an M3 snackbar. */
+export const CopyEmail: Story = {
+    play: async ({ canvas, userEvent }) => {
+        const writeText = spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+        await userEvent.click(
+            canvas.getByRole('button', { name: /^(E-Mail von Maria Huber kopieren|Copy Maria Huber's e-mail)$/ }),
+        );
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith('maria.huber@caritas-berlin.de'));
+        const snackbar = await waitFor(() => within(document.body).getByTestId('person-copy-snackbar'));
+        await expect(snackbar).toHaveTextContent(/E-Mail kopiert|E-mail copied/);
+        await expect(document.querySelector('.ant-message')).toBeNull();
+    },
+};
+
+export const CopyEmailFailed: Story = {
+    play: async ({ canvas, userEvent }) => {
+        spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+        await userEvent.click(canvas.getByRole('button', { name: /Maria Huber/ }));
+        const snackbar = await waitFor(() => within(document.body).getByTestId('person-copy-snackbar'));
+        await expect(snackbar).toHaveTextContent(/Kopieren fehlgeschlagen|Copy failed/);
+        await userEvent.click(within(snackbar).getByRole('button'));
+        await waitFor(() => expect(within(document.body).queryByTestId('person-copy-snackbar')).toBeNull());
+    },
+};
+
+/** In a narrow column every value stays on one line, cut with "…"; the full value is in the tooltip. */
+export const NarrowColumn: Story = {
+    args: {
+        name: 'Dr. Maria-Theresia Huber-Oberndorfer',
+        email: 'anna.muster@beratung-example.org',
+        username: 'maria-theresia.huber-oberndorfer',
+        alsoLabel: 'Auch Berater*in',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 220 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvas }) => {
+        const cut = (element: HTMLElement) => element.scrollWidth > element.clientWidth;
+        const name = canvas.getByText('Dr. Maria-Theresia Huber-Oberndorfer');
+        const email = canvas.getByText('anna.muster@beratung-example.org');
+        const username = canvas.getByText('@maria-theresia.huber-oberndorfer');
+
+        await expect(name).toHaveAttribute('title', 'Dr. Maria-Theresia Huber-Oberndorfer');
+        await expect(email).toHaveAttribute('title', 'anna.muster@beratung-example.org');
+        await expect(username.getAttribute('title')).toMatch(/@maria-theresia\.huber-oberndorfer/);
+        await expect(cut(name)).toBe(true);
+        await expect(cut(email) || cut(username)).toBe(true);
+        await expect(email.getBoundingClientRect().height).toBeLessThanOrEqual(16);
+        // The chip and the copy button never shrink away.
+        await expect(canvas.getByText('Auch Berater*in')).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Dr. Maria-Theresia Huber-Oberndorfer/ })).toBeVisible();
+    },
+};
+
+/** In an auto-layout table the cell gives way (ellipsis) instead of widening its column. */
+export const InAutoTable: Story = {
+    args: NarrowColumn.args,
+    decorators: [
+        (Story) => (
+            <table style={{ width: 220, borderCollapse: 'collapse' }}>
+                <tbody>
+                    <tr>
+                        <td style={{ padding: 0 }}>
+                            <Story />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        ),
+    ],
+    play: async ({ canvas, canvasElement }) => {
+        const name = canvas.getByText('Dr. Maria-Theresia Huber-Oberndorfer');
+        await expect(canvasElement.querySelector('table')!.getBoundingClientRect().width).toBeLessThanOrEqual(220);
+        await expect(name.scrollWidth).toBeGreaterThan(name.clientWidth);
+    },
+};
+
+/** Tight but not tiny: the "Auch …" chip moves under the name instead of cutting it; @username stays readable. */
+export const TightColumn: Story = {
+    args: { alsoLabel: 'Auch Träger-Admin', username: 'amuster' },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 160 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvas }) => {
+        const name = canvas.getByText('Maria Huber');
+        await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+        await expect(canvas.getByText('Auch Träger-Admin')).toBeVisible();
+        const username = canvas.getByText('@amuster');
+        await expect(username.scrollWidth).toBeLessThanOrEqual(username.clientWidth);
+    },
+};

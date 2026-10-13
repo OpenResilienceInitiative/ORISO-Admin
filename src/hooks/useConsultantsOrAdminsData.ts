@@ -5,6 +5,7 @@ import { TypeOfUser } from '../enums/TypeOfUser';
 import { CounselorData } from '../types/counselor';
 import { ResponseList } from '../types/ResponseList';
 import { fetchUserSearchWithSortFallback } from '../utils/fetchUserSearchWithSortFallback';
+import { type UserSearchFilters, userSearchFilterParams } from '../utils/userSearchFilters';
 
 interface ConsultantsDataProps extends Omit<UseQueryOptions<ResponseList<CounselorData>>, 'queryKey' | 'queryFn'> {
     search?: string;
@@ -13,6 +14,7 @@ interface ConsultantsDataProps extends Omit<UseQueryOptions<ResponseList<Counsel
     order?: string;
     pageSize?: number;
     typeOfUser: TypeOfUser;
+    filters?: UserSearchFilters;
     /**
      * Let a failed search reject instead of resolving to an empty list. The default (false) keeps
      * list pages rendering an empty table on an outage; a caller that must tell "nobody matched"
@@ -28,6 +30,7 @@ export const useConsultantsOrAdminsData = ({
     order,
     pageSize,
     typeOfUser = TypeOfUser.Consultants,
+    filters = {},
     rethrowOnFailure = false,
     ...options
 }: ConsultantsDataProps) => {
@@ -38,12 +41,12 @@ export const useConsultantsOrAdminsData = ({
     const baseUrl = baseUrlByTypeOfUser[typeOfUser] ?? agencyAdminsSearchEndpoint;
 
     return useQuery({
-        queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize, rethrowOnFailure],
+        queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize, filters, rethrowOnFailure],
         queryFn: () =>
             fetchUserSearchWithSortFallback({
                 url: `${baseUrl}?query=${encodeURIComponent(search || '*')}&page=${current || 1}&perPage=${
                     pageSize || 10
-                }`,
+                }${userSearchFilterParams(filters, { agencies: typeOfUser !== TypeOfUser.TenantAdmins })}`,
                 sortBy: sortBy || USER_TABLE_DEFAULT_SORT,
                 order: order || USER_TABLE_DEFAULT_ORDER,
                 current,

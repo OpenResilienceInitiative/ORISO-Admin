@@ -51,3 +51,6 @@ export const LastPage: Story = { args: { page: 4, onPageSizeChange: () => {} } }
 
 /** Empty result set reads 0–0 von 0 with both directions disabled. */
 export const EmptyResult: Story = { args: { total: 0, onPageSizeChange: () => {} } };
+
+/** Toolbar variant (invite board): 32px controls, no footer band, the rows-per-page label stays for screen readers only. */
+export const Compact: Story = { args: { page: 1, total: 57, pageSize: 20, compact: true, onPageSizeChange: () => {} } };

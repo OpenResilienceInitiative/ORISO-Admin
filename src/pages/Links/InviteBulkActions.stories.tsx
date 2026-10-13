@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
-import { userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { message } from 'antd';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type {
@@ -148,5 +149,141 @@ export const DeleteConfirmOpen: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(await body.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
         await body.findByText(/widerrufen\?/i);
+    },
+};
+
+const SETUP_ROWS: AccountInviteDTO[] = [
+    invite(31, 2, 'setup.draft@example.org', 'DRAFT'),
+    invite(32, 3, 'setup.sent@example.org', 'EMAIL_SENT'),
+].map((row) => ({
+    ...row,
+    onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+    provisionedUserId: `fixture-existing-${row.id}`,
+    provisioningStatus: 'PENDING',
+    tenantIdAllocationMode: null,
+    expiresAt: null,
+}));
+const bulkSetupRequests: { id: string; body: unknown }[] = [];
+const bulkOrdinaryRequests: unknown[] = [];
+let bulkListReads = 0;
+const rowsResponse = (rows: AccountInviteDTO[]) =>
+    HttpResponse.json({
+        content: rows,
+        totalElements: rows.length,
+        totalPages: 1,
+        page: 0,
+        size: 20,
+    });
+
+/** Real checkbox → toolbar → protected HTTP POST, including a never-sent setup row. */
+export const SetupOnlyWithoutTemplates: Story = {
+    beforeEach: () => {
+        message.destroy();
+        bulkSetupRequests.length = 0;
+        bulkOrdinaryRequests.length = 0;
+        bulkListReads = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () => {
+                    bulkListReads += 1;
+                    return rowsResponse(
+                        SETUP_ROWS.map((row) => ({
+                            ...row,
+                            ...(bulkSetupRequests.length === 2
+                                ? {
+                                      id: row.id + 100,
+                                      createDate: '2026-10-01T12:00:00Z',
+                                      inviteStatus: 'EMAIL_SENT' as const,
+                                  }
+                                : {}),
+                        })),
+                    );
+                }),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json({ total: 0, _embedded: [] })),
+                http.post(`${INVITES_ENDPOINT}/:id/resend`, async ({ params, request }) => {
+                    bulkSetupRequests.push({ id: String(params.id), body: await request.json() });
+                    const row = SETUP_ROWS.find((candidate) => candidate.id === Number(params.id));
+                    return HttpResponse.json({ ...row, id: Number(params.id) + 100, acceptUrl: null, rawToken: null });
+                }),
+                http.post(`${INVITES_ENDPOINT}/:id/send`, async ({ request }) => {
+                    bulkOrdinaryRequests.push(await request.json());
+                    return HttpResponse.json({ reason: 'WRONG_SETUP_ROUTE' }, { status: 400 });
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await selectRow(canvasElement, 'setup.draft@example.org');
+        await selectRow(canvasElement, 'setup.sent@example.org');
+        const send = await canvas.findByRole('button', { name: /2 ausgewählte senden|Send 2 selected/ });
+        await expect(send).toBeEnabled();
+        await userEvent.click(send);
+        await waitFor(() =>
+            expect(bulkSetupRequests).toEqual([
+                { id: '31', body: {} },
+                { id: '32', body: {} },
+            ]),
+        );
+        await expect(bulkOrdinaryRequests).toEqual([]);
+        await waitFor(() => expect(bulkListReads).toBeGreaterThan(1));
+        await Promise.all(
+            SETUP_ROWS.map(async (row) => {
+                const refreshedRow = (await canvas.findByText(row.recipientEmail)).closest('tr');
+                await waitFor(() =>
+                    expect(refreshedRow?.querySelector('time[datetime="2026-10-01T12:00:00Z"]')).toBeVisible(),
+                );
+            }),
+        );
+        await expect(canvasElement.querySelector('time[datetime="2026-07-02T10:00:00Z"]')).not.toBeInTheDocument();
+        await expect(
+            canvas.queryByRole('button', { name: /2 ausgewählte senden|Send 2 selected/ }),
+        ).not.toBeInTheDocument();
+    },
+};
+
+/** Adding one ordinary row retains its template guard and sends no part of the batch. */
+export const MixedSelectionRequiresTemplate: Story = {
+    beforeEach: () => {
+        message.destroy();
+        bulkSetupRequests.length = 0;
+        bulkOrdinaryRequests.length = 0;
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, () =>
+                    rowsResponse([
+                        SETUP_ROWS[0],
+                        { ...invite(33, 4, 'ordinary@example.org', 'DRAFT'), expiresAt: null },
+                    ]),
+                ),
+                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json({ total: 0, _embedded: [] })),
+                http.post(`${INVITES_ENDPOINT}/:id/resend`, async ({ params, request }) => {
+                    bulkSetupRequests.push({ id: String(params.id), body: await request.json() });
+                    return HttpResponse.json(SETUP_ROWS[0]);
+                }),
+                http.post(`${INVITES_ENDPOINT}/:id/send`, async ({ request }) => {
+                    bulkOrdinaryRequests.push(await request.json());
+                    return HttpResponse.json(SETUP_ROWS[0]);
+                }),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await selectRow(canvasElement, 'setup.draft@example.org');
+        await selectRow(canvasElement, 'ordinary@example.org');
+        const send = await canvas.findByRole('button', { name: /2 ausgewählte senden|Send 2 selected/ });
+        await expect(send).toBeDisabled();
+        await expect(send).toHaveAccessibleDescription(
+            /Bitte zuerst eine E-Mail-Vorlage auswählen|Select an email template first/,
+        );
+        await expect(bulkSetupRequests).toEqual([]);
+        await expect(bulkOrdinaryRequests).toEqual([]);
     },
 };

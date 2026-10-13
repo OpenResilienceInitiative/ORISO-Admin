@@ -24,6 +24,7 @@ export interface EditButtonsProps extends Omit<React.HTMLAttributes<HTMLElement>
     hide?: string[];
     resource: Resource;
     disabled?: { edit: boolean; delete: boolean };
+    labels?: { edit: string; delete: string };
 }
 
 interface ActionIconProps {
@@ -48,6 +49,7 @@ export const EditButtons = ({
     hide = [],
     resource,
     disabled,
+    labels,
 }: EditButtonsProps) => {
     const { can } = useUserPermissions();
     const disabledButtons = {
@@ -72,6 +74,7 @@ export const EditButtons = ({
                 <button
                     className={classNames(styles.iconButton, { [styles.disabled]: disabledButtons?.edit })}
                     type="button"
+                    aria-label={labels?.edit}
                     disabled={disabledButtons?.edit}
                     onClick={() => handleEditAction(record)}
                 >
@@ -85,6 +88,7 @@ export const EditButtons = ({
                         [styles.selected]: isRecordPendingDeletion,
                     })}
                     type="button"
+                    aria-label={labels?.delete}
                     disabled={disabledButtons?.delete}
                     onClick={() => {
                         handleDeleteAction(record);

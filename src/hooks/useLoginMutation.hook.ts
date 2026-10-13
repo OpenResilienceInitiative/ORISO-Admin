@@ -15,10 +15,23 @@ interface LoginParams {
     otp: string;
 }
 
-interface ErrorLogin {
+/**
+ * What the realm sent with a refused login. `otpType` means "the password was
+ * right, now the second factor"; `resendAvailableInSeconds` is how long Keycloak
+ * will refuse another code mail (ORISO-UserService#1338) and is absent on a realm
+ * from before that change. Everything else in the body stays untyped on purpose —
+ * `error` / `error_description` are read as free text, never shown to the user.
+ */
+export interface LoginChallengeData {
+    otpType?: TwoFactorType;
+    resendAvailableInSeconds?: number;
+    [key: string]: unknown;
+}
+
+export interface ErrorLogin {
     message: string;
     options?: {
-        data: { otpType: TwoFactorType };
+        data: LoginChallengeData;
     };
 }
 

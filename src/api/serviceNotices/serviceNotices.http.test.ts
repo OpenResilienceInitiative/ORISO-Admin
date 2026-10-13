@@ -16,7 +16,13 @@ vi.mock('../../appConfig', () => ({
 vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'en', language: 'en', t: (key: string) => key } }));
 
-import { getServiceNoticeDraft, getServiceNoticePreview, saveServiceNoticeDraft } from './serviceNotices';
+import {
+    confirmServiceNotice,
+    dryRunServiceNotice,
+    getServiceNoticeDraft,
+    getServiceNoticePreview,
+    saveServiceNoticeDraft,
+} from './serviceNotices';
 
 const input = {
     maintenanceDate: '2026-10-12',
@@ -97,5 +103,53 @@ describe('operator service notice through the actual authenticated HTTP transpor
         expect(http.mock.calls[0][0].url).toBe(
             'https://api.example.org/service/users/admin/service-notices/drafts/bad%2Freference%3Fother%3Dvalue',
         );
+    });
+
+    it('counts the audience with a read-only request that carries no addresses', async () => {
+        const counts = {
+            campaignKey: draft.campaignKey,
+            audience: 'AGENCY_ADMINS',
+            recipients: 12,
+            mail: 9,
+            feedOnlyPreferenceOff: 2,
+            feedOnlyNoAddress: 1,
+            feedOnlyNoSenderTenant: 0,
+        };
+        const http = vi.fn().mockResolvedValue(jsonResponse(counts));
+        vi.stubGlobal('fetch', http);
+
+        expect(await dryRunServiceNotice(draft.campaignKey)).toEqual(counts);
+        const [request] = http.mock.calls[0];
+        expect(request.method).toBe('GET');
+        expect(request.url).toBe(
+            `https://api.example.org/service/users/admin/service-notices/drafts/${draft.campaignKey}/dry-run`,
+        );
+        expect(http).toHaveBeenCalledOnce();
+    });
+
+    it('confirms with only the counted number and never retries a refused confirmation', async () => {
+        const confirmed = {
+            campaignKey: draft.campaignKey,
+            status: 'CONFIRMED',
+            recipients: 12,
+            mailQueued: 9,
+            alreadyConfirmed: false,
+        };
+        const http = vi
+            .fn()
+            .mockResolvedValueOnce(jsonResponse(confirmed))
+            .mockResolvedValueOnce(jsonResponse({ message: 'changed' }, 409));
+        vi.stubGlobal('fetch', http);
+
+        expect(await confirmServiceNotice(draft.campaignKey, 12)).toEqual(confirmed);
+        const [request] = http.mock.calls[0];
+        expect(request.method).toBe('POST');
+        expect(request.url).toBe(
+            `https://api.example.org/service/users/admin/service-notices/drafts/${draft.campaignKey}/confirm`,
+        );
+        expect(await request.json()).toEqual({ expectedRecipients: 12 });
+
+        await expect(confirmServiceNotice(draft.campaignKey, 12)).rejects.toMatchObject({ status: 409 });
+        expect(http).toHaveBeenCalledTimes(2);
     });
 });

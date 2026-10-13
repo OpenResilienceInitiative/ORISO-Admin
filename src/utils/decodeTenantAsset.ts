@@ -38,7 +38,7 @@ export const decodeTenantAsset = (value?: string | null): string | undefined => 
  * hands tenant theming to the UI has to decode exactly these — see
  * {@link decodeTenantBrandingAssets}.
  */
-export const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo'] as const;
+export const BRANDING_ASSETS = ['logo', 'favicon', 'associationLogo', 'assistantIcon'] as const;
 
 /**
  * Decode the branding assets of a tenant response, whichever endpoint produced

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { delay, http, HttpResponse } from 'msw';
+import { useEffect, useState, type ReactNode } from 'react';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../../enums/UserRole';
@@ -7,6 +8,7 @@ import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook
 import { legalDraftKey } from '../../utils/legalDraftStorage';
 import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
 import { AgencyLegalTextContainer } from '.';
+import { useAppConfigContext } from '../../../../../context/useAppConfig';
 
 const AGENCY_ID = 55;
 const TENANT_ID = 7;
@@ -55,15 +57,16 @@ const commonHandlers = [
     http.get('*/service/agencyadmin/agencies/:id/legal-versions', () => HttpResponse.json([])),
 ];
 
-const persistedHandlers = () => {
+const persistedFixture = (onSave?: (content: AgencyLegalDraft['content']) => void) => {
     let draft: AgencyLegalDraft | null = persistedDraft;
-    return [
+    const handlers = [
         ...commonHandlers,
         http.get(DRAFT_ENDPOINT, () => (draft ? HttpResponse.json(draft) : new HttpResponse(null, { status: 404 }))),
         http.put(DRAFT_ENDPOINT, async ({ request }) => {
             const body = (await request.json()) as Pick<AgencyLegalDraft, 'content' | 'consentText'> & {
                 revision?: string;
             };
+            onSave?.(body.content);
             draft = { ...persistedDraft, ...body, revision: `${persistedDraft.revision.split(':')[0]}:3` };
             return HttpResponse.json(draft);
         }),
@@ -72,6 +75,12 @@ const persistedHandlers = () => {
             return new HttpResponse(null, { status: 204 });
         }),
     ];
+    return {
+        handlers,
+        reset: () => {
+            draft = persistedDraft;
+        },
+    };
 };
 
 // Module-level so the story's beforeEach can reset it: the handlers are built once, and a rerun
@@ -135,7 +144,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PersistedServerDraft: Story = {
-    parameters: { msw: { handlers: persistedHandlers() } },
+    parameters: { msw: { handlers: persistedFixture().handlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(
@@ -148,7 +157,7 @@ export const PersistedServerDraft: Story = {
 };
 
 export const LocalAndServerCollision: Story = {
-    parameters: { localDraft: true, msw: { handlers: persistedHandlers() } },
+    parameters: { localDraft: true, msw: { handlers: persistedFixture().handlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
@@ -227,19 +236,76 @@ export const PublishWithoutDraftStoreExplains: Story = {
     },
 };
 
-/** A restricted agency admin may only read: the card says the Träger maintains the text. */
-export const RestrictedAgencyAdminReadsOnly: Story = {
+/** Configure the real single-domain policy before mounting the permission-gated editor. */
+const LegalDelegation = ({ allowed, children }: { allowed: boolean; children: ReactNode }) => {
+    const { setManualSettings } = useAppConfigContext();
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        setManualSettings({
+            multitenancyWithSingleDomainEnabled: true,
+            legalContentChangesBySingleTenantAdminsAllowed: allowed,
+        });
+        setReady(true);
+    }, [allowed, setManualSettings]);
+    return ready ? children : null;
+};
+
+const restrictedSavedContents: AgencyLegalDraft['content'][] = [];
+const restrictedDraftFixture = persistedFixture((content) => restrictedSavedContents.push(content));
+
+/** #1070: the normal Beratungsstelle-admin role bundle can edit and save when legal content is delegated. */
+export const RestrictedAgencyAdminCanEdit: Story = {
+    beforeEach: () => {
+        restrictedSavedContents.length = 0;
+        restrictedDraftFixture.reset();
+    },
     decorators: [
         (Story) => {
-            setStoryAuth([UserRole.RestrictedAgencyAdmin], TENANT_ID);
-            return <Story />;
+            setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID);
+            return (
+                <LegalDelegation allowed>
+                    <Story />
+                </LegalDelegation>
+            );
         },
     ],
-    parameters: { msw: { handlers: persistedHandlers() } },
+    parameters: { msw: { handlers: restrictedDraftFixture.handlers } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/Diesen Text pflegt Ihr Träger/, {}, { timeout: 8000 })).toBeVisible();
+        await expect(await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 })).toBeVisible();
+        await expect(canvas.getByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
+        await expect(canvas.queryByText(/Ergänzung der Beratungsstelle/)).not.toBeInTheDocument();
+        await expect(canvas.queryByText(/Diesen Text pflegt Ihr Träger/)).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await waitFor(() => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull());
+        await userEvent.click(canvasElement.querySelector('.ProseMirror[contenteditable="true"]') as HTMLElement);
+        await userEvent.keyboard(' Ergänzung der Beratungsstelle.');
+        await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(restrictedSavedContents).toHaveLength(1));
+        await expect(restrictedSavedContents[0].de).toContain('Ergänzung der Beratungsstelle.');
+    },
+};
+
+/** #1070: withheld delegation keeps the same role bundle read-only and names the platform lock. */
+export const RestrictedAgencyAdminDelegationWithheld: Story = {
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID);
+            return (
+                <LegalDelegation allowed={false}>
+                    <Story />
+                </LegalDelegation>
+            );
+        },
+    ],
+    parameters: { msw: { handlers: persistedFixture().handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Änderungen an Rechtstexten sind plattformweit gesperrt/)).toBeVisible();
+        await expect(await canvas.findByText('Veröffentlichte Datenschutzerklärung')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
-        await expect(canvas.queryByText(/Als Entwurf speichern/)).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).toBeNull();
     },
 };

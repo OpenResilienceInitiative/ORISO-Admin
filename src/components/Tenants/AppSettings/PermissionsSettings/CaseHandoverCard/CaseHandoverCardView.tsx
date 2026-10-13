@@ -12,9 +12,11 @@ import {
     buildDisplayReasons,
     DisplayReason,
     getNotificationTemplate,
+    isAdviceRequestReason,
     isAdvisorConsentImplicit,
     NOTIFICATION_LANGUAGES,
     NotificationLanguage,
+    reasonTranslationKey,
     resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
@@ -95,7 +97,7 @@ export const CaseHandoverCardView = ({
     const activePolicy = activeReason?.policy ?? null;
 
     const reasonLabel = (reason: DisplayReason) => {
-        const key = `tenants.permissions.card.caseHandover.reason.${reason.code}`;
+        const key = reasonTranslationKey(reason.code);
         const translated = t(key);
         return translated === key ? reason.policy?.label ?? reason.code : translated;
     };
@@ -179,7 +181,7 @@ export const CaseHandoverCardView = ({
                                     }
                                 />
                             </div>
-                            {activeReason.code === 'COUNSELLOR_ASKED_FOR_ADVICE' && (
+                            {isAdviceRequestReason(activeReason.code) && (
                                 <div className={styles.durationField}>
                                     <M3DurationField
                                         label={t('tenants.permissions.card.caseHandover.maxSessionDuration')}

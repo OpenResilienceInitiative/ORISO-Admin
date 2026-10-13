@@ -32,9 +32,12 @@ describe('language utilities', () => {
 
     it('normalizes supported locale strings', () => {
         expect(isSupportedLanguage('de')).toBe(true);
-        expect(isSupportedLanguage('fr')).toBe(false);
+        expect(isSupportedLanguage('fr')).toBe(true);
         expect(normalizeLanguage('de-DE')).toBe('de');
-        expect(normalizeLanguage('fr-FR')).toBeNull();
+        expect(normalizeLanguage('fr-FR')).toBe('fr');
+        expect(normalizeLanguage('de@informal')).toBe('de@informal');
+        expect(normalizeLanguage('ti-ER')).toBe('ti');
+        expect(normalizeLanguage('es')).toBeNull();
     });
 
     it('stores and reads the preferred language from cookie/localStorage', () => {

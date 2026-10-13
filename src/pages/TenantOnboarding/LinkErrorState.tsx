@@ -29,6 +29,14 @@ const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: s
         title: 'tenantOnboarding.linkError.invalid.title',
         description: 'tenantOnboarding.linkError.invalid.description',
     },
+    SETUP_IN_PROGRESS: {
+        title: 'accountSetup.inProgress.title',
+        description: 'accountSetup.inProgress.description',
+    },
+    SETUP_OPERATOR_REVIEW_REQUIRED: {
+        title: 'accountSetup.operatorReview.title',
+        description: 'accountSetup.operatorReview.description',
+    },
 };
 
 /**
