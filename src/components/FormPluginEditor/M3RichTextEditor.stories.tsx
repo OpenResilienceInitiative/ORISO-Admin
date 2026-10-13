@@ -89,6 +89,42 @@ export const EditSaveMobile: Story = {
     },
 };
 
+/** #1195: at the narrowest phone width nothing in the editor may poke out of its frame. */
+export const Phone320NoOverflow: Story = {
+    render: (args) => <ControlledEditor {...args} />,
+    args: {
+        title: 'Impressum',
+        value: '<p>Träger Nordlicht e. V.</p>',
+        languages: [{ value: 'de', label: 'Deutsch' }],
+        language: 'de',
+    },
+    decorators: [
+        (Story) => (
+            <div data-testid="phone-frame" style={{ width: 320 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const frame = within(canvasElement).getByTestId('phone-frame');
+        const frameRight = frame.getBoundingClientRect().right;
+        await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth);
+        // A control inside a deliberate scroll strip (the toolbar pans) is reachable; one clipped by
+        // the frame itself is not.
+        const isReachable = (element: HTMLElement) => {
+            for (let node = element.parentElement; node && node !== frame; node = node.parentElement) {
+                const { overflowX } = window.getComputedStyle(node);
+                if (overflowX === 'auto' || overflowX === 'scroll') return true;
+            }
+            return false;
+        };
+        const clipped = Array.from(frame.querySelectorAll<HTMLElement>('button'))
+            .filter((button) => button.getBoundingClientRect().right > frameRight + 1 && !isReachable(button))
+            .map((button) => button.getAttribute('aria-label') ?? button.textContent ?? button.className);
+        await expect(clipped).toEqual([]);
+    },
+};
+
 export const EditSaveDesktop: Story = {
     ...EditSaveMobile,
     decorators: [
