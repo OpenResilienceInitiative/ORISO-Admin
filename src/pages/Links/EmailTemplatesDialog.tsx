@@ -438,8 +438,8 @@ export const EmailTemplatesDialog = ({
             setTemplates((current) => current.filter((template) => template.id !== deletePrompt.id));
             onDeleted?.(deletePrompt.id);
             setDeletePrompt(null);
-            await loadTemplates();
             message.success(t('links.templates.deleted', 'Template deleted'));
+            await loadTemplates();
         } catch {
             setDeleteError(true);
         } finally {
@@ -780,8 +780,19 @@ export const EmailTemplatesDialog = ({
                                         (option) => ({ value: option.value, label: t(option.labelKey) }),
                                     ),
                                     ...(draftMeta.language &&
-                                    !LANGUAGE_OPTIONS.some((option) => option.value === draftMeta.language)
-                                        ? [{ value: draftMeta.language, label: draftMeta.language }]
+                                    !LANGUAGE_OPTIONS.some(
+                                        (option) =>
+                                            option.value !== 'de@informal' && option.value === draftMeta.language,
+                                    )
+                                        ? [
+                                              {
+                                                  value: draftMeta.language,
+                                                  label:
+                                                      draftMeta.language === 'de@informal'
+                                                          ? t('language.options.de@informal')
+                                                          : draftMeta.language,
+                                              },
+                                          ]
                                         : []),
                                 ]}
                                 onChange={(language: string) => setDraftMeta((meta) => ({ ...meta, language }))}

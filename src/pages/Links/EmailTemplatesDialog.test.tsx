@@ -5,6 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { message } from 'antd';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import { UserRole } from '../../enums/UserRole';
 
@@ -240,6 +241,55 @@ describe('EmailTemplatesDialog', () => {
         expect(screen.queryByText(tenantTemplate.name)).not.toBeInTheDocument();
         expect(onDeleted).toHaveBeenCalledWith(tenantTemplate.id);
         expect(onChanged).not.toHaveBeenCalled();
+    });
+
+    it('announces successful deletion while the catalogue refresh is still pending', async () => {
+        const user = userEvent.setup();
+        const success = vi.spyOn(message, 'success');
+        const onDeleted = vi.fn();
+        mocks.deleteInviteEmailTemplate.mockResolvedValue(undefined);
+        renderDialog({ onDeleted });
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        let finishRefresh!: (templates: (typeof tenantTemplate)[]) => void;
+        const refresh = new Promise<(typeof tenantTemplate)[]>((resolve) => {
+            finishRefresh = resolve;
+        });
+        mocks.listInviteEmailTemplates.mockReturnValue(refresh);
+        try {
+            await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Delete' }));
+            await user.click(
+                within(screen.getByRole('dialog').querySelector('.ant-modal-footer') as HTMLElement).getByRole(
+                    'button',
+                    { name: 'Delete' },
+                ),
+            );
+            await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(tenantTemplate.id));
+            await waitFor(() => expect(success).toHaveBeenCalledWith('Template deleted'));
+            expect(screen.queryByText(tenantTemplate.name)).not.toBeInTheDocument();
+        } finally {
+            await act(async () => finishRefresh([]));
+        }
+    });
+
+    it('retains the translated informal German option for an existing template', async () => {
+        const user = userEvent.setup();
+        const informalTemplate = { ...tenantTemplate, language: 'de@informal', editable: true };
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'TENANT_INVITE' ? [informalTemplate] : []),
+        );
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'Edit' }));
+        const language = screen.getByLabelText('Language');
+        expect(language).toHaveValue('de@informal');
+        expect(within(language).getByRole('option', { name: 'language.options.de@informal' })).toHaveValue(
+            'de@informal',
+        );
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'cancel' }));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        expect(
+            within(screen.getByLabelText('Language')).queryByRole('option', { name: 'language.options.de@informal' }),
+        ).not.toBeInTheDocument();
     });
 
     it('preserves the template and explains failure when deleting fails', async () => {

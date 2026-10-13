@@ -241,14 +241,26 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
+    const templateLoadGeneration = useRef(0);
     const loadTemplates = useCallback(() => {
+        templateLoadGeneration.current += 1;
+        const generation = templateLoadGeneration.current;
         listInviteEmailTemplates(templateKind)
-            .then(setTemplates)
-            .catch(() => message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates')));
+            .then((loadedTemplates) => {
+                if (generation === templateLoadGeneration.current) setTemplates(loadedTemplates);
+            })
+            .catch(() => {
+                if (generation === templateLoadGeneration.current)
+                    message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates'));
+            });
     }, [templateKind, t]);
 
     useEffect(() => {
         loadTemplates();
+        return () => {
+            // Requests from a previous scope/unmounted tab cannot replace current templates.
+            templateLoadGeneration.current += 1;
+        };
     }, [loadTemplates]);
 
     // After a template is created/edited in the dialog, refresh the picker — and if it
