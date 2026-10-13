@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { notification } from 'antd';
 // eslint-disable-next-line import/no-unresolved
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
@@ -690,6 +691,8 @@ let topiclessCommands: unknown[] = [];
 export const TopiclessCentreActivationConfirmation: Story = {
     ...CentreDetailsMobile,
     beforeEach: async () => {
+        // antd static portals outlive a previously rendered story; start this consumer clean.
+        notification.destroy();
         await ownTenantAuth();
         topiclessActive = false;
         topiclessCommands = [];
@@ -794,9 +797,9 @@ export const TopiclessCentreActivationConfirmation: Story = {
         );
         await expect(await canvas.findByText('Ada Beispiel')).toBeVisible();
         await expect(
-            canvas.queryByText(i18n.t('agency.form.registrationSettings.assigned.loadError')),
+            canvas.queryByText(String(i18n.t('agency.form.registrationSettings.assigned.loadError'))),
         ).not.toBeInTheDocument();
-        await expect(body.queryByText(i18n.t('message.error.default'))).not.toBeInTheDocument();
+        await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
         await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
         await userEvent.click(within(canvas.getByTestId('entity-status-switch')).getByRole('switch'));
         await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
@@ -816,9 +819,9 @@ export const TopiclessCentreActivationConfirmation: Story = {
         await expect(topiclessCommands).toEqual([{ active: true }]);
         await expect(canvas.getByText('Ada Beispiel')).toBeVisible();
         await expect(
-            canvas.queryByText(i18n.t('agency.form.registrationSettings.assigned.loadError')),
+            canvas.queryByText(String(i18n.t('agency.form.registrationSettings.assigned.loadError'))),
         ).not.toBeInTheDocument();
-        await expect(body.queryByText(i18n.t('message.error.default'))).not.toBeInTheDocument();
+        await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
         await expect(body.queryByRole('alert')).not.toBeInTheDocument();
     },
 };
