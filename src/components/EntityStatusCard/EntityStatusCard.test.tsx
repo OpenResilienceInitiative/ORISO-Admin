@@ -50,10 +50,10 @@ describe('activation refusal in the actual status card', () => {
         [
             'de',
             'AGENCY_CONTAINS_NO_CONSULTANTS',
-            'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
         ],
         ['en', 'AGENCY_CONTAINS_NO_CONSULTANTS', 'Assign at least one counsellor to this counselling centre first.'],
-        ['de', 'INVALID_OFFLINE_STATUS', 'Hinterlege zuerst den Einzugsbereich der Beratungsstelle.'],
+        ['de', 'INVALID_OFFLINE_STATUS', 'Hinterlegen Sie zuerst den Einzugsbereich der Beratungsstelle.'],
         ['en', 'INVALID_OFFLINE_STATUS', 'Set the counselling centre’s postcode coverage first.'],
     ])('gives a safe actionable %s cause for %s', async (language, reason, instruction) => {
         state.language = language;

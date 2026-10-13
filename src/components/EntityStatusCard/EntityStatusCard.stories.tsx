@@ -26,8 +26,12 @@ const account = {
     restrictions: [],
     twoFactor: { required: true, configured: true, active: false },
 };
+const handlerResets: Array<() => void> = [];
 const accountHandlers = () => {
     let active = true;
+    handlerResets.push(() => {
+        active = true;
+    });
     return [
         http.get('*/service/useradmin/accounts/account-1197/status', () =>
             HttpResponse.json({ ...account, active, paused: !active }),
@@ -44,6 +48,7 @@ const meta = {
     component: ManagedEntityStatus,
     decorators: [(Story) => withAdminProviders(Story)],
     beforeEach: async () => {
+        handlerResets.forEach((reset) => reset());
         setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
         await i18n.changeLanguage('de');
     },
@@ -213,6 +218,9 @@ export const ReadbackUnavailable: Story = {
         msw: {
             handlers: (() => {
                 let written = false;
+                handlerResets.push(() => {
+                    written = false;
+                });
                 return [
                     http.get('*/service/useradmin/accounts/account-1197/status', () =>
                         written ? HttpResponse.json({}, { status: 502 }) : HttpResponse.json(account),
@@ -248,8 +256,48 @@ const pauseFlow = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
     await waitFor(() => expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'));
 };
+export const AccountReplay: Story = {
+    parameters: { msw: { handlers: accountHandlers() } },
+    play: async ({ mount, canvasElement }) => {
+        await meta.beforeEach();
+        await mount(
+            <div key="first">
+                {withAdminProviders(() => (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityId="account-1197"
+                        entityName="Selected account"
+                        canManage
+                        targetTenantId={1}
+                    />
+                ))}
+            </div>,
+        );
+        await pauseFlow({ canvasElement });
+        // A real replay starts a fresh consumer after the same beforeEach lifecycle callback.
+        await meta.beforeEach();
+        await mount(
+            <div key="second">
+                {withAdminProviders(() => (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityId="account-1197"
+                        entityName="Selected account"
+                        canManage
+                        targetTenantId={1}
+                    />
+                ))}
+            </div>,
+        );
+        await pauseFlow({ canvasElement });
+    },
+};
+
 const organisationHandlers = () => {
     let active = true;
+    handlerResets.push(() => {
+        active = true;
+    });
     return [
         http.get('*/service/tenantadmin/1', () => HttpResponse.json({ id: 1, name: 'Preserved organisation', active })),
         http.put('*/service/tenantadmin/1/status', async ({ request }) => {
@@ -262,6 +310,9 @@ const organisationHandlers = () => {
 };
 const centreHandlers = () => {
     let active = true;
+    handlerResets.push(() => {
+        active = true;
+    });
     return [
         http.get('*/service/agencyadmin/agencies/7/status', () =>
             HttpResponse.json({ agencyId: 7, active, ownActive: active, tenantActive: true, restrictions: [] }),
@@ -295,6 +346,9 @@ export const Pending: Story = {
         msw: {
             handlers: (() => {
                 let active = true;
+                handlerResets.push(() => {
+                    active = true;
+                });
                 return [
                     http.get('*/service/useradmin/accounts/account-1197/status', () =>
                         HttpResponse.json({ ...account, active, paused: !active }),
@@ -556,6 +610,9 @@ export const CentreMetadataPreservesStatus: Story = {
         msw: {
             handlers: (() => {
                 let current = { ...centreFixture };
+                handlerResets.push(() => {
+                    current = { ...centreFixture };
+                });
                 return [
                     ...centreHandlers(),
                     http.get('*/service/agencyadmin/agencies/7', () => HttpResponse.json({ _embedded: current })),
@@ -674,7 +731,7 @@ const prerequisiteRefusal = (reason: string, instruction: string): Story => ({
 });
 export const ActivationNeedsCounsellor: Story = prerequisiteRefusal(
     'AGENCY_CONTAINS_NO_CONSULTANTS',
-    'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+    'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
 );
 export const ActivationNeedsPostcodeCoverageEnglish: Story = {
     ...prerequisiteRefusal('INVALID_OFFLINE_STATUS', 'Set the counselling centre’s postcode coverage first.'),
@@ -688,6 +745,25 @@ const topiclessCentre = { ...centreFixture, online: false, offline: true };
 const offeredTopic = { id: 19, name: 'Counselling topic', status: 'ACTIVE' };
 let topiclessActive = false;
 let topiclessCommands: unknown[] = [];
+handlerResets.push(() => {
+    topiclessActive = false;
+    topiclessCommands = [];
+});
+const renderTopiclessCentre = (topicsLoaded = true) =>
+    withSeededAdminProviders(
+        () => (
+            <Routes>
+                <Route path="/" element={<Navigate to="/admin/agency/7/general" replace />} />
+                <Route path="/admin/agency/:id/general" element={<AgencyPageEdit />} />
+            </Routes>
+        ),
+        (client) => {
+            client.setQueryData(['AGENCY', '7'], topiclessCentre);
+            client.setQueryData(['AGENCY_POST_CODES', '7'], []);
+            if (topicsLoaded) client.setQueryData(['ALL_TOPICS', true], [offeredTopic]);
+            client.setQueryData(['TRAEGER_DPO', 1], null);
+        },
+    );
 export const TopiclessCentreActivationConfirmation: Story = {
     ...CentreDetailsMobile,
     beforeEach: async () => {
@@ -697,21 +773,7 @@ export const TopiclessCentreActivationConfirmation: Story = {
         topiclessActive = false;
         topiclessCommands = [];
     },
-    render: () =>
-        withSeededAdminProviders(
-            () => (
-                <Routes>
-                    <Route path="/" element={<Navigate to="/admin/agency/7/general" replace />} />
-                    <Route path="/admin/agency/:id/general" element={<AgencyPageEdit />} />
-                </Routes>
-            ),
-            (client) => {
-                client.setQueryData(['AGENCY', '7'], topiclessCentre);
-                client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-                client.setQueryData(['ALL_TOPICS', true], [offeredTopic]);
-                client.setQueryData(['TRAEGER_DPO', 1], null);
-            },
-        ),
+    render: () => renderTopiclessCentre(),
     parameters: {
         msw: {
             handlers: [
@@ -821,6 +883,56 @@ export const TopiclessCentreActivationConfirmation: Story = {
         await expect(
             canvas.queryByText(String(i18n.t('agency.form.registrationSettings.assigned.loadError'))),
         ).not.toBeInTheDocument();
+        await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
+        await expect(body.queryByRole('alert')).not.toBeInTheDocument();
+    },
+};
+
+let releaseOfferedTopics: (() => void) | undefined;
+let offeredTopicGate: Promise<void>;
+handlerResets.push(() => {
+    offeredTopicGate = new Promise<void>((resolve) => {
+        releaseOfferedTopics = resolve;
+    });
+});
+export const DeferredTopicLookup: Story = {
+    ...TopiclessCentreActivationConfirmation,
+    render: () => renderTopiclessCentre(false),
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/topic*', async () => {
+                    await offeredTopicGate;
+                    return HttpResponse.json([offeredTopic]);
+                }),
+                ...(TopiclessCentreActivationConfirmation.parameters?.msw?.handlers ?? []),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await expect(await canvas.findByText('Ada Beispiel')).toBeVisible();
+        await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
+        await userEvent.click(within(canvas.getByTestId('entity-status-switch')).getByRole('switch'));
+        const save = within(canvas.getByTestId('entity-status-save')).getByRole('button');
+        await expect(save).toBeDisabled();
+        await expect(canvas.getByTestId('entity-status-activation-blocked')).toHaveTextContent('Themen werden geladen');
+        await expect(topiclessCommands).toHaveLength(0);
+        if (!releaseOfferedTopics) throw new Error('Deferred topic authority was not initialized');
+        releaseOfferedTopics();
+        await waitFor(() => expect(save).toBeEnabled());
+        await userEvent.click(save);
+        const dialog = await body.findByRole('dialog');
+        await expect(topiclessCommands).toHaveLength(0);
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        await expect(topiclessCommands).toEqual([{ active: true }]);
         await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
         await expect(body.queryByRole('alert')).not.toBeInTheDocument();
     },

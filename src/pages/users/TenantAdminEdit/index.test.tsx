@@ -179,13 +179,17 @@ const hasRoles = (roles: UserRole[]) => (wanted: UserRole | UserRole[]) =>
     (Array.isArray(wanted) ? wanted : [wanted]).some((role) => roles.includes(role));
 vi.mock('../../../api/fetchData', async (original) => ({
     ...(await original<typeof import('../../../api/fetchData')>()),
-    fetchData: vi.fn(async ({ url }: { url: string }) => ({
-        accountId: /accounts\/([^/]+)\/status/.exec(url)?.[1],
-        active: true,
-        paused: false,
-        restrictions: [],
-        twoFactor: { required: true, configured: false, active: false },
-    })),
+    fetchData: vi.fn(async ({ url }: { url: string }) => {
+        const accountId = /\/service\/useradmin\/accounts\/([^/]+)\/status$/.exec(url)?.[1];
+        if (!accountId) throw new Error('Unexpected mocked account status authority route');
+        return {
+            accountId,
+            active: true,
+            paused: false,
+            restrictions: [],
+            twoFactor: { required: true, configured: false, active: false },
+        };
+    }),
 }));
 
 const grantAllPermissions = () => mocks.can.mockReturnValue(true);

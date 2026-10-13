@@ -42,6 +42,8 @@ const mocks = vi.hoisted(() => ({
     routeId: 'add',
     agencyData: undefined as any,
     createConsultantProps: undefined as any,
+    tenantTopicsLoading: false,
+    tenantTopicsError: false,
     tenantTopics: [] as Array<{ id: number; name: string; status: string }>,
     consultants: [] as Array<{ id: number; firstname: string; lastname: string; email: string }>,
     hasConsultants: false,
@@ -88,7 +90,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     edit: 'Bearbeiten',
     'entityStatus.control': 'Aktiv (eigener Status)',
-    'entityStatus.error.assignCounsellor': 'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+    'entityStatus.error.assignCounsellor': 'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
     'entityStatus.error.save': 'Die Änderung wurde nicht bestätigt. Bitte den Status prüfen und erneut versuchen.',
     'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
     'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
@@ -102,6 +104,8 @@ vi.mock('../../../api/fetchData', async (original) => ({
 }));
 beforeEach(() => {
     mocks.statusOwnActive = null;
+    mocks.tenantTopicsLoading = false;
+    mocks.tenantTopicsError = false;
     mocks.statusHttp
         .mockReset()
         .mockImplementation(async ({ url, method, bodyData }: { url: string; method: string; bodyData?: string }) => {
@@ -290,7 +294,11 @@ vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
 }));
 
 vi.mock('../../../hooks/useTenantTopics', () => ({
-    useTenantTopics: () => ({ data: mocks.tenantTopics, isLoading: false }),
+    useTenantTopics: () => ({
+        data: mocks.tenantTopicsLoading ? undefined : mocks.tenantTopics,
+        isLoading: mocks.tenantTopicsLoading,
+        isError: mocks.tenantTopicsError,
+    }),
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
@@ -822,9 +830,77 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
+    it('defers activation while offered topics load, then requires confirmation before any status PUT', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsLoading = true;
+        const page = renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        const save = within(screen.getByTestId('entity-status-save')).getByRole('button');
+        expect(save).toBeDisabled();
+        expect(screen.getByTestId('entity-status-activation-blocked')).toHaveTextContent(
+            'entityStatus.activationTopicsLoading',
+        );
+        await user.click(save);
+        expect(statusWrites()).toHaveLength(0);
+        mocks.tenantTopicsLoading = false;
+        page.rerender(<AgencyPageEdit />);
+        await waitFor(() => expect(save).toBeEnabled());
+        await user.click(save);
+        const dialog = await screen.findByRole('dialog');
+        expect(statusWrites()).toHaveLength(0);
+        await user.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        expect(statusWrites()).toHaveLength(1);
+    });
+
+    it('keeps activation blocked with an explicit topics error until the lookup recovers', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsError = true;
+        const page = renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeDisabled();
+        expect(screen.getByTestId('entity-status-activation-blocked')).toHaveTextContent(
+            'entityStatus.activationTopicsError',
+        );
+        expect(statusWrites()).toHaveLength(0);
+        mocks.tenantTopicsError = false;
+        page.rerender(<AgencyPageEdit />);
+        await waitFor(() => expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled());
+    });
+
+    it('allows pausing an active centre while topics are still loading', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsLoading = true;
+        mocks.statusOwnActive = true;
+        mocks.tenantTopicsLoading = true;
+        renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        await user.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(JSON.parse(statusWrites()[0][0].bodyData)).toEqual({ active: false });
+    });
+
     it('does not ask again for an unchanged active own status even when ordinary metadata is stale', async () => {
         const user = setupUser();
         mocks.statusOwnActive = true;
+        mocks.tenantTopicsLoading = true;
         renderOfflineAgencyEdit();
         await waitFor(() =>
             expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
@@ -918,7 +994,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         renderAgencyWithoutAssignedConsultants();
         await startStatusActivation(user);
         expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
-            'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
         );
         expect(statusWrites()).toHaveLength(1);
         expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
@@ -1005,7 +1081,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(success).toHaveBeenCalledTimes(1);
         await startStatusActivation(user);
         expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
-            'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
         );
         expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
         warn.mockRestore();
@@ -1021,7 +1097,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(mocks.mutate.mock.calls[0][0].consultantIds).toHaveLength(1);
         await startStatusActivation(user);
         expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
-            'Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
         );
         expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
         mocks.hasConsultants = true;

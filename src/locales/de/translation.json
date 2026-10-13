@@ -2748,7 +2748,7 @@
     "entityStatus.loading": "Status wird geladen …",
     "entityStatus.saving": "Wird gespeichert und geprüft …",
     "entityStatus.reload": "Erneut laden",
-    "entityStatus.readOnly": "Du kannst den Status hier ansehen, aber nicht ändern.",
+    "entityStatus.readOnly": "Sie können den Status hier ansehen, aber nicht ändern.",
     "entityStatus.unknownNotice": "Der Status ist nicht bestätigt. Änderungen sind derzeit nicht möglich.",
     "entityStatus.username": "Benutzername",
     "entityStatus.created": "Angelegt am",
@@ -2759,12 +2759,14 @@
     "entityStatus.twoFactor.required": "2FA erforderlich",
     "entityStatus.twoFactor.configured": "2FA eingerichtet",
     "entityStatus.twoFactor.active": "2FA aktiv",
+    "entityStatus.activationTopicsLoading": "Die angebotenen Themen werden geladen. Bitte warten Sie vor einer Aktivierung.",
+    "entityStatus.activationTopicsError": "Die angebotenen Themen konnten nicht geladen werden. Bitte laden Sie die Seite vor einer Aktivierung erneut.",
     "entityStatus.scope.account": "Ändert nur den Status dieses Kontos.",
     "entityStatus.scope.tenant": "Ändert den Status dieses Trägers.",
     "entityStatus.scope.agency": "Ändert den Status dieser Beratungsstelle.",
     "entityStatus.error.load": "Status konnte nicht bestätigt werden. Bitte erneut laden.",
     "entityStatus.error.save": "Die Änderung wurde nicht bestätigt. Bitte den Status prüfen und erneut versuchen.",
-    "entityStatus.error.forbidden": "Du darfst den Status dieses Eintrags nicht ändern.",
+    "entityStatus.error.forbidden": "Sie dürfen den Status dieses Eintrags nicht ändern.",
     "entityStatus.error.restricted": "Bestehende Einschränkungen verhindern die Aktivierung.",
     "entityStatus.restrictionUnknown": "Eine weitere Einschränkung besteht.",
     "entityStatus.restrictions.MANAGED_PAUSE": "Das Konto ist pausiert.",
@@ -2779,6 +2781,6 @@
     "entityStatus.kind.account": "Konto",
     "entityStatus.kind.tenant": "Träger",
     "entityStatus.kind.agency": "Beratungsstelle",
-    "entityStatus.error.assignCounsellor": "Ordne der Beratungsstelle zuerst mindestens eine beratende Person zu.",
-    "entityStatus.error.postcodeCoverage": "Hinterlege zuerst den Einzugsbereich der Beratungsstelle."
+    "entityStatus.error.assignCounsellor": "Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.",
+    "entityStatus.error.postcodeCoverage": "Hinterlegen Sie zuerst den Einzugsbereich der Beratungsstelle."
 }

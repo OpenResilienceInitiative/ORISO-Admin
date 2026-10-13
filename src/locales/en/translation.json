@@ -2759,6 +2759,8 @@
     "entityStatus.twoFactor.required": "2FA required",
     "entityStatus.twoFactor.configured": "2FA configured",
     "entityStatus.twoFactor.active": "2FA active",
+    "entityStatus.activationTopicsLoading": "Available topics are loading. Please wait before activating.",
+    "entityStatus.activationTopicsError": "Available topics could not be loaded. Please reload the page before activating.",
     "entityStatus.scope.account": "Changes only this account’s status.",
     "entityStatus.scope.tenant": "Changes this organisation’s status.",
     "entityStatus.scope.agency": "Changes this counselling centre’s status.",

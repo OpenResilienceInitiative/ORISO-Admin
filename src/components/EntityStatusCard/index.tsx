@@ -33,6 +33,7 @@ interface Props {
     isLoading: boolean;
     loadError?: unknown;
     canManage: boolean;
+    activationBlockedReason?: string;
     onSave: (active: boolean) => Promise<void | boolean>;
     onReload: () => void;
 }
@@ -44,6 +45,7 @@ export const EntityStatusCard = ({
     isLoading,
     loadError,
     canManage,
+    activationBlockedReason,
     onSave,
     onReload,
 }: Props) => {
@@ -54,8 +56,10 @@ export const EntityStatusCard = ({
     const [saveError, setSaveError] = useState<unknown>();
     const known = !loadError && typeof data?.ownActive === 'boolean' && typeof data?.active === 'boolean';
     const canEdit = known && canManage && !isLoading && !saving;
+    const activationBlocked = editing && draft && data?.ownActive === false ? activationBlockedReason : undefined;
+    const canSave = canEdit && !activationBlocked;
     const save = async () => {
-        if (!canEdit || !editing) return;
+        if (!canSave || !editing) return;
         setSaving(true);
         setSaveError(undefined);
         try {
@@ -112,7 +116,7 @@ export const EntityStatusCard = ({
                                     </M3Button>
                                 </span>
                                 <span data-testid="entity-status-save">
-                                    <M3Button variant="filled" disabled={!canEdit} loading={saving} onClick={save}>
+                                    <M3Button variant="filled" disabled={!canSave} loading={saving} onClick={save}>
                                         {t('save')}
                                     </M3Button>
                                 </span>
@@ -133,6 +137,11 @@ export const EntityStatusCard = ({
                     {saving && (
                         <p role="status" data-testid="entity-status-pending">
                             {t('entityStatus.saving')}
+                        </p>
+                    )}
+                    {activationBlocked && (
+                        <p role="status" data-testid="entity-status-activation-blocked">
+                            {t(activationBlocked)}
                         </p>
                     )}
                     <p className={styles.confirmed}>
@@ -212,6 +221,7 @@ interface ManagedProps {
     entityName?: string;
     entityId: string;
     canManage: boolean;
+    activationBlockedReason?: string;
     targetTenantId?: number | string;
     onBeforeChange?: (active: boolean, currentActive: boolean) => Promise<boolean>;
 }
@@ -220,6 +230,7 @@ export const ManagedEntityStatus = ({
     entityId,
     entityName,
     canManage,
+    activationBlockedReason,
     targetTenantId,
     onBeforeChange,
 }: ManagedProps) => {
@@ -264,6 +275,7 @@ export const ManagedEntityStatus = ({
             isLoading={query.isLoading}
             loadError={query.error}
             canManage={canManage && scopeAllowed}
+            activationBlockedReason={activationBlockedReason}
             onSave={save}
             onReload={() => query.refetch()}
         />

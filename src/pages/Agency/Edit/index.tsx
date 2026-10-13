@@ -114,7 +114,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
-    const { data: tenantTopics } = useTenantTopics(true);
+    const { data: tenantTopics, isLoading: tenantTopicsLoading, isError: tenantTopicsError } = useTenantTopics(true);
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
     let legalTabIcon: ReactElement | null = null;
@@ -348,20 +348,19 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         [isEditing, mutate, t],
     );
 
+    let activationBlockedReason: string | undefined;
+    if (tenantTopicsLoading) activationBlockedReason = 'entityStatus.activationTopicsLoading';
+    else if (tenantTopicsError) activationBlockedReason = 'entityStatus.activationTopicsError';
     const beforeStatusChange = useCallback(
         async (active: boolean, currentActive: boolean) => {
-            if (
-                !active ||
-                currentActive ||
-                (tenantTopics?.length ?? 0) === 0 ||
-                normalizeTopicIds(initialValues.topicIds).length > 0
-            )
-                return true;
+            if (!active || currentActive) return true;
+            if (activationBlockedReason) return false;
+            if ((tenantTopics?.length ?? 0) === 0 || normalizeTopicIds(initialValues.topicIds).length > 0) return true;
             return new Promise<boolean>((resolve) => {
                 setPendingStatusConfirmation({ entityId: id ?? '', resolve });
             });
         },
-        [id, initialValues.topicIds, tenantTopics?.length],
+        [id, activationBlockedReason, initialValues.topicIds, tenantTopics?.length],
     );
 
     const confirmNoTopicActivation = useCallback(() => {
@@ -470,6 +469,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                 canManage
                                 targetTenantId={agencyTenantId}
                                 onBeforeChange={beforeStatusChange}
+                                activationBlockedReason={activationBlockedReason}
                             />
                         </CardDeck.Item>
                         <CardDeck.Item>
