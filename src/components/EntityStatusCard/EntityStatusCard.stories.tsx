@@ -738,13 +738,51 @@ export const TopiclessCentreActivationConfirmation: Story = {
                 http.put('*/service/agencyadmin/agencies/7', () => {
                     throw new Error('Status approval must not write centre metadata');
                 }),
+                http.get('*/service/useradmin/agencies/7/consultants', () =>
+                    HttpResponse.json({
+                        total: 1,
+                        _embedded: [
+                            {
+                                _embedded: {
+                                    id: 'topicless-counsellor',
+                                    firstname: 'Ada',
+                                    lastname: 'Beispiel',
+                                    email: 'ada@example.org',
+                                    tenantId: 1,
+                                    active: true,
+                                    deleteDate: null,
+                                },
+                            },
+                        ],
+                    }),
+                ),
+                http.get('*/service/users/consultants/search', () =>
+                    HttpResponse.json({
+                        total: 1,
+                        _embedded: [
+                            {
+                                _embedded: {
+                                    id: 'topicless-counsellor',
+                                    firstname: 'Ada',
+                                    lastname: 'Beispiel',
+                                    email: 'ada@example.org',
+                                    tenantId: 1,
+                                    active: true,
+                                    deleteDate: null,
+                                },
+                            },
+                        ],
+                    }),
+                ),
+                http.get('*/service/agencyadmin/postcoderanges/7', () =>
+                    HttpResponse.json({
+                        _embedded: { postcodeRanges: '00000-99999' },
+                    }),
+                ),
                 http.get('*/service/agencyadmin/agencies/7/*', () => HttpResponse.json([])),
                 http.get('*/service/tenantadmin/*', () => HttpResponse.json(tenantFixture)),
                 http.get('*/service/topic*', () => HttpResponse.json([offeredTopic])),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json(tenantFixture)),
-                http.get('*/service/useradmin/consultants/search*', () =>
-                    HttpResponse.json({ _embedded: [], total: 0 }),
-                ),
             ],
         },
     },
@@ -754,6 +792,11 @@ export const TopiclessCentreActivationConfirmation: Story = {
         await waitFor(() =>
             expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
         );
+        await expect(await canvas.findByText('Ada Beispiel')).toBeVisible();
+        await expect(
+            canvas.queryByText(i18n.t('agency.form.registrationSettings.assigned.loadError')),
+        ).not.toBeInTheDocument();
+        await expect(body.queryByText(i18n.t('message.error.default'))).not.toBeInTheDocument();
         await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
         await userEvent.click(within(canvas.getByTestId('entity-status-switch')).getByRole('switch'));
         await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
@@ -771,5 +814,11 @@ export const TopiclessCentreActivationConfirmation: Story = {
             expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
         );
         await expect(topiclessCommands).toEqual([{ active: true }]);
+        await expect(canvas.getByText('Ada Beispiel')).toBeVisible();
+        await expect(
+            canvas.queryByText(i18n.t('agency.form.registrationSettings.assigned.loadError')),
+        ).not.toBeInTheDocument();
+        await expect(body.queryByText(i18n.t('message.error.default'))).not.toBeInTheDocument();
+        await expect(body.queryByRole('alert')).not.toBeInTheDocument();
     },
 };
