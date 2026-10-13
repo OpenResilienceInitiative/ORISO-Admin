@@ -22,8 +22,6 @@ import {
 } from '../../components/PlaceholderTemplate';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { canEditSharedTemplates, resolveVisibleTemplateKinds } from '../../constants/linksAccess';
-import { useTenantsData } from '../../hooks/useTenantsData';
-import { convertToOptions } from '../../utils/convertToOptions';
 import { LANGUAGE_OPTIONS } from '../../utils/language';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { M3Tooltip } from '../../components/M3Tooltip';
@@ -155,19 +153,8 @@ export const EmailTemplatesDialog = ({
         },
         [lockReasonFor, t],
     );
-    // Preview context is deliberately separate from the persisted template draft.
-    const [previewTenant, setPreviewTenant] = useState('platform');
-    const {
-        data: previewTenants,
-        isLoading: previewTenantsLoading,
-        isError: previewTenantsFailed,
-    } = useTenantsData({
-        perPage: 1000,
-        enabled: isSuperAdmin && view === 'form',
-    });
-    const selectedPreviewTenantId = previewTenant === 'platform' ? undefined : Number(previewTenant);
-    const scopedTenantId = activeTenantId && activeTenantId > 0 ? activeTenantId : undefined;
-    const previewTenantId = isSuperAdmin ? selectedPreviewTenantId : scopedTenantId;
+    // Preview uses the current account's design. Branding follows tenant settings automatically.
+    const previewTenantId = !isSuperAdmin && activeTenantId && activeTenantId > 0 ? activeTenantId : undefined;
 
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
     const [draftMeta, setDraftMeta] = useState<TemplateDraftMeta>({
@@ -801,34 +788,6 @@ export const EmailTemplatesDialog = ({
                             />
                         </div>
                     </div>
-                    {isSuperAdmin && (
-                        <div className={styles.metaField}>
-                            <label className={styles.metaLabel} htmlFor={`${fieldId}-preview-tenant`}>
-                                {t('links.templates.previewTenant', 'Preview in the design of')}
-                            </label>
-                            <Select
-                                id={`${fieldId}-preview-tenant`}
-                                value={previewTenant}
-                                onChange={setPreviewTenant}
-                                showSearch
-                                optionFilterProp="label"
-                                loading={previewTenantsLoading}
-                                options={[
-                                    { value: 'platform', label: t('links.templates.previewPlatform', 'Plattform') },
-                                    ...convertToOptions(previewTenants?.data ?? [], 'name', 'id'),
-                                ]}
-                            />
-                            {previewTenantsFailed && (
-                                <Alert
-                                    type="error"
-                                    message={t(
-                                        'links.templates.previewTenantsFailed',
-                                        'Träger für die Vorschau konnten nicht geladen werden.',
-                                    )}
-                                />
-                            )}
-                        </div>
-                    )}
                     <InviteEmailTemplateEditor
                         hideTemplateChooser
                         tenantId={previewTenantId}

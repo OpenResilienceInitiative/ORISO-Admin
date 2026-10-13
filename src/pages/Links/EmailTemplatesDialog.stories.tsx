@@ -131,9 +131,6 @@ const previewHandler = http.post(`${TEMPLATES_ENDPOINT}/preview`, async ({ reque
         sampleAcceptUrl: 'https://example.invalid/preview',
     });
 });
-const previewTenants = http.get('*/service/tenantadmin/search', () =>
-    HttpResponse.json({ _embedded: [{ id: 1, name: 'Springfield' }], total: 1 }),
-);
 const updatedTemplate = http.put(`${TEMPLATES_ENDPOINT}/:id`, async ({ request, params }) =>
     HttpResponse.json({
         ...TEMPLATES.find((template) => String(template.id) === params.id),
@@ -193,14 +190,7 @@ type Story = StoryObj<typeof meta>;
 export const Filled: Story = {
     parameters: {
         msw: {
-            handlers: [
-                previewHandler,
-                previewTenants,
-                templatesByKind,
-                createdTemplate,
-                updatedTemplate,
-                deletedTemplate,
-            ],
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
         },
     },
 };
@@ -215,14 +205,7 @@ export const Picker: Story = {
     args: { picker: true, selectedTemplateId: 1 },
     parameters: {
         msw: {
-            handlers: [
-                previewHandler,
-                previewTenants,
-                templatesByKind,
-                createdTemplate,
-                updatedTemplate,
-                deletedTemplate,
-            ],
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
         },
     },
 };
@@ -236,14 +219,7 @@ export const CreateView: Story = {
     args: { initialView: 'create' },
     parameters: {
         msw: {
-            handlers: [
-                previewHandler,
-                previewTenants,
-                templatesByKind,
-                createdTemplate,
-                updatedTemplate,
-                deletedTemplate,
-            ],
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
         },
     },
 };
@@ -252,12 +228,7 @@ export const CreateView: Story = {
 export const Empty: Story = {
     parameters: {
         msw: {
-            handlers: [
-                previewHandler,
-                previewTenants,
-                http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])),
-                createdTemplate,
-            ],
+            handlers: [previewHandler, http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])), createdTemplate],
         },
     },
 };
@@ -268,7 +239,6 @@ export const Loading: Story = {
         msw: {
             handlers: [
                 previewHandler,
-                previewTenants,
                 updatedTemplate,
                 deletedTemplate,
                 http.get(TEMPLATES_ENDPOINT, async () => {
@@ -300,7 +270,6 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
         msw: {
             handlers: [
                 previewHandler,
-                previewTenants,
                 updatedTemplate,
                 deletedTemplate,
                 http.get(
@@ -370,7 +339,6 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
         msw: {
             handlers: [
                 previewHandler,
-                previewTenants,
                 updatedTemplate,
                 deletedTemplate,
                 http.get(
@@ -426,14 +394,7 @@ export const CreateAndUse: Story = {
     args: { picker: true, selectedTemplateId: 1, initialView: 'create' },
     parameters: {
         msw: {
-            handlers: [
-                previewHandler,
-                previewTenants,
-                templatesByKind,
-                createdTemplate,
-                updatedTemplate,
-                deletedTemplate,
-            ],
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
         },
     },
     play: async ({ canvasElement }) => {
@@ -463,6 +424,10 @@ export const FooterEditor: Story = {
         await expect(within(footer).getByLabelText('Bisherige Vorlagen')).toHaveRole('combobox');
         await expect(dialog.getByLabelText('Sprache')).toHaveRole('combobox');
         await expect(dialog.queryByRole('switch')).not.toBeInTheDocument();
+        await expect(dialog.queryByLabelText('Vorschau im Design von')).not.toBeInTheDocument();
+        await expect(
+            dialog.queryByText('Träger für die Vorschau konnten nicht geladen werden.'),
+        ).not.toBeInTheDocument();
         await expect(dialog.queryByRole('button', { name: 'Vorlagenmenü öffnen' })).not.toBeInTheDocument();
         await body.findByTitle('E-Mail-Vorschau');
         await waitFor(() => expect(doc.querySelector('.ant-modal[class*="ant-zoom"]')).toBeNull());

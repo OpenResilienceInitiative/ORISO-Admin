@@ -329,7 +329,6 @@ describe('EmailTemplatesDialog', () => {
         // Kind is preset to the opening tab's kind — no manual selection needed.
         expect(withinDialog.getByLabelText('Template for')).toHaveValue('TENANT_INVITE');
 
-        await user.selectOptions(withinDialog.getByLabelText('Preview in the design of'), '40');
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
@@ -376,29 +375,19 @@ describe('EmailTemplatesDialog', () => {
      * new boundary rather than deleted: what the composer hands the renderer, and
      * what it does with the answer.
      */
-    it('changes only unsaved preview context between platform and Springfield', async () => {
+    it('uses platform design automatically without a design selector or tenant catalogue request', async () => {
         const user = userEvent.setup();
         renderDialog();
         const dialog = await openCreateForm(user);
+        expect(dialog.queryByLabelText('Preview in the design of')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).not.toHaveBeenCalled();
         await waitFor(() =>
             expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
                 expect.objectContaining({ tenantId: undefined }),
-            ),
-        );
-        await user.selectOptions(dialog.getByLabelText('Preview in the design of'), '40');
-        await waitFor(() =>
-            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
-                expect.objectContaining({ tenantId: 40 }),
             ),
         );
         expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
-        await user.selectOptions(dialog.getByLabelText('Preview in the design of'), 'platform');
-        await waitFor(() =>
-            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
-                expect.objectContaining({ tenantId: undefined }),
-            ),
-        );
     });
 
     it('uses the active tenant without offering cross-tenant preview selection', async () => {
@@ -409,7 +398,7 @@ describe('EmailTemplatesDialog', () => {
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         await userEvent.setup().click(screen.getByRole('button', { name: 'New template' }));
         expect(screen.queryByLabelText('Preview in the design of')).not.toBeInTheDocument();
-        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+        expect(mocks.useTenantsData).not.toHaveBeenCalled();
         await waitFor(() =>
             expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
                 expect.objectContaining({ tenantId: 40 }),

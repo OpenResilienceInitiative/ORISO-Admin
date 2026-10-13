@@ -2,7 +2,7 @@
 
 The invitation toolbar offers the current account's four most recently selected templates. Its main action opens the complete catalogue. Creation has two actions: a blank template and a system-default draft. The system draft uses the interface language when available, then English or German. A custom template never acts as the system default.
 
-The editor keeps **Existing templates**, **Template name**, Cancel and Save in its footer. Only its body scrolls. Loading an editable template preserves its ID and name; Save requires an explicit overwrite confirmation. Loading a protected system template starts a new owned copy. Platform admins retain the existing right to edit system text; its kind and language stay locked, and deletion remains unavailable. The separate branding selector controls the preview's design only. The language select controls the email's language.
+The editor keeps **Existing templates**, **Template name**, Cancel and Save in its footer. Only its body scrolls. Loading an editable template preserves its ID and name; Save requires an explicit overwrite confirmation. Loading a protected system template starts a new owned copy. Platform admins retain the existing right to edit system text; its kind and language stay locked, and deletion remains unavailable. The preview automatically uses the current Träger's design for scoped admins and the platform design for platform admins. No manual design selector or Träger-catalogue request is needed. Changing Träger branding is a separate settings workflow; template loading does not change the SMTP sender address. The language select controls the email's language.
 
 Deletion requires a confirmation and a permitted custom template. A deleted choice is immediately removed from the invitation composer, even if refreshing the catalogue fails. UserService protects system defaults, foreign ownership and templates used by waiting invitations. Historical delivery snapshots remain unchanged.
 
@@ -12,7 +12,7 @@ The complete flows live under `Organisms/Pages/Links/EmailTemplatesDialog`:
 
 -   `FooterEditor` and `FooterEditorMobile`: footer controls, language select, removed upper chooser and body-scroll geometry.
 -   `LoadAndOverwrite`: identity/name loading, confirmation, cancellation and update.
--   `TraegerFooterEditor` and `AgencyFooterEditor`: owned template workflows and scoped branding.
+-   `TraegerFooterEditor` and `AgencyFooterEditor`: owned template workflows and automatic scoped branding.
 -   `DeleteConfirmation`: cancellation and guarded destructive action.
 -   Existing `CreateAndUse`, loading, empty, error and read-only stories remain.
 
