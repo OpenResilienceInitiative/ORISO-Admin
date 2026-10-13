@@ -40,6 +40,15 @@ const Harness = ({
 );
 
 describe('MuiSelectField data parity', () => {
+    it('names its real loading indicator and retains the named combobox', () => {
+        render(
+            <Form>
+                <MuiSelectField name="topic" label="Topic" options={OPTIONS} loading />
+            </Form>,
+        );
+        expect(screen.getByRole('progressbar', { name: 'loading' })).toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Topic' })).toBeInTheDocument();
+    });
     it('reads: initialValue is displayed', () => {
         render(<Harness onValues={() => undefined} initialValues={{ topic: 'a' }} />);
         expect(screen.getByRole('combobox')).toHaveValue('Alpha');

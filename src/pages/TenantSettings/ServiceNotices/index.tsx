@@ -8,6 +8,7 @@ import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/Card';
 import { M3Button } from '../../../components/M3Button';
+import { muiFieldSx } from '../../../components/mui/fieldSx';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import { EmailPreviewFrame } from '../../../components/EmailPreview/EmailPreviewFrame';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -158,6 +159,7 @@ export const ServiceNoticesPage = () => {
                             })}
                         </Typography>
                         <TextField
+                            sx={muiFieldSx()}
                             select
                             label={t('serviceNotices.variant')}
                             value={variant}

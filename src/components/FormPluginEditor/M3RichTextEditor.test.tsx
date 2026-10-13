@@ -133,3 +133,19 @@ describe('M3RichTextEditor image upload integrity', () => {
         expect(saveDraft).toBeEnabled();
     });
 });
+
+describe('M3RichTextEditor shared accessibility boundaries', () => {
+    it('keeps a disabled formatting strip keyboard-scrollable', async () => {
+        const { container } = render(<M3RichTextEditor title="Datenschutz" onSaveDraft={vi.fn()} />);
+        await screen.findByTestId('m3-toolbar');
+        const strip = container.querySelector('[class*="toolbarScroll"]');
+        expect(strip).toHaveAttribute('tabindex', '0');
+    });
+    it('keeps the title icon decorative next to the visible heading', async () => {
+        const { container } = render(
+            <M3RichTextEditor title="Datenschutz" icon={(props) => <span role="img" {...props} />} />,
+        );
+        await screen.findByRole('heading', { name: 'Datenschutz' });
+        expect(container.querySelector('[class*="headerIcon"]')).toHaveAttribute('aria-hidden', 'true');
+    });
+});

@@ -141,14 +141,14 @@ const TrendBadge = ({
     const TrendIcon = getTrendIcon(direction);
 
     return (
-        <span
-            className={getTrendClassName(scoreTone)}
-            aria-label={`${translateDashboardKey(
-                translate,
-                isNegative ? 'statistic.dashboard.trend.decrease' : 'statistic.dashboard.trend.increase',
-                isNegative ? 'Abnahme' : 'Zunahme',
-            )} ${displayValue}`}
-        >
+        <span className={getTrendClassName(scoreTone)}>
+            <span className="sr-only">
+                {translateDashboardKey(
+                    translate,
+                    isNegative ? 'statistic.dashboard.trend.decrease' : 'statistic.dashboard.trend.increase',
+                    isNegative ? 'Abnahme' : 'Zunahme',
+                )}{' '}
+            </span>
             <TrendIcon aria-hidden="true" />
             {displayValue}
         </span>
@@ -270,8 +270,9 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
             {displayEmptyHint ? (
                 <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
                     {/* Screen readers get the explicit wording; the dash is purely visual. */}
-                    <strong aria-label={displayValue}>
+                    <strong>
                         <span aria-hidden="true">–</span>
+                        <span className="sr-only">{displayValue}</span>
                     </strong>
                     <span className="statisticDashboard__cardEmptyHint">{displayEmptyHint}</span>
                 </div>

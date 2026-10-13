@@ -33,7 +33,7 @@ const labelStyle: React.CSSProperties = {
 const Column = ({ label, note, children }: { label: string; note: string; children: React.ReactNode }) => (
     <div style={{ width: 360, display: 'flex', flexDirection: 'column' }}>
         <div style={labelStyle}>
-            {label} <span style={{ color: '#8a8d8e' }}>— {note}</span>
+            {label} <span style={{ color: 'var(--m3-on-surface-variant, #444748)' }}>— {note}</span>
         </div>
         {children}
     </div>

@@ -290,6 +290,9 @@ export type M3RichTextEditorProps = {
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
+// Formality is an internal content key, not part of an HTML language tag.
+const toHtmlLanguage = (language: string | undefined) => (language === 'de@informal' ? 'de' : language);
+
 /**
  * Stacking level of the fullscreen reading dialog (#594.9).
  *
@@ -479,7 +482,14 @@ const Toolbar = ({
                 mobile fullscreen) — only the rest of the bar scrolls sideways. */}
             {leading}
             {leading && <span className={styles.vDivider} />}
-            <div className={styles.toolbarScroll}>
+            <div
+                className={styles.toolbarScroll}
+                role="region"
+                aria-label={t('editor.toolbar.region', 'Textformatierung')}
+                // A disabled fieldset has no tab stops; keep its overflowing strip scrollable.
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                tabIndex={disabled ? 0 : undefined}
+            >
                 {/* A disabled fieldset natively disables every formatting control inside
                 (read mode / version look-back) without touching each button. */}
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
@@ -1248,7 +1258,7 @@ export const M3RichTextEditor = ({
         >
             {!hideHeader && (
                 <div className={styles.header}>
-                    <IconComponent className={styles.headerIcon} />
+                    <IconComponent className={styles.headerIcon} aria-hidden="true" />
                     <h2 className={styles.title}>{title}</h2>
                 </div>
             )}
@@ -1302,7 +1312,11 @@ export const M3RichTextEditor = ({
                         {comparison.detail && <div className={styles.comparisonDetail}>{comparison.detail}</div>}
                         <div
                             className={styles.comparisonDocument}
-                            lang={comparison.language}
+                            role="region"
+                            aria-label={comparison.title}
+                            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the scrollable reference
+                            tabIndex={0}
+                            lang={toHtmlLanguage(comparison.language)}
                             // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary
                             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comparison.html) }}
                         />
@@ -1343,7 +1357,7 @@ export const M3RichTextEditor = ({
                                 no dictionary without it. */}
                             <div
                                 className={styles.editorContentScroll}
-                                lang={contentLanguage ?? language}
+                                lang={toHtmlLanguage(contentLanguage ?? language)}
                                 {...(!editorEditable ? { role: 'region', 'aria-label': title } : {})}
                                 {...(!editorEditable && scrollsInternally
                                     ? // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
@@ -1382,7 +1396,7 @@ export const M3RichTextEditor = ({
                         editor={editor}
                         pluginKey="anchorLinkBubble"
                         updateDelay={150}
-                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
+                        tippyOptions={{ placement: 'top', maxWidth: 'none', aria: { expanded: false } }}
                         shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
                     >
                         <div className={styles.anchorBubble}>
@@ -1685,7 +1699,7 @@ export const M3RichTextEditor = ({
                     className={`${styles.comparisonDocument} ${styles.templateDialogDocument}`}
                     role="region"
                     aria-label={comparison.title}
-                    lang={comparison.language}
+                    lang={toHtmlLanguage(comparison.language)}
                     // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard access to the full scrollable template
                     tabIndex={0}
                     // eslint-disable-next-line react/no-danger -- sanitize received template HTML at this rendering boundary

@@ -36,6 +36,7 @@ import {
     MIN_PASSWORD_LENGTH,
     useCounsellorOnboardingFlow,
 } from './useCounsellorOnboardingFlow';
+import { OnboardingPictureField } from './OnboardingPictureField';
 import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
 
@@ -94,6 +95,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         invite,
         data,
         submitError,
+        pictureError,
         busy,
         retryLoad,
         topicLanguageError,
@@ -101,6 +103,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updateAccount,
         updatePerson,
         updateNames,
+        updatePicture,
         updateAvatar,
         updateAgency,
         setTopics,
@@ -186,6 +189,11 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         }
         return (
             <div className={styles.wizard}>
+                {pictureError && (
+                    <Typography role="status" color="text.secondary" sx={{ mb: 2 }} data-testid="wizard-picture-notice">
+                        {t(`counsellorOnboarding.picture.${pictureError}Failed`)}
+                    </Typography>
+                )}
                 <TwoFactorSetup
                     context="onboarding"
                     appLink={
@@ -407,6 +415,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
                 {counselling && (
                     <FloatingLabelSelect
+                        virtual={false}
                         label={t('cards.personalInfo.salutation')}
                         options={SALUTATION_KEYS.map((key) => ({
                             value: key,
@@ -437,7 +446,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             {/*
               #1047: the avatar step is ON. Still one plain single-column section —
               the picker sits above the two names, exactly where the Figma card puts
-              it. The own-picture upload is the only part still missing (#1049).
+              it. The own-picture upload is the following section (#1049).
             */}
             {counselling && (
                 <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
@@ -462,6 +471,16 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     />
                 </Section>
             )}
+
+            {/* Issue #1049 — the picture step. Internal unless the counsellor publishes it. */}
+            <Section titleKey="counsellorOnboarding.picture.title" hintKey="counsellorOnboarding.picture.subtitle">
+                <OnboardingPictureField
+                    file={data.picture.file}
+                    publicToAdviceSeekers={data.picture.publicToAdviceSeekers}
+                    disabled={busy}
+                    onChange={updatePicture}
+                />
+            </Section>
 
             {createsAgency && (
                 <Section
