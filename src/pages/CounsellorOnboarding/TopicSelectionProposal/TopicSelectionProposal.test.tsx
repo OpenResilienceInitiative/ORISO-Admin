@@ -2,6 +2,31 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TopicSelectionProposal } from './index';
 
+it.each([
+    ['de', 'Schließen'],
+    ['en', 'Close'],
+    ['fr', 'Fermer'],
+    ['ru', 'Закрыть'],
+    ['tr', 'Kapat'],
+    ['uk', 'Закрити'],
+    ['ti', 'ዕጸው'],
+])(
+    'localizes the close action in %s and cancels draft topics without losing the entered name',
+    async (language, label) => {
+        const user = userEvent.setup();
+        render(<TopicSelectionProposal />);
+        await user.type(screen.getByRole('textbox', { name: 'Anzeigename' }), 'Georgia');
+        await user.click(screen.getByRole('button', { name: 'Themen auswählen' }));
+        const dialog = within(screen.getByRole('dialog'));
+        await user.click(dialog.getByRole('checkbox', { name: 'Schulden' }));
+        await user.selectOptions(dialog.getByRole('combobox'), language);
+        await user.click(dialog.getByRole('button', { name: label }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(screen.getByRole('textbox')).toHaveValue('Georgia');
+        expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    },
+);
+
 describe('topic selection design proposal', () => {
     it('cancels draft choices, applies a later choice and preserves it and the entered name across languages', async () => {
         const user = userEvent.setup();
