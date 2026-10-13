@@ -27,6 +27,10 @@ export const LazyTenantGlobalSettings = lazyNamed(
 );
 export const LazySingleLegalSettings = lazyNamed(() => import('./Tenants/Edit/LegalSettings'), 'SingleLegalSettings');
 export const LazyAppSettingsPage = lazyNamed(() => import('./TenantSettings/AppSettings'), 'AppSettingsPage');
+export const LazyErstantwortSettingsPage = lazyNamed(
+    () => import('./TenantSettings/ErstantwortSettings'),
+    'ErstantwortSettingsPage',
+);
 export const LazyPermissionsSettingsPage = lazyNamed(
     () => import('./TenantSettings/PermissionsSettings'),
     'PermissionsSettingsPage',
