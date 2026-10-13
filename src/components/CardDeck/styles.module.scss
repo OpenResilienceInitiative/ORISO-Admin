@@ -88,6 +88,35 @@
     }
 }
 
+// #1195: a wrapping deck. The cards fill the width they get: one per row on a narrow page, two on
+// a medium one, three on a very wide one. Nothing scrolls sideways, so the arrows and dots are not
+// rendered either. The column minimum is the narrowest width a card (its editor toolbar included)
+// stays usable at; `min(100%, …)` lets a single card shrink below it on a phone.
+.wrap {
+    min-height: 0;
+
+    .deck {
+        overflow: visible;
+        padding: var(--card-deck-wrap-padding, 0 4px 8px);
+        touch-action: auto;
+    }
+
+    .list {
+        display: grid;
+        min-width: 0;
+        align-items: start;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-deck-wrap-min-width, 400px)), 1fr));
+        gap: var(--card-deck-wrap-gap, 24px);
+    }
+
+    .item {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        flex: 1 1 auto;
+    }
+}
+
 // The arrows moved into the page header rail (Figma 1285-80496); what stays
 // under the cards is the #568 position indicator, in normal flow so it can no
 // longer overlap the cards' own footer actions and toasts.

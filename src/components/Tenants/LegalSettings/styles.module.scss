@@ -9,28 +9,15 @@
     color: var(--black-60);
 }
 
-// Compact legal settings cards use the same width as the other settings decks.
+// #1195: the legal cards wrap by the width they get (CardDeck layout="wrap"): one per row on a
+// narrow page, two on a medium one, three on a very wide one. No card carries a fixed pixel
+// width any more, so the M3 document editors follow the column instead of forcing 800px.
 .cardDeck {
-    --card-deck-item-width: 425px;
-    --card-deck-item-max-width: 425px;
+    --card-deck-wrap-min-width: 400px;
 }
 
-// #605: the M3 document editor is intentionally 800px wide on desktop
-// (Figma 1261-48667). Scope that width to DPA, imprint and privacy so the
-// compact settings card keeps the regular deck width from #582.
-@media (min-width: 768px) {
-    .documentEditorItem {
-        --card-deck-item-min-width: 800px;
-        --card-deck-item-width: 800px;
-        --card-deck-item-max-width: min(800px, calc(100vw - 176px));
-    }
-}
-
-// #1070: a received template sits beside the own draft; the card then takes the page width it can
-// get (capped like every deck item), and the compare stacks itself below 900px.
-@media (min-width: 768px) {
-    .documentEditorItem:has([data-legal-compare-open='true']) {
-        --card-deck-item-width: 1440px;
-        --card-deck-item-max-width: calc(100vw - 176px);
-    }
+// #1070: a received template sits beside the own draft; the card then takes a whole row, and the
+// compare stacks itself below 900px.
+.documentEditorItem:has([data-legal-compare-open='true']) {
+    grid-column: 1 / -1;
 }

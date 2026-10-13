@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, within } from 'storybook/test';
 import { Card } from '../Card';
 import { CardDeck } from './index';
 
@@ -83,4 +85,49 @@ export const StackedFallback: Story = {
             </CardDeck>
         </div>
     ),
+};
+
+const columnsOf = (canvasElement: HTMLElement) =>
+    new Set(
+        Array.from(canvasElement.querySelectorAll('[data-admin-card-deck-item]')).map(
+            (item) => (item as HTMLElement).offsetLeft,
+        ),
+    ).size;
+
+const WrapDeck = ({ width, args }: { width: number; args: React.ComponentProps<typeof CardDeck> }) => (
+    <div style={{ width }} data-testid="wrap-frame">
+        <CardDeck {...args} layout="wrap">
+            {['Datenschutz', 'Impressum', 'Auftragsverarbeitung', 'Schalter'].map((title) => (
+                <CardDeck.Item key={title}>
+                    <Card titleKey={title}>Inhalt von {title}.</Card>
+                </CardDeck.Item>
+            ))}
+        </CardDeck>
+    </div>
+);
+
+/** #1195: a narrow page shows one card per row and never scrolls sideways. */
+export const WrapNarrow: Story = {
+    render: (args) => <WrapDeck width={360} args={args} />,
+    play: async ({ canvasElement }) => {
+        await expect(columnsOf(canvasElement)).toBe(1);
+        const frame = within(canvasElement).getByTestId('wrap-frame');
+        await expect(frame.scrollWidth).toBeLessThanOrEqual(frame.clientWidth);
+    },
+};
+
+/** #1195: a medium page shows two cards per row. */
+export const WrapMedium: Story = {
+    render: (args) => <WrapDeck width={900} args={args} />,
+    play: async ({ canvasElement }) => {
+        await expect(columnsOf(canvasElement)).toBe(2);
+    },
+};
+
+/** #1195: a very wide page shows three cards per row. */
+export const WrapWide: Story = {
+    render: (args) => <WrapDeck width={1400} args={args} />,
+    play: async ({ canvasElement }) => {
+        await expect(columnsOf(canvasElement)).toBe(3);
+    },
 };

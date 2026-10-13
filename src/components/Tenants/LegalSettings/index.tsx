@@ -50,16 +50,48 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
         />
     );
 
+    // Order (#1196): the documents an admin works on come first, privacy statement, imprint, data
+    // processing agreement; the rarely used single-tenant switch comes last.
     // Never hide modules, only disable them: the settings card, the data
     // processing agreement, the imprint and the privacy statement are always
     // visible in every view; editing stays restricted by permissions.
     return (
         <CardDeck
             className={styles.cardDeck}
+            layout="wrap"
             ariaLabel={t('settings.subhead.legal')}
             previousLabel={t('legal.cardDeck.previous')}
             nextLabel={t('legal.cardDeck.next')}
         >
+            <CardDeck.Item className={styles.documentEditorItem}>{LegalTextElement}</CardDeck.Item>
+            <CardDeck.Item className={styles.documentEditorItem}>
+                <LegalTextCard
+                    tenantId={finalTenantId}
+                    draftTenantId={draftTenantId}
+                    fieldName={['content', 'impressum']}
+                    titleKey="imprint.title"
+                    legalType="imprint"
+                    icon={ImprintIcon}
+                    placeHolderKey="settings.imprint.placeholder"
+                />
+            </CardDeck.Item>
+            <CardDeck.Item className={styles.documentEditorItem}>
+                <DataProcessingAgreementContainer tenantId={finalTenantId} />
+            </CardDeck.Item>
+            {/* <LegalText
+                tenantId={finalTenantId}
+                fieldName={['content', 'termsAndConditions']}
+                titleKey="termsAndConditions.title"
+                subTitle={t<string>('termsAndConditions.subTitle')}
+                placeHolderKey="settings.termsAndConditions.placeholder"
+                showConfirmationModal={{
+                    titleKey: 'termsAndConditions.confirmation.title',
+                    contentKey: 'termsAndConditions.confirmation.content',
+                    cancelLabelKey: 'termsAndConditions.confirmation.cancel',
+                    okLabelKey: 'termsAndConditions.confirmation.confirm',
+                    field: ['content', 'confirmTermsAndConditions'],
+                }}
+            /> */}
             {settings?.multitenancyWithSingleDomainEnabled && (
                 <CardDeck.Item>
                     <CardEditable
@@ -86,35 +118,6 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                     </CardEditable>
                 </CardDeck.Item>
             )}
-            <CardDeck.Item className={styles.documentEditorItem}>
-                <DataProcessingAgreementContainer tenantId={finalTenantId} />
-            </CardDeck.Item>
-            <CardDeck.Item className={styles.documentEditorItem}>
-                <LegalTextCard
-                    tenantId={finalTenantId}
-                    draftTenantId={draftTenantId}
-                    fieldName={['content', 'impressum']}
-                    titleKey="imprint.title"
-                    legalType="imprint"
-                    icon={ImprintIcon}
-                    placeHolderKey="settings.imprint.placeholder"
-                />
-            </CardDeck.Item>
-            {/* <LegalText
-                tenantId={finalTenantId}
-                fieldName={['content', 'termsAndConditions']}
-                titleKey="termsAndConditions.title"
-                subTitle={t<string>('termsAndConditions.subTitle')}
-                placeHolderKey="settings.termsAndConditions.placeholder"
-                showConfirmationModal={{
-                    titleKey: 'termsAndConditions.confirmation.title',
-                    contentKey: 'termsAndConditions.confirmation.content',
-                    cancelLabelKey: 'termsAndConditions.confirmation.cancel',
-                    okLabelKey: 'termsAndConditions.confirmation.confirm',
-                    field: ['content', 'confirmTermsAndConditions'],
-                }}
-            /> */}
-            <CardDeck.Item className={styles.documentEditorItem}>{LegalTextElement}</CardDeck.Item>
         </CardDeck>
     );
 };

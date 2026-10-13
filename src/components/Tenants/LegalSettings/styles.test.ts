@@ -5,25 +5,24 @@ import { describe, expect, it } from 'vitest';
 const legalSettingsStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
 const legalSettingsSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
 
-// #605: #582 made every legal card compact. Only the settings card belongs to
-// that contract; the three M3 document editors use their Figma desktop width.
+// #1195: the legal cards wrap by width. The #605 contract (compact 425px settings card, 800px
+// editors) is replaced: no legal card carries a fixed pixel width any more.
 describe('LegalSettings card deck contract', () => {
-    it('keeps the default legal settings card compact', () => {
-        const cardDeckRule = legalSettingsStyles.match(/\.cardDeck\s*{([^}]*)}/s)?.[1] ?? '';
-        expect(cardDeckRule).toMatch(/--card-deck-item-width:\s*425px/);
-        expect(cardDeckRule).toMatch(/--card-deck-item-max-width:\s*425px/);
+    it('lets the cards wrap instead of scrolling sideways', () => {
+        expect(legalSettingsSource).toMatch(/<CardDeck[\s\S]*?layout="wrap"/);
     });
 
-    it('gives M3 document editor items their 800px desktop width', () => {
-        const desktopRule = legalSettingsStyles.match(/@media \(min-width:\s*768px\)\s*{([\s\S]*?)\n}/)?.[1] ?? '';
-        const documentItemRule = desktopRule.match(/\.documentEditorItem\s*{([^}]*)}/s)?.[1] ?? '';
-
-        expect(documentItemRule).toMatch(/--card-deck-item-min-width:\s*800px/);
-        expect(documentItemRule).toMatch(/--card-deck-item-width:\s*800px/);
-        expect(documentItemRule).toMatch(/--card-deck-item-max-width:\s*min\(800px,\s*calc\(100vw\s*-\s*176px\)\)/);
+    it('fixes no pixel width on a legal card', () => {
+        expect(legalSettingsStyles).not.toMatch(/--card-deck-item-(min-|max-)?width/);
+        expect(legalSettingsStyles).not.toMatch(/^\s*(min-|max-)?width:\s*\d+px/m);
     });
 
-    it('applies the wider item only to DPA, imprint and privacy', () => {
+    it('gives a card with an open template comparison the whole row', () => {
+        const compareRule = legalSettingsStyles.match(/\.documentEditorItem:has\([^)]*\)\s*{([^}]*)}/s)?.[1] ?? '';
+        expect(compareRule).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+    });
+
+    it('marks DPA, imprint and privacy as document editor items', () => {
         const deckItems = [...legalSettingsSource.matchAll(/<CardDeck\.Item([^>]*)>([\s\S]*?)<\/CardDeck\.Item>/g)];
         const findItem = (content: string) => deckItems.find(([, , body]) => body.includes(content));
         const documentEditorClass = 'className={styles.documentEditorItem}';

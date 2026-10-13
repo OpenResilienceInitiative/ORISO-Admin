@@ -9,6 +9,11 @@ interface CardDeckProps {
     children?: React.ReactNode;
     className?: string;
     deckClassName?: string;
+    /**
+     * `scroll` (default): a horizontal scroller with header arrows. `wrap`: the cards wrap by the
+     * width they get (one, two or three per row) and nothing scrolls sideways (#1195).
+     */
+    layout?: 'scroll' | 'wrap';
     nextLabel: string;
     previousLabel: string;
 }
@@ -35,7 +40,16 @@ const CardDeckItem = ({ children, className }: CardDeckItemProps) => (
     </li>
 );
 
-const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel, previousLabel }: CardDeckProps) => {
+const CardDeckRoot = ({
+    ariaLabel,
+    children,
+    className,
+    deckClassName,
+    layout = 'scroll',
+    nextLabel,
+    previousLabel,
+}: CardDeckProps) => {
+    const wrap = layout === 'wrap';
     const deckId = useId();
     const deckRef = useRef<HTMLDivElement>(null);
     const cards = useMemo(() => React.Children.toArray(children).filter(Boolean), [children]);
@@ -163,7 +177,7 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
     // they collided with the cards' own footer actions and toasts (Figma 1285-80496).
     const navRegistration = useMemo(
         () =>
-            cards.length > 1
+            cards.length > 1 && !wrap
                 ? {
                       canScrollBackward: scrollState.canScrollBackward,
                       canScrollForward: scrollState.canScrollForward,
@@ -175,6 +189,7 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
                 : null,
         [
             cards.length,
+            wrap,
             deckId,
             nextLabel,
             previousLabel,
@@ -188,10 +203,15 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
 
     return (
         <section
-            className={classNames(styles.root, { [styles.stacked]: scrollState.stacked }, className)}
+            className={classNames(
+                styles.root,
+                { [styles.stacked]: scrollState.stacked && !wrap, [styles.wrap]: wrap },
+                className,
+            )}
             aria-label={ariaLabel}
             data-admin-card-deck
-            data-admin-card-deck-stacked={scrollState.stacked || undefined}
+            data-admin-card-deck-stacked={(!wrap && scrollState.stacked) || undefined}
+            data-admin-card-deck-layout={wrap ? 'wrap' : undefined}
         >
             <div
                 id={deckId}
@@ -205,7 +225,7 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
                     {cards}
                 </ul>
             </div>
-            {cards.length > 1 && !scrollState.stacked && (
+            {cards.length > 1 && !wrap && !scrollState.stacked && (
                 <SideScrollerDots
                     className={styles.dots}
                     cardCount={cards.length}

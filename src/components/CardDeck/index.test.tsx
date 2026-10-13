@@ -37,10 +37,10 @@ const HeaderNavHarness = () => {
     );
 };
 
-const Harness = ({ children }: { children: React.ReactNode }) => (
+const Harness = ({ children, layout }: { children: React.ReactNode; layout?: 'scroll' | 'wrap' }) => (
     <CardDeckNavProvider>
         <HeaderNavHarness />
-        <CardDeck ariaLabel="Admin cards" previousLabel="Previous card" nextLabel="Next card">
+        <CardDeck ariaLabel="Admin cards" previousLabel="Previous card" nextLabel="Next card" layout={layout}>
             {children}
         </CardDeck>
     </CardDeckNavProvider>
@@ -213,6 +213,36 @@ describe('CardDeck', () => {
         expect(scrollBy).toHaveBeenCalledWith({
             left: expectedStep,
             behavior: 'smooth',
+        });
+    });
+
+    // ORISO-Admin#1195: a wrapping deck shows every card by itself, so there is nothing to scroll to.
+    describe('wrap layout', () => {
+        it('marks itself as wrapping and keeps every card in the list', () => {
+            const { container } = render(<Harness layout="wrap">{items(['One', 'Two', 'Three'])}</Harness>);
+
+            expect(container.querySelector('[data-admin-card-deck]')).toHaveAttribute(
+                'data-admin-card-deck-layout',
+                'wrap',
+            );
+            expect(screen.getAllByRole('listitem')).toHaveLength(3);
+        });
+
+        it('offers no header arrows and no position dots, because nothing scrolls', () => {
+            const { container } = render(<Harness layout="wrap">{items(['One', 'Two', 'Three'])}</Harness>);
+
+            expect(screen.queryByRole('navigation', { name: 'Admin cards Navigation' })).not.toBeInTheDocument();
+            expect(container.querySelector('[data-admin-card-deck-dot]')).toBeNull();
+        });
+
+        it('keeps the scrolling layout as the default', () => {
+            const { container } = renderDeck();
+
+            expect(container.querySelector('[data-admin-card-deck]')).not.toHaveAttribute(
+                'data-admin-card-deck-layout',
+                'wrap',
+            );
+            expect(screen.getByRole('navigation', { name: 'Admin cards Navigation' })).toBeInTheDocument();
         });
     });
 });
