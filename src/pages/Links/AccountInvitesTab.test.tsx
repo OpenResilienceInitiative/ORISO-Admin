@@ -48,7 +48,17 @@ vi.mock('../../components/ListingTable', () => ({
 
 // The templates dialog has its own test file; keep this one focused on the tab.
 vi.mock('./EmailTemplatesDialog', () => ({
-    EmailTemplatesDialog: () => null,
+    EmailTemplatesDialog: ({ onDeleted, onClose, selectedTemplateId }: any) => (
+        <button
+            type="button"
+            onClick={() => {
+                onDeleted?.(selectedTemplateId);
+                onClose();
+            }}
+        >
+            Delete selected template in dialog
+        </button>
+    ),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -1580,5 +1590,34 @@ describe('CSV entries in the more-menu', () => {
         const picker = click.mock.contexts.find((input) => (input as HTMLInputElement).type === 'file');
         expect(picker).toHaveAttribute('accept', '.csv,text/csv');
         click.mockRestore();
+    });
+});
+
+describe('TenantInvitesTab deleted template selection', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+    });
+
+    it('removes the selected deleted template locally and blocks sending when refresh fails', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
+        const send = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }));
+        await user.click(screen.getByRole('button', { name: 'Standard' }));
+        mocks.listInviteEmailTemplates.mockRejectedValue(new Error('refresh failed'));
+        await user.click(screen.getByRole('button', { name: 'Delete selected template in dialog' }));
+        await waitFor(() => expect(send).toBeDisabled());
+        expect(screen.queryByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' })).not.toBeInTheDocument();
+        expect(await screen.findByText('Could not load templates')).toBeInTheDocument();
+        await user.click(send);
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
     });
 });
