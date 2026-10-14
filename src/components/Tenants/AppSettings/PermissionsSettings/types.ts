@@ -32,11 +32,6 @@ export type ChatTypeNotificationToggle = {
     fallbackLabelKey?: string;
     /** Value when the backend sends none (mirrors TenantService `default`). */
     defaultValue?: boolean;
-    /**
-     * The backend does not know this field yet: render it disabled with a reason instead of
-     * letting a save fail. FE#1725 T7 adds the field and removes this flag.
-     */
-    awaitsBackend?: boolean;
 };
 
 export type ChatTypeCardDef = {

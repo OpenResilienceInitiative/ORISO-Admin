@@ -12,7 +12,7 @@ import type { ChatTypeCardKey } from './types';
 /**
  * FE#1725 stories 38–39: email/browser switches sit on each conversation-type tile. Advice-seeker
  * channels save through the Träger permission policies (TenantService). The internal group chats
- * tile shows counsellor switches that stay disabled until T7 adds the TenantService fields.
+ * tile carries counsellor switches on the same save path (T7, story 40).
  */
 
 type Policy = { value: boolean; mode: 'ENFORCED' | 'SUGGESTED'; inherited?: boolean };
@@ -33,6 +33,8 @@ const STORED: Record<string, Policy> = {
     featureAskerBrowserAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
     featureAskerBrowserLiveChatEnabled: { value: true, mode: 'SUGGESTED' },
     featureAskerBrowserSelfHelpEnabled: { value: true, mode: 'SUGGESTED' },
+    featureConsultantEmailInternalGroupEnabled: { value: true, mode: 'SUGGESTED' },
+    featureConsultantBrowserInternalGroupEnabled: { value: true, mode: 'SUGGESTED' },
 };
 
 const writes: PolicyWrite[] = [];
@@ -124,16 +126,33 @@ export const SwitchesOnTiles: Story = {
     },
 };
 
-/** Internal group chats: counsellor switches visible, disabled with the reason, until T7. */
-export const InternalGroupChatsAwaitBackend: Story = {
+/** Internal group chats: counsellor email switch saves and shows the saved value. */
+export const InternalGroupChatsSave: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const card = await tile(canvasElement, 'groupInternal');
-        await waitFor(() => expect(trigger(card, 'featureConsultantEmailInternalGroupEnabled')).toBeDisabled());
-        await expect(trigger(card, 'featureConsultantBrowserInternalGroupEnabled')).toBeDisabled();
         await expect(within(card).getByText(t('tenants.permissions.card.notifications.consultantTitle'))).toBeTruthy();
-        await expect(within(card).getAllByText(t('tenants.permissions.card.notifications.awaitsBackend'))).toHaveLength(
-            2,
+        await waitFor(() =>
+            expect(trigger(card, 'featureConsultantEmailInternalGroupEnabled')).toHaveAccessibleName(
+                literal('tenants.permissions.policy.activationSuggested'),
+            ),
+        );
+        await expect(trigger(card, 'featureConsultantBrowserInternalGroupEnabled')).toBeEnabled();
+
+        await userEvent.click(trigger(card, 'featureConsultantEmailInternalGroupEnabled'));
+        await userEvent.click(
+            within(document.body).getByRole('button', { name: t('tenants.permissions.policy.deactivationSuggested') }),
+        );
+        await waitFor(() =>
+            expect(writes.at(-1)?.policies.featureConsultantEmailInternalGroupEnabled).toEqual({
+                value: false,
+                mode: 'SUGGESTED',
+            }),
+        );
+        await waitFor(() =>
+            expect(trigger(card, 'featureConsultantEmailInternalGroupEnabled')).toHaveAccessibleName(
+                literal('tenants.permissions.policy.deactivationSuggested'),
+            ),
         );
     },
 };

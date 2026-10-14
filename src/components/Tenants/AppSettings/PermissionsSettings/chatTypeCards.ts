@@ -192,21 +192,18 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         // and feature toggles now live in OtherFunctionsSettings (see chatTypeCards.ts history /
         // ORISO-Admin#991 for the previous, incorrect wiring to featureSupervisionEnabled).
         toggles: [],
-        // FE#1725 story 39: counsellor-side channels for internal group chats (ADR-024 addendum
-        // 2026-10-07). Keys are the T7 contract; TenantService rejects them until T7 adds them to
-        // PermissionFeature + Settings (default true), then drop `awaitsBackend`.
+        // FE#1725 stories 39/40: counsellor-side channels for internal group chats (ADR-024
+        // addendum 2026-10-07). TenantService PermissionFeature + Settings, default true.
         notifications: {
             audience: 'consultant',
             toggles: [
                 {
                     labelKey: 'tenants.permissions.card.notifications.email',
                     field: ['settings', 'featureConsultantEmailInternalGroupEnabled'],
-                    awaitsBackend: true,
                 },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
                     field: ['settings', 'featureConsultantBrowserInternalGroupEnabled'],
-                    awaitsBackend: true,
                 },
             ],
         },

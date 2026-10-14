@@ -2706,7 +2706,6 @@
     "tenants.permissions.card.notifications.consultantTitle": "Benachrichtigungen für Beratende",
     "tenants.permissions.card.notifications.email": "E-Mail-Benachrichtigung",
     "tenants.permissions.card.notifications.browser": "Browser-Benachrichtigung",
-    "tenants.permissions.card.notifications.awaitsBackend": "Noch nicht verfügbar: Der Server kann diese Einstellung noch nicht speichern.",
     "globalSettings.tutorials.title": "Tutorials für Berater",
     "globalSettings.tutorials.description": "Einführung und Übungen in der Hilfe.",
     "globalSettings.tutorials.current": "Aktuelle Verfügbarkeit",

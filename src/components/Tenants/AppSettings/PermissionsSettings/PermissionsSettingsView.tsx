@@ -299,14 +299,6 @@ export const PermissionsSettingsView = ({
                                                                             )}
                                                                             open={openPolicyMenu === fieldKey}
                                                                             pending={policyPending(fieldKey)}
-                                                                            disabled={toggle.awaitsBackend}
-                                                                            supportingText={
-                                                                                toggle.awaitsBackend
-                                                                                    ? t(
-                                                                                          'tenants.permissions.card.notifications.awaitsBackend',
-                                                                                      )
-                                                                                    : undefined
-                                                                            }
                                                                             onOpenChange={(open) =>
                                                                                 setOpenPolicyMenu(
                                                                                     open ? fieldKey : null,

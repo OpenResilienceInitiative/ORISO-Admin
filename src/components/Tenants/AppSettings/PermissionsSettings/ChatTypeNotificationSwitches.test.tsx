@@ -50,6 +50,7 @@ const TILES = [
     ['oneOnOne', 'featureAskerEmailAgencyCounsellingEnabled', 'featureAskerBrowserAgencyCounsellingEnabled'],
     ['liveChat', 'featureAskerEmailLiveChatEnabled', 'featureAskerBrowserLiveChatEnabled'],
     ['group', 'featureAskerEmailSelfHelpEnabled', 'featureAskerBrowserSelfHelpEnabled'],
+    ['groupInternal', 'featureConsultantEmailInternalGroupEnabled', 'featureConsultantBrowserInternalGroupEnabled'],
 ] as const;
 
 describe('notification switches on conversation-type tiles', () => {
@@ -122,12 +123,11 @@ describe('notification switches on conversation-type tiles', () => {
         ['featureConsultantEmailInternalGroupEnabled', 'featureConsultantBrowserInternalGroupEnabled'].forEach(
             (field) => {
                 const trigger = control(card, field);
-                // Visible but not yet savable: TenantService rejects unknown keys until FE#1725 T7.
-                expect(trigger).toBeDisabled();
+                // FE#1725 T7: TenantService knows the keys (default on), so they are savable.
+                expect(trigger).toBeEnabled();
                 expect(trigger).toHaveAccessibleName(/activationSuggested/);
             },
         );
-        expect(within(card).getAllByText('tenants.permissions.card.notifications.awaitsBackend')).toHaveLength(2);
         // 54509df4 / Admin#991: supervision stays under "Other functions", never on this tile.
         expect(card.querySelector('[data-feature-policy*="Supervision"]')).toBeNull();
     });
