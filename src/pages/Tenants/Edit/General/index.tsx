@@ -8,6 +8,7 @@ import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
+import { ManagedEntityStatus } from '../../../../components/EntityStatusCard';
 import { CardDeck } from '../../../../components/CardDeck';
 import { CardGrid } from '../../../../components/CardGrid';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
@@ -209,6 +210,9 @@ export const GeneralTenantSettings = () => {
                             </div>
                             <TraegerDpoFields wrapField={wrapInFieldGroup} />
                         </CardEditable>
+                    </CardDeck.Item>
+                    <CardDeck.Item className={styles.tenantCardDeckItem}>
+                        <ManagedEntityStatus entityKind="tenant" entityName={data?.name} entityId={id} canManage />
                     </CardDeck.Item>
                 </CardDeck>
             </ThemeProvider>

@@ -164,19 +164,23 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                 </>
             )}
             {/* Not disabled: the switch reacts and names the missing counsellor on submit. */}
-            <MuiSwitchField
-                label={t('agency.form.registrationSettings.onlineDescription')}
-                name="online"
-                rules={[
-                    {
-                        validator: (_rule, value) =>
-                            value && needsConsultantAssignment
-                                ? Promise.reject(new Error(t('agency.form.registrationSettings.onlineNeedsConsultant')))
-                                : Promise.resolve(),
-                    },
-                ]}
-            />
-            <Divider />
+            {!hasPersistedAgency && (
+                <MuiSwitchField
+                    label={t('agency.form.registrationSettings.onlineDescription')}
+                    name="online"
+                    rules={[
+                        {
+                            validator: (_rule, value) =>
+                                value && needsConsultantAssignment
+                                    ? Promise.reject(
+                                          new Error(t('agency.form.registrationSettings.onlineNeedsConsultant')),
+                                      )
+                                    : Promise.resolve(),
+                        },
+                    ]}
+                />
+            )}
+            {!hasPersistedAgency && <Divider />}
 
             <MuiRadioGroupField
                 className={styles.radioGroup}
