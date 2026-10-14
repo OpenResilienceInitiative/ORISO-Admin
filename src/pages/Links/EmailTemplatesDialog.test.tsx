@@ -323,6 +323,38 @@ describe('EmailTemplatesDialog', () => {
         expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
     });
 
+    it.each([
+        { systemDefault: true, editable: true, reason: 'System templates cannot be deleted.' },
+        {
+            systemDefault: false,
+            editable: false,
+            reason: 'Sie haben keine Berechtigung, diese Vorlage zu ändern',
+        },
+    ])(
+        'explains disabled deletion when keyboard users tab through row actions: %j',
+        async ({ reason, ...permission }) => {
+            const user = userEvent.setup();
+            mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+                Promise.resolve(kind === 'TENANT_INVITE' ? [{ ...tenantTemplate, ...permission }] : []),
+            );
+            renderDialog();
+            const row = await screen.findByTestId('template-row');
+            const edit = within(row).getByRole('button', { name: 'Edit' });
+            const editTrigger = edit.hasAttribute('disabled')
+                ? edit.closest<HTMLElement>('[tabindex="0"]') ?? edit
+                : edit;
+            act(() => editTrigger.focus());
+            await user.tab();
+
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(reason);
+            expect(document.activeElement).toHaveAccessibleDescription(reason);
+            expect(within(row).getByRole('button', { name: 'Delete' })).toBeDisabled();
+            expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
+            await user.keyboard('{Escape}');
+            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        },
+    );
+
     it('lists templates of every kind, the opening tab kind first', async () => {
         renderDialog();
 

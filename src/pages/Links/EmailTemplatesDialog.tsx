@@ -552,7 +552,8 @@ export const EmailTemplatesDialog = ({
                             text={mayDeleteTemplate(template) ? undefined : deleteLockReasonFor(template)}
                             portal
                         >
-                            <span>
+                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                            <span tabIndex={mayDeleteTemplate(template) ? undefined : 0}>
                                 <Button
                                     danger
                                     disabled={!mayDeleteTemplate(template)}
