@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
+import ChatOutlined from '@mui/icons-material/ChatOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { Card } from '../../../../Card';
 import { M3NumberField } from '../../../../M3NumberField';
-import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { M3RichTextEditor, type EditorVersionSection } from '../../../../FormPluginEditor/M3RichTextEditor';
 import {
     DEFAULT_RESPONSE_DEADLINE_DAYS,
     ERSTANTWORT_BAUSTEINE,
@@ -74,6 +75,18 @@ export interface ErstantwortTextsCardProps {
     };
 }
 
+const escapeHtml = (text: string) =>
+    text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** Plain text to the editor's `<p>…</p>` value; blank lines are dropped, one paragraph per line. */
+const plainTextToHtml = (text: string) =>
+    text
+        .replace(/\r\n?/g, '\n')
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => `<p>${escapeHtml(line.trim())}</p>`)
+        .join('');
+
 const PlatformPreview = ({ label, children }: { label: string; children: ReactNode }) => (
     <div className={styles.platformPreview} data-testid="erstantwort-platform-preview">
         <span className={styles.platformPreviewLabel}>{label}</span>
@@ -109,8 +122,37 @@ export const ErstantwortTextsCard = ({
         onDeadlineChange(Math.floor(days));
     };
 
+    /* The "load default" entry lives in the editor's version menu, like the legal templates.
+       Without a platform text the entry is still there, disabled, and says why. */
+    const defaultSections = (key: ErstantwortBausteinKey): EditorVersionSection[] => {
+        const text = platformDefaults?.texts?.[key];
+        const label = t('tenants.erstantwort.defaults.load');
+        return [
+            {
+                key: 'platform-default',
+                title: t('tenants.erstantwort.defaults.section'),
+                versions: text
+                    ? [
+                          {
+                              id: `platform-default:${key}`,
+                              label,
+                              name: label,
+                              detail: t('tenants.erstantwort.defaults.loadDetail'),
+                              content: plainTextToHtml(text),
+                              restorable: true,
+                          },
+                      ]
+                    : [],
+                emptyLabel: platformDefaults?.texts
+                    ? t('tenants.erstantwort.defaults.noneForBaustein')
+                    : t('tenants.erstantwort.defaults.notLoaded'),
+            },
+        ];
+    };
+
     return (
         <Card
+            headerIcon={<ChatOutlined />}
             titleKey="tenants.erstantwort.title"
             autoHeight
             className={styles.card}
@@ -177,6 +219,9 @@ export const ErstantwortTextsCard = ({
                                         fluid
                                         hideHeader
                                         plainText
+                                        versionLabel={t('legal.m3Editor.versionLatest')}
+                                        versionSections={defaultSections(baustein.key)}
+                                        onRestoreVersion={(html: string) => onChange(baustein.key, variant, html)}
                                         enableAnchors={false}
                                         onChange={(html: string) => onChange(baustein.key, variant, html)}
                                     />
