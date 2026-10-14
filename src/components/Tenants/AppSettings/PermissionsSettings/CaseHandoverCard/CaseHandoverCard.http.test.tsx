@@ -238,4 +238,10 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         expect(de('tenants.permissions.consent.effect.OPT_IN')).toMatch(/vorher gefragt/);
         expect(de('tenants.permissions.consent.effect.NONE')).toMatch(/nicht gefragt/);
     });
+
+    it('explains opt-out in one sentence, in German and English', () => {
+        const oneSentence = /^[^.!?]+[.!?]$/;
+        expect(i18n.getFixedT('de')('tenants.permissions.consent.effect.OPT_OUT')).toMatch(oneSentence);
+        expect(i18n.getFixedT('en')('tenants.permissions.consent.effect.OPT_OUT')).toMatch(oneSentence);
+    });
 });

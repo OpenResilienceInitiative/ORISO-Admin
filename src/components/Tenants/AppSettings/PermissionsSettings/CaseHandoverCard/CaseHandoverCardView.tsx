@@ -119,7 +119,11 @@ export const CaseHandoverCardView = ({
             titleKey="tenants.permissions.card.caseHandover.title"
         >
             {noTenant && <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.noTenant')}</p>}
-            {!noTenant && isLoading && <Skeleton active paragraph={{ rows: 6 }} />}
+            {!noTenant && isLoading && (
+                <div data-testid="case-handover-card-loading">
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                </div>
+            )}
             {!noTenant && !isLoading && (
                 <>
                     <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>

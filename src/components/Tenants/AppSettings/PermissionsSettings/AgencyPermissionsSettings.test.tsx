@@ -122,4 +122,34 @@ describe('AgencyPermissionsSettings case handover card', () => {
             vi.unstubAllGlobals();
         }
     });
+
+    // Review 9: no "open a Träger" hint while the centre's Träger is still unknown.
+    it('shows a loading state, not the no-Träger hint, while the agency is pending', () => {
+        const fetchStub = vi.fn(async () => Response.json([]));
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            // react-query v5: pending without fetching yet (e.g. paused) is not `isLoading`.
+            mocks.useAgencyData.mockReturnValue({ data: undefined, isLoading: false, isPending: true });
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            expect(screen.queryByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/i)).toBeNull();
+            expect(document.querySelector('[data-testid="case-handover-card-loading"]')).not.toBeNull();
+            expect(fetchStub.mock.calls.map(([request]) => (request as unknown as Request).url).join(' ')).not.toMatch(
+                /case-handover/,
+            );
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('shows the no-Träger hint once the agency has loaded without one', () => {
+        mocks.useAgencyData.mockReturnValue({
+            data: { id: '55', name: 'Beratungsstelle Nord', settings: {} },
+            isLoading: false,
+            isPending: false,
+        });
+        render(<AgencyPermissionsSettings agencyId="55" />);
+
+        expect(screen.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/i)).toBeTruthy();
+    });
 });

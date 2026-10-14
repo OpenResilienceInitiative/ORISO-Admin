@@ -7,8 +7,14 @@ import { CaseHandoverReasonPolicy } from '../types/caseHandoverReasonPolicy';
 
 const CASE_HANDOVER_REASON_POLICIES_QUERY_KEY = 'CASE_HANDOVER_REASON_POLICIES';
 
+const isTenantId = (tenantId?: number): tenantId is number => typeof tenantId === 'number' && tenantId > 0;
+
 // The rules belong to one Träger; the UserService needs it named for platform admins (FE#1725).
-const policiesUrl = (tenantId: number) => `${caseHandoverReasonPoliciesEndpoint}?tenantId=${tenantId}`;
+// Without one nothing is requested: the call rejects before it reaches the network.
+const policiesUrl = (tenantId?: number) =>
+    isTenantId(tenantId)
+        ? Promise.resolve(`${caseHandoverReasonPoliciesEndpoint}?tenantId=${tenantId}`)
+        : Promise.reject(new Error('No Träger named for the case handover rules'));
 
 // 403 stays in the card (no access-denied redirect); other failures reject with the raw Response.
 const RESPONSE_HANDLING = [FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL_SILENT];
@@ -25,17 +31,18 @@ export const reasonPolicySaveFailure = (error: unknown): ReasonPolicySaveFailure
 
 /** `tenantId` = the Träger whose rules are shown; without it nothing is requested. */
 export const useCaseHandoverReasonPoliciesData = (tenantId?: number) => {
-    const hasTenant = typeof tenantId === 'number' && tenantId > 0;
     return useQuery({
         queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY, tenantId],
         queryFn: () =>
-            fetchData({
-                url: policiesUrl(tenantId as number),
-                method: FETCH_METHODS.GET,
-                skipAuth: false,
-                responseHandling: RESPONSE_HANDLING,
-            }),
-        enabled: hasTenant,
+            policiesUrl(tenantId).then((url) =>
+                fetchData({
+                    url,
+                    method: FETCH_METHODS.GET,
+                    skipAuth: false,
+                    responseHandling: RESPONSE_HANDLING,
+                }),
+            ),
+        enabled: isTenantId(tenantId),
         retry: false,
         refetchOnWindowFocus: false,
     });
@@ -47,13 +54,15 @@ export const useCaseHandoverReasonPoliciesMutation = (tenantId?: number) => {
 
     return useMutation({
         mutationFn: (policies: CaseHandoverReasonPolicy[]) =>
-            fetchData({
-                url: policiesUrl(tenantId as number),
-                method: FETCH_METHODS.PUT,
-                skipAuth: false,
-                bodyData: JSON.stringify(policies),
-                responseHandling: [FETCH_SUCCESS.CONTENT, ...RESPONSE_HANDLING],
-            }),
+            policiesUrl(tenantId).then((url) =>
+                fetchData({
+                    url,
+                    method: FETCH_METHODS.PUT,
+                    skipAuth: false,
+                    bodyData: JSON.stringify(policies),
+                    responseHandling: [FETCH_SUCCESS.CONTENT, ...RESPONSE_HANDLING],
+                }),
+            ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY, tenantId] });
             message.success({

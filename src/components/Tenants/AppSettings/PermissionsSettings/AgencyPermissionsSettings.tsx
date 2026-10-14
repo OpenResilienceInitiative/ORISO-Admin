@@ -26,7 +26,7 @@ type AgencyPermissionsSettingsProps = {
  */
 export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyPermissionsSettingsProps) => {
     const { t } = useTranslation();
-    const { data: agencyData, isLoading } = useAgencyData({ id: agencyId });
+    const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutate: updateAgency } = useAgencyUpdate(agencyId);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
@@ -100,6 +100,7 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
         <PermissionsSettingsView
             tenantId={`agency-${agencyId}`}
             caseHandoverTenantId={agencyData?.tenantId}
+            caseHandoverTenantPending={isPending}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}

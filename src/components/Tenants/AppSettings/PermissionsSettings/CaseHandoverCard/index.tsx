@@ -29,6 +29,8 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
 export type CaseHandoverCardProps = {
     /** The Träger whose rules are shown and saved; undefined on the platform-wide page. */
     tenantId?: number;
+    /** The Träger is not known yet (its agency is loading): show loading, not "no Träger". */
+    tenantPending?: boolean;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
@@ -39,6 +41,7 @@ export type CaseHandoverCardProps = {
 
 export const CaseHandoverCard = ({
     tenantId,
+    tenantPending = false,
     policyLevel,
     permissionPolicies,
     pendingPolicyFields,
@@ -115,10 +118,10 @@ export const CaseHandoverCard = ({
     return (
         <CaseHandoverCardView
             policies={policies}
-            isLoading={isLoading}
+            isLoading={tenantPending || isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
-            noTenant={!(typeof tenantId === 'number' && tenantId > 0)}
+            noTenant={!tenantPending && !(typeof tenantId === 'number' && tenantId > 0)}
             saveError={saveFailure ? t(`tenants.permissions.card.caseHandover.saveFailed.${saveFailure}`) : null}
             onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}

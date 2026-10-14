@@ -36,6 +36,8 @@ export type PermissionsSettingsViewProps = {
     tenantId: string;
     /** Träger whose case-handover rules the card shows; none on the platform-wide page. */
     caseHandoverTenantId?: number;
+    /** The Träger is still being resolved (centre page): the card waits instead of saying "none". */
+    caseHandoverTenantPending?: boolean;
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -51,6 +53,7 @@ export type PermissionsSettingsViewProps = {
 export const PermissionsSettingsView = ({
     tenantId,
     caseHandoverTenantId,
+    caseHandoverTenantPending = false,
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -143,6 +146,7 @@ export const PermissionsSettingsView = ({
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard
                                 tenantId={caseHandoverTenantId}
+                                tenantPending={caseHandoverTenantPending}
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 pendingPolicyFields={pendingPolicyFields}
