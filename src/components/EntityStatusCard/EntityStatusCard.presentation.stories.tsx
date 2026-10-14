@@ -13,6 +13,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** Measure actual text baselines without changing layout or application state. */
+const textBaseline = (element: HTMLElement) => {
+    const probe = element.ownerDocument.createElement('span');
+    probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+    element.append(probe);
+    const baseline = probe.getBoundingClientRect().top;
+    probe.remove();
+    return baseline;
+};
+
+const informationalStatusHeader = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await canvasElement.ownerDocument.fonts.ready;
+    const title = canvas.getByRole('heading', { name: i18n.t('entityStatus.title'), level: 5 });
+    const status = canvas.getByTestId('entity-status-confirmed');
+    const appearance = getComputedStyle(status);
+    await expect({
+        background: appearance.backgroundColor,
+        borderWidth: appearance.borderTopWidth,
+        padding: appearance.padding,
+        color: appearance.color,
+        weight: appearance.fontWeight,
+        baselineOffset: Math.round(Math.abs(textBaseline(title) - textBaseline(status))),
+    }).toEqual({
+        background: 'rgba(0, 0, 0, 0)',
+        borderWidth: '0px',
+        padding: '0px',
+        color: getComputedStyle(title).color,
+        weight: '400',
+        baselineOffset: 0,
+    });
+    await expect(status).toHaveAccessibleName(i18n.t('entityStatus.confirmed'));
+    await expect(status).not.toHaveAttribute('role', 'button');
+    await expect(status).not.toHaveAttribute('tabindex');
+};
+
 /** The same HTTP/readback consumer at the reported phone width. */
 export const ReadbackSettingsGerman390: Story = {
     ...ReadbackUnavailable,
@@ -27,6 +63,7 @@ export const ReadbackSettingsGerman390: Story = {
     play: async (context) => {
         await ReadbackUnavailable.play?.(context);
         const canvas = within(context.canvasElement);
+        await informationalStatusHeader(context.canvasElement);
         const error = canvas.getByTestId('entity-status-error');
         await expect(canvas.getAllByRole('alert')).toHaveLength(1);
         await expect(within(error).getByRole('button', { name: i18n.t('entityStatus.reload') })).toBeVisible();
@@ -69,6 +106,7 @@ const settingsLayout = (width: number, language: 'de' | 'en'): Story => ({
         const card = canvas.getByTestId('entity-status-card');
         await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
         await expect(canvas.getByTestId('2fa-required')).toBeVisible();
+        await informationalStatusHeader(canvasElement);
         const details = canvas.getByRole('group', { name: i18n.t('entityStatus.accountDetails') });
         const security = canvas.getByRole('group', { name: i18n.t('entityStatus.twoFactor.title') });
         await expect(
@@ -121,6 +159,7 @@ export const SettingsLongTextGerman320: Story = {
         await waitFor(() =>
             expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
         );
+        await informationalStatusHeader(canvasElement);
         await userEvent.click(within(canvas.getByTestId('entity-status-edit')).getByRole('button'));
         await userEvent.click(canvas.getByRole('switch'));
         await expect(canvas.getByTestId('entity-status-activation-blocked')).toHaveTextContent(

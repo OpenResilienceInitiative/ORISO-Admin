@@ -7,6 +7,7 @@
 .header {
     flex-direction: row;
     flex-wrap: wrap;
+    align-items: baseline;
     justify-content: flex-start;
     margin-bottom: mui.$mui-unit * 2;
     gap: mui.$mui-unit * 2;
@@ -28,17 +29,7 @@
 
 .confirmed {
     flex-shrink: 0;
-    padding: mui.$mui-unit * 0.5 mui.$mui-unit * 1.5;
-    border: 1px solid var(--m3-outline-variant);
-    border-radius: mui.$mui-unit * 3;
-    background: var(--m3-surface-container-highest);
-    color: var(--m3-on-surface-variant);
-
-    &[data-active='true'] {
-        border-color: var(--admin-status-success-border);
-        background: var(--admin-status-success-container);
-        color: var(--m3-on-surface);
-    }
+    color: var(--m3-on-surface);
 }
 
 .context {

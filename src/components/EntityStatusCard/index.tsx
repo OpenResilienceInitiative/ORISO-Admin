@@ -90,7 +90,7 @@ export const EntityStatusCard = ({
                 cardTitleClassName={styles.header}
                 cardTitleChildren={
                     <output
-                        className={`${styles.confirmed} m3-label-large`}
+                        className={`${styles.confirmed} m3-body-medium`}
                         aria-label={t('entityStatus.confirmed')}
                         aria-live="polite"
                         data-testid="entity-status-confirmed"
