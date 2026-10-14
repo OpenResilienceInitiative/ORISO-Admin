@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
@@ -247,13 +248,18 @@ export const SaveFailed: Story = {
         isLoading: false,
         canEdit: true,
         moduleEnabled: true,
-        saveError:
-            'Nicht gespeichert. Es gilt weiter die bisherige Regel; Ihre Änderung bleibt hier sichtbar, bis Sie es erneut versuchen oder die Seite neu laden.',
         onRetrySave: fn(),
+    },
+    // The container passes the translated text; the story does the same in the active locale.
+    render: function SaveFailedStory(args) {
+        const { t } = useTranslation();
+        return (
+            <CaseHandoverCardView {...args} saveError={t('tenants.permissions.card.caseHandover.saveFailed.other')} />
+        );
     },
     play: async ({ canvas, args }) => {
         const alert = canvas.getByRole('alert');
-        await expect(alert).toHaveTextContent(/Nicht gespeichert/);
+        await expect(alert).toHaveTextContent(/Nicht gespeichert|Not saved/);
         await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
         await expect(args.onRetrySave).toHaveBeenCalled();
     },

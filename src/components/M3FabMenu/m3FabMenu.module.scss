@@ -96,8 +96,9 @@
 // Pill with a supporting sentence: grows to two or three lines instead of one.
 .itemWithDescription {
     height: auto;
+    // Fixed width: the absolute stack would otherwise shrink-wrap the pill to a word column.
+    width: min(320px, calc(100vw - 12px));
     min-height: 56px;
-    max-width: 360px;
     padding-top: 10px;
     padding-bottom: 10px;
     border-radius: 20px;
