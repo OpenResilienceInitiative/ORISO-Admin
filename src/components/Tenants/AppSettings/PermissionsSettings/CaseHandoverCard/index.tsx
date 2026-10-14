@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
+    ReasonPolicySaveFailure,
+    reasonPolicySaveFailure,
     useCaseHandoverReasonPoliciesData,
     useCaseHandoverReasonPoliciesMutation,
 } from '../../../../../hooks/useCaseHandoverReasonPolicies';
@@ -25,6 +27,8 @@ import { CaseHandoverCardView } from './CaseHandoverCardView';
  *  overrides are a backend follow-up, so non-privileged admins see the card
  *  read-only (disable, don't hide). */
 export type CaseHandoverCardProps = {
+    /** The Träger whose rules are shown and saved; undefined on the platform-wide page. */
+    tenantId?: number;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
@@ -34,6 +38,7 @@ export type CaseHandoverCardProps = {
 };
 
 export const CaseHandoverCard = ({
+    tenantId,
     policyLevel,
     permissionPolicies,
     pendingPolicyFields,
@@ -46,8 +51,8 @@ export const CaseHandoverCard = ({
     const { isSuperAdmin } = useUserRoles();
     const canEdit = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
 
-    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData();
-    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation();
+    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData(tenantId);
+    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation(tenantId);
 
     // Local mirror so toggles respond immediately; server refetch re-syncs it.
     const [policies, setPolicies] = useState<CaseHandoverReasonPolicy[]>([]);
@@ -57,27 +62,29 @@ export const CaseHandoverCard = ({
         }
     }, [data]);
 
-    // Snapshot to roll back to if the mutation fails, so a false success never sticks.
-    const previousPoliciesRef = useRef<CaseHandoverReasonPolicy[]>(policies);
+    // A failed save keeps the edit on screen and says so; no silent rollback (FE#1725).
+    const [saveFailure, setSaveFailure] = useState<ReasonPolicySaveFailure | null>(null);
 
     const moduleEnabled = useMemo(() => isHandoverModuleEnabled(policies), [policies]);
 
     const persist = useCallback(
         (nextPolicies: CaseHandoverReasonPolicy[]) => {
-            previousPoliciesRef.current = policies;
             setPolicies(nextPolicies);
+            setSaveFailure(null);
             updateReasonPolicies.mutate(
                 nextPolicies.map((policy) => ({
                     ...policy,
                     policyAuthority: policy.policyAuthority === '' ? null : policy.policyAuthority,
                 })),
                 {
-                    onError: () => setPolicies(previousPoliciesRef.current),
+                    onError: (error) => setSaveFailure(reasonPolicySaveFailure(error)),
                 },
             );
         },
-        [policies, updateReasonPolicies],
+        [updateReasonPolicies],
     );
+
+    const handleRetrySave = useCallback(() => persist(policies), [persist, policies]);
 
     const handleModuleEnabledChange = useCallback(
         (enabled: boolean) => persist(applyModuleEnabled(policies, enabled)),
@@ -111,6 +118,9 @@ export const CaseHandoverCard = ({
             isLoading={isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
+            noTenant={!(typeof tenantId === 'number' && tenantId > 0)}
+            saveError={saveFailure ? t(`tenants.permissions.card.caseHandover.saveFailed.${saveFailure}`) : null}
+            onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}
             onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentPolicyChange={handleClientConsentPolicyChange}

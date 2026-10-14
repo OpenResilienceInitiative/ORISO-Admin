@@ -1,52 +1,66 @@
 import { message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { fetchData, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { caseHandoverReasonPoliciesEndpoint } from '../appConfig';
 import { CaseHandoverReasonPolicy } from '../types/caseHandoverReasonPolicy';
 
 const CASE_HANDOVER_REASON_POLICIES_QUERY_KEY = 'CASE_HANDOVER_REASON_POLICIES';
 
-export const useCaseHandoverReasonPoliciesData = () => {
+// The rules belong to one Träger; the UserService needs it named for platform admins (FE#1725).
+const policiesUrl = (tenantId: number) => `${caseHandoverReasonPoliciesEndpoint}?tenantId=${tenantId}`;
+
+// 403 stays in the card (no access-denied redirect); other failures reject with the raw Response.
+const RESPONSE_HANDLING = [FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL_SILENT];
+
+/** Why a save failed, as far as the card needs to tell the admin. */
+export type ReasonPolicySaveFailure = 'forbidden' | 'invalid' | 'other';
+
+export const reasonPolicySaveFailure = (error: unknown): ReasonPolicySaveFailure => {
+    if (error instanceof Error && error.message === FETCH_ERRORS.NOT_ALLOWED) return 'forbidden';
+    if (error instanceof Response && error.status === 403) return 'forbidden';
+    if (error instanceof Response && error.status === 400) return 'invalid';
+    return 'other';
+};
+
+/** `tenantId` = the Träger whose rules are shown; without it nothing is requested. */
+export const useCaseHandoverReasonPoliciesData = (tenantId?: number) => {
+    const hasTenant = typeof tenantId === 'number' && tenantId > 0;
     return useQuery({
-        queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY],
+        queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY, tenantId],
         queryFn: () =>
             fetchData({
-                url: caseHandoverReasonPoliciesEndpoint,
+                url: policiesUrl(tenantId as number),
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
-                responseHandling: [],
+                responseHandling: RESPONSE_HANDLING,
             }),
+        enabled: hasTenant,
         retry: false,
         refetchOnWindowFocus: false,
     });
 };
 
-export const useCaseHandoverReasonPoliciesMutation = () => {
+export const useCaseHandoverReasonPoliciesMutation = (tenantId?: number) => {
     const { t } = useTranslation();
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: (policies: CaseHandoverReasonPolicy[]) =>
             fetchData({
-                url: caseHandoverReasonPoliciesEndpoint,
+                url: policiesUrl(tenantId as number),
                 method: FETCH_METHODS.PUT,
                 skipAuth: false,
                 bodyData: JSON.stringify(policies),
-                responseHandling: [FETCH_SUCCESS.CONTENT],
+                responseHandling: [FETCH_SUCCESS.CONTENT, ...RESPONSE_HANDLING],
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY] });
+            queryClient.invalidateQueries({ queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY, tenantId] });
             message.success({
                 content: t('caseHandoverLogs.policy.saveSuccess'),
                 duration: 3,
             });
         },
-        onError: () => {
-            message.error({
-                content: t('caseHandoverLogs.policy.saveError'),
-                duration: 5,
-            });
-        },
+        // Failures are shown inside the card, next to the unsaved edit.
     });
 };

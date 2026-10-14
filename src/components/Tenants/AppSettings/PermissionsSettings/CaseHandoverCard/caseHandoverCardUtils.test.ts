@@ -136,14 +136,15 @@ describe('caseHandoverCardUtils', () => {
         expect(seeded[0].isPlaceholder).toBe(false);
     });
 
-    it('keeps legacy emergency data out of the current visible reason catalogue', () => {
+    // FE#1725 story 33: the master switch enables it too, so it must be visible.
+    it('shows every backend reason, the legacy emergency reason included', () => {
         const reasons = buildDisplayReasons([
             policy({ code: 'COUNSELLOR_ASKED_FOR_ADVICE', displayOrder: 10 }),
             policy({ code: 'OTHER_EMERGENCY', displayOrder: 20 }),
             policy({ code: 'COUNSELLOR_IS_ILL', displayOrder: 30 }),
         ]);
 
-        expect(reasons.map((reason) => reason.code)).not.toContain('OTHER_EMERGENCY');
+        expect(reasons.map((reason) => reason.code)).toContain('OTHER_EMERGENCY');
         expect(reasons.map((reason) => reason.code)).toContain('COUNSELLOR_IS_ILL');
     });
 

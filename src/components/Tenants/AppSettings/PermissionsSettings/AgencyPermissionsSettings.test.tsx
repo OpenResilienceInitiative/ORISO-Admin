@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render as rtlRender, screen, within } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -101,5 +101,25 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         expect(within(control).getByTestId('LockIcon')).toBeInTheDocument();
         expect(within(control).getByTestId('CheckIcon')).toBeInTheDocument();
         expect(within(control).getByRole('button', { name: /Weitere Informationen|more information/i })).toBeTruthy();
+    });
+});
+
+// FE#1725: the Case handover card on a counselling-centre page shows that centre's Träger rules.
+describe('AgencyPermissionsSettings case handover card', () => {
+    it("requests the handover rules of the agency's Träger", async () => {
+        const fetchStub = vi.fn(async () => Response.json([]));
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            await waitFor(() =>
+                expect(fetchStub.mock.calls.map(([request]) => (request as unknown as Request).url)).toContainEqual(
+                    expect.stringMatching(/case-handover\/reason-policies\?tenantId=2$/),
+                ),
+            );
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 });

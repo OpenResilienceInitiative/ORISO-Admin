@@ -218,14 +218,100 @@ export const RetiredCodesFromTenantService: Story = {
     },
 };
 
-/** Read-only ceiling: admins without policy-edit permission see the same card
- *  with every control disabled. */
+/** Read-only: a BST admin (no Träger write access) sees the Träger's rules with every control
+ *  disabled and a plain note that the Träger administration sets them (FE#1725). */
 export const ReadOnly: Story = {
     args: {
         policies,
         isLoading: false,
         canEdit: false,
         moduleEnabled: true,
+    },
+    play: async ({ canvas }) => {
+        await expect(canvas.getByTestId('case-handover-read-only-note')).toHaveTextContent(
+            /Träger-Administration|Träger administration/,
+        );
+        await expect(
+            canvas.getByRole('button', {
+                name: /(Zustimmung Ratsuchende Person|Consent from advice seeker).*(Policy-Auswahl öffnen|Open policy choices)/i,
+            }),
+        ).toBeDisabled();
+    },
+};
+
+/** Save failed (FE#1725): the error says so and the admin's edit stays visible; "Try again"
+ *  resends it. No silent rollback. */
+export const SaveFailed: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        saveError:
+            'Nicht gespeichert. Es gilt weiter die bisherige Regel; Ihre Änderung bleibt hier sichtbar, bis Sie es erneut versuchen oder die Seite neu laden.',
+        onRetrySave: fn(),
+    },
+    play: async ({ canvas, args }) => {
+        const alert = canvas.getByRole('alert');
+        await expect(alert).toHaveTextContent(/Nicht gespeichert/);
+        await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
+        await expect(args.onRetrySave).toHaveBeenCalled();
+    },
+};
+
+/** Platform-wide settings page: no Träger in scope, so the card says where the rules are set. */
+export const NoTraegerInScope: Story = {
+    args: {
+        policies: [],
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: false,
+        noTenant: true,
+    },
+    play: async ({ canvas }) => {
+        await expect(
+            canvas.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/),
+        ).toBeVisible();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+    },
+};
+
+/** Every reason the backend returns gets a tab, the legacy emergency reason and unknown new
+ *  platform reasons included, so none runs with an unseen default (FE#1725 story 33). */
+export const AllPlatformReasons: Story = {
+    args: {
+        policies: [
+            ...policies,
+            {
+                code: 'OTHER_EMERGENCY',
+                label: 'Other emergency',
+                clientConsentRequired: false,
+                clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
+                accessAllowed: false,
+                enabled: true,
+                displayOrder: 30,
+            },
+            {
+                code: 'TEAM_REORGANISATION',
+                label: 'Team reorganisation',
+                clientConsentRequired: true,
+                clientConsent: { value: 'OPT_IN', mode: 'SUGGESTED' },
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 60,
+            },
+        ],
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+    },
+    play: async ({ canvas }) => {
+        const tabs = within(canvas.getByRole('tablist', { name: /Übergabegründe|Handover reasons/i })).getAllByRole(
+            'tab',
+        );
+        // 4 neutral + emergency + new reason + legal-violation placeholder.
+        await expect(tabs).toHaveLength(7);
+        await expect(canvas.getByRole('tab', { name: 'Team reorganisation' })).toBeVisible();
     },
 };
 
@@ -298,6 +384,33 @@ export const AdviceSeekerConsentMenuOpen: Story = {
         await expect(
             canvas.queryByText(/\((?:can be adjusted|cannot be changed|änderbar|nicht änderbar)\)/i),
         ).toBeNull();
+    },
+};
+
+/** FE#1725 story 32: each consent option says in one sentence what the client experiences.
+ *  Opt-out explains the "silent" mode: access starts at once, the client is informed and can object. */
+export const ConsentMenuWithClientImpact: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        openPolicyMenu: 'clientConsent:ADVICE_REQUESTED',
+    },
+    play: async ({ canvas }) => {
+        const optOut = canvas.getByRole('button', {
+            name: /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
+        });
+        await expect(optOut).toHaveAccessibleDescription(
+            /(Stillschweigend.*sofort.*widersprechen|Silent.*immediately.*object)/i,
+        );
+        await expect(
+            canvas.getByRole('button', { name: /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i }),
+        ).toHaveAccessibleDescription(/(vorher gefragt|asked first)/i);
+        await expect(
+            canvas.getByRole('button', { name: /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i }),
+        ).toHaveAccessibleDescription(/(nicht gefragt|not asked)/i);
+        await expect(canvas.getAllByText(/(Stillschweigend|Silent):/)[0]).toBeVisible();
     },
 };
 

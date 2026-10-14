@@ -34,6 +34,8 @@ const unavailableCapabilityHintKey = (capability: PermissionToggleCapability | u
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
+    /** Träger whose case-handover rules the card shows; none on the platform-wide page. */
+    caseHandoverTenantId?: number;
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -48,6 +50,7 @@ export type PermissionsSettingsViewProps = {
 
 export const PermissionsSettingsView = ({
     tenantId,
+    caseHandoverTenantId,
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -127,6 +130,7 @@ export const PermissionsSettingsView = ({
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard
+                                tenantId={caseHandoverTenantId}
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 pendingPolicyFields={pendingPolicyFields}
