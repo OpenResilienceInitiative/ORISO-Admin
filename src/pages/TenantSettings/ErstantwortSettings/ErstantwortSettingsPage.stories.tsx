@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
-import { Button } from 'antd';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { M3Button } from '../../../components/M3Button';
 import { Page } from '../../../components/Page';
 import { getSettingsTabs } from '../../../constants/settingsTabs';
 import {
@@ -30,6 +31,28 @@ const tabs = getSettingsTabs({
     multitenancyWithSingleDomainEnabled: false,
 });
 
+/** The global MemoryRouter starts at "/"; move it to the Erstantwort route so its tab is highlighted. */
+const ActiveTab = () => {
+    const navigate = useNavigate();
+    const erstantwortTab = tabs.find((tab) => tab.to.endsWith('/erstantwort'));
+    useEffect(() => {
+        if (erstantwortTab) navigate(erstantwortTab.to, { replace: true });
+    }, [navigate, erstantwortTab]);
+    return null;
+};
+
+/** Sample platform wording, as story data only (the container shows none until a source exists). */
+const platformDefaults = {
+    texts: {
+        erstantwortGreeting: 'Schön, dass Sie sich gemeldet haben. Ihre Nachricht ist bei uns angekommen.',
+        erstantwortWhoReadsAlong:
+            'Ihre Nachricht lesen ausschließlich die Fachkräfte der zuständigen Beratungsstelle. Alle sind zur Verschwiegenheit verpflichtet.',
+        erstantwortClosing: 'Bis bald — wir melden uns bei Ihnen.',
+    },
+    emergencyNumbers:
+        'Bei einer akuten Notlage erreichen Sie rund um die Uhr die Telefonseelsorge unter 0800 111 0 111 oder 0800 111 0 222 und den Rettungsdienst unter 112.',
+};
+
 const filled: ErstantwortContentMap = {
     erstantwortGreeting: { de: '<p>Guten Tag und herzlich willkommen bei uns.</p>' },
     erstantwortWhoReadsAlong: { de: '<p>Ihre Nachricht lesen ausgebildete Fachkräfte.</p>' },
@@ -42,6 +65,7 @@ const PageWithCard = ({ initial, days }: { initial: ErstantwortContentMap; days?
     const [deadline, setDeadline] = useState<number | undefined>(days);
     return (
         <Page>
+            <ActiveTab />
             <Page.Title titleKey="settings.title" subTitleKey="settings.title.text" tabs={tabs} />
             <ErstantwortTextsCard
                 contentByBaustein={content}
@@ -51,8 +75,9 @@ const PageWithCard = ({ initial, days }: { initial: ErstantwortContentMap; days?
                     setContent((previous) => ({ ...previous, [key]: { ...(previous[key] ?? {}), [language]: html } }))
                 }
                 onDeadlineChange={setDeadline}
+                platformDefaults={platformDefaults}
+                footer={<M3Button variant="filled">Veröffentlichen</M3Button>}
             />
-            <Button type="primary">Veröffentlichen</Button>
         </Page>
     );
 };

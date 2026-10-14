@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Spin } from 'antd';
+import { Alert, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { M3Button } from '../../../M3Button';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { useTranslateLegalContent } from '../../../../hooks/useTranslateLegalContent.hook';
@@ -11,7 +12,9 @@ import { ErstantwortTextsCard, type ErstantwortContentMap } from './ErstantwortT
 import {
     applyTranslations,
     buildErstantwortContentPayload,
+    changedBausteine,
     collectSourceTexts,
+    purgeStaleTranslations,
     ERSTANTWORT_DEADLINE_FIELD,
     translationTargetsFor,
 } from './erstantwortPublish';
@@ -84,8 +87,12 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     }, [storedContent, edits]);
 
     const deadlineDays = deadlineEdit ? deadlineEdit.days : storedDeadline;
-    const sourceTexts = collectSourceTexts(content, sourceLanguage);
+    /* Only changed texts are translated; unchanged ones keep their stored translations. */
+    const changedKeys = changedBausteine(content, storedContent, sourceLanguage);
+    const sourceTexts = collectSourceTexts(content, sourceLanguage, changedKeys);
     const canTranslate = targetLanguages.length > 0 && Object.keys(sourceTexts).length > 0;
+    /* Stale translations of a changed text are removed before anything is published. */
+    const purgedContent = purgeStaleTranslations(content, storedContent, sourceLanguage);
 
     const handleChange = (key: keyof ErstantwortContentMap, language: string, html: string) => {
         setEdits((previous) => ({
@@ -114,7 +121,7 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
 
     const publishWithoutTranslation = () => {
         setModalOpen(false);
-        publish(content);
+        publish(purgedContent);
     };
 
     const translateAndPublish = async (languages: string[]) => {
@@ -130,7 +137,7 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
             const selected = Object.fromEntries(
                 Object.entries(response.translations ?? {}).filter(([language]) => languages.includes(language)),
             );
-            translated = applyTranslations(content, selected, sourceLanguage, new Date().toISOString());
+            translated = applyTranslations(purgedContent, selected, sourceLanguage, new Date().toISOString());
         } catch (error) {
             setModalErrorKey(getTranslationErrorKey(error));
             return;
@@ -166,12 +173,14 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
                 onChange={handleChange}
                 onDeadlineChange={handleDeadline}
                 disabled={readOnly}
+                footer={
+                    readOnly ? undefined : (
+                        <M3Button variant="filled" onClick={requestPublish} loading={isSaving} disabled={isTranslating}>
+                            {t('tenants.erstantwort.publish')}
+                        </M3Button>
+                    )
+                }
             />
-            {!readOnly && (
-                <Button type="primary" onClick={requestPublish} loading={isSaving} disabled={isTranslating}>
-                    {t('tenants.erstantwort.publish')}
-                </Button>
-            )}
             <TranslateOnPublishModal
                 open={modalOpen}
                 sourceLanguage={sourceLanguage}

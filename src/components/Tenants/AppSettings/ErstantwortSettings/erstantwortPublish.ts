@@ -1,10 +1,12 @@
 import { isEmptyHtml } from '../../LegalSettings/utils/legalContentLanguages';
 import { buildTranslationMeta, metaKeyFor } from '../../LegalSettings/utils/translationMeta';
-import { ERSTANTWORT_BAUSTEINE } from './erstantwortBausteine';
+import { ERSTANTWORT_BAUSTEINE, type ErstantwortBausteinKey } from './erstantwortBausteine';
 import type { ErstantwortContentMap } from './ErstantwortTextsCard';
 
 /** Stored next to the Bausteine in `content`; a number, or absent for the platform default. */
 export const ERSTANTWORT_DEADLINE_FIELD = 'erstantwortResponseDeadlineDays';
+
+const META_SUFFIX = metaKeyFor('');
 
 const ERSTANTWORT_KEYS = ERSTANTWORT_BAUSTEINE.map((baustein) => baustein.key);
 
@@ -16,15 +18,58 @@ export const translationTargetsFor = (activeLanguages: string[] | undefined): st
     [...new Set(activeLanguages ?? [])].filter((language) => !isGermanLanguage(language));
 
 /** The non-empty texts of the Träger's own variant, keyed by Baustein — the one translation request. */
-export const collectSourceTexts = (content: ErstantwortContentMap, sourceLanguage: string): Record<string, string> => {
+export const collectSourceTexts = (
+    content: ErstantwortContentMap,
+    sourceLanguage: string,
+    onlyKeys: readonly string[] = ERSTANTWORT_KEYS,
+): Record<string, string> => {
     const texts: Record<string, string> = {};
-    ERSTANTWORT_KEYS.forEach((key) => {
+    ERSTANTWORT_KEYS.filter((key) => onlyKeys.includes(key)).forEach((key) => {
         const html = content[key]?.[sourceLanguage];
         if (!isEmptyHtml(html)) {
             texts[key] = html as string;
         }
     });
     return texts;
+};
+
+const sameText = (a: string | undefined, b: string | undefined): boolean =>
+    (isEmptyHtml(a) ? '' : a) === (isEmptyHtml(b) ? '' : b);
+
+/** The Bausteine whose text in the Träger's own variant differs from what is stored. */
+export const changedBausteine = (
+    content: ErstantwortContentMap,
+    stored: ErstantwortContentMap,
+    sourceLanguage: string,
+): ErstantwortBausteinKey[] =>
+    ERSTANTWORT_KEYS.filter((key) => !sameText(content[key]?.[sourceLanguage], stored[key]?.[sourceLanguage]));
+
+/**
+ * A stale translation must never outlive an edit of its source. For every changed Baustein only the
+ * source variant survives; each other language (and its `__meta`) that exists is sent as "" so the
+ * backend removes it (TenantService#311). Unchanged Bausteine keep their translations. If the Träger
+ * then skips the translation, the source text is the only one left and readers fall back to it.
+ */
+export const purgeStaleTranslations = (
+    content: ErstantwortContentMap,
+    stored: ErstantwortContentMap,
+    sourceLanguage: string,
+): ErstantwortContentMap => {
+    const result: ErstantwortContentMap = { ...content };
+    changedBausteine(content, stored, sourceLanguage).forEach((key) => {
+        const languages = new Set(
+            [...Object.keys(stored[key] ?? {}), ...Object.keys(content[key] ?? {})].filter(
+                (language) => !language.endsWith(META_SUFFIX) && language !== sourceLanguage,
+            ),
+        );
+        const purged: Record<string, string> = { [sourceLanguage]: content[key]?.[sourceLanguage] ?? '' };
+        languages.forEach((language) => {
+            purged[language] = '';
+            purged[metaKeyFor(language)] = '';
+        });
+        result[key] = purged;
+    });
+    return result;
 };
 
 /**
@@ -54,8 +99,6 @@ export const applyTranslations = (
     });
     return result;
 };
-
-const META_SUFFIX = metaKeyFor('');
 
 /** A blank text is sent as "" so the backend removes that language; it never omits the key. */
 const normaliseMap = (map: Record<string, string>): Record<string, string> => {

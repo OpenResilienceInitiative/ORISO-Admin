@@ -92,3 +92,17 @@ export const InteractiveInformal: Story = {
 export const Disabled: Story = {
     args: { ...Empty.args, disabled: true },
 };
+
+/** The platform wording and the fixed emergency numbers shown read-only under the editor (sample data). */
+export const WithPlatformPreview: Story = {
+    args: {
+        ...Empty.args,
+        platformDefaults: {
+            texts: {
+                erstantwortGreeting: 'Schön, dass Sie sich gemeldet haben. Ihre Nachricht ist bei uns angekommen.',
+            },
+            emergencyNumbers:
+                'Bei einer akuten Notlage erreichen Sie rund um die Uhr die Telefonseelsorge unter 0800 111 0 111 oder 0800 111 0 222 und den Rettungsdienst unter 112.',
+        },
+    },
+};

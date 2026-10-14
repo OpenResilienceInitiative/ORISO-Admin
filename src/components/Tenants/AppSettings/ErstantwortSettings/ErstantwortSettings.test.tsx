@@ -105,6 +105,7 @@ describe('ErstantwortSettings', () => {
         });
         renderSettings();
 
+        typeIntoGreeting('<p>Guten Tag!</p>');
         fireEvent.click(publishButton());
         fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
 
@@ -112,10 +113,10 @@ describe('ErstantwortSettings', () => {
         expect(translate).toHaveBeenCalledWith({
             sourceLang: 'de',
             targetLangs: ['en', 'fr'],
-            texts: { erstantwortGreeting: '<p>Guten Tag</p>' },
+            texts: { erstantwortGreeting: '<p>Guten Tag!</p>' },
         });
         const greeting = publishedContent().erstantwortGreeting;
-        expect(greeting.de).toBe('<p>Guten Tag</p>');
+        expect(greeting.de).toBe('<p>Guten Tag!</p>');
         expect(greeting.en).toBe('<p>Hello</p>');
         expect(greeting.fr).toBe('<p>Bonjour</p>');
         expect(JSON.parse(greeting.en__meta)).toEqual({ mt: true, src: 'de', at: expect.any(String) });
@@ -126,6 +127,7 @@ describe('ErstantwortSettings', () => {
         translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Hello</p>' } } });
         renderSettings();
 
+        typeIntoGreeting('<p>Guten Tag!</p>');
         fireEvent.click(publishButton());
         fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
 
@@ -133,14 +135,14 @@ describe('ErstantwortSettings', () => {
         expect(translate).toHaveBeenCalledWith({
             sourceLang: 'de',
             targetLangs: ['en'],
-            texts: { erstantwortGreeting: '<p>Guten Tag</p>' },
+            texts: { erstantwortGreeting: '<p>Guten Tag!</p>' },
         });
         const greeting = publishedContent().erstantwortGreeting;
-        expect(greeting['de@informal']).toBe('<p>Guten Tag</p>');
+        expect(greeting['de@informal']).toBe('<p>Guten Tag!</p>');
         expect(JSON.parse(greeting.en__meta).src).toBe('de@informal');
     });
 
-    it('sends an emptied German text as "" inside the full map, with the other languages kept', async () => {
+    it('sends an emptied German text as "" and blanks the other languages of that text', async () => {
         useSingleTenantData.mockReturnValue(
             tenantWith(['de'], { erstantwortGreeting: { de: '<p>Guten Tag</p>', en: '<p>Hello</p>' } }),
         );
@@ -150,7 +152,7 @@ describe('ErstantwortSettings', () => {
         fireEvent.click(publishButton());
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-        expect(publishedContent().erstantwortGreeting).toEqual({ de: '', en: '<p>Hello</p>' });
+        expect(publishedContent().erstantwortGreeting).toEqual({ de: '', en: '', en__meta: '' });
     });
 
     it('publishes nothing and names the failure when the translation service refuses', async () => {
@@ -158,6 +160,7 @@ describe('ErstantwortSettings', () => {
         translate.mockRejectedValue(new TranslationApiError('TRANSLATION_NO_CREDIT', 'openrouter'));
         renderSettings();
 
+        typeIntoGreeting('<p>Guten Tag!</p>');
         fireEvent.click(publishButton());
         fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
 
@@ -202,5 +205,79 @@ describe('ErstantwortSettings', () => {
 
         expect(screen.getByText('message.error.default')).toBeInTheDocument();
         expect(screen.queryByLabelText('tenants.erstantwort.greeting.label')).not.toBeInTheDocument();
+    });
+
+    it('opens the translation dialog by itself after a text change, and not for an untouched text', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        renderSettings();
+
+        fireEvent.click(publishButton());
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('button', { name: 'legal.translation.modal.confirm' })).not.toBeInTheDocument();
+
+        mutateAsync.mockClear();
+        typeIntoGreeting('<p>Anders</p>');
+        fireEvent.click(publishButton());
+        expect(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' })).toBeInTheDocument();
+    });
+
+    it('deletes the other language versions of a changed text and keeps those of unchanged texts', async () => {
+        useSingleTenantData.mockReturnValue(
+            tenantWith(['de'], {
+                erstantwortGreeting: {
+                    de: '<p>Guten Tag</p>',
+                    en: '<p>Hello</p>',
+                    en__meta: '{"mt":true,"src":"de","at":"x"}',
+                },
+                erstantwortClosing: {
+                    de: '<p>Tschüss</p>',
+                    en: '<p>Bye</p>',
+                    en__meta: '{"mt":true,"src":"de","at":"x"}',
+                },
+            }),
+        );
+        renderSettings();
+
+        typeIntoGreeting('<p>Neu</p>');
+        fireEvent.click(publishButton());
+
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(publishedContent().erstantwortGreeting).toEqual({ de: '<p>Neu</p>', en: '', en__meta: '' });
+        expect(publishedContent().erstantwortClosing.en).toBe('<p>Bye</p>');
+    });
+
+    it('publishes only the original-language text when the translation dialog is skipped', async () => {
+        useSingleTenantData.mockReturnValue(
+            tenantWith(['de', 'en'], {
+                erstantwortGreeting: { de: '<p>Guten Tag</p>', en: '<p>Hello</p>', en__meta: '{"mt":true,"src":"de"}' },
+            }),
+        );
+        renderSettings();
+
+        typeIntoGreeting('<p>Neu</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.skip' }));
+
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(translate).not.toHaveBeenCalled();
+        expect(publishedContent().erstantwortGreeting).toEqual({ de: '<p>Neu</p>', en: '', en__meta: '' });
+    });
+
+    it('translates only the changed texts', async () => {
+        useSingleTenantData.mockReturnValue(
+            tenantWith(['de', 'en'], { erstantwortClosing: { de: '<p>Tschüss</p>', en: '<p>Bye</p>' } }),
+        );
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Changed</p>' } } });
+        renderSettings();
+
+        typeIntoGreeting('<p>Geändert</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(translate).toHaveBeenCalledWith(
+            expect.objectContaining({ texts: { erstantwortGreeting: '<p>Geändert</p>' } }),
+        );
+        expect(publishedContent().erstantwortClosing.en).toBe('<p>Bye</p>');
     });
 });
