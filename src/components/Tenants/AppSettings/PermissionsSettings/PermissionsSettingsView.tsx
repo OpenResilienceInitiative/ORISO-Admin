@@ -68,6 +68,17 @@ export const PermissionsSettingsView = ({
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
 
+    // FE#1725: advice-seeker channel switches of tiles hidden on this page stay on the asker card.
+    const hiddenTileChannelToggles = CHAT_TYPE_CARDS.filter(
+        (card) => !cardsToRender.includes(card) && card.notifications?.audience === 'asker',
+    ).flatMap((card) =>
+        (card.notifications?.toggles ?? []).map((toggle) => ({
+            field: toggle.field[1],
+            labelKey: toggle.fallbackLabelKey ?? toggle.labelKey,
+            defaultValue: toggle.defaultValue,
+        })),
+    );
+
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
             resolvePermissionPolicy(permissionPolicies, fieldKey, currentValue, restrictedFields),
@@ -126,6 +137,7 @@ export const PermissionsSettingsView = ({
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
                                 onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                channelToggles={hiddenTileChannelToggles}
                             />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
@@ -262,6 +274,54 @@ export const PermissionsSettingsView = ({
                                                         );
                                                     })}
                                                 </div>
+
+                                                {card.notifications && (
+                                                    <>
+                                                        <div className={styles.cardDivider} />
+                                                        <div className={styles.togglesSectionLabel}>
+                                                            {t(
+                                                                `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
+                                                            )}
+                                                        </div>
+                                                        <div className={styles.togglesList}>
+                                                            {card.notifications.toggles.map((toggle) => {
+                                                                const fieldKey = toggle.field[1];
+                                                                return (
+                                                                    <div key={fieldKey} className={styles.toggleRow}>
+                                                                        <PermissionPolicyControl
+                                                                            featureKey={fieldKey}
+                                                                            label={t(toggle.labelKey)}
+                                                                            level={policyLevel}
+                                                                            policy={policyFor(
+                                                                                fieldKey,
+                                                                                getFieldValue(toggle.field) ??
+                                                                                    toggle.defaultValue,
+                                                                            )}
+                                                                            open={openPolicyMenu === fieldKey}
+                                                                            pending={policyPending(fieldKey)}
+                                                                            disabled={toggle.awaitsBackend}
+                                                                            supportingText={
+                                                                                toggle.awaitsBackend
+                                                                                    ? t(
+                                                                                          'tenants.permissions.card.notifications.awaitsBackend',
+                                                                                      )
+                                                                                    : undefined
+                                                                            }
+                                                                            onOpenChange={(open) =>
+                                                                                setOpenPolicyMenu(
+                                                                                    open ? fieldKey : null,
+                                                                                )
+                                                                            }
+                                                                            onChange={(next) =>
+                                                                                changePolicy(fieldKey, next, form)
+                                                                            }
+                                                                        />
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </Card>
                                         );
                                     }}
