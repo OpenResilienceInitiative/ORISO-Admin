@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
+import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
 import { stripAgencyAdminControls } from '../../../../api/agency/stripAgencyAdminControls';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
@@ -28,6 +29,10 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     const { t } = useTranslation();
     const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutate: updateAgency } = useAgencyUpdate(agencyId);
+    // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
+    // Failing to read them (e.g. no access) degrades to the defaults, without a toast.
+    const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
+    const { data: traegerPolicies } = useTenantPermissionPolicies(traegerId, Boolean(traegerId), { silent: true });
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
@@ -101,6 +106,8 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             tenantId={`agency-${agencyId}`}
             caseHandoverTenantId={agencyData?.tenantId}
             caseHandoverTenantPending={isPending}
+            channelsSetOnTraeger
+            traegerChannelPolicies={traegerPolicies?.policies}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}

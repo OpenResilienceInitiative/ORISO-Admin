@@ -50,8 +50,10 @@ const TILES = [
     ['oneOnOne', 'featureAskerEmailAgencyCounsellingEnabled', 'featureAskerBrowserAgencyCounsellingEnabled'],
     ['liveChat', 'featureAskerEmailLiveChatEnabled', 'featureAskerBrowserLiveChatEnabled'],
     ['group', 'featureAskerEmailSelfHelpEnabled', 'featureAskerBrowserSelfHelpEnabled'],
-    ['groupInternal', 'featureConsultantEmailInternalGroupEnabled', 'featureConsultantBrowserInternalGroupEnabled'],
 ] as const;
+
+const INTERNAL_EMAIL = 'featureConsultantEmailInternalGroupEnabled';
+const INTERNAL_BROWSER = 'featureConsultantBrowserInternalGroupEnabled';
 
 describe('notification switches on conversation-type tiles', () => {
     it.each(TILES)(
@@ -115,20 +117,52 @@ describe('notification switches on conversation-type tiles', () => {
         ).toHaveLength(1);
     });
 
-    it('internal group chats tile offers counsellor email and browser switches', () => {
-        render(<PermissionsSettingsView {...baseProps()} />);
+    it('internal group chats tile: email switch is live, browser switch is not effective yet', async () => {
+        const user = userEvent.setup();
+        const onPolicyChange = vi.fn();
+        render(<PermissionsSettingsView {...baseProps({ onPolicyChange })} />);
         const card = screen.getByTestId('chat-type-card-groupInternal');
 
         expect(within(card).getByText('tenants.permissions.card.notifications.consultantTitle')).toBeTruthy();
-        ['featureConsultantEmailInternalGroupEnabled', 'featureConsultantBrowserInternalGroupEnabled'].forEach(
-            (field) => {
-                const trigger = control(card, field);
-                // FE#1725 T7: TenantService knows the keys (default on), so they are savable.
-                expect(trigger).toBeEnabled();
-                expect(trigger).toHaveAccessibleName(/activationSuggested/);
-            },
-        );
+        expect(control(card, INTERNAL_EMAIL)).toBeEnabled();
+        await user.click(control(card, INTERNAL_EMAIL));
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
+        expect(onPolicyChange).toHaveBeenLastCalledWith(INTERNAL_EMAIL, { value: false, mode: 'SUGGESTED' });
+
+        // Open product question: no browser producer for group members yet (FE#1725 T7).
+        expect(control(card, INTERNAL_BROWSER)).toBeDisabled();
+        const browser = card.querySelector<HTMLElement>(`[data-feature-policy="${INTERNAL_BROWSER}"]`) as HTMLElement;
+        expect(within(browser).getByText('tenants.permissions.card.notifications.notYetEffective')).toBeTruthy();
         // 54509df4 / Admin#991: supervision stays under "Other functions", never on this tile.
         expect(card.querySelector('[data-feature-policy*="Supervision"]')).toBeNull();
+    });
+
+    // Review 10: AgencyService does not store channel switches, so a centre cannot change them.
+    it('centre page shows the Träger channel values read-only with a note where they are set', () => {
+        const onPolicyChange = vi.fn();
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    onPolicyChange,
+                    policyLevel: 'agency',
+                    channelsSetOnTraeger: true,
+                    traegerChannelPolicies: {
+                        featureAskerEmailLiveChatEnabled: { value: true, mode: 'ENFORCED' },
+                        [INTERNAL_EMAIL]: { value: false, mode: 'SUGGESTED' },
+                    },
+                })}
+            />,
+        );
+
+        const liveChat = screen.getByTestId('chat-type-card-liveChat');
+        expect(control(liveChat, 'featureAskerEmailLiveChatEnabled')).toBeDisabled();
+        expect(control(liveChat, 'featureAskerEmailLiveChatEnabled')).toHaveAccessibleName(/activationEnforced/);
+        expect(control(liveChat, 'featureAskerBrowserLiveChatEnabled')).toBeDisabled();
+        expect(within(liveChat).getByText('tenants.permissions.card.notifications.setOnTraeger')).toBeTruthy();
+
+        const internal = screen.getByTestId('chat-type-card-groupInternal');
+        expect(control(internal, INTERNAL_EMAIL)).toBeDisabled();
+        expect(control(internal, INTERNAL_EMAIL)).toHaveAccessibleName(/deactivationSuggested/);
+        expect(onPolicyChange).not.toHaveBeenCalled();
     });
 });

@@ -51,12 +51,12 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             toggles: [
                 {
                     labelKey: 'tenants.permissions.card.notifications.email',
-                    field: ['settings', 'featureAskerEmailAgencyCounsellingEnabled'],
+                    setting: 'featureAskerEmailAgencyCounsellingEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.emailAgencyCounselling',
                 },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
-                    field: ['settings', 'featureAskerBrowserAgencyCounsellingEnabled'],
+                    setting: 'featureAskerBrowserAgencyCounsellingEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.browserAgencyCounselling',
                 },
             ],
@@ -108,13 +108,13 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             toggles: [
                 {
                     labelKey: 'tenants.permissions.card.notifications.email',
-                    field: ['settings', 'featureAskerEmailLiveChatEnabled'],
+                    setting: 'featureAskerEmailLiveChatEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.emailLiveChat',
                     defaultValue: false,
                 },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
-                    field: ['settings', 'featureAskerBrowserLiveChatEnabled'],
+                    setting: 'featureAskerBrowserLiveChatEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.browserLiveChat',
                 },
             ],
@@ -166,12 +166,12 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             toggles: [
                 {
                     labelKey: 'tenants.permissions.card.notifications.email',
-                    field: ['settings', 'featureAskerEmailSelfHelpEnabled'],
+                    setting: 'featureAskerEmailSelfHelpEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.emailSelfHelp',
                 },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
-                    field: ['settings', 'featureAskerBrowserSelfHelpEnabled'],
+                    setting: 'featureAskerBrowserSelfHelpEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.browserSelfHelp',
                 },
             ],
@@ -199,11 +199,13 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             toggles: [
                 {
                     labelKey: 'tenants.permissions.card.notifications.email',
-                    field: ['settings', 'featureConsultantEmailInternalGroupEnabled'],
+                    setting: 'featureConsultantEmailInternalGroupEnabled',
                 },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
-                    field: ['settings', 'featureConsultantBrowserInternalGroupEnabled'],
+                    setting: 'featureConsultantBrowserInternalGroupEnabled',
+                    // No browser-event producer for group members yet (T7): open product question.
+                    notYetEffective: true,
                 },
             ],
         },

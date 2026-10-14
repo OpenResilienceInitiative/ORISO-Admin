@@ -153,3 +153,29 @@ describe('AgencyPermissionsSettings case handover card', () => {
         expect(screen.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/i)).toBeTruthy();
     });
 });
+
+// Review 10: AgencyService stores no channel switches; the centre shows its Träger's, read-only.
+describe('AgencyPermissionsSettings notification channels', () => {
+    it("shows the Träger's channel value read-only", async () => {
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? Response.json({
+                      tenantId: 2,
+                      policies: { featureAskerEmailLiveChatEnabled: { value: true, mode: 'ENFORCED' } },
+                  })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            const control = policy('featureAskerEmailLiveChatEnabled');
+            const trigger = within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i });
+            expect(trigger).toBeDisabled();
+            await waitFor(() => expect(trigger).toHaveAccessibleName(/Aktivierung erzwungen|Activation enforced/i));
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});

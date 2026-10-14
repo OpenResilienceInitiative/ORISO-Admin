@@ -2705,6 +2705,8 @@
     "tenants.permissions.card.notifications.consultantTitle": "Notifications for counsellors",
     "tenants.permissions.card.notifications.email": "Email notification",
     "tenants.permissions.card.notifications.browser": "Browser notification",
+    "tenants.permissions.card.notifications.notYetEffective": "Not effective yet: browser notifications for internal group chats are still an open product decision.",
+    "tenants.permissions.card.notifications.setOnTraeger": "Set by the Träger on its permissions page; shown here read-only.",
     "globalSettings.tutorials.title": "Counsellor tutorials",
     "globalSettings.tutorials.description": "Introduction and practice flows in Help.",
     "globalSettings.tutorials.current": "Current availability",
