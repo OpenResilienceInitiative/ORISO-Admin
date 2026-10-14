@@ -225,7 +225,11 @@ export const M3FabMenu = ({
                     <span className={styles.itemText}>
                         <span className={styles.itemLabel}>{item.label}</span>
                         {/* aria-hidden keeps it out of the name; aria-describedby still reads it. */}
-                        <span className={styles.itemDescription} id={descriptionId} aria-hidden>
+                        <span
+                            className={classNames(styles.itemDescription, 'm3-body-medium')}
+                            id={descriptionId}
+                            aria-hidden
+                        >
                             {item.description}
                         </span>
                     </span>

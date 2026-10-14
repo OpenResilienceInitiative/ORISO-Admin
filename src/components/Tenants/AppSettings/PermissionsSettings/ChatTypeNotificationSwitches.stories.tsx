@@ -126,7 +126,7 @@ export const SwitchesOnTiles: Story = {
     },
 };
 
-/** Internal group chats: counsellor email switch saves and shows the saved value. */
+/** Internal group chats: counsellor email switch saves and shows the saved value; browser is not effective yet. */
 export const InternalGroupChatsSave: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
@@ -137,7 +137,9 @@ export const InternalGroupChatsSave: Story = {
                 literal('tenants.permissions.policy.activationSuggested'),
             ),
         );
-        await expect(trigger(card, 'featureConsultantBrowserInternalGroupEnabled')).toBeEnabled();
+        // Open product question: the browser switch has no effect yet, so it cannot be changed.
+        await expect(trigger(card, 'featureConsultantBrowserInternalGroupEnabled')).toBeDisabled();
+        await expect(within(card).getByText(t('tenants.permissions.card.notifications.notYetEffective'))).toBeTruthy();
 
         await userEvent.click(trigger(card, 'featureConsultantEmailInternalGroupEnabled'));
         await userEvent.click(

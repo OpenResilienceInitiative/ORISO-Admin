@@ -101,6 +101,7 @@
     min-height: 56px;
     padding-top: 10px;
     padding-bottom: 10px;
+    // No shape token exists in this repo; 20px keeps a multi-line pill visibly a pill.
     border-radius: 20px;
     text-align: left;
     white-space: normal;
@@ -113,11 +114,9 @@
     align-items: flex-start;
 }
 
+// Type comes from the global M3 scale class `m3-body-medium` (app.css); nothing to set here.
 .itemDescription {
-    font-size: 13px;
-    font-weight: 400;
-    letter-spacing: 0.25px;
-    line-height: 18px;
+    display: block;
 }
 
 .itemActive {
