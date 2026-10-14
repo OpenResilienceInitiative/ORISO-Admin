@@ -282,8 +282,8 @@ export const NoTraegerInScope: Story = {
     },
 };
 
-/** Every reason the backend returns gets a tab, the legacy emergency reason and unknown new
- *  platform reasons included, so none runs with an unseen default (FE#1725 story 33). */
+/** Every current reason the backend returns gets a tab, unknown new platform reasons included.
+ *  OTHER_EMERGENCY stays hidden (Frank 2026-08-17; open product question, FE#1725). */
 export const AllPlatformReasons: Story = {
     args: {
         policies: [
@@ -315,8 +315,9 @@ export const AllPlatformReasons: Story = {
         const tabs = within(canvas.getByRole('tablist', { name: /Übergabegründe|Handover reasons/i })).getAllByRole(
             'tab',
         );
-        // 4 neutral + emergency + new reason + legal-violation placeholder.
-        await expect(tabs).toHaveLength(7);
+        // 4 neutral + new reason + legal-violation placeholder; emergency hidden.
+        await expect(tabs).toHaveLength(6);
+        await expect(canvas.queryByRole('tab', { name: /Notfall|Emergency/i })).toBeNull();
         await expect(canvas.getByRole('tab', { name: 'Team reorganisation' })).toBeVisible();
     },
 };

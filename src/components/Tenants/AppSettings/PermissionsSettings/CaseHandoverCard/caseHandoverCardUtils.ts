@@ -66,10 +66,12 @@ export type DisplayReason = {
 /** Tabs to render: all backend reasons in display order, plus the legal-violation
  *  placeholder as long as the backend does not seed it itself. */
 export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): DisplayReason[] => {
-    // Every reason the backend returns is shown, OTHER_EMERGENCY included: the master switch
-    // enables it too, so hiding it let it run with an unseen default (FE#1725 story 33).
-    // Only retired duplicates of a listed neutral code stay hidden.
-    const sorted = sortPoliciesByDisplayOrder(policies).filter((policy) => !isSupersededPolicy(policy, policies));
+    // OTHER_EMERGENCY remains readable for historical requests but is no longer
+    // offered as a configurable reason (Frank, Figma follow-up 2026-08-17).
+    // Open product question (FE#1725): the master switch still enables this hidden default.
+    const sorted = sortPoliciesByDisplayOrder(policies).filter(
+        (policy) => policy.code !== 'OTHER_EMERGENCY' && !isSupersededPolicy(policy, policies),
+    );
     const reasons: DisplayReason[] = sorted.map((policy) => ({
         code: policy.code,
         policy,

@@ -194,7 +194,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         expect(server.requests).toHaveLength(0);
     });
 
-    it('shows every reason the endpoint returns', async () => {
+    it('shows every current reason the endpoint returns, without the hidden legacy emergency', async () => {
         server.store.set('7', [
             ...storedPolicies(),
             { ...storedPolicies()[1], code: 'UNPLANNED_ABSENCE', label: 'Unplanned absence', displayOrder: 40 },
@@ -211,10 +211,10 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
                 expect.stringMatching(/Planned/i),
                 expect.stringMatching(/Unplanned/i),
                 expect.stringMatching(/ended|left/i),
-                expect.stringMatching(/emergency/i),
                 'New platform reason',
             ]),
         );
+        expect(tabs.map((tab) => tab.textContent)).not.toContainEqual(expect.stringMatching(/emergency/i));
     });
 
     it('explains in the menu what the client experiences with each consent option', async () => {
