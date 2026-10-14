@@ -79,6 +79,7 @@ export const InviteEmailTemplateEditor = ({
 
     return (
         <PlaceholderTemplateEditor
+            matchPreviewHeight
             hideTemplateChooser={hideTemplateChooser}
             activeTemplateId={activeTemplateId}
             fields={fields}

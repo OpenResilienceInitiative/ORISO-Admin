@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEve
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import {
     createInviteEmailTemplate,
     deleteInviteEmailTemplate,
@@ -719,6 +720,7 @@ export const EmailTemplatesDialog = ({
         };
         return (
             <PlaceholderTemplateDialog
+                icon={<DescriptionOutlinedIcon data-testid="template-header-icon" />}
                 titleKey={titleKey}
                 descriptionKey={descriptionKey}
                 scrollableBody

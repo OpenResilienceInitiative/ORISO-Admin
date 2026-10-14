@@ -424,6 +424,7 @@ export const FooterEditor: Story = {
         await expect(within(footer).getByLabelText('Bisherige Vorlagen')).toHaveRole('combobox');
         await expect(dialog.getByLabelText('Sprache')).toHaveRole('combobox');
         await expect(dialog.queryByRole('switch')).not.toBeInTheDocument();
+        await expect(dialog.getByTestId('template-header-icon')).toBeInTheDocument();
         await expect(dialog.queryByLabelText('Vorschau im Design von')).not.toBeInTheDocument();
         await expect(
             dialog.queryByText('Träger für die Vorschau konnten nicht geladen werden.'),
@@ -431,6 +432,22 @@ export const FooterEditor: Story = {
         await expect(dialog.queryByRole('button', { name: 'Vorlagenmenü öffnen' })).not.toBeInTheDocument();
         await body.findByTitle('E-Mail-Vorschau');
         await waitFor(() => expect(doc.querySelector('.ant-modal[class*="ant-zoom"]')).toBeNull());
+        if (doc.defaultView!.innerWidth > 920) {
+            const subject = dialog.getByLabelText('Betreff');
+            const content = dialog.getByLabelText('Inhalt');
+            const name = within(footer).getByLabelText('Vorlagenname');
+            const frame = dialog.getByTitle('E-Mail-Vorschau');
+            await waitFor(() => {
+                const input = content.getBoundingClientRect();
+                const preview = frame.getBoundingClientRect();
+                expect(preview.height).toBeGreaterThan(300);
+                expect(Math.abs(input.width - preview.width)).toBeLessThan(2);
+                expect(
+                    Math.abs(subject.getBoundingClientRect().width - name.getBoundingClientRect().width),
+                ).toBeLessThan(2);
+                expect(Math.abs(input.bottom - preview.bottom)).toBeLessThan(2);
+            });
+        }
         const scrollBody = doc.querySelector('.ant-modal-body') as HTMLElement;
         const before = footer.getBoundingClientRect();
         await expect(before.bottom).toBeLessThanOrEqual(doc.defaultView!.innerHeight);
