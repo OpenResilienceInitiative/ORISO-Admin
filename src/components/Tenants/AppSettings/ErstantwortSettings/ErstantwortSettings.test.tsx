@@ -44,12 +44,12 @@ vi.mock('../../../FormPluginEditor/M3RichTextEditor', () => ({
 // eslint-disable-next-line import/first
 import { ErstantwortSettings } from './index';
 
-const tenantWith = (activeLanguages: string[], content: Record<string, unknown> = {}) => ({
+const tenantWith = (activeLanguages: string[], content: Record<string, unknown> = {}, languageFormal = true) => ({
     data: {
         id: 7,
-        settings: { activeLanguages, extendedSettings: { languageFormal: true } },
+        settings: { activeLanguages, extendedSettings: { languageFormal } },
         content: {
-            erstantwortGreeting: { de: '<p>Guten Tag</p>' },
+            erstantwortGreeting: { [languageFormal ? 'de' : 'de@informal']: '<p>Guten Tag</p>' },
             ...content,
         },
     },
@@ -121,6 +121,38 @@ describe('ErstantwortSettings', () => {
         expect(JSON.parse(greeting.en__meta)).toEqual({ mt: true, src: 'de', at: expect.any(String) });
     });
 
+    it('sends the short source language "de" to the translation service even when the Träger writes informally', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en'], {}, false));
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Hello</p>' } } });
+        renderSettings();
+
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(translate).toHaveBeenCalledWith({
+            sourceLang: 'de',
+            targetLangs: ['en'],
+            texts: { erstantwortGreeting: '<p>Guten Tag</p>' },
+        });
+        const greeting = publishedContent().erstantwortGreeting;
+        expect(greeting['de@informal']).toBe('<p>Guten Tag</p>');
+        expect(JSON.parse(greeting.en__meta).src).toBe('de@informal');
+    });
+
+    it('sends an emptied German text as "" inside the full map, with the other languages kept', async () => {
+        useSingleTenantData.mockReturnValue(
+            tenantWith(['de'], { erstantwortGreeting: { de: '<p>Guten Tag</p>', en: '<p>Hello</p>' } }),
+        );
+        renderSettings();
+
+        typeIntoGreeting('<p></p>');
+        fireEvent.click(publishButton());
+
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        expect(publishedContent().erstantwortGreeting).toEqual({ de: '', en: '<p>Hello</p>' });
+    });
+
     it('publishes nothing and names the failure when the translation service refuses', async () => {
         useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
         translate.mockRejectedValue(new TranslationApiError('TRANSLATION_NO_CREDIT', 'openrouter'));
@@ -146,7 +178,7 @@ describe('ErstantwortSettings', () => {
         expect(publishedContent().erstantwortGreeting).toEqual({ de: '<p>Neu</p>' });
     });
 
-    it('sends the deadline only when the Träger changed it, and a cleared deadline as null', async () => {
+    it('sends the deadline only when the Träger changed it, and a cleared deadline as 0', async () => {
         useSingleTenantData.mockReturnValue(tenantWith(['de'], { erstantwortResponseDeadlineDays: 3 }));
         renderSettings();
 
@@ -154,7 +186,7 @@ describe('ErstantwortSettings', () => {
         fireEvent.click(publishButton());
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-        expect(publishedContent()).toHaveProperty('erstantwortResponseDeadlineDays', null);
+        expect(publishedContent()).toHaveProperty('erstantwortResponseDeadlineDays', 0);
     });
 
     it('offers no publish action to someone who may only read the texts', () => {

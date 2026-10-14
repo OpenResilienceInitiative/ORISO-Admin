@@ -122,7 +122,8 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
         let translated: ErstantwortContentMap;
         try {
             const response = await translate({
-                sourceLang: sourceLanguage,
+                // TenantService accepts at most 10 chars, so the variant 'de@informal' is sent as 'de'.
+                sourceLang: 'de',
                 targetLangs: languages,
                 texts: sourceTexts,
             });

@@ -55,10 +55,29 @@ export const applyTranslations = (
     return result;
 };
 
+const META_SUFFIX = metaKeyFor('');
+
+/** A blank text is sent as "" so the backend removes that language; it never omits the key. */
+const normaliseMap = (map: Record<string, string>): Record<string, string> => {
+    const result: Record<string, string> = {};
+    Object.entries(map).forEach(([language, value]) => {
+        if (language.endsWith(META_SUFFIX)) {
+            return;
+        }
+        result[language] = isEmptyHtml(value) ? '' : value;
+        const meta = map[metaKeyFor(language)];
+        if (meta !== undefined) {
+            result[metaKeyFor(language)] = result[language] === '' ? '' : meta;
+        }
+    });
+    return result;
+};
+
 /**
- * The `content` part of the publish PUT: every Baustein map that exists, copied whole so that a
- * translation and its meta travel together. The deadline is included only when the Träger changed
- * it (`undefined` = untouched); `null` is a cleared deadline, which is never the same as zero.
+ * The `content` part of the publish PUT (TenantService#311 contract): every Baustein map that
+ * exists, as the FULL map, because a non-empty map replaces the stored one. Emptied texts travel
+ * as "". The deadline is included only when the Träger changed it (`undefined` = untouched);
+ * a cleared deadline (`null`) is sent as 0, which makes the platform default apply.
  */
 export const buildErstantwortContentPayload = (
     content: ErstantwortContentMap,
@@ -67,11 +86,11 @@ export const buildErstantwortContentPayload = (
     const payload: Record<string, unknown> = {};
     ERSTANTWORT_KEYS.forEach((key) => {
         if (content[key]) {
-            payload[key] = { ...content[key] };
+            payload[key] = normaliseMap(content[key] as Record<string, string>);
         }
     });
     if (deadlineDays !== undefined) {
-        payload[ERSTANTWORT_DEADLINE_FIELD] = deadlineDays;
+        payload[ERSTANTWORT_DEADLINE_FIELD] = deadlineDays ?? 0;
     }
     return payload;
 };

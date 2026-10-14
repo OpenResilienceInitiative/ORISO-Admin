@@ -82,8 +82,24 @@ describe('buildErstantwortContentPayload', () => {
         expect(buildErstantwortContentPayload(stored, undefined)).not.toHaveProperty('erstantwortResponseDeadlineDays');
     });
 
-    it('sends a chosen deadline as a number and a cleared one as null, never as zero', () => {
+    it('sends a chosen deadline as a number and a cleared one as 0, never as null', () => {
         expect(buildErstantwortContentPayload(stored, 5)).toHaveProperty('erstantwortResponseDeadlineDays', 5);
-        expect(buildErstantwortContentPayload(stored, null)).toHaveProperty('erstantwortResponseDeadlineDays', null);
+        expect(buildErstantwortContentPayload(stored, null)).toHaveProperty('erstantwortResponseDeadlineDays', 0);
+    });
+
+    it('sends an empty text as "" inside the full map instead of omitting or collapsing it', () => {
+        const payload = buildErstantwortContentPayload(stored, undefined);
+
+        expect(payload.erstantwortFreeNotice).toEqual({ de: '' });
+        expect(payload.erstantwortGreeting).toEqual(stored.erstantwortGreeting);
+    });
+
+    it('blanks the __meta marker of a language whose text was emptied', () => {
+        const payload = buildErstantwortContentPayload(
+            { erstantwortGreeting: { de: '<p>Hallo</p>', en: '<p></p>', en__meta: '{"mt":true}' } },
+            undefined,
+        );
+
+        expect(payload.erstantwortGreeting).toEqual({ de: '<p>Hallo</p>', en: '', en__meta: '' });
     });
 });
