@@ -1,0 +1,176 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+$preview-width: 72px;
+$preview-height: 44px;
+$red: var(--m3-primary, #a5000a);
+$red-rear: color-mix(in srgb, #{$red} 68%, #000000);
+
+.tiles {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+// The antd radio wrapper is the tile, so the whole picture + text block selects it.
+.tile {
+    display: flex;
+    width: 100%;
+    align-items: flex-start;
+    padding: mui.$mui-unit * 1.25 mui.$mui-unit * 1.5;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 12px;
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+
+    :global(.ant-radio) {
+        margin-top: 2px;
+    }
+
+    // antd sets the label text span to flex: auto only for plain text; ours is a block of spans.
+    > span:last-child {
+        min-width: 0;
+        flex: 1 1 auto;
+        padding-inline: mui.$mui-unit * 1.5 0;
+    }
+
+    &:global(.ant-radio-wrapper-checked) {
+        border-color: $red;
+        box-shadow: inset 0 0 0 1px $red;
+    }
+
+    &:has(:global(.ant-radio-input:focus-visible)) {
+        outline: 2px solid $red;
+        outline-offset: 2px;
+    }
+
+    &:global(.ant-radio-wrapper-disabled) {
+        color: var(--m3-on-surface-variant, #444748);
+    }
+}
+
+.tileBody {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.tileText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tileTitle {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.tileDescription {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+    white-space: normal;
+}
+
+// Static stills (no animation, no JS). One small stage per design: the left rail is the navigation,
+// the stage on its right is the area the red surface covers, and the bar is the message field.
+.preview {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    width: $preview-width;
+    height: $preview-height;
+    flex: none;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 6px;
+    background: var(--m3-surface-container-highest, #e4e2e2);
+}
+
+.previewStage {
+    position: absolute;
+    display: block;
+    overflow: hidden;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    inset: 0 0 0 14px;
+}
+
+.previewField {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    left: 6px;
+    height: 6px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 3px;
+    background: var(--m3-surface, #fcf9f9);
+}
+
+.layerA,
+.layerB {
+    position: absolute;
+    display: none;
+}
+
+// Curtain: two red panels closing towards the middle of the right-hand area.
+.preview[data-design='CURTAIN'] {
+    .layerA,
+    .layerB {
+        top: 0;
+        bottom: 0;
+        display: block;
+        width: 36%;
+        background: $red;
+    }
+
+    .layerA {
+        left: 0;
+    }
+
+    .layerB {
+        right: 0;
+    }
+}
+
+// Circle zoom: the red surface has shrunk to a circle on the message field.
+.preview[data-design='CIRCLE_ZOOM'] {
+    .layerA {
+        bottom: -2px;
+        left: 50%;
+        display: block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: $red;
+        box-shadow: 0 0 0 5px color-mix(in srgb, #{$red} 26%, transparent);
+        transform: translateX(-50%);
+    }
+}
+
+// Slide reveal: the front red area leads to the right, a second darker layer follows behind it.
+.preview[data-design='SLIDE_REVEAL'] {
+    .layerA,
+    .layerB {
+        top: 0;
+        bottom: 0;
+        display: block;
+    }
+
+    .layerA {
+        right: 0;
+        width: 36%;
+        background: $red;
+    }
+
+    .layerB {
+        right: 36%;
+        width: 22%;
+        background: $red-rear;
+    }
+}
+
+.group {
+    width: 100%;
+}
