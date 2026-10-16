@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
+import { M3Button } from '../../../../../components/M3Button';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
@@ -54,10 +55,17 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     // A platform admin must choose the Träger first; until then nobody is offered (#953).
     const awaitingTenant = isSuperAdmin && consultantTenantId === undefined;
-    const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
+    const {
+        data: consultants,
+        isLoading: isLoadingConsultants,
+        isError: consultantSearchFailed,
+        refetch: retryConsultantSearch,
+    } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
         pageSize: 1000,
+        // A failed lookup must reject, or it reads as "this Träger has no counsellors".
+        rethrowOnFailure: true,
         // The server narrows to the Träger too, so other Träger's counsellors never reach the browser.
         filters: consultantTenantId === undefined ? {} : { tenantId: String(consultantTenantId) },
         enabled: showConsultantAssignment && !awaitingTenant,
@@ -77,7 +85,11 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
     }, [assignedConsultants, consultants?.data, consultantTenantId, isSuperAdmin]);
     const noConsultantsInTenant =
-        !awaitingTenant && !isLoadingConsultants && !!consultants?.data && consultantOptions.length === 0;
+        !awaitingTenant &&
+        !isLoadingConsultants &&
+        !consultantSearchFailed &&
+        !!consultants?.data &&
+        consultantOptions.length === 0;
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
@@ -113,11 +125,12 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     }, [form, hasSelectedConsultants, id]);
 
     // Narrowing the options does not narrow the selection: MuiSelectField keeps a value it
-    // cannot resolve, so a counsellor picked before the tenant was known would still be
-    // submitted and assigned. Drop what the tenant no longer allows — but only once the
-    // search has answered, or a pending query would read as an empty list and wipe a valid pick.
+    // cannot resolve, so a counsellor picked for one Träger would still be submitted after the
+    // admin switches to another. Drop what the chosen Träger no longer allows — but only once the
+    // search has answered: a pending or failed query has no list, and reading that as "nobody
+    // is allowed" would wipe valid picks.
     useEffect(() => {
-        if (isLoadingConsultants || !consultants?.data) {
+        if (isLoadingConsultants || consultantSearchFailed || !consultants?.data) {
             return;
         }
         const allowed = new Set(consultantOptions.map(({ value }) => String(value)));
@@ -129,7 +142,7 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         if (kept.length !== current.length) {
             form.setFieldValue('consultantIds', kept);
         }
-    }, [consultantOptions, consultants?.data, form, isLoadingConsultants]);
+    }, [consultantOptions, consultants?.data, consultantSearchFailed, form, isLoadingConsultants]);
 
     const fields = (
         <>
@@ -159,6 +172,18 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                         placeholder="agency.form.registrationSettings.consultants.placeholder"
                         options={consultantOptions}
                     />
+                    {consultantSearchFailed && !awaitingTenant && (
+                        <Alert
+                            className={styles.warning}
+                            type="error"
+                            description={t('agency.form.registrationSettings.consultants.loadError')}
+                            action={
+                                <M3Button variant="text" onClick={() => retryConsultantSearch()}>
+                                    {t('agency.form.registrationSettings.consultants.retry')}
+                                </M3Button>
+                            }
+                        />
+                    )}
                     <div className={styles.createConsultant}>
                         <CreateConsultantModal
                             tenantId={consultantTenantId}

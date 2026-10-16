@@ -32,7 +32,15 @@ const everyone = [
     person('c-3', 'Fremd', 'Mandant', 99),
 ];
 
+/** Every counsellor search the page sent, so a story can prove the Träger reached the server. */
+const searchRequests: string[] = [];
+let searchFails = false;
+
 const search = ({ request }: { request: Request }) => {
+    searchRequests.push(request.url);
+    if (searchFails) {
+        return new HttpResponse(null, { status: 500 });
+    }
     const tenantId = new URL(request.url).searchParams.get('tenantId');
     const rows = (tenantId ? everyone.filter((entry) => String(entry.tenantId) === tenantId) : everyone).map(
         ({ row }) => row,
@@ -68,6 +76,8 @@ const meta = {
         const previousAccess = getSessionAccessToken();
         const previousRefresh = getSessionRefreshToken();
         const previousLanguage = i18n.language;
+        searchRequests.length = 0;
+        searchFails = false;
         asPlatformAdmin();
         await i18n.changeLanguage('de');
         return async () => {
@@ -87,7 +97,9 @@ export const ChooseTenantFirst: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await field(canvas)).toBeDisabled();
-        await expect(canvas.getByText(/Wählen Sie zuerst den Träger/)).toBeInTheDocument();
+        await expect(canvas.getByText(/Wählen Sie zuerst die Trägerzuordnung/)).toBeInTheDocument();
+        // Nothing is asked of the server before the Träger is known.
+        await expect(searchRequests).toEqual([]);
     },
 };
 
@@ -101,6 +113,9 @@ export const OnlyCounsellorsOfTheTenant: Story = {
         await expect(await list.findByRole('option', { name: /Erika Beispiel/ })).toBeInTheDocument();
         await expect(list.getByRole('option', { name: /Jonas Muster/ })).toBeInTheDocument();
         await expect(list.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+        // The server did the narrowing too: the request itself carries the Träger.
+        await expect(searchRequests.length).toBeGreaterThan(0);
+        await expect(searchRequests.every((url) => new URL(url).searchParams.get('tenantId') === '7')).toBe(true);
     },
 };
 
@@ -125,6 +140,20 @@ export const NoCounsellorsInTheTenantEnglish: Story = {
     play: async ({ canvasElement }) => {
         await i18n.changeLanguage('en');
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/No further counsellors of this provider/)).toBeInTheDocument();
+        await expect(await canvas.findByText(/No further counsellors of this tenant/)).toBeInTheDocument();
+    },
+};
+
+/** The counsellor lookup fails: an error with a retry, never "no counsellors" and never a wiped pick. */
+export const CounsellorSearchFailed: Story = {
+    args: { tenantId: 7 },
+    beforeEach: async () => {
+        searchFails = true;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        await expect(canvas.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
     },
 };
