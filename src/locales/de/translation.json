@@ -2098,6 +2098,8 @@
     "agency.form.registrationSettings.assignmentWarning": "Damit die Beratungsstelle in der Registrierung sichtbar gestellt werden kann, wählen Sie mindestens eine:n Berater:in aus – oder legen Sie hier direkt eine:n neue:n an.",
     "agency.form.registrationSettings.consultants.label": "Berater:innen hinzufügen",
     "agency.form.registrationSettings.consultants.placeholder": "Berater:innen auswählen",
+    "agency.form.registrationSettings.consultants.selectTenantFirst": "Wählen Sie zuerst den Träger, dann können Sie Berater:innen dieses Trägers zuweisen.",
+    "agency.form.registrationSettings.consultants.noneInTenant": "In diesem Träger gibt es keine weiteren Berater:innen zur Auswahl.",
     "agency.form.registrationSettings.assigned.title": "Zugeordnete Berater:innen",
     "agency.form.registrationSettings.assigned.empty": "Dieser Beratungsstelle ist noch keine Berater:in zugeordnet.",
     "agency.form.registrationSettings.assigned.loadError": "Die zugeordneten Berater:innen konnten nicht geladen werden.",

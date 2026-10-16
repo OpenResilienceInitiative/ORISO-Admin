@@ -11,15 +11,15 @@ import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsul
 import { useAgencyData } from '../../../../../hooks/useAgencyData';
 import { useAgencyConsultants } from '../../../../../hooks/useAgencyConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
+import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
-import { isActiveRecord } from '../../../../../utils/deleteDate';
 import { CreateConsultantModal } from '../../../../../components/CreateConsultantModal';
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
-import { isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
+import { assignableConsultants, isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
 import { AssignedConsultants } from './AssignedConsultants';
 
 interface RegistrationSettingsProps {
@@ -49,32 +49,35 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
     // Already in the query cache — the page reads the same key, so this adds no request.
     const { data: agency } = useAgencyData({ id });
+    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
+    const { isSuperAdmin } = useUserRoles();
+    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
+    // A platform admin must choose the Träger first; until then nobody is offered (#953).
+    const awaitingTenant = isSuperAdmin && consultantTenantId === undefined;
     const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
         pageSize: 1000,
-        enabled: showConsultantAssignment,
+        // The server narrows to the Träger too, so other Träger's counsellors never reach the browser.
+        filters: consultantTenantId === undefined ? {} : { tenantId: String(consultantTenantId) },
+        enabled: showConsultantAssignment && !awaitingTenant,
     });
     // Same query key as the assigned list below, so this costs no extra request.
     const { data: assignedConsultants } = useAgencyConsultants({ id, enabled: hasPersistedAgency });
-    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
-    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     const consultantOptions = useMemo(() => {
-        // A platform admin's consultant search spans tenants and the backend stores a
-        // cross-tenant agency assignment without rejecting it, so scope the list to the
-        // agency's tenant. An unknown tenant leaves it unfiltered rather than emptying
-        // the picker — same rule as the supervisor picker in users/Edit.
         // Already assigned people are listed as chips above the picker, not offered again.
         const assignedIds = new Set((assignedConsultants || []).map(({ id: consultantId }) => String(consultantId)));
-        const assignable = (consultants?.data || []).filter(
-            (consultant) =>
-                isActiveRecord(consultant) &&
-                !assignedIds.has(String(consultant.id)) &&
-                (consultantTenantId === undefined || String(consultant.tenantId) === String(consultantTenantId)),
-        );
+        const assignable = assignableConsultants({
+            consultants: consultants?.data || [],
+            assignedIds,
+            tenantId: consultantTenantId,
+            requiresTenant: Boolean(isSuperAdmin),
+        });
 
         return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
-    }, [assignedConsultants, consultants?.data, consultantTenantId]);
+    }, [assignedConsultants, consultants?.data, consultantTenantId, isSuperAdmin]);
+    const noConsultantsInTenant =
+        !awaitingTenant && !isLoadingConsultants && !!consultants?.data && consultantOptions.length === 0;
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
@@ -84,6 +87,13 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         isAlreadyVisible: Boolean(agency?.id) && !agency?.offline,
     });
     const needsConsultantAssignment = !mayGoOnline;
+
+    let consultantHelpKey: string | undefined;
+    if (awaitingTenant) {
+        consultantHelpKey = 'agency.form.registrationSettings.consultants.selectTenantFirst';
+    } else if (noConsultantsInTenant) {
+        consultantHelpKey = 'agency.form.registrationSettings.consultants.noneInTenant';
+    }
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];
@@ -144,6 +154,8 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                         isMulti
                         allowClear
                         loading={isLoadingConsultants}
+                        disabled={awaitingTenant}
+                        help={consultantHelpKey}
                         placeholder="agency.form.registrationSettings.consultants.placeholder"
                         options={consultantOptions}
                     />

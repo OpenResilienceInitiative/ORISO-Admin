@@ -936,6 +936,8 @@
     "agency.form.registrationSettings.createConsultant.tenantFirst": "Please select a tenant assignment first to create a new consultant.",
     "agency.form.registrationSettings.createConsultant.saveAgencyFirst": "Save this advice center offline first, then reopen it to create and assign a consultant.",
     "agency.form.registrationSettings.consultants.placeholder": "Select consultants",
+    "agency.form.registrationSettings.consultants.selectTenantFirst": "Choose the provider (Träger) first, then you can assign counsellors of that provider.",
+    "agency.form.registrationSettings.consultants.noneInTenant": "No further counsellors of this provider are available.",
     "agency.form.registrationSettings.assigned.title": "Assigned consultants",
     "agency.form.registrationSettings.assigned.empty": "No consultant is assigned to this advice center yet.",
     "agency.form.registrationSettings.assigned.loadError": "The assigned consultants could not be loaded.",
