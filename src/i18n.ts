@@ -7,6 +7,13 @@ import assistant3 from './locales/fr/assistant.json';
 import assistant4 from './locales/ru/assistant.json';
 import assistant5 from './locales/tr/assistant.json';
 import assistant6 from './locales/ti/assistant.json';
+import closing0 from './locales/en/closingAnimation.json';
+import closing1 from './locales/de/closingAnimation.json';
+import closing2 from './locales/de@informal/closingAnimation.json';
+import closing3 from './locales/fr/closingAnimation.json';
+import closing4 from './locales/ru/closingAnimation.json';
+import closing5 from './locales/tr/closingAnimation.json';
+import closing6 from './locales/ti/closingAnimation.json';
 
 import translationDe from './locales/de/translation.json';
 import translationEn from './locales/en/translation.json';
@@ -33,17 +40,17 @@ i18n.use(initReactI18next).init({
     },
 
     resources: {
-        'de@informal': { translations: assistant2 },
-        fr: { translations: assistant3 },
-        ru: { translations: assistant4 },
-        tr: { translations: assistant5 },
-        ti: { translations: assistant6 },
+        'de@informal': { translations: { ...assistant2, ...closing2 } },
+        fr: { translations: { ...assistant3, ...closing3 } },
+        ru: { translations: { ...assistant4, ...closing4 } },
+        tr: { translations: { ...assistant5, ...closing5 } },
+        ti: { translations: { ...assistant6, ...closing6 } },
 
         en: {
-            translations: { ...translationEn, ...assistant0 },
+            translations: { ...translationEn, ...assistant0, ...closing0 },
         },
         de: {
-            translations: { ...translationDe, ...assistant1 },
+            translations: { ...translationDe, ...assistant1, ...closing1 },
         },
     },
     // have a common namespace used around the full app

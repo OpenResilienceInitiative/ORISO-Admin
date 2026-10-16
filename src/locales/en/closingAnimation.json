@@ -1,0 +1,16 @@
+{
+    "settings.closingAnimation.title": "Closing animation",
+    "settings.closingAnimation.description": "Choose the animation that plays when a person leaves a waiting room, once for desktop and once for mobile. The small pictures are simplified stills, not the real animation.",
+    "settings.closingAnimation.desktop": "Desktop (browser width 1200 px and up)",
+    "settings.closingAnimation.mobile": "Mobile (browser width below 1200 px)",
+    "settings.closingAnimation.inherit": "Platform default",
+    "settings.closingAnimation.inherit.description": "Follows whatever the platform has chosen.",
+    "settings.closingAnimation.inherit.current": "Currently:",
+    "settings.closingAnimation.design.CURTAIN": "Curtain",
+    "settings.closingAnimation.design.CURTAIN.description": "A red curtain closes over the right-hand area and opens again onto the message field.",
+    "settings.closingAnimation.design.CIRCLE_ZOOM": "Circle zoom",
+    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "The red surface closes into a circle on the message field and fades away.",
+    "settings.closingAnimation.design.SLIDE_REVEAL": "Slide reveal",
+    "settings.closingAnimation.design.SLIDE_REVEAL.description": "The red area swipes to the right as one piece, a second red layer follows, and the chat is uncovered.",
+    "settings.closingAnimation.loadError": "The settings could not be loaded. Please try again."
+}

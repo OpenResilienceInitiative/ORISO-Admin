@@ -1,4 +1,5 @@
 import { BasicTenantData } from './tenant';
+import type { ClosingAnimation } from '../utils/closingAnimation';
 
 export interface TenantAdminData extends BasicTenantData {
     // address?: string; description?: string; are inherited from BasicTenantData (NEW shared API fields).
@@ -6,6 +7,9 @@ export interface TenantAdminData extends BasicTenantData {
     theming: {
         assistantName?: string | null;
         assistantIcon?: string | null;
+        /** Waiting-room closing animation per device class; null = inherit the platform tenant's choice. */
+        closingAnimationDesktop?: ClosingAnimation | null;
+        closingAnimationMobile?: ClosingAnimation | null;
         associationLogo?: string;
         logo?: string;
         favicon?: string;
