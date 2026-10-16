@@ -93,6 +93,11 @@ export const getSettingsTabs = ({
             iconName: 'legal',
         },
         can(PermissionAction.Update, Resource.Tenant) && {
+            to: `${base}/erstantwort`,
+            titleKey: 'settings.subhead.erstantwort',
+            iconName: 'erstantwort',
+        },
+        can(PermissionAction.Update, Resource.Tenant) && {
             to: `${base}/smtp`,
             titleKey: 'settings.subhead.smtp',
             iconName: 'email_server',

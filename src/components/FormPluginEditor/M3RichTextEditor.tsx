@@ -190,6 +190,13 @@ export type M3RichTextEditorProps = {
      * accessible name of the reading region.
      */
     hideHeader?: boolean;
+    /**
+     * Plain-text mode for fields whose reader cannot show formatting (the Erstantwort chat bubble
+     * prints text only): no formatting bar and no fullscreen control, pasted content is reduced to
+     * its plain text (line breaks kept as paragraphs), and the bold/italic/underline shortcuts are
+     * off. The value is still `<p>…</p>` HTML. Default `false` keeps every other editor unchanged.
+     */
+    plainText?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
     /**
@@ -287,6 +294,32 @@ export type M3RichTextEditorProps = {
     /** Return false when storage failed; the edited draft then stays saveable. */
     onSaveDraft?: (html: string) => void | boolean | Promise<void | boolean>;
 };
+
+/** Plain-text mode: paste as text (blank-line-free paragraphs), no formatting shortcuts. */
+const plainTextEditorHandlers = (getEditor: () => Editor | null) => ({
+    handlePaste: (_view: unknown, event: ClipboardEvent) => {
+        const text = event.clipboardData?.getData('text/plain');
+        const target = getEditor();
+        if (text === undefined || !target) return false;
+        const lines = text
+            .replace(/\r\n?/g, '\n')
+            .split('\n')
+            .filter((line) => line.trim() !== '');
+        if (lines.length === 0) return true;
+        target
+            .chain()
+            .focus()
+            .insertContent(
+                lines.length === 1
+                    ? { type: 'text', text: lines[0] }
+                    : lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line }] })),
+            )
+            .run();
+        return true;
+    },
+    handleKeyDown: (_view: unknown, event: KeyboardEvent) =>
+        (event.metaKey || event.ctrlKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase()),
+});
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
@@ -815,6 +848,7 @@ export const M3RichTextEditor = ({
     fluid,
     contentLanguage,
     hideHeader,
+    plainText = false,
     languageSlot,
     consentSlot,
     topicSlot,
@@ -938,6 +972,17 @@ export const M3RichTextEditor = ({
     const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
     uploadAndInsertRef.current = imageUpload.uploadAndInsert;
 
+    const buildEditorProps = () => ({
+        attributes: editorSurfaceAttributes(!editorEditable, title),
+        ...(plainText
+            ? plainTextEditorHandlers(() => editorRef.current)
+            : createImageDropPasteHandlers((files) => {
+                  if (editorRef.current?.isEditable) {
+                      uploadAndInsertRef.current(files);
+                  }
+              })),
+    });
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -959,14 +1004,7 @@ export const M3RichTextEditor = ({
         ],
         content: editorContent,
         editable: editorEditable,
-        editorProps: {
-            attributes: editorSurfaceAttributes(!editorEditable, title),
-            ...createImageDropPasteHandlers((files) => {
-                if (editorRef.current?.isEditable) {
-                    uploadAndInsertRef.current(files);
-                }
-            }),
-        },
+        editorProps: buildEditorProps(),
         onUpdate: ({ editor: e }) => {
             if (e.isEditable && !syncingContentRef.current) {
                 if (dirty === undefined && onSaveDraft) setLocalDirty(true);
@@ -995,14 +1033,7 @@ export const M3RichTextEditor = ({
         // Keep the drop/paste image handlers when re-pinning the label — setOptions
         // replaces editorProps wholesale.
         editor?.setOptions({
-            editorProps: {
-                attributes: editorSurfaceAttributes(!editorEditable, title),
-                ...createImageDropPasteHandlers((files) => {
-                    if (editorRef.current?.isEditable) {
-                        uploadAndInsertRef.current(files);
-                    }
-                }),
-            },
+            editorProps: buildEditorProps(),
         });
     }, [editor, title, editorEditable]);
 
@@ -1263,7 +1294,7 @@ export const M3RichTextEditor = ({
 
             {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
-            {showToolbar ? (
+            {!plainText && showToolbar && (
                 <Toolbar
                     editor={editor}
                     disabled={!editorEditable}
@@ -1276,9 +1307,8 @@ export const M3RichTextEditor = ({
                     onInsertImage={imageUpload.openImagePicker}
                     imageUploading={imageUpload.uploading}
                 />
-            ) : (
-                <div className={styles.toolbar}>{maximizeButton}</div>
             )}
+            {!plainText && !showToolbar && <div className={styles.toolbar}>{maximizeButton}</div>}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 

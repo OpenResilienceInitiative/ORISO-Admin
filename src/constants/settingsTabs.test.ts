@@ -54,6 +54,7 @@ describe('settings tabs', () => {
 
     // Figma Admin.ORISO node 465-27854 ("Subsection Translations German"), level 2:
     // Stammdaten & Mehr · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff.
+    // Erstantwort (ADR-018, #601) is not part of that design; it sits after Rechtliches.
     it('gives the tenant level the designed tab order including Erscheinungsbild', () => {
         const tabs = getSettingsTabs(baseContext);
 
@@ -61,6 +62,7 @@ describe('settings tabs', () => {
             { to: '/settings/master-data', titleKey: 'settings.subhead.masterData' },
             { to: '/settings/general', titleKey: 'settings.subhead.view' },
             { to: '/settings/legal', titleKey: 'settings.subhead.legal' },
+            { to: '/settings/erstantwort', titleKey: 'settings.subhead.erstantwort' },
             { to: '/settings/smtp', titleKey: 'settings.subhead.smtp' },
             { to: '/settings/permissions', titleKey: 'settings.subhead.functionAccess' },
             // Not part of the design; kept because it is the only entry point for the
@@ -91,7 +93,23 @@ describe('settings tabs', () => {
             isTenantSettingsEditEnabled: false,
         });
 
-        expect(tabs.map((tab) => tab.to)).toEqual(['/settings/smtp', '/settings/permissions']);
+        expect(tabs.map((tab) => tab.to)).toEqual(['/settings/erstantwort', '/settings/smtp', '/settings/permissions']);
+    });
+
+    it('offers the Erstantwort texts to a Träger that may update the tenant', () => {
+        const tabs = getSettingsTabs(baseContext);
+
+        expect(tabs).toContainEqual({
+            to: '/settings/erstantwort',
+            titleKey: 'settings.subhead.erstantwort',
+            iconName: 'erstantwort',
+        });
+    });
+
+    it('hides the Erstantwort texts from a Träger that may only read the tenant', () => {
+        const can = vi.fn((action: PermissionAction | PermissionAction[]) => action === PermissionAction.Read);
+
+        expect(getSettingsTabs({ ...baseContext, can }).some((tab) => tab.to.endsWith('/erstantwort'))).toBe(false);
     });
 
     it('uses the global settings label and icon for single-domain multitenancy', () => {
