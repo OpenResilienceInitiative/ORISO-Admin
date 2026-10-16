@@ -73,6 +73,8 @@ export const mapTenantDataToTenantAdminData = (tenantData: TenantData): TenantAd
         theming: {
             assistantName: tenantData.theming?.assistantName,
             assistantIcon: tenantData.theming?.assistantIcon,
+            closingAnimationDesktop: tenantData.theming?.closingAnimationDesktop,
+            closingAnimationMobile: tenantData.theming?.closingAnimationMobile,
             associationLogo: tenantData.theming?.associationLogo,
             logo: tenantData.theming?.logo ?? '',
             favicon: tenantData.theming?.favicon ?? '',

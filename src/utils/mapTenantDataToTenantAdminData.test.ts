@@ -25,6 +25,20 @@ const baseTenantData = (): TenantData => ({
 });
 
 describe('mapTenantDataToTenantAdminData', () => {
+    it('carries the closing-animation choices through, including an inherited (null) one', () => {
+        const mapped = mapTenantDataToTenantAdminData({
+            ...baseTenantData(),
+            theming: {
+                ...baseTenantData().theming,
+                closingAnimationDesktop: 'CIRCLE_ZOOM',
+                closingAnimationMobile: null,
+            },
+        });
+
+        expect(mapped.theming.closingAnimationDesktop).toBe('CIRCLE_ZOOM');
+        expect(mapped.theming.closingAnimationMobile).toBeNull();
+    });
+
     it('maps tenant-service strings into admin translatable content records', () => {
         const mapped = mapTenantDataToTenantAdminData(baseTenantData());
 

@@ -1,3 +1,5 @@
+import type { ClosingAnimation } from '../utils/closingAnimation';
+
 export interface TenantSettings {
     activeLanguages?: string[];
     featureAppointmentsEnabled?: boolean | null;
@@ -155,6 +157,9 @@ export interface TenantData extends BasicTenantData {
     theming: {
         assistantName?: string | null;
         assistantIcon?: string | null;
+        /** Waiting-room closing animation per device class; null = inherit the platform tenant's choice. */
+        closingAnimationDesktop?: ClosingAnimation | null;
+        closingAnimationMobile?: ClosingAnimation | null;
         logo: string;
         favicon: string;
         associationLogo?: string;

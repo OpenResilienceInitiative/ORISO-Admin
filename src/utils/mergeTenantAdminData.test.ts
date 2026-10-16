@@ -147,3 +147,26 @@ describe('assistant override updates', () => {
         expect(saved.theming.assistantIcon).toBeNull();
     });
 });
+
+describe('closing animation updates', () => {
+    it('writes a chosen design for one device and leaves the other device as stored', () => {
+        const current = baseTenantAdminData();
+        current.theming.closingAnimationDesktop = 'CURTAIN';
+        current.theming.closingAnimationMobile = 'SLIDE_REVEAL';
+        const saved = JSON.parse(
+            serializeTenantAdminDataUpdate(current, { theming: { closingAnimationDesktop: 'CIRCLE_ZOOM' } }),
+        );
+        expect(saved.theming.closingAnimationDesktop).toBe('CIRCLE_ZOOM');
+        expect(saved.theming.closingAnimationMobile).toBe('SLIDE_REVEAL');
+    });
+    it('keeps an explicit null in the full PUT, so the platform value is inherited again', () => {
+        const current = baseTenantAdminData();
+        current.theming.closingAnimationDesktop = 'CURTAIN';
+        current.theming.closingAnimationMobile = 'SLIDE_REVEAL';
+        const saved = JSON.parse(
+            serializeTenantAdminDataUpdate(current, { theming: { closingAnimationDesktop: null } }),
+        );
+        expect(saved.theming.closingAnimationDesktop).toBeNull();
+        expect(saved.theming.closingAnimationMobile).toBe('SLIDE_REVEAL');
+    });
+});
