@@ -1,0 +1,16 @@
+{
+    "settings.closingAnimation.title": "Анимация завершения",
+    "settings.closingAnimation.description": "Выберите анимацию, которая воспроизводится, когда человек покидает зал ожидания: один вариант для компьютера и один для мобильных устройств. Маленькие изображения — упрощённые кадры, а не настоящая анимация.",
+    "settings.closingAnimation.desktop": "Компьютер (ширина браузера от 1200 пикселей)",
+    "settings.closingAnimation.mobile": "Мобильное устройство (ширина браузера меньше 1200 пикселей)",
+    "settings.closingAnimation.inherit": "Значение платформы по умолчанию",
+    "settings.closingAnimation.inherit.description": "Следует выбору платформы.",
+    "settings.closingAnimation.inherit.current": "Сейчас:",
+    "settings.closingAnimation.design.CURTAIN": "Занавес",
+    "settings.closingAnimation.design.CURTAIN.description": "Красный занавес закрывается над правой областью и снова открывается на поле сообщения.",
+    "settings.closingAnimation.design.CIRCLE_ZOOM": "Круговое увеличение",
+    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "Красная поверхность сжимается в круг на поле сообщения и исчезает.",
+    "settings.closingAnimation.design.SLIDE_REVEAL": "Сдвиг вправо",
+    "settings.closingAnimation.design.SLIDE_REVEAL.description": "Красная область целиком сдвигается вправо, за ней следует второй красный слой, и открывается чат.",
+    "settings.closingAnimation.loadError": "Не удалось загрузить настройки. Попробуйте ещё раз."
+}

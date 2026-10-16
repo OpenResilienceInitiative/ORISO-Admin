@@ -1,0 +1,16 @@
+{
+    "settings.closingAnimation.title": "Kapanış animasyonu",
+    "settings.closingAnimation.description": "Bir kişi bekleme odasından ayrılırken oynatılacak animasyonu seçin: masaüstü için bir tasarım, mobil için bir tasarım. Küçük görseller basitleştirilmiş duran görüntülerdir, gerçek animasyon değildir.",
+    "settings.closingAnimation.desktop": "Masaüstü (tarayıcı genişliği 1200 px ve üzeri)",
+    "settings.closingAnimation.mobile": "Mobil (tarayıcı genişliği 1200 px altı)",
+    "settings.closingAnimation.inherit": "Platform varsayılanı",
+    "settings.closingAnimation.inherit.description": "Platformun seçimini izler.",
+    "settings.closingAnimation.inherit.current": "Şu anda:",
+    "settings.closingAnimation.design.CURTAIN": "Perde",
+    "settings.closingAnimation.design.CURTAIN.description": "Kırmızı bir perde sağ taraftaki alanın üzerine kapanır ve mesaj alanına doğru yeniden açılır.",
+    "settings.closingAnimation.design.CIRCLE_ZOOM": "Daire yakınlaştırma",
+    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "Kırmızı yüzey mesaj alanında bir daireye dönüşecek şekilde kapanır ve kaybolur.",
+    "settings.closingAnimation.design.SLIDE_REVEAL": "Kayarak açma",
+    "settings.closingAnimation.design.SLIDE_REVEAL.description": "Kırmızı alan tek parça olarak sağa kayar, ikinci bir kırmızı katman onu izler ve sohbet ortaya çıkar.",
+    "settings.closingAnimation.loadError": "Ayarlar yüklenemedi. Lütfen tekrar deneyin."
+}
