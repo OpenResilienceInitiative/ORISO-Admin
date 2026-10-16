@@ -60,7 +60,6 @@ const fillRequired = (values: Record<string, string> = {}) => {
         lastname: 'Lovelace',
         email: 'ada@example.org',
         'counselor.username': 'ada',
-        'counselor.password': 'Str0ng!pass',
         ...values,
     };
     Object.entries(filled).forEach(([label, value]) => {
@@ -116,7 +115,6 @@ describe('the quick-create dialog field set', () => {
             'counselor.adminRemarks',
             'email',
             'counselor.username',
-            'counselor.password',
             'counselor.formalLanguage.title',
             'counselor.isGroupChatConsultant',
             'counselor.absent',
@@ -145,6 +143,22 @@ describe('the quick-create dialog field set', () => {
         expect(isRendered('counselor.isSupervisor')).toBe(false);
 
         // The absence note is NOT among them: see the absence describe below.
+    });
+
+    it('asks for no password: the counsellor chooses one through the setup e-mail (#1144)', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        expect(isRendered('counselor.password')).toBe(false);
+
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
+        expect(mocks.addCounselorData.mock.calls[0][0]).not.toHaveProperty('password');
     });
 
     /*

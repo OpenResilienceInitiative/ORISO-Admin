@@ -34,7 +34,11 @@ interface CreateConsultantModalProps {
  * What this surface does not offer, stated rather than left out, so the difference from the page
  * form is a decision that can be revisited. The remarks are gated by role below, not hidden.
  */
-const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [];
+const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [
+    // #1144: the counsellor chooses their own password through the setup e-mail, so no
+    // administrator ever knows it.
+    'password',
+];
 
 const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and

@@ -649,8 +649,9 @@ export const UserEditOrAdd = () => {
             excluded.add('adminRemarks');
         }
         // Credentials are set once, at creation, and only for account types that
-        // have a login. Afterwards they are changed through the reset flow.
-        if (isEditing || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        // have a login. Afterwards they are changed through the reset flow. A new
+        // counsellor chooses their own password through the setup e-mail (#1144).
+        if (isEditing || typeOfUsers !== TypeOfUser.AgencyAdmins) {
             excluded.add('password');
         }
 
