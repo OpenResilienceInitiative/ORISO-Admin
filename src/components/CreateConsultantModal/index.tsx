@@ -14,7 +14,7 @@ import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsu
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { ADMIN_REMARKS_ROLES } from '../../utils/adminRemarksRoles';
 import { CounselorData } from '../../types/counselor';
-import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import { extractApiErrorMessage, extractSmtpSendFailure } from '../../utils/extractApiErrorMessage';
 import styles from './styles.module.scss';
 
 interface CreateConsultantModalProps {
@@ -154,6 +154,14 @@ export const CreateConsultantModal = ({
             isSaving.current = false;
             keepOpenAfterSave.current = false;
 
+            // The counsellor exists; only the set-up mail failed. Another submit would only hit
+            // "username not available", so the dialog closes (#1144).
+            if (await extractSmtpSendFailure(error)) {
+                message.warning({ content: t('counselor.create.setupMailNotSent'), duration: 10 });
+                closeModal();
+                return;
+            }
+
             if (error instanceof Response) {
                 const reason = error.headers.get(FETCH_ERRORS.X_REASON);
                 if (
@@ -269,7 +277,11 @@ export const CreateConsultantModal = ({
                             onFinish={(values) => startSaving(values, false)}
                         >
                             <div className={styles.columns}>
-                                <ConsultantPersonalFields exclude={personalExclusions} autoFocusFirstField />
+                                <ConsultantPersonalFields
+                                    exclude={personalExclusions}
+                                    autoFocusFirstField
+                                    setupEmailHint
+                                />
                                 <ConsultantSettingsFields exclude={SETTINGS_EXCLUSIONS} />
                             </div>
                             {/*

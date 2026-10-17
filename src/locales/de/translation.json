@@ -1070,6 +1070,8 @@
     "counselor.new.help": "Sie können nur so viele Berater hinzufügen, wie in Ihrem Vertrag vereinbart sind! In Ihrem Vertrag sind derzeit {{number}} Berater möglich.",
     "counselor.password": "Einmaliges Registrierungspasswort",
     "counselor.password.hint": "Nur für die erste Anmeldung. Die Person ersetzt es dabei sofort durch ein eigenes Passwort – deshalb keine Wiederholung nötig.",
+    "counselor.password.setupEmailHint": "Kein Passwort nötig: Die Person erhält eine E-Mail zur Kontoeinrichtung und wählt dort ihr Passwort selbst.",
+    "counselor.create.setupMailNotSent": "Das Konto wurde angelegt, aber die E-Mail zur Kontoeinrichtung konnte nicht versendet werden. Sie können sie unter Links erneut senden.",
     "counselor.title": "Berater",
     "counselor.title.text": "Erstellen und bearbeiten Sie Daten Ihrer Berater",
     "counselor.username": "Benutzername",

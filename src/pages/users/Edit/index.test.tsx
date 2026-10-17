@@ -356,9 +356,19 @@ describe('a new counsellor chooses their own password (#1144)', () => {
         renderForm();
 
         expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument();
+        expect(screen.getByText('counselor.password.setupEmailHint')).toBeInTheDocument();
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('password');
+    });
+
+    it('still asks for the one-time password when an agency admin is created', () => {
+        // Only counsellors are covered by the product decision; agency admins keep the field.
+        mocks.params = { id: 'add', typeOfUsers: 'agency-admins' };
+        renderForm();
+
+        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
+        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
     });
 });
 

@@ -481,6 +481,10 @@ export const UserEditOrAdd = () => {
             notifyError: (content) => message.error({ content, duration: 8 }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
+            onAccountCreatedWithoutMail: (content) => {
+                message.warning({ content, duration: 10 });
+                navigate(`/admin/users/${typeOfUsers}`);
+            },
         }),
     });
 
@@ -781,6 +785,7 @@ export const UserEditOrAdd = () => {
                                     disabled={isReadOnly}
                                     // The username IS the Keycloak identity; it cannot move once issued.
                                     usernameLocked={isEditing}
+                                    setupEmailHint={!isEditing && typeOfUsers === TypeOfUser.Consultants}
                                 />
                             </Card>
                         </Col>

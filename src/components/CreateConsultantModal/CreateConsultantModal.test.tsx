@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { message } from 'antd';
 import { CreateConsultantModal } from './index';
 import { UserRole } from '../../enums/UserRole';
 
@@ -151,6 +152,7 @@ describe('the quick-create dialog field set', () => {
         await openDialog(user);
 
         expect(isRendered('counselor.password')).toBe(false);
+        expect(isRendered('counselor.password.setupEmailHint')).toBe(true);
 
         fillRequired();
         await user.click(
@@ -159,6 +161,33 @@ describe('the quick-create dialog field set', () => {
 
         await waitFor(() => expect(mocks.addCounselorData).toHaveBeenCalledTimes(1));
         expect(mocks.addCounselorData.mock.calls[0][0]).not.toHaveProperty('password');
+    });
+
+    it('closes and says so when the account exists but the set-up e-mail could not be sent', async () => {
+        // A second submit would only hit "username not available": the account is already there.
+        mocks.addCounselorData.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_TRANSPORT_FAILED' }), {
+                status: 502,
+            }),
+        );
+        const warning = vi.spyOn(message, 'warning').mockImplementation(() => undefined as never);
+        const user = userEvent.setup();
+        renderModal();
+        await openDialog(user);
+
+        fillRequired();
+        await user.click(
+            screen.getByRole('button', { name: 'agency.form.registrationSettings.createConsultant.confirm' }),
+        );
+
+        await waitFor(() =>
+            expect(warning).toHaveBeenCalledWith(
+                expect.objectContaining({ content: 'counselor.create.setupMailNotSent' }),
+            ),
+        );
+        await waitFor(() =>
+            expect(screen.queryByText('agency.form.registrationSettings.createConsultant.title')).toBeNull(),
+        );
     });
 
     /*
