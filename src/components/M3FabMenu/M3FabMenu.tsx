@@ -215,9 +215,12 @@ export const M3FabMenu = ({
         };
     }, [close, open]);
 
-    const renderItem = (item: M3FabMenuItem, isFooter: boolean) => {
+    const renderItem = (item: M3FabMenuItem, isFooter: boolean, index: number) => {
         const isActive = item.key === activeKey;
-        const descriptionId = item.description ? `${menuId}-${item.key}-description` : undefined;
+        // Index, not the free-form key: aria-describedby splits on whitespace.
+        const descriptionId = item.description
+            ? `${menuId}-${isFooter ? 'footer' : 'item'}-${index}-description`
+            : undefined;
         const content = (
             <>
                 {isActive ? item.selectedIcon ?? item.icon : item.icon}
@@ -312,8 +315,8 @@ export const M3FabMenu = ({
                         transform: stackInlineOffset === 0 ? undefined : `translateX(${stackInlineOffset}px)`,
                     }}
                 >
-                    {items.map((item) => renderItem(item, false))}
-                    {footerItems.map((item) => renderItem(item, true))}
+                    {items.map((item, index) => renderItem(item, false, index))}
+                    {footerItems.map((item, index) => renderItem(item, true, index))}
                 </ul>
             )}
             <button

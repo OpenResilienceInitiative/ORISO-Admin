@@ -49,7 +49,9 @@ describe('M3FabMenu action colour roles', () => {
 
 describe('M3FabMenu item description styles', () => {
     it('takes its type from the M3 scale, not hand-picked sizes', () => {
-        const block = styles.slice(styles.indexOf('.itemDescription'));
+        const start = styles.indexOf('.itemDescription');
+        expect(start).toBeGreaterThanOrEqual(0);
+        const block = styles.slice(start);
         const rules = block.slice(0, block.indexOf('}'));
         expect(rules).not.toMatch(/font-size|line-height|letter-spacing|font-weight/);
     });

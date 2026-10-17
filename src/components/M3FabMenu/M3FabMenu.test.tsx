@@ -408,4 +408,21 @@ describe('M3FabMenu item description', () => {
         expect(screen.getByText('The client is asked first.')).toHaveClass('m3-body-medium');
         expect(screen.getByRole('button', { name: 'No consent' })).not.toHaveAttribute('aria-describedby');
     });
+
+    it('keeps the description linked when an item key contains whitespace', async () => {
+        const user = userEvent.setup();
+        render(
+            <Harness
+                items={[{ key: 'opt in', label: 'Opt-in', description: 'The client is asked first.' }]}
+                footerItems={[{ key: 'opt in', label: 'Footer', description: 'Footer sentence.' }]}
+                activeKey="none"
+            />,
+        );
+        await user.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        expect(screen.getByRole('button', { name: 'Opt-in' })).toHaveAccessibleDescription(
+            'The client is asked first.',
+        );
+        expect(screen.getByRole('button', { name: 'Footer' })).toHaveAccessibleDescription('Footer sentence.');
+    });
 });
