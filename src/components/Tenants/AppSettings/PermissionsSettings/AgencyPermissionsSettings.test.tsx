@@ -170,10 +170,35 @@ describe('AgencyPermissionsSettings notification channels', () => {
             mocks.useAgencyData.mockReturnValue(agency({}));
             render(<AgencyPermissionsSettings agencyId="55" />);
 
-            const control = policy('featureAskerEmailLiveChatEnabled');
+            // The switch appears only once the Träger's value is loaded, never with a default first.
+            const control = await waitFor(() => {
+                const found = policy('featureAskerEmailLiveChatEnabled');
+                expect(found).not.toBeNull();
+                return found;
+            });
             const trigger = within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i });
             expect(trigger).toBeDisabled();
             await waitFor(() => expect(trigger).toHaveAccessibleName(/Aktivierung erzwungen|Activation enforced/i));
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('says the Träger values could not be loaded when the read is refused', async () => {
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? new Response(null, { status: 403 })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            expect((await screen.findAllByText(/Träger.*(nicht geladen|could not be loaded)/i)).length).toBeGreaterThan(
+                0,
+            );
+            expect(policy('featureAskerEmailLiveChatEnabled')).toBeNull();
         } finally {
             vi.unstubAllGlobals();
         }

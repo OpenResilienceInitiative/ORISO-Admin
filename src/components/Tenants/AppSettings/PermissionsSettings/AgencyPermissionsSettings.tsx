@@ -30,9 +30,16 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutate: updateAgency } = useAgencyUpdate(agencyId);
     // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
-    // Failing to read them (e.g. no access) degrades to the defaults, without a toast.
+    // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
     const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
-    const { data: traegerPolicies } = useTenantPermissionPolicies(traegerId, Boolean(traegerId), { silent: true });
+    const { data: traegerPolicies, status: traegerPoliciesQueryStatus } = useTenantPermissionPolicies(
+        traegerId,
+        Boolean(traegerId),
+        { silent: true },
+    );
+    let traegerPoliciesStatus = traegerPoliciesQueryStatus;
+    if (isPending) traegerPoliciesStatus = 'pending';
+    else if (!traegerId) traegerPoliciesStatus = 'error';
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
@@ -108,6 +115,7 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             caseHandoverTenantPending={isPending}
             channelsSetOnTraeger
             traegerChannelPolicies={traegerPolicies?.policies}
+            traegerChannelPoliciesStatus={traegerPoliciesStatus}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}

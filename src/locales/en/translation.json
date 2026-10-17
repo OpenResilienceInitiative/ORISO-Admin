@@ -2707,6 +2707,7 @@
     "tenants.permissions.card.notifications.browser": "Browser notification",
     "tenants.permissions.card.notifications.notYetEffective": "Not effective yet: browser notifications for internal group chats are still an open product decision.",
     "tenants.permissions.card.notifications.setOnTraeger": "Set by the Träger on its permissions page; shown here read-only.",
+    "tenants.permissions.card.notifications.traegerUnavailable": "The Träger's notification settings could not be loaded.",
     "globalSettings.tutorials.title": "Counsellor tutorials",
     "globalSettings.tutorials.description": "Introduction and practice flows in Help.",
     "globalSettings.tutorials.current": "Current availability",

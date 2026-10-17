@@ -1,4 +1,4 @@
-import { Form, type FormInstance } from 'antd';
+import { Form, Skeleton, type FormInstance } from 'antd';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
@@ -45,8 +45,10 @@ export type PermissionsSettingsViewProps = {
     caseHandoverTenantPending?: boolean;
     /** Centre page: AgencyService does not store channel switches, so they are the Träger's, read-only. */
     channelsSetOnTraeger?: boolean;
-    /** The Träger's channel policies shown when `channelsSetOnTraeger`; defaults when unknown. */
+    /** The Träger's channel policies shown when `channelsSetOnTraeger`. */
     traegerChannelPolicies?: Record<string, PolicyValue<boolean>>;
+    /** Read state of `traegerChannelPolicies`: pending shows a loader, error says they could not be loaded. */
+    traegerChannelPoliciesStatus?: 'pending' | 'error' | 'success';
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -65,6 +67,7 @@ export const PermissionsSettingsView = ({
     caseHandoverTenantPending = false,
     channelsSetOnTraeger = false,
     traegerChannelPolicies,
+    traegerChannelPoliciesStatus = 'success',
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -155,6 +158,34 @@ export const PermissionsSettingsView = ({
             disabled: channelsSetOnTraeger || toggle.notYetEffective,
             note: toggle.notYetEffective ? t('tenants.permissions.card.notifications.notYetEffective') : undefined,
         });
+
+    // Centre page: until the Träger's values are read, show a loader or say they are unavailable,
+    // never defaults passed off as the Träger's.
+    const channelSwitches = (
+        form: FormInstance,
+        toggles: Array<ChatTypeNotificationToggle>,
+        getFieldValue: FormInstance['getFieldValue'],
+    ) => {
+        if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'pending') {
+            return (
+                <div data-testid="traeger-channels-loading">
+                    <Skeleton active title={false} paragraph={{ rows: 2 }} />
+                </div>
+            );
+        }
+        if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'error') {
+            return (
+                <p className={styles.cardDescriptionSecondary} role="status">
+                    {t('tenants.permissions.card.notifications.traegerUnavailable')}
+                </p>
+            );
+        }
+        return (
+            <div className={styles.togglesList}>
+                {toggles.map((toggle) => channelRow(form, toggle, getFieldValue(['settings', toggle.setting])))}
+            </div>
+        );
+    };
 
     return (
         <CardEditable
@@ -323,15 +354,11 @@ export const PermissionsSettingsView = ({
                                                                 )}
                                                             </p>
                                                         )}
-                                                        <div className={styles.togglesList}>
-                                                            {card.notifications.toggles.map((toggle) =>
-                                                                channelRow(
-                                                                    form,
-                                                                    toggle,
-                                                                    getFieldValue(['settings', toggle.setting]),
-                                                                ),
-                                                            )}
-                                                        </div>
+                                                        {channelSwitches(
+                                                            form,
+                                                            card.notifications.toggles,
+                                                            getFieldValue,
+                                                        )}
                                                     </>
                                                 )}
                                             </Card>

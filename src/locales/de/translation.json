@@ -2707,6 +2707,7 @@
     "tenants.permissions.card.notifications.browser": "Browser-Benachrichtigung",
     "tenants.permissions.card.notifications.notYetEffective": "Noch ohne Wirkung: Browser-Benachrichtigungen für interne Gruppenchats sind noch eine offene Produktentscheidung.",
     "tenants.permissions.card.notifications.setOnTraeger": "Legt der Träger auf seiner Berechtigungsseite fest; hier nur zur Ansicht.",
+    "tenants.permissions.card.notifications.traegerUnavailable": "Die Benachrichtigungs-Einstellungen des Trägers konnten nicht geladen werden.",
     "globalSettings.tutorials.title": "Tutorials für Berater",
     "globalSettings.tutorials.description": "Einführung und Übungen in der Hilfe.",
     "globalSettings.tutorials.current": "Aktuelle Verfügbarkeit",
