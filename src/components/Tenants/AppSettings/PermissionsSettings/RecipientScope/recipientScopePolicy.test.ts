@@ -4,6 +4,8 @@ import {
     isRecipientScopeLocked,
     resolveRecipientScopePolicy,
     toRecipientScopeWrite,
+    withStoredScopeOnly,
+    withoutInternalGroupChat,
 } from './recipientScopePolicy';
 
 // Seam 1: the pure rules of the setting (default, graceful reading, who may edit, what is written).
@@ -58,5 +60,46 @@ describe('toRecipientScopeWrite', () => {
         expect(toRecipientScopeWrite({ value: 'PLATFORM', mode: 'ENFORCED', inherited: true })).toEqual({
             internalGroupChat: { recipientScope: { value: 'PLATFORM', mode: 'ENFORCED' } },
         });
+    });
+});
+
+describe('withoutInternalGroupChat', () => {
+    it('leaves the resolved scope out and keeps everything else', () => {
+        const body = {
+            tenantId: 7,
+            policies: {},
+            internalGroupChat: {
+                recipientScope: { value: 'TENANT' as const, mode: 'SUGGESTED' as const, inherited: true },
+            },
+        };
+        expect(withoutInternalGroupChat(body)).toEqual({ tenantId: 7, policies: {} });
+        expect(body.internalGroupChat).toBeDefined();
+    });
+});
+
+describe('withStoredScopeOnly', () => {
+    it('keeps a stored scope, without the read-only marker', () => {
+        expect(
+            withStoredScopeOnly({
+                permissionsPageEnabled: true,
+                internalGroupChat: { recipientScope: { value: 'PLATFORM', mode: 'ENFORCED', inherited: false } },
+            }),
+        ).toEqual({
+            permissionsPageEnabled: true,
+            internalGroupChat: { recipientScope: { value: 'PLATFORM', mode: 'ENFORCED' } },
+        });
+    });
+
+    it('drops the untouched default, so it is not stored by accident', () => {
+        expect(
+            withStoredScopeOnly({
+                permissionsPageEnabled: true,
+                internalGroupChat: { recipientScope: { value: 'AGENCY', mode: 'SUGGESTED', inherited: true } },
+            }),
+        ).toEqual({ permissionsPageEnabled: true });
+    });
+
+    it('does nothing when the backend sent no scope', () => {
+        expect(withStoredScopeOnly({ permissionsPageEnabled: true })).toEqual({ permissionsPageEnabled: true });
     });
 });

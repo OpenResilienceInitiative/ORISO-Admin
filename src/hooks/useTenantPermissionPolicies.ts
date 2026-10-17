@@ -32,3 +32,17 @@ export const useTenantPermissionPoliciesMutation = (tenantId: string) => {
         onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
     });
 };
+
+/**
+ * Saves the Träger's recipient scope for internal group chats (ORISO-Admin#1215). Unlike the switch
+ * mutation it neither updates the cache ahead of the server nor raises its own notification: the
+ * scope control shows the failed save beside the edit, and must not see its value jump back.
+ */
+export const useTenantRecipientScopeMutation = (tenantId: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateTenantPermissionPolicies,
+        onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
+    });
+};
