@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -43,6 +43,12 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
     });
     const [saving, setSaving] = useState(false);
     const [failed, setFailed] = useState(false);
+    const rootRef = useRef<HTMLElement>(null);
+    const actionsRef = useRef<HTMLDivElement>(null);
+    const refocusAfterSave = useRef(false);
+    // While a request is out the draft is the snapshot being saved: another pick would be overwritten
+    // when the response brings the saved value back, so the controls wait for it.
+    const frozen = disabled || saving;
 
     // Follow the server once it answers with another value (saved, reloaded, other tenant).
     useEffect(() => {
@@ -50,11 +56,26 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
         setFailed(false);
     }, [resolved.value, resolved.mode]);
 
+    // The busy Save button was disabled and the browser may have dropped focus with it: hand it back
+    // to where the admin continues (Save to retry, or the chosen option once the save is through).
+    useEffect(() => {
+        if (saving || !refocusAfterSave.current) return;
+        refocusAfterSave.current = false;
+        const active = document.activeElement;
+        const focusLost =
+            !active || active === document.body || (active instanceof HTMLButtonElement && active.disabled);
+        if (!focusLost) return;
+        const retry = actionsRef.current?.querySelector('button');
+        const chosen = rootRef.current?.querySelector<HTMLInputElement>('input[type="radio"]:checked');
+        (retry && !retry.disabled ? retry : chosen)?.focus();
+    }, [saving]);
+
     const dirty = draft.value !== resolved.value || draft.mode !== resolved.mode;
 
     const save = async () => {
         setSaving(true);
         setFailed(false);
+        refocusAfterSave.current = true;
         try {
             await onSave(draft);
         } catch {
@@ -80,7 +101,12 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
 
     const titleId = `${idBase}-title`;
     return (
-        <section className={styles.control} data-testid="recipient-scope-control" aria-labelledby={titleId}>
+        <section
+            ref={rootRef}
+            className={styles.control}
+            data-testid="recipient-scope-control"
+            aria-labelledby={titleId}
+        >
             <div className={styles.heading}>
                 <h3 id={titleId} className={styles.title}>
                     {t(`${KEY}.title`)}
@@ -101,7 +127,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
                         <div key={scope} className={styles.option}>
                             <FormControlLabel
                                 value={scope}
-                                disabled={locked || disabled}
+                                disabled={locked || frozen}
                                 label={t(`${KEY}.option.${scope}.label`)}
                                 control={<Radio size="small" slotProps={{ input: { 'aria-describedby': hintId } }} />}
                             />
@@ -121,7 +147,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
                             setDraft((current) => ({ ...current, mode: enforce ? 'ENFORCED' : 'SUGGESTED' }))
                         }
                         configLabel={t(`${KEY}.mode.SUGGESTED`)}
-                        disabled={disabled}
+                        disabled={frozen}
                         enforceLabel={t(`${KEY}.mode.ENFORCED`)}
                         groupLabel={t(`${KEY}.mode.groupLabel`)}
                     />
@@ -143,7 +169,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
             )}
 
             {!locked && (
-                <div className={styles.actions}>
+                <div ref={actionsRef} className={styles.actions}>
                     <M3Button variant="filled" disabled={!dirty || disabled} loading={saving} onClick={save}>
                         {t(`${KEY}.save`)}
                     </M3Button>

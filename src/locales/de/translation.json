@@ -1721,7 +1721,7 @@
     "tenants.permissions.card.groupInternal.recipientScope.mode.hint.SUGGESTED": "Empfehlung: Ein Träger darf anders entscheiden.",
     "tenants.permissions.card.groupInternal.recipientScope.mode.hint.ENFORCED": "Vorgabe: Kein Träger kann sie ändern.",
     "tenants.permissions.card.groupInternal.recipientScope.recommendedNote": "Die Plattform empfiehlt diese Auswahl. Ihr Träger darf anders entscheiden.",
-    "tenants.permissions.card.groupInternal.recipientScope.lockedNote": "Die Plattform gibt das als Vorgabe fest. Sie sehen sie hier, können sie aber nicht ändern.",
+    "tenants.permissions.card.groupInternal.recipientScope.lockedNote": "Die Plattform legt diese Auswahl als Vorgabe fest. Sie sehen sie hier, können sie aber nicht ändern.",
     "tenants.permissions.card.groupInternal.recipientScope.save": "Speichern",
     "tenants.permissions.card.groupInternal.recipientScope.unavailable": "Verfügbar nach dem nächsten Backend-Update.",
     "tenants.permissions.card.groupInternal.recipientScope.saved": "Auswahl der Empfänger:innen gespeichert.",

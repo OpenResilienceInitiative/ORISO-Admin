@@ -22,11 +22,14 @@ const Harness = ({
     level,
     initial,
     failSave = false,
+    pendingSave = false,
     disabled = false,
 }: {
     level: Level;
     initial?: RecipientScopePolicy;
     failSave?: boolean;
+    /** The save never answers, so the control stays in its saving state. */
+    pendingSave?: boolean;
     disabled?: boolean;
 }) => {
     const [policy, setPolicy] = useState(initial);
@@ -37,6 +40,11 @@ const Harness = ({
                 policy={policy}
                 disabled={disabled}
                 onSave={async (next) => {
+                    if (pendingSave) {
+                        await new Promise<void>(() => {
+                            // never settles: the control stays in its saving state
+                        });
+                    }
                     if (failSave) throw new Error('rejected');
                     setPolicy({ ...next, inherited: false });
                 }}
@@ -164,7 +172,7 @@ export const TraegerLocked: Story = {
         await expect(option(canvas, /Trägerweit/)).toBeChecked();
         canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
         await expect(canvas.queryByRole('button', { name: 'Speichern' })).toBeNull();
-        await expect(canvas.getByText(/Die Plattform gibt das als Vorgabe fest/)).toBeVisible();
+        await expect(canvas.getByText(/Die Plattform legt diese Auswahl als Vorgabe fest/)).toBeVisible();
     },
 };
 
@@ -186,6 +194,23 @@ export const SaveFails: Story = {
         await expect(await canvas.findByRole('alert')).toHaveTextContent(/^Nicht gespeichert\./);
         await expect(option(canvas, /Plattformweit/)).toBeChecked();
         await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    },
+};
+
+/** A slow save: the options and the switch wait, Save shows progress, and the choice being saved stays. */
+export const Saving: Story = {
+    args: { pendingSave: true, initial: { value: 'AGENCY', mode: 'SUGGESTED', inherited: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(option(canvas, /Trägerweit/));
+        await userEvent.click(canvas.getByRole('button', { name: 'Vorgabe' }));
+        await userEvent.click(canvas.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(canvas.getByRole('button', { name: 'Speichern' })).toBeDisabled());
+        await expect(canvas.getByRole('button', { name: 'Speichern' })).toHaveAttribute('aria-busy', 'true');
+        canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
+        await expect(canvas.getByRole('button', { name: 'Vorgabe' })).toBeDisabled();
+        await expect(canvas.getByRole('button', { name: 'Empfehlung' })).toBeDisabled();
+        await expect(option(canvas, /Trägerweit/)).toBeChecked();
     },
 };
 

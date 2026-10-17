@@ -184,6 +184,77 @@ describe('saving', () => {
         expect(onSave).toHaveBeenCalledTimes(2);
     });
 
+    // Codex P2 on #1220: with a slow save the radios stayed editable, so a second pick could be
+    // overwritten when the first save's response synchronised the control back to the saved value.
+    it('freezes the scope and mode controls while the save is running, then releases them', async () => {
+        let finish: () => void = () => undefined;
+        const onSave = vi.fn(
+            () =>
+                new Promise<void>((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
+
+        await user.click(radio(/Träger-wide/));
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
+        expect(screen.getByRole('button', { name: 'Requirement' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Recommendation' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+        expect(radio(/Träger-wide/)).toBeChecked();
+        expect(onSave).toHaveBeenCalledTimes(1);
+
+        finish();
+        await waitFor(() => expect(radio(/Platform-wide/)).toBeEnabled());
+        expect(screen.getByRole('button', { name: 'Requirement' })).toBeEnabled();
+        expect(radio(/Träger-wide/)).toBeChecked();
+    });
+
+    it('releases the controls after a failed save and keeps the edit', async () => {
+        const onSave = vi.fn().mockRejectedValue(new Error('boom'));
+        const user = userEvent.setup();
+        render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
+
+        await user.click(radio(/Platform-wide/));
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+
+        expect(await screen.findByRole('alert')).toBeInTheDocument();
+        screen.getAllByRole('radio').forEach((option) => expect(option).toBeEnabled());
+        expect(radio(/Platform-wide/)).toBeChecked();
+        // Focus returns to Save, so a keyboard user can retry without searching for their place.
+        expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus();
+    });
+
+    it('puts focus on the saved option when Save has become inactive after a successful save', async () => {
+        let finish: () => void = () => undefined;
+        const onSave = vi.fn(
+            () =>
+                new Promise<void>((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        const { rerender } = render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
+
+        await user.click(radio(/Träger-wide/));
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        // The server answered: the policy now equals the draft, so Save is no longer needed.
+        rerender(
+            <RecipientScopeControl
+                level="platform"
+                policy={{ value: 'TENANT', mode: 'SUGGESTED', inherited: false }}
+                onSave={onSave}
+            />,
+        );
+        finish();
+
+        await waitFor(() => expect(radio(/Träger-wide/)).toHaveFocus());
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    });
+
     it('follows the saved value once the server answers', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn().mockResolvedValue(undefined);
@@ -202,6 +273,20 @@ describe('saving', () => {
 });
 
 describe('German', () => {
+    it('explains the locked choice in correct German', async () => {
+        await i18n.changeLanguage('de');
+        try {
+            setup({ level: 'tenant', policy: { value: 'TENANT', mode: 'ENFORCED', inherited: true } });
+            expect(
+                screen.getByText(
+                    'Die Plattform legt diese Auswahl als Vorgabe fest. Sie sehen sie hier, können sie aber nicht ändern.',
+                ),
+            ).toBeInTheDocument();
+        } finally {
+            await i18n.changeLanguage('en');
+        }
+    });
+
     it('shows the options and sentences in German', async () => {
         await i18n.changeLanguage('de');
         try {
