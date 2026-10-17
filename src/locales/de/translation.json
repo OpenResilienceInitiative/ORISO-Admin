@@ -2746,7 +2746,7 @@
     "counselor.changeTenant.cases.count_one": "{{count}} offener Fall bleibt beim bisherigen Träger „{{from}}“.",
     "counselor.changeTenant.cases.count_other": "{{count}} offene Fälle bleiben beim bisherigen Träger „{{from}}“.",
     "counselor.changeTenant.accessLoss": "{{name}} verliert den Zugriff auf diese Fälle und erhält nur neue Anfragen bei „{{to}}“.",
-    "counselor.changeTenant.takeover": "Kolleg:innen bei „{{from}}“ können die Fälle über die Fallübergabe mit dem Grund „Zuständigkeit beendet“ übernehmen.",
+    "counselor.changeTenant.takeover": "Kolleg:innen bei „{{from}}“ können die Fälle über die Fallübergabe mit dem Grund „Zuordnung beendet“ übernehmen.",
     "counselor.changeTenant.voluntary": "Bei einem freiwilligen Wechsel zuerst die offenen Fälle übergeben oder archivieren.",
     "counselor.changeTenant.handoverLink": "Fallübergaben ansehen",
     "counselor.changeTenant.back": "Zurück zum Bearbeiten",

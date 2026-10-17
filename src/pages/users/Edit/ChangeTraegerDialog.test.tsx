@@ -62,11 +62,11 @@ describe('ChangeTraegerDialog', () => {
             expect(dialog()).not.toHaveTextContent(/\d+ offene Fälle/);
         });
 
-        it('says that colleagues take them over with "Zuständigkeit beendet"', () => {
+        it('says that colleagues take them over with "Zuordnung beendet"', () => {
             renderDialog();
 
             expect(dialog()).toHaveTextContent(
-                /Kolleg:innen bei „Caritas Augsburg“ können .* „Zuständigkeit beendet“ übernehmen/,
+                /Kolleg:innen bei „Caritas Augsburg“ können .* „Zuordnung beendet“ übernehmen/,
             );
         });
 
@@ -173,7 +173,7 @@ describe('ChangeTraegerDialog', () => {
 
             expect(screen.getByRole('dialog', { name: /Träger gewechselt/ })).toBeInTheDocument();
             expect(dialog()).toHaveTextContent('3 offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“');
-            expect(dialog()).toHaveTextContent(/„Zuständigkeit beendet“/);
+            expect(dialog()).toHaveTextContent(/„Zuordnung beendet“/);
         });
 
         it('says so when no open case stayed behind', () => {
@@ -183,7 +183,7 @@ describe('ChangeTraegerDialog', () => {
             });
 
             expect(dialog()).toHaveTextContent('Es blieben keine offenen Fälle beim bisherigen Träger zurück.');
-            expect(dialog()).not.toHaveTextContent(/Zuständigkeit beendet/);
+            expect(dialog()).not.toHaveTextContent(/Zuordnung beendet/);
         });
 
         it('closes with "Fertig"', async () => {

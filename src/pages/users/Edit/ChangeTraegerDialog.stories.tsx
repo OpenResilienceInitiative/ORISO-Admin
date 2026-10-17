@@ -7,7 +7,7 @@ import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 
 /**
  * Admin#1216: the dialog that asks before a platform admin moves a counsellor to another Träger.
- * Open cases stay with the old Träger, and colleagues there take them over ("Zuständigkeit beendet").
+ * Open cases stay with the old Träger, and colleagues there take them over ("Zuordnung beendet").
  */
 const meta = {
     title: 'Organisms/Pages/Users/CounsellorEdit/Change Träger dialog',
@@ -54,7 +54,7 @@ export const OpenCasesNotCountedYet: Story = {
     play: async () => {
         const dialog = await openDialog();
         await expect(dialog.getByText(/Offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“/)).toBeVisible();
-        await expect(dialog.getByText(/„Zuständigkeit beendet“ übernehmen/)).toBeVisible();
+        await expect(dialog.getByText(/„Zuordnung beendet“ übernehmen/)).toBeVisible();
         await expect(dialog.getByText(/freiwilligen Wechsel zuerst/)).toBeVisible();
         await expect(dialog.getByRole('link', { name: 'Fallübergaben ansehen' })).toHaveAttribute('target', '_blank');
         await expect(dialog.getByRole('button', { name: 'Träger wechseln' })).toBeEnabled();
@@ -106,7 +106,7 @@ export const DoneWithOpenCases: Story = {
         await expect(
             dialog.getByText('3 offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“.'),
         ).toBeVisible();
-        await expect(dialog.getByText(/„Zuständigkeit beendet“ übernehmen/)).toBeVisible();
+        await expect(dialog.getByText(/„Zuordnung beendet“ übernehmen/)).toBeVisible();
         await expect(dialog.getByText(/Zugriff auf 2 Chaträume/)).toBeVisible();
     },
 };

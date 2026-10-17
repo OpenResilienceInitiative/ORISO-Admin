@@ -245,7 +245,7 @@ export const AsksBeforeMoving: Story = {
     play: async () => {
         const dialog = await reviewMove();
         await expect(dialog.getByText(/Offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“/)).toBeVisible();
-        await expect(dialog.getByText(/„Zuständigkeit beendet“ übernehmen/)).toBeVisible();
+        await expect(dialog.getByText(/„Zuordnung beendet“ übernehmen/)).toBeVisible();
         await expect(dialog.getByText(/Beratungsstelle Mitte \(30159 Hannover\)/)).toBeVisible();
         await expect(sent).toHaveLength(0);
     },

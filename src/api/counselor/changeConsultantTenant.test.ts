@@ -131,6 +131,28 @@ describe('changeConsultantTenant', () => {
             expect(await failureOf(response)).toBe(code);
         });
 
+        it.each<[string, number, ChangeTenantErrorCode]>([
+            ['TENANT_CHANGE_MULTITENANCY_OFF', 400, 'MULTI_TENANCY_OFF'],
+            ['TENANT_CHANGE_SAME_TENANT', 400, 'SAME_TRAEGER'],
+            ['TENANT_CHANGE_AGENCY_OTHER_TENANT', 400, 'CENTRE_OF_OTHER_TRAEGER'],
+            ['TENANT_CHANGE_TOPICS_NOT_COVERED', 400, 'TOPICS_NOT_COVERED'],
+            ['TENANT_CHANGE_LAST_COUNSELLOR', 409, 'LAST_COUNSELLOR_OF_CENTRE'],
+            ['TENANT_CHANGE_ADMIN_IDENTITY', 409, 'ALSO_ADMIN'],
+        ])('the X-Reason header %s (%i) names the reason, whatever the body says', async (reason, status, code) => {
+            expect(await failureOf(refusal(status, '{"message":"unrelated text"}', { 'X-Reason': reason }))).toBe(code);
+        });
+
+        it('does not take the request path in an error body for a reason', async () => {
+            const springBody = JSON.stringify({
+                status: 400,
+                error: 'Bad Request',
+                path: '/service/useradmin/consultants/consultant-7/tenant',
+            });
+
+            expect(await failureOf(refusal(400, springBody))).toBe('BAD_REQUEST');
+            expect(await failureOf(refusal(400, JSON.stringify({ message: 'Agency not found' })))).toBe('BAD_REQUEST');
+        });
+
         it('reads the reason from a JSON body as well as a plain one', async () => {
             expect(
                 await failureOf(refusal(409, JSON.stringify({ message: 'The account also holds an admin identity' }))),

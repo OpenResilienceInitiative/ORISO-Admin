@@ -71,18 +71,29 @@ export interface ChangeConsultantTenantResult {
 }
 
 /**
- * The server states the reason of a refusal in the response text only (no machine-readable
- * reason for the 400s), so the variants are told apart by what the message says. Anything that
- * matches nothing keeps its status-level meaning.
+ * UserService#1421 names the reason of a 400/409 in the `X-Reason` header. This is the contract; the
+ * text matching below only serves a UserService that does not send the header yet.
  */
-const readText = async (response: Response): Promise<string> => {
+const CODE_OF_X_REASON: Record<string, ChangeTenantErrorCode> = {
+    TENANT_CHANGE_MULTITENANCY_OFF: CHANGE_TENANT_ERRORS.MULTI_TENANCY_OFF,
+    TENANT_CHANGE_SAME_TENANT: CHANGE_TENANT_ERRORS.SAME_TRAEGER,
+    TENANT_CHANGE_AGENCY_OTHER_TENANT: CHANGE_TENANT_ERRORS.CENTRE_OF_OTHER_TRAEGER,
+    TENANT_CHANGE_TOPICS_NOT_COVERED: CHANGE_TENANT_ERRORS.TOPICS_NOT_COVERED,
+    TENANT_CHANGE_LAST_COUNSELLOR: CHANGE_TENANT_ERRORS.LAST_COUNSELLOR_OF_CENTRE,
+    TENANT_CHANGE_ADMIN_IDENTITY: CHANGE_TENANT_ERRORS.ALSO_ADMIN,
+};
+
+/**
+ * Fallback for a UserService without the header: the `message` of its JSON body. Only that field is
+ * read, never the whole body, because Spring's own error bodies carry the request path
+ * ("/useradmin/consultants/{id}/tenant"), which would match every pattern about the Träger.
+ */
+const readMessage = async (response: Response): Promise<string> => {
     try {
         const text = await response.clone().text();
         try {
-            const body = JSON.parse(text);
-            return [body?.message, body?.error, body?.reason, text]
-                .filter((part) => typeof part === 'string')
-                .join(' ');
+            const message = JSON.parse(text)?.message;
+            return typeof message === 'string' ? message : '';
         } catch {
             return text;
         }
@@ -101,7 +112,7 @@ const classifyBadRequest = (text: string): ChangeTenantErrorCode => {
     if (/topic/i.test(text)) {
         return CHANGE_TENANT_ERRORS.TOPICS_NOT_COVERED;
     }
-    if (/belong|tenant|agenc/i.test(text)) {
+    if (/do(es)? not belong/i.test(text)) {
         return CHANGE_TENANT_ERRORS.CENTRE_OF_OTHER_TRAEGER;
     }
     return CHANGE_TENANT_ERRORS.BAD_REQUEST;
@@ -119,15 +130,19 @@ const classifyConflict = (reason: string | null, text: string): ChangeTenantErro
 
 const classify = async (failure: unknown): Promise<ChangeTenantErrorCode> => {
     if (failure instanceof Response) {
+        const named = CODE_OF_X_REASON[failure.headers.get(FETCH_ERRORS.X_REASON) ?? ''];
+        if (named && (failure.status === 400 || failure.status === 409)) {
+            return named;
+        }
         switch (failure.status) {
             case 400:
-                return classifyBadRequest(await readText(failure));
+                return classifyBadRequest(await readMessage(failure));
             case 403:
                 return CHANGE_TENANT_ERRORS.FORBIDDEN;
             case 404:
                 return CHANGE_TENANT_ERRORS.NOT_FOUND;
             case 409:
-                return classifyConflict(failure.headers.get(FETCH_ERRORS.X_REASON), await readText(failure));
+                return classifyConflict(failure.headers.get(FETCH_ERRORS.X_REASON), await readMessage(failure));
             case 503:
                 return CHANGE_TENANT_ERRORS.IDENTITY_PROVIDER_UNAVAILABLE;
             default:

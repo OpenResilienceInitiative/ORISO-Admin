@@ -111,7 +111,7 @@ const translations: Record<string, string> = {
     'counselor.changeTenant.cases.none': 'Es bleiben keine offenen Fälle zurück.',
     'counselor.changeTenant.cases.noneDone': 'Es blieben keine offenen Fälle zurück.',
     'counselor.changeTenant.cases.count': '{{count}} offene Fälle bleiben beim bisherigen Träger „{{from}}“.',
-    'counselor.changeTenant.takeover': 'Kolleg:innen können mit „Zuständigkeit beendet“ übernehmen.',
+    'counselor.changeTenant.takeover': 'Kolleg:innen können mit „Zuordnung beendet“ übernehmen.',
     'counselor.changeTenant.confirm': 'Träger wechseln',
     'counselor.changeTenant.retry': 'Erneut versuchen',
     'counselor.changeTenant.back': 'Zurück zum Bearbeiten',
