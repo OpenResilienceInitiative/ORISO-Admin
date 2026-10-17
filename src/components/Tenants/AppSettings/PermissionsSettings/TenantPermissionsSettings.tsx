@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'antd';
+import { Alert, notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
     useTenantPermissionPolicies,
     useTenantPermissionPoliciesMutation,
+    useTenantRecipientScopeMutation,
 } from '../../../../hooks/useTenantPermissionPolicies';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
@@ -14,8 +15,9 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { toRecipientScopeWrite, withoutInternalGroupChat } from './RecipientScope/recipientScopePolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
-import type { PolicyValue, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
+import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 
 export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
@@ -26,6 +28,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         isError: policiesError,
     } = useTenantPermissionPolicies(tenantId);
     const updatePermissionPolicies = useTenantPermissionPoliciesMutation(tenantId);
+    const updateRecipientScope = useTenantRecipientScopeMutation(tenantId);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
     const [effectivePolicyData, setEffectivePolicyData] = useState<TenantPermissionPolicies | undefined>(
         permissionPolicyData,
@@ -88,10 +91,9 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     // policies), never a blanket "on" that could contradict the backend (ORISO-Admin#989). Read
     // from the query result, not the pending-aware copy: the form initialises in the same render
     // in which loading ends, one tick before the effect above copies the data over.
-    const loadedPolicies =
-        permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId
-            ? permissionPolicyData.policies
-            : undefined;
+    const loadedPolicyData =
+        permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId ? permissionPolicyData : undefined;
+    const loadedPolicies = loadedPolicyData?.policies;
     const presetValues = useMemo(
         () => platformPresetValues({ allowedPermissionToggles, permissionPolicies: loadedPolicies }),
         [allowedPermissionToggles, loadedPolicies],
@@ -147,7 +149,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                 const confirmed = confirmedPolicyData.current;
                 if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
-                    ...confirmed,
+                    ...withoutInternalGroupChat(confirmed),
                     policies: { ...confirmed.policies, [fieldKey]: policy },
                 };
                 try {
@@ -171,6 +173,36 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         [rebuildEffectivePolicyData, tenantId, updatePermissionPolicies],
     );
 
+    // Same queue as the switches, so a scope save and a switch save never overtake each other.
+    const handleRecipientScopeSave = useCallback(
+        (next: Pick<RecipientScopePolicy, 'value' | 'mode'>) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPolicyData.current;
+                if (!confirmed || String(confirmed.tenantId) !== tenantId) {
+                    throw new Error('Permission policies of this Träger are not loaded');
+                }
+                const saved = await updateRecipientScope.mutateAsync({
+                    ...withoutInternalGroupChat(confirmed),
+                    ...toRecipientScopeWrite({ ...next, inherited: false }),
+                });
+                if (activeTenantId.current === tenantId) {
+                    confirmedPolicyData.current = saved;
+                    rebuildEffectivePolicyData();
+                }
+                notification.success({
+                    message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
+                    duration: 3,
+                });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            return save;
+        },
+        [rebuildEffectivePolicyData, t, tenantId, updateRecipientScope],
+    );
+
     if (policiesError) {
         return <Alert type="error" message={t('error.loading')} showIcon role="alert" />;
     }
@@ -188,6 +220,12 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             permissionPolicies={effectivePolicyData?.policies}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
+            recipientScope={{
+                // Until the effect above has copied the loaded data over, read the query result: an
+                // absent field means "backend too old", and must not flash while loading.
+                policy: (effectivePolicyData ?? loadedPolicyData)?.internalGroupChat?.recipientScope,
+                onSave: handleRecipientScopeSave,
+            }}
         />
     );
 };
