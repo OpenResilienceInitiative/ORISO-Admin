@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Button from '@mui/material/Button';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
 import {
     getSessionAccessToken,
@@ -35,13 +36,18 @@ const everyone = [
 /** Every counsellor search the page sent, so a story can prove the Träger reached the server. */
 const searchRequests: string[] = [];
 let searchFails = false;
+const SLOW_TENANT = '43';
 
-const search = ({ request }: { request: Request }) => {
+const search = async ({ request }: { request: Request }) => {
     searchRequests.push(request.url);
     if (searchFails) {
         return new HttpResponse(null, { status: 500 });
     }
     const tenantId = new URL(request.url).searchParams.get('tenantId');
+    if (tenantId === SLOW_TENANT) {
+        // Never answers, like a Träger whose lookup is still pending when the admin saves.
+        await delay('infinite');
+    }
     const rows = (tenantId ? everyone.filter((entry) => String(entry.tenantId) === tenantId) : everyone).map(
         ({ row }) => row,
     );
@@ -67,6 +73,21 @@ const Harness = ({ tenantId }: { tenantId?: number }) => (
         </ThemeProvider>
     </QueryClientProvider>
 );
+
+/** The create form with the Träger field stood in for by a button: it changes `tenantId` like the select does. */
+const SwitchingHarness = () => {
+    const [form] = Form.useForm();
+    return (
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Form form={form} layout="vertical" initialValues={{ tenantId: 7 }}>
+                    <Button onClick={() => form.setFieldValue('tenantId', Number(SLOW_TENANT))}>Träger wechseln</Button>
+                    <RegistrationSettings asFields editing />
+                </Form>
+            </ThemeProvider>
+        </QueryClientProvider>
+    );
+};
 
 const meta = {
     title: 'Organisms/Agency/RegistrationSettingsCounsellors',
@@ -155,5 +176,34 @@ export const CounsellorSearchFailed: Story = {
         await expect(await canvas.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
         await expect(canvas.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
         await expect(canvas.getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
+    },
+};
+
+/**
+ * A pick made for Träger 7 is gone the moment the Träger changes — also while the new Träger's
+ * search has not answered — so it cannot be saved and assigned for another one.
+ */
+export const ChangingTheTenantDropsThePick: Story = {
+    render: () => <SwitchingHarness />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await field(canvas));
+        await userEvent.click(
+            await within(await within(document.body).findByRole('listbox')).findByRole('option', {
+                name: /Erika Beispiel/,
+            }),
+        );
+        await userEvent.keyboard('{Escape}');
+        // The closing list sits over the button until its transition is done.
+        await waitFor(() => expect(within(document.body).queryByRole('listbox')).not.toBeInTheDocument());
+        await expect(await canvas.findByText(/Erika Beispiel/)).toBeInTheDocument();
+
+        await userEvent.click(canvas.getByRole('button', { name: 'Träger wechseln' }));
+
+        // The new Träger's search is out and unanswered; the pick must not wait for it.
+        await waitFor(() => expect(searchRequests.some((url) => url.includes('tenantId=43'))).toBe(true), {
+            timeout: 5000,
+        });
+        await waitFor(() => expect(canvas.queryByText(/Erika Beispiel/)).not.toBeInTheDocument(), { timeout: 5000 });
     },
 };

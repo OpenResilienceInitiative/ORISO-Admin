@@ -44,7 +44,11 @@ const mocks = vi.hoisted(() => ({
     consultantSearchFilters: [] as Array<unknown>,
     consultantSearchCalls: [] as Array<{ filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }>,
     consultantSearchFailed: false,
+    // Per Träger (the `tenantId` filter of the request): its search has not answered yet or failed.
+    consultantSearchByTenant: {} as Record<string, 'pending' | 'failed'>,
     consultantSearchRefetch: vi.fn(),
+    // Mounted copies of the mocked search hook, so a test can make a retry re-render them.
+    consultantSearchListeners: new Set<() => void>(),
     authTenantId: 0,
     cardSaveOnError: vi.fn(),
     legalForm: {
@@ -58,6 +62,7 @@ beforeEach(() => {
     mocks.consultantSearchFilters = [];
     mocks.consultantSearchCalls = [];
     mocks.consultantSearchFailed = false;
+    mocks.consultantSearchByTenant = {};
     mocks.consultantSearchRefetch.mockReset();
     mocks.authTenantId = 0;
 });
@@ -260,14 +265,27 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
     useConsultantsOrAdminsData: (props: { filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }) => {
+        const [, rerender] = React.useReducer((count: number) => count + 1, 0);
+        React.useEffect(() => {
+            mocks.consultantSearchListeners.add(rerender);
+            return () => {
+                mocks.consultantSearchListeners.delete(rerender);
+            };
+        }, []);
         mocks.consultantSearchFilters.push(props.filters);
         mocks.consultantSearchCalls.push(props);
+        const tenantKey = String((props.filters as { tenantId?: string } | undefined)?.tenantId);
+        const byTenant = props.enabled !== false ? mocks.consultantSearchByTenant[tenantKey] : undefined;
+        if (byTenant === 'pending') {
+            return { data: undefined, isLoading: true, isError: false, refetch: mocks.consultantSearchRefetch };
+        }
         // A disabled query has no data; a failed one (rethrowOnFailure) has none either.
-        const hasData = props.enabled !== false && !(mocks.consultantSearchFailed && props.rethrowOnFailure);
+        const failed = byTenant === 'failed' || (mocks.consultantSearchFailed && props.rethrowOnFailure);
+        const hasData = props.enabled !== false && !failed;
         return {
             data: hasData ? { data: mocks.consultants } : undefined,
             isLoading: false,
-            isError: mocks.consultantSearchFailed && props.enabled !== false,
+            isError: props.enabled !== false && (byTenant === 'failed' || mocks.consultantSearchFailed),
             refetch: mocks.consultantSearchRefetch,
         };
     },
@@ -980,8 +998,13 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         const user = setupUser();
         mocks.routeId = 'add';
         mocks.tenantTopics = [TOPIC];
-        mocks.consultants = [];
+        mocks.consultants = [CONSULTANT];
         mocks.consultantSearchFailed = true;
+        // The retry succeeds: the hook stops failing and answers with the Träger's counsellors.
+        mocks.consultantSearchRefetch.mockImplementation(() => {
+            mocks.consultantSearchFailed = false;
+            mocks.consultantSearchListeners.forEach((rerender) => rerender());
+        });
         renderWithClient(<AgencyPageEdit />);
 
         await fillRequiredCreateFields(user);
@@ -992,7 +1015,51 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
 
         await user.click(screen.getByRole('button', { name: 'Erneut laden' }));
         expect(mocks.consultantSearchRefetch).toHaveBeenCalledTimes(1);
+        await waitFor(() =>
+            expect(screen.queryByText('Die Berater:innen konnten nicht geladen werden.')).not.toBeInTheDocument(),
+        );
+        await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
     });
+
+    it.each(['pending', 'failed'] as const)(
+        'drops the counsellor of the old Träger as soon as the Träger changes, while the new search is %s',
+        async (newTenantSearch) => {
+            const user = setupUser();
+            mocks.routeId = 'add';
+            mocks.tenantTopics = [TOPIC];
+            mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+            mocks.hasConsultants = false;
+            mocks.searchTenantData.mockResolvedValue({
+                data: [
+                    { id: 7, name: 'Caritas Augsburg' },
+                    { id: 8, name: 'Caritas Berlin' },
+                ],
+            });
+            // Träger 8 has not answered (or cannot): the old pick must not wait for that answer to go.
+            mocks.consultantSearchByTenant = { '8': newTenantSearch };
+            renderWithClient(<AgencyPageEdit />);
+
+            await fillRequiredCreateFields(user);
+            await assignConsultant(user);
+            await user.keyboard('{Escape}');
+            await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+            expect(screen.getByText(CONSULTANT_LABEL)).toBeInTheDocument();
+
+            await user.click(screen.getByRole('combobox', { name: /Trägerzuordnung/ }));
+            await user.click(await screen.findByRole('option', { name: 'Caritas Berlin' }));
+
+            await waitFor(() => expect(screen.queryByText(CONSULTANT_LABEL)).not.toBeInTheDocument());
+            expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '8' });
+
+            fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            const saved = mocks.mutate.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
+            expect(JSON.stringify(saved.tenantId)).toContain('8');
+            // Nothing of Träger 7 may reach addAgencyData -> assignAgencyToConsultants for Träger 8.
+            expect(saved.consultantIds ?? []).toEqual([]);
+        },
+    );
 
     it('keeps a stored counsellor when the search fails', async () => {
         mocks.routeId = '282';

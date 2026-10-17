@@ -1,7 +1,7 @@
 import { Alert, Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Card } from '../../../../../components/Card';
 import { M3Button } from '../../../../../components/M3Button';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
@@ -124,11 +124,26 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         }
     }, [form, hasSelectedConsultants, id]);
 
-    // Narrowing the options does not narrow the selection: MuiSelectField keeps a value it
-    // cannot resolve, so a counsellor picked for one Träger would still be submitted after the
-    // admin switches to another. Drop what the chosen Träger no longer allows — but only once the
-    // search has answered: a pending or failed query has no list, and reading that as "nobody
-    // is allowed" would wipe valid picks.
+    // A pick belongs to the Träger it was made for. MuiSelectField keeps a value it cannot
+    // resolve, and the new Träger's search may still be pending or may fail, so waiting for its
+    // answer would let the old Träger's counsellor be saved (and assigned) for the new one.
+    // Clear on the change itself. The first choice (nothing before it) and a refetch of the same
+    // Träger leave the selection alone.
+    const previousTenantId = useRef(consultantTenantId);
+    useEffect(() => {
+        const before = previousTenantId.current;
+        previousTenantId.current = consultantTenantId;
+        if (before !== undefined && String(before) !== String(consultantTenantId)) {
+            const current = form.getFieldValue('consultantIds') || [];
+            if (current.length > 0) {
+                form.setFieldValue('consultantIds', []);
+            }
+        }
+    }, [consultantTenantId, form]);
+
+    // Narrowing the options does not narrow the selection either: drop what the chosen Träger
+    // does not list — but only once its search has answered: a pending or failed query has no
+    // list, and reading that as "nobody is allowed" would wipe picks that are still valid.
     useEffect(() => {
         if (isLoadingConsultants || consultantSearchFailed || !consultants?.data) {
             return;

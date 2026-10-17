@@ -44,5 +44,8 @@ describe('AgencySettings Träger list', () => {
         await waitFor(() =>
             expect(screen.queryByText('agency.edit.general.more_settings.tenant.loadError')).not.toBeInTheDocument(),
         );
+        // The successful answer reached the select, not just the error went away.
+        await user.click(screen.getByRole('combobox', { name: /agency\.edit\.general\.more_settings\.tenant\.title/ }));
+        expect(await screen.findByRole('option', { name: 'Caritas Augsburg' })).toBeInTheDocument();
     });
 });
