@@ -13,7 +13,10 @@ import styles from './styles.module.scss';
 const KEY = 'tenants.permissions.card.groupInternal.recipientScope';
 
 export type RecipientScopeControlProps = {
-    /** The setting as the API served it; absent on an older backend, then the default is shown. */
+    /**
+     * The setting as the API served it. Absent on a backend without the field (TenantService#321 not
+     * deployed): the control then shows the default read-only, because a save would be ignored.
+     */
     policy?: Partial<RecipientScopePolicy> | null;
     level: 'platform' | 'tenant';
     /** Internal group chats are switched off on this tile: the setting stays visible, but cannot change. */
@@ -31,8 +34,9 @@ export type RecipientScopeControlProps = {
 export const RecipientScopeControl = ({ policy, level, disabled = false, onSave }: RecipientScopeControlProps) => {
     const { t } = useTranslation();
     const idBase = useId();
+    const available = policy != null;
     const resolved = resolveRecipientScopePolicy(policy);
-    const locked = isRecipientScopeLocked(resolved, level);
+    const locked = !available || isRecipientScopeLocked(resolved, level);
     const [draft, setDraft] = useState<{ value: RecipientScope; mode: PermissionPolicyMode }>({
         value: resolved.value,
         mode: resolved.mode,
@@ -61,12 +65,14 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
     };
 
     const marker = (() => {
+        if (!available) return null;
         if (level === 'platform') return resolved.inherited ? t(`${KEY}.marker.default`) : null;
         return resolved.inherited ? t(`${KEY}.marker.inherited`) : t(`${KEY}.marker.own`);
     })();
 
     let note: string | null = null;
-    if (disabled) note = t('tenants.permissions.feature.requiresMaster');
+    if (!available) note = t(`${KEY}.unavailable`);
+    else if (disabled) note = t('tenants.permissions.feature.requiresMaster');
     else if (locked) note = t(`${KEY}.lockedNote`);
     else if (level === 'tenant' && resolved.inherited && resolved.mode === 'SUGGESTED') {
         note = t(`${KEY}.recommendedNote`);
@@ -107,7 +113,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
                 })}
             </RadioGroup>
 
-            {level === 'platform' && (
+            {level === 'platform' && available && (
                 <div className={styles.mode}>
                     <EnforceModeSwitch
                         enforceMode={draft.mode === 'ENFORCED'}
@@ -125,7 +131,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
 
             {note && (
                 <p className={styles.note}>
-                    {locked && !disabled && <LockIcon aria-hidden className={styles.noteIcon} />}
+                    {locked && available && !disabled && <LockIcon aria-hidden className={styles.noteIcon} />}
                     {note}
                 </p>
             )}

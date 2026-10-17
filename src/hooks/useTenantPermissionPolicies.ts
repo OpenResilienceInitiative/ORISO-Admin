@@ -43,6 +43,8 @@ export const useTenantRecipientScopeMutation = (tenantId: string) => {
 
     return useMutation({
         mutationFn: updateTenantPermissionPolicies,
+        // A refetch already running must not land after the save and bring the old scope back.
+        onMutate: () => queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) }),
         onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
     });
 };

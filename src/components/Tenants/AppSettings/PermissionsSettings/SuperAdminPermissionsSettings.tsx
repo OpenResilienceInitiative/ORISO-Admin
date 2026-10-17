@@ -2,7 +2,10 @@ import { notification } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
-import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
+import {
+    useRecipientScopeControlsMutation,
+    useTenantAdminControlsMutation,
+} from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyVisibleTogglesAsValues,
@@ -31,7 +34,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
     });
     // The scope control reports its own failure beside the edit, so no second, generic notification.
-    const updateRecipientScope = useTenantAdminControlsMutation({ successMessageKey: false });
+    const updateRecipientScope = useRecipientScopeControlsMutation();
 
     useEffect(() => {
         if (platformControls && pendingPolicyOperations.current.length === 0) {
@@ -115,6 +118,10 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
                     ...toRecipientScopeWrite({ ...next, inherited: false }),
                 });
                 rebuildEffectivePlatformControls();
+                notification.success({
+                    message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
+                    duration: 3,
+                });
             });
             policyMutationQueue.current = save.then(
                 () => undefined,
@@ -122,7 +129,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             );
             return save;
         },
-        [rebuildEffectivePlatformControls, updateRecipientScope],
+        [rebuildEffectivePlatformControls, t, updateRecipientScope],
     );
 
     // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
@@ -162,7 +169,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
             recipientScope={{
-                policy: effectivePlatformControls?.internalGroupChat?.recipientScope,
+                policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
                 onSave: handleRecipientScopeSave,
             }}
         />

@@ -102,14 +102,15 @@ export const TraegerSaveRejected: Story = {
     },
 };
 
-/** Platform admin on a backend that does not send the field yet: the default shows, saving is allowed. */
+/** Platform admin on a backend that does not send the field yet: default shown read-only, with a note. */
 export const PlatformWithoutBackendField: Story = {
     args: { level: 'platform' },
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const scope = await control(canvasElement);
         await expect(scope.getByRole('radio', { name: /Auf die Beratungsstelle begrenzt/ })).toBeChecked();
-        await userEvent.click(scope.getByRole('radio', { name: /Plattformweit/ }));
-        await expect(scope.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+        scope.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
+        await expect(scope.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeVisible();
+        await expect(scope.queryByRole('button', { name: 'Speichern' })).toBeNull();
     },
 };

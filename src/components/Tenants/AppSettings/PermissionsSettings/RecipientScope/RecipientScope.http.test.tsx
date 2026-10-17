@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { notification } from 'antd';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -90,7 +91,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-    server.scope = undefined;
+    vi.spyOn(notification, 'success').mockImplementation(() => undefined);
+    vi.spyOn(notification, 'error').mockImplementation(() => undefined);
+    server.scope = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
     server.failNextPut = false;
     server.puts.length = 0;
     fetchStub.mockClear();
@@ -99,15 +102,28 @@ beforeEach(() => {
     );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+});
 
 describe('Träger admin', () => {
-    it('shows the default and still saves when the backend has no such field yet', async () => {
-        const user = userEvent.setup();
+    it('is read-only with a note while the backend does not send the field, and sends no save', async () => {
+        server.scope = undefined;
         mountTenant();
         const control = await tile();
+        await waitFor(() => expect(control.getByText('Available after the next backend update.')).toBeInTheDocument());
+        control.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(control.getByRole('radio', { name: /Counselling centre only/ })).toBeChecked();
+        expect(control.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+        expect(server.puts).toHaveLength(0);
+    });
 
+    it('saves a Träger choice as a recommendation, never with the read-only marker, and says it is saved', async () => {
+        const user = userEvent.setup();
+        server.scope = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
+        mountTenant();
+        const control = await tile();
         await user.click(control.getByRole('radio', { name: /Träger-wide/ }));
         await user.click(control.getByRole('button', { name: 'Save' }));
 
@@ -117,8 +133,12 @@ describe('Träger admin', () => {
                 internalGroupChat: { recipientScope: { value: 'TENANT', mode: 'SUGGESTED' } },
             }),
         );
-        // `inherited` is read-only: it must never go back to the server.
         expect(server.puts.at(-1)?.internalGroupChat?.recipientScope).not.toHaveProperty('inherited');
+        await waitFor(() =>
+            expect(notification.success).toHaveBeenCalledWith(
+                expect.objectContaining({ message: 'Recipient scope saved.' }),
+            ),
+        );
     });
 
     it('reads the saved value back after a reload', async () => {
@@ -161,6 +181,7 @@ describe('Träger admin', () => {
         expect(control.getByRole('alert')).toBeInTheDocument();
         expect(control.getByRole('radio', { name: /Platform-wide/ })).toBeChecked();
         expect(control.getByRole('button', { name: 'Save' })).toBeEnabled();
+        expect(notification.success).not.toHaveBeenCalled();
     });
 
     it('does not write the scope back when another switch on the same tile changes', async () => {
@@ -192,6 +213,7 @@ describe('Träger admin', () => {
 describe('platform admin', () => {
     it('makes the scope a requirement and reads it back after a reload', async () => {
         const user = userEvent.setup();
+        server.scope = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
         const view = mountPlatform();
         let control = await tile();
         await user.click(control.getByRole('radio', { name: /Platform-wide/ }));
@@ -204,6 +226,12 @@ describe('platform admin', () => {
             }),
         );
 
+        await waitFor(() =>
+            expect(notification.success).toHaveBeenCalledWith(
+                expect.objectContaining({ message: 'Recipient scope saved.' }),
+            ),
+        );
+
         view.unmount();
         mountPlatform();
         control = await tile();
@@ -213,6 +241,7 @@ describe('platform admin', () => {
 
     it('keeps the edit and shows an error when the server rejects the save', async () => {
         const user = userEvent.setup();
+        server.scope = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
         mountPlatform();
         const control = await tile();
         server.failNextPut = true;

@@ -17,6 +17,9 @@ beforeAll(async () => {
 
 type Level = 'platform' | 'tenant';
 
+/** What TenantService#321 serves while nothing is set anywhere. */
+const SERVED_DEFAULT: RecipientScopePolicy = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
+
 const setup = (
     props: { level?: Level; policy?: RecipientScopePolicy; disabled?: boolean; onSave?: () => Promise<unknown> } = {},
 ) => {
@@ -25,7 +28,7 @@ const setup = (
     const view = render(
         <RecipientScopeControl
             level={props.level ?? 'platform'}
-            policy={props.policy}
+            policy={'policy' in props ? props.policy : SERVED_DEFAULT}
             disabled={props.disabled}
             onSave={onSave}
         />,
@@ -40,7 +43,9 @@ describe('options', () => {
         setup();
         const group = screen.getByRole('radiogroup', { name: 'Recipients for internal group chats' });
         expect(within(group).getAllByRole('radio')).toHaveLength(3);
-        expect(radio(/Platform-wide/)).toHaveAccessibleDescription('Counsellors can pick anyone on the platform.');
+        expect(radio(/Platform-wide/)).toHaveAccessibleDescription(
+            'Counsellors can pick any colleague on the platform.',
+        );
         expect(radio(/Träger-wide/)).toHaveAccessibleDescription(
             'Counsellors can pick colleagues of their own Träger, from all of its counselling centres.',
         );
@@ -54,8 +59,8 @@ describe('options', () => {
         expect(screen.getByText(/always for their members only/)).toBeInTheDocument();
     });
 
-    it('shows the default (counselling centre only) when the backend sends no field', () => {
-        setup({ policy: undefined });
+    it('shows the served default (counselling centre only) and offers Save only after a change', () => {
+        setup();
         expect(radio(/Counselling centre only/)).toBeChecked();
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     });
@@ -72,6 +77,33 @@ describe('options', () => {
         setup({ level: 'tenant', policy: { value: 'PLATFORM', mode: 'SUGGESTED', inherited: false } });
         expect(screen.queryByText('Inherited from the platform')).not.toBeInTheDocument();
         expect(screen.getByText('Set by this Träger')).toBeInTheDocument();
+    });
+});
+
+describe('backend without the field', () => {
+    // TenantService#321 not deployed: a save would be ignored and the page would snap back, silently.
+    it.each(['platform', 'tenant'] as const)(
+        'is read-only with a note on the %s page, no Save, no inherited claim',
+        (level) => {
+            setup({ level, policy: undefined });
+            screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
+            expect(radio(/Counselling centre only/)).toBeChecked();
+            expect(screen.getByText('Available after the next backend update.')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Requirement' })).not.toBeInTheDocument();
+            expect(screen.queryByText('Inherited from the platform')).not.toBeInTheDocument();
+            expect(screen.queryByText(/The platform recommends this/)).not.toBeInTheDocument();
+        },
+    );
+
+    it('says so in German', async () => {
+        await i18n.changeLanguage('de');
+        try {
+            setup({ policy: undefined });
+            expect(screen.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeInTheDocument();
+        } finally {
+            await i18n.changeLanguage('en');
+        }
     });
 });
 
@@ -136,7 +168,7 @@ describe('saving', () => {
     it('keeps the edit and says so when the save fails, and allows another try', async () => {
         const onSave = vi.fn().mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(undefined);
         const user = userEvent.setup();
-        render(<RecipientScopeControl level="platform" onSave={onSave} />);
+        render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
 
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -155,7 +187,7 @@ describe('saving', () => {
     it('follows the saved value once the server answers', async () => {
         const user = userEvent.setup();
         const onSave = vi.fn().mockResolvedValue(undefined);
-        const { rerender } = render(<RecipientScopeControl level="platform" onSave={onSave} />);
+        const { rerender } = render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
         await user.click(radio(/Träger-wide/));
         rerender(
             <RecipientScopeControl
@@ -178,7 +210,7 @@ describe('German', () => {
                 screen.getByRole('radiogroup', { name: 'Empfänger:innen für interne Gruppenchats' }),
             ).toBeInTheDocument();
             expect(radio(/Plattformweit/)).toHaveAccessibleDescription(
-                'Berater:innen können alle Personen der Plattform auswählen.',
+                'Berater:innen können alle Kolleg:innen der Plattform auswählen.',
             );
             expect(radio(/Trägerweit/)).toHaveAccessibleDescription(
                 'Berater:innen können Kolleg:innen ihres eigenen Trägers aus allen Beratungsstellen auswählen.',

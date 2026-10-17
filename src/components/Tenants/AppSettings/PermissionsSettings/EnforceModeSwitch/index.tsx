@@ -19,8 +19,9 @@ export type EnforceModeSwitchProps = {
 /**
  * Footer control that toggles "enforce active states" mode on the SuperAdmin permissions cards
  * (Figma node 105:11334): a "Configure" mode for normal editing, and an "Enforce activated
- * selections" mode that reveals the per-feature enforce checkboxes. See ORISO-Admin#297. A setting with the same recommendation/requirement
- * choice reuses it with its own labels (ORISO-Admin#1215).
+ * selections" mode that reveals the per-feature enforce checkboxes. See ORISO-Admin#297.
+ * A setting with the same recommendation/requirement choice reuses it with its own labels
+ * (ORISO-Admin#1215).
  */
 export const EnforceModeSwitch = ({
     enforceMode,

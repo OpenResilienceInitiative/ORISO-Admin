@@ -63,8 +63,12 @@ type Story = StoryObj<typeof meta>;
 
 const option = (canvas: ReturnType<typeof within>, name: RegExp) => canvas.getByRole('radio', { name });
 
-/** Nothing set anywhere (or an older backend without the field): the default, centre only. */
+/** What TenantService#321 serves while nothing is set anywhere. */
+const SERVED_DEFAULT: RecipientScopePolicy = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
+
+/** Nothing set anywhere: the served default, centre only. */
 export const PlatformDefault: Story = {
+    args: { initial: SERVED_DEFAULT },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(option(canvas, /Auf die Beratungsstelle begrenzt/)).toBeChecked();
@@ -73,12 +77,22 @@ export const PlatformDefault: Story = {
     },
 };
 
+/** TenantService#321 not deployed: read-only with a note, because a save would be ignored. */
+export const BackendFieldMissing: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
+        await expect(canvas.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    },
+};
+
 export const OptionPlatformWide: Story = {
     args: { initial: { value: 'PLATFORM', mode: 'SUGGESTED', inherited: false } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(option(canvas, /Plattformweit/)).toBeChecked();
-        await expect(canvas.getByText('Berater:innen können alle Personen der Plattform auswählen.')).toBeVisible();
+        await expect(canvas.getByText('Berater:innen können alle Kolleg:innen der Plattform auswählen.')).toBeVisible();
     },
 };
 
@@ -119,6 +133,7 @@ export const PlatformRequirement: Story = {
 
 /** Pick, make it a requirement, save: the control follows the saved value. */
 export const PlatformSavesChoice: Story = {
+    args: { initial: SERVED_DEFAULT },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(option(canvas, /Plattformweit/));
@@ -163,7 +178,7 @@ export const TraegerOwnValue: Story = {
 
 /** The server rejects the save: an error says so, and the choice stays where the admin left it. */
 export const SaveFails: Story = {
-    args: { failSave: true },
+    args: { failSave: true, initial: SERVED_DEFAULT },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(option(canvas, /Plattformweit/));
@@ -176,7 +191,7 @@ export const SaveFails: Story = {
 
 /** Internal group chats are switched off on the tile: visible, not changeable, with the reason. */
 export const TileSwitchedOff: Story = {
-    args: { disabled: true },
+    args: { disabled: true, initial: SERVED_DEFAULT },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
@@ -195,7 +210,7 @@ export const English: Story = {
         const canvas = within(canvasElement);
         await expect(canvas.getByRole('radiogroup', { name: 'Recipients for internal group chats' })).toBeVisible();
         await expect(option(canvas, /Platform-wide/)).toBeEnabled();
-        await expect(canvas.getByText('Counsellors can pick anyone on the platform.')).toBeVisible();
+        await expect(canvas.getByText('Counsellors can pick any colleague on the platform.')).toBeVisible();
         await expect(canvas.getByText('Inherited from the platform')).toBeVisible();
     },
 };

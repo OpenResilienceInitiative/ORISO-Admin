@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'antd';
+import { Alert, notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
@@ -91,10 +91,9 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     // policies), never a blanket "on" that could contradict the backend (ORISO-Admin#989). Read
     // from the query result, not the pending-aware copy: the form initialises in the same render
     // in which loading ends, one tick before the effect above copies the data over.
-    const loadedPolicies =
-        permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId
-            ? permissionPolicyData.policies
-            : undefined;
+    const loadedPolicyData =
+        permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId ? permissionPolicyData : undefined;
+    const loadedPolicies = loadedPolicyData?.policies;
     const presetValues = useMemo(
         () => platformPresetValues({ allowedPermissionToggles, permissionPolicies: loadedPolicies }),
         [allowedPermissionToggles, loadedPolicies],
@@ -190,6 +189,10 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                     confirmedPolicyData.current = saved;
                     rebuildEffectivePolicyData();
                 }
+                notification.success({
+                    message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
+                    duration: 3,
+                });
             });
             policyMutationQueue.current = save.then(
                 () => undefined,
@@ -197,7 +200,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             );
             return save;
         },
-        [rebuildEffectivePolicyData, tenantId, updateRecipientScope],
+        [rebuildEffectivePolicyData, t, tenantId, updateRecipientScope],
     );
 
     if (policiesError) {
@@ -218,7 +221,9 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
             recipientScope={{
-                policy: effectivePolicyData?.internalGroupChat?.recipientScope,
+                // Until the effect above has copied the loaded data over, read the query result: an
+                // absent field means "backend too old", and must not flash while loading.
+                policy: (effectivePolicyData ?? loadedPolicyData)?.internalGroupChat?.recipientScope,
                 onSave: handleRecipientScopeSave,
             }}
         />
