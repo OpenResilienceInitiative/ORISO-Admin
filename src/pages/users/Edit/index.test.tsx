@@ -8,6 +8,7 @@ import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { ChangeConsultantTenantError } from '../../../api/counselor/changeConsultantTenant';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -28,6 +29,8 @@ const mocks = vi.hoisted(() => ({
     searchTenantData: vi.fn(),
     /** Drives the real `hasRole` logic below, so the role gate is genuinely exercised. */
     roles: [] as string[],
+    isSuperAdmin: false,
+    changeTenant: vi.fn(),
     /**
      * Query results are held as whole objects and swapped per test rather than
      * rebuilt on every hook call. `agenciesData` is an effect dependency in the
@@ -101,6 +104,23 @@ const translations: Record<string, string> = {
     'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
     'counselor.topicsLostByMove.addedButNotSaved':
         'Thema bei {{agency}} ergänzt, Person nicht gespeichert. Es bleibt bei {{agency}}.',
+    'counselor.changeTenant.title': 'Träger von {{name}} wechseln?',
+    'counselor.changeTenant.description':
+        '{{name}} wechselt von „{{from}}“ zu „{{to}}“ und arbeitet danach in: {{centres}}.',
+    'counselor.changeTenant.cases.unknown': 'Offene Fälle bleiben beim bisherigen Träger „{{from}}“.',
+    'counselor.changeTenant.cases.none': 'Es bleiben keine offenen Fälle zurück.',
+    'counselor.changeTenant.cases.noneDone': 'Es blieben keine offenen Fälle zurück.',
+    'counselor.changeTenant.cases.count': '{{count}} offene Fälle bleiben beim bisherigen Träger „{{from}}“.',
+    'counselor.changeTenant.takeover': 'Kolleg:innen können mit „Zuordnung beendet“ übernehmen.',
+    'counselor.changeTenant.confirm': 'Träger wechseln',
+    'counselor.changeTenant.retry': 'Erneut versuchen',
+    'counselor.changeTenant.back': 'Zurück zum Bearbeiten',
+    'counselor.changeTenant.done.title': 'Träger gewechselt',
+    'counselor.changeTenant.done.close': 'Fertig',
+    'counselor.changeTenant.error.LAST_COUNSELLOR_OF_CENTRE': 'Letzte Beratungsperson einer aktiven Stelle.',
+    'counselor.changeTenant.error.IDENTITY_PROVIDER_UNAVAILABLE': 'Anmeldedienst lehnt ab, nichts geändert.',
+    'counselor.changeTenant.centreRequired': 'Bitte mindestens eine Beratungsstelle des neuen Trägers wählen.',
+    'counselor.changeTenant.saveHint': 'Der Wechsel wird für sich gespeichert. Andere Änderungen separat speichern.',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -159,9 +179,9 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
         roles: mocks.roles,
         hasRole: (role: string | string[]) =>
             (Array.isArray(role) ? role : [role]).some((candidate) => mocks.roles.includes(candidate)),
-        // Not a super admin, so the tenant is taken from the token instead of
-        // being picked in the form — see `parseUserAuthInfo` below.
-        isSuperAdmin: false,
+        // Not a super admin unless a test says so, so the tenant is taken from the token instead
+        // of being picked in the form — see `parseUserAuthInfo` below.
+        isSuperAdmin: mocks.isSuperAdmin,
         isTechnicalAccount: false,
         isTenantScopedAdmin: mocks.roles.includes(UserRole.TenantAdmin),
         tenantId: TENANT.id,
@@ -207,6 +227,13 @@ vi.mock('../../../api/agency/addTopicsToAgency', async () => {
         '../../../api/agency/addTopicsToAgency',
     );
     return { ...actual, addTopicsToAgency: mocks.addTopicsToAgency };
+});
+
+vi.mock('../../../api/counselor/changeConsultantTenant', async () => {
+    const actual = await vi.importActual<typeof import('../../../api/counselor/changeConsultantTenant')>(
+        '../../../api/counselor/changeConsultantTenant',
+    );
+    return { ...actual, changeConsultantTenant: mocks.changeTenant };
 });
 
 vi.mock('../../../context/useAppConfig', () => ({
@@ -302,6 +329,8 @@ beforeEach(() => {
     mocks.getSingleTenantData.mockReset();
     mocks.getSingleTenantData.mockResolvedValue(TENANT);
     mocks.roles = [UserRole.TenantAdmin];
+    mocks.isSuperAdmin = false;
+    mocks.changeTenant.mockReset();
     mocks.agenciesResult = { data: { data: [] }, isLoading: false };
     mocks.topicsResult = { data: [], isLoading: false };
     mocks.consultantsResult = { data: { data: [] }, isLoading: false };
@@ -1620,5 +1649,285 @@ describe('existing consultant username validation', () => {
             isSupervisor: false,
         });
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+    });
+});
+
+describe('platform admin changes the Träger of a counsellor (Admin#1216)', () => {
+    const OTHER = { id: 12, name: 'Diakonie Nord' };
+    const SUCHT = { id: 11, name: 'Sucht' };
+    const FAMILIE = { id: 13, name: 'Familie' };
+    const NORD = { id: 1, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id, topics: [SUCHT] };
+    const SUED = { id: 2, name: 'Süd', postcode: '80331', city: 'München', tenantId: TENANT.id, topics: [SUCHT] };
+    const MITTE = {
+        id: 21,
+        name: 'Mitte',
+        postcode: '30159',
+        city: 'Hannover',
+        tenantId: OTHER.id,
+        topics: [SUCHT, FAMILIE],
+    };
+    const KUESTE = { id: 22, name: 'Küste', postcode: '24103', city: 'Kiel', tenantId: OTHER.id, topics: [FAMILIE] };
+    const ID = 'consultant-7';
+    const MOVED = {
+        consultantId: ID,
+        previousTenantId: TENANT.id,
+        tenantId: OTHER.id,
+        agencyIds: [21],
+        casesLeftWithPreviousTenant: 3,
+        matrixAccessRevocationsQueued: 2,
+    };
+
+    const editAs = (role: 'platform' | 'tenant') => {
+        const edited = {
+            id: ID,
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            tenantId: TENANT.id,
+            agencies: [NORD],
+            isSupervisor: false,
+        };
+        mocks.isSuperAdmin = role === 'platform';
+        mocks.roles = role === 'platform' ? [UserRole.AgencyAdmin, UserRole.TenantAdmin] : [UserRole.TenantAdmin];
+        mocks.params = { id: ID, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [edited] }, isLoading: false };
+        mocks.counselorResult = {
+            data: { ...edited, topicsByAgency: [{ agencyId: 1, topicIds: [11] }] },
+            isLoading: false,
+        };
+        mocks.agenciesResult = { data: { data: [NORD, SUED, MITTE, KUESTE] }, isLoading: false };
+        mocks.topicsResult = { data: [SUCHT, FAMILIE], isLoading: false };
+        mocks.searchTenantData.mockResolvedValue({ data: [TENANT, OTHER] });
+        mocks.changeTenant.mockResolvedValue(MOVED);
+    };
+
+    const setup = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
+    const unlock = (user: ReturnType<typeof userEvent.setup>) => user.click(pageButton('Bearbeiten'));
+    const centresOffered = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByLabelText('Beratungsstelle'));
+        const names = (await screen.findAllByRole('option')).map((option) => option.textContent);
+        await user.keyboard('{Escape}');
+        return names;
+    };
+    /** Opens the confirmation: new Träger, then one of its centres, then Save. */
+    const reviewMoveTo = async (user: ReturnType<typeof userEvent.setup>, centre = '30159 Mitte Hannover') => {
+        await unlock(user);
+        await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+        await chooseOption(user, 'Beratungsstelle', centre);
+        await user.keyboard('{Escape}');
+        await user.click(pageButton('Speichern'));
+        return screen.findByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ });
+    };
+
+    describe('the Träger field', () => {
+        it('stays locked until the form is unlocked with "Bearbeiten"', async () => {
+            editAs('platform');
+            renderForm();
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeDisabled();
+        });
+
+        it('can be changed by a platform admin once the form is unlocked', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeEnabled();
+        });
+
+        it('stays read-only for a Träger admin, even when the form is unlocked', async () => {
+            editAs('tenant');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeDisabled();
+        });
+    });
+
+    describe('the counselling centres after choosing another Träger', () => {
+        it("offers only that Träger's centres", async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            expect(await centresOffered(user)).toEqual(['20095 Nord Hamburg', '80331 Süd München']);
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            expect(await centresOffered(user)).toEqual(['24103 Küste Kiel', '30159 Mitte Hannover']);
+        });
+
+        it('drops the centres of the old Träger instead of carrying them along', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            expect(screen.queryByRole('button', { name: '20095 Nord Hamburg' })).not.toBeInTheDocument();
+        });
+
+        it('asks for at least one centre of the new Träger before anything is sent', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await screen.findByText('Bitte mindestens eine Beratungsstelle des neuen Trägers wählen.'),
+            ).toBeInTheDocument();
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('returns to the centres the counsellor has when the old Träger is chosen again', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Caritas Augsburg');
+
+            expect(screen.getByRole('button', { name: '20095 Nord Hamburg' })).toBeInTheDocument();
+        });
+    });
+
+    describe('saving', () => {
+        it('asks first: names both Träger, the new centre, and that open cases stay behind', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+
+            const dialog = await reviewMoveTo(user);
+
+            expect(dialog).toHaveTextContent('Caritas Augsburg');
+            expect(dialog).toHaveTextContent('Diakonie Nord');
+            expect(dialog).toHaveTextContent('Mitte (30159 Hannover)');
+            expect(dialog).toHaveTextContent('Offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“.');
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('sends the move only after "Träger wechseln"', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).toHaveBeenCalledWith(
+                ID,
+                expect.objectContaining({ tenantId: '12', centreIds: ['21'] }),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('sends the topics picked at the new centre', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+            await chooseOption(user, 'Beratungsstelle', '24103 Küste Kiel');
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ });
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            // Küste offers one topic only, which is pre-selected like when adding a centre.
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).toHaveBeenCalledWith(ID, {
+                tenantId: '12',
+                centreIds: ['22'],
+                topicIds: ['13'],
+            });
+        });
+
+        it('does not carry the topics of the old Träger along', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            // Mitte offers two topics, none of them picked: the old "Sucht" must not come with the move.
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant.mock.calls[0][1].topicIds).toEqual([]);
+        });
+
+        it('reports how many open cases the server left behind, then returns to the list', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            const done = await screen.findByRole('dialog', { name: /Träger gewechselt/ });
+            expect(done).toHaveTextContent('3 offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“.');
+            expect(mocks.navigate).not.toHaveBeenCalled();
+            await user.click(within(done).getByRole('button', { name: 'Fertig' }));
+            expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants');
+        });
+
+        it('keeps the edit when the server refuses: says why, and the choices are still there', async () => {
+            editAs('platform');
+            mocks.changeTenant.mockRejectedValue(new ChangeConsultantTenantError('LAST_COUNSELLOR_OF_CENTRE'));
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+                'Letzte Beratungsperson einer aktiven Stelle.',
+            );
+            expect(mocks.navigate).not.toHaveBeenCalled();
+            await user.click(within(dialog).getByRole('button', { name: 'Zurück zum Bearbeiten' }));
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(screen.getByLabelText('Trägerzuordnung *')).toHaveValue('Diakonie Nord');
+            expect(screen.getByRole('button', { name: '30159 Mitte Hannover' })).toBeInTheDocument();
+        });
+
+        it('can be retried after a refusal that may pass on the next try', async () => {
+            editAs('platform');
+            mocks.changeTenant.mockRejectedValueOnce(new ChangeConsultantTenantError('IDENTITY_PROVIDER_UNAVAILABLE'));
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+            await within(dialog).findByRole('alert');
+
+            await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }));
+
+            expect(await screen.findByRole('dialog', { name: /Träger gewechselt/ })).toBeInTheDocument();
+            expect(mocks.changeTenant).toHaveBeenCalledTimes(2);
+        });
+
+        it('saves the form the usual way when the Träger was not changed', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            await user.click(pageButton('Speichern'));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
     });
 });
