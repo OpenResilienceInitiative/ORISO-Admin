@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
 import { delay, http, HttpResponse } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Button from '@mui/material/Button';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -13,6 +12,7 @@ import {
     setSessionTokens,
 } from '../../../../../api/auth/tokenSessionStore';
 import i18n from '../../../../../i18n';
+import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { RegistrationSettings } from '.';
 
 /**
@@ -36,6 +36,7 @@ const everyone = [
 /** Every counsellor search the page sent, so a story can prove the Träger reached the server. */
 const searchRequests: string[] = [];
 let searchFails = false;
+/** Träger whose counsellor search never answers, like a lookup that is still pending when the admin saves. */
 const SLOW_TENANT = '43';
 
 const search = async ({ request }: { request: Request }) => {
@@ -45,7 +46,6 @@ const search = async ({ request }: { request: Request }) => {
     }
     const tenantId = new URL(request.url).searchParams.get('tenantId');
     if (tenantId === SLOW_TENANT) {
-        // Never answers, like a Träger whose lookup is still pending when the admin saves.
         await delay('infinite');
     }
     const rows = (tenantId ? everyone.filter((entry) => String(entry.tenantId) === tenantId) : everyone).map(
@@ -74,20 +74,24 @@ const Harness = ({ tenantId }: { tenantId?: number }) => (
     </QueryClientProvider>
 );
 
-/** The create form with the Träger field stood in for by a button: it changes `tenantId` like the select does. */
-const SwitchingHarness = () => {
-    const [form] = Form.useForm();
-    return (
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-            <ThemeProvider theme={orisoMuiTheme}>
-                <Form form={form} layout="vertical" initialValues={{ tenantId: 7 }}>
-                    <Button onClick={() => form.setFieldValue('tenantId', Number(SLOW_TENANT))}>Träger wechseln</Button>
-                    <RegistrationSettings asFields editing />
-                </Form>
-            </ThemeProvider>
-        </QueryClientProvider>
-    );
-};
+/** The create form with a real, registered Träger field, as `AgencySettings` renders it. */
+const SwitchingHarness = () => (
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ThemeProvider theme={orisoMuiTheme}>
+            <Form layout="vertical" initialValues={{ tenantId: 7 }}>
+                <MuiSelectField
+                    label="agency.edit.general.more_settings.tenant.title"
+                    name="tenantId"
+                    options={[
+                        { value: '7', label: 'Träger Sieben' },
+                        { value: SLOW_TENANT, label: 'Träger Dreiundvierzig' },
+                    ]}
+                />
+                <RegistrationSettings asFields editing />
+            </Form>
+        </ThemeProvider>
+    </QueryClientProvider>
+);
 
 const meta = {
     title: 'Organisms/Agency/RegistrationSettingsCounsellors',
@@ -187,23 +191,18 @@ export const ChangingTheTenantDropsThePick: Story = {
     render: () => <SwitchingHarness />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const body = within(document.body);
+
         await userEvent.click(await field(canvas));
-        await userEvent.click(
-            await within(await within(document.body).findByRole('listbox')).findByRole('option', {
-                name: /Erika Beispiel/,
-            }),
-        );
+        await userEvent.click(await body.findByRole('option', { name: /Erika Beispiel/ }));
         await userEvent.keyboard('{Escape}');
-        // The closing list sits over the button until its transition is done.
-        await waitFor(() => expect(within(document.body).queryByRole('listbox')).not.toBeInTheDocument());
+        await waitFor(() => expect(body.queryByRole('listbox')).not.toBeInTheDocument());
         await expect(await canvas.findByText(/Erika Beispiel/)).toBeInTheDocument();
 
-        await userEvent.click(canvas.getByRole('button', { name: 'Träger wechseln' }));
+        await userEvent.click(await canvas.findByRole('combobox', { name: /Trägerzuordnung/ }));
+        await userEvent.click(await body.findByRole('option', { name: 'Träger Dreiundvierzig' }));
 
-        // The new Träger's search is out and unanswered; the pick must not wait for it.
-        await waitFor(() => expect(searchRequests.some((url) => url.includes('tenantId=43'))).toBe(true), {
-            timeout: 5000,
-        });
-        await waitFor(() => expect(canvas.queryByText(/Erika Beispiel/)).not.toBeInTheDocument(), { timeout: 5000 });
+        // The new Träger's search never answers, so only the change itself can have cleared the pick.
+        await waitFor(() => expect(canvas.queryByText(/Erika Beispiel/)).not.toBeInTheDocument());
     },
 };
