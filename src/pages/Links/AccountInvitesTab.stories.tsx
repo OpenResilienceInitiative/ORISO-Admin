@@ -6,8 +6,9 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
-import { TenantInvitesTab } from './AccountInvitesTab';
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 import { invitePanelStorageKey } from './InvitePanel';
+import styles from './styles.module.scss';
 
 const INVITES_ENDPOINT = '*/service/useradmin/account-invites';
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
@@ -384,5 +385,115 @@ export const OrdinaryResendStillRequiresTemplate: Story = {
             ).toBeVisible(),
         );
         await expect(ordinaryResendRequests).toEqual([]);
+    },
+};
+
+/** A collapsed role pill must not be mistaken for the entire folded composer. */
+export const IntermediateWidth: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 920, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        const panel = canvasElement.querySelector(`.${styles.invitesPanel}`)!;
+        const board = canvasElement.querySelector(`.${styles.invitesBoard}`)!;
+        await waitFor(() =>
+            expect(board.getBoundingClientRect().top).toBeGreaterThanOrEqual(panel.getBoundingClientRect().bottom),
+        );
+        await expect(board.getBoundingClientRect().width).toBeGreaterThan(600);
+        const search = canvas.getByRole('searchbox');
+        const menu = canvas.getByRole('button', { name: /More actions|Weitere Aktionen/ });
+        const center = (element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            return rect.y + rect.height / 2;
+        };
+        const pager = canvas.getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        await expect(Math.abs(center(search) - center(menu))).toBeLessThan(1);
+        await expect(Math.abs(center(pager) - center(menu))).toBeLessThan(1);
+        const table = canvas.getByRole('table');
+        await expect(getComputedStyle(table.parentElement!).overflowX).toBe('visible');
+    },
+};
+
+/** A tenant administrator sees their own carrier's name without an agency lookup. */
+export const OwnTenantCounsellor: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenantadmin/25', () => HttpResponse.json({ id: 25, name: 'Caritas Südbaden' })),
+                ...defaultHandlers,
+            ],
+        },
+    },
+    render: () => {
+        setStoryAuth([UserRole.TenantAdmin], 25);
+        return <CounsellorInvitesTab />;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Caritas Südbaden');
+        const field = canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ });
+        await expect(field).toBeDisabled();
+        await expect(field).toHaveValue('Nr. 25');
+    },
+};
+
+/** The longer tenant row switches to cards before it can overflow a tablet-width board. */
+export const TabletWidth: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    parameters: { msw: { handlers: defaultHandlers } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 820, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await waitFor(() => expect(getComputedStyle(canvas.getByRole('table')).display).toBe('block'));
+        const board = canvasElement.querySelector(`.${styles.invitesBoard}`)!;
+        expect(board.scrollWidth).toBeLessThanOrEqual(board.clientWidth);
+    },
+};
+
+/** The entire phone toolbar scrolls locally while the rest of the page stays contained. */
+export const PhoneToolbar: Story = {
+    ...IntermediateWidth,
+    decorators: [
+        (Story) => (
+            <div style={{ width: 390, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        const search = canvas.getByRole('searchbox');
+        const pager = canvas.getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        const menu = canvas.getByRole('button', { name: /More actions|Weitere Aktionen/ });
+        const toolbar = search.closest('[class*="toolbarRow"]') as HTMLElement;
+        const center = (element: HTMLElement) => {
+            const rect = element.getBoundingClientRect();
+            return rect.top + rect.height / 2;
+        };
+        await expect(Math.abs(center(search) - center(pager))).toBeLessThan(1);
+        await expect(Math.abs(center(pager) - center(menu))).toBeLessThan(1);
+        await expect(getComputedStyle(toolbar).flexWrap).toBe('nowrap');
+        await expect(getComputedStyle(toolbar).overflowX).toBe('auto');
+        await expect(toolbar.scrollWidth).toBeGreaterThan(toolbar.clientWidth);
+        toolbar.scrollLeft = toolbar.scrollWidth;
+        await waitFor(() =>
+            expect(menu.getBoundingClientRect().right).toBeLessThanOrEqual(toolbar.getBoundingClientRect().right + 1),
+        );
     },
 };

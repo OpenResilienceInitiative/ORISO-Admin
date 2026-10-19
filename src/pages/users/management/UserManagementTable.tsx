@@ -5,13 +5,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
-import { PlusOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
 import { SortNotice } from '../../../components/UserTable/SortNotice';
 import { canSeeLinksSection } from '../../../constants/linksAccess';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
-import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -348,70 +346,49 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     return (
         <div className={classNames('counselorList', styles.wrapper)}>
-            <PageMobileActions
-                id="users"
-                search={{
-                    label: t(config.searchPlaceholderKey),
-                    placeholder: t(config.searchPlaceholderKey),
-                    onSearch: updateSearch,
-                }}
-                add={
-                    canCreate && !atConsultantLimit
-                        ? {
-                              label: t(config.createLabelKey ?? 'new'),
-                              onAdd: () =>
-                                  navigate(
-                                      isTenants
-                                          ? `${config.editPathPrefix}/add/general${
-                                                responseList?.total === 0 ? '?main=true' : ''
-                                            }`
-                                          : `${config.editPathPrefix}/add`,
-                                  ),
-                          }
-                        : undefined
-                }
-            >
-                <div className={styles.searchContainer}>
-                    <GlobalSearchBar
-                        className={styles.searchWithButton}
-                        expandedWidth={499}
-                        onSearch={updateSearch}
-                        onSearchChange={setSearchDebounced}
-                        searchPlaceholder={t(config.searchPlaceholderKey)}
-                    >
-                        {(canCreate || canInvite) && (
+            <div className={styles.searchContainer}>
+                <UserScopeFilters
+                    sectionId={sectionId}
+                    filters={filters}
+                    onChange={onFiltersChange}
+                    search={{
+                        onSearch: updateSearch,
+                        onSearchChange: setSearchDebounced,
+                        searchPlaceholder: t(config.searchPlaceholderKey),
+                    }}
+                    actions={
+                        (canCreate || canInvite) && (
                             <div className={styles.toolbarActions}>
                                 {canInvite && (
                                     <Link to={routePathNames.links} className={styles.inviteButton}>
-                                        {t('userTable.invite', 'Einladen')}
+                                        {t('userTable.goToInvitations')}
+                                        <ArrowRightOutlined aria-hidden />
                                     </Link>
                                 )}
                                 {canCreate && createButton}
                             </div>
-                        )}
-                    </GlobalSearchBar>
-                    {countLicences && consultantCount != null && (
-                        <span className={styles.sectionCount}>
-                            {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
-                        </span>
-                    )}
-                    {isAgencyAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('agencyAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenantAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenantAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenants && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenants.subTitle', { count: responseList.total })}
-                        </span>
-                    )}
-                </div>
-            </PageMobileActions>
+                        )
+                    }
+                />
+                {countLicences && consultantCount != null && (
+                    <span className={styles.sectionCount}>
+                        {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
+                    </span>
+                )}
+                {isAgencyAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('agencyAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenantAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('tenantAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenants && responseList?.total != null && (
+                    <span className={styles.sectionCount}>{t('tenants.subTitle', { count: responseList.total })}</span>
+                )}
+            </div>
             {isError && (
                 <Alert
                     message={t('error.loading')}
@@ -421,7 +398,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     style={{ marginBottom: 16 }}
                 />
             )}
-            {!isTenants && <UserScopeFilters sectionId={sectionId} filters={filters} onChange={onFiltersChange} />}
             {rejectedSort && <SortNotice shownOrder={t('userTable.sortNotice.safeOrder', 'Vorname A–Z')} />}
             {!isTenants && (
                 <UserDataTable

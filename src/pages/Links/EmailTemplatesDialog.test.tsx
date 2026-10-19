@@ -451,6 +451,44 @@ describe('EmailTemplatesDialog', () => {
         );
     });
 
+    // #1127: below 600px the Kind column is hidden, so the name cell carries the kind as its second line.
+    it('repeats the kind under the template name for phones', async () => {
+        renderDialog();
+
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        const rows = screen.getAllByTestId('template-row');
+        expect(within(rows[0]).getByTestId('template-kind-line')).toHaveTextContent('TENANT_INVITE');
+        expect(within(rows[2]).getByTestId('template-kind-line')).toHaveTextContent('COUNSELLOR_INVITE');
+    });
+
+    // #1127: a double-click does not exist on a phone (double-tap zooms), so there one tap opens the editor.
+    it('opens the editor on a single tap on a phone when templates are only managed, not picked', async () => {
+        const { matchMedia } = window;
+        window.matchMedia = ((query: string) => ({
+            ...matchMedia(query),
+            matches: query.includes('max-width: 599px'),
+        })) as typeof window.matchMedia;
+        try {
+            renderDialog();
+            await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+            fireEvent.click(screen.getAllByTestId('template-row')[0]);
+
+            expect(within(screen.getByRole('dialog')).getByLabelText('Vorlagenname')).toHaveValue(
+                'Default tenant template',
+            );
+        } finally {
+            window.matchMedia = matchMedia;
+        }
+    });
+
+    it('does not open the editor on a single click on a wider screen', async () => {
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.click(screen.getAllByTestId('template-row')[0]);
+
+        expect(screen.queryByLabelText('Vorlagenname')).not.toBeInTheDocument();
+    });
+
     it('switches the loaded template via the split-button menu', async () => {
         const user = userEvent.setup();
         mocks.updateInviteEmailTemplate.mockResolvedValue(tenantTemplateShort);

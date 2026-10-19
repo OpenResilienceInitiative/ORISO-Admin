@@ -29,6 +29,8 @@ export interface DataTableProps {
     empty?: ReactNode;
     stickyHeader?: boolean;
     stackedOnMobile?: boolean;
+    /** Stack rows at any viewport, for a narrow containing panel. */
+    stacked?: boolean;
     /** Footer slot inside the card, e.g. a `DataTablePagination`. */
     footer?: ReactNode;
     /** Accessible name of the table. */
@@ -46,11 +48,18 @@ export const DataTable = ({
     empty,
     stickyHeader = false,
     stackedOnMobile = false,
+    stacked = false,
     footer,
     ariaLabel,
     className,
 }: DataTableProps) => (
-    <div className={classNames(styles.surface, { [styles.stacked]: stackedOnMobile }, className)}>
+    <div
+        className={classNames(
+            styles.surface,
+            { [styles.stacked]: stackedOnMobile, [styles.stackedAlways]: stacked },
+            className,
+        )}
+    >
         <div className={classNames(styles.scroll, { [styles.stickyHeader]: stickyHeader })}>
             <table className={styles.table} aria-label={ariaLabel} aria-busy={loading || undefined}>
                 {header}

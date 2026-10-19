@@ -119,3 +119,28 @@
     color: var(--m3-on-surface-variant, #49454f);
     font-size: 13px;
 }
+
+/* Phones (#1127): Kind, Language and Subject leave the table; the kind moves under the name. */
+.nameStack {
+    display: inline-flex;
+    max-width: 100%;
+    flex-direction: column;
+    align-items: center;
+}
+
+.kindLine {
+    display: none;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+@media (max-width: 599px) {
+    .hideOnPhone {
+        display: none;
+    }
+
+    .kindLine {
+        display: block;
+    }
+}

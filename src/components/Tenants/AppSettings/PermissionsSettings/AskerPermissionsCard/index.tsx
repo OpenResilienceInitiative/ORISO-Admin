@@ -60,7 +60,12 @@ export const AskerPermissionsCard = ({
        with no explanation tells an admin they did something wrong. The reason
        says who actually holds the decision. */
     const policyFor = (field: string): PolicyValue<boolean> =>
-        resolvePermissionPolicy(permissionPolicies, field, fallbackValues?.[field], restrictedFields);
+        resolvePermissionPolicy(
+            permissionPolicies,
+            field,
+            fallbackValues?.[field] ?? (field === 'featureAskerEmailLiveChatEnabled' ? false : undefined),
+            restrictedFields,
+        );
 
     const policyControl = (field: string, labelKey: string) => (
         <PermissionPolicyControl
@@ -100,6 +105,61 @@ export const AskerPermissionsCard = ({
                 </div>
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
                 {restrictedNote('featureAskerEmailEnabled')}
+            </div>
+            <h3>{t('tenants.permissions.asker.channels.title')}</h3>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerEmailAgencyCounsellingEnabled',
+                        'tenants.permissions.asker.channels.emailAgencyCounselling',
+                    )}
+                </div>
+                {restrictedNote('featureAskerEmailAgencyCounsellingEnabled')}
+            </div>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerEmailLiveChatEnabled',
+                        'tenants.permissions.asker.channels.emailLiveChat',
+                    )}
+                </div>
+                {restrictedNote('featureAskerEmailLiveChatEnabled')}
+            </div>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerEmailSelfHelpEnabled',
+                        'tenants.permissions.asker.channels.emailSelfHelp',
+                    )}
+                </div>
+                {restrictedNote('featureAskerEmailSelfHelpEnabled')}
+            </div>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerBrowserAgencyCounsellingEnabled',
+                        'tenants.permissions.asker.channels.browserAgencyCounselling',
+                    )}
+                </div>
+                {restrictedNote('featureAskerBrowserAgencyCounsellingEnabled')}
+            </div>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerBrowserLiveChatEnabled',
+                        'tenants.permissions.asker.channels.browserLiveChat',
+                    )}
+                </div>
+                {restrictedNote('featureAskerBrowserLiveChatEnabled')}
+            </div>
+            <div className={styles.setting}>
+                <div className={styles.settingHeader}>
+                    {policyControl(
+                        'featureAskerBrowserSelfHelpEnabled',
+                        'tenants.permissions.asker.channels.browserSelfHelp',
+                    )}
+                </div>
+                {restrictedNote('featureAskerBrowserSelfHelpEnabled')}
             </div>
         </Card>
     );

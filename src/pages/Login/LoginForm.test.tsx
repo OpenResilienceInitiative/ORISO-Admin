@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     loginAsync: vi.fn(),
     messageError: vi.fn(),
     navigate: vi.fn(),
+    search: '',
     recordLoginFailure: vi.fn(),
 }));
 
@@ -37,6 +38,8 @@ const translations: Record<string, string> = {
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
     'message.error.auth.tooManyCodes': 'Too many attempts. Please wait a moment before trying again.',
+    'message.error.auth.setupIncomplete':
+        'Your account is not fully set up yet. Please use the link in your invitation email, or reset your password via "Forgot password?" to finish the setup.',
     'login.otp.resend.action': 'Send a new code',
     'login.otp.resend.requested': 'Request sent. Please use the newest code from your inbox.',
     'login.otp.resend.onlyNewest': 'Only the most recently sent code is valid.',
@@ -97,6 +100,7 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
+        useLocation: () => ({ search: mocks.search }),
     };
 });
 
@@ -156,6 +160,7 @@ describe('LoginForm', () => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
         mocks.navigate.mockReset();
+        mocks.search = '';
         mocks.recordLoginFailure.mockReset();
         consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
@@ -163,6 +168,30 @@ describe('LoginForm', () => {
     afterEach(() => {
         consoleWarnSpy.mockRestore();
     });
+
+    it('keeps the first-centre continuation through the password and OTP challenge', async () => {
+        mocks.search = '?agencySetupId=5';
+        mocks.loginAsync.mockRejectedValueOnce(emailOtpChallenge()).mockResolvedValueOnce(undefined);
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        await user.type(await screen.findByPlaceholderText('One-time password'), '123456');
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/5/setup'));
+    });
+
+    it.each(['https://evil.example', 'add', '0', '5&agencySetupId=6', '1e2', '9007199254740992'])(
+        'does not follow a malformed or ambiguous setup hint %s',
+        async (hint) => {
+            mocks.search = `?agencySetupId=${hint}`;
+            mocks.loginAsync.mockResolvedValue(undefined);
+            render(<LoginForm />);
+            const user = await fillRequiredFields();
+            await user.click(screen.getByRole('button', { name: 'Sign in' }));
+            await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin'));
+        },
+    );
 
     it('links password recovery to the admin-owned reset flow', () => {
         render(<LoginForm />);
@@ -379,6 +408,31 @@ describe('LoginForm', () => {
         expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
         expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    // ORISO-Frontend#1670: an admin-chosen password leaves Keycloak's UPDATE_PASSWORD
+    // required action on the account. The password grant then answers 400
+    // "Account is not fully set up" - the password was right, so the form must not
+    // say it was wrong. Keycloak only says this after the password matched, so it
+    // reveals nothing about whether an account exists.
+    it('explains the unfinished setup instead of the credentials hint (#1670)', async () => {
+        mocks.loginAsync.mockRejectedValueOnce({
+            message: FETCH_ERRORS.BAD_REQUEST,
+            options: { data: { error: 'invalid_grant', error_description: 'Account is not fully set up' } },
+        });
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Your account is not fully set up yet.');
+        expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'setup_incomplete',
+            transport: 'bad_request',
+            stage: 'password',
+        });
     });
 
     it('shows the credentials hint when the code was submitted and Keycloak still answers 400', async () => {

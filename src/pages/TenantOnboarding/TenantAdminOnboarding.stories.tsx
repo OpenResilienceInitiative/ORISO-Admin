@@ -275,6 +275,7 @@ export const JoinExistingTraegerDone: Story = {
         await userEvent.type(password, 'SecurePass1!');
         await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePass1!');
         await userEvent.click(canvas.getByRole('button', { name: /Konto erstellen|Create account/ }));
+        await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
         await userEvent.click(
             canvas.getByRole('button', { name: /Zwei-Faktor-Authentifizierung aktivieren|Activate two-factor/ }),

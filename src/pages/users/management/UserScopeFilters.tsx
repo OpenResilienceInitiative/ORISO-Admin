@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GlobalSearchBar, type GlobalSearchBarProps } from '../../../components/GlobalSearch';
 import { ScopeContextBar } from '../../../components/UserTable/ScopeContextBar';
 import { ScopeFilter, type ScopeFilterOption } from '../../../components/UserTable/ScopeFilter';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -31,10 +33,12 @@ export interface UserScopeFiltersProps {
     sectionId: TypeOfUser;
     filters: UserSearchFilters;
     onChange: (filters: UserSearchFilters) => void;
+    search?: Pick<GlobalSearchBarProps, 'onSearch' | 'onSearchChange' | 'searchPlaceholder' | 'value'>;
+    actions?: ReactNode;
 }
 
-/** Träger and BST pickers above the users table, plus one context bar per active filter. */
-export const UserScopeFilters = ({ sectionId, filters, onChange }: UserScopeFiltersProps) => {
+/** One searchable, horizontally scrollable scope row; actions and active context remain reachable below it. */
+export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions }: UserScopeFiltersProps) => {
     const { t } = useTranslation();
     const available = useScopeFilterAvailability(sectionId);
 
@@ -53,7 +57,7 @@ export const UserScopeFilters = ({ sectionId, filters, onChange }: UserScopeFilt
             detail: [agency.postcode, agency.city].filter(Boolean).join(' '),
         }));
 
-    if (!available.tenant && !available.agency) return null;
+    if (!available.tenant && !available.agency && !search && !actions) return null;
 
     const tenant = tenantOptions.find((option) => option.id === filters.tenantId);
     const centres = (filters.agencyIds ?? []).map(
@@ -62,30 +66,43 @@ export const UserScopeFilters = ({ sectionId, filters, onChange }: UserScopeFilt
     // A picked centre stays shown even when the list has only that one left.
     const nothingToChoose = agencyOptions.length < 2 && !centres.length;
 
+    const pickers = (
+        <div className={styles.pickers}>
+            {available.tenant && (
+                <ScopeFilter
+                    kind="tenant"
+                    options={tenantOptions}
+                    loading={tenantsQuery.isLoading}
+                    value={filters.tenantId ? [filters.tenantId] : []}
+                    // Centres belong to one Träger, so a new Träger drops them.
+                    onChange={([tenantId]) => onChange({ tenantId, agencyIds: [] })}
+                />
+            )}
+            {available.agency && (
+                <ScopeFilter
+                    kind="agency"
+                    multiple
+                    options={agencyOptions}
+                    loading={agenciesQuery.isLoading}
+                    disabled={!available.canListAgencies || (!agenciesQuery.isLoading && nothingToChoose)}
+                    value={filters.agencyIds ?? []}
+                    onChange={(agencyIds) => onChange({ ...filters, agencyIds })}
+                />
+            )}
+        </div>
+    );
+
     return (
         <div className={styles.wrapper}>
-            <div className={styles.pickers} role="group" aria-label={t('userTable.filter.label', 'Liste filtern')}>
-                {available.tenant && (
-                    <ScopeFilter
-                        kind="tenant"
-                        options={tenantOptions}
-                        loading={tenantsQuery.isLoading}
-                        value={filters.tenantId ? [filters.tenantId] : []}
-                        // Centres belong to one Träger, so a new Träger drops them.
-                        onChange={([tenantId]) => onChange({ tenantId, agencyIds: [] })}
-                    />
+            <div className={styles.toolbar} role="group" aria-label={t('userTable.filter.label', 'Liste filtern')}>
+                {search ? (
+                    <GlobalSearchBar {...search} expandedWidth={280} scrollButtons className={styles.searchRow}>
+                        {pickers}
+                    </GlobalSearchBar>
+                ) : (
+                    pickers
                 )}
-                {available.agency && (
-                    <ScopeFilter
-                        kind="agency"
-                        multiple
-                        options={agencyOptions}
-                        loading={agenciesQuery.isLoading}
-                        disabled={!available.canListAgencies || (!agenciesQuery.isLoading && nothingToChoose)}
-                        value={filters.agencyIds ?? []}
-                        onChange={(agencyIds) => onChange({ ...filters, agencyIds })}
-                    />
-                )}
+                {actions}
             </div>
             {filters.tenantId && (
                 <ScopeContextBar

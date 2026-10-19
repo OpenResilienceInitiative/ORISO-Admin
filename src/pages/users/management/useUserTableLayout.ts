@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 
 /**
  * wide ≥1280 · compact 1024–1279 · tablet 768–1023 · phone <768 (same split as the bottom bar).
@@ -17,8 +17,28 @@ const read = (): UserTableLayout =>
         ? 'wide'
         : QUERIES.find(([, query]) => window.matchMedia(query).matches)?.[0] ?? 'wide';
 
-export const useUserTableLayout = (): UserTableLayout => {
+// Measured content bands preserve the fitting 1280/1024px viewport references
+// after the 128px navigation rail and 168px page gutters have taken their space.
+const containerLayout = (width: number): UserTableLayout => {
+    if (width < 600) return 'phone';
+    if (width < 728) return 'tablet';
+    if (width < 984) return 'compact';
+    return 'wide';
+};
+
+export const useUserTableLayout = (container?: RefObject<HTMLElement | null>): UserTableLayout => {
     const [layout, setLayout] = useState(read);
+    const [width, setWidth] = useState<number>();
+
+    useEffect(() => {
+        const element = container?.current;
+        if (!element || typeof ResizeObserver === 'undefined') return undefined;
+        const observer = new ResizeObserver(([entry]) => {
+            if (entry?.contentRect.width > 0) setWidth(entry.contentRect.width);
+        });
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [container]);
 
     useEffect(() => {
         if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
@@ -29,5 +49,5 @@ export const useUserTableLayout = (): UserTableLayout => {
         return () => lists.forEach((list) => list.removeEventListener('change', update));
     }, []);
 
-    return layout;
+    return width == null ? layout : containerLayout(width);
 };

@@ -10,7 +10,8 @@ import { NavGlyph } from '../../components/NavGlyph';
 import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
 import { ReactComponent as ArrowMenuOpenIcon } from '../../resources/img/svg/oriso/arrow_menu_open_24px.svg';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
-import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
+import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
+import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import { ReactComponent as TopicIcon } from '../../resources/img/svg/topic.svg';
 import { InviteBarFields, InviteSendButton, InviteSendHint } from './InviteBar';
 import type { InviteTab } from './inviteRules';
@@ -21,14 +22,22 @@ import styles from './invitePanel.module.scss';
 
 export const invitePanelStorageKey = (persistKey: string) => `oriso-admin.invite-panel.collapsed.${persistKey}`;
 
-/** Whether the invite card is folded to its rail, remembered per tab. */
+const PHONE_QUERY = '(max-width: 599px)';
+
+const isPhone = () => typeof window.matchMedia === 'function' && window.matchMedia(PHONE_QUERY).matches;
+
+/**
+ * Whether the invite card is folded to its rail, remembered per tab. With nothing stored a phone starts folded
+ * (the open card pushes the table a screen down); a stored choice always wins, and the default is never stored.
+ */
 export const useInvitePanelCollapsed = (persistKey: string) => {
     const key = invitePanelStorageKey(persistKey);
     const [collapsed, setCollapsedState] = useState(() => {
         try {
-            return window.localStorage.getItem(key) === 'true';
+            const stored = window.localStorage.getItem(key);
+            return stored == null ? isPhone() : stored === 'true';
         } catch {
-            return false;
+            return isPhone();
         }
     });
     const setCollapsed = useCallback(
@@ -45,7 +54,8 @@ export const useInvitePanelCollapsed = (persistKey: string) => {
     return [collapsed, setCollapsed] as const;
 };
 
-type ItemState = 'done' | 'open' | 'error';
+/** `preset`: a value the form starts with (role, a "Neu" unit, a fixed unit); it is not progress the admin made. */
+type ItemState = 'done' | 'open' | 'error' | 'preset';
 
 // Always valid, so they can rest as value rows; the template stays open until one is picked.
 const PANEL_SELECT_KEYS: CollapsibleKey[] = ['role', 'topics', 'alsoCounsellor'];
@@ -55,8 +65,6 @@ interface ChecklistItem {
     label: string;
     icon: ReactNode;
     state: ItemState;
-    /** Optional fields show in the rail but do not count towards "n von m". */
-    optional?: boolean;
 }
 
 export interface InvitePanelProps {
@@ -97,6 +105,9 @@ export const InvitePanel = ({
         if (error) return 'error';
         return valid ? 'done' : 'open';
     };
+    // A valid value the form started with is not progress: it stays out of "n von m" until the admin changes it (#1127).
+    const unitStateOf = (valid: boolean, startsPreset: boolean): ItemState =>
+        valid && startsPreset ? 'preset' : stateOf(valid);
     const items: ChecklistItem[] = [
         {
             key: 'person',
@@ -111,13 +122,13 @@ export const InvitePanel = ({
             key: 'role',
             label: t('links.composer.role', 'Rolle'),
             icon: <NavGlyph name="users" />,
-            state: 'done',
+            state: 'preset',
         },
         {
             key: 'tenant',
             label: t('links.composer.tenant', 'Träger'),
             icon: <NavGlyph name="tenants" />,
-            state: stateOf(pills.valid.tenant),
+            state: unitStateOf(pills.valid.tenant, draft.tenant.locked || draft.tenant.allocation.mode === 'auto'),
         },
         ...(draft.fields.agency
             ? [
@@ -125,7 +136,10 @@ export const InvitePanel = ({
                       key: 'agency' as const,
                       label: t('links.composer.agency', 'Beratungsstelle'),
                       icon: <NavGlyph name="counseling" />,
-                      state: stateOf(pills.valid.agency),
+                      state: unitStateOf(
+                          pills.valid.agency,
+                          draft.agency.locked || draft.agency.allocation.mode === 'auto',
+                      ),
                   },
               ]
             : []),
@@ -135,8 +149,7 @@ export const InvitePanel = ({
                       key: 'topics' as const,
                       label: t('links.composer.topics', 'Themen & Fachbereiche'),
                       icon: <TopicIcon />,
-                      state: 'done' as const,
-                      optional: true,
+                      state: 'preset' as const,
                   },
               ]
             : []),
@@ -147,7 +160,7 @@ export const InvitePanel = ({
             state: stateOf(pills.valid.template),
         },
     ];
-    const required = items.filter((item) => !item.optional);
+    const required = items.filter((item) => item.state !== 'preset');
     const done = required.filter((item) => item.state === 'done').length;
     const missing = required.filter((item) => item.state !== 'done').map((item) => item.label);
     const summary = missing.length
@@ -249,7 +262,7 @@ export const InvitePanel = ({
                     // Not ready: open the card, whose hint says what is missing.
                     onClick={() => (submit.isValid ? submit.send() : onCollapsedChange(false))}
                 >
-                    {submit.isValid ? <MailFilledIcon aria-hidden /> : <MailIcon aria-hidden />}
+                    {submit.isValid ? <SendFilledIcon aria-hidden /> : <SendIcon aria-hidden />}
                 </button>
             </section>
         );
@@ -270,9 +283,13 @@ export const InvitePanel = ({
                 </div>
                 {toggle}
             </header>
-            <div aria-hidden className={styles.progress}>
+            <div aria-hidden className={styles.progress} data-testid="invite-panel-progress">
                 {required.map((item) => (
-                    <span key={item.key} className={classNames(styles.segment, styles[`segment_${item.state}`])} />
+                    <span
+                        key={item.key}
+                        className={classNames(styles.segment, styles[`segment_${item.state}`])}
+                        data-state={item.state}
+                    />
                 ))}
             </div>
             <div ref={draft.row.ref} className={styles.body} onFocus={draft.row.onFocus}>

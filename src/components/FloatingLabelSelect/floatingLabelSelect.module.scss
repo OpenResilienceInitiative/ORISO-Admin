@@ -95,6 +95,14 @@
         line-height: 24px;
     }
 
+    /* The element that takes focus. antd sets 14px on it through a 4-class selector, which
+       beats the 2-class rule above; iOS Safari zooms the page on focusing any input below
+       16px (#1127). One class more than antd's, so this one wins. */
+
+    &:global(.ant-select.ant-select-single) :global(.ant-select-selector) :global(.ant-select-selection-search-input) {
+        font-size: 16px;
+    }
+
     :global(.ant-select-selection-placeholder) {
         color: var(--m3-on-surface-variant, #444748);
     }

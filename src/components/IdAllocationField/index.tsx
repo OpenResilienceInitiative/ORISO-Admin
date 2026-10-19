@@ -103,7 +103,8 @@ export const IdAllocationField = ({
             : t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: option.id });
     // What the field shows while it is not being typed into.
     const restingText = (() => {
-        if (mode === 'existing' && unit) return unitText(unit);
+        if (mode === 'existing' && unit)
+            return locked ? t('idAllocationField.unitNumber', 'Nr. {{id}}', { id: unit.id }) : unitText(unit);
         if (mode === 'auto') return allowCreate ? newLabel : '';
         return value === undefined ? '' : String(value);
     })();
@@ -330,7 +331,11 @@ export const IdAllocationField = ({
     return (
         <div
             ref={anchorRef}
-            className={classNames(styles.anchor, { [styles.anchorFull]: fullWidth }, className)}
+            className={classNames(
+                styles.anchor,
+                { [styles.anchorFull]: fullWidth, [styles.anchorLocked]: locked },
+                className,
+            )}
             // Focus moving between the input and the ⌄/^ split stays "inside"
             // the field; only leaving it altogether counts as a blur.
             onBlur={(event) => {
@@ -362,7 +367,12 @@ export const IdAllocationField = ({
                     placeholder: allowCreate
                         ? t('idAllocationField.searchPlaceholder', 'Name, Thema oder Nr.')
                         : t('idAllocationField.searchPlaceholderExisting', 'Name oder Nr.'),
-                    title: locked ? t('idAllocationField.locked', 'Auf Ihre Einheit festgelegt') : undefined,
+                    title: locked
+                        ? `${label}: ${unit ? unitText(unit) : restingText} – ${t(
+                              'idAllocationField.locked',
+                              'Auf Ihre Einheit festgelegt',
+                          )}`
+                        : undefined,
                     onClick: openMenu,
                     onFocus: openMenu,
                     onBlur: leaveField,
@@ -373,10 +383,10 @@ export const IdAllocationField = ({
                 min={1}
                 stepDownDisabled={stepDownDisabled || locked || !allowCreate}
                 stepUpDisabled={stepUpDisabled || locked || !allowCreate}
-                supportingText={supportingText[validation]}
+                supportingText={locked && unit?.name ? unit.name : supportingText[validation]}
                 value={value}
                 // A confirmed value — a free number or an existing unit — reads filled.
-                variant={validation === 'available' || validation === 'existing' ? 'filled' : 'outlined'}
+                variant={!locked && (validation === 'available' || validation === 'existing') ? 'filled' : 'outlined'}
                 onStep={allowCreate ? step : undefined}
                 onTextChange={handleTextChange}
             />

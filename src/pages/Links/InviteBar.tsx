@@ -15,7 +15,8 @@ import { M3Button } from '../../components/M3Button';
 import { NavGlyph } from '../../components/NavGlyph';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
-import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
+import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
+import { ReactComponent as SendFilledIcon } from '../../resources/img/svg/oriso/send_filled_24px.svg';
 import { ReactComponent as FileSaveIcon } from '../../resources/img/svg/oriso/file_save_24px.svg';
 import { ReactComponent as TopicIcon } from '../../resources/img/svg/topic.svg';
 import {
@@ -336,11 +337,11 @@ export const InviteBarFields = ({ draft, clients, variant = 'bar' }: InviteBarFi
     );
 };
 
-/** Glyph of the send button: what pressing it does — mail, filled once it will fire, or file for create-only. */
+/** Glyph of the send button: what pressing it does — paper plane, filled once it will fire, or file for create-only. The mail glyph belongs to the e-mail field (#1127). */
 const SendGlyph = ({ sendMode, ready }: { sendMode: InviteSendMode; ready: boolean }) => {
     if (sendMode === 'createOnly') return <FileSaveIcon data-glyph="file-save" data-testid="composer-send-icon" />;
-    if (ready) return <MailFilledIcon data-glyph="mail-filled" data-testid="composer-send-icon" />;
-    return <MailIcon data-glyph="mail" data-testid="composer-send-icon" />;
+    if (ready) return <SendFilledIcon data-glyph="send-filled" data-testid="composer-send-icon" />;
+    return <SendIcon data-glyph="send" data-testid="composer-send-icon" />;
 };
 
 interface InviteSendButtonProps {
@@ -362,9 +363,9 @@ export const InviteSendButton = ({ draft, submitting, hintId, onSelfAssign, full
                 key: 'direct',
                 icon:
                     submit.mode === 'direct' ? (
-                        <MailFilledIcon aria-hidden className={styles.menuIcon} data-glyph="mail-filled" />
+                        <SendFilledIcon aria-hidden className={styles.menuIcon} data-glyph="send-filled" />
                     ) : (
-                        <MailIcon aria-hidden className={styles.menuIcon} data-glyph="mail" />
+                        <SendIcon aria-hidden className={styles.menuIcon} data-glyph="send" />
                     ),
                 label: t('links.composer.sendDirect', 'Direkt Versenden'),
             },

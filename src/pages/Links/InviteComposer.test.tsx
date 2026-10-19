@@ -190,26 +190,27 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(wrapper).toHaveClass(splitButtonStyles.filled);
     });
 
-    // #574: "Direkt Versenden" mails the invite out, so it carries the mail glyph
-    // — outlined while the action is still gated, filled once it can actually
-    // fire. The paper plane it used to show said "send" without saying that an
-    // e-mail leaves the building, which is the whole difference to create-only.
-    it('carries the mail glyph on Direkt Versenden and fills it once the action is live (#574)', async () => {
+    // #1127: "Direkt Versenden" carries the paper plane — outlined while the action
+    // is still gated, filled once it can fire. #574 had swapped the plane for the
+    // mail glyph, which then appeared twice in the card (the e-mail field has it
+    // too). Create-only has its own file glyph now, so the plane no longer reads
+    // as "send" for both modes.
+    it('carries the paper plane on Direkt Versenden and fills it once the action is live (#1127)', async () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
         const sendButton = await findSendButton('Anlegen & einladen');
         expect(await screen.findByRole('button', { name: /Standard/ })).toBeInTheDocument();
         expect(sendButton).toBeDisabled();
-        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail');
+        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'send');
 
         await user.type(screen.getByLabelText('E-Mail'), 'neu@example.org');
 
         await waitFor(() => expect(sendButton).toBeEnabled());
-        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'mail-filled');
+        expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'send-filled');
     });
 
-    // Create-only sends no mail, so it must not keep the mail glyph — it takes
+    // Create-only sends no mail, so it must not keep the plane — it takes
     // the same file glyph its own menu entry already carries.
     it('swaps the glyph to file-save in create-only mode (#574)', async () => {
         window.localStorage.setItem(sendModeStorageKey('TENANT_ADMIN'), 'createOnly');
@@ -220,7 +221,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(screen.getByTestId('composer-send-icon')).toHaveAttribute('data-glyph', 'file-save');
     });
 
-    it('marks the Direkt Versenden menu entry with the same mail glyph (#574)', async () => {
+    it('marks the Direkt Versenden menu entry with the same paper plane (#1127)', async () => {
         await renderTenantTab();
         const user = userEvent.setup();
 
@@ -228,7 +229,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
 
         const entry = await screen.findByRole('menuitem', { name: 'Direkt Versenden' });
-        expect(entry.querySelector('[data-glyph]')).toHaveAttribute('data-glyph', 'mail-filled');
+        expect(entry.querySelector('[data-glyph]')).toHaveAttribute('data-glyph', 'send-filled');
     });
 
     it('persists the chosen send mode per tab and swaps the main label', async () => {

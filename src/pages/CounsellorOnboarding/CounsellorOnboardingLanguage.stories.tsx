@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { createInstance } from 'i18next';
-import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { I18nextProvider, getI18n } from 'react-i18next';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
+import appI18n from '../../i18n';
+import { getInitialLanguage, LANGUAGE_COOKIE_KEY, LANGUAGE_STORAGE_KEY } from '../../utils/language';
 import translationDe from '../../locales/de/translation.json';
 import translationEn from '../../locales/en/translation.json';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -13,10 +15,11 @@ import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboar
 import { CounsellorOnboarding } from './CounsellorOnboarding';
 
 /** An isolated locale instance keeps this language-switch story from changing other stories. */
-const LanguageExample = () => {
+const LanguageExample = ({ twoFactor = false }: { twoFactor?: boolean }) => {
     const { locale: storyLocale, client: storyClient } = useMemo(() => {
         const locale = createInstance();
-        locale.use(initReactI18next).init({
+        // The provider supplies this instance; the React plugin would replace the app-wide default.
+        locale.init({
             lng: 'de',
             fallbackLng: 'de',
             initImmediate: false,
@@ -33,7 +36,10 @@ const LanguageExample = () => {
             { id: 26, de: 'Sucht', en: 'Addiction' },
             { id: 27, de: 'Migration', en: 'Migration' },
         ];
-        const client = createStubCounsellorOnboardingClient({ latencyMs: 0 });
+        const client = createStubCounsellorOnboardingClient({
+            latencyMs: 0,
+            inviteState: twoFactor ? 'PENDING_2FA_ACTIVATION' : 'VALID',
+        });
         const resolve = client.getOnboardingInvite;
         client.getOnboardingInvite = async (token) => {
             const invite = await resolve(token);
@@ -48,7 +54,7 @@ const LanguageExample = () => {
             };
         };
         return { locale, client };
-    }, []);
+    }, [twoFactor]);
     return (
         <I18nextProvider i18n={storyLocale}>
             <ThemeProvider theme={orisoMuiTheme}>
@@ -103,4 +109,38 @@ export const Phone: Story = {
     ...LanguageSwitch,
     globals: { viewport: { value: 'phone', isRotated: false } },
     parameters: { chromatic: { viewports: [390] } },
+};
+
+export const TwoFactorLanguage: Story = {
+    name: 'Email second factor — DE and EN',
+    args: { twoFactor: true },
+    play: async ({ canvas, userEvent }) => {
+        const initialLanguage = getInitialLanguage();
+        const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        const languageCookie = document.cookie
+            .split('; ')
+            .find((cookie) => cookie.startsWith(`${LANGUAGE_COOKIE_KEY}=`));
+        try {
+            const body = within(document.body);
+            await userEvent.click(await canvas.findByRole('button', { name: 'Code per E-Mail senden' }));
+            await expect(await canvas.findByLabelText('Einmalcode')).toBeVisible();
+            await userEvent.click(canvas.getByRole('combobox', { name: /Sprache|language/i }));
+            await userEvent.click(await body.findByText('(EN) Englisch'));
+            await expect(await canvas.findByRole('button', { name: 'Send new code' })).toBeVisible();
+            await expect(canvas.getByLabelText('One-time code')).toBeVisible();
+            await expect(canvas.getByRole('radio', { name: 'E-mail address' })).toBeChecked();
+            await expect(getI18n()).toBe(appI18n);
+        } finally {
+            // Later story contexts initialize the app from these shared browser preferences.
+            if (storedLanguage === null) {
+                localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+            } else {
+                localStorage.setItem(LANGUAGE_STORAGE_KEY, storedLanguage);
+            }
+            document.cookie = languageCookie
+                ? `${languageCookie};path=/;SameSite=Lax`
+                : `${LANGUAGE_COOKIE_KEY}=;path=/;Max-Age=0`;
+        }
+        await expect(getInitialLanguage()).toBe(initialLanguage);
+    },
 };

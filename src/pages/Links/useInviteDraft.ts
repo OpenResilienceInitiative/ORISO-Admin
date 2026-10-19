@@ -432,10 +432,13 @@ export const useInviteDraft = ({
     const resetAfterSend = (created?: InviteCreated) => {
         clearPerson();
         if (sendAndNext) {
-            // The next person joins the same unit with the same template and topic level.
-            setRoleState(pickRole(defaultRole));
-            setRoleBeforeGuidedSwitch(null);
-            setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
+            // The next person starts from the same setup: role, unit, template and topic level (#1127).
+            // Only the guided BST-Admin switch covers one founding invite, so the next person is a counsellor again.
+            if (roleBeforeGuidedSwitch) {
+                setRoleState(roleBeforeGuidedSwitch);
+                setRoleBeforeGuidedSwitch(null);
+                setAlsoCounsellor(initialValues?.alsoCounsellor ?? true);
+            }
             setCollapsedKeys(new Set<CollapsibleKey>(['tenant', 'agency', 'topics', 'template']));
             // A just-reserved number is re-checked so the next counsellor waits for it; "Neu" takes the assigned one.
             if (tenantAllocation.mode === 'manual') tenantAllocation.setManualValue(tenantAllocation.value);

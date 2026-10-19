@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import classNames from 'classnames';
 import type {
     AccountInviteDTO,
@@ -221,6 +223,11 @@ export interface InviteProgressBoardProps {
 
 /** Board widths from which all seven columns fit without squeezing the one-line track. */
 const WIDE_MIN_WIDTH = { counsellor: 1180, tenant: 1500 } as const;
+// Measured compact tables need 832px/900px including the card gutters. Stack before they overflow.
+const STACKED_MIN_WIDTH = { counsellor: 832, tenant: 900 } as const;
+// Preserve the former compact row footprint (three/four dated 88px steps),
+// with longer timelines scrolling inside it instead of wrapping.
+const COMPACT_TRACK_WIDTH = { counsellor: 264, tenant: 352 } as const;
 
 /** Rows of the pre-drawn table: the board never looks like an empty box. */
 const PLACEHOLDER_ROWS = 5;
@@ -347,6 +354,9 @@ export const InviteProgressBoard = ({
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
     const [filter, setFilter] = useState<InviteFilter>(null);
+    // Phones only (CSS): the chip row folds behind a toggle; the selected chip stays visible.
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const chipsId = useId();
     const [sort, setSort] = useState<DataTableSort | null>(null);
 
     const isTenantTab = targetRole === 'TENANT_ADMIN';
@@ -387,9 +397,8 @@ export const InviteProgressBoard = ({
         return () => observer.disconnect();
     }, []);
 
+    const isStacked = boardWidth != null && boardWidth < STACKED_MIN_WIDTH[isTenantTab ? 'tenant' : 'counsellor'];
     const compact = boardWidth != null && boardWidth < WIDE_MIN_WIDTH[isTenantTab ? 'tenant' : 'counsellor'];
-    // The Träger track is longer (up to seven steps), so its lines hold one step more.
-    const stepsPerLine = isTenantTab ? 4 : 3;
 
     const detailLabel = (detail: LifecycleDetail) =>
         detail in DETAIL_FALLBACK_LABELS
@@ -769,7 +778,7 @@ export const InviteProgressBoard = ({
                 <DataTableCell className={styles.progressCell}>
                     <PhaseStepper
                         phases={phases}
-                        maxPerLine={compact ? stepsPerLine : undefined}
+                        className={styles.progressTrack}
                         idleLabel={
                             isDraftInvite(invite)
                                 ? t('links.inviteProgress.draftLabel', 'Entwurf – noch nicht eingeladen')
@@ -821,8 +830,13 @@ export const InviteProgressBoard = ({
         // The chip group and the table each carry their own name.
         <section
             ref={boardRef}
-            className={classNames(styles.board, { [styles.boardCompact]: compact })}
+            className={classNames(styles.board, { [styles.boardCompact]: compact, [styles.boardStacked]: isStacked })}
             data-layout={compact ? 'compact' : 'wide'}
+            style={
+                {
+                    '--invite-track-width': `${COMPACT_TRACK_WIDTH[isTenantTab ? 'tenant' : 'counsellor']}px`,
+                } as CSSProperties
+            }
         >
             <div
                 className={classNames(styles.card, { [styles.cardStuck]: stuck })}
@@ -832,11 +846,30 @@ export const InviteProgressBoard = ({
                 <div ref={toolbarRef} className={styles.toolbar}>
                     <div className={styles.toolbarRow}>
                         {toolbarSearch && <div className={styles.toolbarSearch}>{toolbarSearch}</div>}
+                        <button
+                            type="button"
+                            aria-controls={chipsId}
+                            aria-expanded={filtersOpen}
+                            className={styles.filterToggle}
+                            onClick={() => setFiltersOpen((open) => !open)}
+                        >
+                            <TuneOutlinedIcon aria-hidden fontSize="small" />
+                            {t('links.inviteProgress.filterToggle', 'Filter')}
+                            <KeyboardArrowDownIcon
+                                aria-hidden
+                                className={classNames(styles.filterToggleChevron, {
+                                    [styles.filterToggleChevronOpen]: filtersOpen,
+                                })}
+                                fontSize="small"
+                            />
+                        </button>
                         <div className={styles.toolbarPagination}>{pagination}</div>
                         {toolbarActions && <div className={styles.toolbarActions}>{toolbarActions}</div>}
                     </div>
                     <div
+                        id={chipsId}
                         className={styles.chips}
+                        data-collapsed={!filtersOpen}
                         role="group"
                         aria-label={t('links.inviteProgress.summaryLabel', 'Onboarding-Übersicht')}
                     >
@@ -868,6 +901,7 @@ export const InviteProgressBoard = ({
                         className={styles.dataTable}
                         ariaLabel={t('links.inviteProgress.tableLabel', 'Einladungen und Onboarding-Fortschritt')}
                         stickyHeader
+                        stacked={isStacked}
                         stackedOnMobile
                         loading={loading}
                         skeletonColumns={columns.length}

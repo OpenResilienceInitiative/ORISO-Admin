@@ -9,6 +9,7 @@ import { TenantAdminData } from '../types/TenantAdminData';
 import { mergeTenantAdminData, serializeTenantAdminDataUpdate } from '../utils/mergeTenantAdminData';
 import { useSingleTenantData, TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
+import { PUBLIC_TENANT_DATA_KEY } from './usePublicTenantData.hook';
 import { TENANT_DATA_KEY } from './useTenantData.hook';
 
 interface TenantAdminDataOptions
@@ -72,6 +73,7 @@ export const useTenantAdminDataMutation = ({
             }
             // Appearance cards may seed from /service/tenant — refresh that cache after PUT.
             queryClient.invalidateQueries({ queryKey: [TENANT_DATA_KEY] });
+            queryClient.invalidateQueries({ queryKey: [PUBLIC_TENANT_DATA_KEY, 'id', String(id)] });
             if (successMessageKey !== null) {
                 notification.success({
                     message: t(successMessageKey),

@@ -803,7 +803,7 @@ export const CounsellorWide: Story = {
     },
 };
 
-/** Counsellor board in an 846px column: five columns, dates and actions stacked, the track wraps at three. */
+/** Counsellor board in an 846px column: five columns, dates and actions stacked, the track scrolls in one line. */
 export const CounsellorCompact: Story = {
     args: { targetRole: 'COUNSELLOR', invites: [...COUNSELLOR_INVITES, ...ROLE_INVITES], ...toolbarSlots },
     decorators: fixedWidth(846),
@@ -811,11 +811,13 @@ export const CounsellorCompact: Story = {
         await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
         await expectNoSideScroll(canvasElement);
         const anke = rowOf(canvasElement, 'anke.roth@example.org');
-        // Four dated steps at three per line: the fourth starts the second line.
+        // All dated steps stay on one line inside the scrollable track.
         const steps = within(anke.getByRole('list')).getAllByRole('listitem');
         await expect(steps).toHaveLength(4);
-        await expect(steps[3].getBoundingClientRect().top).toBeGreaterThan(steps[2].getBoundingClientRect().top);
-        // A wrapped bead still explains its step on hover.
+        await expect(Math.round(steps[3].getBoundingClientRect().top)).toBe(
+            Math.round(steps[2].getBoundingClientRect().top),
+        );
+        // A bead still explains its step on hover.
         await userEvent.hover(steps[3].querySelector<HTMLElement>('[tabindex="0"]') as HTMLElement);
         await expect(await within(canvasElement.ownerDocument.body).findByRole('tooltip')).toHaveTextContent(
             /(Wartet auf Abschluss: dieser Schritt ist gerade an der Reihe|Awaiting completion: .+)/,
@@ -829,7 +831,7 @@ export const CounsellorCompact: Story = {
     },
 };
 
-/** Träger board in an 846px column: five columns, the long track wraps at four per line. */
+/** Träger board in an 846px column: cards keep the long track in one scrollable line. */
 export const TraegerCompact: Story = {
     args: { targetRole: 'TENANT_ADMIN', invites: [...TRAEGER_DATED, ...TENANT_INVITES.slice(0, 4)], ...toolbarSlots },
     decorators: fixedWidth(846),
@@ -841,8 +843,7 @@ export const TraegerCompact: Story = {
         ).getAllByRole('listitem');
         await expect(steps).toHaveLength(6);
         const tops = steps.map((step) => Math.round(step.getBoundingClientRect().top));
-        await expect(new Set(tops.slice(0, 4)).size).toBe(1);
-        await expect(tops[4]).toBeGreaterThan(tops[3]);
+        await expect(new Set(tops).size).toBe(1);
     },
 };
 
@@ -859,4 +860,101 @@ export const ShortListHint: Story = {
         const standIns = Array.from(canvasElement.querySelectorAll<HTMLElement>('tbody tr[aria-hidden="true"]'));
         await expect(standIns.map((row) => row.style.opacity)).toEqual(['1', '0.75', '0.5']);
     },
+};
+
+/** A narrow board uses cards even inside a desktop viewport; dates scroll locally. */
+export const NarrowDatedTracker: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => (
+        <div style={{ width: 320, maxWidth: '100%' }}>
+            <RoleBoard />
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const table = within(canvasElement).getByRole('table');
+        await waitFor(() => expect(getComputedStyle(table).display).toBe('block'));
+        const tracks = table.querySelectorAll('ol');
+        await expect(tracks.length).toBeGreaterThan(0);
+        await Promise.all(
+            Array.from(tracks).map(async (track) => {
+                await expect(track.clientWidth).toBeLessThanOrEqual(table.clientWidth);
+                await expect(getComputedStyle(track).overflowX).toBe('auto');
+            }),
+        );
+        await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+    },
+};
+
+/** Seven tenant milestones stay inside a phone card rather than widening the page. */
+export const NarrowTenantTimeline: Story = {
+    globals: { viewport: { value: 'desktop', isRotated: false } },
+    render: () => (
+        <div style={{ width: 320, maxWidth: '100%' }}>
+            <Wired
+                invites={TENANT_INVITES.map((invite) => ({ ...invite, sentAt: '2026-09-24T09:01:00Z' }))}
+                targetRole="TENANT_ADMIN"
+            />
+        </div>
+    ),
+    play: NarrowDatedTracker.play,
+};
+
+/** The former 768px boundary must use cards: a five-column table cannot fit here. */
+export const CounsellorAt768: Story = {
+    ...CounsellorCompact,
+    decorators: fixedWidth(768),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const table = canvas.getByRole('table');
+        await waitFor(() => expect(getComputedStyle(table).display).toBe('block'));
+        await expectNoSideScroll(canvasElement);
+    },
+};
+
+/** The first table width is tested exactly, not inferred from a wider fixture. */
+export const CounsellorAt832: Story = {
+    ...CounsellorCompact,
+    decorators: fixedWidth(832),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const steps = within(rowOf(canvasElement, 'anke.roth@example.org').getByRole('list')).getAllByRole('listitem');
+        await expect(new Set(steps.map((step) => Math.round(step.getBoundingClientRect().top))).size).toBe(1);
+    },
+};
+
+export const TenantAt900: Story = {
+    ...TraegerCompact,
+    decorators: fixedWidth(900),
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getAllByRole('columnheader')).toHaveLength(5));
+        await expectNoSideScroll(canvasElement);
+        const steps = within(
+            rowOf(canvasElement, 'sabine.keller@caritas-passau.example.org').getByRole('list'),
+        ).getAllByRole('listitem');
+        await expect(new Set(steps.map((step) => Math.round(step.getBoundingClientRect().top))).size).toBe(1);
+    },
+};
+
+/** Only pagination: its exterior keyboard focus outline must fit in the scrollport. */
+export const PaginationFocus: Story = {
+    args: { targetRole: 'COUNSELLOR', invites: COUNSELLOR_INVITES },
+    decorators: fixedWidth(832),
+    play: async ({ canvasElement }) => {
+        const select = within(canvasElement).getByRole('combobox', { name: /Zeilen pro Seite|Rows per page/ });
+        const toolbar = select.closest('[class*="toolbarRow"]') as HTMLElement;
+        select.focus();
+        await expect(select).toHaveFocus();
+        const rect = select.getBoundingClientRect();
+        const clip = toolbar.getBoundingClientRect();
+        await expect(rect.top - clip.top).toBeGreaterThanOrEqual(3);
+        await expect(clip.bottom - rect.bottom).toBeGreaterThanOrEqual(3);
+    },
+};
+
+export const CounsellorAt831: Story = { ...CounsellorAt768, decorators: fixedWidth(831) };
+export const TenantAt899: Story = {
+    ...TraegerCompact,
+    decorators: fixedWidth(899),
+    play: CounsellorAt768.play,
 };

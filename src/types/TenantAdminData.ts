@@ -4,6 +4,8 @@ export interface TenantAdminData extends BasicTenantData {
     // address?: string; description?: string; are inherited from BasicTenantData (NEW shared API fields).
     adminEmails: string[];
     theming: {
+        assistantName?: string | null;
+        assistantIcon?: string | null;
         associationLogo?: string;
         logo?: string;
         favicon?: string;

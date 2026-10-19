@@ -3,3 +3,11 @@ export interface UploadFileProps {
     type: string;
     name?: string;
 }
+
+export interface UploadValidationPolicy {
+    accept: string;
+    mimeTypes: readonly string[];
+    invalidMessageKey: string;
+    validate: (dataUrl: string, file: UploadFileProps) => boolean;
+    canPreview: (value: string) => boolean;
+}

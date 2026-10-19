@@ -70,3 +70,13 @@ export const AllSelected: Story = {
 export const Disabled: Story = {
     args: { disabled: true },
 };
+
+/** Platform policy caps additions; stored selections remain removable. */
+export const OneTopicLimit: Story = {
+    args: { value: [12], maxSelected: 1 },
+    play: async ({ canvas, userEvent }) => {
+        await expect(canvas.getByRole('button', { name: 'Thema hinzufügen' })).toBeDisabled();
+        await userEvent.click(canvas.getByRole('button', { name: 'Familienberatung entfernen' }));
+        await expect(canvas.getByRole('button', { name: 'Thema hinzufügen' })).toBeEnabled();
+    },
+};

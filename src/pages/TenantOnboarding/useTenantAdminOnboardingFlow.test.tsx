@@ -492,3 +492,172 @@ describe('useTenantAdminOnboardingFlow', () => {
         });
     });
 });
+
+describe('onboarding email gate', () => {
+    const twoFactor = {
+        secret: null,
+        qrCodeBase64: null,
+        methods: ['EMAIL', 'APP'] as const,
+        defaultMethod: 'EMAIL' as const,
+    };
+    const pendingClient = (overrides: Partial<Parameters<typeof createClient>[0]> = {}) =>
+        createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, phase: 'PENDING_2FA_ACTIVATION', twoFactor }),
+            sendTwoFactorEmail: vi.fn().mockResolvedValue(undefined),
+            ...overrides,
+        });
+
+    it('carries resumed capabilities, keeps sending separate from successful activation', async () => {
+        const client = pendingClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        expect(result.current.state.phase === 'two-factor' && result.current.state.result.twoFactor).toEqual(twoFactor);
+        await act(async () => {
+            await result.current.sendTwoFactorEmail();
+        });
+        expect(client.sendTwoFactorEmail).toHaveBeenCalledWith('raw-token');
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456', 'EMAIL');
+        });
+        expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456', 'EMAIL');
+        expect(result.current.state.phase).toBe('done');
+    });
+
+    it('keeps the gate pending on send and code failure', async () => {
+        const client = pendingClient({
+            sendTwoFactorEmail: vi.fn().mockRejectedValue(new Error('unavailable')),
+            activateTwoFactor: vi.fn().mockRejectedValue(new TwoFactorCodeInvalidError()),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        await act(async () => {
+            await expect(result.current.sendTwoFactorEmail()).rejects.toThrow('unavailable');
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBe('two-factor');
+        await act(async () => {
+            await result.current.submitTwoFactorCode('000000', 'EMAIL');
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBe('two-factor-code');
+    });
+
+    it('rejects email sending for a legacy app-only capability', async () => {
+        const client = pendingClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'LEGACY', qrCodeBase64: null },
+            }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(client.sendTwoFactorEmail).not.toHaveBeenCalled();
+    });
+});
+
+describe('email request guards', () => {
+    it('does not send twice while the first request is pending or after a terminal link error', async () => {
+        let rejectSend!: (error: unknown) => void;
+        const sendTwoFactorEmail = vi.fn().mockImplementation(
+            () =>
+                new Promise<void>((_resolve, reject) => {
+                    rejectSend = reject;
+                }),
+        );
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL', 'APP'], defaultMethod: 'EMAIL' },
+            }),
+            sendTwoFactorEmail,
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        let pending!: Promise<void>;
+        act(() => {
+            pending = result.current.sendTwoFactorEmail();
+        });
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(sendTwoFactorEmail).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            const failure = expect(pending).rejects.toBeInstanceOf(InviteLinkError);
+            rejectSend(new InviteLinkError('REVOKED'));
+            await failure;
+        });
+        expect(result.current.state.phase).toBe('link-error');
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(sendTwoFactorEmail).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('second-factor requests across token changes', () => {
+    it.each([
+        ['send', 'success'],
+        ['send', 'failure'],
+        ['verify', 'success'],
+        ['verify', 'failure'],
+    ] as const)('isolates a stale %s %s from the new token and its pending request', async (action, outcome) => {
+        const deferred = () => {
+            let resolve!: () => void;
+            let reject!: (error: unknown) => void;
+            const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+                resolve = resolvePromise;
+                reject = rejectPromise;
+            });
+            return { promise, resolve, reject };
+        };
+        const oldRequest = deferred();
+        const newRequest = deferred();
+        const sendTwoFactorEmail = vi
+            .fn()
+            .mockImplementation((token: string) => (token === 'old-token' ? oldRequest.promise : newRequest.promise));
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL', 'APP'], defaultMethod: 'EMAIL' },
+            }),
+            sendTwoFactorEmail,
+            activateTwoFactor: vi.fn().mockReturnValue(oldRequest.promise),
+        });
+        const { result, rerender } = renderHook(({ token }) => useTenantAdminOnboardingFlow(token, client), {
+            initialProps: { token: 'old-token' },
+        });
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        let oldCall!: Promise<void>;
+        act(() => {
+            oldCall = (
+                action === 'send'
+                    ? result.current.sendTwoFactorEmail()
+                    : result.current.submitTwoFactorCode('123456', 'EMAIL')
+            ).catch(() => {});
+        });
+        rerender({ token: 'new-token' });
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        expect(result.current.busy).toBe(false);
+        let newCall!: Promise<void>;
+        act(() => {
+            newCall = result.current.sendTwoFactorEmail();
+        });
+        expect(result.current.busy).toBe(true);
+        await act(async () => {
+            if (outcome === 'failure') oldRequest.reject(new InviteLinkError('REVOKED'));
+            else oldRequest.resolve();
+            await oldCall;
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBeNull();
+        expect(result.current.busy).toBe(true);
+        await act(async () => {
+            newRequest.resolve();
+            await newCall;
+        });
+        expect(result.current.busy).toBe(false);
+        expect(result.current.state.phase).toBe('two-factor');
+    });
+});

@@ -5,6 +5,11 @@
     flex: 0 0 auto;
 }
 
+/* Locked unit values remain readable; only the unavailable arrows retain disabled opacity. */
+.anchorLocked {
+    --m3-number-field-disabled-opacity: 1;
+}
+
 .anchorFull {
     display: flex;
     width: 100%;

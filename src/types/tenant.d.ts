@@ -153,6 +153,8 @@ export interface BasicTenantData {
 
 export interface TenantData extends BasicTenantData {
     theming: {
+        assistantName?: string | null;
+        assistantIcon?: string | null;
         logo: string;
         favicon: string;
         associationLogo?: string;

@@ -37,9 +37,13 @@
 
 .toolbarRow {
     display: flex;
-    flex-wrap: wrap;
+    min-width: 0;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px 16px;
+    padding-block: 3px;
+    margin-block: -3px;
+    overflow-x: auto;
 }
 
 .toolbarSearch {
@@ -49,12 +53,48 @@
 
 /* Without a search slot the pagination still sits on the right. */
 .toolbarPagination {
+    flex: none;
     margin-left: auto;
 }
 
 .toolbarActions {
     display: inline-flex;
+    flex: none;
     align-items: center;
+}
+
+/* Phones fold the chip row behind this; wider screens show the chips and no toggle (#1127). */
+.filterToggle {
+    display: none;
+    height: 40px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 12px 0 14px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    border-radius: 20px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+    gap: 6px;
+    letter-spacing: 0.1px;
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.filterToggleChevron {
+    transition: transform 150ms ease;
+}
+
+.filterToggleChevronOpen {
+    transform: rotate(180deg);
 }
 
 /* ── Filter chips (replace the summary tiles) ────────────────────────────── */
@@ -153,6 +193,15 @@
             border-radius: 0 16px 16px 0;
         }
     }
+}
+
+.progressTrack {
+    max-width: 100%;
+}
+
+/* Constrain the dated track instead of letting its intrinsic width enlarge the table. */
+.boardCompact .progressTrack {
+    width: var(--invite-track-width);
 }
 
 /* Compact layout: tighter cells so five columns fit 846px; the 88px step columns carry their own air. */
@@ -579,10 +628,23 @@
 /* ── Stacked cards (~390px): identity leads, mini stepper follows, meta gets
       its labels back, actions close the card. ──────────────────────────────── */
 
-@media (max-width: 767px) {
+@mixin stacked-board {
+    .progressTrack {
+        width: 100%;
+    }
+
     /* Search, pager and chips fill half a phone screen: they scroll away instead of sticking. */
     .toolbar {
         position: static;
+    }
+
+    .filterToggle {
+        display: inline-flex;
+    }
+
+    /* Folded: only the selected chip stays, so the active filter (or "Alle") is never hidden. */
+    .chips[data-collapsed='true'] .chip:not(.chipSelected) {
+        display: none;
     }
 
     /* Stand-in rows make no sense as stacked cards; the empty box stays in the flow. */
@@ -651,6 +713,14 @@
         display: flex !important;
         justify-content: flex-end;
     }
+}
+
+.boardStacked {
+    @include stacked-board;
+}
+
+@media (max-width: 767px) {
+    @include stacked-board;
 }
 
 /* "Rolle entfernen: im Bereich Benutzer" — the role menu's way out to the users area. */

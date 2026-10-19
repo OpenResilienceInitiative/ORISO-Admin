@@ -60,4 +60,13 @@ const getPublicTenantData = (settings: AppConfigInterface) => {
     return Promise.resolve(null);
 };
 
+/** Effective public settings for the edited tenant; unlike the admin read, this applies inheritance. */
+export const getPublicTenantDataById = (tenantId: string) =>
+    fetchData({
+        url: `${baseTenantPublicEndpoint}/id/${tenantId}`,
+        method: FETCH_METHODS.GET,
+        skipAuth: true,
+        responseHandling: [FETCH_ERRORS.NO_MATCH],
+    }).then(decodeBrandingAssets);
+
 export default getPublicTenantData;

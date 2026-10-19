@@ -23,7 +23,7 @@ describe('useLegalTextReadOnlyReason', () => {
         h.roles = [];
     });
 
-    it.each([UserRole.AgencyAdmin, UserRole.SingleTenantAdmin])(
+    it.each([UserRole.AgencyAdmin, UserRole.RestrictedAgencyAdmin, UserRole.SingleTenantAdmin])(
         'names the platform-wide lock for a %s it actually blocks',
         (role) => {
             h.roles = [role];
@@ -43,9 +43,8 @@ describe('useLegalTextReadOnlyReason', () => {
         expect(result.current).toEqual({ key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false });
     });
 
-    // A restricted agency admin may never change legal texts, lock or not: the lock is not the reason.
     it('keeps the Träger wording for a role the lock does not govern', () => {
-        h.roles = [UserRole.RestrictedAgencyAdmin];
+        h.roles = [UserRole.TopicAdmin];
 
         const { result } = renderHook(() => useLegalTextReadOnlyReason());
 

@@ -6,7 +6,6 @@ import {
     getTokenExpiryFromLocalStorage,
     setTokenExpiryInLocalStorage,
 } from './accessSessionLocalStorage';
-import routePathNames from '../../appConfig';
 import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
 import parseJwt from '../../utils/parseJWT';
@@ -62,7 +61,7 @@ const refreshTokens = (): Promise<void> => {
     const tokenExpiry = getTokenExpiryFromLocalStorage();
 
     if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
-        logout(true, routePathNames.login);
+        logout(true);
         return Promise.resolve();
     }
 
@@ -134,7 +133,7 @@ const startTimers = ({
                 window.clearInterval(refreshInterval);
             }
 
-            logout(true, routePathNames.login);
+            logout(true);
         }, refreshTokenValidInMs);
     }
 };
@@ -170,7 +169,7 @@ export const handleTokenRefresh = (): Promise<void> => {
         bootstrapAuthSession()
             .then((hasSession) => {
                 if (!hasSession) {
-                    logout(true, routePathNames.login);
+                    logout(true);
                     resolve();
                     return;
                 }
@@ -181,7 +180,7 @@ export const handleTokenRefresh = (): Promise<void> => {
                 const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
 
                 if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
-                    logout(true, routePathNames.login);
+                    logout(true);
                     resolve();
                 } else if (accessTokenValidInMs <= 0) {
                     refreshTokens().then(() => {
@@ -206,7 +205,7 @@ export const handleTokenRefresh = (): Promise<void> => {
                 }
             })
             .catch(() => {
-                logout(true, routePathNames.login);
+                logout(true);
                 resolve();
             });
     });

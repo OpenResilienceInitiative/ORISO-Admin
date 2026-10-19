@@ -71,6 +71,8 @@ export const mapTenantDataToTenantAdminData = (tenantData: TenantData): TenantAd
         ...tenantData,
         adminEmails: (tenantData as unknown as TenantAdminData).adminEmails ?? [],
         theming: {
+            assistantName: tenantData.theming?.assistantName,
+            assistantIcon: tenantData.theming?.assistantIcon,
             associationLogo: tenantData.theming?.associationLogo,
             logo: tenantData.theming?.logo ?? '',
             favicon: tenantData.theming?.favicon ?? '',

@@ -14,6 +14,10 @@
 -   Reuse existing design tokens and components. Avoid hardcoded styling for repeated controls, table states, or responsive layout.
 -   UI changes need accessible focus/keyboard behavior and should not rely on color alone.
 
+## Responsive listing tables
+
+-   Follow [docs/responsive-tables.md](docs/responsive-tables.md): choose table/card presentation from available container width, preserve wide layouts that fit, and test the actual transitions in a browser.
+
 ## Validation
 
 -   Prefer red-green TDD for behavior changes: add or update the smallest test that would fail without the fix, then implement.

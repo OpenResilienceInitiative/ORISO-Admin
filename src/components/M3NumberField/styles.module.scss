@@ -146,7 +146,7 @@
 }
 
 .fieldDisabled {
-    opacity: 0.38;
+    opacity: var(--m3-number-field-disabled-opacity, 0.38);
 
     .main {
         cursor: not-allowed;
