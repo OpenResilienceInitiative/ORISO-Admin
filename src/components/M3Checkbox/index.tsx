@@ -2,6 +2,8 @@ import classNames from 'classnames';
 import styles from './styles.module.scss';
 
 interface M3CheckboxProps {
+    /** Optional native label association; existing callers need no id. */
+    id?: string;
     checked?: boolean;
     disabled?: boolean;
     /** Accessible name; the visible label is rendered by the caller. */
@@ -22,6 +24,7 @@ interface M3CheckboxProps {
  * driven by the M3/OrisoScheme CSS variables so it inherits the admin theme.
  */
 export const M3Checkbox = ({
+    id,
     checked = false,
     disabled = false,
     label,
@@ -39,6 +42,7 @@ export const M3Checkbox = ({
 
     return (
         <button
+            id={id}
             type="button"
             role="checkbox"
             aria-checked={checked}

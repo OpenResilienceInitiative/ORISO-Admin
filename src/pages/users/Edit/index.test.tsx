@@ -1,11 +1,14 @@
 import React from 'react';
 import '@ant-design/v5-patch-for-react-19';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
+import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -45,6 +48,9 @@ const mocks = vi.hoisted(() => ({
     counselorResult: { data: undefined as any, isLoading: false },
     /** Swapped per test so the same harness can drive the create AND the edit form. */
     params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
+    canUpdateAgency: true,
+    addTopicsToAgency: vi.fn(),
+    appSettings: {} as Record<string, unknown>,
 }));
 
 const TENANT = { id: 7, name: 'Caritas Augsburg' };
@@ -82,13 +88,34 @@ const translations: Record<string, string> = {
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
     'topics.title': 'Themen',
+    'counselor.topicsAtAgency': 'Themen bei {{agency}}',
+    'counselor.topicsAtAgency.notOfferedChip': '{{topic}} – wird hier nicht mehr angeboten',
+    'counselor.topicsAtAgency.notOfferedNotice': 'Markierte Themen bietet diese Stelle nicht mehr an.',
+    'counselor.topicsAtAgency.notOfferedBlocksChange': 'Erst markierte Themen entfernen.',
+    'counselor.topicsAtAgency.flatListOnly':
+        'Gilt für alle Stellen gemeinsam, hier auch wählen oder überall entfernen: {{topics}}.',
+    'counselor.topicsLostByMove.title': 'Themen passen nicht zur neuen Beratungsstelle',
+    'counselor.topicsLostByMove.text': '{{agency}} bietet nicht an: {{topics}}.',
+    'counselor.topicsLostByMove.addToTarget': 'Thema bei {{agency}} ergänzen',
+    'counselor.topicsLostByMove.drop': 'Thema weglassen',
+    'counselor.topicsLostByMove.createCentre': 'Neue Beratungsstelle anlegen',
+    'counselor.topicsLostByMove.noAgencyRight': 'Keine Berechtigung für {{agency}}.',
+    'counselor.topicsLostByMove.publicAtTarget': 'Wird danach bei {{agency}} öffentlich angeboten.',
+    'counselor.topicsLostByMove.oneTopicPerAgency':
+        'Nur ein Thema (Fachbereich) pro Stelle: {{agency}} hat schon eins.',
+    'counselor.topicsLostByMove.addForbidden': 'Keine Berechtigung, {{agency}} zu ändern.',
+    'counselor.topicsLostByMove.addFailed': 'Hinzufügen fehlgeschlagen.',
+    'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
+    'counselor.topicsLostByMove.addedButNotSaved':
+        'Thema bei {{agency}} ergänzt, Person nicht gespeichert. Es bleibt bei {{agency}}.',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
     'message.counselor.picture.partialCreate': 'Konto erstellt, Bild konnte nicht gespeichert werden.',
 };
 
-const t = (key: string) => translations[key] ?? key;
+const t = (key: string, values?: Record<string, unknown>) =>
+    (translations[key] ?? key).replace(/{{(\w+)}}/g, (_match, name) => String(values?.[name] ?? ''));
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => Object.assign([t, {}, true], { t, i18n: { language: 'de' } }),
@@ -111,7 +138,7 @@ vi.mock('../../../components/Page', () => {
         <div>{isLoading ? 'loading' : children}</div>
     );
     Page.BackWithActions = function PageBackWithActions({ children }: { children: React.ReactNode }) {
-        return <div>{children}</div>;
+        return <div data-testid="page-actions">{children}</div>;
     };
     return { Page };
 });
@@ -153,7 +180,12 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 }));
 
 vi.mock('../../../hooks/useUserPermission', () => ({
-    useUserPermissions: () => ({ permissions: {}, can: () => true }),
+    useUserPermissions: () => ({
+        permissions: {},
+        // Grants only "update" on agencies, so a check for any other action cannot pass by accident.
+        can: (action: PermissionAction, resource: Resource) =>
+            resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency),
+    }),
 }));
 
 const actualMutation = await vi.importActual<typeof import('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin')>(
@@ -238,6 +270,17 @@ vi.mock('../../../hooks/useCounselorById', () => ({
     useCounselorById: () => mocks.counselorResult,
 }));
 
+vi.mock('../../../api/agency/addTopicsToAgency', async () => {
+    const actual = await vi.importActual<typeof import('../../../api/agency/addTopicsToAgency')>(
+        '../../../api/agency/addTopicsToAgency',
+    );
+    return { ...actual, addTopicsToAgency: mocks.addTopicsToAgency };
+});
+
+vi.mock('../../../context/useAppConfig', () => ({
+    useAppConfigContext: () => ({ settings: mocks.appSettings }),
+}));
+
 vi.mock('../../../api/tenant/searchTenantData', () => ({
     searchTenantData: mocks.searchTenantData,
 }));
@@ -300,10 +343,14 @@ const fillMandatoryFields = async () => {
     await waitFor(() => expect(mocks.getSingleTenantData).toHaveBeenCalledWith(TENANT.id));
 };
 
-const setupUser = () => userEvent.setup({ delay: null });
+const setupFastUser = () => userEvent.setup({ delay: null });
+
+// Scoped to the header: a page-wide role query recomputes jsdom styles for every button on this
+// form, about a second after each render.
+const pageButton = (name: string) => within(screen.getByTestId('page-actions')).getByRole('button', { name });
 
 const submit = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'Speichern' }));
+    await user.click(pageButton('Speichern'));
     const mutation =
         mocks.params.id === 'add' && mocks.params.typeOfUsers === 'consultants' ? mocks.mutateAsync : mocks.mutate;
     await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
@@ -340,6 +387,10 @@ beforeEach(() => {
     mocks.supervisorCandidatesResult = { data: { data: [] }, isLoading: false, isError: false };
     mocks.counselorResult = { data: undefined, isLoading: false };
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
+    mocks.canUpdateAgency = true;
+    mocks.addTopicsToAgency.mockReset();
+    mocks.addTopicsToAgency.mockResolvedValue(undefined);
+    mocks.appSettings = {};
 });
 
 describe('consultant picture create choreography (#1048)', () => {
@@ -348,7 +399,7 @@ describe('consultant picture create choreography (#1048)', () => {
     });
     it('locks picture selection and Save even when account creation started without a photo', async () => {
         mocks.mutateAsync.mockImplementation(() => new Promise(() => {}));
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await fillMandatoryFields();
         await user.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -371,7 +422,7 @@ describe('consultant picture create choreography (#1048)', () => {
                     finishUpload = resolve;
                 }),
         );
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
         await fillMandatoryFields();
@@ -404,7 +455,7 @@ describe('consultant picture create choreography (#1048)', () => {
                     finish = resolve;
                 }),
         );
-        const user = setupUser();
+        const user = setupFastUser();
         const { rerender } = renderForm();
         await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
         await fillMandatoryFields();
@@ -424,7 +475,7 @@ describe('consultant picture create choreography (#1048)', () => {
     });
 
     it('forgets an unsubmitted picture when navigation leaves and returns to a new account', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         const { rerender } = renderForm();
         await user.click(screen.getByRole('button', { name: 'Bild wählen' }));
         mocks.params = { id: 'someone-else', typeOfUsers: 'consultants' };
@@ -446,7 +497,7 @@ describe('consultant picture create choreography (#1048)', () => {
     });
 
     it('creates once, then routes to the returned edit record when its picture upload fails', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         mocks.mutateAsync.mockResolvedValue({ id: 'consultant-created-42' });
         uploadConsultantPicture.mockRejectedValue(
             new Response(JSON.stringify({ reason: 'PICTURE_REJECTED' }), { status: 422 }),
@@ -474,7 +525,7 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         ['a single-tenant admin', UserRole.SingleTenantAdmin],
     ])('renders the remarks field for %s and submits what was typed into it', async (_label, role) => {
         mocks.roles = [role];
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         const remarks = screen.getByLabelText('Interne Anmerkungen');
@@ -493,7 +544,7 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         // not prove it: a regression can hide the control and still serialize
         // `adminRemarks`, so the payload is asserted as well.
         mocks.roles = [role];
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         expect(screen.queryByLabelText('Interne Anmerkungen')).not.toBeInTheDocument();
@@ -506,7 +557,7 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
 
 describe('salutation control (#994)', () => {
     it('submits the stable key behind the chosen label, not the label itself', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         await chooseOption(user, 'Anrede', 'Beratende Person');
@@ -519,7 +570,7 @@ describe('salutation control (#994)', () => {
         // Clearing the control yields `undefined`, which the API layer omits and
         // the backend reads as "leave unchanged" — the clear button would
         // silently fail to persist. `not_specified` is the explicit way to say it.
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         await chooseOption(user, 'Anrede', 'Keine Angabe');
@@ -546,7 +597,7 @@ describe('counsellor avatar (#1046)', () => {
         mocks.realAvatar = true;
     });
     it('submits the chosen motif as the ICON kind plus its id', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -561,7 +612,7 @@ describe('counsellor avatar (#1046)', () => {
     });
 
     it('submits INITIALS without a motif id', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -583,7 +634,7 @@ describe('counsellor avatar (#1046)', () => {
     });
 
     it('leaves a consultant who never chose without a selection, and writes nothing', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await fillMandatoryFields();
 
@@ -597,7 +648,7 @@ describe('counsellor avatar (#1046)', () => {
 
 describe('public and internal display names (#996)', () => {
     it('submits both names independently', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         setField('Öffentlicher Anzeigename', 'Ada L.');
@@ -631,7 +682,7 @@ describe('assignment fields', () => {
             isLoading: false,
         };
         mocks.topicsResult = { data: [{ id: 11, name: 'Sucht' }], isLoading: false };
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
 
         expect(screen.getAllByLabelText('Trägerzuordnung *')).toHaveLength(1);
@@ -642,7 +693,620 @@ describe('assignment fields', () => {
         await waitFor(() => expect(mocks.getSingleTenantData).toHaveBeenCalledWith(TENANT.id));
         await chooseOption(user, 'Beratungsstelle', '20095 Beratungsstelle Nord Hamburg');
 
-        expect(await screen.findAllByLabelText('Themen')).toHaveLength(1);
+        expect(await screen.findAllByLabelText('Themen bei Beratungsstelle Nord (20095 Hamburg)')).toHaveLength(1);
+    });
+});
+
+describe('topics per centre (#1264)', () => {
+    const SUCHT = { id: 11, name: 'Sucht' };
+    const SCHULDEN = { id: 12, name: 'Schulden' };
+    const FAMILIE = { id: 13, name: 'Familie' };
+    const NORD = {
+        id: 1,
+        name: 'Nord',
+        postcode: '20095',
+        city: 'Hamburg',
+        tenantId: TENANT.id,
+        topics: [SUCHT, SCHULDEN],
+    };
+    const SUED = {
+        id: 2,
+        name: 'Süd',
+        postcode: '80331',
+        city: 'München',
+        tenantId: TENANT.id,
+        topics: [SUCHT, FAMILIE],
+    };
+    const OST = { id: 3, name: 'Ost', postcode: '10115', city: 'Berlin', tenantId: TENANT.id, topics: [FAMILIE] };
+    const WEST = { id: 4, name: 'West', postcode: '50667', city: 'Köln', tenantId: TENANT.id, topics: [SCHULDEN] };
+    const ID = 'consultant-7';
+
+    const editConsultant = (agencies: any[], stored: Record<string, unknown>) => {
+        const edited = {
+            id: ID,
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            tenantId: TENANT.id,
+            agencies,
+            isSupervisor: false,
+        };
+        mocks.params = { id: ID, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [edited] }, isLoading: false };
+        mocks.counselorResult = { data: { ...edited, ...stored }, isLoading: false };
+        mocks.agenciesResult = { data: { data: [NORD, SUED, OST, WEST] }, isLoading: false };
+        mocks.topicsResult = { data: [SUCHT, SCHULDEN, FAMILIE], isLoading: false };
+    };
+
+    const optionsOf = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+        await user.click(screen.getByLabelText(label));
+        const names = (await screen.findAllByRole('option')).map((option) => option.textContent);
+        await user.keyboard('{Escape}');
+        return names;
+    };
+
+    const unlock = (user: ReturnType<typeof userEvent.setup>) => user.click(pageButton('Bearbeiten'));
+
+    /** The MUI field labelled `label`, to keep chip queries off the rest of the form. */
+    const fieldOf = (label: string) =>
+        within(screen.getByLabelText(label).closest('.MuiAutocomplete-root') as HTMLElement);
+
+    const removeChip = async (
+        user: ReturnType<typeof userEvent.setup>,
+        chipLabel: string,
+        scope: Pick<typeof screen, 'getByRole'> = screen,
+    ) => {
+        const chip = scope.getByRole('button', { name: chipLabel });
+        await user.click(chip.querySelector('.MuiChip-deleteIcon') as Element);
+    };
+
+    // For tests that walk the whole form: user-event's per-click style check pushed them past CI's 30 s.
+    const setupUser = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
+
+    it("shows one picker per centre, offering only that centre's topics", async () => {
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        expect(await optionsOf(user, 'Themen bei Nord (20095 Hamburg)')).toEqual(['Schulden', 'Sucht']);
+        expect(await optionsOf(user, 'Themen bei Süd (80331 München)')).toEqual(['Familie', 'Sucht']);
+        expect(screen.queryByLabelText('Themen')).not.toBeInTheDocument();
+    });
+
+    it('saves the topics per centre, plus their union as flat topicIds', async () => {
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        expect(await submit(user)).toMatchObject({
+            topicIds: ['11', '13'],
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+    });
+
+    it('pre-fills a legacy topic at every centre that offers it', async () => {
+        editConsultant([NORD, SUED], { topicsByAgency: [{ topicIds: [11] }] });
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        expect((await submit(user)).topicsByAgency).toEqual([
+            { agencyId: 1, topicIds: [11] },
+            { agencyId: 2, topicIds: [11] },
+        ]);
+    });
+
+    it('sends only flat topicIds to a server that does not know topicsByAgency', async () => {
+        editConsultant([NORD], { topics: [SUCHT] });
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        const payload = await submit(user);
+        expect(payload.topicIds).toEqual(['11']);
+        expect(payload).not.toHaveProperty('topicsByAgency');
+    });
+
+    it('adds a picker for an added centre, preselecting its only topic', async () => {
+        editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11] }] });
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+        await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+
+        expect(await screen.findByLabelText('Themen bei West (50667 Köln)')).toBeInTheDocument();
+        expect((await submit(user)).topicsByAgency).toEqual([
+            { agencyId: 1, topicIds: [11] },
+            { agencyId: 4, topicIds: [12] },
+        ]);
+    });
+
+    it('gives a centre that is removed and added again the topics it had when it was removed', async () => {
+        // Nord offers two topics, so a fresh picker there would start empty; the admin drops one first.
+        editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+        await removeChip(user, 'Schulden', fieldOf('Themen bei Nord (20095 Hamburg)'));
+        await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+        await chooseOption(user, 'Beratungsstelle', '20095 Nord Hamburg');
+        await user.keyboard('{Escape}');
+
+        expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 1, topicIds: [11] }]);
+    });
+
+    it('keeps the stored topics when the detail record arrives before the search result', async () => {
+        // A cached get-by-id (second visit) resolves before the search: the centres are unknown then,
+        // and locking the pickers to "no centres" would save an empty topic list.
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+        const loaded = mocks.consultantsResult;
+        mocks.consultantsResult = { data: undefined, isLoading: true } as any;
+        const user = userEvent.setup();
+        const { rerender } = renderForm();
+
+        mocks.consultantsResult = loaded;
+        rerender(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <UserEditOrAdd />
+            </QueryClientProvider>,
+        );
+        await unlock(user);
+
+        expect(await screen.findByRole('button', { name: 'Sucht' })).toBeInTheDocument();
+        expect(await submit(user)).toMatchObject({
+            topicIds: ['11', '13'],
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+        });
+    });
+
+    it('keeps the stored topics of a centre that is missing from the centre list', async () => {
+        editConsultant([NORD, SUED], {
+            topicsByAgency: [
+                { agencyId: 1, topicIds: [11] },
+                { agencyId: 2, topicIds: [13] },
+            ],
+            topics: [SUCHT, FAMILIE],
+        });
+        // Süd is assigned but not in the list (other tenant, deleted, beyond the page).
+        mocks.agenciesResult = { data: { data: [NORD, OST, WEST] }, isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        // null = "keep what is stored"; a flat list would be redistributed, or rejected.
+        const payload = await submit(user);
+        expect(payload.topicIds).toBeNull();
+        expect(payload).not.toHaveProperty('topicsByAgency');
+    });
+
+    it('shows a stored topic, and lets it be removed, when the tenant topic list is empty', async () => {
+        editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11] }] });
+        // Empty when every tenant topic is inactive or the list failed to load; the centres still list theirs.
+        mocks.topicsResult = { data: [], isLoading: false };
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+        await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+
+        expect(await submit(user)).toMatchObject({ topicIds: [], topicsByAgency: [{ agencyId: 1, topicIds: [] }] });
+    });
+
+    it('still shows no picker when the tenant topic list is empty and the counsellor holds no topic', async () => {
+        editConsultant([NORD], { topicsByAgency: [] });
+        mocks.topicsResult = { data: [], isLoading: false };
+        const user = setupUser();
+        renderForm();
+        await unlock(user);
+
+        expect(screen.queryByLabelText('Themen bei Nord (20095 Hamburg)')).not.toBeInTheDocument();
+    });
+
+    describe('a hidden picker assigns no topic', () => {
+        // Hidden: the tenant topic list is empty and the counsellor holds no topic. West offers a
+        // single topic, which a shown picker pre-selects.
+        it('when creating a counsellor', async () => {
+            mocks.agenciesResult = { data: { data: [NORD, WEST] }, isLoading: false };
+            mocks.topicsResult = { data: [], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await fillMandatoryFields();
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+
+            expect(screen.queryByLabelText('Themen bei West (50667 Köln)')).not.toBeInTheDocument();
+            expect((await submit(user)).topicIds).toEqual([]);
+        });
+
+        it('when a centre is added to a counsellor', async () => {
+            editConsultant([NORD], { topicsByAgency: [] });
+            mocks.topicsResult = { data: [], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+
+            expect(screen.queryByLabelText('Themen bei West (50667 Köln)')).not.toBeInTheDocument();
+            // The centres changed, so the save sends the (empty) topics instead of keeping the stored ones.
+            expect(await submit(user)).toMatchObject({
+                topicIds: [],
+                topicsByAgency: [
+                    { agencyId: 1, topicIds: [] },
+                    { agencyId: 4, topicIds: [] },
+                ],
+            });
+        });
+    });
+
+    describe('a stored topic the centre no longer offers', () => {
+        const editWithDroppedTopic = async (user: ReturnType<typeof userEvent.setup>) => {
+            // Nord offers Sucht and Schulden; Familie was stored there before Nord dropped it.
+            editConsultant([NORD], {
+                topicsByAgency: [{ agencyId: 1, topicIds: [11, 13] }],
+                topics: [SUCHT, FAMILIE],
+            });
+            renderForm();
+            await unlock(user);
+        };
+
+        it('shows it as a marked chip with a notice, and keeps it on an unrelated save', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+
+            expect(
+                screen.getByRole('button', { name: 'Familie – wird hier nicht mehr angeboten' }),
+            ).toBeInTheDocument();
+            expect(screen.getByText('Markierte Themen bietet diese Stelle nicht mehr an.')).toBeInTheDocument();
+            const payload = await submit(user);
+            expect(payload.topicIds).toBeNull();
+            expect(payload).not.toHaveProperty('topicsByAgency');
+        });
+
+        it('saves without it once the admin removed it', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+            await removeChip(user, 'Familie – wird hier nicht mehr angeboten');
+
+            expect(await submit(user)).toMatchObject({
+                topicIds: ['11'],
+                topicsByAgency: [{ agencyId: 1, topicIds: [11] }],
+            });
+        });
+
+        it('asks to remove it before other topic changes are saved', async () => {
+            const user = userEvent.setup();
+            await editWithDroppedTopic(user);
+            await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Schulden');
+            await user.keyboard('{Escape}');
+            await user.click(screen.getByRole('button', { name: 'Speichern' }));
+
+            expect(await screen.findByText('Erst markierte Themen entfernen.')).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('moving a counsellor to a centre that lacks a topic (Admin#1034)', () => {
+        const moveNordToOst = async (user: ReturnType<typeof userEvent.setup>) => {
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '10115 Ost Berlin');
+            await user.keyboard('{Escape}');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+            expect(screen.queryByLabelText('Themen bei Nord (20095 Hamburg)')).not.toBeInTheDocument();
+            await user.click(pageButton('Speichern'));
+            return screen.findByRole('dialog');
+        };
+
+        it('asks before saving and names the uncovered topic', async () => {
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+
+            expect(dialog).toHaveTextContent('Themen passen nicht zur neuen Beratungsstelle');
+            expect(dialog).toHaveTextContent('Schulden');
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('"Thema weglassen" saves without the topic', async () => {
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema weglassen' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            // Ost's only topic is preselected when the centre is added.
+            expect(mocks.mutate.mock.calls[0][0].topicsByAgency).toEqual([{ agencyId: 3, topicIds: [13] }]);
+            expect(mocks.addTopicsToAgency).not.toHaveBeenCalled();
+        });
+
+        it('"Thema bei Ost ergänzen" adds it to the centre, then saves it there', async () => {
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            expect(mocks.addTopicsToAgency).toHaveBeenCalledWith('3', ['12']);
+            expect(mocks.mutate.mock.calls[0][0].topicsByAgency).toEqual([{ agencyId: 3, topicIds: [13, 12] }]);
+        });
+
+        it('disables adding the topic, with the reason, without the right to edit that centre', async () => {
+            mocks.canUpdateAgency = false;
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+
+            expect(
+                within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }),
+            ).toBeDisabled();
+            expect(dialog).toHaveTextContent('Keine Berechtigung für Ost (10115 Berlin).');
+        });
+
+        it('says the topic becomes publicly offered at the new centre', async () => {
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+
+            expect(dialog).toHaveTextContent('Wird danach bei Ost (10115 Berlin) öffentlich angeboten.');
+        });
+
+        it('disables adding the topic, with the reason, when a centre may hold only one topic', async () => {
+            mocks.appSettings = { oneTopicPerAgencyEnabled: true };
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+
+            expect(
+                within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }),
+            ).toBeDisabled();
+            expect(dialog).toHaveTextContent(
+                'Nur ein Thema (Fachbereich) pro Stelle: Ost (10115 Berlin) hat schon eins.',
+            );
+        });
+
+        it('explains a refused right to edit the centre and does not save', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.FORBIDDEN));
+            const toast = vi.spyOn(message, 'error');
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(
+                    expect.objectContaining({ content: 'Keine Berechtigung, Ost (10115 Berlin) zu ändern.' }),
+                ),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('asks to try again when the one-topic switch cannot be read', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.SETTINGS_UNAVAILABLE));
+            const toast = vi.spyOn(message, 'error');
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(
+                    expect.objectContaining({ content: 'Gerade nicht prüfbar, bitte erneut versuchen.' }),
+                ),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('reloads the centres after a failed add, which may still have reached the server', async () => {
+            const { ADD_TOPICS_ERRORS } = await import('../../../api/agency/addTopicsToAgency');
+            mocks.addTopicsToAgency.mockRejectedValue(new Error(ADD_TOPICS_ERRORS.FAILED));
+            const toast = vi.spyOn(message, 'error');
+            const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries');
+            onTestFinished(() => invalidate.mockRestore());
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(toast).toHaveBeenCalledWith(expect.objectContaining({ content: 'Hinzufügen fehlgeschlagen.' })),
+            );
+            expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCIES'] });
+            expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '3'] });
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('says the topic stays at the centre when the person is then not saved, and saves on the next try', async () => {
+            // The PUT lands: from now on the centre list shows Ost offering Schulden.
+            mocks.addTopicsToAgency.mockImplementation(async () => {
+                mocks.agenciesResult = {
+                    data: { data: [NORD, SUED, { ...OST, topics: [FAMILIE, SCHULDEN] }, WEST] },
+                    isLoading: false,
+                };
+            });
+            mocks.mutate.mockImplementationOnce((_payload, options) => options?.onError?.(new Error('500')));
+            const warning = vi.spyOn(message, 'warning');
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            await waitFor(() =>
+                expect(warning).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        content:
+                            'Thema bei Ost (10115 Berlin) ergänzt, Person nicht gespeichert. Es bleibt bei Ost (10115 Berlin).',
+                    }),
+                ),
+            );
+            await user.click(pageButton('Speichern'));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(2));
+            expect(mocks.mutate.mock.calls[1][0].topicsByAgency).toEqual([{ agencyId: 3, topicIds: [13, 12] }]);
+            expect(mocks.addTopicsToAgency).toHaveBeenCalledTimes(1);
+        });
+
+        it('cannot be closed while the topic is being added', async () => {
+            mocks.addTopicsToAgency.mockReturnValue(new Promise(() => {}));
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+            fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape', keyCode: 27 });
+
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+            expect(within(dialog).getByRole('button', { name: 'Thema weglassen' })).toBeDisabled();
+        });
+
+        it('"Neue Beratungsstelle anlegen" opens the agency create page without saving', async () => {
+            const user = setupUser();
+            const dialog = await moveNordToOst(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Neue Beratungsstelle anlegen' }));
+
+            expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/add');
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('pre-selects a held topic the new centre offers, names only the others, and saves it there', async () => {
+            // Süd offers Sucht among several topics, so its picker would otherwise start empty.
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '80331 Süd München');
+            await user.keyboard('{Escape}');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByRole('button', { name: 'Sucht' }),
+            ).toBeInTheDocument();
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog');
+            expect(dialog).toHaveTextContent('Süd (80331 München) bietet nicht an: Schulden.');
+            await user.click(within(dialog).getByRole('button', { name: 'Thema weglassen' }));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            expect(mocks.mutate.mock.calls[0][0].topicsByAgency).toEqual([{ agencyId: 2, topicIds: [11] }]);
+        });
+
+        it('does not pick again a topic the admin removed at the new centre before the move', async () => {
+            // West's only topic is pre-selected when West is added; the admin removes it there first.
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Beratungsstelle', '50667 West Köln');
+            await user.keyboard('{Escape}');
+            await removeChip(user, 'Schulden', fieldOf('Themen bei West (50667 Köln)'));
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+
+            expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 4, topicIds: [] }]);
+        });
+
+        it('neither carries nor names topics the admin removed at the old centre before the move', async () => {
+            editConsultant([NORD], { topicsByAgency: [{ agencyId: 1, topicIds: [11, 12] }] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, 'Schulden', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+            await chooseOption(user, 'Beratungsstelle', '80331 Süd München');
+            await user.keyboard('{Escape}');
+
+            // Süd offers Sucht, so it would be carried; it lacks Schulden, so the dialog would name it.
+            expect(fieldOf('Themen bei Süd (80331 München)').queryByRole('button', { name: 'Sucht' })).toBeNull();
+            expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 2, topicIds: [] }]);
+        });
+    });
+
+    describe('a save that stores one topic list for all centres', () => {
+        // An older UserService (no topicsByAgency in the GET) and every create keep only the union,
+        // valid at each centre that offers the topic.
+        const savedForAll = (topics: string) =>
+            `Gilt für alle Stellen gemeinsam, hier auch wählen oder überall entfernen: ${topics}.`;
+
+        it('refuses a topic removed at only one of two centres that offer it', async () => {
+            editConsultant([NORD, SUED], { topics: [SUCHT] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Süd (80331 München)'));
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByText(savedForAll('Sucht')),
+            ).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('saves a topic removed at every centre that offers it', async () => {
+            editConsultant([NORD, SUED], { topics: [SUCHT] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Nord (20095 Hamburg)'));
+            await removeChip(user, 'Sucht', fieldOf('Themen bei Süd (80331 München)'));
+
+            const payload = await submit(user);
+            expect(payload.topicIds).toEqual([]);
+            expect(payload).not.toHaveProperty('topicsByAgency');
+        });
+
+        it('refuses a topic picked at only one of two centres when creating a counsellor', async () => {
+            mocks.agenciesResult = { data: { data: [NORD, SUED] }, isLoading: false };
+            mocks.topicsResult = { data: [SUCHT, SCHULDEN, FAMILIE], isLoading: false };
+            const user = setupUser();
+            renderForm();
+            await fillMandatoryFields();
+            await chooseOption(user, 'Beratungsstelle', '20095 Nord Hamburg');
+            await user.click(await screen.findByRole('option', { name: '80331 Süd München' }));
+            await user.keyboard('{Escape}');
+            await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Sucht');
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await fieldOf('Themen bei Süd (80331 München)').findByText(savedForAll('Sucht')),
+            ).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('refuses before adding a lost topic to the new centre, so that centre stays unchanged', async () => {
+            // West offers Schulden, but the admin removed it there: adding it at Ost would store it at West again.
+            editConsultant([NORD, WEST], { topics: [SCHULDEN] });
+            const user = setupUser();
+            renderForm();
+            await unlock(user);
+            await removeChip(user, 'Schulden', fieldOf('Themen bei West (50667 Köln)'));
+            await chooseOption(user, 'Beratungsstelle', '10115 Ost Berlin');
+            await user.keyboard('{Escape}');
+            await removeChip(user, '20095 Nord Hamburg', fieldOf('Beratungsstelle'));
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog');
+            await user.click(within(dialog).getByRole('button', { name: 'Thema bei Ost (10115 Berlin) ergänzen' }));
+
+            expect(
+                await fieldOf('Themen bei West (50667 Köln)').findByText(savedForAll('Schulden')),
+            ).toBeInTheDocument();
+            expect(mocks.addTopicsToAgency).not.toHaveBeenCalled();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
     });
 });
 
@@ -680,16 +1344,17 @@ describe('topic assignment on edit (#1026)', () => {
     };
 
     it('submits no topicIds when the topic field was never shown', async () => {
-        // The tenant topic list came back empty, so the field stays hidden although the
-        // consultant holds topics; the save must leave them alone.
+        // No centre is assigned, so no topic picker shows although the consultant holds
+        // topics; the save must leave them alone.
         editConsultantWithTopics();
         const user = userEvent.setup();
         renderForm();
 
-        expect(screen.queryByLabelText('Themen')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/^Themen/)).not.toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
 
-        expect(await submit(user)).not.toHaveProperty('topicIds');
+        // null = keep the stored topics (editCounselorData sends it as-is).
+        expect((await submit(user)).topicIds).toBeNull();
     });
 
     it('submits the shown topics when the field was on screen', async () => {
@@ -698,10 +1363,10 @@ describe('topic assignment on edit (#1026)', () => {
         const user = userEvent.setup();
         renderForm();
 
-        expect(await screen.findByLabelText('Themen')).toBeInTheDocument();
+        expect(await screen.findByLabelText('Themen bei Nord (20095 Hamburg)')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
 
-        expect((await submit(user)).topicIds).toEqual([expect.objectContaining({ value: '11' })]);
+        expect((await submit(user)).topicIds).toEqual(['11']);
     });
 
     it('submits an emptied topic field as [], so a deliberate removal still reaches the backend', async () => {
@@ -710,9 +1375,9 @@ describe('topic assignment on edit (#1026)', () => {
         const user = userEvent.setup();
         renderForm();
 
-        await screen.findByLabelText('Themen');
+        await screen.findByLabelText('Themen bei Nord (20095 Hamburg)');
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
-        await user.click(screen.getByLabelText('Themen'));
+        await user.click(screen.getByLabelText('Themen bei Nord (20095 Hamburg)'));
         await user.keyboard('{Backspace}');
 
         expect((await submit(user)).topicIds).toEqual([]);
@@ -828,7 +1493,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * standing supervisor the admin never touched, on any unrelated edit.
      */
     it('never writes the field when the stored assignment could not be read', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant(undefined);
         renderForm();
 
@@ -836,7 +1501,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('clears the assignment when the admin empties the field', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
@@ -862,7 +1527,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * backend, so an unrelated edit could drop a supervisor nobody touched.
      */
     it('leaves the stored assignment alone when the admin does not touch the field', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
@@ -876,7 +1541,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * would look configured and supervise nothing.
      */
     it("offers only eligible supervisors from the edited consultant's own tenant", async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
         renderForm();
 
@@ -904,7 +1569,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * there is nobody to pick while the API was down — and could not tell the difference.
      */
     it('says the list could not be loaded, and locks the field, when the candidate query fails', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
         renderForm();
@@ -916,7 +1581,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('locks the field and says so when the stored assignment could not be read', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant(undefined);
         renderForm();
 
@@ -931,7 +1596,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * cannot select — so the short list must not be presented as if it were complete.
      */
     it('warns when there are more consultants than the candidate query reads', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         mocks.supervisorCandidatesResult = {
             ...mocks.supervisorCandidatesResult,
@@ -950,7 +1615,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * while the backend already holds something else.
      */
     it('picks up the stored assignment when the detail record arrives after mount', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
@@ -981,7 +1646,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * they save a value they did not choose.
      */
     it("keeps the admin's pick when a detail refetch brings a different value", async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
@@ -1008,7 +1673,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * and pick it straight back, storing an assignment that supervises nothing.
      */
     it('shows a stale stored supervisor but does not let it be picked again', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
         renderForm();
 
@@ -1024,7 +1689,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
      * what the field says — a truncation note would send them looking in the wrong place.
      */
     it('explains the locked field rather than the capped search when both apply', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant(undefined);
         mocks.supervisorCandidatesResult = {
             ...mocks.supervisorCandidatesResult,
@@ -1039,7 +1704,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     });
 
     it('writes the new supervisor when the admin picks one', async () => {
-        const user = setupUser();
+        const user = setupFastUser();
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
@@ -1147,7 +1812,7 @@ describe('existing consultant username validation', () => {
         mocks.counselorResult = { data: { ...existing, topics: [topic] }, isLoading: false };
         mocks.agenciesResult = { data: { data: [originalAgency, addedAgency] }, isLoading: false };
         mocks.topicsResult = { data: [topic], isLoading: false };
-        const user = setupUser();
+        const user = setupFastUser();
         renderForm();
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
@@ -1177,7 +1842,7 @@ describe('request ownership with the real account mutation (#1048)', () => {
                 }),
         );
         mocks.mutate.mockResolvedValue({ id: 'another-consultant' });
-        const user = setupUser();
+        const user = setupFastUser();
         const { rerender, unmount, queryClient } = renderForm();
         await fillMandatoryFields();
         await user.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -1248,7 +1913,7 @@ describe('picture deletion guards with independent list and detail records (#104
         mocks.params = { id: '42', typeOfUsers: 'consultants' };
         mocks.consultantsResult = { data: { data: [{ id: '42', ...list }] }, isLoading: false };
         mocks.counselorResult = { data: detail === undefined ? undefined : { id: '42', ...detail }, isLoading: false };
-        const user = setupUser();
+        const user = setupFastUser();
         const { unmount, queryClient } = renderForm();
         const choose = screen.getByRole('button', { name: 'counselor.picture.choose' });
         expect(choose).toBeDisabled();

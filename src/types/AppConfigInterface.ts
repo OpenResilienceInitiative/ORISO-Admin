@@ -5,6 +5,8 @@ export interface AppConfigInterface {
     enableTenantTheming?: boolean;
     /** Feature flag to enable walkthrough (false by default here & true in the theme repo) */
     enableWalkThrough?: boolean;
+    /** Exact public server key controlling counsellor tours in Help. */
+    enableWalkthrough?: boolean;
     /** Feature flag to enable Video-Termine page */
     disableVideoAppointments?: boolean;
     /** Feature flag to enable the multi tenancy with a single domain ex: lands */
