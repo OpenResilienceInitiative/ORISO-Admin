@@ -8,8 +8,6 @@
     "settings.closingAnimation.inherit.current": "Сейчас:",
     "settings.closingAnimation.design.CURTAIN": "Занавес",
     "settings.closingAnimation.design.CURTAIN.description": "Красный занавес закрывается над правой областью и снова открывается на поле сообщения.",
-    "settings.closingAnimation.design.CIRCLE_ZOOM": "Круговое увеличение",
-    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "Красная поверхность сжимается в круг на поле сообщения и исчезает.",
     "settings.closingAnimation.design.SLIDE_REVEAL": "Сдвиг вправо",
     "settings.closingAnimation.design.SLIDE_REVEAL.description": "Красная область целиком сдвигается вправо, за ней следует второй красный слой, и открывается чат.",
     "settings.closingAnimation.loadError": "Не удалось загрузить настройки. Попробуйте ещё раз."

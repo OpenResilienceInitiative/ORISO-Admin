@@ -30,12 +30,12 @@ describe('mapTenantDataToTenantAdminData', () => {
             ...baseTenantData(),
             theming: {
                 ...baseTenantData().theming,
-                closingAnimationDesktop: 'CIRCLE_ZOOM',
+                closingAnimationDesktop: 'SLIDE_REVEAL',
                 closingAnimationMobile: null,
             },
         });
 
-        expect(mapped.theming.closingAnimationDesktop).toBe('CIRCLE_ZOOM');
+        expect(mapped.theming.closingAnimationDesktop).toBe('SLIDE_REVEAL');
         expect(mapped.theming.closingAnimationMobile).toBeNull();
     });
 

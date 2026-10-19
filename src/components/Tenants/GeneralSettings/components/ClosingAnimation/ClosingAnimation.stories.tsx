@@ -10,7 +10,7 @@ import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../ap
 
 const storageKey = 'storybook:closing-animation-1737';
 /** What the platform tenant has chosen: a tenant that stores nothing inherits exactly this. */
-const platform = { closingAnimationDesktop: 'SLIDE_REVEAL', closingAnimationMobile: 'CIRCLE_ZOOM' };
+const platform = { closingAnimationDesktop: 'SLIDE_REVEAL', closingAnimationMobile: 'CURTAIN' };
 const baseTenant = {
     id: 1,
     name: 'Example organisation',
@@ -60,9 +60,9 @@ const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
 
 /**
  * The administrator's closing-animation choice: one design for desktop and one for mobile, each
- * "Platform default" or one of three designs. The mock answers like TenantService: the admin read
+ * "Platform default" or one of two designs. The mock answers like TenantService: the admin read
  * returns only what the tenant stored, the public read adds the platform tenant's value
- * (desktop Slide reveal, mobile Circle zoom). Check it at Phone 390 and Desktop 1440.
+ * (desktop Slide reveal, mobile Curtain). Check it at Phone 390 and Desktop 1440.
  */
 const meta = {
     title: 'Organisms/Tenants/ClosingAnimation',
@@ -95,7 +95,6 @@ const DESKTOP = /Desktop/i;
 const MOBILE = /Mobile|Mobil/i;
 const PLATFORM_DEFAULT = /Platform default|Plattform-Standard/i;
 const CURTAIN = /^(Curtain|Vorhang)$/i;
-const CIRCLE_ZOOM = /^(Circle zoom|Kreiszoom)$/i;
 const SLIDE_REVEAL = /^(Slide reveal|Wegschieben)$/i;
 /** Re-reads the group on every try, because the card remounts when the saved tenant arrives. */
 const checkedIn = (canvas: ReturnType<typeof within>, device: RegExp, name: RegExp) =>
@@ -115,10 +114,10 @@ export const InheritsPlatformValue: Story = {
             ),
         );
         await expect(mobile.getByRole('radio', { name: PLATFORM_DEFAULT })).toHaveAccessibleDescription(
-            /Circle zoom|Kreiszoom/,
+            /Curtain|Vorhang/,
         );
         // The card is a read-only view until the pencil is pressed.
-        await expect(canvas.getAllByRole('radio')).toHaveLength(8);
+        await expect(canvas.getAllByRole('radio')).toHaveLength(6);
         await expect(desktop.getByRole('radio', { name: CURTAIN })).toBeDisabled();
     },
 };
@@ -128,20 +127,20 @@ export const SaveAndReload: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: /Edit|Bearbeiten/i }));
-        // Desktop by keyboard only: Platform default -> Curtain -> Circle zoom.
+        // Desktop by keyboard only: Platform default -> Curtain -> Slide reveal.
         const desktop = await groupOf(canvas, DESKTOP);
         desktop.getByRole('radio', { name: PLATFORM_DEFAULT }).focus();
         await userEvent.keyboard('{ArrowDown}{ArrowDown}');
-        await expect(desktop.getByRole('radio', { name: CIRCLE_ZOOM })).toBeChecked();
+        await expect(desktop.getByRole('radio', { name: SLIDE_REVEAL })).toBeChecked();
         // Mobile by pointer.
         const mobile = await groupOf(canvas, MOBILE);
-        await userEvent.click(mobile.getByRole('radio', { name: SLIDE_REVEAL }));
+        await userEvent.click(mobile.getByRole('radio', { name: CURTAIN }));
         await userEvent.click(canvas.getByRole('button', { name: /Save|Speichern/i }));
-        await waitFor(() => expect(stored().theming.closingAnimationDesktop).toBe('CIRCLE_ZOOM'));
-        expect(stored().theming.closingAnimationMobile).toBe('SLIDE_REVEAL');
+        await waitFor(() => expect(stored().theming.closingAnimationDesktop).toBe('SLIDE_REVEAL'));
+        expect(stored().theming.closingAnimationMobile).toBe('CURTAIN');
         // After the save the card shows what is stored.
-        await checkedIn(canvas, DESKTOP, CIRCLE_ZOOM);
-        await checkedIn(canvas, MOBILE, SLIDE_REVEAL);
+        await checkedIn(canvas, DESKTOP, SLIDE_REVEAL);
+        await checkedIn(canvas, MOBILE, CURTAIN);
     },
 };
 
@@ -166,10 +165,10 @@ export const BackToPlatformDefault: Story = {
 /** A tenant admin without the Appearance permission sees the choice but cannot change it. */
 export const ReadOnly: Story = {
     args: { readOnly: true },
-    beforeEach: own({ closingAnimationDesktop: 'CIRCLE_ZOOM' }),
+    beforeEach: own({ closingAnimationDesktop: 'SLIDE_REVEAL' }),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await checkedIn(canvas, DESKTOP, CIRCLE_ZOOM);
+        await checkedIn(canvas, DESKTOP, SLIDE_REVEAL);
         await expect(canvas.queryByRole('button', { name: /Edit|Bearbeiten/i })).toBeNull();
         canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
     },

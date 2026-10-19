@@ -134,21 +134,6 @@ $red-rear: color-mix(in srgb, #{$red} 68%, #000000);
     }
 }
 
-// Circle zoom: the red surface has shrunk to a circle on the message field.
-.preview[data-design='CIRCLE_ZOOM'] {
-    .layerA {
-        bottom: -2px;
-        left: 50%;
-        display: block;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: $red;
-        box-shadow: 0 0 0 5px color-mix(in srgb, #{$red} 26%, transparent);
-        transform: translateX(-50%);
-    }
-}
-
 // Slide reveal: the front red area leads to the right, a second darker layer follows behind it.
 .preview[data-design='SLIDE_REVEAL'] {
     .layerA,

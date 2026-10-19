@@ -8,8 +8,6 @@
     "settings.closingAnimation.inherit.current": "Actuellement :",
     "settings.closingAnimation.design.CURTAIN": "Rideau",
     "settings.closingAnimation.design.CURTAIN.description": "Un rideau rouge se referme sur la zone de droite, puis s’ouvre de nouveau sur le champ de message.",
-    "settings.closingAnimation.design.CIRCLE_ZOOM": "Zoom circulaire",
-    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "La surface rouge se referme en un cercle sur le champ de message, puis s’efface.",
     "settings.closingAnimation.design.SLIDE_REVEAL": "Glissement latéral",
     "settings.closingAnimation.design.SLIDE_REVEAL.description": "La zone rouge glisse vers la droite d’un seul bloc, une seconde couche rouge la suit et le chat est dévoilé.",
     "settings.closingAnimation.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer."

@@ -152,12 +152,12 @@ describe('closing animation updates', () => {
     it('writes a chosen design for one device and leaves the other device as stored', () => {
         const current = baseTenantAdminData();
         current.theming.closingAnimationDesktop = 'CURTAIN';
-        current.theming.closingAnimationMobile = 'SLIDE_REVEAL';
+        current.theming.closingAnimationMobile = 'CURTAIN';
         const saved = JSON.parse(
-            serializeTenantAdminDataUpdate(current, { theming: { closingAnimationDesktop: 'CIRCLE_ZOOM' } }),
+            serializeTenantAdminDataUpdate(current, { theming: { closingAnimationDesktop: 'SLIDE_REVEAL' } }),
         );
-        expect(saved.theming.closingAnimationDesktop).toBe('CIRCLE_ZOOM');
-        expect(saved.theming.closingAnimationMobile).toBe('SLIDE_REVEAL');
+        expect(saved.theming.closingAnimationDesktop).toBe('SLIDE_REVEAL');
+        expect(saved.theming.closingAnimationMobile).toBe('CURTAIN');
     });
     it('keeps an explicit null in the full PUT, so the platform value is inherited again', () => {
         const current = baseTenantAdminData();

@@ -8,8 +8,6 @@
     "settings.closingAnimation.inherit.current": "ሕጂ፦",
     "settings.closingAnimation.design.CURTAIN": "መጋረጃ",
     "settings.closingAnimation.design.CURTAIN.description": "ቀይሕ መጋረጃ ኣብ የማናይ ክፋል ይዕጸው፣ ድሕሪኡ ድማ ናብ ቦታ መልእኽቲ ከም ብሓድሽ ይኽፈት።",
-    "settings.closingAnimation.design.CIRCLE_ZOOM": "ክቢ ዙም",
-    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "ቀይሕ ገጽ ኣብ ቦታ መልእኽቲ ናብ ክቢ ይዕጸውን ይጠፍእን።",
     "settings.closingAnimation.design.SLIDE_REVEAL": "ምስሓብ ናብ የማን",
     "settings.closingAnimation.design.SLIDE_REVEAL.description": "ቀይሕ ክፋል ከም ሓደ ቁራጽ ናብ የማን ይሰሓብ፣ ካልኣይ ቀይሕ ደረጃ ይስዕቦ፣ ዝርርብ ድማ ይግለጽ።",
     "settings.closingAnimation.loadError": "ቅጥዕታት ክጽዓኑ ኣይከኣሉን። በጃኹም እንደገና ፈትኑ።"

@@ -8,8 +8,6 @@
     "settings.closingAnimation.inherit.current": "Aktuell:",
     "settings.closingAnimation.design.CURTAIN": "Vorhang",
     "settings.closingAnimation.design.CURTAIN.description": "Ein roter Vorhang schließt sich über dem rechten Bereich und öffnet sich wieder zum Nachrichtenfeld.",
-    "settings.closingAnimation.design.CIRCLE_ZOOM": "Kreiszoom",
-    "settings.closingAnimation.design.CIRCLE_ZOOM.description": "Die rote Fläche zieht sich auf dem Nachrichtenfeld zu einem Kreis zusammen und blendet aus.",
     "settings.closingAnimation.design.SLIDE_REVEAL": "Wegschieben",
     "settings.closingAnimation.design.SLIDE_REVEAL.description": "Die rote Fläche schiebt sich als Ganzes nach rechts weg, eine zweite rote Ebene folgt, und der Chat wird freigegeben.",
     "settings.closingAnimation.loadError": "Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut."

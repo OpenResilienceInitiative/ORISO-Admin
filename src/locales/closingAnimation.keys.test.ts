@@ -9,7 +9,7 @@ const loadLocale = async (language: string) =>
 const expectedKeys = Object.keys(en).sort();
 
 describe('closing animation wording', () => {
-    it('defines the card title, the two device groups, the platform default and all three designs', () => {
+    it('defines the card title, the two device groups, the platform default and both designs', () => {
         expect(expectedKeys).toEqual(
             [
                 'settings.closingAnimation.title',
@@ -21,8 +21,6 @@ describe('closing animation wording', () => {
                 'settings.closingAnimation.inherit.current',
                 'settings.closingAnimation.design.CURTAIN',
                 'settings.closingAnimation.design.CURTAIN.description',
-                'settings.closingAnimation.design.CIRCLE_ZOOM',
-                'settings.closingAnimation.design.CIRCLE_ZOOM.description',
                 'settings.closingAnimation.design.SLIDE_REVEAL',
                 'settings.closingAnimation.design.SLIDE_REVEAL.description',
                 'settings.closingAnimation.loadError',
@@ -49,7 +47,6 @@ describe('closing animation wording', () => {
 
     it('registers the English source strings', async () => {
         await i18n.changeLanguage('en');
-        expect(i18n.t('settings.closingAnimation.design.CIRCLE_ZOOM')).toBe('Circle zoom');
         expect(i18n.t('settings.closingAnimation.design.SLIDE_REVEAL')).toBe('Slide reveal');
         expect(i18n.t('settings.closingAnimation.design.CURTAIN')).toBe('Curtain');
     });

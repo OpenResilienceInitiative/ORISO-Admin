@@ -59,23 +59,21 @@ const inheritedAs = (desktop: Choice, mobile: Choice, id = 1) => {
 };
 
 describe('closing animation Appearance card', () => {
-    it('offers one choice for desktop and one for mobile: the platform default plus the three designs', () => {
+    it('offers one choice for desktop and one for mobile: the platform default plus the two designs', () => {
         render(<ClosingAnimation tenantId="1" />);
         expect(screen.getAllByRole('radiogroup')).toHaveLength(2);
         (['desktop', 'mobile'] as const).forEach((device) => {
             const radios = within(group(device)).getAllByRole('radio') as HTMLInputElement[];
-            expect(radios.map((radio) => radio.value)).toEqual(['', 'CURTAIN', 'CIRCLE_ZOOM', 'SLIDE_REVEAL']);
-            expect(
-                ['inherit', 'design.CURTAIN', 'design.CIRCLE_ZOOM', 'design.SLIDE_REVEAL'].map((label) =>
-                    choice(device, label),
-                ),
-            ).toEqual(radios);
+            expect(radios.map((radio) => radio.value)).toEqual(['', 'CURTAIN', 'SLIDE_REVEAL']);
+            expect(['inherit', 'design.CURTAIN', 'design.SLIDE_REVEAL'].map((label) => choice(device, label))).toEqual(
+                radios,
+            );
         });
     });
 
     it('describes every design in words, so the choice does not rest on a picture alone', () => {
         render(<ClosingAnimation tenantId="1" />);
-        (['CURTAIN', 'CIRCLE_ZOOM', 'SLIDE_REVEAL'] as const).forEach((design) => {
+        (['CURTAIN', 'SLIDE_REVEAL'] as const).forEach((design) => {
             expect(choice('desktop', `design.${design}`)).toHaveAccessibleDescription(
                 key(`design.${design}.description`),
             );
@@ -85,7 +83,7 @@ describe('closing animation Appearance card', () => {
     it('exposes nothing but the two choices: no toggle, text field, duration or colour', () => {
         const { container } = render(<ClosingAnimation tenantId="1" />);
         edit();
-        expect(screen.getAllByRole('radio')).toHaveLength(8);
+        expect(screen.getAllByRole('radio')).toHaveLength(6);
         ['checkbox', 'switch', 'textbox', 'spinbutton', 'slider', 'combobox'].forEach((role) => {
             expect(screen.queryAllByRole(role)).toEqual([]);
         });
@@ -93,10 +91,10 @@ describe('closing animation Appearance card', () => {
     });
 
     it('selects what the tenant stored for each device', () => {
-        fixtures.own = { closingAnimationDesktop: 'SLIDE_REVEAL', closingAnimationMobile: 'CIRCLE_ZOOM' };
+        fixtures.own = { closingAnimationDesktop: 'SLIDE_REVEAL', closingAnimationMobile: 'CURTAIN' };
         render(<ClosingAnimation tenantId="1" />);
         expect(choice('desktop', 'design.SLIDE_REVEAL')).toBeChecked();
-        expect(choice('mobile', 'design.CIRCLE_ZOOM')).toBeChecked();
+        expect(choice('mobile', 'design.CURTAIN')).toBeChecked();
         expect(choice('desktop', 'inherit')).not.toBeChecked();
         expect(choice('mobile', 'inherit')).not.toBeChecked();
     });
@@ -108,24 +106,32 @@ describe('closing animation Appearance card', () => {
         expect(choice('mobile', 'inherit')).toBeChecked();
     });
 
+    it('reads a stored design that no longer exists (circle zoom) as the platform default', () => {
+        fixtures.own = { closingAnimationDesktop: 'CIRCLE_ZOOM', closingAnimationMobile: 'CIRCLE_ZOOM' };
+        render(<ClosingAnimation tenantId="1" />);
+        (['desktop', 'mobile'] as const).forEach((device) => {
+            expect(choice(device, 'inherit')).toBeChecked();
+        });
+    });
+
     it('shows the design the platform tenant has chosen, per device, next to the platform default', () => {
-        inheritedAs('CIRCLE_ZOOM', 'SLIDE_REVEAL');
+        inheritedAs('SLIDE_REVEAL', 'CURTAIN');
         render(<ClosingAnimation tenantId="1" />);
         expect(choice('desktop', 'inherit')).toHaveAccessibleDescription(
-            `${key('inherit.description')} ${key('inherit.current')} ${key('design.CIRCLE_ZOOM')}`,
+            `${key('inherit.description')} ${key('inherit.current')} ${key('design.SLIDE_REVEAL')}`,
         );
         expect(choice('mobile', 'inherit')).toHaveAccessibleDescription(
-            `${key('inherit.description')} ${key('inherit.current')} ${key('design.SLIDE_REVEAL')}`,
+            `${key('inherit.description')} ${key('inherit.current')} ${key('design.CURTAIN')}`,
         );
     });
 
     it('never presents the tenant’s own design as the platform’s: the effective read already contains it', () => {
-        fixtures.own = { closingAnimationDesktop: 'SLIDE_REVEAL' };
-        inheritedAs('SLIDE_REVEAL', 'CIRCLE_ZOOM');
+        fixtures.own = { closingAnimationDesktop: 'CURTAIN' };
+        inheritedAs('CURTAIN', 'SLIDE_REVEAL');
         render(<ClosingAnimation tenantId="1" />);
         expect(choice('desktop', 'inherit')).toHaveAccessibleDescription(key('inherit.description'));
         expect(choice('mobile', 'inherit')).toHaveAccessibleDescription(
-            expect.stringContaining(key('design.CIRCLE_ZOOM')),
+            expect.stringContaining(key('design.SLIDE_REVEAL')),
         );
     });
 
@@ -150,10 +156,10 @@ describe('closing animation Appearance card', () => {
     it('sends only the chosen field, so the other device and the rest of the tenant stay untouched', async () => {
         render(<ClosingAnimation tenantId="1" />);
         edit();
-        fireEvent.click(choice('desktop', 'design.CIRCLE_ZOOM'));
+        fireEvent.click(choice('desktop', 'design.SLIDE_REVEAL'));
         saveChanges();
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-        expect(save.mock.calls[0][0]).toEqual({ theming: { closingAnimationDesktop: 'CIRCLE_ZOOM' } });
+        expect(save.mock.calls[0][0]).toEqual({ theming: { closingAnimationDesktop: 'SLIDE_REVEAL' } });
     });
 
     it('sends both fields when both devices change', async () => {
@@ -169,7 +175,7 @@ describe('closing animation Appearance card', () => {
     });
 
     it('sends null when the administrator goes back to the platform default', async () => {
-        fixtures.own = { closingAnimationDesktop: 'CURTAIN', closingAnimationMobile: 'CIRCLE_ZOOM' };
+        fixtures.own = { closingAnimationDesktop: 'CURTAIN', closingAnimationMobile: 'SLIDE_REVEAL' };
         render(<ClosingAnimation tenantId="1" />);
         edit();
         fireEvent.click(choice('desktop', 'inherit'));
@@ -209,7 +215,7 @@ describe('closing animation Appearance card', () => {
     it('keeps a restricted Appearance card read-only: no edit button, both groups disabled', () => {
         render(<ClosingAnimation tenantId="1" readOnly />);
         expect(screen.queryByRole('button', { name: 'edit' })).toBeNull();
-        expect(screen.getAllByRole('radio')).toHaveLength(8);
+        expect(screen.getAllByRole('radio')).toHaveLength(6);
         expect(screen.getAllByRole('radio').every((radio) => (radio as HTMLInputElement).disabled)).toBe(true);
     });
 
