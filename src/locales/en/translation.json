@@ -1,4 +1,6 @@
 {
+    "page.tabs.previous": "Scroll tabs left",
+    "page.tabs.next": "Scroll tabs right",
     "accountSetup.title": "Set the password for your existing account",
     "accountSetup.passwordTitle": "Your personal password",
     "accountSetup.description": "Your account has already been created. Choose your own password. Your existing account, role and assignments remain unchanged.",

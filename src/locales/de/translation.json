@@ -1,4 +1,6 @@
 {
+    "page.tabs.previous": "Tabs nach links scrollen",
+    "page.tabs.next": "Tabs nach rechts scrollen",
     "accountSetup.title": "Passwort für Ihr bestehendes Konto festlegen",
     "accountSetup.passwordTitle": "Ihr persönliches Passwort",
     "accountSetup.description": "Ihr Konto wurde bereits angelegt. Wählen Sie Ihr eigenes Passwort. Ihr bestehendes Konto, Ihre Rolle und Ihre Zuordnungen bleiben erhalten.",
