@@ -110,10 +110,16 @@ it.each([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])(
         const user = userEvent.setup();
         const requestLink = async (expected: number) => {
             await user.click(await screen.findByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') }));
-            await user.click(await screen.findByRole('button', { name: i18n.t('dpaForward.dialog.linkCreate') }));
+            const dialog = await screen.findByRole('dialog', {
+                name: `${i18n.t('dpaForward.dialog.title')} ${i18n.t('dpaForward.dialog.description')}`,
+            });
+            await waitFor(() => expect(dialog).toBeVisible());
+            await user.click(
+                await within(dialog).findByRole('button', { name: i18n.t('dpaForward.dialog.linkCreate') }),
+            );
             const field = await screen.findByDisplayValue(`https://example.org/dpa?token=invite-${expected}`);
             await waitFor(() => expect(field).toBeVisible());
-            await user.click(screen.getByRole('button', { name: i18n.t('dpaForward.dialog.confirm') }));
+            await user.click(within(dialog).getByRole('button', { name: i18n.t('dpaForward.dialog.confirm') }));
         };
         await screen.findByText('Current contract');
         expect(await screen.findByText(i18n.t('legal.dpa.deadline.blockedRenewal'))).toBeVisible();
@@ -133,6 +139,8 @@ it.each([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])(
         await screen.findByText('Renewed contract');
         await requestLink(3);
     },
+    // Four full link dialogs plus a reload: on the shared CI runner this hits the global 30 s limit.
+    90_000,
 );
 afterEach(() => {
     server.resetHandlers();

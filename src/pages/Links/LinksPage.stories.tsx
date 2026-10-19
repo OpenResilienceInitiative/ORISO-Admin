@@ -173,7 +173,13 @@ export const AgencyAdminSeveralAgencies: Story = {
         const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ });
         await expect(agency).toBeEnabled();
         await userEvent.click(agency);
-        await expect(await body.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ })).toBeVisible();
+        const choice = await body.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ });
+        // The real menu enters from opacity zero; presence precedes visibility.
+        await waitFor(() => expect(choice).toBeVisible());
         await expect(body.queryByRole('option', { name: /Neu anlegen|Create new/ })).toBeNull();
+        await userEvent.click(choice);
+        await waitFor(() => expect(agency).toHaveValue('Caritas Schuldnerberatung Freiburg · 102'));
+        await expect(agency).toHaveAttribute('aria-expanded', 'false');
+        await expect(body.queryByRole('listbox', { name: /^(Beratungsstelle|Agency)$/ })).toBeNull();
     },
 };

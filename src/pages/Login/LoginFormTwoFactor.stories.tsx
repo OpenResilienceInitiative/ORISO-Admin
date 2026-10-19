@@ -144,3 +144,35 @@ export const TooManyCodesRequested: Story = {
         );
     },
 };
+
+/**
+ * ORISO-Frontend#1670: an account created with an admin-chosen password still
+ * carries Keycloak's `UPDATE_PASSWORD` required action. The password grant
+ * answers 400 "Account is not fully set up" — the password was right, so the
+ * form points to the invitation link or a password reset instead of the
+ * credentials hint.
+ */
+export const SetupIncomplete: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.post(TOKEN_ENDPOINT, () =>
+                    HttpResponse.json(
+                        { error: 'invalid_grant', error_description: 'Account is not fully set up' },
+                        { status: 400 },
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async (context) => {
+        const canvas = await reachTheCodeStep(context);
+
+        await waitFor(() =>
+            expect(canvas.getByTestId('login-setup-incomplete-hint')).toHaveTextContent(
+                'Ihr Konto ist noch nicht vollständig eingerichtet.',
+            ),
+        );
+        await expect(canvas.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+    },
+};
