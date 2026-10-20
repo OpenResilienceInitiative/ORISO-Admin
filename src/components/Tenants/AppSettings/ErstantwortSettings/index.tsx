@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../../M3Button';
@@ -51,7 +51,7 @@ const readStoredDeadline = (content: TenantAdminData['content'] | undefined): nu
  * with their `<lang>__meta` markers, and the complete content is written with the tenant PUT.
  * Translation is optional; a failure publishes nothing unless the Träger skips it.
  */
-export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSettingsProps) => {
+const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSettingsProps) => {
     const { t } = useTranslation();
     const { data, isLoading, isError } = useSingleTenantData({ id: tenantId });
     const { mutateAsync: saveTenant, isPending: isSaving } = useTenantAdminDataMutation({
@@ -87,15 +87,13 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     const [modalOpen, setModalOpen] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Tenant navigation must not carry another tenant's draft or retry payload.
-        setEdits({});
-        setDeadlineEdit(null);
-        setPublishError(false);
-        setTranslatedRetry(null);
-        setModalOpen(false);
-        setModalErrorKey(null);
-    }, [tenantId]);
+    useLayoutEffect(
+        () => () => {
+            // A tenant-scoped instance cannot complete work after navigation unmounts it.
+            scopeRef.current.generation += 1;
+        },
+        [],
+    );
 
     const content = useMemo<ErstantwortContentMap>(() => {
         const merged: ErstantwortContentMap = { ...storedContent };
@@ -264,3 +262,8 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
         </>
     );
 };
+
+/** The key gives every caller an atomic tenant boundary, including cached navigation. */
+export const ErstantwortSettings = (props: ErstantwortSettingsProps) => (
+    <TenantErstantwortSettings key={props.tenantId} {...props} />
+);

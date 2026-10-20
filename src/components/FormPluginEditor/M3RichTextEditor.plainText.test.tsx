@@ -68,4 +68,29 @@ describe('M3RichTextEditor plainText mode', () => {
         expect(box.querySelector('h1')).toBeNull();
         expect(onChange).not.toHaveBeenCalled();
     });
+    it('normalizes stored hard breaks into the paragraph-only plain-text schema', async () => {
+        render(<M3RichTextEditor title="Erstantwort" plainText value="<p>Line one<br>Line two</p>" />);
+        const box = await screen.findByRole('textbox', { name: /Erstantwort/ });
+        expect(box.querySelector('br')).toBeNull();
+        expect(box.innerHTML).toBe('<p>Line one</p><p>Line two</p>');
+        expect(box).toHaveTextContent('Line one');
+        expect(box).toHaveTextContent('Line two');
+    });
+
+    it.each([{ shiftKey: true }, { ctrlKey: true }, { metaKey: true }])(
+        'writes paragraph breaks instead of br with modified Enter (%j)',
+        async (modifiers) => {
+            const onChange = vi.fn();
+            render(<M3RichTextEditor title="Erstantwort" plainText value="<p>Line one</p>" onChange={onChange} />);
+            const box = await screen.findByRole('textbox', { name: /Erstantwort/ });
+            const { editor } = box as HTMLElement & { editor: Editor };
+            act(() => {
+                editor.commands.setTextSelection(9);
+            });
+            onChange.mockClear();
+            fireEvent.keyDown(box, { key: 'Enter', ...modifiers });
+            await waitFor(() => expect(onChange).toHaveBeenCalled());
+            expect(onChange).toHaveBeenLastCalledWith('<p>Line one</p><p></p>');
+        },
+    );
 });

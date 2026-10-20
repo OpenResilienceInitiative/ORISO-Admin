@@ -2,10 +2,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslationApiError } from '../../../../api/tenant/translation';
 
-const { useSingleTenantData, mutateAsync, translate } = vi.hoisted(() => ({
+const { useSingleTenantData, mutateAsync, translate, editorRender } = vi.hoisted(() => ({
     useSingleTenantData: vi.fn(),
     mutateAsync: vi.fn(),
     translate: vi.fn(),
+    editorRender: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -28,17 +29,20 @@ vi.mock('../../../../hooks/useTranslateLegalContent.hook', () => ({
 /* Same stand-in as the card test: the rich-text editor is not what this container is
    about. The stub keeps the value, the change and the read-only state observable. */
 vi.mock('../../../FormPluginEditor/M3RichTextEditor', () => ({
-    M3RichTextEditor: ({ title, value, onChange, readOnly }: any) => (
-        <div>
-            <label htmlFor={`ed-${title}`}>{title}</label>
-            <textarea
-                id={`ed-${title}`}
-                value={value ?? ''}
-                disabled={readOnly}
-                onChange={(e) => onChange?.(e.target.value)}
-            />
-        </div>
-    ),
+    M3RichTextEditor: ({ title, value, onChange, readOnly }: any) => {
+        editorRender({ title, value });
+        return (
+            <div>
+                <label htmlFor={`ed-${title}`}>{title}</label>
+                <textarea
+                    id={`ed-${title}`}
+                    value={value ?? ''}
+                    disabled={readOnly}
+                    onChange={(e) => onChange?.(e.target.value)}
+                />
+            </div>
+        );
+    },
 }));
 
 // eslint-disable-next-line import/first
@@ -71,6 +75,7 @@ const publishButton = () => screen.getByRole('button', { name: 'tenants.erstantw
 beforeEach(() => {
     mutateAsync.mockReset().mockResolvedValue({});
     translate.mockReset();
+    editorRender.mockReset();
     useSingleTenantData.mockReset().mockReturnValue(tenantWith(['de']));
 });
 
@@ -413,5 +418,21 @@ describe('ErstantwortSettings', () => {
         await waitFor(() =>
             expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue('<p>Tenant B draft</p>'),
         );
+    });
+    it('never renders another tenant draft when navigating to a cached tenant', () => {
+        useSingleTenantData.mockImplementation(({ id }) =>
+            tenantWith(['de'], {
+                erstantwortGreeting: { de: `<p>Stored tenant ${id}</p>` },
+            }),
+        );
+        const view = renderSettings();
+        typeIntoGreeting('<p>Private draft for tenant A</p>');
+        editorRender.mockClear();
+        view.rerender(<ErstantwortSettings tenantId="8" />);
+        const greetings = editorRender.mock.calls
+            .map(([props]) => props)
+            .filter(({ title }) => title === 'tenants.erstantwort.greeting.label');
+        expect(greetings.length).toBeGreaterThan(0);
+        expect(greetings.every(({ value }) => value === '<p>Stored tenant 8</p>')).toBe(true);
     });
 });

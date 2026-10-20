@@ -324,9 +324,30 @@ const plainTextEditorHandlers = (getEditor: () => Editor | null) => ({
             .run();
         return true;
     },
-    handleKeyDown: (_view: unknown, event: KeyboardEvent) =>
-        (event.metaKey || event.ctrlKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase()),
+    handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+        if (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+            return getEditor()?.chain().focus().splitBlock().run() ?? false;
+        }
+        return (event.metaKey || event.ctrlKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase());
+    },
 });
+
+/** Preserve existing line separation when a plain-text value predates the paragraph-only schema. */
+const normalizePlainTextBreaks = (html: string): string => {
+    if (!/<br\b/i.test(html)) return html;
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    document.body.querySelectorAll('p').forEach((paragraph) => {
+        if (!paragraph.querySelector('br')) return;
+        paragraph.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
+        const lines = (paragraph.textContent ?? '').split('\n').map((line) => {
+            const replacement = document.createElement('p');
+            replacement.textContent = line;
+            return replacement;
+        });
+        paragraph.replaceWith(...lines);
+    });
+    return document.body.innerHTML;
+};
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
@@ -965,10 +986,10 @@ export const M3RichTextEditor = ({
     // Published before chapter navigation existed, many legal documents have
     // headings without ids. Editing may persist ids on change; a reader must
     // stay non-mutating, so stamp them only into the display copy.
-    const editorContent = useMemo(
-        () => (!editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(displayedContent) : displayedContent),
-        [anchorsEnabled, displayedContent, editorEditable],
-    );
+    const editorContent = useMemo(() => {
+        const content = plainText ? normalizePlainTextBreaks(displayedContent ?? '') : displayedContent;
+        return !editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(content) : content;
+    }, [anchorsEnabled, displayedContent, editorEditable, plainText]);
 
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
@@ -1007,6 +1028,7 @@ export const M3RichTextEditor = ({
                       listItem: false,
                       blockquote: false,
                       horizontalRule: false,
+                      hardBreak: false,
                   }),
                   Placeholder.configure({ placeholder }),
               ]

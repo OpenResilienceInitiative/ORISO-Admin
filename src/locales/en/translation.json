@@ -2312,7 +2312,7 @@
     "tenants.erstantwort.emergencyAddition.label": "Addition to the emergency numbers",
     "tenants.erstantwort.emergencyAddition.help": "Added to the platform emergency numbers.",
     "tenants.erstantwort.freeNotice.label": "Free notice",
-    "tenants.erstantwort.freeNotice.help": "Optional, one free note.",
+    "tenants.erstantwort.freeNotice.help": "Optional free-text note.",
     "tenants.erstantwort.closing.label": "Closing",
     "tenants.erstantwort.closing.help": "Empty = platform text.",
     "tenants.erstantwort.mandatoryChip": "Required",
