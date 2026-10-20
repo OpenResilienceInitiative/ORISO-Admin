@@ -100,3 +100,5 @@ text may be changed. They do not relax the delivery rules above.
     which ticket survives. A ticket that came back from Caritas — raised by
     `BjoernLudwig` or `HelenaSKloeckner` — is the one that stays open. Close the
     agent-created duplicate against it and link the survivor.
+
+For Matt Pocock engineering workflows, read the `Agent skills` section in `CLAUDE.md`.

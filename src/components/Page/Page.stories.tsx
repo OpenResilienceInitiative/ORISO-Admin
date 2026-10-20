@@ -114,3 +114,26 @@ export const WithTabs: Story = {
         </Page>
     ),
 };
+
+/** Issue #193: the header must reveal the final tab even without a card deck. */
+export const OverflowingSettingsTabs: Story = {
+    render: () => (
+        <Page>
+            <Page.Title
+                tabs={[
+                    {
+                        to: '/admin/theme-settings/global-config',
+                        titleKey: 'Global Configs',
+                        iconName: 'global_config',
+                    },
+                    { to: '/admin/theme-settings/master-data', titleKey: 'Master Data', iconName: 'master_data' },
+                    { to: '/admin/theme-settings/general', titleKey: 'Appearance', iconName: 'appearance' },
+                    { to: '/admin/theme-settings/legal', titleKey: 'Legal', iconName: 'legal' },
+                    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
+                    { to: '/admin/theme-settings/notices', titleKey: 'System notices' },
+                ]}
+            />
+            <SampleContent />
+        </Page>
+    ),
+};

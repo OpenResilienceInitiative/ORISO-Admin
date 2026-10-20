@@ -481,6 +481,10 @@ export const UserEditOrAdd = () => {
             notifyError: (content) => message.error({ content, duration: 8 }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
+            onAccountCreatedWithoutMail: (content) => {
+                message.warning({ content, duration: 10 });
+                navigate(`/admin/users/${typeOfUsers}`);
+            },
         }),
     });
 
@@ -649,8 +653,9 @@ export const UserEditOrAdd = () => {
             excluded.add('adminRemarks');
         }
         // Credentials are set once, at creation, and only for account types that
-        // have a login. Afterwards they are changed through the reset flow.
-        if (isEditing || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        // have a login. Afterwards they are changed through the reset flow. A new
+        // counsellor chooses their own password through the setup e-mail (#1144).
+        if (isEditing || typeOfUsers !== TypeOfUser.AgencyAdmins) {
             excluded.add('password');
         }
 
@@ -780,6 +785,7 @@ export const UserEditOrAdd = () => {
                                     disabled={isReadOnly}
                                     // The username IS the Keycloak identity; it cannot move once issued.
                                     usernameLocked={isEditing}
+                                    setupEmailHint={!isEditing && typeOfUsers === TypeOfUser.Consultants}
                                 />
                             </Card>
                         </Col>
