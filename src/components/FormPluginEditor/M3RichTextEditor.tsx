@@ -297,6 +297,13 @@ export type M3RichTextEditorProps = {
 
 /** Plain-text mode: paste as text (blank-line-free paragraphs), no formatting shortcuts. */
 const plainTextEditorHandlers = (getEditor: () => Editor | null) => ({
+    // Dropping rich content is deliberately rejected; normal paste inserts text.
+    handleDOMEvents: {
+        drop: (_view: unknown, event: DragEvent) => {
+            event.preventDefault();
+            return true;
+        },
+    },
     handlePaste: (_view: unknown, event: ClipboardEvent) => {
         const text = event.clipboardData?.getData('text/plain');
         const target = getEditor();
@@ -954,7 +961,7 @@ export const M3RichTextEditor = ({
     const editorEditable = !readOnly && !viewingVersion && (!onSaveDraft || editing || canSaveDraft);
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
-    const anchorsEnabled = enableAnchors && !editorSlot;
+    const anchorsEnabled = enableAnchors && !editorSlot && !plainText;
     // Published before chapter navigation existed, many legal documents have
     // headings without ids. Editing may persist ids on change; a reader must
     // stay non-mutating, so stamp them only into the display copy.
@@ -984,24 +991,43 @@ export const M3RichTextEditor = ({
     });
 
     const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Underline,
-            Link.configure({ openOnClick: false, autolink: false }),
-            ResolvingImage,
-            Highlight.configure({ multicolor: true }),
-            TaskList,
-            TaskItem.configure({ nested: true }),
-            Subscript,
-            Superscript,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder }),
-            // Word contract: empty space below a final heading belongs to a
-            // body paragraph — created on demand, never in the read-only
-            // reader (see trailingParagraph.ts).
-            TrailingParagraph,
-            ...(anchorsEnabled ? [HeadingAnchors] : []),
-        ],
+        enableInputRules: !plainText,
+        enablePasteRules: !plainText,
+        extensions: plainText
+            ? [
+                  StarterKit.configure({
+                      bold: false,
+                      italic: false,
+                      strike: false,
+                      code: false,
+                      codeBlock: false,
+                      heading: false,
+                      bulletList: false,
+                      orderedList: false,
+                      listItem: false,
+                      blockquote: false,
+                      horizontalRule: false,
+                  }),
+                  Placeholder.configure({ placeholder }),
+              ]
+            : [
+                  StarterKit,
+                  Underline,
+                  Link.configure({ openOnClick: false, autolink: false }),
+                  ResolvingImage,
+                  Highlight.configure({ multicolor: true }),
+                  TaskList,
+                  TaskItem.configure({ nested: true }),
+                  Subscript,
+                  Superscript,
+                  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+                  Placeholder.configure({ placeholder }),
+                  // Word contract: empty space below a final heading belongs to a
+                  // body paragraph — created on demand, never in the read-only
+                  // reader (see trailingParagraph.ts).
+                  TrailingParagraph,
+                  ...(anchorsEnabled ? [HeadingAnchors] : []),
+              ],
         content: editorContent,
         editable: editorEditable,
         editorProps: buildEditorProps(),

@@ -46,9 +46,9 @@ export const changedBausteine = (
 
 /**
  * A stale translation must never outlive an edit of its source. For every changed Baustein only the
- * source variant survives; each other language (and its `__meta`) that exists is sent as "" so the
+ * authored German variants survive; each translation (and its `__meta`) that exists is sent as "" so the
  * backend removes it (TenantService#311). Unchanged Bausteine keep their translations. If the Träger
- * then skips the translation, the source text is the only one left and readers fall back to it.
+ * then skips translation, readers fall back to the preserved source text.
  */
 export const purgeStaleTranslations = (
     content: ErstantwortContentMap,
@@ -59,10 +59,14 @@ export const purgeStaleTranslations = (
     changedBausteine(content, stored, sourceLanguage).forEach((key) => {
         const languages = new Set(
             [...Object.keys(stored[key] ?? {}), ...Object.keys(content[key] ?? {})].filter(
-                (language) => !language.endsWith(META_SUFFIX) && language !== sourceLanguage,
+                (language) => !language.endsWith(META_SUFFIX) && !isGermanLanguage(language),
             ),
         );
-        const purged: Record<string, string> = { [sourceLanguage]: content[key]?.[sourceLanguage] ?? '' };
+        const purged: Record<string, string> = {
+            ...stored[key],
+            ...content[key],
+            [sourceLanguage]: content[key]?.[sourceLanguage] ?? '',
+        };
         languages.forEach((language) => {
             purged[language] = '';
             purged[metaKeyFor(language)] = '';

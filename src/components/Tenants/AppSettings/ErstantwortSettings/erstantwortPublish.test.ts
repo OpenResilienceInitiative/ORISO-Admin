@@ -5,6 +5,7 @@ import {
     buildErstantwortContentPayload,
     collectSourceTexts,
     translationTargetsFor,
+    purgeStaleTranslations,
 } from './erstantwortPublish';
 
 const AT = '2026-10-13T09:00:00.000Z';
@@ -101,5 +102,41 @@ describe('buildErstantwortContentPayload', () => {
         );
 
         expect(payload.erstantwortGreeting).toEqual({ de: '<p>Hallo</p>', en: '', en__meta: '' });
+    });
+});
+
+describe('purgeStaleTranslations German source preservation', () => {
+    it('preserves the other authored German variant while deleting stale translations', () => {
+        const previous = {
+            erstantwortGreeting: { de: '<p>Formal</p>', 'de@informal': '<p>Old informal</p>', en: '<p>English</p>' },
+        };
+        const edited = {
+            erstantwortGreeting: { ...previous.erstantwortGreeting, 'de@informal': '<p>New informal</p>' },
+        };
+        const payload = buildErstantwortContentPayload(
+            purgeStaleTranslations(edited, previous, 'de@informal'),
+            undefined,
+        );
+        expect(payload.erstantwortGreeting).toEqual({
+            de: '<p>Formal</p>',
+            'de@informal': '<p>New informal</p>',
+            en: '',
+            en__meta: '',
+        });
+    });
+    it('retains stored German text and metadata even when edits provide only the active variant', () => {
+        const previous = {
+            erstantwortGreeting: {
+                de: '<p>Formal</p>',
+                de__meta: '{"authored":true}',
+                'de@informal': '<p>Old informal</p>',
+            },
+        };
+        const edited = { erstantwortGreeting: { 'de@informal': '<p>New informal</p>' } };
+        expect(purgeStaleTranslations(edited, previous, 'de@informal').erstantwortGreeting).toEqual({
+            de: '<p>Formal</p>',
+            de__meta: '{"authored":true}',
+            'de@informal': '<p>New informal</p>',
+        });
     });
 });

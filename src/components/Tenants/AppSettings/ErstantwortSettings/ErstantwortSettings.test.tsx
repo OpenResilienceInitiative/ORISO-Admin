@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslationApiError } from '../../../../api/tenant/translation';
 
@@ -50,6 +50,7 @@ const tenantWith = (activeLanguages: string[], content: Record<string, unknown> 
         settings: { activeLanguages, extendedSettings: { languageFormal } },
         content: {
             erstantwortGreeting: { [languageFormal ? 'de' : 'de@informal']: '<p>Guten Tag</p>' },
+            erstantwortWhoReadsAlong: { [languageFormal ? 'de' : 'de@informal']: '<p>Our counselling team</p>' },
             ...content,
         },
     },
@@ -279,5 +280,138 @@ describe('ErstantwortSettings', () => {
             expect.objectContaining({ texts: { erstantwortGreeting: '<p>Geändert</p>' } }),
         );
         expect(publishedContent().erstantwortClosing.en).toBe('<p>Bye</p>');
+    });
+    it.each([['de'], ['de', 'en']])(
+        'blocks both publish paths when the required disclosure is empty (%j)',
+        async (...languages) => {
+            useSingleTenantData.mockReturnValue(tenantWith(languages, { erstantwortWhoReadsAlong: { de: '<p></p>' } }));
+            renderSettings();
+            typeIntoGreeting('<p>Keep this edit</p>');
+            fireEvent.click(publishButton());
+            expect(await screen.findByRole('alert')).toHaveTextContent('tenants.erstantwort.whoReadsAlong');
+            expect(mutateAsync).not.toHaveBeenCalled();
+            expect(translate).not.toHaveBeenCalled();
+            expect(screen.queryByRole('button', { name: 'legal.translation.modal.confirm' })).not.toBeInTheDocument();
+            expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue('<p>Keep this edit</p>');
+        },
+    );
+
+    it('shows the default placeholder for a stored zero deadline', () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de'], { erstantwortResponseDeadlineDays: 0 }));
+        renderSettings();
+        expect(screen.getByLabelText('tenants.erstantwort.deadline.label')).toHaveValue('');
+        expect(screen.getByLabelText('tenants.erstantwort.deadline.label')).toHaveAttribute('placeholder', '2');
+    });
+
+    it('retries a failed save with the successful translations without paying for translation again', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        mutateAsync.mockRejectedValueOnce(new Error('temporary save failure')).mockResolvedValue({});
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Hello again</p>' } } });
+        renderSettings();
+        typeIntoGreeting('<p>New source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        fireEvent.click(publishButton());
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
+        expect(translate).toHaveBeenCalledTimes(1);
+        expect(mutateAsync.mock.calls[1][0].content.erstantwortGreeting.en).toBe('<p>Hello again</p>');
+    });
+    it('translates the new source again if it changes after a failed save', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        mutateAsync.mockRejectedValueOnce(new Error('temporary save failure')).mockResolvedValue({});
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Translated</p>' } } });
+        renderSettings();
+        typeIntoGreeting('<p>First source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        typeIntoGreeting('<p>Second source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
+        expect(translate).toHaveBeenCalledTimes(2);
+        expect(translate).toHaveBeenLastCalledWith(
+            expect.objectContaining({ texts: { erstantwortGreeting: '<p>Second source</p>' } }),
+        );
+    });
+    it('does not reuse a failed-save translation when the target languages change', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        mutateAsync.mockRejectedValueOnce(new Error('temporary save failure')).mockResolvedValue({});
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Translated</p>' } } });
+        const view = renderSettings();
+        typeIntoGreeting('<p>New source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en', 'fr']));
+        view.rerender(<ErstantwortSettings tenantId="7" />);
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
+        expect(translate).toHaveBeenCalledTimes(2);
+        expect(translate).toHaveBeenLastCalledWith(expect.objectContaining({ targetLangs: ['en', 'fr'] }));
+    });
+
+    it('does not replay a failed-save translation for another tenant', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        mutateAsync.mockRejectedValueOnce(new Error('temporary save failure')).mockResolvedValue({});
+        translate.mockResolvedValue({ translations: { en: { erstantwortGreeting: '<p>Translated</p>' } } });
+        const view = renderSettings();
+        typeIntoGreeting('<p>New source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        view.rerender(<ErstantwortSettings tenantId="8" />);
+        fireEvent.click(publishButton());
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
+        expect(translate).toHaveBeenCalledTimes(1);
+        expect(mutateAsync.mock.calls[1][0].content.erstantwortGreeting).toEqual({ de: '<p>Guten Tag</p>' });
+    });
+    it('does not save a translation that completes after switching tenants', async () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de', 'en']));
+        let finishTranslation!: (value: { translations: Record<string, Record<string, string>> }) => void;
+        translate.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishTranslation = resolve;
+                }),
+        );
+        const view = renderSettings();
+        typeIntoGreeting('<p>Tenant A source</p>');
+        fireEvent.click(publishButton());
+        fireEvent.click(await screen.findByRole('button', { name: 'legal.translation.modal.confirm' }));
+        await waitFor(() => expect(translate).toHaveBeenCalledTimes(1));
+        view.rerender(<ErstantwortSettings tenantId="8" />);
+        typeIntoGreeting('<p>Tenant B draft</p>');
+        await act(async () => {
+            finishTranslation({ translations: { en: { erstantwortGreeting: '<p>Tenant A translation</p>' } } });
+        });
+        await waitFor(() =>
+            expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue('<p>Tenant B draft</p>'),
+        );
+        expect(mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('keeps the new tenant draft when an older tenant save completes', async () => {
+        let finishSave!: (value: object) => void;
+        mutateAsync.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishSave = resolve;
+                }),
+        );
+        const view = renderSettings();
+        typeIntoGreeting('<p>Tenant A source</p>');
+        fireEvent.click(publishButton());
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        view.rerender(<ErstantwortSettings tenantId="8" />);
+        typeIntoGreeting('<p>Tenant B draft</p>');
+        await act(async () => {
+            finishSave({});
+        });
+        await waitFor(() =>
+            expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue('<p>Tenant B draft</p>'),
+        );
     });
 });

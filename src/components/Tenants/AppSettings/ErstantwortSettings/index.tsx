@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../../M3Button';
@@ -18,6 +18,7 @@ import {
     ERSTANTWORT_DEADLINE_FIELD,
     translationTargetsFor,
 } from './erstantwortPublish';
+import { isEmptyHtml } from '../../LegalSettings/utils/legalContentLanguages';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
 
 interface ErstantwortSettingsProps {
@@ -41,7 +42,7 @@ const readStoredContent = (content: TenantAdminData['content'] | undefined): Ers
 
 const readStoredDeadline = (content: TenantAdminData['content'] | undefined): number | undefined => {
     const value = (content as Record<string, unknown> | undefined)?.[ERSTANTWORT_DEADLINE_FIELD];
-    return typeof value === 'number' ? value : undefined;
+    return typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : undefined;
 };
 
 /**
@@ -55,6 +56,7 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     const { data, isLoading, isError } = useSingleTenantData({ id: tenantId });
     const { mutateAsync: saveTenant, isPending: isSaving } = useTenantAdminDataMutation({
         id: tenantId,
+        mutationKey: ['ERSTANTWORT_PUBLISH', tenantId],
         successMessageKey: 'tenants.message.settingsUpdate',
     });
     const { translate, isTranslating } = useTranslateLegalContent();
@@ -65,6 +67,11 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
         () => translationTargetsFor(data?.settings?.activeLanguages),
         [data?.settings?.activeLanguages],
     );
+    const scopeKey = JSON.stringify([tenantId, sourceLanguage, targetLanguages]);
+    const scopeRef = useRef({ key: scopeKey, generation: 0 });
+    if (scopeRef.current.key !== scopeKey) {
+        scopeRef.current = { key: scopeKey, generation: scopeRef.current.generation + 1 };
+    }
     const storedContent = useMemo(() => readStoredContent(data?.content), [data?.content]);
     const storedDeadline = readStoredDeadline(data?.content);
 
@@ -72,8 +79,23 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
        holds the same values and the edits are dropped. */
     const [edits, setEdits] = useState<ErstantwortContentMap>({});
     const [deadlineEdit, setDeadlineEdit] = useState<{ days: number | undefined } | null>(null);
+    const [publishError, setPublishError] = useState(false);
+    const [translatedRetry, setTranslatedRetry] = useState<{
+        content: ErstantwortContentMap;
+        source: string;
+    } | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Tenant navigation must not carry another tenant's draft or retry payload.
+        setEdits({});
+        setDeadlineEdit(null);
+        setPublishError(false);
+        setTranslatedRetry(null);
+        setModalOpen(false);
+        setModalErrorKey(null);
+    }, [tenantId]);
 
     const content = useMemo<ErstantwortContentMap>(() => {
         const merged: ErstantwortContentMap = { ...storedContent };
@@ -95,6 +117,8 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     const purgedContent = purgeStaleTranslations(content, storedContent, sourceLanguage);
 
     const handleChange = (key: keyof ErstantwortContentMap, language: string, html: string) => {
+        setTranslatedRetry(null);
+        setPublishError(false);
         setEdits((previous) => ({
             ...previous,
             [key]: { ...(previous[key] ?? storedContent[key] ?? {}), [language]: html },
@@ -104,6 +128,7 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     const handleDeadline = (days: number | undefined) => setDeadlineEdit({ days });
 
     const publish = async (publishedContent: ErstantwortContentMap) => {
+        const { generation } = scopeRef.current;
         const deadlinePayload = deadlineEdit ? deadlineEdit.days ?? null : undefined;
         try {
             await saveTenant({
@@ -112,6 +137,8 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
                     deadlinePayload,
                 ) as TenantAdminData['content'],
             });
+            if (scopeRef.current.generation !== generation) return;
+            setTranslatedRetry(null);
             setEdits({});
             setDeadlineEdit(null);
         } catch {
@@ -125,6 +152,7 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
     };
 
     const translateAndPublish = async (languages: string[]) => {
+        const { generation } = scopeRef.current;
         setModalErrorKey(null);
         let translated: ErstantwortContentMap;
         try {
@@ -139,16 +167,44 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
             );
             translated = applyTranslations(purgedContent, selected, sourceLanguage, new Date().toISOString());
         } catch (error) {
+            if (scopeRef.current.generation !== generation) return;
             setModalErrorKey(getTranslationErrorKey(error));
             return;
         }
+        if (scopeRef.current.generation !== generation) return;
         setModalOpen(false);
         // Keep the translated texts on screen if the save fails, so nothing has to be re-translated by hand.
         setEdits(translated);
+        setTranslatedRetry({
+            content: translated,
+            source: JSON.stringify({
+                tenantId,
+                sourceLanguage,
+                targetLanguages,
+                texts: collectSourceTexts(content, sourceLanguage),
+            }),
+        });
         await publish(translated);
     };
 
     const requestPublish = () => {
+        if (isEmptyHtml(content.erstantwortWhoReadsAlong?.[sourceLanguage])) {
+            setPublishError(true);
+            return;
+        }
+        setPublishError(false);
+        if (
+            translatedRetry?.source ===
+            JSON.stringify({
+                tenantId,
+                sourceLanguage,
+                targetLanguages,
+                texts: collectSourceTexts(content, sourceLanguage),
+            })
+        ) {
+            publish(translatedRetry.content);
+            return;
+        }
         if (!canTranslate) {
             publishWithoutTranslation();
             return;
@@ -166,6 +222,16 @@ export const ErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortS
 
     return (
         <>
+            {publishError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    role="alert"
+                    message={`${t('tenants.erstantwort.whoReadsAlong.label')}: ${t(
+                        'tenants.erstantwort.whoReadsAlong.mandatory',
+                    )}`}
+                />
+            )}
             <ErstantwortTextsCard
                 contentByBaustein={content}
                 responseDeadlineDays={deadlineDays}
