@@ -1355,6 +1355,8 @@
     "counselor.publicSlug.status.title": "Public contact link",
     "counselor.password": "One-time registration password",
     "counselor.password.hint": "Used for the first sign-in only. The person replaces it with their own password right away – no repeat needed.",
+    "counselor.password.setupEmailHint": "No password needed: the person receives a set-up e-mail and chooses their own password there.",
+    "counselor.create.setupMailNotSent": "The account was created, but the set-up e-mail could not be sent. You can send it again under Links.",
     "counselor.username": "Username",
     "imprint.title": "Legal notice",
     "imprint.subTitle": "Insert the legal notice here.",
