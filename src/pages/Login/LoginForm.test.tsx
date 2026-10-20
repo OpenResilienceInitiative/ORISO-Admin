@@ -38,6 +38,8 @@ const translations: Record<string, string> = {
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
     'message.error.auth.tooManyCodes': 'Too many attempts. Please wait a moment before trying again.',
+    'message.error.auth.setupIncomplete':
+        'Your account is not fully set up yet. Please use the link in your invitation email, or reset your password via "Forgot password?" to finish the setup.',
     'login.otp.resend.action': 'Send a new code',
     'login.otp.resend.requested': 'Request sent. Please use the newest code from your inbox.',
     'login.otp.resend.onlyNewest': 'Only the most recently sent code is valid.',
@@ -406,6 +408,31 @@ describe('LoginForm', () => {
         expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
         expect(mocks.messageError).not.toHaveBeenCalled();
+    });
+
+    // ORISO-Frontend#1670: an admin-chosen password leaves Keycloak's UPDATE_PASSWORD
+    // required action on the account. The password grant then answers 400
+    // "Account is not fully set up" - the password was right, so the form must not
+    // say it was wrong. Keycloak only says this after the password matched, so it
+    // reveals nothing about whether an account exists.
+    it('explains the unfinished setup instead of the credentials hint (#1670)', async () => {
+        mocks.loginAsync.mockRejectedValueOnce({
+            message: FETCH_ERRORS.BAD_REQUEST,
+            options: { data: { error: 'invalid_grant', error_description: 'Account is not fully set up' } },
+        });
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Your account is not fully set up yet.');
+        expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'setup_incomplete',
+            transport: 'bad_request',
+            stage: 'password',
+        });
     });
 
     it('shows the credentials hint when the code was submitted and Keycloak still answers 400', async () => {

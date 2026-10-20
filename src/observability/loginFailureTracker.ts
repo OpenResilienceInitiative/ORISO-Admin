@@ -23,7 +23,13 @@ import { metrics, type Counter } from '@opentelemetry/api';
  * neither a credential problem nor an outage, and counting it as either hid the
  * real one. ORISO-Frontend uses the same values, so one panel covers both logins.
  */
-export type LoginFailureOutcome = 'credentials' | 'otp_required' | 'access_denied' | 'unavailable' | 'rate_limited';
+export type LoginFailureOutcome =
+    | 'credentials'
+    | 'otp_required'
+    | 'access_denied'
+    | 'unavailable'
+    | 'rate_limited'
+    | 'setup_incomplete';
 
 export type LoginFailureTransport = 'bad_request' | 'unauthorized' | 'network' | 'too_many_requests' | 'unexpected';
 
