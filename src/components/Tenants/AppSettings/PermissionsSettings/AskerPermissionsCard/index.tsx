@@ -42,6 +42,8 @@ export type AskerPermissionsCardProps = {
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Channel switches whose conversation-type tile is not shown on this page. */
+    channelToggles?: Array<{ field: string; labelKey: string; defaultValue?: boolean }>;
 };
 
 export const AskerPermissionsCard = ({
@@ -53,6 +55,7 @@ export const AskerPermissionsCard = ({
     openPolicyMenu,
     onOpenPolicyMenu,
     onPolicyChange,
+    channelToggles = [],
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
 
@@ -63,7 +66,7 @@ export const AskerPermissionsCard = ({
         resolvePermissionPolicy(
             permissionPolicies,
             field,
-            fallbackValues?.[field] ?? (field === 'featureAskerEmailLiveChatEnabled' ? false : undefined),
+            fallbackValues?.[field] ?? channelToggles.find((toggle) => toggle.field === field)?.defaultValue,
             restrictedFields,
         );
 
@@ -106,61 +109,19 @@ export const AskerPermissionsCard = ({
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
                 {restrictedNote('featureAskerEmailEnabled')}
             </div>
-            <h3>{t('tenants.permissions.asker.channels.title')}</h3>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailAgencyCounsellingEnabled',
-                        'tenants.permissions.asker.channels.emailAgencyCounselling',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailAgencyCounsellingEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailLiveChatEnabled',
-                        'tenants.permissions.asker.channels.emailLiveChat',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailLiveChatEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailSelfHelpEnabled',
-                        'tenants.permissions.asker.channels.emailSelfHelp',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailSelfHelpEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserAgencyCounsellingEnabled',
-                        'tenants.permissions.asker.channels.browserAgencyCounselling',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserAgencyCounsellingEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserLiveChatEnabled',
-                        'tenants.permissions.asker.channels.browserLiveChat',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserLiveChatEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserSelfHelpEnabled',
-                        'tenants.permissions.asker.channels.browserSelfHelp',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserSelfHelpEnabled')}
-            </div>
+            {/* FE#1725: channel switches live on the conversation-type tiles. Only switches of a
+                tile hidden on this page land here, so no setting becomes unreachable. */}
+            {channelToggles.length > 0 && (
+                <>
+                    <h3>{t('tenants.permissions.asker.channels.title')}</h3>
+                    {channelToggles.map(({ field, labelKey }) => (
+                        <div key={field} className={styles.setting}>
+                            <div className={styles.settingHeader}>{policyControl(field, labelKey)}</div>
+                            {restrictedNote(field)}
+                        </div>
+                    ))}
+                </>
+            )}
         </Card>
     );
 };

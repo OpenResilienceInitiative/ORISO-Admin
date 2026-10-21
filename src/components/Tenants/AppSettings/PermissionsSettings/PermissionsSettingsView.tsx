@@ -1,4 +1,4 @@
-import { Form, type FormInstance } from 'antd';
+import { Form, Skeleton, type FormInstance } from 'antd';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
@@ -12,7 +12,12 @@ import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSetti
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
-import type { ChatTypeCardKey, PermissionToggleCapability, ToggleAfterChangeHandler } from './types';
+import type {
+    ChatTypeCardKey,
+    ChatTypeNotificationToggle,
+    PermissionToggleCapability,
+    ToggleAfterChangeHandler,
+} from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import styles from './styles.module.scss';
 
@@ -34,6 +39,16 @@ const unavailableCapabilityHintKey = (capability: PermissionToggleCapability | u
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
+    /** Träger whose case-handover rules the card shows; none on the platform-wide page. */
+    caseHandoverTenantId?: number;
+    /** The Träger is still being resolved (centre page): the card waits instead of saying "none". */
+    caseHandoverTenantPending?: boolean;
+    /** Centre page: AgencyService does not store channel switches, so they are the Träger's, read-only. */
+    channelsSetOnTraeger?: boolean;
+    /** The Träger's channel policies shown when `channelsSetOnTraeger`. */
+    traegerChannelPolicies?: Record<string, PolicyValue<boolean>>;
+    /** Read state of `traegerChannelPolicies`: pending shows a loader, error says they could not be loaded. */
+    traegerChannelPoliciesStatus?: 'pending' | 'error' | 'success';
     excludeCardKeys?: Array<ChatTypeCardKey>;
     isLoading: boolean;
     initialValues: Record<string, unknown>;
@@ -48,6 +63,11 @@ export type PermissionsSettingsViewProps = {
 
 export const PermissionsSettingsView = ({
     tenantId,
+    caseHandoverTenantId,
+    caseHandoverTenantPending = false,
+    channelsSetOnTraeger = false,
+    traegerChannelPolicies,
+    traegerChannelPoliciesStatus = 'success',
     excludeCardKeys,
     isLoading,
     initialValues,
@@ -64,6 +84,20 @@ export const PermissionsSettingsView = ({
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
+
+    // FE#1725: advice-seeker channel switches of tiles hidden on this page stay on the asker card
+    // (not where they are the Träger's, read-only).
+    const hiddenTileChannelToggles = channelsSetOnTraeger
+        ? []
+        : CHAT_TYPE_CARDS.filter(
+              (card) => !cardsToRender.includes(card) && card.notifications?.audience === 'asker',
+          ).flatMap((card) =>
+              (card.notifications?.toggles ?? []).map((toggle) => ({
+                  field: toggle.setting,
+                  labelKey: toggle.fallbackLabelKey ?? toggle.labelKey,
+                  defaultValue: toggle.defaultValue,
+              })),
+          );
 
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
@@ -89,6 +123,69 @@ export const PermissionsSettingsView = ({
         },
         [onPolicyChange, onToggleUpdate],
     );
+
+    // One row for every switch on a tile: feature toggles and notification channels alike.
+    const toggleRow = (
+        form: FormInstance,
+        row: { setting: string; label: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
+    ) => (
+        <div key={row.setting} className={styles.toggleRow}>
+            <PermissionPolicyControl
+                featureKey={row.setting}
+                label={row.label}
+                level={policyLevel}
+                policy={row.policy}
+                open={openPolicyMenu === row.setting}
+                pending={policyPending(row.setting)}
+                disabled={row.disabled}
+                supportingText={row.note}
+                onOpenChange={(open) => setOpenPolicyMenu(open ? row.setting : null)}
+                onChange={(next) => changePolicy(row.setting, next, form)}
+            />
+        </div>
+    );
+
+    const channelRow = (form: FormInstance, toggle: ChatTypeNotificationToggle, storedValue: unknown) =>
+        toggleRow(form, {
+            setting: toggle.setting,
+            label: t(toggle.labelKey),
+            policy: channelsSetOnTraeger
+                ? traegerChannelPolicies?.[toggle.setting] ?? {
+                      value: toggle.defaultValue ?? true,
+                      mode: 'SUGGESTED',
+                  }
+                : policyFor(toggle.setting, storedValue ?? toggle.defaultValue),
+            disabled: channelsSetOnTraeger || toggle.notYetEffective,
+            note: toggle.notYetEffective ? t('tenants.permissions.card.notifications.notYetEffective') : undefined,
+        });
+
+    // Centre page: until the Träger's values are read, show a loader or say they are unavailable,
+    // never defaults passed off as the Träger's.
+    const channelSwitches = (
+        form: FormInstance,
+        toggles: Array<ChatTypeNotificationToggle>,
+        getFieldValue: FormInstance['getFieldValue'],
+    ) => {
+        if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'pending') {
+            return (
+                <div data-testid="traeger-channels-loading">
+                    <Skeleton active title={false} paragraph={{ rows: 2 }} />
+                </div>
+            );
+        }
+        if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'error') {
+            return (
+                <p className={styles.cardDescriptionSecondary} role="status">
+                    {t('tenants.permissions.card.notifications.traegerUnavailable')}
+                </p>
+            );
+        }
+        return (
+            <div className={styles.togglesList}>
+                {toggles.map((toggle) => channelRow(form, toggle, getFieldValue(['settings', toggle.setting])))}
+            </div>
+        );
+    };
 
     return (
         <CardEditable
@@ -123,10 +220,13 @@ export const PermissionsSettingsView = ({
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
                                 onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                channelToggles={hiddenTileChannelToggles}
                             />
                         </CardDeck.Item>
                         <CardDeck.Item className={styles.chatTypeCardSlot}>
                             <CaseHandoverCard
+                                tenantId={caseHandoverTenantId}
+                                tenantPending={caseHandoverTenantPending}
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 pendingPolicyFields={pendingPolicyFields}
@@ -226,38 +326,41 @@ export const PermissionsSettingsView = ({
                                                             (disabledByMaster
                                                                 ? 'tenants.permissions.feature.requiresMaster'
                                                                 : null);
-                                                        return (
-                                                            <div
-                                                                key={toggle.field.join('.')}
-                                                                className={styles.toggleRow}
-                                                            >
-                                                                <PermissionPolicyControl
-                                                                    featureKey={toggle.field[1]}
-                                                                    label={t(toggle.labelKey)}
-                                                                    level={policyLevel}
-                                                                    policy={policyFor(
-                                                                        toggle.field[1],
-                                                                        getFieldValue(toggle.field),
-                                                                    )}
-                                                                    open={openPolicyMenu === toggle.field[1]}
-                                                                    pending={policyPending(toggle.field[1])}
-                                                                    disabled={
-                                                                        Boolean(unavailableHintKey) || disabledByMaster
-                                                                    }
-                                                                    supportingText={
-                                                                        disabledHintKey ? t(disabledHintKey) : undefined
-                                                                    }
-                                                                    onOpenChange={(open) =>
-                                                                        setOpenPolicyMenu(open ? toggle.field[1] : null)
-                                                                    }
-                                                                    onChange={(next) =>
-                                                                        changePolicy(toggle.field[1], next, form)
-                                                                    }
-                                                                />
-                                                            </div>
-                                                        );
+                                                        return toggleRow(form, {
+                                                            setting: toggle.field[1],
+                                                            label: t(toggle.labelKey),
+                                                            policy: policyFor(
+                                                                toggle.field[1],
+                                                                getFieldValue(toggle.field),
+                                                            ),
+                                                            disabled: Boolean(unavailableHintKey) || disabledByMaster,
+                                                            note: disabledHintKey ? t(disabledHintKey) : undefined,
+                                                        });
                                                     })}
                                                 </div>
+
+                                                {card.notifications && (
+                                                    <>
+                                                        <div className={styles.cardDivider} />
+                                                        <div className={styles.togglesSectionLabel}>
+                                                            {t(
+                                                                `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
+                                                            )}
+                                                        </div>
+                                                        {channelsSetOnTraeger && (
+                                                            <p className={styles.cardDescriptionSecondary}>
+                                                                {t(
+                                                                    'tenants.permissions.card.notifications.setOnTraeger',
+                                                                )}
+                                                            </p>
+                                                        )}
+                                                        {channelSwitches(
+                                                            form,
+                                                            card.notifications.toggles,
+                                                            getFieldValue,
+                                                        )}
+                                                    </>
+                                                )}
                                             </Card>
                                         );
                                     }}

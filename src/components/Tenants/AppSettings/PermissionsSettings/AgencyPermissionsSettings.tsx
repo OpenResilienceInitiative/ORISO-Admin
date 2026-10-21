@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
+import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
 import { stripAgencyAdminControls } from '../../../../api/agency/stripAgencyAdminControls';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
@@ -26,8 +27,19 @@ type AgencyPermissionsSettingsProps = {
  */
 export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyPermissionsSettingsProps) => {
     const { t } = useTranslation();
-    const { data: agencyData, isLoading } = useAgencyData({ id: agencyId });
+    const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutate: updateAgency } = useAgencyUpdate(agencyId);
+    // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
+    // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
+    const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
+    const { data: traegerPolicies, status: traegerPoliciesQueryStatus } = useTenantPermissionPolicies(
+        traegerId,
+        Boolean(traegerId),
+        { silent: true },
+    );
+    let traegerPoliciesStatus = traegerPoliciesQueryStatus;
+    if (isPending) traegerPoliciesStatus = 'pending';
+    else if (!traegerId) traegerPoliciesStatus = 'error';
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
@@ -99,6 +111,11 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     return (
         <PermissionsSettingsView
             tenantId={`agency-${agencyId}`}
+            caseHandoverTenantId={agencyData?.tenantId}
+            caseHandoverTenantPending={isPending}
+            channelsSetOnTraeger
+            traegerChannelPolicies={traegerPolicies?.policies}
+            traegerChannelPoliciesStatus={traegerPoliciesStatus}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}
