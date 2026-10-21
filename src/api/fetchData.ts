@@ -3,6 +3,7 @@ import i18next from 'i18next';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
+import parseJwt from '../utils/parseJWT';
 
 import logout from './auth/logout';
 import { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -52,6 +53,7 @@ export const FETCH_ERRORS = {
     // code a 429 fell into the catch-all and the login screen said "network error".
     TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
     UNAUTHORIZED: 'UNAUTHORIZED',
+    REQUEST_IDENTITY_CHANGED: 'REQUEST_IDENTITY_CHANGED',
     PRECONDITION_FAILED: 'PRECONDITION FAILED',
     NOT_ALLOWED: 'NOT_ALLOWED',
     X_REASON: 'X-Reason',
@@ -107,7 +109,7 @@ interface FetchDataProps {
     retriedAfterRefresh?: boolean;
 }
 
-const executeFetchData = (props: FetchDataProps): Promise<any> =>
+const executeFetchData = (props: FetchDataProps, accessToken: string): Promise<any> =>
     new Promise((resolve, rejectResponse) => {
         let receivedStatus: number | undefined;
         const reject = (error?: unknown) => {
@@ -123,7 +125,6 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
             }
             rejectResponse(error);
         };
-        const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
         const manualAuth = (props.headersData as any)?.Authorization;
 
@@ -272,26 +273,33 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
             });
     });
 
-/**
- * Public request helper. Wraps {@link executeFetchData} with a self-healing 401
- * handler: when an authenticated request comes back 401 (typically a lapsed or
- * empty access token in this tab), refresh the token via the BFF and retry the
- * request exactly once. Only if the retry is still unauthorized — or there is no
- * valid session to refresh — do we fall back to logging the user out. This stops
- * the "logged out while creating an agency" forced-logout.
- */
-export const fetchData = async (props: FetchDataProps): Promise<any> => {
+const requestSubject = (props: FetchDataProps, accessToken: string): string | null => {
+    const authorization = new Headers({ ...props.headersData }).get('Authorization');
+    const subject = parseJwt(authorization === null ? accessToken : authorization.replace(/^Bearer /, ''))?.sub;
+    return typeof subject === 'string' && subject.length > 0 ? subject : null;
+};
+
+const fetchWithToken = async (props: FetchDataProps, accessToken: string): Promise<any> => {
+    const hasIntent = Object.keys(props.headersData ?? {}).some((header) => header.toLowerCase() === 'idempotency-key');
+    const originalSubject = hasIntent ? requestSubject(props, accessToken) : null;
     try {
-        return await executeFetchData(props);
+        return await executeFetchData(props, accessToken);
     } catch (error) {
         const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
 
         if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
             const refreshed = await tryRefreshAccessToken();
             if (refreshed) {
-                // Retry once through fetchData (not executeFetchData) so a retry that
-                // is still unauthorized also runs the logout fallback below.
-                return fetchData({ ...props, retriedAfterRefresh: true });
+                const refreshedToken = getAccessTokenForRequests();
+                if (
+                    hasIntent &&
+                    (originalSubject === null || originalSubject !== requestSubject(props, refreshedToken))
+                ) {
+                    throw new Error(FETCH_ERRORS.REQUEST_IDENTITY_CHANGED);
+                }
+                // Carry the checked token into the retry so a later token read cannot
+                // change the subject after the frozen account request was checked.
+                return fetchWithToken({ ...props, retriedAfterRefresh: true }, refreshedToken);
             }
         }
 
@@ -313,3 +321,15 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
         throw error;
     }
 };
+
+/**
+ * Public request helper. Wraps {@link executeFetchData} with a self-healing 401
+ * handler: when an authenticated request comes back 401 (typically a lapsed or
+ * empty access token in this tab), refresh the token via the BFF and retry the
+ * request exactly once. Only if the retry is still unauthorized — or there is no
+ * valid session to refresh — do we fall back to logging the user out. This stops
+ * the "logged out while creating an agency" forced-logout.
+ * Frozen account requests refuse a resend if their original subject is unknown
+ * or the refreshed session belongs to a different subject.
+ */
+export const fetchData = (props: FetchDataProps): Promise<any> => fetchWithToken(props, getAccessTokenForRequests());
