@@ -5,7 +5,14 @@ import path from 'node:path';
 
 const require = createRequire(import.meta.url);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
-const version = (name) => { try { return JSON.parse(readFileSync(path.join(process.cwd(), 'node_modules', name, 'package.json'), 'utf8')).version; } catch (error) { if (name === 'vite-plus' && error.code === 'ENOENT') return null; throw error; } };
+const version = (name) => {
+    try {
+        return JSON.parse(readFileSync(path.join(process.cwd(), 'node_modules', name, 'package.json'), 'utf8')).version;
+    } catch (error) {
+        if (name === 'vite-plus' && error.code === 'ENOENT') return null;
+        throw error;
+    }
+};
 
 // SCRATCH ONLY: an archive is not a Git checkout. Bind its actual root and all
 // declared frozen bytes to an external invocation-supplied manifest seal.
@@ -44,7 +51,8 @@ export const sourceIdentity = (cwd, suppliedRevision) => {
         throw new Error('Archival provenance declared file inventory mismatch');
     const digest = createHash('sha256');
     for (const file of declared) {
-        if (path.isAbsolute(file) || file.split('/').includes('..')) throw new Error('Archival provenance invalid file path');
+        if (path.isAbsolute(file) || file.split('/').includes('..'))
+            throw new Error('Archival provenance invalid file path');
         const actual = hash(readFileSync(path.join(root, file)));
         if (actual !== manifest.files[file]) throw new Error('Archival provenance actual byte mismatch: ' + file);
         digest.update(file + '\0' + actual + '\0');

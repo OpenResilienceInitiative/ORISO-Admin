@@ -107,8 +107,11 @@ class HistoricalInstrumentationTests(unittest.TestCase):
         here = Path(__file__).resolve().parent
         declaration = json.loads((here / 'input-lock.json').read_text())
         delta = declaration['sharedInstrumentationDelta']
-        self.assertEqual(delta['currentSHA256'], sha(here / 'inputs/benchmark-harness.ts'))
-        self.assertNotEqual(delta['previousSHA256'], delta['currentSHA256'])
+        self.assertEqual([row['path'] for row in delta],
+                         ['benchmark-harness.ts', 'scripts/verification-provenance.mjs'])
+        for row, source in zip(delta, ['benchmark-harness.ts', 'verification-provenance.mjs']):
+            self.assertEqual(row['currentSHA256'], sha(here / 'inputs' / source))
+            self.assertNotEqual(row['previousSHA256'], row['currentSHA256'])
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / 'uncreated'
             proof = reconstruct(here.parents[1], target, verify_only=True)
