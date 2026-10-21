@@ -1,0 +1,30 @@
+{
+  "original": {
+    "lockSHA256": "2eecd286275006d9c08f005631ae5117fc1c9ee4d173a16479448041a37a0ef0",
+    "packages": {
+      "vite": "8.1.2",
+      "vitest": "4.1.9",
+      "@vitest/browser": "4.1.10",
+      "@vitest/browser-playwright": "4.1.10",
+      "@storybook/react-vite": "10.4.6",
+      "@storybook/addon-vitest": "10.4.6",
+      "@storybook/addon-a11y": "10.4.6",
+      "axe-core": "4.12.1",
+      "playwright": "1.62.1"
+    }
+  },
+  "candidate": {
+    "lockSHA256": "45174e15c9567004cdcc76aa8cfd680761f110d46ee74c10573b149d9c39daa7",
+    "packages": {
+      "vite": "1.3.0",
+      "vitest": "5.0.5",
+      "@vitest/browser": "5.0.5",
+      "@vitest/browser-playwright": "5.0.5",
+      "@storybook/react-vite": "10.6.3",
+      "@storybook/addon-vitest": "10.6.3",
+      "@storybook/addon-a11y": "10.6.3",
+      "axe-core": "4.12.1",
+      "playwright": "1.62.1"
+    }
+  }
+}

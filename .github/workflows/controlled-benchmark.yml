@@ -1,0 +1,85 @@
+name: Controlled Admin toolchain comparison
+
+# Draft installation target: .github/workflows/controlled-benchmark.yml
+# First execution can use an ordinary reviewed PR. Manual dispatch requires
+# this workflow to be registered on the actual default branch. No dispatch
+# execution is assumed before that registration.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/controlled-benchmark.yml'
+      - 'scripts/controlled-benchmark/**'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Immutable matched-source comparison; no command/ref input'
+        required: true
+        type: choice
+        default: admin1611-314228e-cache5
+        options:
+          - admin1611-314228e-cache5
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin1611-controlled-ci-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  comparison:
+    if: github.repository == 'OpenResilienceInitiative/ORISO-Admin'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      CI: 'true'
+      TZ: Europe/Berlin
+      LC_ALL: C.UTF-8
+      PYTHONDONTWRITEBYTECODE: '1'
+      COMPARISON_TASK: ${{ runner.temp }}/admin1611-ci-task
+      COMPARISON_ARTIFACTS: ${{ runner.temp }}/admin1611-ci-artifacts
+      BENCHMARK_PROFILE: ${{ inputs.profile || 'admin1611-314228e-cache5' }}
+      BENCHMARK_TOOLS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      # Filled with the sealed portable/input-lock.json hash during preparation.
+      BENCHMARK_INPUT_SHA256: '66d6f2bf8e339009476d74108ea59d272eaefb4da96d2fc6b279729a867da72a'
+    steps:
+      - name: Initialize failure evidence
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['COMPARISON_ARTIFACTS'])
+          root.mkdir(parents=True, exist_ok=False)
+          (root / 'workflow-start.json').write_text(json.dumps({k: os.environ.get(k) for k in [
+              'GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'GITHUB_JOB',
+              'GITHUB_EVENT_NAME', 'GITHUB_SHA', 'GITHUB_WORKFLOW_REF', 'GITHUB_WORKFLOW_SHA',
+              'BENCHMARK_TOOLS_COMMIT', 'BENCHMARK_PROFILE', 'BENCHMARK_INPUT_SHA256',
+              'RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion']}, indent=2) + '\n')
+          PY
+      - name: Checkout immutable reviewed tools and source Git objects
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, API-verified
+        with:
+          ref: ${{ env.BENCHMARK_TOOLS_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up shared exact Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, API-verified
+        with:
+          node-version: '22.23.3'
+          check-latest: false
+      - name: Reconstruct, locked installs, controls, cache proof, equality, timed sample
+        run: |
+          python3 scripts/controlled-benchmark/ci_controller.py \
+            --repository "$GITHUB_WORKSPACE" \
+            --task "$COMPARISON_TASK" \
+            --artifacts "$COMPARISON_ARTIFACTS" \
+            --profile "$BENCHMARK_PROFILE"
+      - name: Retain raw evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, API-verified
+        with:
+          name: admin1611-comparison-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.COMPARISON_ARTIFACTS }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
