@@ -39,4 +39,29 @@ describe('EnforceModeSwitch', () => {
         expect(screen.getByRole('button', { name: configLabel })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: enforceLabel })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('takes its own labels and group name, so another setting can reuse the switch', () => {
+        const onChange = vi.fn();
+        render(
+            <EnforceModeSwitch
+                enforceMode={false}
+                onChange={onChange}
+                configLabel="Recommendation"
+                enforceLabel="Requirement"
+                groupLabel="Binding for Träger"
+            />,
+        );
+
+        expect(screen.getByRole('group', { name: 'Binding for Träger' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Recommendation' })).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByRole('button', { name: 'Requirement' }));
+        expect(onChange).toHaveBeenCalledWith(true);
+    });
+
+    it('can be disabled as a whole', () => {
+        render(<EnforceModeSwitch enforceMode={false} onChange={vi.fn()} disabled />);
+
+        expect(screen.getByRole('button', { name: configLabel })).toBeDisabled();
+        expect(screen.getByRole('button', { name: enforceLabel })).toBeDisabled();
+    });
 });
