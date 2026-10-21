@@ -98,9 +98,9 @@ it.each([
     const user = userEvent.setup({ delay: null });
     render(<ProfileTwoFactorSetup />, { wrapper });
     await user.click(screen.getByRole('switch'));
-    for (let step = 0; step < 3; step += 1) {
-        await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
-    }
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
     fireEvent.change(screen.getByPlaceholderText('twoFactorAuth.activate.otp.input.label'), {
         target: { value: '123456' },
     });
