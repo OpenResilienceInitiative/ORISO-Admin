@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ConfigProvider } from 'antd';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { ReactComponent as ClockIcon } from '../../resources/img/svg/oriso/schedule_24px.svg';
 import { FloatingLabelSelect } from './index';
@@ -94,6 +94,28 @@ export const Open: StoryObj = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('combobox'));
+        const body = within(canvasElement.ownerDocument.body);
+        const firstOption = await body.findByText('Miss', { selector: '.ant-select-item-option-content' });
+        const popup = firstOption.closest<HTMLElement>('.ant-select-dropdown');
+        if (!popup) throw new globalThis.Error('Expected the real salutation popup');
+        const assertOpenOptions = () => {
+            expect(canvas.getByRole('combobox')).toHaveAttribute('aria-expanded', 'true');
+            expect(popup).toBeVisible();
+            SALUTATIONS.forEach(({ label }) =>
+                expect(within(popup).getByText(label, { selector: '.ant-select-item-option-content' })).toBeVisible(),
+            );
+        };
+        await waitFor(() => {
+            assertOpenOptions();
+            const active = [popup, canvasElement].flatMap((root) =>
+                root
+                    .getAnimations({ subtree: true })
+                    .filter((animation) => animation.pending || animation.playState === 'running'),
+            );
+            expect(active).toHaveLength(0);
+        });
+        await canvasElement.ownerDocument.fonts.ready;
+        assertOpenOptions();
     },
 };
 

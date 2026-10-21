@@ -1,9 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Layout } from 'antd';
 import clsx from 'clsx';
 import SiteFooter, { type SiteFooterProps } from './SiteFooter';
-import getPublicTenantData from '../../api/tenant/getPublicTenantData';
-import { useAppConfigContext } from '../../context/useAppConfig';
 
 const { Content } = Layout;
 
@@ -26,12 +24,6 @@ const PublicPageLayoutWrapper = ({
     hideFooter,
     footerVariant,
 }: PublicPageLayoutWrapperTypes) => {
-    const { settings } = useAppConfigContext();
-
-    useEffect(() => {
-        getPublicTenantData(settings);
-    }, []);
-
     return (
         // `publicLayout` bounds the page to the viewport and makes it its own
         // scroll container — the app shell locks document scrolling, so without

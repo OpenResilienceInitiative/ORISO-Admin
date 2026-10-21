@@ -62,8 +62,26 @@ jobs:
               # Same supply-chain hardening as .github/actions/node-build.
               run: npm ci --ignore-scripts
 
+            - name: Verify configured lint failure controls
+              run: npm run test:lint-controls
+
+            - name: Verify native unit teardown errors and healthy controls
+              run: node scripts/verify-native-unit-errors.mjs
+
             - name: Run unit tests
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+                  VERIFICATION_ARTIFACTS_DIR: verification-artifacts
+                  ACCOUNT_INVITE_TRACE_FILE: verification-artifacts/account-invite-trace.jsonl
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4
+
+            - name: Upload unit verification inventory
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: unit-verification-${{ matrix.shard }}
+                  path: verification-artifacts/
+                  if-no-files-found: warn
 
     # Runs every story in a real Chromium: renders it, executes its `play`
     # function, and fails on any axe (WCAG 2.2 AA) violation, because
@@ -81,7 +99,7 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: '22.12.0'
+                  node-version-file: .nvmrc
                   cache: npm
 
             - name: Install dependencies
@@ -99,5 +117,23 @@ jobs:
               # does this for the dev server, and the test project needs it too.
               run: npm run generate:icon-catalog
 
+            - name: Verify Storybook failure controls
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:verification-controls
+
             - name: Run Storybook component tests
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
               run: npm run test:storybook
+
+            - name: Upload Storybook verification evidence
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: storybook-verification
+                  path: |
+                      verification-artifacts/
+                      coverage/
+                      **/__screenshots__/
+                  if-no-files-found: warn

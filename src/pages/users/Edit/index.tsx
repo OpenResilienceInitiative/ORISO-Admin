@@ -1,10 +1,11 @@
-import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
+import { Alert, Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { Card } from '../../../components/Card';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import {
@@ -108,6 +109,7 @@ const CONSULTANT_ONLY_PROFILE_FIELDS: ConsultantFieldName[] = [
 const PAGE_SETTINGS_EXCLUSIONS: ConsultantFieldName[] = ['absent', 'isGroupchatConsultant'];
 
 export const UserEditOrAdd = () => {
+    const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();

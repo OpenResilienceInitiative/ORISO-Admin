@@ -1,7 +1,7 @@
-import { configDefaults, defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import svgrPlugin from 'vite-plugin-svgr';
-import { playwright } from '@vitest/browser-playwright';
+import { playwright } from 'vite-plus/test/browser-playwright';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { fileURLToPath } from 'node:url';
 
@@ -18,6 +18,16 @@ const reactJsxDevRuntime = fileURLToPath(new URL('./node_modules/react/jsx-dev-r
 //                 default `npm test` and gets its own CI job.
 // https://vitest.dev/config/
 export default defineConfig({
+    define: {
+        'import.meta.env.ORISO_A11Y_CONTROL_PHASE': JSON.stringify(
+            process.env.ORISO_VERIFICATION_CONTROLS === 'true' ? process.env.ORISO_A11Y_CONTROL_PHASE : null,
+        ),
+        'import.meta.env.ORISO_A11Y_CONTROL_BASELINES': JSON.stringify(
+            process.env.ORISO_VERIFICATION_CONTROLS === 'true'
+                ? JSON.parse(process.env.ORISO_A11Y_BASELINE_JSON || '[]')
+                : null,
+        ),
+    },
     plugins: [
         react(),
         // Mirror the production svgr setup so components importing
@@ -37,6 +47,17 @@ export default defineConfig({
         },
     },
     test: {
+        reporters: ['default', './scripts/verification-reporter.mjs'],
+        // Vitest v4 compatibility: preserve mock call history.
+        // Remove after tests no longer rely on calls from setup or earlier tests.
+        // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
+        // https://vitest.dev/guide/migration/#clearmocks-is-enabled-by-default
+        clearMocks: false,
+        // Vitest v4 compatibility: keep separate Vite servers for inline projects.
+        // Remove when plugins and config hooks can run once for shared projects.
+        // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
+        // https://vitest.dev/guide/migration/#inline-projects-share-the-vite-server-by-default
+        sharedViteServer: false,
         coverage: {
             provider: 'v8',
             // `text` for the terminal, `html` for humans, `json-summary` for the
@@ -60,18 +81,15 @@ export default defineConfig({
                 extends: true,
                 test: {
                     name: 'unit',
-                    environment: 'jsdom',
-                    exclude: [...configDefaults.exclude, 'cypress/**'],
+                    environment: 'oriso-jsdom',
+                    exclude: [
+                        ...configDefaults.exclude,
+                        'cypress/**',
+                        'scripts/native-unit-error-canary/**',
+                        'scripts/vitest-environment-oriso-jsdom/**',
+                    ],
                     globals: true,
                     testTimeout: 30_000,
-                    // React's concurrent scheduler can flush a queued task (via setImmediate)
-                    // AFTER Vitest tears down the jsdom environment, dereferencing window/
-                    // document in the bare node scope. These post-teardown ReferenceErrors are
-                    // benign — every test has already run and asserted — but Vitest fails the
-                    // whole run on any unhandled error, which surfaced as a flaky CI-only
-                    // "window is not defined" (green locally, red on slower CI). Genuine test
-                    // failures and assertion errors still fail the run as normal.
-                    dangerouslyIgnoreUnhandledErrors: true,
                     server: {
                         deps: {
                             // tippy.js ships a CJS main whose default export breaks under
@@ -126,6 +144,13 @@ export default defineConfig({
                 test: {
                     name: 'storybook',
                     browser: {
+                        locators: {
+                            // Vitest v4 compatibility: keep partial, case-insensitive locator matching.
+                            // Remove after updating locators for full, case-sensitive matches.
+                            // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
+                            // https://vitest.dev/guide/migration/#locators-are-strict-by-default
+                            exact: false,
+                        },
                         enabled: true,
                         headless: true,
                         provider: playwright({

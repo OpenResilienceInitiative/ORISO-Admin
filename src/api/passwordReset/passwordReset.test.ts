@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { passwordResetConfirmEndpoint, passwordResetRequestEndpoint } from '../../appConfig';
 import { confirmAdminPasswordReset, requestAdminPasswordReset } from './passwordReset';

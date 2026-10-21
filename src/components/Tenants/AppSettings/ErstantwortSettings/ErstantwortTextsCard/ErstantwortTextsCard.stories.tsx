@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { ErstantwortTextsCard, ErstantwortContentMap } from './index';
 import type { ErstantwortBausteinKey } from '../erstantwortBausteine';

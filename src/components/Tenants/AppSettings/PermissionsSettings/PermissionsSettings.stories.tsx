@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { fn } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
@@ -12,6 +13,7 @@ const meta = {
     component: PermissionsSettingsView,
     parameters: {
         layout: 'fullscreen',
+        msw: { handlers: [http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([]))] },
         design: {
             type: 'multi',
             designs: [

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
 import translationDe from '../../locales/de/translation.json';
 import translationEn from '../../locales/en/translation.json';

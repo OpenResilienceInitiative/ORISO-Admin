@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
 import { useTutorialStatistics } from './useTutorialStatistics.hook';

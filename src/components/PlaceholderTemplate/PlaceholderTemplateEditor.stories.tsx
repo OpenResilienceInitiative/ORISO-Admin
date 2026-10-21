@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor, within } from 'storybook/test';
+import invitePreviews from '../../utils/storybook/invitePreviewFixtures.json';
+import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
 import { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
 import { LegalConsentTemplateEditor, type LegalConsentTemplateValues } from './LegalConsentTemplateEditor';
 import type { PlaceholderTemplateDefinition } from './PlaceholderTemplateEditor';
@@ -72,10 +75,16 @@ const InviteDemo = () => {
 };
 
 export const InviteEmail: Story = {
+    parameters: { msw: { handlers: [createInviteEmailPreviewHandler()] } },
     render: () => <InviteDemo />,
+    play: async ({ canvasElement }) => {
+        const frame = await within(canvasElement).findByTitle('E-Mail-Vorschau');
+        await waitFor(() => expect(frame).toHaveAttribute('srcdoc', invitePreviews[0].response.html));
+    },
 };
 
 export const InviteEmailUnknownToken: Story = {
+    parameters: { msw: { handlers: [createInviteEmailPreviewHandler()] } },
     name: 'Invite e-mail — unknown token stays visible',
     render: () => (
         <InviteEmailTemplateEditor
@@ -89,10 +98,24 @@ export const InviteEmailUnknownToken: Story = {
             onSelectTemplate={() => {}}
         />
     ),
+    play: async ({ canvasElement }) => {
+        const frame = await within(canvasElement).findByTitle('E-Mail-Vorschau');
+        const preview = invitePreviews.find((entry) => entry.id === 'unknown')!;
+        await waitFor(() => expect(frame).toHaveAttribute('srcdoc', preview.response.html));
+        await expect(frame.getAttribute('srcdoc')).toContain('{{unbekannterPlatzhalter}}');
+    },
 };
 
 export const InviteEmailEmpty: Story = {
-    name: 'Invite e-mail — empty draft keeps the shell intact',
+    parameters: {
+        msw: { handlers: [createInviteEmailPreviewHandler()] },
+        docs: {
+            description: {
+                story: 'The backend chooses its sample invitation subject and body when an unsaved draft is blank. The preview deliberately displays that actual response.',
+            },
+        },
+    },
+    name: 'Invite e-mail — empty draft uses backend invitation defaults',
     render: () => (
         <InviteEmailTemplateEditor
             activeTemplateId={1}
@@ -102,6 +125,12 @@ export const InviteEmailEmpty: Story = {
             onSelectTemplate={() => {}}
         />
     ),
+    play: async ({ canvasElement }) => {
+        const frame = await within(canvasElement).findByTitle('E-Mail-Vorschau');
+        const preview = invitePreviews.find((entry) => entry.id === 'empty')!;
+        await waitFor(() => expect(frame).toHaveAttribute('srcdoc', preview.response.html));
+        await expect(within(canvasElement).getByText('Ihre Einladung', { exact: true })).toBeVisible();
+    },
 };
 
 const legalTemplates: PlaceholderTemplateDefinition<LegalConsentTemplateValues>[] = [

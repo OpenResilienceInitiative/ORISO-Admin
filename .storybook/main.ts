@@ -1,11 +1,14 @@
 import type { StorybookConfig } from '@storybook/react-vite';
-import { mergeConfig } from 'vite';
+import { mergeConfig } from 'vite-plus';
 
 // ORISO-Admin Storybook (SB10 + Vite builder), mirrors the ORISO-Frontend recipe.
 // @storybook/addon-mcp exposes the real Admin components+props to coding agents
 // at http://localhost:6006/mcp. antd v4 styling needs less { javascriptEnabled }.
 const config: StorybookConfig = {
-    stories: ['../src/**/*.mdx', '../src/**/*.stories.@(ts|tsx)'],
+    stories:
+        process.env.ORISO_VERIFICATION_CONTROLS === 'true'
+            ? ['../.superpowers/verification-controls/controls.stories.tsx']
+            : ['../src/**/*.mdx', '../src/**/*.stories.@(ts|tsx)'],
     // addon-a11y runs axe (WCAG 2.2 AA) against each story in the a11y panel + component tests.
     // addon-docs renders the autodocs pages and the .mdx files under src/.
     // addon-vitest adds the sidebar test widget; it runs `vitest --project storybook`

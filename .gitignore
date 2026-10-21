@@ -47,6 +47,10 @@ dump.rdb
 docs/agent-tasks/*
 !docs/agent-tasks/index.md
 
+# Reusable verification reports, child logs and browser artifacts
+verification-artifacts/
+.vitest/
+
 # Understand Anything: generated graphs are published daily as release assets
 # (ORISO-Docs, tag ua-graph-latest) and fetched at runtime - never commit them.
 .understand-anything/knowledge-graph.json

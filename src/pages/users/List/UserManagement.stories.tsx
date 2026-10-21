@@ -80,6 +80,7 @@ const halList = (list: object[]) => HttpResponse.json({ total: list.length, _emb
 // Every story also answers the saved-sort and filter-list calls; its own handlers come first and win.
 const DEFAULT_HANDLERS = [
     http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
+    http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 204 })),
     http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
     http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
 ];

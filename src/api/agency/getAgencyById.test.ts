@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node env for the same reason as fetchData.test.ts: fetch/Request/AbortController
 // all come from the same realm as the code under test.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 
 const messageError = vi.fn();
 vi.mock('antd', () => ({ message: { error: (...args: unknown[]) => messageError(...args) } }));

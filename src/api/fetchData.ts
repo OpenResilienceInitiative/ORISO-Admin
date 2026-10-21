@@ -1,8 +1,8 @@
-import { message } from 'antd';
 import i18next from 'i18next';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
+import { captureTransportFeedback, type TransportFeedback } from './transportFeedback';
 
 import logout from './auth/logout';
 import { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -107,7 +107,7 @@ interface FetchDataProps {
     retriedAfterRefresh?: boolean;
 }
 
-const executeFetchData = (props: FetchDataProps): Promise<any> =>
+const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Promise<any> =>
     new Promise((resolve, reject) => {
         const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
@@ -228,7 +228,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         // Reject without showing a toast so the caller can decide how to handle it.
                         reject(response);
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
-                        message.error({
+                        report({
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
@@ -265,18 +265,18 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
  * valid session to refresh — do we fall back to logging the user out. This stops
  * the "logged out while creating an agency" forced-logout.
  */
-export const fetchData = async (props: FetchDataProps): Promise<any> => {
+const fetchWithFeedback = async (props: FetchDataProps, report: TransportFeedback): Promise<any> => {
     try {
-        return await executeFetchData(props);
+        return await executeFetchData(props, report);
     } catch (error) {
         const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
 
         if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
             const refreshed = await tryRefreshAccessToken();
             if (refreshed) {
-                // Retry once through fetchData (not executeFetchData) so a retry that
+                // Retry once through this private wrapper (not executeFetchData) so a retry that
                 // is still unauthorized also runs the logout fallback below.
-                return fetchData({ ...props, retriedAfterRefresh: true });
+                return fetchWithFeedback({ ...props, retriedAfterRefresh: true }, report);
             }
         }
 
@@ -287,7 +287,7 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
             // Stable key: concurrent 401s (a page with many active queries) all reach
             // this fallback once the shared refresh has failed — antd collapses repeats
             // with the same key into ONE toast instead of stacking identical ones.
-            message.error({
+            report({
                 content: i18next.t('message.error.sessionExpired') as string,
                 duration: 8,
                 key: 'session-expired',
@@ -298,3 +298,6 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
         throw error;
     }
 };
+
+// Capture at the public request boundary, once for the original and its private retry.
+export const fetchData = (props: FetchDataProps): Promise<any> => fetchWithFeedback(props, captureTransportFeedback());

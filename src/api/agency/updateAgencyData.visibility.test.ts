@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { AgencyData } from '../../types/agency';
 
 const mocks = vi.hoisted(() => ({ fetchData: vi.fn() }));

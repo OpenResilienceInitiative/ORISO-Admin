@@ -8,6 +8,7 @@ import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInv
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
+import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
 
@@ -332,7 +333,16 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
 /** A newly created active template closes the picker and becomes the invitation choice. */
 export const CreateAndUse: Story = {
     args: { picker: true, selectedTemplateId: 1, initialView: 'create' },
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [
+                templatesByKind,
+                createdTemplate,
+                createInviteEmailPreviewHandler(),
+                http.get('*/service/tenantadmin/search', () => HttpResponse.json({ total: 0, _embedded: [] })),
+            ],
+        },
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);

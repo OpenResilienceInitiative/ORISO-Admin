@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, renderHook, screen } from '@testing-library/react';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { InviteComposer, type InviteComposerProps } from './InviteComposer';

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { berlinSigningDeadline } from './dpaSigningDeadline';
 
 describe('explicit Europe/Berlin signing deadline', () => {

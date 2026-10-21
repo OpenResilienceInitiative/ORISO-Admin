@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { SideScrollerButton } from '../SideScrollerFooter';
 import { CardDeckNavProvider, useCardDeckNav } from './CardDeckNavContext';
 import { CardDeck } from './index';

@@ -1,7 +1,7 @@
 import { Form } from 'antd';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { MuiSelectField } from './index';
 
 // t() is identity so labels/messages are predictable and no i18n init is needed.
@@ -38,6 +38,17 @@ const Harness = ({
         <MuiSelectField name="topic" label="Topic" options={OPTIONS} {...props} />
     </Form>
 );
+
+describe('select loading accessibility', () => {
+    it('names the real loading indicator', () => {
+        render(
+            <Form>
+                <MuiSelectField name="pending" label="Pending field" loading options={[]} />
+            </Form>,
+        );
+        expect(screen.getByRole('progressbar', { name: 'loading' })).toBeInTheDocument();
+    });
+});
 
 describe('MuiSelectField data parity', () => {
     it('reads: initialValue is displayed', () => {

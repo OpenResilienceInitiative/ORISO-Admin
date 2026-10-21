@@ -1,8 +1,9 @@
+import { appendFileSync } from 'node:fs';
 import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Static import on purpose — see the note in AccountInvitesTab.test.tsx.
@@ -199,6 +200,54 @@ const agencyPage = (hits: Array<Record<string, unknown>>, total = hits.length, h
     hasMore,
 });
 
+const createInviteTrace = (caseName: string) => {
+    const started = performance.now();
+    const trace = (phase: string, details: Record<string, unknown> = {}) => {
+        const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
+        if (!destination) return;
+        appendFileSync(
+            destination,
+            `${JSON.stringify({
+                caseName,
+                file: 'src/pages/Links/AccountInvitesTab.agencyAdmin.test.tsx',
+                pid: process.pid,
+                traceId: `${process.pid}:${performance.timeOrigin}:${started}`,
+                phase,
+                atUTC: new Date().toISOString(),
+                elapsedMs: performance.now() - started,
+                inputs: [...document.querySelectorAll<HTMLInputElement>('input[role="combobox"]')].map((input) => ({
+                    id: input.id,
+                    value: input.value,
+                    focused: document.activeElement === input,
+                    expanded: input.getAttribute('aria-expanded'),
+                    controls: input.getAttribute('aria-controls'),
+                    disabled: input.disabled,
+                })),
+                options: [...document.querySelectorAll<HTMLElement>('[role="option"]')].map((option) => ({
+                    text: option.textContent,
+                    selected: option.getAttribute('aria-selected'),
+                    hidden: option.hidden,
+                    ariaHidden: option.getAttribute('aria-hidden'),
+                })),
+                listboxes: [...document.querySelectorAll<HTMLElement>('[role="listbox"]')].map((list) => ({
+                    id: list.id,
+                    text: list.textContent,
+                    hidden: list.hidden,
+                })),
+                topicControls: [...document.querySelectorAll('button')]
+                    .map((button) => button.textContent)
+                    .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                searchArgs: mocks.searchInviteAgencies.mock.calls,
+                agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
+                ...details,
+            })}\n`,
+        );
+    };
+    // The native finish hook also runs after an assertion failure or timeout.
+    if (process.env.ACCOUNT_INVITE_TRACE_FILE) onTestFinished(() => trace('test:finished'));
+    return trace;
+};
+
 describe.each([
     ['agency admin', UserRole.AgencyAdmin],
     ['restricted agency admin', UserRole.RestrictedAgencyAdmin],
@@ -284,12 +333,18 @@ describe.each([
     });
 
     it('with several own agencies: picks only among them, no new agency, no number stepping', async () => {
+        const trace = createInviteTrace(`${_label}: several own agencies`);
+        trace('test:start');
         mocks.searchInviteAgencies.mockResolvedValue(agencyPage([OWN_AGENCY, SECOND_AGENCY]));
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
+        trace('findAgency:before');
         const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        trace('findAgency:after');
+        trace('searchReady:before');
         await waitFor(() => expect(mocks.searchInviteAgencies).toHaveBeenCalled());
+        trace('searchReady:after');
         expect(agency).toBeEnabled();
         expect(agency).toHaveValue('');
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
@@ -300,14 +355,24 @@ describe.each([
         // Neither the next-free-number stepping nor the "Stattdessen als BST-Admin" founding path.
         expect(screen.queryByText('Stattdessen als BST-Admin einladen')).not.toBeInTheDocument();
 
+        trace('openAgency:before');
         await user.click(agency);
+        trace('openAgency:after');
         expect(await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ })).toBeInTheDocument();
         expect(screen.queryByRole('option', { name: /Neu anlegen/ })).not.toBeInTheDocument();
         // A typed number of a foreign agency is not taken over (the backend would answer 403).
+        trace('type999:before');
         await user.type(agency, '999');
+        trace('type999:after');
         expect(screen.queryByRole('option', { name: /999/ })).not.toBeInTheDocument();
+        trace('clearAgency:before');
         await user.clear(agency);
-        await user.click(await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ }));
+        trace('clearAgency:after');
+        trace('findOwnOptionAfterClear:before');
+        const ownOption = await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ });
+        trace('findOwnOptionAfterClear:after');
+        await user.click(ownOption);
+        trace('clickOwnOption:after');
 
         const send = screen.getByRole('button', { name: 'Einladen' });
         await waitFor(() => expect(send).toBeEnabled());
@@ -319,6 +384,7 @@ describe.each([
             agencyIdAllocationMode: 'EXISTING',
         });
         expect(mocks.nextFreeAgencyId).not.toHaveBeenCalled();
+        trace('test:done');
     });
 
     it('with more than 10 own agencies: the 11th and 12th are reachable via "Weitere anzeigen"', async () => {

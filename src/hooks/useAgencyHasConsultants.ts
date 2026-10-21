@@ -5,11 +5,11 @@ interface AgencyHasConsultantsProps extends Omit<UseQueryOptions<boolean>, 'quer
     id?: string;
 }
 
-export const useAgencyHasConsultants = ({ id, ...options }: AgencyHasConsultantsProps) => {
+export const useAgencyHasConsultants = ({ id, enabled, ...options }: AgencyHasConsultantsProps) => {
     return useQuery<boolean>({
         queryKey: ['HAS_CONSULTANTS', id],
         queryFn: () => hasAgencyConsultants(id),
-        enabled: id !== 'add',
         ...options,
+        enabled: !!id && id !== 'add' ? enabled : false,
     });
 };

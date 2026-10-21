@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const styles = readFileSync(resolve(__dirname, './m3FabMenu.module.scss'), 'utf8');
 const actionBlock = styles.slice(styles.indexOf('.action {'), styles.indexOf('.action.openDownward'));

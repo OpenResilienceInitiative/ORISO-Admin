@@ -32,7 +32,7 @@ const handlers = [
     http.get('*/service/tenant/public/*', () =>
         HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } }),
     ),
-    http.get('*/service/tenant', () => HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } })),
+    http.get('*/service/tenant/7', () => HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } })),
     http.get('*/service/tenantadmin/7/dpa/versions', () =>
         HttpResponse.json(published ? [{ ...initialVersion, content: JSON.stringify(publishedContent) }] : []),
     ),

@@ -1,7 +1,8 @@
 import set from 'lodash.set';
-import { notification, Spin, Tag } from 'antd';
+import { Spin, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { Modal, ModalProps } from '../../../../Modal';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
@@ -148,6 +149,7 @@ export const LegalText = ({
     icon,
     showConfirmationModal,
 }: LegalTextProps) => {
+    const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();

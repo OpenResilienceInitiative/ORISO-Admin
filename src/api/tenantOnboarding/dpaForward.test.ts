@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { InviteLinkError } from './tenantOnboarding';

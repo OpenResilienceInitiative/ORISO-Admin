@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import type { ComponentProps, SVGProps } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
 beforeEach(() => {

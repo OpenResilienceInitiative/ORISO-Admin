@@ -1,156 +1,183 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ConfigProvider, Input, InputNumber, Select } from 'antd';
+import { ConfigProvider, Input, InputNumber, Select, theme as antdTheme } from 'antd';
+import deDE from 'antd/es/locale/de_DE';
+import enGB from 'antd/es/locale/en_GB';
+import { useTranslation } from 'react-i18next';
 
 import { buildAdminAntdTheme } from '../theme/antdM3Theme';
+import { AppliedTokenInspection } from '../theme/AppliedTokenInspector';
+import type { InspectionContext } from '../theme/appliedTokenInspection';
+import { inspectionStoryContext, prepareInspectionStory } from '../theme/inspectionStoryContext';
 
-/**
- * Field anatomy sheet for the `--admin-field-*` token rework (#313): field
- * surfaces sit one step lighter than the workspace background with a subtle
- * outline, focus draws a primary-coloured outline, and selected options are
- * "illuminated" with the light primary-container tonal. Everything below is
- * raw antd inheriting {@link buildAdminAntdTheme} — no component styling.
- */
-
-const FIELD_TOKENS = [
-    ['--admin-field-surface', '#fcf9f9', 'field surface (lighter than workspace)'],
-    ['--admin-field-outline', '#c4c7c8', 'resting outline (outline-variant tier)'],
-    ['--admin-field-surface-hover', '#f6f3f3', 'hover surface'],
-    ['--admin-field-selected-surface', '#ffe2de', 'selected/active tonal surface'],
-    ['--admin-field-selected-text', '#930008', 'selected/active text'],
-] as const;
-
-const selectOptions = [
-    { value: 'illness', label: 'Illness' },
-    { value: 'advice', label: 'Advice needed' },
-    { value: 'legal', label: 'Legal violation' },
-];
-
-const cellStyle: React.CSSProperties = { width: 220 };
-const labelStyle: React.CSSProperties = {
-    font: "500 12px/16px 'Inter', sans-serif",
-    color: '#444748',
-    marginBottom: 4,
-};
-
-const Cell = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={cellStyle}>
-        <div style={labelStyle}>{label}</div>
-        {children}
-    </div>
-);
-
-const Row = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div>
-        <h3 style={{ font: "500 14px/20px 'Inter', sans-serif", margin: '0 0 8px' }}>{title}</h3>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>{children}</div>
-    </div>
-);
-
-/** Fields rendered on the real workspace background so the "one step lighter" surface is visible. */
-const Workspace = ({ children }: { children: React.ReactNode }) => (
-    <ConfigProvider theme={buildAdminAntdTheme()}>
-        <div
-            style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 32,
-                padding: 32,
-                minHeight: '100vh',
-                background: 'var(--admin-workspace-background, #e4e2e2)',
-            }}
-        >
+const Cell = ({ label, children }: { label: string; children: React.ReactNode }) => {
+    const { token } = antdTheme.useToken();
+    return (
+        <div style={{ width: 220, maxWidth: '100%' }}>
+            <div style={{ fontSize: token.fontSizeSM, color: 'var(--m3-on-surface)', marginBottom: token.marginXXS }}>
+                {label}
+            </div>
             {children}
         </div>
-    </ConfigProvider>
-);
-
-const meta: Meta = {
-    title: 'Foundations/Field Tokens',
-    parameters: { layout: 'fullscreen' },
+    );
 };
-
-export default meta;
-
-export const FieldAnatomy: StoryObj = {
-    render: () => (
-        <Workspace>
+const Row = ({ title, children }: { title: string; children: React.ReactNode }) => {
+    const { token } = antdTheme.useToken();
+    return (
+        <div>
+            <h3 style={{ fontSize: token.fontSize, margin: `0 0 ${token.marginXS}px`, color: 'var(--m3-on-surface)' }}>
+                {title}
+            </h3>
+            <div style={{ display: 'flex', gap: token.marginLG, flexWrap: 'wrap' }}>{children}</div>
+        </div>
+    );
+};
+const Workspace = ({
+    context,
+    children,
+    inspect = false,
+}: {
+    context: InspectionContext;
+    children: React.ReactNode;
+    inspect?: boolean;
+}) => {
+    const [root, setRoot] = React.useState<HTMLDivElement | null>(null);
+    const config = React.useMemo(
+        () => buildAdminAntdTheme({ seeds: { accentDark: context.primaryColor }, scheme: context.scheme }),
+        [context.primaryColor, context.scheme],
+    );
+    const canonical = antdTheme.getDesignToken(config);
+    return (
+        <ConfigProvider theme={config} locale={context.locale === 'de' ? deDE : enGB}>
+            <div
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: canonical.sizeXXL,
+                    padding: canonical.paddingLG,
+                    minHeight: '100vh',
+                    minWidth: 0,
+                    background: 'var(--admin-workspace-background)',
+                }}
+            >
+                <div
+                    ref={setRoot}
+                    data-token-inspection-workspace
+                    style={{ display: 'flex', flexDirection: 'column', gap: canonical.sizeXXL, minWidth: 0 }}
+                >
+                    {children}
+                </div>
+                {inspect && <AppliedTokenInspection root={root} context={context} reference="field" />}
+            </div>
+        </ConfigProvider>
+    );
+};
+const Fields = ({ context, tonal = false }: { context: InspectionContext; tonal?: boolean }) => {
+    const { t } = useTranslation();
+    const options = [
+        { value: 'illness', label: t('tokenInspection.illness') },
+        { value: 'advice', label: t('tokenInspection.advice') },
+        { value: 'legal', label: t('tokenInspection.legal') },
+    ];
+    if (tonal)
+        return (
+            <Workspace context={context}>
+                <Row title={t('tokenInspection.tonal')}>
+                    <div style={{ width: 260, maxWidth: '100%' }}>
+                        <Select
+                            aria-label={t('tokenInspection.topic')}
+                            open
+                            defaultValue="advice"
+                            options={options}
+                            style={{ width: '100%' }}
+                            getPopupContainer={(node) => node.parentElement ?? document.body}
+                        />
+                    </div>
+                </Row>
+                <div style={{ height: 160 }} />
+            </Workspace>
+        );
+    return (
+        <Workspace context={context} inspect>
             <Row title="Input">
-                <Cell label="Default (hover to preview hover surface)">
-                    <Input placeholder="Suche…" />
+                <Cell label={t('tokenInspection.default')}>
+                    <Input data-token-inspection-input aria-label={t('search')} placeholder={t('search')} />
                 </Cell>
-                <Cell label="Filled">
-                    <Input defaultValue="Beratungsstelle Mitte" />
+                <Cell label={t('tokenInspection.filled')}>
+                    <Input aria-label={t('tokenInspection.filled')} defaultValue={t('tokenInspection.exampleAgency')} />
                 </Cell>
-                <Cell label="Focus (primary outline)">
-                    <Input autoFocus placeholder="Fokussiert…" />
+                <Cell label={t('tokenInspection.focus')}>
+                    <Input aria-label={t('tokenInspection.focus')} autoFocus placeholder={t('tokenInspection.focus')} />
                 </Cell>
-                <Cell label="Disabled">
-                    <Input disabled defaultValue="Nicht änderbar" />
+                <Cell label={t('tokenInspection.disabled')}>
+                    <Input
+                        aria-label={t('tokenInspection.disabled')}
+                        disabled
+                        defaultValue={t('tokenInspection.readonly')}
+                    />
                 </Cell>
             </Row>
             <Row title="Select">
-                <Cell label="Default">
-                    <Select placeholder="Thema wählen…" options={selectOptions} style={{ width: '100%' }} />
+                <Cell label={t('tokenInspection.default')}>
+                    <Select
+                        aria-label={t('tokenInspection.topic')}
+                        placeholder={t('tokenInspection.topic')}
+                        options={options}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
-                <Cell label="Filled">
-                    <Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
+                <Cell label={t('tokenInspection.filled')}>
+                    <Select
+                        aria-label={t('tokenInspection.selectedTopic')}
+                        defaultValue="illness"
+                        options={options}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
-                <Cell label="Disabled">
-                    <Select disabled defaultValue="advice" options={selectOptions} style={{ width: '100%' }} />
+                <Cell label={t('tokenInspection.disabled')}>
+                    <Select
+                        aria-label={t('tokenInspection.disabledTopic')}
+                        aria-disabled
+                        disabled
+                        defaultValue="advice"
+                        options={options}
+                        style={{ width: '100%' }}
+                    />
                 </Cell>
             </Row>
             <Row title="InputNumber">
-                <Cell label="Default">
-                    <InputNumber placeholder="0" style={{ width: '100%' }} />
+                <Cell label={t('tokenInspection.default')}>
+                    <InputNumber aria-label={t('tokenInspection.number')} placeholder="0" style={{ width: '100%' }} />
                 </Cell>
-                <Cell label="Filled">
-                    <InputNumber defaultValue={25} style={{ width: '100%' }} />
-                </Cell>
-                <Cell label="Disabled">
-                    <InputNumber disabled defaultValue={5} style={{ width: '100%' }} />
-                </Cell>
-            </Row>
-            <Row title="Token values (seed #A5000A)">
-                {FIELD_TOKENS.map(([name, value, description]) => (
-                    <Cell key={name} label={description}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span
-                                style={{
-                                    width: 24,
-                                    height: 24,
-                                    borderRadius: 4,
-                                    background: value,
-                                    border: '1px solid #c4c7c8',
-                                }}
-                            />
-                            <code style={{ fontSize: 12 }}>
-                                {name}: {value}
-                            </code>
-                        </div>
-                    </Cell>
-                ))}
-            </Row>
-        </Workspace>
-    ),
-};
-
-/** Open dropdown with a selected item so the tonal ("illuminated") selection is reviewable. */
-export const TonalSelection: StoryObj = {
-    render: () => (
-        <Workspace>
-            <Row title="Select — open, with tonal selected item">
-                <div style={{ width: 260 }}>
-                    <Select
-                        open
-                        defaultValue="advice"
-                        options={selectOptions}
+                <Cell label={t('tokenInspection.filled')}>
+                    <InputNumber
+                        aria-label={t('tokenInspection.filledNumber')}
+                        defaultValue={25}
                         style={{ width: '100%' }}
-                        getPopupContainer={(node) => node.parentElement ?? document.body}
                     />
-                </div>
+                </Cell>
+                <Cell label={t('tokenInspection.disabled')}>
+                    <InputNumber
+                        aria-label={t('tokenInspection.disabledNumber')}
+                        disabled
+                        defaultValue={5}
+                        style={{ width: '100%' }}
+                    />
+                </Cell>
             </Row>
-            <div style={{ height: 160 }} />
         </Workspace>
-    ),
+    );
+};
+const meta: Meta = { title: 'Foundations/Field Tokens', parameters: { layout: 'fullscreen' } };
+export default meta;
+
+/** Existing field specimens, now alongside independent expected/applied evidence. */
+export const FieldAnatomy: StoryObj = {
+    beforeEach: ({ args }) => prepareInspectionStory(inspectionStoryContext(args)),
+    render: (args) => <Fields context={inspectionStoryContext(args)} />,
+};
+/** Open dropdown with its original selected tonal state. */
+export const TonalSelection: StoryObj = {
+    beforeEach: ({ args }) => prepareInspectionStory(inspectionStoryContext(args)),
+    render: (args) => <Fields context={inspectionStoryContext(args)} tonal />,
 };

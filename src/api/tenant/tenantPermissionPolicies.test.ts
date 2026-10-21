@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { tenantAdminEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, fetchData } from '../fetchData';
 import { getTenantPermissionPolicies, updateTenantPermissionPolicies } from './tenantPermissionPolicies';

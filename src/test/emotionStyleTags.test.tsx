@@ -2,7 +2,7 @@
 // component mount, so one tag per MUI rule made big antd+MUI forms time out on CI.
 import Box from '@mui/material/Box';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 describe('MUI styles in jsdom', () => {
     it('packs many rules into a few <style> tags', () => {
