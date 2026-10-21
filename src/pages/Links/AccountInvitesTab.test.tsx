@@ -204,11 +204,66 @@ beforeEach(() => {
     mocks.superAdmin = false;
 });
 
+const requiredTopicsDefaultName = /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/;
+
+const captureTopicsFieldSnapshot = (slot: HTMLElement) => {
+    const started = performance.now();
+    const queryStarted = performance.now();
+    // This is the actual visible role/name matcher, not a guessed accessible name.
+    const target = within(slot).queryByRole('button', { name: requiredTopicsDefaultName });
+    const queryDurationMs = performance.now() - queryStarted;
+    const visibilityChain = [];
+    for (let node: HTMLElement | null = slot; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        visibilityChain.push({
+            tag: node.tagName,
+            hidden: node.hidden,
+            ariaHidden: node.getAttribute('aria-hidden'),
+            display: style.display,
+            visibility: style.visibility,
+        });
+    }
+    return {
+        capturedAtUTC: new Date().toISOString(),
+        requiredRole: 'button',
+        requiredName: String(requiredTopicsDefaultName),
+        queryDurationMs,
+        matchesRequiredVisibleRoleName: target !== null,
+        connected: slot.isConnected,
+        collapsed: slot.getAttribute('data-collapsed'),
+        visibilityChain,
+        buttons: [...slot.querySelectorAll<HTMLButtonElement>('button')].map((button) => ({
+            tag: button.tagName,
+            role: button.getAttribute('role'),
+            type: button.type,
+            ariaLabel: button.getAttribute('aria-label'),
+            labelledBy: (button.getAttribute('aria-labelledby') ?? '')
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((id) => ({ id, text: document.getElementById(id)?.textContent ?? null })),
+            title: button.title,
+            text: button.textContent,
+            disabled: button.disabled,
+            hidden: button.hidden,
+            ariaHidden: button.getAttribute('aria-hidden'),
+            connected: button.isConnected,
+            matchesRequiredVisibleRoleName: button === target,
+        })),
+        // Includes the small scoped role query, attributes and visibility reads.
+        snapshotDurationMs: performance.now() - started,
+    };
+};
+
 const createInviteTrace = (caseName: string) => {
     const started = performance.now();
-    const trace = (phase: string, details: Record<string, unknown> = {}) => {
+    let lastTopicsFieldSnapshot: ReturnType<typeof captureTopicsFieldSnapshot> | undefined;
+    const trace = (
+        phase: string,
+        details: Record<string, unknown> & { topicsFieldSnapshot?: ReturnType<typeof captureTopicsFieldSnapshot> } = {},
+    ) => {
         const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
         if (!destination) return;
+        if (details.topicsFieldSnapshot) lastTopicsFieldSnapshot = details.topicsFieldSnapshot;
         appendFileSync(
             destination,
             `${JSON.stringify({
@@ -241,6 +296,8 @@ const createInviteTrace = (caseName: string) => {
                 topicControls: [...document.querySelectorAll('button')]
                     .map((button) => button.textContent)
                     .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                // Preserve the last pre/post-query field state even if teardown has emptied the DOM.
+                lastTopicsFieldSnapshot,
                 searchArgs: mocks.searchInviteAgencies.mock.calls,
                 agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
                 ...details,
@@ -1080,10 +1137,16 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             trace('agencyDefault:answered', { id, result });
             return result;
         });
-        render(<CounsellorInvitesTab />);
+        const { container } = render(<CounsellorInvitesTab />);
+        const fieldSlot = (key: 'topics' | 'agency') => {
+            // Resolve the current node on each use; do not retain a slot across rerenders.
+            const slots = container.querySelectorAll<HTMLElement>(`[data-field-key="${key}"]`);
+            expect(slots).toHaveLength(1);
+            return slots[0];
+        };
         const user = userEvent.setup();
         trace('findAgency:before');
-        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        const agency = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
         trace('findAgency:after');
         trace('typeDiak:before');
         await user.type(agency, 'Diak');
@@ -1096,9 +1159,14 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         trace('default14:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'), SLOW);
         trace('default14:after');
-        const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        trace('queryTopics:before');
+        const topicsQueryStarted = performance.now();
+        const topics = within(fieldSlot('topics')).queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        trace('queryTopics:after', { queryDurationMs: performance.now() - topicsQueryStarted });
         trace('openTopics:before');
-        await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
+        await user.click(
+            topics ?? within(fieldSlot('topics')).getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }),
+        );
         trace('openTopics:after');
         trace('findManualPermission:before');
         const manualPermission = await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW);
@@ -1106,12 +1174,15 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         await user.click(manualPermission);
         trace('chooseManualPermission:after');
 
-        const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:before');
+        const agencyPillQueryStarted = performance.now();
+        const agencyPill = within(fieldSlot('agency')).queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:after', { queryDurationMs: performance.now() - agencyPillQueryStarted });
         trace('openAgencyPill:before', { present: !!agencyPill });
         if (agencyPill) await user.click(agencyPill);
         trace('openAgencyPill:after');
         trace('findAgencyField:before');
-        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        const agencyField = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
         trace('findAgencyField:after');
         trace('clearAgency:before');
         await user.clear(agencyField);
@@ -1129,15 +1200,22 @@ describe('CounsellorInvitesTab — invite wiring', () => {
         trace('default15:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'), SLOW);
         trace('default15:after');
-        trace('assertCreateDefault:before');
+        trace('assertCreateDefault:before', {
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
+        const createDefaultQueryStarted = performance.now();
         expect(
-            await screen.findByRole(
-                'button',
-                { name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/ },
-                SLOW,
-            ),
+            await within(fieldSlot('topics')).findByRole('button', { name: requiredTopicsDefaultName }, SLOW),
         ).toBeInTheDocument();
-        trace('assertCreateDefault:after');
+        const createDefaultQueryDurationMs = performance.now() - createDefaultQueryStarted;
+        trace('assertCreateDefault:after', {
+            queryDurationMs: createDefaultQueryDurationMs,
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
         trace('test:done');
     });
 
