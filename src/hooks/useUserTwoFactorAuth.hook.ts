@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { twoFactorAuth, twoFactorAuthAppEmail } from '../appConfig';
 import { useAccountOperationActions } from './useAccountOperationActions';
 import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
@@ -48,7 +49,7 @@ export const useUserTwoFactorAuth = () => {
     });
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('2fa-activate', twoFactorAuth),
+        onAccountEdit: useCallback(() => actions.edited('2fa-activate', twoFactorAuth), [actions]),
         mutate: bindAccountOperationMutation(actions, '2fa-activate', twoFactorAuth, mutation.mutate),
         mutateAsync: bindAccountOperationMutation(actions, '2fa-activate', twoFactorAuth, mutation.mutateAsync),
     };
@@ -75,7 +76,7 @@ export const useUserTwoFactorDelete = () => {
     const mutateAsync = bindAccountOperationMutation(actions, '2fa-delete', twoFactorAuth, mutation.mutateAsync);
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('2fa-delete', twoFactorAuth),
+        onAccountEdit: useCallback(() => actions.edited('2fa-delete', twoFactorAuth), [actions]),
         mutate: (_variables?: void, options?: Parameters<typeof mutation.mutate>[1]) => mutate({}, options),
         mutateAsync: (_variables?: void, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
             mutateAsync({}, options),
@@ -105,7 +106,7 @@ export const useUserTwoFactorSendEmailCode = () => {
     );
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('2fa-email-send', twoFactorAuthAppEmail),
+        onAccountEdit: useCallback(() => actions.edited('2fa-email-send', twoFactorAuthAppEmail), [actions]),
         mutate: (email: string, options?: Parameters<typeof mutation.mutate>[1]) => mutate({ email }, options),
         mutateAsync: (email: string, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
             mutateAsync({ email }, options),

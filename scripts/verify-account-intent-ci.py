@@ -119,18 +119,20 @@ if kind == "frontend" and phase == "react":
         records.append(record)
     finally:
         probe.unlink()
-    targeted = ["src/components/erstantwort/ErstantwortEmailOverlay.test.tsx", "src/components/profile/AskerAboutMeData.test.tsx", "src/components/profile/DisplayNameSettings.test.tsx", "src/components/passwordReset/PasswordReset.test.tsx", "src/components/twoFactorAuth/TwoFactorSetupDialog.test.tsx", "src/components/localeSwitch/LocaleSwitch.test.tsx"]
+    targeted = ["src/components/profile/ProfileAvatarChoice.test.tsx", "src/components/profile/EmailNotifications/EmailNotifications.appointments.test.tsx", "src/components/anonymousChat/entryRoom/LiveChatAccess.test.tsx", "src/components/twoFactorAuth/TwoFactorAuth.test.tsx", "src/components/erstantwort/ErstantwortEmailOverlay.test.tsx", "src/components/profile/AskerAboutMeData.test.tsx", "src/components/profile/DisplayNameSettings.test.tsx", "src/components/passwordReset/PasswordReset.test.tsx", "src/components/twoFactorAuth/TwoFactorSetupDialog.test.tsx", "src/components/localeSwitch/LocaleSwitch.test.tsx"]
+    assert all((root / name).is_file() for name in targeted), "missing required affected React test source"
     records.append(run("react-account-paths", ["node", "node_modules/vitest/vitest.mjs", "run", "--project", "unit", "--maxWorkers=2", "--minWorkers=1", *targeted, "--reporter=junit", "--outputFile=" + str(evidence / "react-account-paths.xml")], 420, evidence / "react-account-paths.xml"))
 elif kind == "admin" and phase == "react":
-    targeted = ["src/pages/Profile/accountOperationForms.test.tsx", "src/hooks/accountOperationActions.react.test.tsx", "src/components/CardEditable/CardEditable.test.tsx", "src/components/TwoFactorSetup/TwoFactorSetup.test.tsx", "src/pages/users/Edit/index.test.tsx", "src/pages/users/TenantAdminEdit/index.test.tsx"]
+    targeted = ["src/components/TwoFactorSetup/TwoFactorSetup.test.tsx", "src/pages/users/Edit/index.test.tsx", "src/pages/users/TenantAdminEdit/index.test.tsx"]
+    assert all((root / name).is_file() for name in targeted), "missing required affected React test source"
     records.append(run("react-account-paths", ["node", "node_modules/vitest/vitest.mjs", "run", "--project", "unit", "--maxWorkers=2", *targeted, "--reporter=junit", "--outputFile=" + str(evidence / "react-account-paths.xml")], 420, evidence / "react-account-paths.xml"))
 if phase == "project":
     unit_command = ["npm", "run", "test:unit" if kind == "frontend" else "test", "--", *([] if kind == "frontend" else ["--maxWorkers=2"]), "--reporter=junit", "--outputFile=" + str(evidence / "unit.xml")]
     records.append(run("unit", unit_command, 1800, evidence / "unit.xml"))
-    commands = ([("lint-scripts", ["npm", "run", "lint:scripts"]), ("lint-style", ["npm", "run", "lint:style"])] if kind == "frontend" else [("lint-js", ["npm", "run", "lint:js"]), ("lint-css", ["npm", "run", "lint:css"]), ("lint-formatting", ["npm", "run", "lint:formatting"])])
+    commands = ([("lint-scripts", ["npm", "run", "lint:scripts"]), ("lint-style", ["npm", "run", "lint:style"])] if kind == "frontend" else [("lint-js", ["node", "node_modules/eslint/bin/eslint.js", ".", "--max-warnings=0"]), ("lint-css", ["npm", "run", "lint:css"]), ("lint-formatting", ["npm", "run", "lint:formatting"])])
     for label, command in commands:
         records.append(run(label, command, 600))
-    records.append(run("build", ["npm", "run", "build"], 900, env_extra={"CI": "false", "REACT_APP_BUILD_COMMIT": before["commit"]}))
+    records.append(run("build", ["npm", "run", "build"], 900, env_extra={"CI": "false", "REACT_APP_BUILD_COMMIT": before["commit"], "VITE_BUILD_COMMIT": before["commit"]}))
 after = source_manifest()
 (evidence / "source-after.json").write_text(json.dumps(after, indent=2) + "\n")
 summary = {"repositoryKind": kind, "phase": phase, "commit": before["commit"], "nodeVersion": subprocess.check_output(["node", "--version"], text=True).strip(),

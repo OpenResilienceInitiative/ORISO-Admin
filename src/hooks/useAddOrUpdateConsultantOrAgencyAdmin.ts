@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useAccountOperationActions } from './useAccountOperationActions';
 import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
@@ -54,11 +55,14 @@ export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: 
         },
     });
     // New-account workflows retain their existing checked invitation identity.
-    if (!id) return { ...mutation, onAccountEdit: () => {} };
     const target = `${typeOfUser}/${id}`;
+    const onAccountEdit = useCallback(() => {
+        if (id) actions.edited('account-edit', target);
+    }, [actions, id, target]);
+    if (!id) return { ...mutation, onAccountEdit };
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('account-edit', target),
+        onAccountEdit,
         mutate: bindAccountOperationMutation(actions, 'account-edit', target, mutation.mutate),
         mutateAsync: bindAccountOperationMutation(actions, 'account-edit', target, mutation.mutateAsync),
     };

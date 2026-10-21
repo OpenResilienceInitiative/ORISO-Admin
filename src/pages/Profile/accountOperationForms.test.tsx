@@ -45,7 +45,7 @@ describe('real profile forms and their account mutations', () => {
         const user = userEvent.setup({ delay: null });
         render(<PrivateData />, { wrapper });
         await user.click(screen.getByRole('button', { name: 'edit' }));
-        const email = screen.getByPlaceholderText('placeholder.email');
+        const email = screen.getByLabelText('email *');
         fireEvent.change(email, { target: { value: 'new@example.test' } });
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
         await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
@@ -65,22 +65,21 @@ describe('real profile forms and their account mutations', () => {
     it('reopens the real password form after an unknown response and preserves the exact retry', async () => {
         mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
         const user = userEvent.setup({ delay: null });
-        render(<PasswordChange />, { wrapper });
+        const view = render(<PasswordChange />, { wrapper });
+        const passwordInput = (id: string) => view.container.querySelector<HTMLInputElement>(`#${id}`);
         await user.click(screen.getByRole('button', { name: 'edit' }));
-        fireEvent.change(screen.getByPlaceholderText('profile.passwordChange.form.currentPassword'), {
+        fireEvent.change(passwordInput('oldPassword'), {
             target: { value: 'Original-test-pass-927!' },
         });
-        fireEvent.change(screen.getByPlaceholderText('profile.passwordChange.form.newPassword'), {
+        fireEvent.change(passwordInput('newPassword'), {
             target: { value: 'Changed-test-pass-928!' },
         });
-        fireEvent.change(screen.getByPlaceholderText('profile.passwordChange.form.passwordConfirmation'), {
+        fireEvent.change(passwordInput('passwordConfirmation'), {
             target: { value: 'Changed-test-pass-928!' },
         });
         await user.click(screen.getByRole('button', { name: 'profile.passwordChange.save' }));
         await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
-        await waitFor(() =>
-            expect(screen.getByPlaceholderText('profile.passwordChange.form.currentPassword')).toBeEnabled(),
-        );
+        await waitFor(() => expect(passwordInput('oldPassword')).toBeEnabled());
         await user.click(screen.getByRole('button', { name: 'profile.passwordChange.save' }));
         await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
         expect(idAt(1)).toBe(idAt(0));

@@ -49,7 +49,7 @@ registerHooks({
             'account-intent:fetch': `export const FETCH_SUCCESS={CONTENT:'CONTENT'}; export const FETCH_ERRORS = {}; export const FETCH_METHODS = {PUT:'PUT',POST:'POST',DELETE:'DELETE',PATCH:'PATCH'}; export const fetchData = props => globalThis.__accountIntentFetch(props);`,
             'account-intent:config': `export const twoFactorAuthApp='/users/2fa/app',twoFactorAuthAppEmail='/users/2fa/email',twoFactorAuth='/users/2fa',userDataEndpoint='/users/data',agencyAdminEndpoint='/useradmin/agencyadmins',counselorEndpoint='/useradmin/consultants',userAdminDataEndpoint='/useradmin/data',userPasswordChangeEndpoint='/users/password/change',tenantAdminsEndpoint='/useradmin/tenantadmins';`,
             'account-intent:query': `export const UseMutationOptions=undefined; export const useMutation=options=>globalThis.__createAccountTestMutation(options); export const useQueryClient=()=>({invalidateQueries(){},setQueryData(){},removeQueries(){},getQueryData(){}});`,
-            'account-intent:react': `export const useRef=value=>({current:value});`,
+            'account-intent:react': `export const useRef=value=>({current:value}); export const useCallback=callback=>callback;`,
             'account-intent:user-data': `export const USER_DATA_KEY='user-data';`,
             'account-intent:tenant-data': `export const TENANT_QUERY_KEY='tenant';`,
             'account-intent:tenant-admin-data': `export const TENANT_ADMIN_QUERY_KEY='tenant-admin',TENANT_ADMINS_QUERY_KEY='tenant-admins'; export const useTenantUserAdminData=()=>({data:{username:'stored-username'}});`,

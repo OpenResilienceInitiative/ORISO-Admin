@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { userAdminDataEndpoint } from '../appConfig';
@@ -45,9 +46,10 @@ export const useUpdateUserData = (
             options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
     });
+    const onAccountEdit = useCallback(() => actions.edited('profile', userAdminDataEndpoint), [actions]);
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('profile', userAdminDataEndpoint),
+        onAccountEdit,
         mutate: bindAccountOperationMutation(actions, 'profile', userAdminDataEndpoint, mutation.mutate),
         mutateAsync: bindAccountOperationMutation(actions, 'profile', userAdminDataEndpoint, mutation.mutateAsync),
     };

@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useAccountOperationActions } from './useAccountOperationActions';
 import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
 import { accountOperationHeaders, settleAccountOperation } from '../utils/accountOperationIntent';
@@ -75,8 +76,11 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
     });
-    if (!id) return { ...mutation, onAccountEdit: () => {} };
     const target = `${tenantAdminsEndpoint}/${id}`;
+    const onAccountEdit = useCallback(() => {
+        if (id) actions.edited('tenant-admin-edit', target);
+    }, [actions, id, target]);
+    if (!id) return { ...mutation, onAccountEdit };
     const materialize = (formData: CounselorData & AccountOperationVariables) => {
         const values = formData as CounselorData & { username?: string };
         return {
@@ -86,7 +90,7 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
     };
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('tenant-admin-edit', target),
+        onAccountEdit,
         mutate: bindAccountOperationMutation(actions, 'tenant-admin-edit', target, mutation.mutate, materialize),
         mutateAsync: bindAccountOperationMutation(
             actions,

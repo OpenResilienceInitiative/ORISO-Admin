@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import { userPasswordChangeEndpoint } from '../appConfig';
@@ -35,9 +36,10 @@ export const useUpdateUserPassword = (
         },
         ...options,
     });
+    const onAccountEdit = useCallback(() => actions.edited('password', userPasswordChangeEndpoint), [actions]);
     return {
         ...mutation,
-        onAccountEdit: () => actions.edited('password', userPasswordChangeEndpoint),
+        onAccountEdit,
         mutate: bindAccountOperationMutation(actions, 'password', userPasswordChangeEndpoint, mutation.mutate),
         mutateAsync: bindAccountOperationMutation(
             actions,
