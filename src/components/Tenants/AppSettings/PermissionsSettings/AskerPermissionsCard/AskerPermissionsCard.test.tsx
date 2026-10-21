@@ -108,8 +108,26 @@ describe('AskerPermissionsCard per-feature policies', () => {
     });
 });
 
-it('offers independent email and browser policies for the real live-chat conversation type', () => {
+it('shows no channel block when every conversation-type tile carries its own switches', () => {
     renderCard();
+    expect(screen.queryByRole('heading', { name: 'tenants.permissions.asker.channels.title' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /tenants.permissions.asker.channels/ })).toBeNull();
+});
+
+it('offers independent email and browser policies for a hidden live-chat tile', () => {
+    renderCard({
+        channelToggles: [
+            {
+                field: 'featureAskerEmailLiveChatEnabled',
+                labelKey: 'tenants.permissions.asker.channels.emailLiveChat',
+                defaultValue: false,
+            },
+            {
+                field: 'featureAskerBrowserLiveChatEnabled',
+                labelKey: 'tenants.permissions.asker.channels.browserLiveChat',
+            },
+        ],
+    });
     expect(
         screen.getByRole('button', {
             name: /tenants.permissions.asker.channels.emailLiveChat: tenants.permissions.policy.openMenu/,

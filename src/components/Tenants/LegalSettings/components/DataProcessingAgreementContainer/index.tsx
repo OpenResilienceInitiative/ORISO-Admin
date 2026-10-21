@@ -14,7 +14,7 @@ import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../../../hooks/useDpaGate.hook';
 import { createDpaSignInvite, resolveDpaSignLink } from '../../../../../api/tenant/createDpaSignInvite';
 import { isDpaInviteEmailDeliveryFailure, sendDpaInviteEmail } from '../../../../../api/tenant/sendDpaInviteEmail';
-import { useDpaSignatures } from '../../../../../hooks/useDpaSignatures.hook';
+import { useDpaStatus } from '../../../../../hooks/useDpaStatus.hook';
 import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { formatBerlinDateTime } from '../../utils/utcTimestamp';
 import { DpaForwardDialog } from '../../../../DpaForwardDialog/DpaForwardDialog';
@@ -24,6 +24,7 @@ import { parseBackendInstant } from '../../../../../utils/backendInstant';
 import { useDpaOperationScope } from '../../../../../hooks/useDpaOperationScope.hook';
 import { UserRole } from '../../../../../enums/UserRole';
 import { resolveDpaGateSubject } from '../../../../../utils/dpaBlockerGate';
+import styles from './styles.module.scss';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
@@ -75,10 +76,49 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             refetchVersions();
         }
     }, [dpaGate?.currentDpaVersion, latestVersionId, refetchVersions]);
-    const { data: dpaSignatures = [], isError: dpaSignaturesError } = useDpaSignatures(
-        id,
-        isDpaRecipient && gateForDocument?.dpaSigned === true,
-    );
+    // The owner status combines forwarded and in-app signatures. Observe the
+    // gate's existing query without dropping its cache when this card mounts.
+    // Agency readers must never call the tenant-admin-only status endpoint.
+    const signatureStatusEnabled = isDpaRecipient && id === accountTenantId && versionsEnabled;
+    const {
+        data: signatureStatus,
+        isError: signatureStatusError,
+        refetch: refetchSignatureStatus,
+    } = useDpaStatus(id, signatureStatusEnabled, { dropCacheOnMount: false });
+    const signatureForDocument =
+        signatureStatusEnabled &&
+        !signatureStatusError &&
+        gateForDocument &&
+        signatureStatus?.tenantId === id &&
+        signatureStatus.currentDpaVersion === latestVersionId
+            ? signatureStatus
+            : undefined;
+    const signedVersion = signatureForDocument?.signedDpaVersion;
+    const currentSignature =
+        signatureForDocument?.status === 'VALID' &&
+        !!signedVersion &&
+        signedVersion === latestVersionId &&
+        gateForDocument?.dpaSigned === true;
+    const retainedSignature =
+        signatureForDocument?.status === 'OUTDATED' &&
+        !!signedVersion &&
+        signedVersion !== latestVersionId &&
+        gateForDocument?.dpaSigned === false;
+    useEffect(() => {
+        if (
+            signatureStatusEnabled &&
+            gateForDocument?.currentDpaVersion &&
+            signatureStatus?.currentDpaVersion &&
+            gateForDocument.currentDpaVersion !== signatureStatus.currentDpaVersion
+        ) {
+            refetchSignatureStatus();
+        }
+    }, [
+        signatureStatusEnabled,
+        gateForDocument?.currentDpaVersion,
+        signatureStatus?.currentDpaVersion,
+        refetchSignatureStatus,
+    ]);
     const { scope: identity, isCurrent: isPublicationCurrent } = useDpaOperationScope(
         id,
         userData?.id,
@@ -163,17 +203,10 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
             }),
         [versions, lang, t],
     );
-    const latestSignedDpa = useMemo(
-        () =>
-            [...dpaSignatures]
-                .filter((signature) => signature.status === 'SIGNED' && signature.signedAt)
-                .sort((left, right) => String(right.signedAt).localeCompare(String(left.signedAt)))[0],
-        [dpaSignatures],
-    );
     const signedAtLabel = useMemo(() => {
-        if (!latestSignedDpa?.signedAt) return undefined;
-        return formatBerlinDateTime(latestSignedDpa.signedAt, lang);
-    }, [lang, latestSignedDpa?.signedAt]);
+        if (!signatureForDocument?.signedAt) return undefined;
+        return formatBerlinDateTime(signatureForDocument.signedAt, lang);
+    }, [lang, signatureForDocument?.signedAt]);
 
     /**
      * Shared forward dialog seam (#723). Reuse only a live invite for the
@@ -292,13 +325,22 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 draftStale={isStale}
                 onDiscardDraft={effectiveReadOnly || !dismissalScope ? undefined : discardDraft}
                 readOnlyFooter={
-                    effectiveReadOnly && latestSignedDpa && signedAtLabel ? (
+                    effectiveReadOnly && (currentSignature || retainedSignature) && signedAtLabel && signedVersion ? (
                         <>
-                            <Check aria-hidden />
-                            <span>
-                                {t('legal.dpa.sign.confirmedAt')}: {signedAtLabel}, {t('legal.dpa.sign.by')}{' '}
-                                {latestSignedDpa.signerName}
-                            </span>
+                            {currentSignature && <Check aria-hidden />}
+                            <Space direction="vertical" size="small">
+                                {retainedSignature && <span>{t('legal.dpa.sign.previousRetained')}</span>}
+                                <span>
+                                    {t('legal.dpa.sign.signedVersion', {
+                                        version: formatBerlinDateTime(signedVersion, lang),
+                                    })}
+                                </span>
+                                <span>
+                                    {t('legal.dpa.sign.confirmedAt')}: {signedAtLabel}
+                                    {signatureForDocument?.signedBy &&
+                                        `, ${t('legal.dpa.sign.by')} ${signatureForDocument.signedBy}`}
+                                </span>
+                            </Space>
                         </>
                     ) : undefined
                 }
@@ -350,15 +392,22 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                                 {inviteEmailSentTo && (
                                     <Alert type="success" showIcon message={t('legal.dpa.sign.sent')} />
                                 )}
-                                <Space wrap>
+                                <Space wrap className={styles.recoveryActions}>
                                     {/* Opens the SHARED forward dialog (#723): copyable
                                         link plus optional e-mail send with the actual
                                         DPA_FORWARD mail preview. */}
-                                    <Button type="primary" onClick={() => setForwardDialogOpen(true)}>
+                                    <Button
+                                        type="primary"
+                                        className={styles.recoveryButton}
+                                        onClick={() => setForwardDialogOpen(true)}
+                                    >
                                         {t('legal.dpa.sign.sendLink')}
                                     </Button>
                                     {signLink && (
-                                        <Button onClick={() => window.location.assign(signLink)}>
+                                        <Button
+                                            className={styles.recoveryButton}
+                                            onClick={() => window.location.assign(signLink)}
+                                        >
                                             {t('legal.dpa.sign.openLink')}
                                         </Button>
                                     )}
@@ -384,8 +433,17 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                     )}
                 </>
             )}
-            {isDpaRecipient && gateForDocument?.dpaSigned && dpaSignaturesError && (
-                <Alert type="error" showIcon message={t('legal.dpa.sign.detailsLoadError')} />
+            {signatureStatusEnabled && gateForDocument && signatureStatusError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    message={t('legal.dpa.sign.detailsLoadError')}
+                    action={
+                        <Button size="small" onClick={() => refetchSignatureStatus()}>
+                            {t('tenants.legal.version.retry')}
+                        </Button>
+                    }
+                />
             )}
         </>
     );

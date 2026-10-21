@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { CaseHandoverConsentPolicyControl } from './CaseHandoverConsentPolicyControl';
@@ -19,15 +19,18 @@ describe('CaseHandoverConsentPolicyControl', () => {
             />,
         );
 
-        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+        // Names only: each consent option also carries a description (FE#1725).
+        const expectedNames = [
             'tenants.permissions.consent.optInEnforced',
             'tenants.permissions.consent.optOutEnforced',
             'tenants.permissions.consent.noneSuggested',
             'tenants.permissions.consent.optInSuggested',
             'tenants.permissions.consent.optOutSuggested',
             'tenants.permissions.policy.moreInformation',
-            '',
-        ]);
+        ];
+        const buttons = within(screen.getByRole('list')).getAllByRole('button');
+        expect(buttons).toHaveLength(expectedNames.length);
+        buttons.forEach((button, index) => expect(button).toHaveAccessibleName(expectedNames[index]));
     });
 
     it.each([

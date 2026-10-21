@@ -6,10 +6,10 @@ import type { TenantPermissionPolicies } from '../types/permissionPolicy';
 
 export const tenantPermissionPoliciesKey = (tenantId: string) => ['tenant-permission-policies', tenantId] as const;
 
-export const useTenantPermissionPolicies = (tenantId: string, enabled = true) =>
+export const useTenantPermissionPolicies = (tenantId: string, enabled = true, { silent = false } = {}) =>
     useQuery({
         queryKey: tenantPermissionPoliciesKey(tenantId),
-        queryFn: () => getTenantPermissionPolicies(tenantId),
+        queryFn: () => getTenantPermissionPolicies(tenantId, { silent }),
         enabled: enabled && Boolean(tenantId),
     });
 

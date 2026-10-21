@@ -12,7 +12,7 @@ const {
     useTenantAdminData,
     useUserData,
     useDpaGate,
-    useDpaSignatures,
+    useDpaStatus,
     createInviteApi,
     sendInviteEmailApi,
     userRoles,
@@ -23,7 +23,7 @@ const {
     useTenantAdminData: vi.fn(),
     useUserData: vi.fn(),
     useDpaGate: vi.fn(),
-    useDpaSignatures: vi.fn(),
+    useDpaStatus: vi.fn(),
     createInviteApi: vi.fn(),
     sendInviteEmailApi: vi.fn(),
     userRoles: {
@@ -59,7 +59,7 @@ vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
     }),
 }));
 vi.mock('../../../../../hooks/useDpaGate.hook', () => ({ useDpaGate }));
-vi.mock('../../../../../hooks/useDpaSignatures.hook', () => ({ useDpaSignatures }));
+vi.mock('../../../../../hooks/useDpaStatus.hook', () => ({ useDpaStatus }));
 vi.mock('../../../../../api/tenant/createDpaSignInvite', () => ({
     createDpaSignInvite: createInviteApi,
     resolveDpaSignLink: (link: string) => link,
@@ -167,7 +167,7 @@ beforeEach(() => {
     useTenantAdminData.mockReturnValue({ data: { settings: { activeLanguages: ['de', 'en'] } } });
     useUserData.mockReturnValue({ data: { id: 'admin-1' } });
     useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
-    useDpaSignatures.mockReturnValue({ data: [], isError: false });
+    useDpaStatus.mockReturnValue({ data: undefined, isError: false });
     createInviteApi.mockReset();
     sendInviteEmailApi.mockReset();
     userRoles.isSuperAdmin = true;
@@ -367,17 +367,16 @@ describe('DataProcessingAgreementContainer', () => {
         userRoles.isTenantScopedAdmin = true;
         userRoles.tenantId = 84;
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
-        useDpaSignatures.mockReturnValue({
-            data: [
-                {
-                    status: 'SIGNED',
-                    signerName: 'Erika E2E Mustermann',
-                    signerPosition: 'Geschäftsführung',
-                    signerEmail: 'erika.e2e.mustermann@example.org',
-                    signerOrganisation: 'E2E Full Gate 202607191747',
-                    signedAt: '2026-07-19T18:49:00Z',
-                },
-            ],
+        useDpaVersions.mockReturnValue({ data: [{ activationDate: '2026-07-01T10:00:00', content: '{}' }] });
+        useDpaStatus.mockReturnValue({
+            data: {
+                tenantId: 84,
+                status: 'VALID',
+                currentDpaVersion: '2026-07-01T10:00:00',
+                signedDpaVersion: '2026-07-01T10:00:00',
+                signedBy: 'Erika E2E Mustermann',
+                signedAt: '2026-07-19T18:49:00Z',
+            },
             isError: false,
         });
 

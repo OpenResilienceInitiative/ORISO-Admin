@@ -254,3 +254,37 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         ).toBeEnabled();
     });
 });
+
+// Review 4300331824: a failed or pending Träger read must not pass defaults off as the Träger's values.
+describe('PermissionsSettingsView Träger channel switches', () => {
+    const renderCentre = (traegerChannelPoliciesStatus: 'pending' | 'error' | 'success') =>
+        renderOneOnOne(vi.fn(), {
+            channelsSetOnTraeger: true,
+            traegerChannelPolicies: undefined,
+            traegerChannelPoliciesStatus,
+        });
+    const emailChannel = () =>
+        document.querySelector('[data-feature-policy="featureAskerEmailAgencyCounsellingEnabled"]');
+
+    it('says the Träger values could not be loaded instead of showing defaults', () => {
+        renderCentre('error');
+
+        expect(screen.getByText('tenants.permissions.card.notifications.traegerUnavailable')).toBeInTheDocument();
+        expect(emailChannel()).toBeNull();
+        expect(screen.queryByTestId('traeger-channels-loading')).toBeNull();
+    });
+
+    it('shows a loading state while the Träger values are read', () => {
+        renderCentre('pending');
+
+        expect(screen.getByTestId('traeger-channels-loading')).toBeInTheDocument();
+        expect(emailChannel()).toBeNull();
+        expect(screen.queryByText('tenants.permissions.card.notifications.traegerUnavailable')).toBeNull();
+    });
+
+    it('shows the read-only channel switches once the Träger values are loaded', () => {
+        renderCentre('success');
+
+        expect(emailChannel()).not.toBeNull();
+    });
+});

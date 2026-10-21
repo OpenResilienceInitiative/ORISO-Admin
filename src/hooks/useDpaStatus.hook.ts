@@ -32,15 +32,23 @@ export const DPA_STATUS_POLL_MS = 30_000;
  *   the tab re-verifies.
  * - `refetchInterval` — see {@link DPA_STATUS_POLL_MS}.
  *
+ * A recipient details view can observe this query with `dropCacheOnMount: false`,
+ * so mounting it inside the already verified gate does not reset the gate.
+ * The gate itself always keeps the default cache-drop policy.
+ *
  * No automatic retries: the gate fails closed on error and offers an explicit
  * retry, so silent retry loops would only delay the lock screen.
  */
-export const useDpaStatus = (tenantId: number, enabled = true) => {
+export const useDpaStatus = (
+    tenantId: number,
+    enabled = true,
+    { dropCacheOnMount = true }: { dropCacheOnMount?: boolean } = {},
+) => {
     const queryClient = useQueryClient();
     // Once per mounted gate, during its first render — before `useQuery` can
     // read the cache. Idempotent, so a discarded/replayed render is harmless.
     const cacheDropped = useRef(false);
-    if (!cacheDropped.current) {
+    if (dropCacheOnMount && !cacheDropped.current) {
         cacheDropped.current = true;
         queryClient.removeQueries({ queryKey: [DPA_STATUS_KEY, tenantId], exact: true });
     }

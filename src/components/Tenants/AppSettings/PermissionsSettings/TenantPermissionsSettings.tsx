@@ -178,6 +178,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
+            caseHandoverTenantId={Number(tenantId) || undefined}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
