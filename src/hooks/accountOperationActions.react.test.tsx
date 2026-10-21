@@ -6,7 +6,11 @@ import { useUpdateUserData } from './useUpdateUserData.hook';
 import { useUpdateUserPassword } from './useUpdateUserPassword.hook';
 import { useAddOrUpdateTenantAdmin } from './useAddOrUpdateTenantAdmin.hook';
 import { useAddOrUpdateConsultantOrAdmin } from './useAddOrUpdateConsultantOrAgencyAdmin';
-import { useUserTwoFactorSendEmailCode } from './useUserTwoFactorAuth.hook';
+import {
+    useUserTwoFactorAuth,
+    useUserTwoFactorDelete,
+    useUserTwoFactorSendEmailCode,
+} from './useUserTwoFactorAuth.hook';
 import { TypeOfUser } from '../enums/TypeOfUser';
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), tenantRecord: { username: 'original-login' } }));
@@ -43,6 +47,21 @@ beforeEach(() => {
 });
 
 describe('mounted account mutation ownership with real React Query', () => {
+    it.each([
+        ['profile', () => useUpdateUserData()],
+        ['password', () => useUpdateUserPassword()],
+        ['tenant-admin', () => useAddOrUpdateTenantAdmin({ id: '42' })],
+        ['agency-admin', () => useAddOrUpdateConsultantOrAdmin({ id: '42', typeOfUser: TypeOfUser.AgencyAdmins })],
+        ['otp-activate', () => useUserTwoFactorAuth()],
+        ['otp-delete', () => useUserTwoFactorDelete()],
+        ['otp-send', () => useUserTwoFactorSendEmailCode()],
+    ] as const)('keeps the %s input edit callback stable across mounted rerenders', (_name, useAction) => {
+        const { result, rerender } = renderHook(useAction, { wrapper: wrapperFor() });
+        const first = result.current.onAccountEdit;
+        rerender();
+        expect(result.current.onAccountEdit, 'account-intent-stable-mounted-edit-callback').toBe(first);
+    });
+
     it('retries an unknown profile write exactly and starts a new intent after acknowledgement', async () => {
         mocks.fetch.mockRejectedValueOnce(new TypeError('reply lost')).mockResolvedValue({ email: 'new@example.test' });
         const { result, rerender } = renderHook(() => useUpdateUserData(), { wrapper: wrapperFor() });
