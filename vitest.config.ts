@@ -61,14 +61,7 @@ export default defineConfig({
                 test: {
                     name: 'unit',
                     environment: 'jsdom',
-                    exclude: [
-                        ...configDefaults.exclude,
-                        'cypress/**',
-                        // These two protocols use Node's native runner, separately
-                        // enforced by test:account-intents; Vite cannot bundle node:test.
-                        'scripts/account-operation-auth-retry.test.mjs',
-                        'scripts/account-operation-intents.test.mjs',
-                    ],
+                    exclude: [...configDefaults.exclude, 'cypress/**'],
                     globals: true,
                     testTimeout: 30_000,
                     // React's concurrent scheduler can flush a queued task (via setImmediate)

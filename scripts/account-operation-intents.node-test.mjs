@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { registerHooks } from 'node:module';
-import { existsSync } from 'node:fs';
+import { register } from 'node:module';
 import { AccountOperationIntent, AccountOperationActions } from '../src/utils/accountOperationIntent.ts';
 
 const requests = [];
@@ -9,7 +8,7 @@ globalThis.__accountIntentFetch = (request) => {
     requests.push(request);
     return Promise.resolve({ status: 200, json: async () => ({ _embedded: {} }) });
 };
-registerHooks({
+const fixtureHooks = {
     resolve(specifier, context, nextResolve) {
         if (context.parentURL?.endsWith('/src/api/fetchData.ts')) return nextResolve(specifier, context);
         if (context.parentURL?.includes('/src/')) {
@@ -62,7 +61,19 @@ registerHooks({
         }[url];
         return source !== undefined ? { format: 'module', source, shortCircuit: true } : nextLoad(url, context);
     },
-});
+};
+// Node 22's async loader runs fixture resolution separately; emitted modules
+// still execute in the test process and use its isolated transport stubs.
+register(
+    `data:text/javascript,${encodeURIComponent(
+        [
+            "import { existsSync } from 'node:fs';",
+            `const hooks = {${fixtureHooks.resolve.toString()},${fixtureHooks.load.toString()}};`,
+            'export const resolve = hooks.resolve; export const load = hooks.load;',
+        ].join('\n'),
+    )}`,
+    import.meta.url,
+);
 
 for (const [name, args] of [
     ['apiPutTwoFactorAuthApp', [{ secret: 'test-secret', otp: '123456' }]],

@@ -91,7 +91,7 @@
     "prettier:css": "prettier **/*.scss --write ",
     "test:integration": "cypress open",
     "test:integration:cli": "concurrently --kill-others --success first \"cross-env BROWSER=none VITE_PORT=9000 VITE_USE_API_URL=true VITE_USE_HTTPS=true VITE_API_URL=api.example.org VITE_APP_URL=app.example.org VITE_MATRIX_URL=matrix.example.org VITE_KEYCLOAK_URL=https://auth.example.org VITE_KEYCLOAK_REALM=online-beratung VITE_KEYCLOAK_CLIENT_ID=app VITE_CSRF_WHITELIST_HEADER_FOR_LOCAL_DEVELOPMENT=X-CSRF-Token npm run start -- --strictPort\" \"wait-on http://localhost:9000/admin && cypress run\"",
-    "test:account-intents": "node --max-old-space-size=256 --test --test-isolation=none --test-concurrency=1 scripts/account-operation-auth-retry.test.mjs scripts/account-operation-intents.test.mjs"
+    "test:account-intents": "node --max-old-space-size=256 --experimental-strip-types --test --experimental-test-isolation=none --test-concurrency=1 scripts/account-operation-auth-retry.node-test.mjs scripts/account-operation-intents.node-test.mjs"
   },
   "eslintConfig": {
     "extends": [

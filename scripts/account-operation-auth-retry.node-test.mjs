@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { registerHooks } from 'node:module';
+import { register } from 'node:module';
 import { AccountOperationIntent } from '../src/utils/accountOperationIntent.ts';
 
 const stubs = {
@@ -12,20 +12,20 @@ const stubs = {
     './auth/logout': `export default ()=>{throw new Error('unexpected logout')};`,
     '../appConfig': `export const CSRF_WHITELIST_HEADER=undefined;`,
 };
-registerHooks({
+const fixtureHooks = {
     resolve(specifier, context, nextResolve) {
         if (context.parentURL?.endsWith('/src/api/fetchData.ts') && stubs[specifier])
             return { url: `account-auth:${encodeURIComponent(specifier)}`, shortCircuit: true };
         return nextResolve(specifier, context);
     },
-    load(url, context, nextLoad) {
+    async load(url, context, nextLoad) {
         if (url.startsWith('account-auth:'))
             return {
                 format: 'module',
                 source: stubs[decodeURIComponent(url.slice('account-auth:'.length))],
                 shortCircuit: true,
             };
-        const result = nextLoad(url, context);
+        const result = await nextLoad(url, context);
         if (url.endsWith('/src/api/fetchData.ts')) {
             // Vite replaces this environment constant in the real app. No
             // transport or retry logic is rewritten by this Node-only fixture.
@@ -33,7 +33,20 @@ registerHooks({
         }
         return result;
     },
-});
+};
+// Node 22's async loader runs fixture resolution separately; emitted modules
+// still execute in the test process and use its isolated transport stubs.
+register(
+    `data:text/javascript,${encodeURIComponent(
+        [
+            "import { existsSync } from 'node:fs';",
+            `const stubs = ${JSON.stringify(stubs)};`,
+            `const hooks = {${fixtureHooks.resolve.toString()},${fixtureHooks.load.toString()}};`,
+            'export const resolve = hooks.resolve; export const load = hooks.load;',
+        ].join('\n'),
+    )}`,
+    import.meta.url,
+);
 
 test('actual Admin auth refresh retains account ID and exact body', async () => {
     const { fetchData, FETCH_ERRORS } = await import('../src/api/fetchData.ts');
