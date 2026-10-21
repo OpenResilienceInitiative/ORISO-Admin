@@ -108,11 +108,12 @@ const TenantAdminEditor = () => {
     );
     const onCancel = useCallback(() => {
         if (isEditing) {
+            onAccountEdit?.();
             setReadOnly(true);
         } else {
             navigate(listPath);
         }
-    }, [isEditing, listPath, navigate]);
+    }, [isEditing, listPath, navigate, onAccountEdit]);
 
     // Never pass an inaccessible or foreign cached record to the title or form,
     // including while a background refetch is still running.

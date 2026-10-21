@@ -34,6 +34,7 @@ interface CardEditableProps {
     hideSaveButton?: boolean;
     hideCancelButton?: boolean;
     onEdit?: () => void;
+    /** User changes or an explicit confirmed discard/reset. */
     onValuesChange?: () => void;
     tooltip?: string;
     allowUnsavedChanges?: boolean;
