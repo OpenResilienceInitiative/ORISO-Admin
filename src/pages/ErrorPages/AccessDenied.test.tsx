@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { vi } from 'vitest';
+import { vi } from 'vite-plus/test';
 import { AccessDenied } from './AccessDenied';
 
 const logoutMock = vi.fn();

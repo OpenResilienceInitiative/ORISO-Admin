@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { Form } from 'antd';
 import { FloatingLabelSelect } from './index';
 import styles from './floatingLabelSelect.module.scss';
@@ -13,6 +13,15 @@ const options = [
 const getField = (container: HTMLElement): HTMLElement => container.firstElementChild as HTMLElement;
 
 describe('FloatingLabelSelect', () => {
+    it('renders standalone without useStatus context warnings', () => {
+        const error = vi.spyOn(console, 'error');
+        try {
+            render(<FloatingLabelSelect label="Standalone" options={options} />);
+            expect(error).not.toHaveBeenCalled();
+        } finally {
+            error.mockRestore();
+        }
+    });
     it('floats the label on focus and rests it again on blur while empty', async () => {
         const user = userEvent.setup();
         const { container } = render(<FloatingLabelSelect label="Stadt" options={options} />);

@@ -19,7 +19,7 @@
  * Tests pass a stub `appBaseUrl` and never fall back to configured `appURL`.
  */
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { ThemeEditorModal } from '.';
 import { buildPreviewUrl } from './previewUrl';
 

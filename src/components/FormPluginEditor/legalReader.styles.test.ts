@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const moduleStyles = readFileSync(resolve(__dirname, './M3RichTextEditor.module.scss'), 'utf8');
 const globalStyles = readFileSync(resolve(__dirname, './FormPluginEditor.styles.scss'), 'utf8');

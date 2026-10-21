@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildAdminNavItems, resolveLogsPage, type AdminNavLabels } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
 import routePathNames from '../../appConfig';

@@ -1,5 +1,5 @@
 import { theme as antdTheme } from 'antd';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { buildAdminAntdTheme } from './antdM3Theme';
 import { computeOrisoPalette } from '../utils/theme/orisoScheme';
 

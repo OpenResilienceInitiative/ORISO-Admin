@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Form } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
     CONSULTANT_PERSONAL_FIELDS,
     CONSULTANT_SETTINGS_FIELDS,

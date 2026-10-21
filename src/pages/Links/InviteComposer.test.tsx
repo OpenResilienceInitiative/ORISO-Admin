@@ -2,7 +2,7 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';

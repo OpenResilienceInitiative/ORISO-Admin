@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ADMIN_MOBILE_NAV_SELECTOR, measureAdminTableBodyScrollY } from './measureAdminTableBodyScrollY';
 
 const stubRect = (el: Element, rect: Partial<DOMRect>) => {

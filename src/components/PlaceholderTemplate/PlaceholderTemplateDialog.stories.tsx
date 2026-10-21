@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
 import { CheckBoxIcon } from '../CustomIcons/LegalIcons';
 import { PlaceholderTemplateDialog } from './PlaceholderTemplateDialog';
 import { InviteEmailTemplateEditor, type InviteEmailTemplateValues } from './InviteEmailTemplateEditor';
@@ -77,6 +78,7 @@ const InviteDialogDemo = () => {
 };
 
 export const InviteEmailInDialog: Story = {
+    parameters: { msw: { handlers: [createInviteEmailPreviewHandler()] } },
     render: () => <InviteDialogDemo />,
 };
 

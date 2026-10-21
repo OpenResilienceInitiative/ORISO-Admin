@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vite-plus/test';
 import { installMemoryStorage, resetMemoryStorage } from './memoryStorage';
 
 if (typeof window !== 'undefined') {

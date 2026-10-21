@@ -27,6 +27,16 @@ const meta = {
                 http.get('*/service/useradmin/account-invites', () => emptyList()),
                 http.get('*/service/useradmin/invite-email-templates', () => HttpResponse.json([])),
                 http.get('*/service/tenantadmin/search', () => HttpResponse.json({ total: 0, _embedded: [] })),
+                http.get('*/service/tenantadmin/7', () =>
+                    HttpResponse.json({
+                        id: 7,
+                        name: 'Caritas Freiburg',
+                        settings: {},
+                        licensing: {},
+                        theming: {},
+                        adminEmails: [],
+                    }),
+                ),
             ],
         },
     },
@@ -115,6 +125,9 @@ const agencyAdminHandlers = (agencies: Array<{ id: number; name: string }>) => [
     http.get('*/service/useradmin/account-invites', () => emptyList()),
     http.get('*/service/useradmin/invite-email-templates', () => HttpResponse.json([COUNSELLOR_TEMPLATE])),
     ownAgenciesHandler(agencies),
+    ...agencies.map(({ id, name }) =>
+        http.get(`*/service/agencyadmin/agencies/${id}`, () => HttpResponse.json(agencyHit(id, name))),
+    ),
 ];
 
 /** Agency admin of one Beratungsstelle: Rolle, Träger and Beratungsstelle locked, no CSV import. */

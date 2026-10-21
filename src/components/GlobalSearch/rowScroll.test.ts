@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { nextScrollStop, revealScrollLeft, scrollEdges } from './rowScroll';
 
 // A 400px window onto a 1000px row of five 180px fields with 20px gaps:

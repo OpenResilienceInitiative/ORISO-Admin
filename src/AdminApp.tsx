@@ -5,10 +5,11 @@ import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState, type JSX } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
 import en_GB from 'antd/es/locale/en_GB';
+import { adminMessageConfig } from './constants/adminMessageConfig';
 import { App } from './App';
 import routePathNames from './appConfig';
 import { queryClient } from './constants/client';
@@ -31,6 +32,7 @@ import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetCon
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
+import { TransportFeedbackBridge } from './components/TransportFeedbackBridge';
 
 interface LangMap {
     [key: string]: Locale;
@@ -77,7 +79,10 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     // instead of antd's stock tray drawing.
     return (
         <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-            {children}
+            <AntdApp component={false} message={adminMessageConfig}>
+                <TransportFeedbackBridge />
+                {children}
+            </AntdApp>
         </ConfigProvider>
     );
 };
@@ -91,8 +96,8 @@ export const AdminApp = () => (
     <ErrorBoundary scope="app">
         <QueryClientProvider client={queryClient}>
             <UseAppConfigProvider>
-                <AppSettingsWrapper>
-                    <LanguageAwareConfigProvider>
+                <LanguageAwareConfigProvider>
+                    <AppSettingsWrapper>
                         <Router>
                             {/* Outside <Routes> on purpose: the branding favicon has to reach
                                 anonymous visitors on /admin/login, the onboarding and
@@ -140,8 +145,8 @@ export const AdminApp = () => (
                                 />
                             </Routes>
                         </Router>
-                    </LanguageAwareConfigProvider>
-                </AppSettingsWrapper>
+                    </AppSettingsWrapper>
+                </LanguageAwareConfigProvider>
             </UseAppConfigProvider>
         </QueryClientProvider>
     </ErrorBoundary>

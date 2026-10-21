@@ -1,11 +1,22 @@
-import { beforeAll } from 'vitest';
-import { setProjectAnnotations } from '@storybook/react-vite';
+import { afterEach } from 'vite-plus/test';
+import { a11yVerification } from './a11yVerification';
+import { finishStoryVerification } from './verification';
 
-// Reuse the exact preview the Storybook UI renders with (antd theme, i18n,
-// MSW loader, react-query, router) so a component test can never pass against
-// a different environment than the one a human reviews in the browser.
-import * as previewAnnotations from './preview';
-
-const annotations = setProjectAnnotations([previewAnnotations]);
-
-beforeAll(annotations.beforeAll);
+// Assert in the current test. Story cleanup alone runs when the next story
+// starts, which would attribute an error to the wrong story and leak state.
+afterEach(async ({ task }) => {
+    const errors: unknown[] = [];
+    try {
+        a11yVerification.finish((evidence) => {
+            Object.assign(task.meta, { verificationA11y: evidence });
+        });
+    } catch (error) {
+        errors.push(error);
+    }
+    try {
+        await finishStoryVerification();
+    } catch (error) {
+        errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, errors.map(String).join('\n'));
+});

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { toCreateInviteRequest, type InviteDraft, type InviteRequestContext } from './inviteRequest';
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({

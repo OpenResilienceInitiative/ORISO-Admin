@@ -116,5 +116,16 @@ jobs:
               # Same supply-chain hardening as .github/actions/node-build.
               run: npm ci --ignore-scripts
 
+            - name: Verify configured lint failure controls
+              run: npm run test:lint-controls
+
             - name: Run unit tests
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4
+
+            - name: Upload unit verification inventory
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: unit-verification-${{ matrix.shard }}
+                  path: verification-artifacts/
+                  if-no-files-found: warn

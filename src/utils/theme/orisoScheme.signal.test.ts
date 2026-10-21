@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { computeOrisoPalette, hueDistance, signalTooCloseToBrand, SIGNAL_BRAND_HUE_MIN_DISTANCE } from './orisoScheme';
 
 describe('computeOrisoPalette signal seed', () => {

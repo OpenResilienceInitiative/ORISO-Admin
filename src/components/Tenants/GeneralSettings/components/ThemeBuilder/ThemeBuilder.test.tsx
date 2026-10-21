@@ -7,7 +7,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { ThemeBuilder, ThemeEditorModal } from './index';
 
 const mutateSpy = vi.fn();
@@ -102,6 +102,25 @@ describe('ThemeBuilder', () => {
 });
 
 describe('ThemeEditorModal', () => {
+    it('opens without deprecated lifecycle warnings', () => {
+        const error = vi.spyOn(console, 'error');
+        try {
+            render(
+                <ThemeEditorModal
+                    open
+                    initialValues={usableInitialValues}
+                    storedSeeds={{ accentDark: '#a5000a', accentLight: '#ffe2de', signal: '#b1005e' }}
+                    locks={locks}
+                    onCancel={() => undefined}
+                    onSubmit={() => undefined}
+                />,
+            );
+            expect(screen.getByRole('dialog')).toBeInTheDocument();
+            expect(error).not.toHaveBeenCalled();
+        } finally {
+            error.mockRestore();
+        }
+    });
     it('tells the admin at save time when the seed cannot yield a palette', async () => {
         const user = userEvent.setup({ delay: null });
         const onSubmit = vi.fn();

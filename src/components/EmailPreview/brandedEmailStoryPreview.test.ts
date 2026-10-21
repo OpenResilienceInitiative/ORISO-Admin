@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { renderBrandedEmailStoryPreview } from './brandedEmailStoryPreview';
 
 const SUBJECT = 'Auftragsverarbeitungsvertrag: Ihre Unterschrift wird benötigt';

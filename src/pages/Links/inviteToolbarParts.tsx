@@ -1,10 +1,11 @@
 import { useRef, type ChangeEvent, type ReactNode } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
-import { message, type MenuProps } from 'antd';
+import { type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
@@ -57,6 +58,7 @@ interface InviteMoreMenuOptions {
 
 /** The ⋮ menu (CSV import, CSV template, delete selected) and the hidden file picker it opens. */
 export const useInviteMoreMenu = ({ tab, csv, bulk, sendMode, selectedTemplate }: InviteMoreMenuOptions) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const csvInputRef = useRef<HTMLInputElement>(null);
 

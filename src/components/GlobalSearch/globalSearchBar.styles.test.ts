@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const barStyles = readFileSync(resolve(__dirname, './globalSearchBar.module.scss'), 'utf8');
 const composerStyles = readFileSync(resolve(__dirname, '../../pages/Links/inviteComposer.module.scss'), 'utf8');

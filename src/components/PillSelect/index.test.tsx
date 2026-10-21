@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { hasPillSelection, PillSelect } from './index';
 import { PillFilterRow, type PillFilterConfig } from './PillFilterRow';
 import styles from './styles.module.scss';

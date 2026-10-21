@@ -380,7 +380,7 @@ export const ThemeEditorModal = ({
             open={open}
             footer={null}
             closable={false}
-            destroyOnClose
+            destroyOnHidden
             width="100vw"
             className={styles.themeFullscreenModal}
             wrapClassName={styles.themeFullscreenModalWrap}

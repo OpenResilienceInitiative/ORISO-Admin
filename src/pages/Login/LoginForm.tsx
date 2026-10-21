@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -9,6 +9,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import VerifiedUserOutlined from '@mui/icons-material/VerifiedUserOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -63,6 +64,7 @@ const positiveSeconds = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 
 const LoginForm = () => {
+    const { message } = useAdminFeedback();
     const [form] = Form.useForm();
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { X_REASON } from '../api/fetchData';
 import { createUserSaveErrorHandler } from './userSaveErrorHandler';
 

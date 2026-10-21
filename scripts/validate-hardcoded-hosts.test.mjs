@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // The postbuild gate is the Admin CI guard against ORISO hosts baked into the bundle
 // (ORISO-Helm#368). Tested directly so a pattern cannot be dropped without a red run.

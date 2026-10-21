@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { MemoryRouter } from 'react-router-dom';
 import { Page } from './index';
 import { useRegisterCardDeckNav } from '../CardDeck/CardDeckNavContext';
