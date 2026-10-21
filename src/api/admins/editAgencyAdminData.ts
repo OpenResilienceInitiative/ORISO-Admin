@@ -1,10 +1,10 @@
+import { LabeledValue } from 'antd/lib/select';
 import {
     AccountOperationIntent,
     accountOperationHeaders,
     acknowledgeAccountOperation,
     settleAccountOperation,
 } from '../../utils/accountOperationIntent';
-import { LabeledValue } from 'antd/lib/select';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { agencyAdminEndpoint } from '../../appConfig';

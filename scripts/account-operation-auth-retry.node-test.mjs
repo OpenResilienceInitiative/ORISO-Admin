@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { register } from 'node:module';
-import { AccountOperationIntent } from '../src/utils/accountOperationIntent.ts';
 
 const stubs = {
     antd: `export const message={error(){},warning(){}};`,
@@ -16,6 +15,10 @@ const fixtureHooks = {
     resolve(specifier, context, nextResolve) {
         if (context.parentURL?.endsWith('/src/api/fetchData.ts') && stubs[specifier])
             return { url: `account-auth:${encodeURIComponent(specifier)}`, shortCircuit: true };
+        if (specifier.startsWith('.')) {
+            const candidate = new URL(`${specifier}.ts`, context.parentURL);
+            if (existsSync(candidate)) return { url: candidate.href, shortCircuit: true };
+        }
         return nextResolve(specifier, context);
     },
     async load(url, context, nextLoad) {
@@ -47,6 +50,7 @@ register(
     )}`,
     import.meta.url,
 );
+const { AccountOperationIntent } = await import('../src/utils/accountOperationIntent.ts');
 
 test('actual Admin auth refresh retains account ID and exact body', async () => {
     const { fetchData, FETCH_ERRORS } = await import('../src/api/fetchData.ts');

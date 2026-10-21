@@ -22,7 +22,7 @@ vi.mock('../../api/fetchData', async () => {
 });
 
 const clients: QueryClient[] = [];
-const wrapper = ({ children }: { children: ReactNode }) => {
+const TestProviders = ({ children }: { children: ReactNode }) => {
     const [client] = useState(() => {
         const queryClient = new QueryClient({
             defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -43,7 +43,7 @@ describe('real profile forms and their account mutations', () => {
     it('starts a fresh profile intent after explicit Cancel and reopen with the same values', async () => {
         mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
         const user = userEvent.setup({ delay: null });
-        render(<PrivateData />, { wrapper });
+        render(<PrivateData />, { wrapper: TestProviders });
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
         await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
@@ -59,7 +59,7 @@ describe('real profile forms and their account mutations', () => {
     it('retains the exact unknown profile retry and renews identity after an email edit away and back', async () => {
         mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
         const user = userEvent.setup({ delay: null });
-        render(<PrivateData />, { wrapper });
+        render(<PrivateData />, { wrapper: TestProviders });
         await user.click(screen.getByRole('button', { name: 'edit' }));
         const email = screen.getByLabelText('email *');
         fireEvent.change(email, { target: { value: 'new@example.test' } });
@@ -81,7 +81,7 @@ describe('real profile forms and their account mutations', () => {
     it('reopens the real password form after an unknown response and preserves the exact retry', async () => {
         mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
         const user = userEvent.setup({ delay: null });
-        const view = render(<PasswordChange />, { wrapper });
+        const view = render(<PasswordChange />, { wrapper: TestProviders });
         const passwordInput = (id: string) => view.container.querySelector<HTMLInputElement>(`#${id}`);
         await user.click(screen.getByRole('button', { name: 'edit' }));
         fireEvent.change(passwordInput('oldPassword'), {

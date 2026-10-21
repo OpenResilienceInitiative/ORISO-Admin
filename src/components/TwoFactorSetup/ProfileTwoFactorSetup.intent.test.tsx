@@ -55,8 +55,9 @@ it('retains an unknown app activation retry and supersedes an older teardown aft
     view.rerender(<ProfileTwoFactorSetup />);
     await user.click(screen.getByRole('switch'));
     await screen.findByText('twoFactorAuth.activate.step1.title');
-    for (let step = 0; step < 3; step++)
-        await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
     fireEvent.change(screen.getByPlaceholderText('twoFactorAuth.activate.otp.input.label'), {
         target: { value: '123456' },
     });

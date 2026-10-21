@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { register } from 'node:module';
-import { AccountOperationIntent, AccountOperationActions } from '../src/utils/accountOperationIntent.ts';
 
 const requests = [];
 globalThis.__accountIntentFetch = (request) => {
@@ -74,6 +73,7 @@ register(
     )}`,
     import.meta.url,
 );
+const { AccountOperationIntent, AccountOperationActions } = await import('../src/utils/accountOperationIntent.ts');
 
 for (const [name, args] of [
     ['apiPutTwoFactorAuthApp', [{ secret: 'test-secret', otp: '123456' }]],
