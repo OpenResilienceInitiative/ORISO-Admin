@@ -85,7 +85,7 @@
     "NOTICE": "77ca9a733b411f737ef501aac809b177622a0ddfe8cf3759d7f726abc586c67c",
     "README.md": "4fc4091a0aa29afca05b74ff55333e4e4aca9f6dcd0bd43dc248c6dc83f652ee",
     "babel.config.js": "a180dc9d675cea8ce4014bde1006c5bf7edfc9d40c60ff197649aa36e88b2ee4",
-    "benchmark-harness.ts": "43959bea4b16fdf384b7135baef1e814e2fb5187e5c3ba98c1eb72fbcbf30500",
+    "benchmark-harness.ts": "e0df6e8eb2e10a9d3d684d5882a0520a5fe5ffe8d150105198d93e5aa02f3cda",
     "cypress/integration/login.spec.js": "e8dfbeb9c967ef8f2f7a67d9de3cce9659b6ad244f4f1b6114b44a8b5e0fc209",
     "cypress/support/commands.js": "e0597406ddf958600c460487bd04439ac720718db7e9c4666d8cd0f20a38ab48",
     "cypress/support/index.js": "b41f749624a213375e4e06883f49ef12a2c2a8135f078febfb5a9d4b8f3e9383",

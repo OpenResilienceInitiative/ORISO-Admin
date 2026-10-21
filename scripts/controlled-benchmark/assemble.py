@@ -48,6 +48,8 @@ def git_blobs(repository, revision):
         if process.poll() is None:
             process.kill()
             process.wait()
+        process.stdin.close()
+        process.stdout.close()
     return result, modes
 
 def normalized_subject(candidate, original, variant):
@@ -99,7 +101,10 @@ def reconstruct(repository, task, verify_only=False):
              'sourceDigest': source['sourceDigest'], 'historicalAcceptedFreezeSHA256': source['historicalAcceptedFreezeSHA256'],
              'historicalMacSubjectSeals': {v: read(INPUT / (v + '-expected.json'))['historicalMacManifestSHA256']
                                            for v in subjects},
-             'sourceBytesMatchHistoricalMacSubjects': True, 'newHostBindingsRequired': True}
+             'sourceBytesMatchHistoricalMacSubjects': False,
+             'sharedInstrumentationDelta': read(HERE / 'input-lock.json')['sharedInstrumentationDelta'],
+             'commonProductSourceBytesChangedFromHistoricalFreeze': False,
+             'newHostBindingsRequired': True}
     if verify_only:
         return proof
     assert not task.exists(), 'fresh CI workspace required; never restart failed materialization'

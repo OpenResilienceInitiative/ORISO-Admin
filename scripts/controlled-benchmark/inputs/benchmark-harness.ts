@@ -143,7 +143,9 @@ export function sourceGuard(project: string) {
                 sourceManifestSHA256: process.env.PREFLIGHT_SUBJECT_MANIFEST_SHA256 });
             assertNativeCachePath(global.path, nativeCachePath('root'), project, instanceId);
             assertNativeCachePath(actual.path, nativeCachePath(project), project, instanceId);
-            if (global.enabled !== nativeV5 || actual.enabled !== nativeV5 || context.project.config.name !== project
+            // Vitest expands the one declared Chromium instance into this exact native name.
+            const expectedProjectName = project === 'storybook' ? 'storybook (chromium)' : project;
+            if (global.enabled !== nativeV5 || actual.enabled !== nativeV5 || context.project.config.name !== expectedProjectName
                 || context.project.vite.config.root !== root) failGuard('Native cache enablement/project identity changed', project, instanceId, { global, actual });
             if (!nativeV5) return; // Original's disabled experimental feature remains disabled.
             if (typeof context.defineCacheKeyGenerator !== 'function') failGuard('Supported native source-byte API unavailable', project, instanceId);

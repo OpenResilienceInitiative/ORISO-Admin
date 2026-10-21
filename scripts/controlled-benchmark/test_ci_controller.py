@@ -100,5 +100,23 @@ class PersistedInventoryTests(unittest.TestCase):
             self.verify()
 
 
+class HistoricalInstrumentationTests(unittest.TestCase):
+    def test_reconstruction_distinguishes_changed_instrumentation_from_product_bytes(self):
+        from assemble import reconstruct
+
+        here = Path(__file__).resolve().parent
+        declaration = json.loads((here / 'input-lock.json').read_text())
+        delta = declaration['sharedInstrumentationDelta']
+        self.assertEqual(delta['currentSHA256'], sha(here / 'inputs/benchmark-harness.ts'))
+        self.assertNotEqual(delta['previousSHA256'], delta['currentSHA256'])
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / 'uncreated'
+            proof = reconstruct(here.parents[1], target, verify_only=True)
+            self.assertFalse(target.exists())
+        self.assertIs(proof['sourceBytesMatchHistoricalMacSubjects'], False)
+        self.assertIs(proof['commonProductSourceBytesChangedFromHistoricalFreeze'], False)
+        self.assertEqual(proof['sharedInstrumentationDelta'], delta)
+
+
 if __name__ == '__main__':
     unittest.main()

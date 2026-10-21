@@ -134,7 +134,10 @@ def rebind(benchmark, node, browser, browser_version, workflow_commit):
                       'originalToolchainCommit': spec['originalToolchainCommit'],
                       'historicalAcceptedFreezeSHA256': source['historicalAcceptedFreezeSHA256'],
                       'historicalMacRunsRelabelled': False, 'freshLinuxHostSeals': True,
-                      'sourceBytesChangedFromHistoricalSubjects': False, 'nodePath': str(node), 'nodeSHA256': sha(node),
+                      'sourceBytesChangedFromHistoricalSubjects': True,
+                      'sharedInstrumentationDelta': read(HERE / 'input-lock.json')['sharedInstrumentationDelta'],
+                      'commonProductSourceBytesChangedFromHistoricalFreeze': False,
+                      'nodePath': str(node), 'nodeSHA256': sha(node),
                       'cache5LocalProofIsOriginOnly': read(HERE / 'input-lock.json')['localProofIsOriginOnly'],
                       'requiredFreshPhaseOrder': PHASE_ORDER}}
     for variant in ['original', 'candidate']:

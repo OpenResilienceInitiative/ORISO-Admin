@@ -145,21 +145,27 @@
     "freshCIPhasesRequired": true
   },
   "files": {
-    "assemble.py": "155f652397bd16868580fa215e26545371b27012e2241b11102c0793499c47c3",
+    "assemble.py": "332fc369494bea43ce239343d7afd1ca4c1c79259adbd44e86c7755ec0eb5477",
     "cache-receipt-controls.py": "f88f62b4bcc15743a755607dda694c369a45a13447e01b124f36b70bd7f7daee",
-    "ci_controller.py": "a80b853ca63ddc8d1614adbe0be6b3be1873dcce723545f51b4f694ae5b4e572",
+    "ci_controller.py": "c55a292586e419f81d37073b346d827cef6aadd2f8460c977b3f02f7e7e684f8",
     "guard-control-child.mjs": "64e6e9ea15758ab171aba73706b28f05404f403e9257b371424bbab01981a142",
     "guard-controls.py": "e796d35de7a92fec14e8bacbc9818eb766846db5dfac0aa4b7433d1fd96318ec",
-    "inputs/benchmark-harness.ts": "43959bea4b16fdf384b7135baef1e814e2fb5187e5c3ba98c1eb72fbcbf30500",
-    "inputs/candidate-expected.json": "85238ec214591f30e5971d4b11056dacf3b745af203044ec3cf50fc42faa41c9",
+    "inputs/benchmark-harness.ts": "e0df6e8eb2e10a9d3d684d5882a0520a5fe5ffe8d150105198d93e5aa02f3cda",
+    "inputs/candidate-expected.json": "b0bc478ccd60f91feb048b412ba486fbec6d24fa4af9c58195cc0c9f69c17989",
     "inputs/expected-inventory.json": "a079bbe3c5cfb0e9e7f37c73333525fe1ffb5fde4024130a7e2984e6bfa881f3",
     "inputs/git-source-spec.json": "679b1acda9ad5af46bd5da7da4c72e3c797106e7aec35211f8475edf9cb9ed3d",
-    "inputs/original-expected.json": "1c1b9a0ce4658433aea97ea7aa702610597ae1ccf107584f646355796a02af51",
+    "inputs/original-expected.json": "ce6fe3400d7576ad6d2feb4ac2ef5ef6e3d505c7dcfcfd894ab1902b44c01e5f",
     "inputs/schedule.json": "31539ebc8cd27c1726c986b9a97f3f5d18929196d80d6a5c0323959f7ba9d925",
     "inputs/source-map.json": "33811c1b173228c5a54e6c5b6b1c58e705d97b77cbb596e95234044f36ca72ea",
     "inputs/toolchains.json": "733ba215ff22df909cbe341dbb04266f9d9e311cf46b7c3005c912245ccdfa49",
     "inputs/verification-provenance.mjs": "65a79f0c777b972b997b560aa04e2209ad3b5127d97b7c2e8364aea1461fd0eb",
     "run.py": "fbf37af0fe92c8a8f011ca6ccb08b8cbad5f3e7dde73bff1abf2cad9c820fbea",
-    "test_ci_controller.py": "69d9d26137bdcc603911ed11d39e88e72458addd64cb4ae5b580a157052324e9"
+    "test_ci_controller.py": "f7fe07db7568bc9f05e12079d3604229c85d3281b50742e84c257bee45fffbe5"
+  },
+  "sharedInstrumentationDelta": {
+    "path": "benchmark-harness.ts",
+    "previousSHA256": "43959bea4b16fdf384b7135baef1e814e2fb5187e5c3ba98c1eb72fbcbf30500",
+    "currentSHA256": "e0df6e8eb2e10a9d3d684d5882a0520a5fe5ffe8d150105198d93e5aa02f3cda",
+    "reason": "Exact declared Chromium instance native-project identity; same instrumentation on bothsubjects"
   }
 }

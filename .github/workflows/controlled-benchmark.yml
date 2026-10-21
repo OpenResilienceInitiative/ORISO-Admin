@@ -39,7 +39,7 @@ jobs:
       BENCHMARK_PROFILE: ${{ inputs.profile || 'admin1611-314228e-cache5' }}
       BENCHMARK_TOOLS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       # Filled with the sealed portable/input-lock.json hash during preparation.
-      BENCHMARK_INPUT_SHA256: 'fcb4e35ff9ac5c6e7d020400d7f7b8fcacee471408f09418f7e6d84fdefae7db'
+      BENCHMARK_INPUT_SHA256: '2a9431b6a6d56b02477e4db8ba8c3111cfc26b561672897abc7e19171462c85e'
     steps:
       - name: Initialize failure evidence
         env:
