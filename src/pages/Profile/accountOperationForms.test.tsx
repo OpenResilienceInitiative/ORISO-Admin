@@ -40,6 +40,22 @@ afterEach(() => {
 const idAt = (index: number) => mocks.fetch.mock.calls[index][0].headersData['Idempotency-Key'];
 
 describe('real profile forms and their account mutations', () => {
+    it('starts a fresh profile intent after explicit Cancel and reopen with the same values', async () => {
+        mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
+        const user = userEvent.setup({ delay: null });
+        render(<PrivateData />, { wrapper });
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(screen.getByLabelText('email *')).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'card.edit.cancel' }));
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(2));
+        expect(mocks.fetch.mock.calls[1][0].bodyData).toBe(mocks.fetch.mock.calls[0][0].bodyData);
+        expect(idAt(1), 'account-intent-profile-cancel-reopen').not.toBe(idAt(0));
+    });
+
     it('retains the exact unknown profile retry and renews identity after an email edit away and back', async () => {
         mocks.fetch.mockRejectedValue(new TypeError('reply lost'));
         const user = userEvent.setup({ delay: null });
