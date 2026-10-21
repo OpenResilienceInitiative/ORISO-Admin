@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment oriso-jsdom
 /**
  * Theme preview via sandboxed iframe (decided 2026-06-11): the REAL
  * app renders /theme-demo with the draft seeds passed as

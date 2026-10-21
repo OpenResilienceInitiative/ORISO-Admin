@@ -65,6 +65,9 @@ jobs:
             - name: Verify configured lint failure controls
               run: npm run test:lint-controls
 
+            - name: Verify native unit teardown errors and healthy controls
+              run: node scripts/verify-native-unit-errors.mjs
+
             - name: Run unit tests
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}

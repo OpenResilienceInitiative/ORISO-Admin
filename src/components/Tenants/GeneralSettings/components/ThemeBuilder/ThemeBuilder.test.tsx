@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment oriso-jsdom
 /**
  * ThemeBuilder — three seed inputs (accent dark/light + signal) and seed-only save.
  * Colour-picker half lifted from closed PR #125; iframe preview belongs to #907.

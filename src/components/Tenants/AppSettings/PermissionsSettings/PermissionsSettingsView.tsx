@@ -8,6 +8,7 @@ import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
+import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
@@ -59,6 +60,8 @@ export type PermissionsSettingsViewProps = {
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
+    recipientScope?: Omit<RecipientScopeControlProps, 'level' | 'disabled'>;
 };
 
 export const PermissionsSettingsView = ({
@@ -78,6 +81,7 @@ export const PermissionsSettingsView = ({
     permissionPolicies,
     pendingPolicyFields,
     onPolicyChange,
+    recipientScope,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
@@ -300,6 +304,16 @@ export const PermissionsSettingsView = ({
                                                         </>
                                                     )}
                                                 </div>
+
+                                                {card.key === 'groupInternal' &&
+                                                    recipientScope &&
+                                                    policyLevel !== 'agency' && (
+                                                        <RecipientScopeControl
+                                                            {...recipientScope}
+                                                            level={policyLevel}
+                                                            disabled={!masterEnabled}
+                                                        />
+                                                    )}
 
                                                 {card.toggles.length > 0 && (
                                                     <>

@@ -1,16 +1,38 @@
 // @vitest-environment node
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { BaseSequencer } from 'vite-plus/test/node';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 // eslint-disable-next-line import/extensions -- The native Node reporter has an explicit ESM entry.
 import VerificationReporter from '../../scripts/verification-reporter.mjs';
 
 const directories: string[] = [];
+let initialExitCode: typeof process.exitCode;
+beforeEach(() => {
+    initialExitCode = process.exitCode;
+});
+const initialize = (reporter: VerificationReporter, config = {}) => {
+    const callbacks: (() => unknown)[] = [];
+    const readErrors = vi.fn((): unknown => []);
+    reporter.onInit({
+        config,
+        state: { getUnhandledErrors: readErrors },
+        onClose: (callback: () => unknown) => {
+            callbacks.push(callback);
+        },
+    });
+    return {
+        callbacks,
+        readErrors,
+        close: () => Promise.all(callbacks.map((callback) => callback())),
+    };
+};
 afterEach(() => {
     directories.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }));
     vi.unstubAllEnvs();
+    // Restore only this controlled reporter fixture's exit-code side effect.
+    process.exitCode = initialExitCode;
 });
 
 describe('durable verification inventory', () => {
@@ -18,8 +40,11 @@ describe('durable verification inventory', () => {
         const directory = mkdtempSync(path.join(tmpdir(), 'admin-verification-'));
         directories.push(directory);
         const reporter = new VerificationReporter({ directory });
-        reporter.onInit({ config: {} });
-        const module = { moduleId: 'example.test.ts', children: { allTests: () => [1, 2, 3] } };
+        initialize(reporter);
+        const module = {
+            moduleId: path.resolve('src/test/verificationReporter.test.ts'),
+            children: { allTests: () => [1, 2, 3] },
+        };
         const test = (id: string, state: string, mode = 'run', retries = 0) => ({
             id,
             module,
@@ -50,11 +75,11 @@ describe('durable verification inventory', () => {
             unhandledErrors: ['unhandled control'],
         });
     });
-    it('reconciles a terminal result followed by a delayed ready event without claiming a live test', () => {
+    it('reconciles a terminal result followed by a delayed ready event without claiming a live test', async () => {
         const directory = mkdtempSync(path.join(tmpdir(), 'admin-verification-'));
         directories.push(directory);
         const reporter = new VerificationReporter({ directory });
-        reporter.onInit({ config: {} });
+        const lifecycle = initialize(reporter);
         const cases: object[] = [];
         const module = {
             moduleId: path.resolve('src/test/verificationReporter.test.ts'),
@@ -75,9 +100,10 @@ describe('durable verification inventory', () => {
         reporter.onTestCaseReady(test);
         reporter.onTestModuleEnd(module);
         reporter.onTestRunEnd([module], [], 'failed');
+        await lifecycle.close();
         const report = JSON.parse(readFileSync(path.join(directory, 'inventory.json'), 'utf8'));
         expect(report.running).toEqual([]);
-        expect(report.inventoryComplete).toBe(true);
+        expect(report.inventoryComplete).toBe(false);
         expect(report.eventAnomalies).toHaveLength(1);
         expect(report.failed).toBe(1);
     });
@@ -86,7 +112,7 @@ describe('durable verification inventory', () => {
         const directory = mkdtempSync(path.join(tmpdir(), 'admin-verification-'));
         directories.push(directory);
         const reporter = new VerificationReporter({ directory });
-        reporter.onInit({ config: {} });
+        initialize(reporter);
         reporter.onTestRunStart([{ moduleId: path.resolve('src/test/verificationReporter.test.ts') }]);
         reporter.onTestCaseReady({
             id: 'unfinished',
@@ -103,7 +129,7 @@ describe('durable verification inventory', () => {
         const directory = mkdtempSync(path.join(tmpdir(), 'admin-verification-'));
         directories.push(directory);
         const reporter = new VerificationReporter({ directory });
-        reporter.onInit({ config: {} });
+        initialize(reporter);
         const tests: object[] = [];
         const module = {
             moduleId: path.resolve('src/test/verificationReporter.test.ts'),
@@ -181,7 +207,7 @@ describe('durable verification inventory', () => {
         const interruptedDirectory = mkdtempSync(path.join(tmpdir(), 'admin-verification-'));
         directories.push(interruptedDirectory);
         const interrupted = new VerificationReporter({ directory: interruptedDirectory });
-        interrupted.onInit({ config: {} });
+        initialize(interrupted);
         interrupted.onTestRunStart([]);
         interrupted.onTestRunEnd([], [], 'interrupted');
         const interruptedInventory = JSON.parse(
@@ -199,7 +225,7 @@ describe('durable verification inventory', () => {
         directories.push(directory);
         vi.stubEnv('VERIFICATION_SOURCE_SHA', '0000000000000000000000000000000000000000');
         const reporter = new VerificationReporter({ directory });
-        reporter.onInit({ config: {} });
+        initialize(reporter);
         expect(() => reporter.onTestRunStart([])).toThrow('does not match checked-out HEAD');
     });
 });
@@ -221,10 +247,10 @@ describe('authoritative native shard inventory', () => {
             },
         };
         const reporter = new VerificationReporter({ directory: path.join(directory, 'report') });
-        reporter.onInit?.(context);
+        const lifecycle = initialize(reporter, context.config);
         const read = () => JSON.parse(readFileSync(path.join(directory, 'report/inventory.json'), 'utf8'));
         const plan = () => readFileSync(path.join(directory, 'report/assignment-plan.json'), 'utf8');
-        return { directory, specifications, context, reporter, read, plan };
+        return { directory, specifications, context, reporter, read, plan, lifecycle };
     };
     const complete = (
         reporter: VerificationReporter,
@@ -257,6 +283,7 @@ describe('authoritative native shard inventory', () => {
         });
         const modules = assigned.map((spec) => complete(fixture.reporter, spec as never));
         fixture.reporter.onTestRunEnd(modules, [], 'passed');
+        await fixture.lifecycle.close();
         expect(fixture.read()).toMatchObject({
             discoveredFiles: fixture.specifications.length,
             expectedFiles: assigned.length,
@@ -319,6 +346,7 @@ describe('authoritative native shard inventory', () => {
         await f.reporter.onTestRunStart(f.specifications);
         const modules = f.specifications.map((spec) => complete(f.reporter, spec));
         f.reporter.onTestRunEnd(modules, [], 'failed');
+        await f.lifecycle.close();
         expect(f.read()).toMatchObject({ expectedFiles: f.specifications.length, inventoryComplete: true });
     });
     it('requires the public onInit context instead of assuming an unknown run is unsharded', async () => {
@@ -329,5 +357,166 @@ describe('authoritative native shard inventory', () => {
         reporter.onTestRunEnd(modules, [], 'passed');
         const report = JSON.parse(readFileSync(path.join(f.directory, 'without-init/inventory.json'), 'utf8'));
         expect(report).toMatchObject({ inventoryComplete: false, assignmentPlan: { valid: false } });
+    });
+});
+
+describe('public after-pool error accounting', () => {
+    const setup = () => {
+        const directory = mkdtempSync(path.join(tmpdir(), 'late-native-errors-'));
+        directories.push(directory);
+        const reporter = new VerificationReporter({ directory });
+        const lifecycle = initialize(reporter);
+        const tests: object[] = [];
+        const module = {
+            moduleId: path.resolve('src/test/verificationReporter.test.ts'),
+            project: { name: 'unit' },
+            children: { allTests: () => tests },
+        };
+        const test = {
+            id: 'native-case',
+            module,
+            fullName: 'literal native pass',
+            options: { mode: 'run' },
+            result: () => ({ state: 'passed' }),
+            diagnostic: () => ({ retryCount: 0 }),
+        };
+        tests.push(test);
+        reporter.onTestRunStart([module]);
+        reporter.onTestModuleCollected(module);
+        reporter.onTestCaseReady(test);
+        reporter.onTestCaseResult(test);
+        reporter.onTestModuleEnd(module);
+        const read = () => JSON.parse(readFileSync(path.join(directory, 'inventory.json'), 'utf8'));
+        return { reporter, lifecycle, module, directory, read };
+    };
+    it('keeps a passing run provisional until the actual public close snapshot', async () => {
+        const f = setup();
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
+        expect(f.read().inventoryComplete).toBe(false);
+        await f.lifecycle.close();
+        expect(f.lifecycle.readErrors).toHaveBeenCalledTimes(1);
+        expect(f.read()).toMatchObject({
+            state: 'passed',
+            nativeRunReason: 'passed',
+            passed: 1,
+            failed: 0,
+            inventoryComplete: true,
+            afterPool: {
+                status: 'checked',
+                errors: [],
+                exitCodeSnapshotIsFinal: false,
+            },
+        });
+    });
+    it('fails on late-only native errors while retaining literal results and nested unknown-case context', async () => {
+        const f = setup();
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
+        const error = {
+            name: 'AggregateError',
+            type: 'Teardown Error',
+            message: 'late native error',
+            errors: [
+                {
+                    type: 'unhandled exception',
+                    detail: {
+                        name: 'ReferenceError',
+                        message: 'document is not defined',
+                        stack: 'actual retained nested stack',
+                    },
+                },
+            ],
+        };
+        f.lifecycle.readErrors.mockReturnValue([error]);
+        await f.lifecycle.close();
+        expect(process.exitCode).toBe(1);
+        expect(f.read()).toMatchObject({
+            state: 'failed',
+            nativeRunReason: 'passed',
+            passed: 1,
+            failed: 0,
+            inventoryComplete: false,
+            nativeRunEndErrors: [],
+            unhandledErrors: [],
+            afterPool: { errors: [error], inventedCaseAttribution: null },
+        });
+        expect(f.read().afterPool.errorsInspect).toContain('actual retained nested stack');
+    });
+    it('retains earlier supplied errors separately when after-pool state adds another error', async () => {
+        const f = setup();
+        const earlier = {
+            message: 'earlier worker error',
+            stack: 'earlier stack',
+        };
+        f.reporter.onTestRunEnd([f.module], [earlier], 'failed');
+        const late = { message: 'late error', detail: { stack: 'late stack' } };
+        f.lifecycle.readErrors.mockReturnValue([late]);
+        await f.lifecycle.close();
+        expect(f.read()).toMatchObject({
+            nativeRunReason: 'failed',
+            nativeRunEndErrors: [earlier],
+            unhandledErrors: ['earlier worker error'],
+            afterPool: { errors: [late] },
+            inventoryComplete: false,
+        });
+        expect(process.exitCode).toBe(1);
+    });
+    it.each(['throw undefined', 'non-array'])('fails closed for public state %s', async (kind) => {
+        const f = setup();
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
+        if (kind === 'throw undefined')
+            f.lifecycle.readErrors.mockImplementation(() => {
+                // eslint-disable-next-line no-throw-literal -- Exercise a real falsy throw in the public API.
+                // eslint-disable-next-line @typescript-eslint/no-throw-literal -- Native public state may throw an arbitrary falsy value.
+                throw undefined;
+            });
+        else f.lifecycle.readErrors.mockReturnValue({ invalid: true });
+        const outcomes = await Promise.allSettled([f.lifecycle.close()]);
+        expect(outcomes[0].status).toBe('rejected');
+        expect(process.exitCode).toBe(1);
+        expect(f.read().inventoryComplete).toBe(false);
+    });
+    it('requires the public close API rather than silently losing the late check', () => {
+        const reporter = new VerificationReporter();
+        expect(() =>
+            reporter.onInit({
+                config: {},
+                state: { getUnhandledErrors: () => [] },
+            }),
+        ).toThrow('Public native close/error accounting unavailable');
+        expect(process.exitCode).toBe(1);
+    });
+    it('rejects final write failure asynchronously so subsequent native close callbacks still run', async () => {
+        const f = setup();
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
+        const target = path.join(f.directory, 'inventory.json');
+        rmSync(target);
+        mkdirSync(target);
+        const laterCleanup = vi.fn();
+        f.lifecycle.callbacks.push(laterCleanup);
+        const outcomes = await Promise.allSettled(f.lifecycle.callbacks.map((callback) => callback()));
+        expect(outcomes[0]).toMatchObject({
+            status: 'rejected',
+            reason: { code: 'EISDIR' },
+        });
+        expect(laterCleanup).toHaveBeenCalledTimes(1);
+        expect(process.exitCode).toBe(1);
+    });
+    it('does not fabricate a run for public initialization/collection without test execution', async () => {
+        const directory = mkdtempSync(path.join(tmpdir(), 'no-native-run-'));
+        directories.push(directory);
+        const reporter = new VerificationReporter({ directory });
+        const lifecycle = initialize(reporter);
+        await lifecycle.close();
+        expect(existsSync(path.join(directory, 'inventory.json'))).toBe(false);
+        expect(process.exitCode).toBe(initialExitCode);
+    });
+    it('preserves an earlier nonzero native exit when late errors also occur', async () => {
+        const f = setup();
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
+        process.exitCode = 2;
+        f.lifecycle.readErrors.mockReturnValue([{ message: 'late' }]);
+        await f.lifecycle.close();
+        expect(process.exitCode).toBe(2);
+        expect(f.read().inventoryComplete).toBe(false);
     });
 });

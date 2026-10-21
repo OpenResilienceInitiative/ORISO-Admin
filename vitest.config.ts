@@ -81,8 +81,13 @@ export default defineConfig({
                 extends: true,
                 test: {
                     name: 'unit',
-                    environment: 'jsdom',
-                    exclude: [...configDefaults.exclude, 'cypress/**'],
+                    environment: 'oriso-jsdom',
+                    exclude: [
+                        ...configDefaults.exclude,
+                        'cypress/**',
+                        'scripts/native-unit-error-canary/**',
+                        'scripts/vitest-environment-oriso-jsdom/**',
+                    ],
                     globals: true,
                     testTimeout: 30_000,
                     server: {
