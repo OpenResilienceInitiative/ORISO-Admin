@@ -180,6 +180,7 @@ export const CardEditable = ({
                                 if (allowUnsavedChanges && hasChanges) {
                                     setShowUnsavedChangesModal(true);
                                 } else {
+                                    onValuesChange?.();
                                     form.resetFields();
                                     setEditing(false);
                                 }
@@ -193,6 +194,7 @@ export const CardEditable = ({
                 <UnsavedChangesModal
                     // onConfirm = destructive (discard + exit editing), onClose = safe (keep editing).
                     onConfirm={() => {
+                        onValuesChange?.();
                         form.resetFields();
                         setEditing(false);
                         setShowUnsavedChangesModal(false);
