@@ -1,8 +1,9 @@
+import { appendFileSync } from 'node:fs';
 import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
@@ -202,6 +203,54 @@ const renderTenantTab = () => {
 beforeEach(() => {
     mocks.superAdmin = false;
 });
+
+const createInviteTrace = (caseName: string) => {
+    const started = performance.now();
+    const trace = (phase: string, details: Record<string, unknown> = {}) => {
+        const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
+        if (!destination) return;
+        appendFileSync(
+            destination,
+            `${JSON.stringify({
+                caseName,
+                file: 'src/pages/Links/AccountInvitesTab.test.tsx',
+                pid: process.pid,
+                traceId: `${process.pid}:${performance.timeOrigin}:${started}`,
+                phase,
+                atUTC: new Date().toISOString(),
+                elapsedMs: performance.now() - started,
+                inputs: [...document.querySelectorAll<HTMLInputElement>('input[role="combobox"]')].map((input) => ({
+                    id: input.id,
+                    value: input.value,
+                    focused: document.activeElement === input,
+                    expanded: input.getAttribute('aria-expanded'),
+                    controls: input.getAttribute('aria-controls'),
+                    disabled: input.disabled,
+                })),
+                options: [...document.querySelectorAll<HTMLElement>('[role="option"]')].map((option) => ({
+                    text: option.textContent,
+                    selected: option.getAttribute('aria-selected'),
+                    hidden: option.hidden,
+                    ariaHidden: option.getAttribute('aria-hidden'),
+                })),
+                listboxes: [...document.querySelectorAll<HTMLElement>('[role="listbox"]')].map((list) => ({
+                    id: list.id,
+                    text: list.textContent,
+                    hidden: list.hidden,
+                })),
+                topicControls: [...document.querySelectorAll('button')]
+                    .map((button) => button.textContent)
+                    .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                searchArgs: mocks.searchInviteAgencies.mock.calls,
+                agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
+                ...details,
+            })}\n`,
+        );
+    };
+    // The native finish hook also runs after an assertion failure or timeout.
+    if (process.env.ACCOUNT_INVITE_TRACE_FILE) onTestFinished(() => trace('test:finished'));
+    return trace;
+};
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -1011,36 +1060,76 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('applies the next agency’s default again after an earlier manual choice', async () => {
-        mocks.searchInviteAgencies.mockImplementation(async (query: string) => ({
-            hits: query.startsWith('Diak')
-                ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
-                : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
-            total: 1,
-            hasMore: false,
-            page: 1,
-        }));
-        mocks.getAgencyDataById.mockImplementation(async (id: string) => ({
-            _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
-        }));
+        const trace = createInviteTrace('next agency default after manual choice');
+        trace('test:start');
+        mocks.searchInviteAgencies.mockImplementation(async (query: string) => {
+            trace('search:called', { query });
+            return {
+                hits: query.startsWith('Diak')
+                    ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
+                    : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
+                total: 1,
+                hasMore: false,
+                page: 1,
+            };
+        });
+        mocks.getAgencyDataById.mockImplementation(async (id: string) => {
+            const result = {
+                _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
+            };
+            trace('agencyDefault:answered', { id, result });
+            return result;
+        });
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
+        trace('findAgency:before');
         const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgency:after');
+        trace('typeDiak:before');
         await user.type(agency, 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW));
+        trace('typeDiak:after');
+        trace('findDiak:before');
+        const diakOption = await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW);
+        trace('findDiak:after');
+        await user.click(diakOption);
+        trace('clickDiak:after');
+        trace('default14:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'), SLOW);
+        trace('default14:after');
         const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        trace('openTopics:before');
         await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
-        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW));
+        trace('openTopics:after');
+        trace('findManualPermission:before');
+        const manualPermission = await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW);
+        trace('findManualPermission:after');
+        await user.click(manualPermission);
+        trace('chooseManualPermission:after');
 
         const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('openAgencyPill:before', { present: !!agencyPill });
         if (agencyPill) await user.click(agencyPill);
+        trace('openAgencyPill:after');
+        trace('findAgencyField:before');
         const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgencyField:after');
+        trace('clearAgency:before');
         await user.clear(agencyField);
+        trace('clearAgency:after');
+        trace('typeCari:before');
         await user.type(agencyField, 'Cari');
-        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW));
+        trace('typeCari:after');
+        trace('findCari:before');
+        const cariOption = await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW);
+        trace('findCari:after');
+        await user.click(cariOption);
+        trace('clickCari:after');
 
         // The new agency's default applies again: the earlier manual choice belonged to Diakonie Lahr.
+        trace('default15:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'), SLOW);
+        trace('default15:after');
+        trace('assertCreateDefault:before');
         expect(
             await screen.findByRole(
                 'button',
@@ -1048,6 +1137,8 @@ describe('CounsellorInvitesTab — invite wiring', () => {
                 SLOW,
             ),
         ).toBeInTheDocument();
+        trace('assertCreateDefault:after');
+        trace('test:done');
     });
 
     it('drops the agency default again when the admin switches to a new agency', async () => {

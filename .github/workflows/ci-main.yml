@@ -120,6 +120,9 @@ jobs:
               run: npm run test:lint-controls
 
             - name: Run unit tests
+              env:
+                  VERIFICATION_ARTIFACTS_DIR: verification-artifacts
+                  ACCOUNT_INVITE_TRACE_FILE: verification-artifacts/account-invite-trace.jsonl
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4
 
             - name: Upload unit verification inventory

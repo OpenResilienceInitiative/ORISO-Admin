@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { BaseSequencer } from 'vite-plus/test/node';
 import { createRunProvenance, suppliedBrowser } from './verification-provenance.mjs';
 
 // Append completed cases immediately. If a worker stalls or CI cancels the job,
@@ -19,11 +20,16 @@ export default class VerificationReporter {
                 `run-${process.pid}-${this.runId}`,
             );
         this.modules = new Map();
+        this.completedModules = new Set();
+        this.modulePlanErrors = [];
+        this.assignedSpecifications = [];
+        this.assignmentPlan = { path: 'assignment-plan.json', valid: false, error: 'Run plan not received' };
         this.running = new Map();
         this.completed = new Map();
         this.eventAnomalies = [];
         this.reconciled = [];
         this.counts = {
+            discoveredFiles: 0,
             expectedFiles: 0,
             collectedFiles: 0,
             completedFiles: 0,
@@ -64,8 +70,21 @@ export default class VerificationReporter {
                     executed: this.counts.passed + this.counts.failed,
                     running: this.state === 'running' ? [...this.running.values()] : [],
                     unfinished: this.state === 'running' ? [] : [...this.running.values()],
+                    assignmentPlan: this.assignmentPlan,
+                    modulePlanErrors: this.modulePlanErrors,
+                    missingAssignedModules: this.assignedSpecifications.filter(
+                        (spec) =>
+                            !this.modules.has(this.identity(spec)) || !this.completedModules.has(this.identity(spec)),
+                    ),
                     inventoryComplete:
-                        this.state !== 'running' &&
+                        this.assignmentPlan.valid &&
+                        ['passed', 'failed'].includes(this.state) &&
+                        !(this.unhandledErrors || []).length &&
+                        this.modulePlanErrors.length === 0 &&
+                        this.assignedSpecifications.every(
+                            (spec) =>
+                                this.modules.has(this.identity(spec)) && this.completedModules.has(this.identity(spec)),
+                        ) &&
                         this.running.size === 0 &&
                         this.counts.completedFiles === this.counts.expectedFiles &&
                         this.counts.expectedTests ===
@@ -79,17 +98,85 @@ export default class VerificationReporter {
             ),
         );
     }
+    onInit(context) {
+        this.context = context;
+    }
+    specification(spec) {
+        return { project: spec.project?.name ?? spec.project?.config?.name ?? '', moduleId: spec.moduleId };
+    }
+    identity(spec) {
+        const value = typeof spec.project === 'string' ? spec : this.specification(spec);
+        return JSON.stringify([value.project, value.moduleId]);
+    }
+    publishAssignment(global, assigned, kind, error) {
+        const discovered = global.map((spec) => this.specification(spec));
+        const selection = assigned.map((spec) => this.specification(spec));
+        const keys = new Set(discovered.map((spec) => this.identity(spec)));
+        if (
+            discovered.some((spec) => !spec.moduleId) ||
+            keys.size !== discovered.length ||
+            selection.some((spec) => !keys.has(this.identity(spec))) ||
+            new Set(selection.map((spec) => this.identity(spec))).size !== selection.length
+        ) {
+            error = 'Invalid or duplicate native specification identities';
+        }
+        this.assignedSpecifications = selection;
+        this.assignmentPlan = {
+            path: 'assignment-plan.json',
+            kind,
+            shard: this.context?.config?.shard ?? null,
+            valid: !error,
+            ...(error ? { error } : {}),
+        };
+        this.counts.expectedFiles = error ? null : selection.length;
+        mkdirSync(this.directory, { recursive: true });
+        writeFileSync(
+            path.join(this.directory, this.assignmentPlan.path),
+            JSON.stringify(
+                {
+                    schemaVersion: 1,
+                    ...this.assignmentPlan,
+                    global: discovered,
+                    assigned: selection,
+                },
+                null,
+                2,
+            ),
+            { flag: 'wx' },
+        );
+        this.save();
+    }
     onTestRunStart(specifications) {
         this.inputs = specifications.map((spec) => spec.moduleId).filter(Boolean);
         this.projects = [
             ...new Set(specifications.map((spec) => spec.project?.name ?? spec.project?.config?.name).filter(Boolean)),
         ].sort();
-        this.counts.expectedFiles = specifications.length;
-        this.save();
+        this.counts.discoveredFiles = specifications.length;
+        if (!this.context?.config) {
+            this.publishAssignment(specifications, [], 'unavailable', 'Public native onInit context not received');
+            return;
+        }
+        if (!this.context.config.shard) {
+            this.publishAssignment(specifications, specifications, 'unsharded-global');
+            return;
+        }
+        if (this.context.config.sequence?.sequencer !== BaseSequencer) {
+            this.publishAssignment(specifications, [], 'unavailable', 'Unsupported custom shard sequencer');
+            return;
+        }
+        // Pinned public native implementation, not a second copy of the split algorithm.
+        // BaseSequencer.shard is pure; never invoke an unknown/stateful custom sequencer twice.
+        return new BaseSequencer(this.context).shard([...specifications]).then((assigned) => {
+            this.publishAssignment(specifications, assigned, 'vitest-base-sequencer');
+        });
     }
     onTestModuleCollected(module) {
-        if (!this.modules.has(module.moduleId)) {
-            this.modules.set(module.moduleId, true);
+        const identity = this.identity(module);
+        if (!this.assignedSpecifications.some((spec) => this.identity(spec) === identity)) {
+            this.modulePlanErrors.push({ event: 'unassigned-collection', ...this.specification(module) });
+        }
+        if (!this.modules.has(identity)) {
+            this.modules.set(identity, true);
             this.counts.collectedFiles += 1;
             this.counts.expectedTests += [...module.children.allTests()].length;
         }
@@ -172,7 +259,16 @@ export default class VerificationReporter {
     }
     onTestModuleEnd(module) {
         this.reconcile(module);
-        this.counts.completedFiles += 1;
+        const identity = this.identity(module);
+        if (this.completedModules.has(identity)) {
+            this.modulePlanErrors.push({ event: 'duplicate-completion', ...this.specification(module) });
+        } else {
+            this.completedModules.add(identity);
+            this.counts.completedFiles += 1;
+        }
+        if (!this.assignedSpecifications.some((spec) => this.identity(spec) === identity)) {
+            this.modulePlanErrors.push({ event: 'unassigned-completion', ...this.specification(module) });
+        }
         this.save();
     }
     onTestRunEnd(modules, errors, reason) {

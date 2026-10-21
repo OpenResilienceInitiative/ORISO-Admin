@@ -68,6 +68,8 @@ jobs:
             - name: Run unit tests
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+                  VERIFICATION_ARTIFACTS_DIR: verification-artifacts
+                  ACCOUNT_INVITE_TRACE_FILE: verification-artifacts/account-invite-trace.jsonl
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4
 
             - name: Upload unit verification inventory
