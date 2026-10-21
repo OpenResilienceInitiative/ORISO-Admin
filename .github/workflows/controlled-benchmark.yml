@@ -36,18 +36,23 @@ jobs:
       TZ: Europe/Berlin
       LC_ALL: C.UTF-8
       PYTHONDONTWRITEBYTECODE: '1'
-      COMPARISON_TASK: ${{ runner.temp }}/admin1611-ci-task
-      COMPARISON_ARTIFACTS: ${{ runner.temp }}/admin1611-ci-artifacts
       BENCHMARK_PROFILE: ${{ inputs.profile || 'admin1611-314228e-cache5' }}
       BENCHMARK_TOOLS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       # Filled with the sealed portable/input-lock.json hash during preparation.
       BENCHMARK_INPUT_SHA256: '66d6f2bf8e339009476d74108ea59d272eaefb4da96d2fc6b279729a867da72a'
     steps:
       - name: Initialize failure evidence
+        env:
+          COMPARISON_TASK: ${{ runner.temp }}/admin1611-ci-task
+          COMPARISON_ARTIFACTS: ${{ runner.temp }}/admin1611-ci-artifacts
         run: |
           python3 - <<'PY'
           import json, os
           from pathlib import Path
+          # Export resolved runner paths for subsequent controller and upload steps.
+          with Path(os.environ['GITHUB_ENV']).open('a') as target:
+              for name in ['COMPARISON_TASK', 'COMPARISON_ARTIFACTS']:
+                  target.write(name + '=' + os.environ[name] + '\n')
           root = Path(os.environ['COMPARISON_ARTIFACTS'])
           root.mkdir(parents=True, exist_ok=False)
           (root / 'workflow-start.json').write_text(json.dumps({k: os.environ.get(k) for k in [
