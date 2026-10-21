@@ -234,6 +234,11 @@ const executeFetchData = (props: FetchDataProps, accessToken: string): Promise<a
                         // (see BAD_GATEWAY_WITH_RESPONSE above). No toast here — the
                         // caller renders the specific one.
                         reject(response);
+                    } else if (
+                        response.status === 412 &&
+                        props.responseHandling.includes(FETCH_ERRORS.PRECONDITION_FAILED)
+                    ) {
+                        reject(new Error(FETCH_ERRORS.PRECONDITION_FAILED));
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or

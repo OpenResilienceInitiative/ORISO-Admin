@@ -20,7 +20,7 @@ export const apiPutTwoFactorAuthApp = async (
             method: FETCH_METHODS.PUT,
             bodyData,
             headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.PUT, url, bodyData),
-            responseHandling: [FETCH_ERRORS.BAD_REQUEST],
+            responseHandling: [FETCH_ERRORS.BAD_REQUEST, FETCH_ERRORS.PRECONDITION_FAILED],
         }),
     );
 };
@@ -67,7 +67,7 @@ export const apiPostTwoFactorAuthEmailWithCode = async (
             url,
             method: FETCH_METHODS.POST,
             headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url),
-            responseHandling: [FETCH_ERRORS.BAD_REQUEST],
+            responseHandling: [FETCH_ERRORS.BAD_REQUEST, FETCH_ERRORS.PRECONDITION_FAILED],
         }),
     );
 };

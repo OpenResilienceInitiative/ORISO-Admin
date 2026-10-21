@@ -1,4 +1,8 @@
 {
+    "accountOperation.outcomeUnknown": "We could not confirm the result. The change may have been saved. Check the current setting before changing these details.",
+    "accountOperation.preconditionFailed": "The current setting does not permit this step. Check whether it is already complete.",
+    "accountOperation.identityChanged": "The signed-in account changed. Check which account is signed in before trying again.",
+    "accountOperation.refused": "The change was refused. Check your access and the current setting before trying again.",
     "page.tabs.previous": "Scroll tabs left",
     "page.tabs.next": "Scroll tabs right",
     "accountSetup.title": "Set the password for your existing account",

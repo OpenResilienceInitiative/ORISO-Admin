@@ -1,4 +1,8 @@
 {
+    "accountOperation.outcomeUnknown": "Das Ergebnis konnte nicht bestätigt werden. Die Änderung wurde möglicherweise gespeichert. Prüfen Sie die aktuelle Einstellung, bevor Sie diese Angaben ändern.",
+    "accountOperation.preconditionFailed": "Die aktuelle Einstellung erlaubt diesen Schritt nicht. Prüfen Sie, ob er bereits abgeschlossen ist.",
+    "accountOperation.identityChanged": "Das angemeldete Konto hat sich geändert. Prüfen Sie vor einem erneuten Versuch, welches Konto angemeldet ist.",
+    "accountOperation.refused": "Die Änderung wurde abgelehnt. Prüfen Sie Ihre Berechtigung und die aktuelle Einstellung, bevor Sie es erneut versuchen.",
     "page.tabs.previous": "Tabs nach links scrollen",
     "page.tabs.next": "Tabs nach rechts scrollen",
     "accountSetup.title": "Passwort für Ihr bestehendes Konto festlegen",
