@@ -39,7 +39,7 @@ jobs:
       BENCHMARK_PROFILE: ${{ inputs.profile || 'admin1611-314228e-cache5' }}
       BENCHMARK_TOOLS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       # Filled with the sealed portable/input-lock.json hash during preparation.
-      BENCHMARK_INPUT_SHA256: '66d6f2bf8e339009476d74108ea59d272eaefb4da96d2fc6b279729a867da72a'
+      BENCHMARK_INPUT_SHA256: 'fcb4e35ff9ac5c6e7d020400d7f7b8fcacee471408f09418f7e6d84fdefae7db'
     steps:
       - name: Initialize failure evidence
         env:
@@ -74,6 +74,7 @@ jobs:
           check-latest: false
       - name: Reconstruct, locked installs, controls, cache proof, equality, timed sample
         run: |
+          python3 -B scripts/controlled-benchmark/test_ci_controller.py
           python3 scripts/controlled-benchmark/ci_controller.py \
             --repository "$GITHUB_WORKSPACE" \
             --task "$COMPARISON_TASK" \

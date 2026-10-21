@@ -271,7 +271,8 @@ def verify_samples(benchmark, attempt, stage, supervisor, gate_attempt=None):
         directory = Path(row['artifactDirectory'])
         assert directory.is_relative_to(benchmark / 'results' / stage / attempt)
         actual = supervisor.inspect_result(directory, row['suite'])
-        assert actual == row['inventory'] and actual['expected'] == (52 if row['suite'] == 'unit' else 10)
+        # The supervisor returns tuples; persisted JSON receipts carry arrays.
+        assert json.loads(json.dumps(actual)) == row['inventory'] and actual['expected'] == (52 if row['suite'] == 'unit' else 10)
         assert actual['rawSuccessfulAudits'] == (0 if row['suite'] == 'unit' else 10)
         assert not (directory / 'fatal.json').exists()
         before, after = read(directory / 'identity-before.json'), read(directory / 'identity-after.json')
