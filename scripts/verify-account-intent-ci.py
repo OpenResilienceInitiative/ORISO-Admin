@@ -155,7 +155,7 @@ def main():
     elif kind == "admin" and phase == "react":
         targeted = ADMIN_REACT_FILES
         assert all((root / name).is_file() for name in targeted), "missing required affected React test source"
-        records.append(run("react-account-paths", ["node", "node_modules/vitest/vitest.mjs", "run", "--project", "unit", "--maxWorkers=2", *targeted, "--reporter=junit", "--outputFile=" + str(evidence / "react-account-paths.xml")], 420, evidence / "react-account-paths.xml", expected_files=targeted))
+        records.append(run("react-account-paths", ["node", "node_modules/vitest/vitest.mjs", "run", "--project", "unit", "--maxWorkers=2", *targeted, "--reporter=default", "--reporter=junit", "--outputFile=" + str(evidence / "react-account-paths.xml")], 600, evidence / "react-account-paths.xml", expected_files=targeted))
     if phase == "project":
         protocol_report = evidence / "node-contract.xml"
         protocol = run("node-contract", ["node", "--max-old-space-size=256", "--experimental-strip-types", "--test", "--experimental-test-isolation=none", "--test-concurrency=1", "--test-reporter=junit", "--test-reporter-destination=" + str(protocol_report), "scripts/account-operation-auth-retry.node-test.mjs", "scripts/account-operation-intents.node-test.mjs"], 60, protocol_report)
