@@ -107,5 +107,14 @@ it.each([
     await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.save' }));
     await screen.findByText(expectedKey);
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.save' })).toBeEnabled();
+    const save = screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.save' });
+    if (error.message === FETCH_ERRORS.BAD_REQUEST) {
+        expect(save).toBeDisabled();
+        fireEvent.change(screen.getByPlaceholderText('twoFactorAuth.activate.otp.input.label'), {
+            target: { value: '654321' },
+        });
+        expect(save).toBeEnabled();
+    } else {
+        expect(save).toBeEnabled();
+    }
 });

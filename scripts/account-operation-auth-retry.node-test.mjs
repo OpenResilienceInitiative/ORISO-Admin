@@ -113,6 +113,30 @@ test('actual HTTP refusal keeps the existing Error message and carries response 
     }
 });
 
+test('a declared precondition refusal keeps its specific message and actual HTTP status', async () => {
+    const { fetchData, FETCH_ERRORS } = await import('../src/api/fetchData.ts');
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(null, { status: 412 });
+    try {
+        await assert.rejects(
+            fetchData({
+                url: 'https://unit.oriso.invalid/users/2fa/app',
+                method: 'PUT',
+                bodyData: '{}',
+                timeout: 1,
+                responseHandling: [FETCH_ERRORS.BAD_REQUEST, FETCH_ERRORS.PRECONDITION_FAILED],
+            }),
+            (error) => {
+                assert.equal(error.message, FETCH_ERRORS.PRECONDITION_FAILED);
+                assert.equal(error.status, 412);
+                return true;
+            },
+        );
+    } finally {
+        globalThis.fetch = previousFetch;
+    }
+});
+
 test('a frozen account mutation cannot refresh into a different BFF subject', async () => {
     const { fetchData, FETCH_ERRORS } = await import('../src/api/fetchData.ts');
     const previousFetch = globalThis.fetch;
