@@ -1,3 +1,9 @@
+import {
+    AccountOperationIntent,
+    accountOperationHeaders,
+    acknowledgeAccountOperation,
+    settleAccountOperation,
+} from '../../utils/accountOperationIntent';
 import { LabeledValue } from 'antd/lib/select';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
@@ -21,7 +27,11 @@ const parseTopicIds = (formData: CounselorData): number[] => {
  * @param formData - input data from form
  * @return data
  */
-export const editCounselorData = async (id: string, formData: CounselorData): Promise<CounselorData> => {
+const performEditCounselorData = async (
+    id: string,
+    formData: CounselorData,
+    operationIntent?: AccountOperationIntent,
+): Promise<CounselorData> => {
     const {
         firstname,
         lastname,
@@ -90,15 +100,24 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
     };
 
     const ids = ((formData.agencies as LabeledValue[])?.map(({ value }) => value) || []) as string[];
-    await putAgenciesForCounselor(id, ids);
+    await putAgenciesForCounselor(id, ids, {}, operationIntent?.subIntent('agencies'));
+
+    const url = `${counselorEndpoint}/${id}`;
+    const bodyData = JSON.stringify(strippedCounselor);
 
     return (
         fetchData({
-            url: `${counselorEndpoint}/${id}`,
+            url,
+            headersData: accountOperationHeaders(
+                operationIntent?.subIntent('profile'),
+                FETCH_METHODS.PUT,
+                url,
+                bodyData,
+            ),
             method: FETCH_METHODS.PUT,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL],
-            bodyData: JSON.stringify(strippedCounselor),
+            bodyData,
         })
             .then((response) => {
                 if (response.status === 200) {
@@ -108,5 +127,16 @@ export const editCounselorData = async (id: string, formData: CounselorData): Pr
             })
             // eslint-disable-next-line no-underscore-dangle
             .then((data: { _embedded: CounselorData }) => data?._embedded)
+            .then((data) => {
+                acknowledgeAccountOperation(operationIntent);
+                return data;
+            })
     );
 };
+
+export const editCounselorData = (
+    id: string,
+    formData: CounselorData,
+    operationIntent?: AccountOperationIntent,
+): Promise<CounselorData> =>
+    settleAccountOperation(operationIntent, performEditCounselorData(id, formData, operationIntent));

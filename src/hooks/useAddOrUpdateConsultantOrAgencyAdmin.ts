@@ -1,3 +1,5 @@
+import { useAccountOperationActions } from './useAccountOperationActions';
+import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { addAgencyAdminData } from '../api/admins/addAgencyAdminData';
 import { editAgencyAdminData } from '../api/admins/editAgencyAdminData';
@@ -9,18 +11,33 @@ import { CounselorData } from '../types/counselor';
 import { AGENCY_CONSULTANTS_KEY } from './useAgencyConsultants';
 
 interface AddOrUpdateConsultantOptions
-    extends UseMutationOptions<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response> {
+    extends UseMutationOptions<
+        CounselorData | AdminData,
+        Error,
+        (CounselorData | AdminData) & AccountOperationVariables,
+        Error | Response
+    > {
     id?: string;
     typeOfUser: TypeOfUser;
 }
 export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: AddOrUpdateConsultantOptions) => {
     const queryClient = useQueryClient();
-    return useMutation<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response>({
-        mutationFn: (formData): Promise<CounselorData | AdminData> => {
+    const actions = useAccountOperationActions();
+    const mutation = useMutation<
+        CounselorData | AdminData,
+        Error,
+        (CounselorData | AdminData) & AccountOperationVariables,
+        Error | Response
+    >({
+        mutationFn: ({ operationIntent, ...formData }): Promise<CounselorData | AdminData> => {
             if (typeOfUser.toLowerCase() === TypeOfUser.Consultants) {
-                return id ? editCounselorData(id, formData as CounselorData) : addCounselorData(formData);
+                return id
+                    ? editCounselorData(id, formData as CounselorData, operationIntent)
+                    : addCounselorData(formData);
             }
-            return id ? editAgencyAdminData(id, formData as AdminData) : addAgencyAdminData(formData as AdminData);
+            return id
+                ? editAgencyAdminData(id, formData as AdminData, operationIntent)
+                : addAgencyAdminData(formData as AdminData);
         },
         ...options,
         onSuccess: (...all) => {
@@ -36,4 +53,13 @@ export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: 
             options.onSuccess?.(...all);
         },
     });
+    // New-account workflows retain their existing checked invitation identity.
+    if (!id) return { ...mutation, onAccountEdit: () => {} };
+    const target = `${typeOfUser}/${id}`;
+    return {
+        ...mutation,
+        onAccountEdit: () => actions.edited('account-edit', target),
+        mutate: bindAccountOperationMutation(actions, 'account-edit', target, mutation.mutate),
+        mutateAsync: bindAccountOperationMutation(actions, 'account-edit', target, mutation.mutateAsync),
+    };
 };

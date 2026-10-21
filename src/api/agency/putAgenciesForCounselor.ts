@@ -1,3 +1,4 @@
+import { AccountOperationIntent, accountOperationHeaders } from '../../utils/accountOperationIntent';
 import { counselorEndpoint } from '../../appConfig';
 
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
@@ -13,14 +14,18 @@ export const putAgenciesForCounselor = (
     agencyIds: string[],
     /** Reject a 403 with the Response instead of redirecting to the access-denied page. */
     { rejectForbidden = false }: { rejectForbidden?: boolean } = {},
+    operationIntent?: AccountOperationIntent,
 ) => {
     const agencies = agencyIds.map((agencyId) => ({
         agencyId,
         roleSetKey: DEFAULT_ROLE,
     }));
 
+    const bodyData = JSON.stringify(agencies);
+    const url = `${counselorEndpoint}/${counselorId}/agencies`;
     return fetchData({
-        url: `${counselorEndpoint}/${counselorId}/agencies`,
+        url,
+        headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.PUT, url, bodyData),
         method: FETCH_METHODS.PUT,
         skipAuth: false,
         // Reject with the raw Response (no generic toast) so the caller can surface the
@@ -30,6 +35,6 @@ export const putAgenciesForCounselor = (
             ...(rejectForbidden ? [FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE] : []),
             FETCH_ERRORS.CATCH_ALL_SILENT,
         ],
-        bodyData: JSON.stringify(agencies),
+        bodyData,
     });
 };

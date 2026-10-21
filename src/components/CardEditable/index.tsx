@@ -34,6 +34,7 @@ interface CardEditableProps {
     hideSaveButton?: boolean;
     hideCancelButton?: boolean;
     onEdit?: () => void;
+    onValuesChange?: () => void;
     tooltip?: string;
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactElement<any> | number | string;
@@ -58,6 +59,7 @@ export const CardEditable = ({
     hideSaveButton,
     hideCancelButton,
     onEdit,
+    onValuesChange,
     onSave,
     formProp,
     tooltip,
@@ -152,7 +154,10 @@ export const CardEditable = ({
                 layout="vertical"
                 form={form}
                 size="large"
-                onValuesChange={() => setHasChanges(true)}
+                onValuesChange={() => {
+                    setHasChanges(true);
+                    onValuesChange?.();
+                }}
                 onFinish={onFormSubmit}
                 disabled={!editing}
                 initialValues={initialValues}

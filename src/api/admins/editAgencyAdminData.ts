@@ -1,3 +1,9 @@
+import {
+    AccountOperationIntent,
+    accountOperationHeaders,
+    acknowledgeAccountOperation,
+    settleAccountOperation,
+} from '../../utils/accountOperationIntent';
 import { LabeledValue } from 'antd/lib/select';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
@@ -10,28 +16,51 @@ import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
  * @param formData - input data from form
  * @return data
  */
-export const editAgencyAdminData = async (id: string, formData: AdminData): Promise<AdminData> => {
+const performEditAgencyAdminData = async (
+    id: string,
+    formData: AdminData,
+    operationIntent?: AccountOperationIntent,
+): Promise<AdminData> => {
     const { firstname, lastname, email, username, twoFactorAuth } = formData;
 
     const ids = ((formData.agencies as LabeledValue[])?.map(({ value }) => value) || []) as string[];
-    await putAgenciesForAgencyAdmin(id, ids);
+    await putAgenciesForAgencyAdmin(id, ids, operationIntent?.subIntent('agencies'));
 
+    const url = `${agencyAdminEndpoint}/${id}`;
+    const bodyData = JSON.stringify({
+        firstname,
+        lastname,
+        email,
+        username, // MATRIX MIGRATION: backend handles encoding
+        twoFactorAuth,
+    });
     return (
         fetchData({
-            url: `${agencyAdminEndpoint}/${id}`,
+            url,
+            headersData: accountOperationHeaders(
+                operationIntent?.subIntent('profile'),
+                FETCH_METHODS.PUT,
+                url,
+                bodyData,
+            ),
             method: FETCH_METHODS.PUT,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL],
-            bodyData: JSON.stringify({
-                firstname,
-                lastname,
-                email,
-                username, // MATRIX MIGRATION: backend handles encoding
-                twoFactorAuth,
-            }),
+            bodyData,
         })
             .then((response) => response.json())
             // eslint-disable-next-line no-underscore-dangle
             .then((data: { _embedded: CounselorData }) => data?._embedded)
+            .then((data) => {
+                acknowledgeAccountOperation(operationIntent);
+                return data;
+            })
     );
 };
+
+export const editAgencyAdminData = (
+    id: string,
+    formData: AdminData,
+    operationIntent?: AccountOperationIntent,
+): Promise<AdminData> =>
+    settleAccountOperation(operationIntent, performEditAgencyAdminData(id, formData, operationIntent));

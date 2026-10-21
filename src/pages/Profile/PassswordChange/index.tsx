@@ -9,7 +9,7 @@ import styles from './styles.module.scss';
 
 export const PasswordChange = () => {
     const { t } = useTranslation();
-    const { mutate: updateData } = useUpdateUserPassword({
+    const { mutate: updateData, onAccountEdit } = useUpdateUserPassword({
         onSuccess: () => {
             notification.success({ message: t('profile.passwordChange.success') });
         },
@@ -38,6 +38,7 @@ export const PasswordChange = () => {
 
     return (
         <CardEditable
+            onValuesChange={onAccountEdit}
             titleKey="profile.passwordChange.title"
             subTitleKey="profile.passwordChange.info"
             saveKey="profile.passwordChange.save"

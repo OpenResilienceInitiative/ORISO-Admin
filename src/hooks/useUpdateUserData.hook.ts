@@ -3,23 +3,41 @@ import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fe
 import { userAdminDataEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
 import { USER_DATA_KEY } from './useUserData.hook';
+import { useAccountOperationActions } from './useAccountOperationActions';
+import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
+import { accountOperationHeaders, settleAccountOperation } from '../utils/accountOperationIntent';
 
 export const useUpdateUserData = (
-    options?: UseMutationOptions<CounselorData, Error, Partial<CounselorData>, Error | Response>,
+    options?: UseMutationOptions<
+        CounselorData,
+        Error,
+        Partial<CounselorData> & AccountOperationVariables,
+        Error | Response
+    >,
 ) => {
     const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (formData) => {
+    const actions = useAccountOperationActions();
+    const mutation = useMutation({
+        mutationFn: ({ operationIntent, ...formData }) => {
             const bodyData = JSON.stringify({
                 ...formData,
             });
 
-            return fetchData({
-                url: userAdminDataEndpoint,
-                method: FETCH_METHODS.PATCH,
-                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
-                bodyData,
-            });
+            return settleAccountOperation(
+                operationIntent,
+                fetchData({
+                    url: userAdminDataEndpoint,
+                    method: FETCH_METHODS.PATCH,
+                    responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+                    bodyData,
+                    headersData: accountOperationHeaders(
+                        operationIntent,
+                        FETCH_METHODS.PATCH,
+                        userAdminDataEndpoint,
+                        bodyData,
+                    ),
+                }),
+            );
         },
         ...options,
         onSuccess: (responseData, variables, onMutateResult, context) => {
@@ -27,4 +45,10 @@ export const useUpdateUserData = (
             options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
     });
+    return {
+        ...mutation,
+        onAccountEdit: () => actions.edited('profile', userAdminDataEndpoint),
+        mutate: bindAccountOperationMutation(actions, 'profile', userAdminDataEndpoint, mutation.mutate),
+        mutateAsync: bindAccountOperationMutation(actions, 'profile', userAdminDataEndpoint, mutation.mutateAsync),
+    };
 };

@@ -81,7 +81,7 @@ const TenantAdminEditor = () => {
         return tenants?.data ?? [];
     }, [lockTenantToOwn, ownTenantId, ownTenant?.id, ownTenant?.name, tenants?.data]);
 
-    const { mutate } = useAddOrUpdateTenantAdmin({
+    const { mutate, onAccountEdit } = useAddOrUpdateTenantAdmin({
         id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
@@ -167,6 +167,7 @@ const TenantAdminEditor = () => {
                     layout="vertical"
                     form={form}
                     onFinish={onSave}
+                    onValuesChange={onAccountEdit}
                     initialValues={{ tenantId, ...data }}
                 >
                     <Row gutter={[24, 24]}>

@@ -45,9 +45,9 @@ export interface ProfileTwoFactorSetupProps {
 export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetupProps) => {
     const { t } = useTranslation();
     const { data: userData } = useUserData();
-    const { mutate: updateOrSetTwoFactorAuth } = useUserTwoFactorAuth();
-    const { mutate: deleteTwoFactorAuth } = useUserTwoFactorDelete();
-    const { mutate: setEmailForActivationCode } = useUserTwoFactorSendEmailCode();
+    const { mutate: updateOrSetTwoFactorAuth, onAccountEdit: activationEdited } = useUserTwoFactorAuth();
+    const { mutate: deleteTwoFactorAuth, onAccountEdit: deleteEdited } = useUserTwoFactorDelete();
+    const { mutate: setEmailForActivationCode, onAccountEdit: emailEdited } = useUserTwoFactorSendEmailCode();
     const [overlayActive, setOverlayActive] = useState<boolean>(false);
     const [otpLabelState, setOtpLabelState] = useState<InputFieldLabelState>();
     const [otp, setOtp] = useState<string>('');
@@ -119,12 +119,16 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
         };
     };
 
-    const handleOtpChange = useCallback((event) => {
-        const validityData = validateOtp(event.target.value);
-        setOtpLabelState(validityData.validity);
-        setOtpLabel(validityData.label);
-        setOtp(event.target.value);
-    }, []);
+    const handleOtpChange = useCallback(
+        (event) => {
+            activationEdited?.();
+            const validityData = validateOtp(event.target.value);
+            setOtpLabelState(validityData.validity);
+            setOtpLabel(validityData.label);
+            setOtp(event.target.value);
+        },
+        [activationEdited],
+    );
 
     const handleAuthTokenUpdate = useCallback(
         (triggerNextStep) => {
@@ -132,6 +136,7 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                 { twoFactorType, otp, secret: userData?.twoFactorAuth.secret },
                 {
                     onSuccess: () => {
+                        deleteEdited?.();
                         if (twoFactorType === TwoFactorType.App) {
                             setOverlayActive(false);
                         }
@@ -149,7 +154,15 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                 },
             );
         },
-        [overlayActive, otp],
+        [
+            defaultOtpLabel,
+            deleteEdited,
+            otp,
+            t,
+            twoFactorType,
+            updateOrSetTwoFactorAuth,
+            userData?.twoFactorAuth.secret,
+        ],
     );
 
     const otpInputItem: InputFieldItem = useMemo(
@@ -198,12 +211,16 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
         };
     };
 
-    const handleEmailChange = useCallback((event) => {
-        const validityData = validateEmail(event.target.value);
-        setEmailLabelState(validityData.validity);
-        setEmailLabel(validityData.label);
-        setEmail(event.target.value);
-    }, []);
+    const handleEmailChange = useCallback(
+        (event) => {
+            emailEdited?.();
+            const validityData = validateEmail(event.target.value);
+            setEmailLabelState(validityData.validity);
+            setEmailLabel(validityData.label);
+            setEmail(event.target.value);
+        },
+        [emailEdited],
+    );
 
     const sendEmailActivationCode = useCallback(
         (triggerNextStep) => {

@@ -457,7 +457,7 @@ export const UserEditOrAdd = () => {
         });
     }, [consultantById, isEditing, isConsultantForm, canManageAdminRemarks, form]);
 
-    const { mutate } = useAddOrUpdateConsultantOrAdmin({
+    const { mutate, onAccountEdit } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
         onSuccess: (response) => {
@@ -753,6 +753,7 @@ export const UserEditOrAdd = () => {
                     // Fires for user-driven changes only, never for `setFieldsValue` — the one
                     // signal that separates an admin's pick from a background sync.
                     onValuesChange={(changedValues) => {
+                        onAccountEdit?.();
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }

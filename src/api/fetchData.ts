@@ -108,7 +108,21 @@ interface FetchDataProps {
 }
 
 const executeFetchData = (props: FetchDataProps): Promise<any> =>
-    new Promise((resolve, reject) => {
+    new Promise((resolve, rejectResponse) => {
+        let receivedStatus: number | undefined;
+        const reject = (error?: unknown) => {
+            // Keep existing error names/messages. Only an observed HTTP reply
+            // supplies status; transport failures must remain unknown.
+            if (
+                error instanceof Error &&
+                receivedStatus !== undefined &&
+                !('status' in error) &&
+                Object.isExtensible(error)
+            ) {
+                Object.defineProperty(error, 'status', { value: receivedStatus, configurable: true });
+            }
+            rejectResponse(error);
+        };
         const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
         const manualAuth = (props.headersData as any)?.Authorization;
@@ -158,6 +172,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
 
         fetch(req)
             .then((response) => {
+                receivedStatus = response.status;
                 if (response.status === 204) {
                     resolve(response);
                 } else if (response.status >= 200 && response.status < 300) {

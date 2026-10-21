@@ -1,3 +1,6 @@
+import { twoFactorAuth, twoFactorAuthAppEmail } from '../appConfig';
+import { useAccountOperationActions } from './useAccountOperationActions';
+import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     apiDeleteTwoFactorAuth,
@@ -7,7 +10,7 @@ import {
 } from '../api/user/apiTwoFactorAuth';
 import { TwoFactorType } from '../enums/TwoFactorType';
 
-interface UserMutationData {
+interface UserMutationData extends AccountOperationVariables {
     twoFactorType: TwoFactorType;
     otp: string;
     secret?: string;
@@ -15,14 +18,15 @@ interface UserMutationData {
 
 export const useUserTwoFactorAuth = () => {
     const queryClient = useQueryClient();
+    const actions = useAccountOperationActions();
 
-    return useMutation<unknown, Error, UserMutationData>({
-        mutationFn: ({ twoFactorType, otp, secret }: UserMutationData) => {
+    const mutation = useMutation<unknown, Error, UserMutationData>({
+        mutationFn: ({ twoFactorType, otp, secret, operationIntent }: UserMutationData) => {
             switch (twoFactorType) {
                 case TwoFactorType.App:
-                    return apiPutTwoFactorAuthApp({ secret, otp });
+                    return apiPutTwoFactorAuthApp({ secret, otp }, operationIntent);
                 case TwoFactorType.Email:
-                    return apiPostTwoFactorAuthEmailWithCode(otp);
+                    return apiPostTwoFactorAuthEmailWithCode(otp, operationIntent);
                 default:
                     return Promise.resolve();
             }
@@ -42,13 +46,20 @@ export const useUserTwoFactorAuth = () => {
             );
         },
     });
+    return {
+        ...mutation,
+        onAccountEdit: () => actions.edited('2fa-activate', twoFactorAuth),
+        mutate: bindAccountOperationMutation(actions, '2fa-activate', twoFactorAuth, mutation.mutate),
+        mutateAsync: bindAccountOperationMutation(actions, '2fa-activate', twoFactorAuth, mutation.mutateAsync),
+    };
 };
 
 export const useUserTwoFactorDelete = () => {
     const queryClient = useQueryClient();
+    const actions = useAccountOperationActions();
 
-    return useMutation({
-        mutationFn: () => apiDeleteTwoFactorAuth(),
+    const mutation = useMutation<unknown, Error, AccountOperationVariables>({
+        mutationFn: ({ operationIntent }) => apiDeleteTwoFactorAuth(operationIntent),
         onSuccess: () => {
             queryClient.setQueryData(['user-data'], (cache: any) =>
                 cache
@@ -60,14 +71,24 @@ export const useUserTwoFactorDelete = () => {
             );
         },
     });
+    const mutate = bindAccountOperationMutation(actions, '2fa-delete', twoFactorAuth, mutation.mutate);
+    const mutateAsync = bindAccountOperationMutation(actions, '2fa-delete', twoFactorAuth, mutation.mutateAsync);
+    return {
+        ...mutation,
+        onAccountEdit: () => actions.edited('2fa-delete', twoFactorAuth),
+        mutate: (_variables?: void, options?: Parameters<typeof mutation.mutate>[1]) => mutate({}, options),
+        mutateAsync: (_variables?: void, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+            mutateAsync({}, options),
+    };
 };
 
 export const useUserTwoFactorSendEmailCode = () => {
     const queryClient = useQueryClient();
+    const actions = useAccountOperationActions();
 
-    return useMutation<unknown, Error, string>({
-        mutationFn: (email: string) => apiPutTwoFactorAuthEmail(email),
-        onSuccess: (_, email) => {
+    const mutation = useMutation<unknown, Error, { email: string } & AccountOperationVariables>({
+        mutationFn: ({ email, operationIntent }) => apiPutTwoFactorAuthEmail(email, operationIntent),
+        onSuccess: (_, { email }) => {
             const cache = queryClient.getQueryData(['user-data']) as any;
             if (cache) {
                 cache.email = email;
@@ -75,4 +96,18 @@ export const useUserTwoFactorSendEmailCode = () => {
             }
         },
     });
+    const mutate = bindAccountOperationMutation(actions, '2fa-email-send', twoFactorAuthAppEmail, mutation.mutate);
+    const mutateAsync = bindAccountOperationMutation(
+        actions,
+        '2fa-email-send',
+        twoFactorAuthAppEmail,
+        mutation.mutateAsync,
+    );
+    return {
+        ...mutation,
+        onAccountEdit: () => actions.edited('2fa-email-send', twoFactorAuthAppEmail),
+        mutate: (email: string, options?: Parameters<typeof mutation.mutate>[1]) => mutate({ email }, options),
+        mutateAsync: (email: string, options?: Parameters<typeof mutation.mutateAsync>[1]) =>
+            mutateAsync({ email }, options),
+    };
 };
