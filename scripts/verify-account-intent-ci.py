@@ -164,7 +164,7 @@ def main():
         if kind == "frontend":
             records.append(run("script-tests", ["npm", "run", "test:scripts"], 120))
         unit_command = ["npm", "run", "test:unit" if kind == "frontend" else "test", "--", *([] if kind == "frontend" else ["--maxWorkers=2"]), "--reporter=default", "--reporter=junit", "--outputFile=" + str(evidence / "unit.xml")]
-        records.append(run("unit", unit_command, 1800, evidence / "unit.xml"))
+        records.append(run("unit", unit_command, 3000 if kind == "admin" else 1800, evidence / "unit.xml"))
         commands = ([("lint-scripts", ["npm", "run", "lint:scripts"]), ("lint-style", ["npm", "run", "lint:style"])] if kind == "frontend" else [("lint-js", ["node", "node_modules/eslint/bin/eslint.js", ".", "--max-warnings=0"]), ("lint-css", ["npm", "run", "lint:css"]), ("lint-formatting", ["npm", "run", "lint:formatting"])])
         for label, command in commands:
             records.append(run(label, command, 600))

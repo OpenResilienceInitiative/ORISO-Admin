@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ProfileTwoFactorSetup } from './ProfileTwoFactorSetup';
+import { FETCH_ERRORS } from '../../api/fetchData';
 
 const mocks = vi.hoisted(() => ({
     fetch: vi.fn(),
@@ -73,4 +74,38 @@ it('retains an unknown app activation retry and supersedes an older teardown aft
     await user.click(screen.getByRole('switch'));
     await waitFor(() => expect(mocks.fetch).toHaveBeenCalledTimes(4));
     expect(mocks.fetch.mock.calls[3][0].headersData['Idempotency-Key']).not.toBe(oldDeleteId);
+});
+
+it.each([
+    [new Error(FETCH_ERRORS.TIMEOUT), 'accountOperation.outcomeUnknown'],
+    [new TypeError('Failed to fetch'), 'accountOperation.outcomeUnknown'],
+    [
+        Object.assign(new Error(FETCH_ERRORS.PRECONDITION_FAILED), { status: 412 }),
+        'accountOperation.preconditionFailed',
+    ],
+    [
+        Object.assign(new Error(FETCH_ERRORS.BAD_REQUEST), { status: 400 }),
+        'twoFactorAuth.activate.otp.input.label.error',
+    ],
+])('shows the specific app activation outcome for %s', async (error, expectedKey) => {
+    document.body.innerHTML = '<div id="overlay"></div><div id="root"></div>';
+    mocks.userData = { ...mocks.userData, twoFactorAuth: { ...mocks.userData.twoFactorAuth, isActive: false } };
+    mocks.fetch.mockRejectedValueOnce(error);
+    client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const user = userEvent.setup({ delay: null });
+    render(<ProfileTwoFactorSetup />, { wrapper });
+    await user.click(screen.getByRole('switch'));
+    for (let step = 0; step < 3; step += 1) {
+        await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.next' }));
+    }
+    fireEvent.change(screen.getByPlaceholderText('twoFactorAuth.activate.otp.input.label'), {
+        target: { value: '123456' },
+    });
+    await user.click(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.save' }));
+    await screen.findByText(expectedKey);
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'twoFactorAuth.overlayButton.save' })).toBeEnabled();
 });
