@@ -1,6 +1,6 @@
 import { AccountOperationIntent } from './accountOperationIdentity';
 import { AccountOperationSlot, type AccountOperationAttempt } from './accountOperationSlot';
-import { isTerminalAccountOperationRefusal } from './accountOperationState';
+import { accountOperationFailed } from './accountOperationState';
 
 /** Owned by a mounted action/form, never by fetch or React Query retry. */
 export class AccountOperationActions {
@@ -44,7 +44,7 @@ export class AccountOperationActions {
         try {
             result = await send(attempt.payload as T, attempt.intent);
         } catch (error) {
-            if (isTerminalAccountOperationRefusal(error)) slot.acknowledge(attempt.intent);
+            if (accountOperationFailed(attempt.intent, error)) slot.acknowledge(attempt.intent);
             throw error;
         }
         // Finish before unrelated cache reloads, notifications or logout. A

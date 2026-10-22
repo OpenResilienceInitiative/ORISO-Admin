@@ -4,6 +4,7 @@ import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 import parseJwt from '../utils/parseJWT';
+import { recordAccountOperationResponse } from '../utils/accountOperationState';
 
 import logout from './auth/logout';
 import { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -112,7 +113,9 @@ interface FetchDataProps {
 const executeFetchData = (props: FetchDataProps, accessToken: string): Promise<any> =>
     new Promise((resolve, rejectResponse) => {
         let receivedStatus: number | undefined;
+        let receivedResponse: Response | undefined;
         const reject = (error?: unknown) => {
+            if (receivedResponse) recordAccountOperationResponse(error, receivedResponse);
             // Keep existing error names/messages. Only an observed HTTP reply
             // supplies status; transport failures must remain unknown.
             if (
@@ -174,6 +177,7 @@ const executeFetchData = (props: FetchDataProps, accessToken: string): Promise<a
         fetch(req)
             .then((response) => {
                 receivedStatus = response.status;
+                receivedResponse = response;
                 if (response.status === 204) {
                     resolve(response);
                 } else if (response.status >= 200 && response.status < 300) {
