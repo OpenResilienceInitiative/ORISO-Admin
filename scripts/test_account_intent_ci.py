@@ -91,7 +91,7 @@ class EligibilityTests(unittest.TestCase):
         self.assertEqual(before["commit"], after["commit"])
 
     def test_required_admin_paths_include_new_actual_form_hook_and_otp_cases(self):
-        expected = {"src/hooks/accountOperationActions.react.test.tsx", "src/pages/Profile/accountOperationForms.test.tsx", "src/components/TwoFactorSetup/ProfileTwoFactorSetup.intent.test.tsx", "src/components/CardEditable/CardEditable.test.tsx"}
+        expected = {"src/hooks/accountOperationActions.react.test.tsx", "src/pages/Profile/accountOperationForms.test.tsx", "src/components/TwoFactorSetup/ProfileTwoFactorSetup.intent.test.tsx", "src/components/CardEditable/CardEditable.test.tsx", "src/pages/TenantOnboarding/useTenantAdminOnboardingFlow.test.tsx"}
         self.assertTrue(expected.issubset(verifier.ADMIN_REACT_FILES))
 
 if __name__ == "__main__":

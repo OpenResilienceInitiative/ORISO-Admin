@@ -112,6 +112,8 @@ export interface TenantAdminOnboardingInviteDTO {
      * the wording is never authored in this flow.
      */
     dpaContent: string | null;
+    /** Version of the displayed published contract, when supplied by the protected onboarding API. */
+    dpaVersion?: string | null;
     /**
      * Why {@link dpaContent} is empty, so the step can say what actually
      * happened instead of asking for a pointless reload. `null`/absent
@@ -162,6 +164,8 @@ export interface OrganisationData {
 /** Mirrors the existing DpaSignature signer fields (src/types/dpa.ts). */
 export interface DpaAcceptanceData {
     accepted: boolean;
+    /** Exact displayed version captured when the visitor agrees to the contract. */
+    version?: string;
     signerName: string;
     signerPosition: string;
     signerEmail: string;
