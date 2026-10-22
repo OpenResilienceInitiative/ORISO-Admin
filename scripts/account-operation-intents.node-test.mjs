@@ -45,7 +45,7 @@ const fixtureHooks = {
     load(url, context, nextLoad) {
         const source = {
             'account-intent:fetch': `export const FETCH_SUCCESS={CONTENT:'CONTENT'}; export const FETCH_ERRORS = {}; export const FETCH_METHODS = {PUT:'PUT',POST:'POST',DELETE:'DELETE',PATCH:'PATCH'}; export const fetchData = props => globalThis.__accountIntentFetch(props);`,
-            'account-intent:config': `export const twoFactorAuthApp='/users/2fa/app',twoFactorAuthAppEmail='/users/2fa/email',twoFactorAuth='/users/2fa',userDataEndpoint='/users/data',agencyAdminEndpoint='/useradmin/agencyadmins',counselorEndpoint='/useradmin/consultants',userAdminDataEndpoint='/useradmin/data',userPasswordChangeEndpoint='/users/password/change',tenantAdminsEndpoint='/useradmin/tenantadmins';`,
+            'account-intent:config': `export const publicAccountInvitesEndpoint='/users/account-invites',twoFactorAuthApp='/users/2fa/app',twoFactorAuthAppEmail='/users/2fa/email',twoFactorAuth='/users/2fa',userDataEndpoint='/users/data',agencyAdminEndpoint='/useradmin/agencyadmins',counselorEndpoint='/useradmin/consultants',userAdminDataEndpoint='/useradmin/data',userPasswordChangeEndpoint='/users/password/change',tenantAdminsEndpoint='/useradmin/tenantadmins';`,
             'account-intent:query': `export const UseMutationOptions=undefined; export const useMutation=options=>globalThis.__createAccountTestMutation(options); export const useQueryClient=()=>({invalidateQueries(){},setQueryData(){},removeQueries(){},getQueryData(){}});`,
             'account-intent:react': `export const useRef=value=>({current:value}); export const useCallback=callback=>callback;`,
             'account-intent:user-data': `export const USER_DATA_KEY='user-data';`,
@@ -74,6 +74,40 @@ register(
     import.meta.url,
 );
 const { AccountOperationIntent, AccountOperationActions } = await import('../src/utils/accountOperationIntent.ts');
+
+for (const operation of ['registerTenantAdmin', 'sendTwoFactorEmail', 'activateTwoFactor']) {
+    test(`public Wizard ${operation} keeps its request ID after an unknown outcome`, async () => {
+        const { createHttpTenantAdminOnboardingClient } = await import(
+            '../src/api/tenantOnboarding/tenantOnboarding.ts'
+        );
+        const previous = globalThis.__accountIntentFetch;
+        const observed = [];
+        globalThis.__accountIntentFetch = (request) => {
+            observed.push(request);
+            if (observed.length === 1) return Promise.reject(new TypeError('synthetic reply lost'));
+            return Promise.resolve({ tenantId: 7, twoFactor: { secret: null, qrCodeBase64: null } });
+        };
+        try {
+            const client = createHttpTenantAdminOnboardingClient();
+            const args =
+                operation === 'registerTenantAdmin'
+                    ? ['synthetic-link', { account: { password: 'synthetic-only' } }]
+                    : operation === 'activateTwoFactor'
+                    ? ['synthetic-link', '123456', 'APP']
+                    : ['synthetic-link'];
+            await assert.rejects(client[operation](...args));
+            await client[operation](...args);
+            const [first, retry] = observed;
+            assert.match(first.headersData?.['Idempotency-Key'] ?? '', /^[0-9a-f-]{36}$/);
+            assert.deepEqual(retry, first);
+            assert.equal(first.skipAuth, true);
+            await client[operation](...args);
+            assert.notEqual(observed[2].headersData['Idempotency-Key'], first.headersData['Idempotency-Key']);
+        } finally {
+            globalThis.__accountIntentFetch = previous;
+        }
+    });
+}
 
 for (const [name, args] of [
     ['apiPutTwoFactorAuthApp', [{ secret: 'test-secret', otp: '123456' }]],

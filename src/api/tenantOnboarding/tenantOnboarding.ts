@@ -24,6 +24,7 @@
 
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
+import { AccountOperationActions } from '../../utils/accountOperationIntent';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
 
 /**
@@ -337,6 +338,7 @@ export const completeExistingAccountSetup = async (inviteToken: string, password
  * point of the flow is that the invitee has no account yet.
  */
 export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingClient => {
+    const actions = new AccountOperationActions();
     const run = async <T>(request: () => Promise<T>): Promise<T> => {
         try {
             return await request();
@@ -371,34 +373,58 @@ export const createHttpTenantAdminOnboardingClient = (): TenantAdminOnboardingCl
 
         registerTenantAdmin: (inviteToken, request) =>
             run(() =>
-                fetchData({
-                    url: onboardingUrl(inviteToken, '/register'),
-                    method: FETCH_METHODS.POST,
-                    skipAuth: true,
-                    responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
-                    bodyData: JSON.stringify(request),
+                actions.run('public-register', onboardingUrl(inviteToken, '/register'), request, (captured, intent) => {
+                    const url = onboardingUrl(inviteToken, '/register');
+                    const body = JSON.stringify(captured);
+                    return fetchData({
+                        url,
+                        method: FETCH_METHODS.POST,
+                        skipAuth: true,
+                        responseHandling: [...PUBLIC_RESPONSE_HANDLING, FETCH_SUCCESS.CONTENT],
+                        bodyData: body,
+                        headersData: intent.headersFor(FETCH_METHODS.POST, url, body),
+                    });
                 }),
             ),
 
         sendTwoFactorEmail: (inviteToken) =>
             run(() =>
-                fetchData({
-                    url: onboardingUrl(inviteToken, '/two-factor/email'),
-                    method: FETCH_METHODS.POST,
-                    skipAuth: true,
-                    responseHandling: PUBLIC_RESPONSE_HANDLING,
-                }),
+                actions.run(
+                    'public-email',
+                    onboardingUrl(inviteToken, '/two-factor/email'),
+                    null,
+                    (_captured, intent) => {
+                        const url = onboardingUrl(inviteToken, '/two-factor/email');
+                        return fetchData({
+                            url,
+                            method: FETCH_METHODS.POST,
+                            skipAuth: true,
+                            responseHandling: PUBLIC_RESPONSE_HANDLING,
+                            headersData: intent.headersFor(FETCH_METHODS.POST, url),
+                        });
+                    },
+                ),
             ),
 
         activateTwoFactor: async (inviteToken, otp, method) => {
             try {
-                await fetchData({
-                    url: onboardingUrl(inviteToken, '/two-factor'),
-                    method: FETCH_METHODS.POST,
-                    skipAuth: true,
-                    responseHandling: PUBLIC_RESPONSE_HANDLING,
-                    bodyData: JSON.stringify({ otp, ...(method ? { method } : {}) }),
-                });
+                await actions.run(
+                    'public-activate',
+                    onboardingUrl(inviteToken, '/two-factor'),
+                    { otp, ...(method ? { method } : {}) },
+                    (captured, intent) => {
+                        const url = onboardingUrl(inviteToken, '/two-factor');
+                        const body = JSON.stringify(captured);
+                        return fetchData({
+                            url,
+                            method: FETCH_METHODS.POST,
+                            skipAuth: true,
+                            responseHandling: PUBLIC_RESPONSE_HANDLING,
+                            bodyData: body,
+                            headersData: intent.headersFor(FETCH_METHODS.POST, url, body),
+                        });
+                    },
+                );
             } catch (error) {
                 // 400/422 = the entered one-time password was rejected;
                 // link-death statuses keep their InviteLinkError mapping.
