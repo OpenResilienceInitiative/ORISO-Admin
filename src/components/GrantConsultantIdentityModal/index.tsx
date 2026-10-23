@@ -112,12 +112,12 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            const key =
-                error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED
-                    ? 'accountOperation.identityChanged'
-                    : isTerminalAccountOperationRefusal(error)
-                    ? 'message.grantConsultantIdentity.error'
-                    : 'accountOperation.outcomeUnknown';
+            let key = 'accountOperation.outcomeUnknown';
+            if (error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED) {
+                key = 'accountOperation.identityChanged';
+            } else if (isTerminalAccountOperationRefusal(error)) {
+                key = 'message.grantConsultantIdentity.error';
+            }
             message.error({ content: t(key), duration: 8 });
         } finally {
             setIsSubmitting(false);
