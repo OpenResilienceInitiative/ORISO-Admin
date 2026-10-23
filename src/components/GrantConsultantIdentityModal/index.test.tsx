@@ -95,11 +95,15 @@ describe('GrantConsultantIdentityModal', () => {
         await user.click(screen.getByRole('button', { name: 'grantConsultantIdentity.modal.confirm' }));
 
         await waitFor(() =>
-            expect(mocks.grant).toHaveBeenCalledWith('admin-1', {
-                formalLanguage: true,
-                agencyIds: ['1'],
-                topicIds: ['10'],
-            }),
+            expect(mocks.grant).toHaveBeenCalledWith(
+                'admin-1',
+                {
+                    formalLanguage: true,
+                    agencyIds: ['1'],
+                    topicIds: ['10'],
+                },
+                expect.any(AccountOperationIntent),
+            ),
         );
     });
 
@@ -115,7 +119,11 @@ describe('GrantConsultantIdentityModal', () => {
         await user.click(screen.getByRole('button', { name: 'grantConsultantIdentity.modal.confirm' }));
 
         await waitFor(() =>
-            expect(mocks.grant).toHaveBeenCalledWith('admin-1', expect.objectContaining({ topicIds: ['11'] })),
+            expect(mocks.grant).toHaveBeenCalledWith(
+                'admin-1',
+                expect.objectContaining({ topicIds: ['11'] }),
+                expect.any(AccountOperationIntent),
+            ),
         );
     });
 

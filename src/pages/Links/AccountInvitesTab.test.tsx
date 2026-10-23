@@ -1370,7 +1370,11 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             await user.click(within(await screen.findByRole('menu')).getByText('+ auch BST-Admin'));
 
             await waitFor(() =>
-                expect(mocks.addConsultantRole).toHaveBeenCalledWith('c-6', { role: 'AGENCY_ADMIN', agencyId: 12 }),
+                expect(mocks.addConsultantRole).toHaveBeenCalledWith(
+                    'c-6',
+                    { role: 'AGENCY_ADMIN', agencyId: 12 },
+                    expect.any(AccountOperationIntent),
+                ),
             );
             expect(await screen.findByText('„auch BST-Admin“ hinzugefügt.')).toBeInTheDocument();
             await waitFor(() =>

@@ -30,6 +30,9 @@ import { resolveInviteViewerScope } from '../../constants/linksAccess';
 import { Modal } from '../../components/Modal';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { useAccountOperationActions } from '../../hooks/useAccountOperationActions';
+import { isTerminalAccountOperationRefusal } from '../../utils/accountOperationIntent';
+import { FETCH_ERRORS } from '../../api/fetchData';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import { InviteComposer, type InviteSendMode, type InviteSubmitOutcome } from './InviteComposer';
@@ -89,6 +92,7 @@ const loadAgencyTopics = async (agencyId: number): Promise<SelfAssignTopic[]> =>
 
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
     const { t } = useTranslation();
+    const actions = useAccountOperationActions();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
     const [generatedLinks, setGeneratedLinks] = useState<Record<number, string>>({});
@@ -538,19 +542,32 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         ),
                     );
                 try {
-                    await addConsultantRole(invite.provisionedUserId, {
-                        role,
-                        agencyId: invite.agencyId ?? undefined,
-                    });
+                    const accountId = invite.provisionedUserId;
+                    await actions.run(
+                        'add-consultant-role',
+                        accountId,
+                        { role, agencyId: invite.agencyId ?? undefined },
+                        (payload, intent) => addConsultantRole(accountId, payload, intent),
+                    );
                     markGranted();
                     message.success(t('links.accountInvites.roleAdded', '„auch BST-Admin“ hinzugefügt.'));
                 } catch (error) {
+                    if (!isTerminalAccountOperationRefusal(error)) {
+                        message.error(
+                            t(
+                                error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED
+                                    ? 'accountOperation.identityChanged'
+                                    : 'accountOperation.outcomeUnknown',
+                            ),
+                        );
+                        return;
+                    }
                     const explained = await explain(error, 'roleAdd', role);
                     if (explained.reason === 'ROLE_ALREADY_GRANTED') markGranted();
                     message.error(explained.message);
                 }
             }),
-        [explain, setInvites, t, withRoleSaving],
+        [actions, explain, setInvites, t, withRoleSaving],
     );
 
     // The CSV import sits in the table card's ⋮ menu but imports with the card's send mode.

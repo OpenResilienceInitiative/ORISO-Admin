@@ -10,6 +10,9 @@ import { convertToOptions } from '../../utils/convertToOptions';
 import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIdentityData';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
+import { useAccountOperationActions } from '../../hooks/useAccountOperationActions';
+import { isTerminalAccountOperationRefusal } from '../../utils/accountOperationIntent';
+import { FETCH_ERRORS } from '../../api/fetchData';
 import styles from './styles.module.scss';
 
 interface GrantConsultantIdentityModalProps {
@@ -37,6 +40,7 @@ export const GrantConsultantIdentityModal = ({
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
     const { t } = useTranslation();
+    const actions = useAccountOperationActions();
     const [form] = Form.useForm<GrantConsultantIdentityFormValues>();
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,11 +96,12 @@ export const GrantConsultantIdentityModal = ({
             const topicIds = (values.topicIds || []).map(({ value }) => `${value}`);
 
             setIsSubmitting(true);
-            await grantConsultantIdentityData(adminId, {
-                formalLanguage: true,
-                agencyIds,
-                topicIds,
-            });
+            await actions.run(
+                'grant-consultant-identity',
+                adminId,
+                { formalLanguage: true, agencyIds, topicIds },
+                (payload, intent) => grantConsultantIdentityData(adminId, payload, intent),
+            );
 
             message.success({ content: t(successMessageKey), duration: 8 });
             closeModal();
@@ -107,7 +112,13 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            message.error({ content: t('message.grantConsultantIdentity.error'), duration: 8 });
+            const key =
+                error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED
+                    ? 'accountOperation.identityChanged'
+                    : isTerminalAccountOperationRefusal(error)
+                    ? 'message.grantConsultantIdentity.error'
+                    : 'accountOperation.outcomeUnknown';
+            message.error({ content: t(key), duration: 8 });
         } finally {
             setIsSubmitting(false);
         }

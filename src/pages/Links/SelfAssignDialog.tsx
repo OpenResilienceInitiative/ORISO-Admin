@@ -22,6 +22,9 @@ import { Modal } from '../../components/Modal';
 import { explainInviteError } from './explainInviteError';
 import { SELF_ASSIGN_ROLES } from './inviteRules';
 import { inviteConflictReasonKey, ROLE_LABEL_KEYS } from './inviteModel';
+import { useAccountOperationActions } from '../../hooks/useAccountOperationActions';
+import { isTerminalAccountOperationRefusal } from '../../utils/accountOperationIntent';
+import { FETCH_ERRORS } from '../../api/fetchData';
 import styles from './selfAssignDialog.module.scss';
 
 /** One topic (Fachbereich) of the chosen agency. */
@@ -38,7 +41,7 @@ export interface SelfAssignDialogProps {
     /** Topics of an agency; a counsellor joining an agency with several topics must pick at least one. */
     loadAgencyTopics: (agencyId: number) => Promise<SelfAssignTopic[]>;
     /** Injectable for stories and tests; defaults to the real endpoints. */
-    assign?: (request: SelfAssignmentRequest) => Promise<SelfAssignmentResult>;
+    assign?: typeof createSelfAssignment;
     loadAssignments?: () => Promise<SelfAssignments>;
     agencyIdAllocation?: IdAllocationClient;
     onClose: () => void;
@@ -57,6 +60,7 @@ export const SelfAssignDialog = ({
     onAssigned,
 }: SelfAssignDialogProps) => {
     const { t } = useTranslation();
+    const actions = useAccountOperationActions();
     const roles = SELF_ASSIGN_ROLES as SelfAssignmentRole[];
     const [role, setRole] = useState<SelfAssignmentRole>(roles[0]);
     const agency = useIdAllocation({
@@ -151,11 +155,14 @@ export const SelfAssignDialog = ({
         setSubmitting(true);
         setError(null);
         try {
-            const result = await assign({
+            const payload: SelfAssignmentRequest = {
                 role,
                 agencyId,
                 topicIds: role === 'COUNSELLOR' && topicIds.length > 0 ? topicIds : undefined,
-            });
+            };
+            const result = await actions.run('self-assignment', 'self', payload, (frozen, intent) =>
+                assign(frozen, intent),
+            );
             message.success(
                 t('links.selfAssign.success', 'Sie sind jetzt als {{role}} in „{{agency}}“ eingetragen.', {
                     role: roleLabel(role),
@@ -165,7 +172,15 @@ export const SelfAssignDialog = ({
             onAssigned?.(result);
             onClose();
         } catch (failure) {
-            setError((await explainInviteError(failure, { t, action: 'selfAssign' })).message);
+            setError(
+                isTerminalAccountOperationRefusal(failure)
+                    ? (await explainInviteError(failure, { t, action: 'selfAssign' })).message
+                    : t(
+                          failure instanceof Error && failure.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED
+                              ? 'accountOperation.identityChanged'
+                              : 'accountOperation.outcomeUnknown',
+                      ),
+            );
         } finally {
             setSubmitting(false);
         }
