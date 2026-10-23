@@ -1,5 +1,10 @@
 import { selfAssignmentsEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import {
+    type AccountOperationIntent,
+    accountOperationHeaders,
+    settleAccountOperation,
+} from '../../utils/accountOperationIntent';
 
 export type SelfAssignmentRole = 'COUNSELLOR';
 
@@ -26,21 +31,29 @@ export interface SelfAssignments {
 export { selfAssignmentsEndpoint };
 
 /** Uses the caller's existing account; 400/403/409 reject with the raw Response so the caller can name the cause. */
-export const createSelfAssignment = async (body: SelfAssignmentRequest): Promise<SelfAssignmentResult> => {
-    const response = await fetchData({
-        url: selfAssignmentsEndpoint,
-        method: FETCH_METHODS.POST,
-        skipAuth: false,
-        responseHandling: [
-            FETCH_ERRORS.CATCH_ALL,
-            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
-            FETCH_ERRORS.NO_MATCH,
-            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
-            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
-        ],
-        bodyData: JSON.stringify({ role: body.role, agencyId: body.agencyId, topicIds: body.topicIds }),
-    });
-    return response.json();
+export const createSelfAssignment = async (
+    body: SelfAssignmentRequest,
+    operationIntent?: AccountOperationIntent,
+): Promise<SelfAssignmentResult> => {
+    const url = selfAssignmentsEndpoint;
+    const bodyData = JSON.stringify({ role: body.role, agencyId: body.agencyId, topicIds: body.topicIds });
+    return settleAccountOperation(
+        operationIntent,
+        fetchData({
+            url,
+            headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url, bodyData),
+            method: FETCH_METHODS.POST,
+            skipAuth: false,
+            responseHandling: [
+                FETCH_ERRORS.CATCH_ALL,
+                FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                FETCH_ERRORS.NO_MATCH,
+                FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+            ],
+            bodyData,
+        }).then((response) => response.json()),
+    );
 };
 
 export const listSelfAssignments = async (): Promise<SelfAssignments> =>

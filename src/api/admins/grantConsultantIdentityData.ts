@@ -1,5 +1,10 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { grantConsultantIdentityEndpoint } from '../../appConfig';
+import {
+    type AccountOperationIntent,
+    accountOperationHeaders,
+    settleAccountOperation,
+} from '../../utils/accountOperationIntent';
 
 export interface GrantConsultantIdentityInput {
     isGroupchatConsultant?: boolean;
@@ -21,25 +26,32 @@ export interface GrantConsultantIdentityInput {
 export const grantConsultantIdentityData = (
     adminId: string,
     input: GrantConsultantIdentityInput,
+    operationIntent?: AccountOperationIntent,
 ): Promise<Response> => {
     const { isGroupchatConsultant, absent, absenceMessage, formalLanguage, agencyIds, topicIds } = input;
 
-    return fetchData({
-        url: grantConsultantIdentityEndpoint(adminId),
-        method: FETCH_METHODS.POST,
-        skipAuth: false,
-        responseHandling: [
-            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
-            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
-            FETCH_ERRORS.CATCH_ALL,
-        ],
-        bodyData: JSON.stringify({
-            isGroupchatConsultant: !!isGroupchatConsultant,
-            absent: !!absent,
-            ...(absenceMessage ? { absenceMessage } : {}),
-            formalLanguage: !!formalLanguage,
-            agencyIds: agencyIds || [],
-            topicIds: topicIds || [],
-        }),
+    const url = grantConsultantIdentityEndpoint(adminId);
+    const bodyData = JSON.stringify({
+        isGroupchatConsultant: !!isGroupchatConsultant,
+        absent: !!absent,
+        ...(absenceMessage ? { absenceMessage } : {}),
+        formalLanguage: !!formalLanguage,
+        agencyIds: agencyIds || [],
+        topicIds: topicIds || [],
     });
+    return settleAccountOperation(
+        operationIntent,
+        fetchData({
+            url,
+            headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url, bodyData),
+            method: FETCH_METHODS.POST,
+            skipAuth: false,
+            responseHandling: [
+                FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                FETCH_ERRORS.CATCH_ALL,
+            ],
+            bodyData,
+        }),
+    );
 };

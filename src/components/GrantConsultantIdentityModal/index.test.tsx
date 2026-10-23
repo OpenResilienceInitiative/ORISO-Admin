@@ -1,8 +1,10 @@
+import '@ant-design/v5-patch-for-react-19';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GrantConsultantIdentityModal } from './index';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
+import { AccountOperationIntent } from '../../utils/accountOperationIntent';
 
 // Both call styles are in use: `const { t } = useTranslation()` and `const [t] = useTranslation()`.
 vi.mock('react-i18next', () => {
@@ -62,6 +64,25 @@ describe('topicOptionsForAgencies', () => {
 });
 
 describe('GrantConsultantIdentityModal', () => {
+    it('keeps its original request identity when the same grant is retried after a timeout', async () => {
+        mocks.agencies = [agency(1, 'Beratungsstelle Nord', [topic(10, 'Sucht')])];
+        mocks.grant.mockRejectedValueOnce(new Error('TIMEOUT')).mockResolvedValueOnce({});
+        const user = await openAndPickAgency('Beratungsstelle Nord');
+        const confirm = screen.getByRole('button', { name: 'grantConsultantIdentity.modal.confirm' });
+
+        await user.click(confirm);
+        await waitFor(() => expect(mocks.grant).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText('accountOperation.outcomeUnknown')).toBeInTheDocument();
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await user.click(confirm);
+        await waitFor(() => expect(mocks.grant).toHaveBeenCalledTimes(2));
+
+        const [first, retry] = mocks.grant.mock.calls;
+        expect(first[2]).toBeInstanceOf(AccountOperationIntent);
+        expect(retry[2]).toBe(first[2]);
+        expect(retry[1]).toEqual(first[1]);
+    });
+
     beforeEach(() => {
         mocks.grant.mockReset().mockResolvedValue({});
     });
