@@ -35,7 +35,7 @@
     "@tiptap/starter-kit": "^2.27.2",
     "@types/dompurify": "^3.0.5",
     "antd": "^5.29.3",
-    "axios": "^0.25.0",
+    "axios": "^0.33.0",
     "classnames": "^2.3.2",
     "clsx": "^1.1.1",
     "dayjs": "^1.11.13",
@@ -176,7 +176,10 @@
   },
   "overrides": {
     "@types/react": "$@types/react",
-    "@types/react-dom": "$@types/react-dom"
+    "@types/react-dom": "$@types/react-dom",
+    "wait-on": {
+      "axios": "$axios"
+    }
   },
   "msw": {
     "workerDirectory": [
