@@ -62,3 +62,15 @@ export const LongName: Story = {
         await expect(canvas.getByRole('button', { name: /löschen|Delete/ })).toBeVisible();
     },
 };
+
+export const ManagedAccountStatus: Story = {
+    args: { status: 'DISABLED', accountStatus: { id: 'selected-account', active: false } },
+    play: async ({ canvas }) => {
+        const status = canvas.getByTestId('entity-status-list');
+        await expect(status).toHaveAttribute('data-entity-kind', 'account');
+        await expect(status).toHaveAttribute('data-entity-id', 'selected-account');
+        await expect(status).toHaveAttribute('data-active', 'false');
+        await expect(canvas.getByText(/^(Inaktiv|Inactive)$/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Details/ })).toHaveAttribute('aria-expanded', 'false');
+    },
+};

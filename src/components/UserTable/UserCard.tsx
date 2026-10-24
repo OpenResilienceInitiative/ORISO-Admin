@@ -14,6 +14,8 @@ export interface UserCardProps {
     email: string;
     username?: string;
     status: DisplayStatus;
+    /** Authoritative status metadata when this card represents a managed account list row. */
+    accountStatus?: { id: string; active?: boolean | null };
     /** Target of the „Eingeladen" link. */
     inviteTo?: string;
     /** Extra details shown when expanded (Träger, Stellen, …). */
@@ -32,6 +34,7 @@ export const UserCard = ({
     email,
     username,
     status,
+    accountStatus,
     inviteTo,
     children,
     defaultExpanded = false,
@@ -51,7 +54,7 @@ export const UserCard = ({
                     <span className={styles.name} title={displayName}>
                         {displayName}
                     </span>
-                    <StatusBadge status={status} inviteTo={inviteTo} />
+                    <StatusBadge status={status} inviteTo={inviteTo} accountStatus={accountStatus} />
                 </div>
                 <div className={styles.actions}>
                     <IconButton

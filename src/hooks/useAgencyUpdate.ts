@@ -26,6 +26,10 @@ export const useAgencyUpdate = (id: string) => {
 
             // Geographic coverage belongs to this card submission, not the merged agency
             // snapshot. Do not replay a previous registration save during a delayed refetch.
+            // Existing centres change availability only through the narrow status command.
+            // Drop a legacy cached registration flag before any unrelated metadata save.
+            delete mergedAgencyData.online;
+            delete mergedAgencyData.offline;
             mergedAgencyData.postCodes = data.postCodes;
             mergedAgencyData.postCodeRangesActive = data.postCodeRangesActive;
 

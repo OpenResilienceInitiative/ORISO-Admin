@@ -247,7 +247,7 @@ export const UserDataTable = ({
                 );
             }
             case 'status':
-                return <StatusBadge status={resolveDisplayStatus(row)} />;
+                return <StatusBadge status={resolveDisplayStatus(row)} accountStatus={row} />;
             case 'lastUpdated': {
                 const date = getLastUpdatedAt(row);
                 return date ? <RelativeTime value={date.toISOString()} /> : '—';

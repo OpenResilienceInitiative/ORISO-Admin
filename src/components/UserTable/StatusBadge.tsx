@@ -12,6 +12,7 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import routePathNames from '../../appConfig';
 import type { DisplayStatus } from '../../types/userDisplayStatus';
+import { statusValue } from '../EntityStatusCard/presentation';
 import styles from './statusBadge.module.scss';
 
 /** active = primary container, pending = tertiary container, ended = secondary container. */
@@ -34,10 +35,12 @@ export interface StatusBadgeProps {
     status: DisplayStatus;
     /** Target of the „Eingeladen" link; defaults to the invite section. */
     inviteTo?: string;
+    /** Own-row authority metadata, shared by desktop cells and phone cards. */
+    accountStatus?: { id: string; active?: boolean | null };
 }
 
 /** Account status as a word; the icon only repeats it. „Eingeladen" links to the invite. */
-export const StatusBadge = ({ status, inviteTo = routePathNames.links }: StatusBadgeProps) => {
+export const StatusBadge = ({ status, inviteTo = routePathNames.links, accountStatus }: StatusBadgeProps) => {
     const { t } = useTranslation();
     const { label, tone, Icon } = STATUS[status] ?? STATUS.null;
     const word = t(`userTable.status.${status}`, label);
@@ -45,6 +48,14 @@ export const StatusBadge = ({ status, inviteTo = routePathNames.links }: StatusB
         className: classNames(styles.badge, styles[tone], { [styles.link]: status === 'INVITED' }),
         'data-status': status,
         'data-tone': tone,
+        ...(accountStatus
+            ? {
+                  'data-testid': 'entity-status-list',
+                  'data-entity-kind': 'account',
+                  'data-entity-id': accountStatus.id,
+                  'data-active': statusValue(accountStatus.active),
+              }
+            : {}),
     };
     const content = (
         <>
