@@ -46,6 +46,8 @@ export interface PlaceholderTemplateDialogProps {
      */
     footer?: ReactNode;
     width?: number | string;
+    /** Keep the controls outside the scrollable editor body. */
+    scrollableBody?: boolean;
 }
 
 /**
@@ -69,8 +71,10 @@ export const PlaceholderTemplateDialog = ({
     okLabelKey = 'save',
     footer,
     width = 1080,
+    scrollableBody = false,
 }: PlaceholderTemplateDialogProps) => (
     <Modal
+        scrollableBody={scrollableBody}
         titleKey={titleKey}
         descriptionKey={descriptionKey}
         footer={footer}

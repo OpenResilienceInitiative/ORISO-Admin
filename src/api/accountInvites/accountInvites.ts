@@ -165,6 +165,8 @@ export interface InviteEmailTemplateDTO {
     active: boolean;
     createDate: string;
     updateDate: string | null;
+    /** Built-in defaults retain their kind/language and cannot be deleted. */
+    systemDefault?: boolean;
 }
 
 /**
@@ -497,4 +499,14 @@ export const updateInviteEmailTemplate = async (
         bodyData: JSON.stringify(body),
     });
     return withUtcInstants(await response.json());
+};
+
+/** Deletes an allowed custom template; queued references are rejected by the server. */
+export const deleteInviteEmailTemplate = async (id: number): Promise<void> => {
+    await fetchData({
+        url: `${inviteEmailTemplatesEndpoint}/${id}`,
+        method: FETCH_METHODS.DELETE,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+    });
 };

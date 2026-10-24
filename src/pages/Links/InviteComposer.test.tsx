@@ -2,7 +2,7 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
@@ -12,6 +12,8 @@ import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.
 // (~12.5s idle, 15.4s under a 4-worker run) to whichever test happens to load it
 // first. That is what timed out AccountInvitesTab.test.tsx on CI.
 import { TenantInvitesTab } from './AccountInvitesTab';
+import { clearSessionTokens, setSessionTokens } from '../../api/auth/tokenSessionStore';
+import { inviteTemplateRecentsKey } from './inviteTemplateRecents';
 
 // CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there.
 configure({ asyncUtilTimeout: 10_000 });
@@ -118,6 +120,7 @@ const TEMPLATE = {
     subject: 'S',
     body: 'B',
     active: true,
+    systemDefault: true,
     createDate: '2026-07-01T00:00:00Z',
     updateDate: null,
 };
@@ -137,6 +140,7 @@ const findSendButton = (name: string) => screen.findByRole('button', { name });
 describe('InviteComposer (via TenantInvitesTab)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        clearSessionTokens();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
@@ -145,6 +149,8 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.tenantIdAllocationClient.checkIdAvailability.mockResolvedValue({ id: 21, state: 'FREE' });
         mocks.tenantIdAllocationClient.nextFreeId.mockResolvedValue({ id: 21 });
     });
+
+    afterEach(() => clearSessionTokens());
 
     // The composer row is one row of controls: the template chooser must stand at the
     // same height as the send button beside it. The chooser's own default is the legal
@@ -422,9 +428,14 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE, { ...TEMPLATE, id: 8, name: 'Zweite Vorlage' }]);
         mocks.createAccountInvite.mockResolvedValue({ id: 99 });
 
+        // An earlier explicit choice is available as a shortcut; untouched templates are not.
+        setSessionTokens(
+            `header.${btoa(JSON.stringify({ sub: 'alice', iss: 'test', exp: 9_999_999_999 }))}.signature`,
+            undefined,
+        );
+        localStorage.setItem(inviteTemplateRecentsKey({ subject: 'alice', issuer: 'test' }, 'TENANT_INVITE'), '[8]');
         renderTenantTab();
         const user = userEvent.setup();
-
         // Two active templates: nothing preselected, the pill rests on its fallback label.
         expect(await screen.findByRole('button', { name: /Vorlage wählen/ })).toBeInTheDocument();
 
@@ -610,7 +621,7 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         renderTenantTab();
         const user = userEvent.setup();
         await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Standardvorlage$/ }));
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');
         await user.click(screen.getByRole('button', { name: 'Close template dialog' }));
         await user.click(screen.getByTitle('Standard'));
@@ -620,12 +631,12 @@ describe('InviteComposer (via TenantInvitesTab)', () => {
         expect(screen.getByTestId('templates-dialog')).not.toHaveTextContent('create:');
     });
 
-    it('opens the create view prefilled from the pill menu\'s "Neu aus" entry (#746 review)', async () => {
+    it("opens the create view prefilled from the pill menu's standard creation entry", async () => {
         renderTenantTab();
         const user = userEvent.setup();
 
         await user.click(await screen.findByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Standard“/ }));
+        await user.click(await screen.findByRole('menuitem', { name: /^Standardvorlage$/ }));
 
         // The dialog opens straight in create mode with template 7 as the source.
         expect(await screen.findByTestId('templates-dialog')).toHaveTextContent('create:7');

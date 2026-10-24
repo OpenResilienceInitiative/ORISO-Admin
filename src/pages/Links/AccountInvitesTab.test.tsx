@@ -1,4 +1,5 @@
 import React from 'react';
+import { message } from 'antd';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
@@ -46,9 +47,36 @@ vi.mock('../../components/ListingTable', () => ({
     listingTableStyles: new Proxy({}, { get: () => undefined }),
 }));
 
+const TEMPLATE = {
+    id: 7,
+    kind: 'TENANT_INVITE',
+    name: 'Standard',
+    language: 'de',
+    subject: 'S',
+    body: 'B',
+    active: true,
+    createDate: '2026-07-01T00:00:00Z',
+    updateDate: null,
+};
+
 // The templates dialog has its own test file; keep this one focused on the tab.
 vi.mock('./EmailTemplatesDialog', () => ({
-    EmailTemplatesDialog: () => null,
+    EmailTemplatesDialog: ({ onDeleted, onChanged, onClose, selectedTemplateId }: any) => (
+        <>
+            <button type="button" onClick={() => onChanged?.({ ...TEMPLATE, id: selectedTemplateId })}>
+                Refresh selected template in dialog
+            </button>
+            <button
+                type="button"
+                onClick={() => {
+                    onDeleted?.(selectedTemplateId);
+                    onClose();
+                }}
+            >
+                Delete selected template in dialog
+            </button>
+        </>
+    ),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -154,18 +182,6 @@ const invitesPage = (content: any[]) => ({
     page: 0,
     size: 20,
 });
-
-const TEMPLATE = {
-    id: 7,
-    kind: 'TENANT_INVITE',
-    name: 'Standard',
-    language: 'de',
-    subject: 'S',
-    body: 'B',
-    active: true,
-    createDate: '2026-07-01T00:00:00Z',
-    updateDate: null,
-};
 
 const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     id,
@@ -1581,4 +1597,69 @@ describe('CSV entries in the more-menu', () => {
         expect(picker).toHaveAttribute('accept', '.csv,text/csv');
         click.mockRestore();
     });
+});
+
+describe('TenantInvitesTab deleted template selection', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+    });
+
+    it('removes the selected deleted template locally and blocks sending when refresh fails', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
+        const send = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }));
+        await user.click(screen.getByRole('button', { name: 'Standard' }));
+        mocks.listInviteEmailTemplates.mockRejectedValue(new Error('refresh failed'));
+        await user.click(screen.getByRole('button', { name: 'Delete selected template in dialog' }));
+        await waitFor(() => expect(send).toBeDisabled());
+        expect(screen.queryByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' })).not.toBeInTheDocument();
+        expect(await screen.findByText('Could not load templates')).toBeInTheDocument();
+        await user.click(send);
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it.each(['resolve', 'reject'] as const)(
+        'ignores a pre-deletion template reload that later %ss',
+        async (outcome) => {
+            let resolveOld!: (templates: (typeof TEMPLATE)[]) => void;
+            let rejectOld!: (error: Error) => void;
+            const oldReload = new Promise<(typeof TEMPLATE)[]>((resolve, reject) => {
+                resolveOld = resolve;
+                rejectOld = reject;
+            });
+            const errorToast = vi.spyOn(message, 'error');
+            renderTenantTab();
+            const user = userEvent.setup();
+            await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
+            const send = screen.getByRole('button', { name: 'Anlegen & einladen' });
+            await waitFor(() => expect(send).toBeEnabled());
+            await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }));
+            await user.click(screen.getByRole('button', { name: 'Standard' }));
+            mocks.listInviteEmailTemplates.mockReturnValueOnce(oldReload).mockResolvedValueOnce([]);
+            await user.click(screen.getByRole('button', { name: 'Refresh selected template in dialog' }));
+            await user.click(screen.getByRole('button', { name: 'Delete selected template in dialog' }));
+            await waitFor(() => expect(send).toBeDisabled());
+            expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(3);
+            await act(async () => {
+                if (outcome === 'resolve') resolveOld([TEMPLATE]);
+                else rejectOld(new Error('obsolete reload failed'));
+                await oldReload.catch(() => undefined);
+            });
+            expect(send).toBeDisabled();
+            expect(
+                screen.queryByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }),
+            ).not.toBeInTheDocument();
+            expect(errorToast).not.toHaveBeenCalled();
+            errorToast.mockRestore();
+        },
+    );
 });

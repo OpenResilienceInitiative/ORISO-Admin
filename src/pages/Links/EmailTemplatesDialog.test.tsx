@@ -5,6 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { message } from 'antd';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import { UserRole } from '../../enums/UserRole';
 
@@ -45,6 +46,7 @@ const mocks = vi.hoisted(() => ({
     listInviteEmailTemplates: vi.fn(),
     createInviteEmailTemplate: vi.fn(),
     updateInviteEmailTemplate: vi.fn(),
+    deleteInviteEmailTemplate: vi.fn(),
     previewInviteEmailTemplateContent: vi.fn(),
 }));
 
@@ -55,6 +57,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     createInviteEmailTemplate: mocks.createInviteEmailTemplate,
     updateInviteEmailTemplate: mocks.updateInviteEmailTemplate,
+    deleteInviteEmailTemplate: mocks.deleteInviteEmailTemplate,
     // E2: the editor's preview is rendered by the backend, so every test that
     // mounts the editor now touches this call — omitting it throws for the whole
     // file, not just the preview tests.
@@ -69,9 +72,14 @@ vi.mock('antd', async () => {
     const actual = await vi.importActual<typeof import('antd')>('antd');
     return {
         ...actual,
-        Select: ({ options = [], value, onChange, ...rest }: any) => (
-            <select {...rest} value={value ?? ''} onChange={(event) => onChange?.(event.target.value)}>
-                <option value="" disabled />
+        Select: ({ options = [], value, onChange, id, disabled }: any) => (
+            <select
+                id={id}
+                disabled={disabled}
+                value={value ?? ''}
+                onChange={(event) => onChange?.(event.target.value)}
+            >
+                {!options.some((option: any) => option.value === '') && <option value="" disabled />}
                 {options.map((option: any) => (
                     <option key={option.value} value={option.value}>
                         {option.label}
@@ -153,6 +161,7 @@ describe('EmailTemplatesDialog', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.deleteInviteEmailTemplate.mockReset();
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: true, tenantId: 0, hasRole: () => true });
         mocks.useTenantsData.mockReturnValue({
             data: { data: [{ id: 40, name: 'Springfield' }], total: 1 },
@@ -187,6 +196,164 @@ describe('EmailTemplatesDialog', () => {
         await user.click(screen.getByRole('button', { name: 'New template' }));
         return within(screen.getByRole('dialog'));
     };
+
+    it('uses a language select and keeps loading and naming only in the footer', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+        const dialog = await openCreateForm(user);
+
+        expect(dialog.getByLabelText('Language').tagName).toBe('SELECT');
+        expect(dialog.getAllByLabelText('Existing templates')).toHaveLength(1);
+        expect(dialog.getAllByLabelText('Vorlagenname')).toHaveLength(1);
+        expect(dialog.getByLabelText('Existing templates').closest('footer')).not.toBeNull();
+        expect(dialog.getByLabelText('Vorlagenname').closest('footer')).not.toBeNull();
+        expect(dialog.queryByRole('button', { name: 'Vorlagenmenü öffnen' })).not.toBeInTheDocument();
+        expect(dialog.queryByRole('switch', { name: 'Active' })).not.toBeInTheDocument();
+    });
+
+    it('deletes an editable template only after confirmation and refreshes the overview', async () => {
+        const user = userEvent.setup();
+        mocks.deleteInviteEmailTemplate.mockResolvedValue(undefined);
+        const onChanged = vi.fn();
+        const onDeleted = vi.fn();
+        renderDialog({ onChanged, onDeleted });
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Delete' }));
+        expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
+        const dialog = within(screen.getByRole('dialog'));
+        await user.click(dialog.getByRole('button', { name: 'Abbrechen' }));
+        expect(screen.getAllByTestId('template-row')).toHaveLength(3);
+        expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
+
+        await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Delete' }));
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplateShort]);
+            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
+            return Promise.resolve([]);
+        });
+        await user.click(
+            within(screen.getByRole('dialog').querySelector('.ant-modal-footer') as HTMLElement).getByRole('button', {
+                name: 'Delete',
+            }),
+        );
+        await waitFor(() => expect(mocks.deleteInviteEmailTemplate).toHaveBeenCalledWith(tenantTemplate.id));
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        expect(screen.queryByText(tenantTemplate.name)).not.toBeInTheDocument();
+        expect(onDeleted).toHaveBeenCalledWith(tenantTemplate.id);
+        expect(onChanged).not.toHaveBeenCalled();
+    });
+
+    it('announces successful deletion while the catalogue refresh is still pending', async () => {
+        const user = userEvent.setup();
+        const success = vi.spyOn(message, 'success');
+        const onDeleted = vi.fn();
+        mocks.deleteInviteEmailTemplate.mockResolvedValue(undefined);
+        renderDialog({ onDeleted });
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        let finishRefresh!: (templates: (typeof tenantTemplate)[]) => void;
+        const refresh = new Promise<(typeof tenantTemplate)[]>((resolve) => {
+            finishRefresh = resolve;
+        });
+        mocks.listInviteEmailTemplates.mockReturnValue(refresh);
+        try {
+            await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Delete' }));
+            await user.click(
+                within(screen.getByRole('dialog').querySelector('.ant-modal-footer') as HTMLElement).getByRole(
+                    'button',
+                    { name: 'Delete' },
+                ),
+            );
+            await waitFor(() => expect(onDeleted).toHaveBeenCalledWith(tenantTemplate.id));
+            await waitFor(() => expect(success).toHaveBeenCalledWith('Template deleted'));
+            expect(screen.queryByText(tenantTemplate.name)).not.toBeInTheDocument();
+        } finally {
+            await act(async () => finishRefresh([]));
+        }
+    });
+
+    it('retains the translated informal German option for an existing template', async () => {
+        const user = userEvent.setup();
+        const informalTemplate = { ...tenantTemplate, language: 'de@informal', editable: true };
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'TENANT_INVITE' ? [informalTemplate] : []),
+        );
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'Edit' }));
+        const language = screen.getByLabelText('Language');
+        expect(language).toHaveValue('de@informal');
+        expect(within(language).getByRole('option', { name: 'language.options.de@informal' })).toHaveValue(
+            'de@informal',
+        );
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'cancel' }));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        expect(
+            within(screen.getByLabelText('Language')).queryByRole('option', { name: 'language.options.de@informal' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('preserves the template and explains failure when deleting fails', async () => {
+        const user = userEvent.setup();
+        mocks.deleteInviteEmailTemplate.mockRejectedValue(new Error('private server details'));
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        await user.click(within(screen.getAllByTestId('template-row')[0]).getByRole('button', { name: 'Delete' }));
+        await user.click(
+            within(screen.getByRole('dialog').querySelector('.ant-modal-footer') as HTMLElement).getByRole('button', {
+                name: 'Delete',
+            }),
+        );
+        expect(await screen.findByText(/Could not delete template/)).toBeInTheDocument();
+        await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Abbrechen' }));
+        expect(screen.queryByText('private server details')).not.toBeInTheDocument();
+        expect(screen.getByText(tenantTemplate.name)).toBeInTheDocument();
+        expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+        { systemDefault: true, editable: true },
+        { systemDefault: false, editable: false },
+    ])('protects system or server-denied rows from deletion: %j', async (protection) => {
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'TENANT_INVITE' ? [{ ...tenantTemplate, ...protection }] : []),
+        );
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+        expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        { systemDefault: true, editable: true, reason: 'System templates cannot be deleted.' },
+        {
+            systemDefault: false,
+            editable: false,
+            reason: 'Sie haben keine Berechtigung, diese Vorlage zu ändern',
+        },
+    ])(
+        'explains disabled deletion when keyboard users tab through row actions: %j',
+        async ({ reason, ...permission }) => {
+            const user = userEvent.setup();
+            mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+                Promise.resolve(kind === 'TENANT_INVITE' ? [{ ...tenantTemplate, ...permission }] : []),
+            );
+            renderDialog();
+            const row = await screen.findByTestId('template-row');
+            const edit = within(row).getByRole('button', { name: 'Edit' });
+            const editTrigger = edit.hasAttribute('disabled')
+                ? edit.closest<HTMLElement>('[tabindex="0"]') ?? edit
+                : edit;
+            act(() => editTrigger.focus());
+            await user.tab();
+
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(reason);
+            expect(document.activeElement).toHaveAccessibleDescription(reason);
+            expect(within(row).getByRole('button', { name: 'Delete' })).toBeDisabled();
+            expect(mocks.deleteInviteEmailTemplate).not.toHaveBeenCalled();
+            await user.keyboard('{Escape}');
+            expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        },
+    );
 
     it('lists templates of every kind, the opening tab kind first', async () => {
         renderDialog();
@@ -242,9 +409,8 @@ describe('EmailTemplatesDialog', () => {
         const withinDialog = await openCreateForm(user);
 
         // Kind is preset to the opening tab's kind — no manual selection needed.
-        expect(withinDialog.getByLabelText('Kind')).toHaveValue('TENANT_INVITE');
+        expect(withinDialog.getByLabelText('Template for')).toHaveValue('TENANT_INVITE');
 
-        await user.selectOptions(withinDialog.getByLabelText('Vorschau für'), '40');
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'New tenant welcome');
         await user.type(withinDialog.getByLabelText('Betreff'), 'Hi there');
         // fireEvent.change avoids userEvent's {{/}} key-sequence escaping for literal braces.
@@ -291,29 +457,19 @@ describe('EmailTemplatesDialog', () => {
      * new boundary rather than deleted: what the composer hands the renderer, and
      * what it does with the answer.
      */
-    it('changes only unsaved preview context between platform and Springfield', async () => {
+    it('uses platform design automatically without a design selector or tenant catalogue request', async () => {
         const user = userEvent.setup();
         renderDialog();
         const dialog = await openCreateForm(user);
+        expect(dialog.queryByLabelText('Preview in the design of')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).not.toHaveBeenCalled();
         await waitFor(() =>
             expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
                 expect.objectContaining({ tenantId: undefined }),
-            ),
-        );
-        await user.selectOptions(dialog.getByLabelText('Vorschau für'), '40');
-        await waitFor(() =>
-            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
-                expect.objectContaining({ tenantId: 40 }),
             ),
         );
         expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
-        await user.selectOptions(dialog.getByLabelText('Vorschau für'), 'platform');
-        await waitFor(() =>
-            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
-                expect.objectContaining({ tenantId: undefined }),
-            ),
-        );
     });
 
     it('uses the active tenant without offering cross-tenant preview selection', async () => {
@@ -323,8 +479,8 @@ describe('EmailTemplatesDialog', () => {
         // forward (see the tenant-admin block below), so the shared helper's three-row wait does not apply.
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
         await userEvent.setup().click(screen.getByRole('button', { name: 'New template' }));
-        expect(screen.queryByLabelText('Vorschau für')).not.toBeInTheDocument();
-        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+        expect(screen.queryByLabelText('Preview in the design of')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).not.toHaveBeenCalled();
         await waitFor(() =>
             expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
                 expect.objectContaining({ tenantId: 40 }),
@@ -407,17 +563,11 @@ describe('EmailTemplatesDialog', () => {
         expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     });
 
-    // D2 — „wieder ant stuff anstatt mui". Both libraries expose role="switch",
-    // so the discriminator is whose markup it is, not which role it reports.
-    it('uses the shared MUI switch for Active, not an antd one', async () => {
+    it('removes the active toggle from the editor', async () => {
         const user = userEvent.setup();
         renderDialog();
-
-        await openCreateForm(user);
-        const dialog = screen.getByRole('dialog');
-        expect(dialog.querySelector('.ant-switch')).toBeNull();
-        const toggle = within(dialog).getByRole('switch', { name: 'Active' });
-        expect(toggle.closest('.MuiSwitch-root')).not.toBeNull();
+        const dialog = await openCreateForm(user);
+        expect(dialog.queryByRole('switch')).not.toBeInTheDocument();
     });
 
     it('no longer renders the hardcoded token code hint', async () => {
@@ -442,6 +592,8 @@ describe('EmailTemplatesDialog', () => {
 
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Servus' } });
         await user.click(withinDialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.click(withinDialog.getByRole('button', { name: 'Überschreiben' }));
 
         await waitFor(() =>
             expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
@@ -489,7 +641,7 @@ describe('EmailTemplatesDialog', () => {
         expect(screen.queryByLabelText('Vorlagenname')).not.toBeInTheDocument();
     });
 
-    it('switches the loaded template via the split-button menu', async () => {
+    it('loads an existing template from the footer and overwrites that same template', async () => {
         const user = userEvent.setup();
         mocks.updateInviteEmailTemplate.mockResolvedValue(tenantTemplateShort);
         renderDialog();
@@ -498,8 +650,7 @@ describe('EmailTemplatesDialog', () => {
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
 
         const withinDialog = within(screen.getByRole('dialog'));
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
 
         // The other template's stored values are loaded into the editor…
         expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('Short tenant template');
@@ -508,6 +659,8 @@ describe('EmailTemplatesDialog', () => {
 
         // …and saving persists against THAT template's id.
         await user.click(withinDialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.click(withinDialog.getByRole('button', { name: 'Überschreiben' }));
         await waitFor(() =>
             expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
                 4,
@@ -516,29 +669,44 @@ describe('EmailTemplatesDialog', () => {
         );
     });
 
-    it('starts a new template from an existing one via the split-button menu', async () => {
+    it('loads a protected system template as a new draft without overwriting the system template', async () => {
         const user = userEvent.setup();
+        const systemTemplate = { ...tenantTemplateShort, systemDefault: true, editable: false };
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) => {
+            if (kind === 'TENANT_INVITE') return Promise.resolve([tenantTemplate, systemTemplate]);
+            if (kind === 'COUNSELLOR_INVITE') return Promise.resolve([counsellorTemplate]);
+            return Promise.resolve([]);
+        });
         mocks.createInviteEmailTemplate.mockResolvedValue({ ...tenantTemplateShort, id: 9, name: 'Kopie' });
         renderDialog();
-
-        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
-        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
-
-        const withinDialog = within(screen.getByRole('dialog'));
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Short tenant template“/ }));
-
-        // Contents are copied, but the name is empty — this will be a NEW template.
-        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
-        expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
-
-        await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Kopie');
-        await user.click(withinDialog.getByRole('button', { name: 'save' }));
-
+        const dialog = await openCreateForm(user);
+        await user.selectOptions(dialog.getByLabelText('Existing templates'), '4');
+        expect(dialog.getByLabelText('Vorlagenname')).toHaveValue(systemTemplate.name);
+        expect(dialog.getByLabelText('Betreff')).toHaveValue('Kurz');
+        expect(dialog.getByLabelText('Inhalt')).toHaveValue('Link: {{inviteLink}}');
+        await user.clear(dialog.getByLabelText('Vorlagenname'));
+        await user.type(dialog.getByLabelText('Vorlagenname'), 'Kopie');
+        await user.click(dialog.getByRole('button', { name: 'save' }));
         await waitFor(() => expect(mocks.createInviteEmailTemplate).toHaveBeenCalledTimes(1));
         expect(mocks.createInviteEmailTemplate).toHaveBeenCalledWith(
             expect.objectContaining({ name: 'Kopie', subject: 'Kurz', body: 'Link: {{inviteLink}}' }),
         );
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it('keeps an edited draft when cancelling the overwrite confirmation', async () => {
+        const user = userEvent.setup();
+        renderDialog();
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(3));
+        fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
+        const dialog = within(screen.getByRole('dialog'));
+        fireEvent.change(dialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
+        await user.click(dialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        expect(dialog.getByRole('button', { name: 'Überschreiben' })).toBeInTheDocument();
+        await user.click(dialog.getByRole('button', { name: 'Abbrechen' }));
+        expect(dialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
+        expect(dialog.getByLabelText('Vorlagenname')).toHaveValue(tenantTemplate.name);
         expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
     });
 
@@ -553,8 +721,7 @@ describe('EmailTemplatesDialog', () => {
         // Make the draft dirty, then trigger the switch: the dialog itself turns
         // into the discard question instead of navigating.
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
         // The mocked `t` echoes keys that carry no fallback (the Modal title/description).
         expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
         expect(withinDialog.getByText('links.templates.discardDescription')).toBeInTheDocument();
@@ -565,8 +732,7 @@ describe('EmailTemplatesDialog', () => {
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
 
         // Verwerfen performs the parked intent.
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
         await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
     });
@@ -579,8 +745,7 @@ describe('EmailTemplatesDialog', () => {
         fireEvent.doubleClick(screen.getAllByTestId('template-row')[0]);
         const withinDialog = within(screen.getByRole('dialog'));
 
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
 
         expect(withinDialog.queryByText('links.templates.discardTitle')).not.toBeInTheDocument();
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
@@ -603,8 +768,7 @@ describe('EmailTemplatesDialog', () => {
         const withinDialog = within(screen.getByRole('dialog'));
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
 
         expect(confirmSpy).not.toHaveBeenCalled();
         expect(withinDialog.getByText('links.templates.discardTitle')).toBeInTheDocument();
@@ -670,8 +834,7 @@ describe('EmailTemplatesDialog', () => {
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
 
         // Park a template switch, then dismiss the question with X.
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
         await user.click(withinDialog.getByRole('button', { name: 'Close' }));
 
         // Question gone, dialog still open, draft intact — and no second intent parked.
@@ -680,8 +843,7 @@ describe('EmailTemplatesDialog', () => {
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Edited subject');
 
         // Asking again and confirming performs the ORIGINAL intent (switch), not a close.
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
         await user.click(withinDialog.getByRole('button', { name: 'Verwerfen' }));
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Kurz');
         expect(onClose).not.toHaveBeenCalled();
@@ -696,8 +858,7 @@ describe('EmailTemplatesDialog', () => {
         const withinDialog = within(screen.getByRole('dialog'));
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Edited subject' } });
 
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Short tenant template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '4');
 
         // Not <body>: the form wrapper goes inert, so focus has to be moved deliberately.
         expect(withinDialog.getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
@@ -802,6 +963,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();
+        mocks.deleteInviteEmailTemplate.mockReset();
         mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole: asTenantAdmin });
         mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
         mocks.previewInviteEmailTemplateContent.mockResolvedValue({
@@ -910,6 +1072,8 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         expect(await withinDialog.findByDisplayValue('Welcome')).toBeInTheDocument();
         fireEvent.change(withinDialog.getByLabelText('Betreff'), { target: { value: 'Servus' } });
         await user.click(withinDialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.click(withinDialog.getByRole('button', { name: 'Überschreiben' }));
 
         await waitFor(() =>
             expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(2, {
@@ -978,7 +1142,7 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         await user.click(screen.getByRole('button', { name: 'New template' }));
 
-        const kindOptions = within(screen.getByRole('dialog'))
+        const kindOptions = within(screen.getByLabelText('Template for'))
             .getAllByRole('option')
             .map((option) => option.getAttribute('value'))
             .filter(Boolean);
@@ -997,13 +1161,13 @@ describe('EmailTemplatesDialog — a tenant admin', () => {
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         await user.click(screen.getByRole('button', { name: 'New template' }));
         const withinDialog = within(screen.getByRole('dialog'));
-        await user.click(withinDialog.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /^Default counsellor template$/ }));
+        await user.selectOptions(withinDialog.getByLabelText('Existing templates'), '2');
 
-        // A copy, not the stored template: its content, but no name of its own yet.
-        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue('');
+        // Read-only content is loaded as a NEW draft; saving must never update its source.
+        expect(withinDialog.getByLabelText('Vorlagenname')).toHaveValue(counsellorTemplate.name);
         expect(withinDialog.getByLabelText('Betreff')).toHaveValue('Welcome');
 
+        await user.clear(withinDialog.getByLabelText('Vorlagenname'));
         await user.type(withinDialog.getByLabelText('Vorlagenname'), 'Eigene');
         await user.click(withinDialog.getByRole('button', { name: 'save' }));
 
@@ -1044,7 +1208,7 @@ describe('EmailTemplatesDialog — a Beratungsstellen admin', () => {
         await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
         await user.click(screen.getByRole('button', { name: 'New template' }));
 
-        const kindOptions = within(screen.getByRole('dialog'))
+        const kindOptions = within(screen.getByLabelText('Template for'))
             .getAllByRole('option')
             .map((option) => option.getAttribute('value'))
             .filter(Boolean);
@@ -1072,6 +1236,51 @@ describe('EmailTemplatesDialog — the platform admin', () => {
         expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2);
     });
 
+    it('lets the platform admin edit system text while preserving its fixed template identity', async () => {
+        const user = userEvent.setup();
+        const systemTemplate = { ...tenantTemplate, systemDefault: true, editable: true };
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            subject: 'System preview',
+            html: '<!doctype html><html><body>System preview</body></html>',
+            plainText: 'System preview',
+        });
+        mocks.updateInviteEmailTemplate.mockReset();
+        mocks.createInviteEmailTemplate.mockReset();
+        mocks.updateInviteEmailTemplate.mockResolvedValue({ ...systemTemplate, name: 'Updated system name' });
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'TENANT_INVITE' ? [systemTemplate] : []),
+        );
+        render(<EmailTemplatesDialog templateKind="TENANT_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+        await user.click(screen.getByRole('button', { name: 'Edit' }));
+        const dialog = within(screen.getByRole('dialog'));
+        expect(dialog.getByLabelText('Template for')).toBeDisabled();
+        expect(dialog.getByLabelText('Language')).toBeDisabled();
+        expect(dialog.getByLabelText('Vorlagenname')).toBeEnabled();
+        expect(dialog.getByLabelText('Betreff')).toBeEnabled();
+        expect(dialog.getByLabelText('Inhalt')).toBeEnabled();
+        fireEvent.change(dialog.getByLabelText('Vorlagenname'), { target: { value: 'Updated system name' } });
+        fireEvent.change(dialog.getByLabelText('Betreff'), { target: { value: 'Updated system subject' } });
+        fireEvent.change(dialog.getByLabelText('Inhalt'), { target: { value: 'Updated system body' } });
+        await user.click(dialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.click(dialog.getByRole('button', { name: 'Überschreiben' }));
+        await waitFor(() =>
+            expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(systemTemplate.id, {
+                kind: systemTemplate.kind,
+                language: systemTemplate.language,
+                active: systemTemplate.active,
+                name: 'Updated system name',
+                subject: 'Updated system subject',
+                body: 'Updated system body',
+            }),
+        );
+        expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
     it('gives the general lock reason when the server denies a row to the platform admin', async () => {
         mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
             Promise.resolve(
@@ -1085,5 +1294,81 @@ describe('EmailTemplatesDialog — the platform admin', () => {
         act(() => trigger.focus());
 
         expect(screen.getByRole('tooltip')).toHaveTextContent('Sie haben keine Berechtigung, diese Vorlage zu ändern');
+    });
+});
+
+// The server scopes the list; the editor must preserve that ownership when loading,
+// previewing and saving for both roles that use counsellor invitation templates.
+describe.each([
+    { role: 'Träger admin', hasRole: asTenantAdmin },
+    { role: 'Beratungsstellen admin', hasRole: hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin) },
+])('EmailTemplatesDialog — owned workflow for $role', ({ hasRole }) => {
+    beforeEach(() => {
+        mocks.listInviteEmailTemplates.mockReset();
+        mocks.createInviteEmailTemplate.mockReset();
+        mocks.updateInviteEmailTemplate.mockReset();
+        mocks.deleteInviteEmailTemplate.mockReset();
+        mocks.previewInviteEmailTemplateContent.mockReset();
+        mocks.useUserRoles.mockReturnValue({ isSuperAdmin: false, tenantId: 40, hasRole });
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+        mocks.previewInviteEmailTemplateContent.mockResolvedValue({
+            subject: 'Scoped preview',
+            html: '<!doctype html><html><body>Scoped preview</body></html>',
+            plainText: 'Scoped preview',
+        });
+    });
+
+    it('loads its own template from the footer and updates it after confirmation in the current tenant', async () => {
+        const user = userEvent.setup();
+        const ownTemplate = { ...counsellorTemplate, tenantId: 40, editable: true, active: true };
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [ownTemplate] : []),
+        );
+        mocks.updateInviteEmailTemplate.mockResolvedValue({ ...ownTemplate, language: 'de' });
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(1));
+        await user.click(screen.getByRole('button', { name: 'New template' }));
+        const dialog = within(screen.getByRole('dialog'));
+        await user.selectOptions(dialog.getByLabelText('Existing templates'), String(ownTemplate.id));
+        expect(dialog.getByLabelText('Vorlagenname')).toHaveValue(ownTemplate.name);
+        expect(dialog.queryByLabelText('Preview in the design of')).not.toBeInTheDocument();
+        await user.selectOptions(dialog.getByLabelText('Language'), 'de');
+        await waitFor(() =>
+            expect(mocks.previewInviteEmailTemplateContent).toHaveBeenLastCalledWith(
+                expect.objectContaining({ tenantId: 40, language: 'de' }),
+            ),
+        );
+        await user.click(dialog.getByRole('button', { name: 'save' }));
+        expect(mocks.updateInviteEmailTemplate).not.toHaveBeenCalled();
+        await user.click(dialog.getByRole('button', { name: 'Überschreiben' }));
+        await waitFor(() =>
+            expect(mocks.updateInviteEmailTemplate).toHaveBeenCalledWith(
+                ownTemplate.id,
+                expect.objectContaining({ language: 'de', name: ownTemplate.name }),
+            ),
+        );
+        expect(mocks.createInviteEmailTemplate).not.toHaveBeenCalled();
+    });
+
+    it('deletes its own template while protecting the system template', async () => {
+        const user = userEvent.setup();
+        const ownTemplate = { ...counsellorTemplate, id: 8, name: 'Own template', tenantId: 40, editable: true };
+        const systemTemplate = { ...counsellorTemplate, systemDefault: true, editable: false };
+        mocks.listInviteEmailTemplates.mockImplementation((kind: string) =>
+            Promise.resolve(kind === 'COUNSELLOR_INVITE' ? [ownTemplate, systemTemplate] : []),
+        );
+        mocks.deleteInviteEmailTemplate.mockResolvedValue(undefined);
+        render(<EmailTemplatesDialog templateKind="COUNSELLOR_INVITE" onClose={vi.fn()} onChanged={vi.fn()} />);
+        await waitFor(() => expect(screen.getAllByTestId('template-row')).toHaveLength(2));
+        const systemRow = screen.getByText(systemTemplate.name).closest('[data-testid="template-row"]') as HTMLElement;
+        const ownRow = screen.getByText(ownTemplate.name).closest('[data-testid="template-row"]') as HTMLElement;
+        expect(within(systemRow).getByRole('button', { name: 'Delete' })).toBeDisabled();
+        await user.click(within(ownRow).getByRole('button', { name: 'Delete' }));
+        await user.click(
+            within(screen.getByRole('dialog').querySelector('.ant-modal-footer') as HTMLElement).getByRole('button', {
+                name: 'Delete',
+            }),
+        );
+        await waitFor(() => expect(mocks.deleteInviteEmailTemplate).toHaveBeenCalledWith(ownTemplate.id));
     });
 });
