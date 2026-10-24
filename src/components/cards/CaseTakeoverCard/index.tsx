@@ -122,6 +122,7 @@ export const CaseTakeoverCard = ({ value, onChange, onConfig, onEnforce, classNa
             />
 
             <FloatingLabelSelect
+                virtual={false}
                 label="Maximum Session Duration"
                 leadingIcon={<ClockIcon />}
                 options={DURATIONS}

@@ -2,6 +2,7 @@ import { theme as antdTheme } from 'antd';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildAdminAntdTheme } from './antdM3Theme';
 import { computeOrisoPalette } from '../utils/theme/orisoScheme';
+import { contrastRatio, toRgb } from '../utils/contrastRatio';
 
 // The bridge must stay a pure derivation of the OrisoScheme palette. To test the
 // fallback path (palette missing a token) the module is wrapped so single tests
@@ -21,7 +22,68 @@ vi.mock('../utils/theme/orisoScheme', async (importOriginal) => {
     };
 });
 
+// Antd text aliases can be rgba: measure the rendered text after compositing
+// its opacity over the actual alert fill, rather than comparing an opaque seed.
+const compositeText = (foreground: string, background: string) => {
+    if (foreground.startsWith('#')) return foreground;
+    const channels = foreground.match(/[\d.]+/g)?.map(Number);
+    if (!channels || channels.length < 3) throw new Error(`Unsupported text colour: ${foreground}`);
+    const opacity = channels[3] ?? 1;
+    return `#${toRgb(background)
+        .map((channel, index) =>
+            Math.round(channels[index] * opacity + channel * (1 - opacity))
+                .toString(16)
+                .padStart(2, '0'),
+        )
+        .join('')}`;
+};
+
 describe('buildAdminAntdTheme', () => {
+    it.each(['light', 'inverted'] as const)(
+        'keeps gold status words readable on unchanged %s gold backgrounds',
+        (scheme) => {
+            const algorithm = scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+            const original = antdTheme.getDesignToken({ algorithm });
+            const token = antdTheme.getDesignToken(buildAdminAntdTheme({ scheme }));
+            expect(contrastRatio(token.gold7, token.gold1)).toBeGreaterThanOrEqual(4.5);
+            expect(token.gold1).toBe(original.gold1);
+            expect(token.gold3).toBe(original.gold3);
+        },
+    );
+    it.each(['light', 'inverted'] as const)(
+        'keeps green status text readable on its %s preset background',
+        (scheme) => {
+            const algorithm = scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+            const original = antdTheme.getDesignToken({ algorithm });
+            const token = antdTheme.getDesignToken(buildAdminAntdTheme({ scheme }));
+            expect(contrastRatio(token.green7, token.green1)).toBeGreaterThanOrEqual(4.5);
+            expect(token.green1).toBe(original.green1);
+            expect(
+                contrastRatio(
+                    compositeText(token.colorTextDescription, token.colorBgContainer),
+                    token.colorBgContainer,
+                ),
+            ).toBeGreaterThanOrEqual(4.5);
+            [token.colorTextPlaceholder, token.colorTextDisabled].forEach((color) => {
+                expect(
+                    contrastRatio(compositeText(color, token.colorBgContainer), token.colorBgContainer),
+                ).toBeGreaterThanOrEqual(4.5);
+            });
+            expect(contrastRatio(token.colorSuccessText, token.colorSuccessBg)).toBeGreaterThanOrEqual(4.5);
+            expect(token.colorSuccessBg).toBe(original.colorSuccessBg);
+            const theme = buildAdminAntdTheme({ scheme });
+            expect(
+                contrastRatio(theme.components?.Tag?.colorSuccess ?? token.colorSuccess, token.colorSuccessBg),
+            ).toBeGreaterThanOrEqual(4.5);
+            expect(
+                contrastRatio(
+                    compositeText(token.colorText, theme.components?.Alert?.colorWarningBg ?? token.colorWarningBg),
+                    theme.components?.Alert?.colorWarningBg ?? token.colorWarningBg,
+                ),
+            ).toBeGreaterThanOrEqual(4.5);
+        },
+    );
+
     afterEach(() => {
         mocks.tokensOverride = null;
     });

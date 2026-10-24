@@ -120,7 +120,9 @@ describe('Statistic page', () => {
         // metrics without an application-layer source render the calm empty
         // presentation (dash + hint) instead of a shouty "Keine Daten" value
         expect(screen.getAllByText('wird noch nicht erfasst').length).toBeGreaterThan(0);
-        expect(screen.getAllByLabelText('Keine Daten').length).toBeGreaterThan(0);
+        const emptyValues = screen.getAllByText('Keine Daten');
+        expect(emptyValues.length).toBeGreaterThan(0);
+        emptyValues.forEach((value) => expect(value).not.toHaveAttribute('aria-hidden', 'true'));
         // legacy mock numbers must be gone
         expect(screen.queryByText('312')).toBeNull();
         expect(screen.queryByText('Caritas NRW')).toBeNull();
