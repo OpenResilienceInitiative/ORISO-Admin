@@ -299,12 +299,14 @@ export const InviteTrackingProposal = ({
         (fixture) => fixture.status !== 'replaced' && fixture.status !== 'revoked',
     ).length;
     const explanationTrigger = useRef<HTMLButtonElement | null>(null);
+    const explanationElement = useRef<HTMLDivElement | null>(null);
     const dismissExplanation = () => {
         setExplanation(null);
         explanationTrigger.current?.focus();
     };
     useEffect(() => {
         if (!explanation) return undefined;
+        explanationElement.current?.focus();
         const onEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 setExplanation(null);
@@ -524,9 +526,11 @@ export const InviteTrackingProposal = ({
                                     ))}
                             </div>
                             {explanation?.id === fixture.id && (
-                                <div className={styles.explanation} role="note">
+                                <div className={styles.explanation} role="note" tabIndex={-1} ref={explanationElement}>
                                     <p>{explanation.text}</p>
-                                    <M3Button onClick={dismissExplanation}>{c.dismiss}</M3Button>
+                                    <M3Button variant="tonal" onClick={dismissExplanation}>
+                                        {c.dismiss}
+                                    </M3Button>
                                 </div>
                             )}
                         </article>

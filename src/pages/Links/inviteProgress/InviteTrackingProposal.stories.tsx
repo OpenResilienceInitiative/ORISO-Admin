@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- valid package export; the repository resolver predates exports maps
 import { expect, userEvent, within } from 'storybook/test';
+import axe from 'axe-core';
 import { InviteTrackingProposal } from './InviteTrackingProposal';
 
 const meta = {
@@ -55,6 +56,35 @@ export const ClosedHistory: Story = {
         await userEvent.keyboard('{Enter}');
         await expect(canvas.getByRole('article', { name: 'Frida Beispiel · INV-205' })).toHaveFocus();
     },
+};
+export const ReplacedExplanation: Story = {
+    args: { onlyStatus: 'replaced', initialView: 'history' },
+    play: async ({ canvasElement, args }) => {
+        const english = args.locale === 'en';
+        const row = within(within(canvasElement).getByRole('article', { name: 'Frida Beispiel · INV-204' }));
+        await userEvent.click(
+            row.getByRole('button', { name: english ? 'Replaced · Explanation' : 'Ersetzt · Erklärung' }),
+        );
+        await expect(row.getByRole('note')).toHaveTextContent(
+            english
+                ? 'This does not mean account creation failed'
+                : 'Das bedeutet nicht, dass die Kontoanlage fehlgeschlagen ist',
+        );
+        await expect(
+            row.getByRole('button', { name: english ? 'Close explanation' : 'Erklärung schließen' }),
+        ).toBeVisible();
+        await expect(row.getByRole('note')).toHaveFocus();
+        await expect(within(document.body).queryByRole('tooltip')).not.toBeInTheDocument();
+        const { violations } = await axe.run(row.getByRole('note'), {
+            runOnly: { type: 'rule', values: ['color-contrast'] },
+        });
+        await expect(violations.map(({ id }) => id)).toEqual([]);
+    },
+};
+export const ReplacedExplanationEnglish: Story = {
+    ...ReplacedExplanation,
+    args: { ...ReplacedExplanation.args, locale: 'en' },
+    globals: { viewport: { value: 'proposalSmall', isRotated: false } },
 };
 export const RoleAndExplicitResend: Story = {
     args: { onlyStatus: 'sent' },
