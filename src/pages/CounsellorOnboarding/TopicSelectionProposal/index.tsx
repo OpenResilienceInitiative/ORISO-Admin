@@ -48,7 +48,13 @@ const antLocales = {
     ru: ruRU,
     tr: trTR,
     uk: ukUA,
-    ti: { ...enGB, locale: 'ti', Modal: { okText: 'ኣተግብር', cancelText: 'ሰርዝ', justOkText: 'እሺ' } },
+    ti: {
+        ...enGB,
+        locale: 'ti',
+        // Close: https://translations.telegram.org/tigrinya-ti/android/login/
+        global: { ...enGB.global, close: 'ዕጸው' },
+        Modal: { okText: 'ኣተግብር', cancelText: 'ሰርዝ', justOkText: 'እሺ' },
+    },
 };
 
 const TopicSelection = ({
@@ -113,7 +119,10 @@ const TopicSelection = ({
         </TextField>
     );
     return (
-        <ConfigProvider locale={antLocales[language]}>
+        <ConfigProvider
+            locale={antLocales[language]}
+            modal={{ closable: { 'aria-label': antLocales[language].global?.close } }}
+        >
             <main className={styles.proposal} lang={language} dir="ltr">
                 <p className={styles.notice}>{t('preview')}</p>
                 {!open && languageControl}
