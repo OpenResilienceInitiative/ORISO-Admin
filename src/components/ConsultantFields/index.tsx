@@ -65,6 +65,8 @@ export interface ConsultantPersonalFieldsProps extends ConsultantFieldsBaseProps
     usernameLocked?: boolean;
     /** Focus the first field on mount — for dialogs, not for a whole page. */
     autoFocusFirstField?: boolean;
+    /** Creating a counsellor: no password is asked, so say how the person gets in (#1144). */
+    setupEmailHint?: boolean;
 }
 
 export interface ConsultantSettingsFieldsProps extends ConsultantFieldsBaseProps {
@@ -83,6 +85,7 @@ export const ConsultantPersonalFields = ({
     disabled,
     usernameLocked,
     autoFocusFirstField,
+    setupEmailHint,
 }: ConsultantPersonalFieldsProps) => {
     const { t } = useTranslation();
     const requiredRule = { required: true, message: t('form.errors.required') };
@@ -217,6 +220,7 @@ export const ConsultantPersonalFields = ({
                     name="email"
                     label={t('email')}
                     placeholder={t('placeholder.email')}
+                    helpText={!has('password') && setupEmailHint ? t('counselor.password.setupEmailHint') : undefined}
                     rules={[
                         {
                             required: true,

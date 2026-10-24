@@ -1,0 +1,105 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+.control {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding-top: calc(mui.$mui-unit * 2);
+    border-top: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
+    gap: calc(mui.$mui-unit * 1.5);
+}
+
+.heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: mui.$mui-unit calc(mui.$mui-unit * 1.5);
+}
+
+.title {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+}
+
+// A text marker, never colour alone.
+.marker {
+    padding: 2px calc(mui.$mui-unit * 1.5);
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.intro,
+.note,
+.optionHint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+}
+
+.options {
+    gap: mui.$mui-unit;
+}
+
+.option {
+    min-width: 0;
+
+    :global(.MuiFormControlLabel-label) {
+        color: var(--m3-on-surface, #1b1b1c);
+        font-family: var(--m3-body-font-family);
+        font-size: 16px;
+        font-weight: 500;
+    }
+}
+
+// Aligns the sentence under the label text, past the 38px radio target.
+.optionHint {
+    padding-left: 38px;
+}
+
+.mode {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+
+    > div {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+}
+
+.note {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+}
+
+.noteIcon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+}
+
+.error {
+    padding: calc(mui.$mui-unit * 1.5);
+    border: 1px solid var(--m3-error, #ba1a1a);
+    border-radius: 8px;
+    margin: 0;
+    color: var(--m3-error, #ba1a1a);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+}
