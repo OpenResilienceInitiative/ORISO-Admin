@@ -2113,7 +2113,7 @@
     "tenants.permissions.card.caseHandover.reason.PLANNED_ABSENCE": "Planned unavailability",
     "tenants.permissions.card.caseHandover.reason.OTHER_EMERGENCY": "Emergency (legacy)",
     "tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE": "Unplanned unavailability",
-    "tenants.permissions.card.caseHandover.reason.ASSIGNMENT_ENDED": "Left the organisation",
+    "tenants.permissions.card.caseHandover.reason.ASSIGNMENT_ENDED": "Assignment ended",
     "tenants.permissions.card.caseHandover.reason.LEGAL_VIOLATION": "Legal violation",
     "tenants.permissions.card.caseHandover.placeholderHint": "Placeholder – not active yet. A responsible authority (e.g. the organisation's legal counsel) can be assigned here later.",
     "tenants.permissions.card.forceSelection": "Force selection",

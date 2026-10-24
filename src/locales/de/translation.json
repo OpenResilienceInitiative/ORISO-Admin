@@ -1706,7 +1706,7 @@
     "tenants.permissions.card.caseHandover.reason.PLANNED_ABSENCE": "Geplant verhindert",
     "tenants.permissions.card.caseHandover.reason.OTHER_EMERGENCY": "Notfall (historisch)",
     "tenants.permissions.card.caseHandover.reason.UNPLANNED_ABSENCE": "Ungeplant verhindert",
-    "tenants.permissions.card.caseHandover.reason.ASSIGNMENT_ENDED": "Ausgeschieden",
+    "tenants.permissions.card.caseHandover.reason.ASSIGNMENT_ENDED": "Zuordnung beendet",
     "tenants.permissions.card.caseHandover.reason.LEGAL_VIOLATION": "Rechtsverletzung",
     "tenants.permissions.card.caseHandover.placeholderHint": "Platzhalter – noch nicht aktiv. Hier kann später eine zuständige Stelle (z. B. die Rechtsberatung des Trägers) hinterlegt werden.",
     "tenants.permissions.card.oneOnOne.title": "Mail Beratung",
