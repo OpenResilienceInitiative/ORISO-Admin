@@ -267,7 +267,6 @@ const fillMandatoryFields = async () => {
     setField('Nachname', 'Lovelace');
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
-    setField('Passwort', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
@@ -347,6 +346,29 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('adminRemarks');
+    });
+});
+
+describe('a new counsellor chooses their own password (#1144)', () => {
+    it('asks the admin for no password and submits none', async () => {
+        // The setup e-mail is the way in; a password the admin typed would be one somebody else knows.
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument();
+        expect(screen.getByText('counselor.password.setupEmailHint')).toBeInTheDocument();
+        await fillMandatoryFields();
+
+        expect(await submit(user)).not.toHaveProperty('password');
+    });
+
+    it('still asks for the one-time password when an agency admin is created', () => {
+        // Only counsellors are covered by the product decision; agency admins keep the field.
+        mocks.params = { id: 'add', typeOfUsers: 'agency-admins' };
+        renderForm();
+
+        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
+        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
     });
 });
 
