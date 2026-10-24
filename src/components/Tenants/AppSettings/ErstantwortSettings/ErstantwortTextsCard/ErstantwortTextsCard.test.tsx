@@ -11,8 +11,18 @@ vi.mock('react-i18next', () => ({
    which German variant is asked for, and how the deadline behaves. Stub it to a
    plain textarea so the assertions are about the card. */
 vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
-    M3RichTextEditor: ({ title, value, onChange, contentLanguage }: any) => (
+    M3RichTextEditor: ({ title, value, onChange, contentLanguage, versionSections, onRestoreVersion }: any) => (
         <div data-testid={`editor-${title}`} data-content-language={contentLanguage}>
+            {(versionSections ?? []).map((section: any) => (
+                <div key={section.key} data-testid="version-section">
+                    {section.versions.length === 0 && <span data-testid="version-empty">{section.emptyLabel}</span>}
+                    {section.versions.map((v: any) => (
+                        <button key={v.id} type="button" onClick={() => onRestoreVersion?.(v.content)}>
+                            {v.name}
+                        </button>
+                    ))}
+                </div>
+            ))}
             <label htmlFor={`ed-${title}`}>{title}</label>
             <textarea id={`ed-${title}`} value={value ?? ''} onChange={(e) => onChange?.(e.target.value)} />
         </div>
@@ -24,8 +34,7 @@ import { ErstantwortTextsCard } from './index';
 
 afterEach(cleanup);
 
-/* MUI's AccordionSummary is the toggle. Query it by aria-expanded rather than by
-   role+{expanded}, which testing-library only accepts as a boolean. */
+/* The section toggle buttons carry aria-expanded. */
 const sections = (container: HTMLElement) => Array.from(container.querySelectorAll<HTMLElement>('[aria-expanded]'));
 
 const renderCard = (props: Partial<React.ComponentProps<typeof ErstantwortTextsCard>> = {}) =>
@@ -54,7 +63,7 @@ describe('ErstantwortTextsCard', () => {
            "which Baustein am I editing" obvious. */
         renderCard();
 
-        expect(screen.getAllByRole('textbox')).toHaveLength(1);
+        expect(screen.getAllByTestId(/^editor-/)).toHaveLength(1);
     });
 
     it('opens the first Baustein by default so the card is never empty', () => {
@@ -68,7 +77,7 @@ describe('ErstantwortTextsCard', () => {
 
         fireEvent.click(sections(container)[2]);
 
-        expect(screen.getAllByRole('textbox')).toHaveLength(1);
+        expect(screen.getAllByTestId(/^editor-/)).toHaveLength(1);
         expect(screen.getByTestId('editor-tenants.erstantwort.emergencyAddition.label')).toBeTruthy();
     });
 
@@ -96,7 +105,9 @@ describe('ErstantwortTextsCard', () => {
         const onChange = vi.fn();
         renderCard({ onChange, languageFormal: false });
 
-        fireEvent.change(screen.getByRole('textbox'), { target: { value: '<p>Moin.</p>' } });
+        fireEvent.change(screen.getByTestId('editor-tenants.erstantwort.greeting.label').querySelector('textarea')!, {
+            target: { value: '<p>Moin.</p>' },
+        });
 
         expect(onChange).toHaveBeenCalledWith('erstantwortGreeting', 'de@informal', '<p>Moin.</p>');
     });
@@ -107,8 +118,8 @@ describe('ErstantwortTextsCard', () => {
 		   freeze today's wording into the row. */
         renderCard();
 
-        const deadline = screen.getByRole('spinbutton');
-        expect(deadline).toHaveValue(null);
+        const deadline = screen.getByLabelText('tenants.erstantwort.deadline.label');
+        expect(deadline).toHaveValue('');
         expect(deadline.getAttribute('placeholder')).toBe('2');
     });
 
@@ -116,7 +127,7 @@ describe('ErstantwortTextsCard', () => {
         const onDeadlineChange = vi.fn();
         renderCard({ onDeadlineChange });
 
-        fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '5' } });
+        fireEvent.change(screen.getByLabelText('tenants.erstantwort.deadline.label'), { target: { value: '5' } });
 
         expect(onDeadlineChange).toHaveBeenCalledWith(5);
     });
@@ -127,7 +138,7 @@ describe('ErstantwortTextsCard', () => {
         const onDeadlineChange = vi.fn();
         renderCard({ onDeadlineChange, responseDeadlineDays: 5 });
 
-        fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } });
+        fireEvent.change(screen.getByLabelText('tenants.erstantwort.deadline.label'), { target: { value: '' } });
 
         expect(onDeadlineChange).toHaveBeenCalledWith(undefined);
     });
@@ -156,6 +167,74 @@ describe('ErstantwortTextsCard', () => {
             contentByBaustein: { erstantwortGreeting: { de: '<p>Hallo.</p>', 'de@informal': '<p>Moin.</p>' } },
         });
 
-        expect(screen.getByRole('textbox')).toHaveValue('<p>Hallo.</p>');
+        expect(screen.getByTestId('editor-tenants.erstantwort.greeting.label').querySelector('textarea')).toHaveValue(
+            '<p>Hallo.</p>',
+        );
+    });
+
+    it('lives in one card and publishes from the card footer', () => {
+        renderCard({ footer: <button type="button">publish-here</button> });
+
+        const card = screen.getByTestId('erstantwort-card');
+        expect(card).toContainElement(screen.getByLabelText('tenants.erstantwort.deadline.label'));
+        expect(card).toContainElement(screen.getByText('publish-here'));
+        expect(card.querySelectorAll('.MuiAccordion-root')).toHaveLength(0);
+    });
+
+    it('shows the platform text read-only under the open Baustein when it is provided', () => {
+        renderCard({ platformDefaults: { texts: { erstantwortGreeting: 'Schön, dass Sie sich gemeldet haben.' } } });
+
+        expect(screen.getByTestId('erstantwort-platform-preview')).toHaveTextContent(
+            'Schön, dass Sie sich gemeldet haben.',
+        );
+    });
+
+    it('shows no preview when the platform text is not available', () => {
+        renderCard();
+
+        expect(screen.queryByTestId('erstantwort-platform-preview')).not.toBeInTheDocument();
+    });
+
+    it('shows the emergency numbers that are appended, under the emergency addition', () => {
+        const { container } = renderCard({ platformDefaults: { emergencyNumbers: 'Notruf 112' } });
+
+        expect(screen.queryByText('Notruf 112')).not.toBeInTheDocument();
+        fireEvent.click(sections(container)[2]);
+
+        expect(screen.getByText('Notruf 112')).toBeInTheDocument();
+    });
+
+    describe('load platform default (version menu entry)', () => {
+        const defaults = {
+            texts: { erstantwortGreeting: 'Hallo <Sie>\n\nZweite Zeile' },
+        } as const;
+
+        it('puts the platform default into the editor of that Baustein as paragraphs, escaped', () => {
+            const onChange = vi.fn();
+            renderCard({ platformDefaults: defaults, onChange });
+
+            fireEvent.click(screen.getByRole('button', { name: 'tenants.erstantwort.defaults.load' }));
+
+            expect(onChange).toHaveBeenCalledWith(
+                'erstantwortGreeting',
+                'de',
+                '<p>Hallo &lt;Sie&gt;</p><p>Zweite Zeile</p>',
+            );
+        });
+
+        it('shows the entry disabled-style with "none" when this Baustein has no default', () => {
+            renderCard({ platformDefaults: { texts: {} } });
+
+            expect(screen.queryByRole('button', { name: 'tenants.erstantwort.defaults.load' })).toBeNull();
+            expect(screen.getByTestId('version-empty')).toHaveTextContent(
+                'tenants.erstantwort.defaults.noneForBaustein',
+            );
+        });
+
+        it('says the default is not loadable yet when the container passes no defaults', () => {
+            renderCard();
+
+            expect(screen.getByTestId('version-empty')).toHaveTextContent('tenants.erstantwort.defaults.notLoaded');
+        });
     });
 });

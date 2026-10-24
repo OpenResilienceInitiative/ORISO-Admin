@@ -31,6 +31,7 @@ vi.mock('@mui/icons-material', () => {
         BalanceOutlined: Icon,
         CategoryOutlined: Icon,
         ChevronLeft: Icon,
+        ChatOutlined: Icon,
         EmailOutlined: Icon,
         ManageAccountsOutlined: Icon,
         SettingsApplicationsOutlined: Icon,
