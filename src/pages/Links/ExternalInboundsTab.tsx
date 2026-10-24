@@ -208,6 +208,7 @@ export const ExternalInboundsTab = () => {
                             className={styles.inboundField}
                             label={t('links.form.chatType', 'Chat Type')}
                             options={CHAT_TYPE_OPTIONS}
+                            virtual={false}
                         />
                     </Form.Item>
                 </div>
