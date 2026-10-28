@@ -9,10 +9,18 @@ describe('counsellor delete dialog wording', () => {
     const key = 'counselor.modal.text.delete.text';
 
     it.each([
-        ['en', en as Record<string, string>, /48 hours/],
-        ['de', de as Record<string, string>, /48 Stunden/],
-    ])('%s names the safeguarding period and the blocked login', (_lng, bundle, period) => {
-        expect(bundle[key]).toMatch(period);
+        [
+            'en',
+            en as Record<string, string>,
+            [/Sign-in is blocked immediately/, /read-only/, /48 hours \(default\)/, /permanently removed/],
+        ],
+        [
+            'de',
+            de as Record<string, string>,
+            [/Anmeldung wird sofort gesperrt/, /nur lesbar/, /48 Stunden \(Standard\)/, /endgültig gelöscht/],
+        ],
+    ])('%s names the blocked login, read-only window, default period and final deletion', (_lng, bundle, phrases) => {
+        phrases.forEach((phrase) => expect(bundle[key]).toMatch(phrase));
         expect(bundle[key]).not.toMatch(/cannot be reversed|nicht rückgängig/i);
     });
 });
