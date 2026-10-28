@@ -2,6 +2,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
@@ -15,9 +16,20 @@ let savedBodies: unknown[] = [];
 const server = setupServer(http.get('*/service/settings', () => HttpResponse.json({})));
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
-afterEach(() => {
+afterEach(async () => {
     server.resetHandlers();
     clearSessionTokens();
+    // The save test ends this file with the success toast still open: antd's static
+    // message API has its own React root and an auto-dismiss timer. Tear it down and
+    // drain the scheduler here, or react-dom runs after this file's jsdom is gone and
+    // crashes with "window is not defined" (same as InviteCsvImportModal.test.tsx).
+    message.destroy();
+    for (let i = 0; i < 20; i += 1) {
+        // eslint-disable-next-line no-await-in-loop -- sequential drain, not parallelizable
+        await new Promise((resolve) => {
+            setImmediate(resolve);
+        });
+    }
 });
 beforeEach(async () => {
     savedBodies = [];
