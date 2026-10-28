@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -48,7 +49,9 @@ class EligibilityTests(unittest.TestCase):
         self.assertFalse(verifier.junit_green(self.report('<skipped />')))
 
     def test_full_suite_skip_policy_is_explicit(self):
-        self.assertTrue(verifier.junit_green(self.report('<skipped />'), allow_skipped=True))
+        self.assertFalse(verifier.junit_green(self.report('<skipped />'), allow_skipped=True))
+        self.path.write_text('<testsuites><testsuite><testcase name="passes" /><testcase name="optional"><skipped /></testcase></testsuite></testsuites>')
+        self.assertTrue(verifier.junit_green(verifier.xml_report(self.path), allow_skipped=True))
 
     def test_another_passing_file_cannot_hide_missing_required_cases(self):
         self.assertFalse(verifier.junit_green(self.report(classname="unrelated.test.tsx"), ["required.test.tsx"]), "missing affected test file must fail eligibility")
@@ -71,6 +74,66 @@ class EligibilityTests(unittest.TestCase):
         verifier.require_target_commit("a" * 40, "a" * 40)
         with self.assertRaises(AssertionError): verifier.require_target_commit("a" * 40, "dev")
         with self.assertRaises(AssertionError): verifier.require_target_commit("a" * 40, "b" * 40)
+
+    def test_clean_checkout_refuses_actual_tracked_staged_and_untracked_changes(self):
+        root = Path(self.directory.name) / "checkout"
+        root.mkdir()
+        def local_git(*args):
+            return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+        local_git("init", "-q")
+        tracked = root / "tracked.txt"
+        tracked.write_text("committed")
+        local_git("add", "tracked.txt")
+        local_git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "fixture")
+        env = {"RUNNER_TEMP": str(Path(self.directory.name) / "runner"), "GITHUB_SHA": "a" * 40}
+        with patch.dict(os.environ, env), patch.object(verifier.sys, "argv", ["verify", "admin", "react"]), \
+                patch.object(verifier.Path, "cwd", return_value=root), \
+                patch.object(verifier, "root", root, create=True), patch.object(verifier, "evidence", root, create=True), \
+                patch.object(verifier, "git", side_effect=local_git), \
+                patch.object(verifier, "source_manifest", side_effect=AssertionError("source inspection reached")) as source, \
+                patch.object(verifier, "run") as run:
+            with self.assertRaisesRegex(AssertionError, "source inspection reached"):
+                verifier.main()
+            source.reset_mock()
+            for change in ("unstaged", "staged", "untracked"):
+                with self.subTest(change=change):
+                    if change == "untracked":
+                        (root / "untracked.ts").write_text("input")
+                    else:
+                        tracked.write_text(change)
+                        if change == "staged": local_git("add", "tracked.txt")
+                    with self.assertRaisesRegex(AssertionError, "clean checkout"):
+                        verifier.main()
+                    source.assert_not_called()
+                    run.assert_not_called()
+                    local_git("restore", "--staged", "--worktree", "tracked.txt")
+
+    def test_summary_retains_final_gate_and_source_verdict(self):
+        root = Path(self.directory.name)
+        (root / "package-lock.json").write_text("{}")
+        before = {"commit": "a" * 40, "sourceSha256": "before"}
+        report = {"valid": True, "tests": 1, "failures": 0, "errors": 0, "skipped": 0}
+        for gates_pass, unchanged in ((True, True), (False, True), (True, False)):
+            with self.subTest(gates_pass=gates_pass, unchanged=unchanged):
+                after = before if unchanged else {**before, "sourceSha256": "changed"}
+                records = [{"label": "ci-helper-self-test", "exitCode": 0, "selfTests": report},
+                           {"label": "react-account-paths", "exitCode": 0 if gates_pass else 1, "junit": report}]
+                env = {"RUNNER_TEMP": str(root), "GITHUB_SHA": before["commit"], "GITHUB_REPOSITORY": "fixture/admin"}
+                with patch.dict(os.environ, env), patch.object(verifier.sys, "argv", ["verify", "admin", "react"]), \
+                        patch.object(verifier.Path, "cwd", return_value=root), \
+                        patch.object(verifier, "root", root, create=True), patch.object(verifier, "evidence", root, create=True), \
+                        patch.object(verifier, "ADMIN_REACT_FILES", []), patch.object(verifier, "git", return_value=""), \
+                        patch.object(verifier, "source_manifest", side_effect=[before, after]), \
+                        patch.object(verifier, "run", side_effect=records), \
+                        patch.object(verifier.subprocess, "check_output", return_value="v22.23.3\n"):
+                    with self.assertRaises(SystemExit) as outcome:
+                        verifier.main()
+                summary = json.loads((root / "account-intent-evidence-react/summary.json").read_text())
+                self.assertIn("gatesPass", summary)
+                self.assertIn("accepted", summary)
+                self.assertEqual(gates_pass, summary["gatesPass"])
+                self.assertEqual(gates_pass and unchanged, summary["accepted"])
+                self.assertEqual(0 if gates_pass and unchanged else 1, outcome.exception.code)
 
     def test_xml_is_sanitized_before_it_is_kept(self):
         self.report('<failure message="Bearer fake-token">{"password":"test-value"}</failure>')

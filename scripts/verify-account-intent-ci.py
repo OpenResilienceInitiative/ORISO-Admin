@@ -107,8 +107,11 @@ def require_target_commit(actual, expected):
     assert re.fullmatch(r"[0-9a-f]{40}", expected), "target must be an exact immutable commit"
     assert actual == expected, "checkout is not the dispatched immutable target commit"
 
+def require_clean_checkout():
+    assert not git("status", "--porcelain", "--untracked-files=all"), "verification requires a clean checkout"
+
 def junit_green(report, expected_files=(), allow_skipped=False):
-    return bool(report.get("valid") and report.get("tests", 0) > 0 and report.get("errors") == 0
+    return bool(report.get("valid") and report.get("tests", 0) > report.get("skipped", 0) and report.get("errors") == 0
                 and report.get("failures") == 0 and (allow_skipped or report.get("skipped") == 0)
                 and set(expected_files).issubset(report.get("testFiles", [])))
 
@@ -126,6 +129,7 @@ def main():
     assert phase in ("react", "project")
     assert kind in ("frontend", "admin")
     root = Path.cwd()
+    require_clean_checkout()
     evidence = Path(os.environ["RUNNER_TEMP"]) / ("account-intent-evidence-" + phase)
     evidence.mkdir(parents=True, exist_ok=True)
 
@@ -177,7 +181,6 @@ def main():
                "targetCommit": expected_commit, "npmVersion": subprocess.check_output(["npm", "--version"], text=True).strip(),
                "lockSha256": hashlib.sha256((root / "package-lock.json").read_bytes()).hexdigest(),
                "sourceUnchanged": before == after, "records": records, "notVerified": ["browser", "real native/backend effect", "current-human authorization"]}
-    (evidence / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     ordinary = [r for r in records if r["label"] != "consultant-counterfactual"]
     passes = all(r["exitCode"] == 0 for r in ordinary)
     for record in ordinary:
@@ -194,9 +197,11 @@ def main():
         probe["qualifiedBehaviorGreen"] = bool(probe["exitCode"] == 0 and report.get("tests") == 1 and junit_green(report))
         passes = passes and (probe["qualifiedAssertionRed"] or probe["qualifiedBehaviorGreen"])
         (evidence / "consultant-counterfactual.json").write_text(json.dumps(probe, indent=2) + "\n")
-        (evidence / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    summary["gatesPass"] = bool(passes)
+    summary["accepted"] = bool(before == after and passes)
+    (evidence / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print("source unchanged", before == after, "ordinary gates pass", bool(passes), flush=True)
-    raise SystemExit(0 if before == after and passes else 1)
+    raise SystemExit(0 if summary["accepted"] else 1)
 
 if __name__ == "__main__":
     main()
