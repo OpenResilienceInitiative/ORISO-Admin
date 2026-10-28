@@ -38,23 +38,36 @@ describe('AskerPermissionsCard per-feature policies', () => {
         expect(screen.queryByRole('switch')).toBeNull();
     });
 
-    it('limits an agency suggestion menu to activate, deactivate and information', async () => {
+    it('shows agency account recommendations read-only without changing their values or modes', async () => {
         const user = userEvent.setup();
         const onPolicyChange = vi.fn();
+        const onOpenPolicyMenu = vi.fn();
         renderCard({
             policyLevel: 'agency',
+            permissionPolicies: {
+                featureDisplayNameEditable: { value: false, mode: 'SUGGESTED', inherited: true },
+                featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            },
             openPolicyMenu: 'featureDisplayNameEditable',
-            onOpenPolicyMenu: vi.fn(),
+            onOpenPolicyMenu,
             onPolicyChange,
         });
 
-        expect(screen.queryByText('tenants.permissions.policy.activationEnforced')).toBeNull();
-        expect(screen.getByText('tenants.permissions.policy.moreInformation')).toBeTruthy();
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.activationSuggested' }));
-        expect(onPolicyChange).toHaveBeenCalledWith('featureDisplayNameEditable', {
-            value: true,
-            mode: 'SUGGESTED',
+        const name = screen.getByRole('button', {
+            name: /tenants.permissions.asker.displayName.label:.*deactivationSuggested/,
         });
+        const email = screen.getByRole('button', {
+            name: /tenants.permissions.asker.email.label:.*activationSuggested/,
+        });
+        expect(name).toBeDisabled();
+        expect(email).toBeDisabled();
+        expect(screen.getAllByText('tenants.permissions.policy.suggestion')).toHaveLength(2);
+        expect(screen.getAllByText('tenants.permissions.card.notifications.setOnTraeger')).toHaveLength(2);
+        expect(screen.queryByRole('button', { name: 'tenants.permissions.policy.activationSuggested' })).toBeNull();
+        await user.click(name);
+        await user.click(email);
+        expect(onOpenPolicyMenu).not.toHaveBeenCalled();
+        expect(onPolicyChange).not.toHaveBeenCalled();
     });
 
     it('opens information directly for an inherited enforced feature', async () => {

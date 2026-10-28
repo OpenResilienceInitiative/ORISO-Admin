@@ -70,18 +70,24 @@ export const AskerPermissionsCard = ({
             restrictedFields,
         );
 
-    const policyControl = (field: string, labelKey: string) => (
-        <PermissionPolicyControl
-            featureKey={field}
-            label={t(labelKey)}
-            level={policyLevel}
-            policy={policyFor(field)}
-            open={openPolicyMenu === field}
-            pending={pendingPolicyFields?.has(field)}
-            onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
-            onChange={(next) => onPolicyChange?.(field, next)}
-        />
-    );
+    const policyControl = (field: string, labelKey: string) => {
+        const accountSetting = field === 'featureDisplayNameEditable' || field === 'featureAskerEmailEnabled';
+        const setOnTraeger = policyLevel === 'agency' && accountSetting;
+        return (
+            <PermissionPolicyControl
+                featureKey={field}
+                label={t(labelKey)}
+                level={policyLevel}
+                policy={policyFor(field)}
+                open={!setOnTraeger && openPolicyMenu === field}
+                pending={pendingPolicyFields?.has(field)}
+                disabled={setOnTraeger}
+                supportingText={setOnTraeger ? t('tenants.permissions.card.notifications.setOnTraeger') : undefined}
+                onOpenChange={(open) => !setOnTraeger && onOpenPolicyMenu?.(open ? field : null)}
+                onChange={(next) => !setOnTraeger && onPolicyChange?.(field, next)}
+            />
+        );
+    };
 
     const restrictedNote = (field: string) =>
         restrictedFields.has(field) ? (

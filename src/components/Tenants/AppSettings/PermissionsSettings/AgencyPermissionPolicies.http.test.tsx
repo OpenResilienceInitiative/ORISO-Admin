@@ -55,6 +55,58 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
         },
     );
 
+    it('shows tenant-owned account settings without offering or sending an agency override', async () => {
+        const puts = vi.fn();
+        const accountPolicies = {
+            featureDisplayNameEditable: { value: false, mode: 'SUGGESTED', inherited: true },
+            featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+        };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => {
+                if (request.method === 'PUT') puts();
+                if (new URL(request.url).pathname.endsWith('/agencyadmin/agencies/55')) {
+                    return Response.json({
+                        _embedded: {
+                            id: '55',
+                            tenantId: 7,
+                            name: 'Synthetic policy centre',
+                            settings: { permissionPolicies: accountPolicies },
+                        },
+                    });
+                }
+                return Response.json({ tenantId: 7, policies: accountPolicies });
+            }),
+        );
+        render(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <AgencyPermissionsSettings agencyId="55" />
+            </QueryClientProvider>,
+        );
+        const user = userEvent.setup();
+        await Promise.all(
+            [
+                ['featureDisplayNameEditable', 'deactivationSuggested', 'BlockIcon'],
+                ['featureAskerEmailEnabled', 'activationSuggested', 'CheckIcon'],
+            ].map(async ([key, action, icon]) => {
+                await waitFor(() => expect(document.querySelector(`[data-feature-policy="${key}"]`)).not.toBeNull());
+                const row = within(document.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`)!);
+                const button = row.getByRole('button', { name: /open policy choices/i });
+                expect(button).toBeDisabled();
+                expect(button.getAttribute('aria-label')).toContain(i18n.t(`tenants.permissions.policy.${action}`));
+                expect(row.getByTestId(icon)).toBeInTheDocument();
+                expect(
+                    row.getByText(i18n.t('tenants.permissions.card.notifications.setOnTraeger')),
+                ).toBeInTheDocument();
+                await user.click(button);
+            }),
+        );
+        expect(puts).not.toHaveBeenCalled();
+        expect(
+            screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.activationSuggested') }),
+        ).not.toBeInTheDocument();
+    });
+
     it('rolls back a failed feature without replaying it in the next queued save, then reloads confirmed values', async () => {
         const sibling = 'featureVoiceMessagesOneOnOneChatsEnabled';
         const stored = { [field]: true, [sibling]: true };
