@@ -48,16 +48,7 @@ const selections = {
         ['Blue Inverted German', 'Blue Inverted English'],
     ],
 };
-const querySelection = process.argv[2] === 'users-prefix-through-tenant';
 const userSequences = {
-    'users-prefix-through-tenant': [
-        'Filled',
-        'LongAgencyNames',
-        'Empty',
-        'Loading',
-        'Error',
-        'TenantAdminsForPlatformAdmin',
-    ],
     'saved-sort-alone': ['SavedSortOnMount'],
     'filter-saved-sort': ['FilterResetsCardsAt390', 'SavedSortOnMount'],
     'tenant-alone': ['TenantAdminsForPlatformAdmin'],
@@ -84,9 +75,7 @@ if (Object.hasOwn(userSequences, selection)) {
     generatedBytes =
         original.replace(
             "title: 'Organisms/Pages/Users/UserManagement',",
-            `title: 'Diagnostic/UserManagement/${selection}', includeStories: ${JSON.stringify(
-                userSequences[selection].map((_, index) => `Case${index + 1}`),
-            )},`,
+            `title: 'Diagnostic/UserManagement/${selection}', includeStories: ['Case1', 'Case2', 'Case3'],`,
         ) +
         '\n' +
         userSequences[selection]
@@ -116,17 +105,6 @@ try {
         }),
         source,
         ...(repairedRegression && { runtimeIntegration: checkFieldFormBackport() }),
-        ...(querySelection && {
-            experiment: 'native-renderer-teardown-v1',
-            nativeRendererCleanupSource: {
-                path: '.storybook/storyRenderCleanup.ts',
-                sha256: createHash('sha256').update(readFileSync('.storybook/storyRenderCleanup.ts')).digest('hex'),
-            },
-            queryObserverSource: {
-                path: 'scripts/query-lifetime-diagnostic.ts',
-                sha256: createHash('sha256').update(readFileSync('scripts/query-lifetime-diagnostic.ts')).digest('hex'),
-            },
-        }),
         command: [process.execPath, ...args],
         profile: 'functional-pilot',
         acceptance: false,
@@ -136,17 +114,14 @@ try {
     writeFileSync(path.join(directory, 'input.json'), JSON.stringify(input, null, 2), { flag: 'wx' });
     const log = openSync(path.join(directory, 'child.log'), 'wx');
     const cleanDiagnosticEnv = { ...process.env };
-    for (const key of ['VITE_ORISO_USER_SEQUENCE', 'VITE_ORISO_TOKEN_DIAGNOSTIC', 'VITE_ORISO_QUERY_LIFETIME'])
-        delete cleanDiagnosticEnv[key];
+    for (const key of ['VITE_ORISO_USER_SEQUENCE', 'VITE_ORISO_TOKEN_DIAGNOSTIC']) delete cleanDiagnosticEnv[key];
     const child = spawn(process.execPath, args, {
         detached: process.platform !== 'win32',
         stdio: ['ignore', log, log],
         env: {
             ...cleanDiagnosticEnv,
             ORISO_VERIFICATION_PROFILE: 'functional-pilot',
-            ...(querySelection
-                ? { VITE_ORISO_QUERY_LIFETIME: selection }
-                : generated
+            ...(generated
                 ? { VITE_ORISO_USER_SEQUENCE: selection }
                 : tokenSelection
                 ? { VITE_ORISO_TOKEN_DIAGNOSTIC: selection }
@@ -243,196 +218,7 @@ try {
             }
         });
     let observationComplete;
-    if (querySelection) {
-        const receipts = observations.filter((item) => item.queryLifetime === 1);
-        let validationError;
-        try {
-            assert.equal(
-                receipts.filter(
-                    (item) => item.phase === 'witness' && item.contract === 'client-key-signal-request-msw-v1',
-                ).length,
-                1,
-                'Missing/duplicate query observer witness',
-            );
-            const allowed = [
-                'witness',
-                'client-bound',
-                'mounted',
-                'unmounted',
-                'cache',
-                'query',
-                'query-abort',
-                'dispatch',
-                'request-abort',
-                'settled',
-                'boundary',
-                'msw',
-                'ambiguous',
-                'invalid',
-                'released',
-            ];
-            receipts.forEach((item, index) => {
-                assert.equal(item.selection, selection, 'Observer selection mismatch');
-                assert.equal(item.sequence, index + 1, 'Observer sequence gap');
-                assert.ok(Number.isFinite(item.at) && allowed.includes(item.phase), 'Unknown observer evidence');
-                assert.ok(
-                    !item.invalid && !['invalid', 'ambiguous'].includes(item.phase),
-                    'Observer evidence invalid/ambiguous',
-                );
-            });
-            const clients = new Map(
-                receipts.filter((item) => item.phase === 'client-bound').map((item) => [item.clientId, item.owner]),
-            );
-            const queries = new Map();
-            const requests = new Map();
-            const arrivals = new Map();
-            receipts.forEach((item) => {
-                if (item.clientId) assert.deepEqual(item.owner, clients.get(item.clientId), 'Client owner mismatch');
-                if (item.phase === 'query') {
-                    assert.ok(!queries.has(item.id), 'Duplicate query identity');
-                    queries.set(item.id, item);
-                }
-                if (item.phase === 'dispatch') {
-                    const query = queries.get(item.queryId);
-                    assert.ok(query && query.clientId === item.clientId, 'Request/query mismatch');
-                    assert.ok(!requests.has(item.requestId), 'Duplicate request identity');
-                    requests.set(item.requestId, item);
-                }
-                if (item.phase === 'msw') {
-                    const request = requests.get(item.requestId);
-                    assert.ok(request && request.at <= item.at, 'Unproven/noncausal arrival binding');
-                    if (item.mswPhase === 'request:start') {
-                        assert.ok(!arrivals.has(item.mswId), 'Duplicate arrival identity');
-                        arrivals.set(item.mswId, item.requestId);
-                    } else assert.equal(arrivals.get(item.mswId), item.requestId, 'Arrival identity changed');
-                }
-            });
-            wantedNames.forEach((name) => {
-                const mounted = receipts.filter((item) => item.phase === 'mounted' && item.owner?.name === name);
-                assert.ok(mounted.length > 0, 'Missing mounted owner');
-                ['before-cancel-clear', 'after-cancel-clear', 'before-reset-handlers', 'after-reset-handlers'].forEach(
-                    (boundary) =>
-                        assert.ok(
-                            receipts.some(
-                                (item) =>
-                                    item.phase === 'boundary' &&
-                                    item.ownerId === mounted[0].owner.id &&
-                                    item.boundary === boundary,
-                            ),
-                            'Missing cleanup boundary',
-                        ),
-                );
-            });
-            assert.ok(
-                (queries.size === 0 && requests.size === 0 && arrivals.size === 0) ||
-                    (queries.size > 0 && requests.size > 0 && arrivals.size > 0),
-                'Incomplete present query/request/arrival stream',
-            );
-            assert.equal(
-                input.queryObserverSource.sha256,
-                createHash('sha256').update(readFileSync(input.queryObserverSource.path)).digest('hex'),
-                'Observer source changed during run',
-            );
-            assert.equal(
-                input.nativeRendererCleanupSource.sha256,
-                createHash('sha256').update(readFileSync(input.nativeRendererCleanupSource.path)).digest('hex'),
-                'Native cleanup source changed during run',
-            );
-        } catch (error) {
-            validationError = error.message;
-        }
-        const orderFailures = [];
-        if (input.experiment !== 'native-renderer-teardown-v1') orderFailures.push('Unknown counterprobe experiment');
-        const owners = receipts.filter((item) => item.phase === 'mounted');
-        wantedNames.forEach((name) => {
-            const own = owners.filter((item) => item.owner?.name === name);
-            if (!own.length) orderFailures.push(`Missing owner ${name}`);
-            own.forEach((mountedOwner) => {
-                const id = mountedOwner.owner.id;
-                const unmount = receipts.find((item) => item.phase === 'unmounted' && item.owner?.id === id);
-                ['before-cancel-clear', 'before-reset-handlers'].forEach((boundary) => {
-                    const marker = receipts.find(
-                        (item) => item.phase === 'boundary' && item.ownerId === id && item.boundary === boundary,
-                    );
-                    const snapshot = marker?.clients?.find((item) => item.clientId === mountedOwner.clientId);
-                    if (
-                        !unmount ||
-                        !marker ||
-                        unmount.sequence >= marker.sequence ||
-                        !snapshot ||
-                        snapshot.mounted ||
-                        snapshot.renderedConnected !== false ||
-                        snapshot.canvasChildCount !== 0 ||
-                        snapshot.cachedObserverCount !== 0
-                    )
-                        orderFailures.push(`Live owner at ${boundary}: ${name}`);
-                });
-                const reset = receipts.find(
-                    (item) =>
-                        item.phase === 'boundary' && item.ownerId === id && item.boundary === 'after-reset-handlers',
-                );
-                if (
-                    reset &&
-                    receipts.some(
-                        (item) => item.phase === 'dispatch' && item.owner?.id === id && item.sequence > reset.sequence,
-                    )
-                )
-                    orderFailures.push(`Post-reset old-owner dispatch: ${name}`);
-            });
-        });
-        const mappingInvalid = !!validationError;
-        const noRequestStream = !receipts.some((item) => ['query', 'dispatch', 'msw'].includes(item.phase));
-        const invalid = mappingInvalid || orderFailures.length > 0;
-        observationComplete = !invalid;
-        const mounted = receipts.filter((item) => item.phase === 'mounted');
-        const lifetimeReceiptsComplete = wantedNames.every((name) =>
-            mounted.some(
-                (item) =>
-                    item.owner?.name === name &&
-                    [
-                        'before-cancel-clear',
-                        'after-cancel-clear',
-                        'before-reset-handlers',
-                        'after-reset-handlers',
-                    ].every((boundary) =>
-                        receipts.some(
-                            (entry) =>
-                                entry.phase === 'boundary' &&
-                                entry.ownerId === item.owner.id &&
-                                entry.boundary === boundary,
-                        ),
-                    ),
-            ),
-        );
-        const finalOwnerIds = mounted
-            .filter((item) => item.owner?.name === wantedNames.at(-1))
-            .map((item) => item.owner.id);
-        const finalNativeUnmountObserved =
-            finalOwnerIds.length > 0 &&
-            finalOwnerIds.every((id) => receipts.some((item) => item.phase === 'unmounted' && item.owner?.id === id));
-        writeFileSync(
-            path.join(directory, 'query-lifetime.json'),
-            JSON.stringify(
-                {
-                    observationComplete,
-                    invalid,
-                    validationError,
-                    mappingStatus: mappingInvalid ? 'INVALID' : noRequestStream ? 'NOT_OBSERVED' : 'PROVEN_UNIQUE',
-                    teardownOrderValid: orderFailures.length === 0,
-                    orderFailures,
-                    lifetimeReceiptsComplete,
-                    finalNativeUnmountObserved,
-                    receipts,
-                    acceptance: false,
-                    limitation:
-                        'Identical unbound dispatches invalidate correlation; no FIFO/current-case ownership or final unmount callback is invented.',
-                },
-                null,
-                2,
-            ),
-            { flag: 'wx' },
-        );
-    } else if (generated) {
+    if (generated) {
         const requests = observations.filter((item) => item.userDiagnostic === 'dispatch');
         observationComplete = userSequences[selection].every((name, index) => {
             const caseName = `Case ${index + 1}`;
@@ -537,13 +323,7 @@ try {
                 ...outcome,
                 timedOut,
                 endedAtUTC: new Date().toISOString(),
-                completeSelectedInventory: querySelection
-                    ? bindingsMatch &&
-                      inventory?.inventoryComplete === true &&
-                      inventory.executed === expectedCount &&
-                      sequenceMatches
-                    : complete,
-                ...(querySelection && { diagnosticObservationComplete: observationComplete }),
+                completeSelectedInventory: complete,
                 diagnosticOmittedCases,
                 acceptance: false,
                 note: 'Diagnostic only; raw warning and normal verification failures retained.',

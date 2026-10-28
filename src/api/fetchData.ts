@@ -1,5 +1,4 @@
 import i18next from 'i18next';
-import { observeQueryTransport } from '../../scripts/query-lifetime-diagnostic';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
@@ -157,9 +156,7 @@ const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Pro
             signal: controller.signal,
         });
 
-        const transport = fetch(req);
-        observeQueryTransport(() => ({ request: req, signal: props.signal, promise: transport }));
-        transport
+        fetch(req)
             .then((response) => {
                 if (response.status === 204) {
                     resolve(response);

@@ -14,7 +14,6 @@ name: CI - Feature Branch
 on:
     push:
         branches-ignore:
-            - diagnostic/admin-query-lifetime-1611 # Temporary isolated diagnostic; retire before PR publication.
             - main
             - dev
             - pre-dev

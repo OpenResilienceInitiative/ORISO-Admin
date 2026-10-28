@@ -1,12 +1,11 @@
-import { useLayoutEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import i18n from 'i18next';
-import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { bindQueryOwner, mountQueryOwner, queryLifetimeEnabled } from '../../../../scripts/query-lifetime-diagnostic';
 import type { CounselorData } from '../../../types/counselor';
 import { UserRole } from '../../../enums/UserRole';
 import { encodeUsername } from '../../../utils/encryptionHelpers';
@@ -96,21 +95,6 @@ const DiagnosticRoute = ({ children }: { children: ReactNode }) => {
     return children;
 };
 
-const QueryLifetimeOwner = ({
-    children,
-    owner,
-    canvas,
-}: {
-    children: ReactNode;
-    owner: { id: string; name: string };
-    canvas: HTMLElement;
-}) => {
-    const client = useQueryClient();
-    bindQueryOwner(client, owner, canvas);
-    useLayoutEffect(() => mountQueryOwner(client), [client]);
-    return children;
-};
-
 const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
@@ -119,26 +103,19 @@ const meta = {
     // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
-        (Story, context) => {
-            const { parameters } = context;
+        (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            let Reference = Story;
-            if (queryLifetimeEnabled()) {
-                const { id, name, canvasElement } = context;
-                Reference = () => (
-                    <QueryLifetimeOwner owner={{ id, name }} canvas={canvasElement}>
-                        <Story />
-                    </QueryLifetimeOwner>
-                );
-            } else if (import.meta.env.VITE_ORISO_USER_SEQUENCE) {
-                Reference = () => (
-                    <DiagnosticRoute>
-                        <Story />
-                    </DiagnosticRoute>
-                );
-            }
-            return withSeededAdminProviders(Reference, parameters.seedQueries);
+            return withSeededAdminProviders(
+                import.meta.env.VITE_ORISO_USER_SEQUENCE
+                    ? () => (
+                          <DiagnosticRoute>
+                              <Story />
+                          </DiagnosticRoute>
+                      )
+                    : Story,
+                parameters.seedQueries,
+            );
         },
     ],
 } satisfies Meta<typeof UsersList>;
