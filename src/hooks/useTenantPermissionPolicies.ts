@@ -29,7 +29,10 @@ export const useTenantPermissionPoliciesMutation = (tenantId: string) => {
             queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), context?.previous);
             notification.error({ message: t('tenants.permissions.policy.saveError') });
         },
-        onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
+        onSuccess: async (saved) => {
+            await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
+            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved);
+        },
     });
 };
 
@@ -45,6 +48,9 @@ export const useTenantRecipientScopeMutation = (tenantId: string) => {
         mutationFn: updateTenantPermissionPolicies,
         // A refetch already running must not land after the save and bring the old scope back.
         onMutate: () => queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) }),
-        onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
+        onSuccess: async (saved) => {
+            await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
+            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved);
+        },
     });
 };

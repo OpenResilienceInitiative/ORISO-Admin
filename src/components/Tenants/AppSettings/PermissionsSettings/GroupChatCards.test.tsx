@@ -53,7 +53,7 @@ vi.mock('../../../../api/fetchData', async (importOriginal) => {
     };
 });
 vi.mock('../../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.agencyMutate }),
+    useAgencyUpdate: () => ({ mutateAsync: mocks.agencyMutate }),
 }));
 
 // eslint-disable-next-line import/first
@@ -238,6 +238,11 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
 
 describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
     const serve = (settings: Record<string, unknown>) => {
+        mocks.agencyMutate.mockImplementation(async (patch) => ({
+            id: '55',
+            tenantId: 2,
+            settings: { ...settings, ...patch.settings },
+        }));
         mocks.routes.set('GET /agencies/55', () => ({
             _embedded: { id: '55', name: 'Beratungsstelle Nord', tenantId: 2, settings },
         }));
@@ -256,10 +261,10 @@ describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
         await switchOff(INTERNAL);
 
-        expect(mocks.agencyMutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.agencyMutate).toHaveBeenCalledTimes(1));
         const payload = mocks.agencyMutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings[INTERNAL]).toBe(false);
-        expect(payload.settings[CIRCLES]).toBe(true);
+        expect(payload.settings[CIRCLES]).toBeUndefined();
     });
 
     it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
@@ -267,11 +272,11 @@ describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
         await switchOff(CIRCLES);
 
-        expect(mocks.agencyMutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.agencyMutate).toHaveBeenCalledTimes(1));
         const payload = mocks.agencyMutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings[CIRCLES]).toBe(false);
-        expect(payload.settings[INTERNAL]).toBe(true);
-        expect(payload.settings.featureGroupChatV2Enabled).toBe(true);
+        expect(payload.settings[INTERNAL]).toBeUndefined();
+        expect(payload.settings.featureGroupChatV2Enabled).toBeUndefined();
     });
 
     it('shows both cards disabled when the Träger forced group chats off', async () => {

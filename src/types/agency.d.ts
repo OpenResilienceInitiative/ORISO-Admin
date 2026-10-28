@@ -3,6 +3,7 @@ import { CounsellingRelation } from '../enums/CounsellingRelation';
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
 import { TenantSettings } from './tenant';
 import { TopicData } from './topic';
+import type { PolicyValue } from './permissionPolicy';
 
 /**
  * Platform-wide governance for agency-level toggles (a singleton, super-admin owned). The
@@ -20,6 +21,8 @@ export interface AgencyAdminControls {
  */
 export type AgencySettings = Omit<TenantSettings, 'smtp' | 'tenantAdminControls'> & {
     agencyAdminControls?: AgencyAdminControls;
+    /** Read-only effective policies; the agency's own overrides remain the boolean settings. */
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
 };
 
 export interface AgencyDemographicsData {

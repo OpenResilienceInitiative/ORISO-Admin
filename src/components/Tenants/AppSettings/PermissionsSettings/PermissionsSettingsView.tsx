@@ -251,7 +251,9 @@ export const PermissionsSettingsView = ({
                                 >
                                     {({ getFieldValue }) => {
                                         const { masterField } = card;
-                                        const masterEnabled = masterField ? getFieldValue(masterField) !== false : true;
+                                        const masterEnabled = masterField
+                                            ? policyFor(masterField[1], getFieldValue(masterField)).value
+                                            : true;
                                         const CardIcon = card.Icon;
                                         return (
                                             <Card
