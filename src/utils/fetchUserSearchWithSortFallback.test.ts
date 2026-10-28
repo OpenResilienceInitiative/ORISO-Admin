@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 
 const fetchDataMock = vi.fn();
 vi.mock('../api/fetchData', () => ({
     fetchData: (...args: unknown[]) => fetchDataMock(...args),
     FETCH_METHODS: { GET: 'GET' },
-    FETCH_ERRORS: { BAD_REQUEST: 'BAD_REQUEST' },
+    FETCH_ERRORS: { BAD_REQUEST: 'BAD_REQUEST', ABORT: 'ABORT' },
 }));
 // removeEmbedded just unwraps the HAL envelope; pass the list through.
 vi.mock('./removeEmbedded', () => ({ default: (r: unknown) => r }));
@@ -14,7 +14,9 @@ import { fetchUserSearchWithSortFallback } from './fetchUserSearchWithSortFallba
 
 const list = (names: string[]) => ({ data: names.map((name) => ({ username: name })), total: names.length });
 
-beforeEach(() => fetchDataMock.mockReset());
+beforeEach(() => {
+    fetchDataMock.mockReset();
+});
 
 // #77: sorting must never hang — a rejected sort field falls back, never loops.
 describe('fetchUserSearchWithSortFallback', () => {
@@ -149,3 +151,88 @@ describe('fetchUserSearchWithSortFallback', () => {
         expect(fetchDataMock.mock.calls[0][0].url).toContain('&field=LASTNAME');
     });
 });
+
+it.each(['primary', 'safe-sort'] as const)(
+    'aborts the pending %s attempt with the same signal and no extra sort retry',
+    async (attempt) => {
+        const controller = new AbortController();
+        const signals: Array<AbortSignal | undefined> = [];
+        const abort = new Error('ABORT');
+        let observed = false;
+        let rejectHeld: (error: Error) => void = () => undefined;
+        fetchDataMock.mockImplementation(({ signal }: { signal?: AbortSignal }) => {
+            signals.push(signal);
+            if (attempt === 'safe-sort' && signals.length === 1) return Promise.reject(new Error('BAD_REQUEST'));
+            return new Promise((_resolve, reject) => {
+                rejectHeld = reject;
+                signal?.addEventListener(
+                    'abort',
+                    () => {
+                        observed = true;
+                        reject(abort);
+                    },
+                    { once: true },
+                );
+            });
+        });
+        const pending = fetchUserSearchWithSortFallback({
+            url: 'https://api/users?query=*',
+            sortBy: 'LASTNAME',
+            order: 'DESC',
+            rethrowOnFailure: true,
+            signal: controller.signal,
+        });
+        try {
+            await vi.waitFor(() => expect(fetchDataMock).toHaveBeenCalledTimes(attempt === 'primary' ? 1 : 2));
+            signals.forEach((signal) => expect(signal).toBe(controller.signal));
+            controller.abort();
+            await expect(pending).rejects.toBe(abort);
+            expect(observed).toBe(true);
+            expect(fetchDataMock).toHaveBeenCalledTimes(attempt === 'primary' ? 1 : 2);
+            if (attempt === 'safe-sort')
+                expect(fetchDataMock.mock.calls[1][0].url).toContain('&order=ASC&field=FIRSTNAME');
+        } finally {
+            controller.abort();
+            rejectHeld(abort);
+            await pending.catch(() => undefined);
+        }
+    },
+);
+
+it.each([false, true])('does not dispatch an already-aborted entry (rethrow=%s)', async (rethrowOnFailure) => {
+    const controller = new AbortController();
+    controller.abort();
+    fetchDataMock.mockResolvedValue(list(['must not arrive']));
+    const pending = fetchUserSearchWithSortFallback({
+        url: 'https://api/users?query=*',
+        signal: controller.signal,
+        rethrowOnFailure,
+    });
+    if (rethrowOnFailure) await expect(pending).rejects.toThrow('ABORT');
+    else await expect(pending).resolves.toEqual({ data: [], total: 0 });
+    expect(fetchDataMock).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+    'does not dispatch a safe-sort retry after cancellation (rethrow=%s)',
+    async (rethrowOnFailure) => {
+        const controller = new AbortController();
+        fetchDataMock
+            .mockImplementationOnce(() => {
+                controller.abort();
+                return Promise.reject(new Error('BAD_REQUEST'));
+            })
+            .mockResolvedValue(list(['must not arrive']));
+        const pending = fetchUserSearchWithSortFallback({
+            url: 'https://api/users?query=*',
+            sortBy: 'LASTNAME',
+            order: 'DESC',
+            signal: controller.signal,
+            rethrowOnFailure,
+        });
+        if (rethrowOnFailure) await expect(pending).rejects.toThrow('ABORT');
+        else await expect(pending).resolves.toEqual({ data: [], total: 0 });
+        expect(fetchDataMock).toHaveBeenCalledTimes(1);
+        expect(fetchDataMock.mock.calls[0][0].signal).toBe(controller.signal);
+    },
+);

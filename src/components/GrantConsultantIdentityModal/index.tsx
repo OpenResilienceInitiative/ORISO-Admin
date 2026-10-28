@@ -1,8 +1,9 @@
-import { Button, Form, message } from 'antd';
+import { Button, Form } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LabeledValue } from 'antd/lib/select';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiSelectField } from '../mui/MuiSelectField';
 import { Modal, DialogButton } from '../Modal';
 import { useAgenciesData } from '../../hooks/useAgencysData';
@@ -36,6 +37,7 @@ export const GrantConsultantIdentityModal = ({
     buttonLabelKey = 'grantConsultantIdentity.button',
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [form] = Form.useForm<GrantConsultantIdentityFormValues>();
     const [open, setOpen] = useState(false);

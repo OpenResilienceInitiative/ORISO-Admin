@@ -1,7 +1,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
 import { GlobalLoginSettingsPage } from '.';
 

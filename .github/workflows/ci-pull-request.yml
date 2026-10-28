@@ -60,17 +60,35 @@ jobs:
 
             - name: Install dependencies
               # Same supply-chain hardening as .github/actions/node-build.
-              run: npm ci --ignore-scripts
+              run: |
+                  npm ci --ignore-scripts
+                  npm run prepare:runtime
+
+            - name: Verify configured lint failure controls
+              run: npm run test:lint-controls
+
+            - name: Verify native unit teardown errors and healthy controls
+              run: node scripts/verify-native-unit-errors.mjs
 
             - name: Run unit tests
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+                  VERIFICATION_ARTIFACTS_DIR: verification-artifacts
+                  ACCOUNT_INVITE_TRACE_FILE: verification-artifacts/account-invite-trace.jsonl
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4
 
-    # Runs every story in a real Chromium: renders it, executes its `play`
-    # function, and fails on any axe (WCAG 2.2 AA) violation, because
-    # .storybook/preview.tsx sets `a11y.test: 'error'`. Separate job from `build`
-    # so it runs in parallel and a red story is attributable at a glance.
+            - name: Upload unit verification inventory
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: unit-verification-${{ matrix.shard }}
+                  path: verification-artifacts/
+                  if-no-files-found: warn
+
+    # Functional evidence retains rendering/play and integrity gates.
+    # Compliance is DEFERRED/NOT_RUN here; strict diagnostics are independent.
     storybook-tests:
-        name: Storybook component tests (interactions + a11y)
+        name: Storybook functional verification (compliance deferred)
         runs-on: ubuntu-latest
         timeout-minutes: 45
 
@@ -81,12 +99,14 @@ jobs:
             - name: Set up Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: '22.12.0'
+                  node-version-file: .nvmrc
                   cache: npm
 
             - name: Install dependencies
               # Same supply-chain hardening as .github/actions/node-build.
-              run: npm ci --ignore-scripts
+              run: |
+                  npm ci --ignore-scripts
+                  npm run prepare:runtime
 
             - name: Install Chromium for Vitest browser mode
               # --ignore-scripts above skips Playwright's own postinstall, so the
@@ -99,5 +119,90 @@ jobs:
               # does this for the dev server, and the test project needs it too.
               run: npm run generate:icon-catalog
 
-            - name: Run Storybook component tests
-              run: npm run test:storybook
+            - name: Verify functional controls and matched axe callsite witness
+              id: functional_controls
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:verification-controls:functional
+
+            - name: Run full functional Storybook inventory
+              # Keep controls failure red while collecting ordinary fixture evidence.
+              if: ${{ !cancelled() && (steps.functional_controls.outcome == 'success' || steps.functional_controls.outcome == 'failure') }}
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:storybook:functional
+
+            - name: Upload Storybook verification evidence
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: storybook-functional-verification
+                  path: |
+                      verification-artifacts/
+                      coverage/
+                      **/__screenshots__/
+                  if-no-files-found: warn
+
+    storybook-strict-diagnostic:
+        name: Storybook strict20 diagnostic (independent)
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+            - name: Install dependencies
+              run: |
+                  npm ci --ignore-scripts
+                  npm run prepare:runtime
+            - name: Install Chromium
+              run: npx playwright install --with-deps chromium
+            - name: Run strict20 capture, verify and shuffle diagnostics
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:verification-controls
+            - name: Upload separate strict diagnostic evidence
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: storybook-strict20-diagnostic
+                  path: verification-artifacts/
+                  if-no-files-found: error
+
+    storybook-functional-serial-comparison:
+        name: Storybook functional serial-file comparison (same head)
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+            - name: Install dependencies and prepare reviewed runtime
+              run: |
+                  npm ci --ignore-scripts
+                  npm run prepare:runtime
+            - name: Install Chromium
+              run: npx playwright install --with-deps chromium
+            - name: Generate icon catalogue
+              run: npm run generate:icon-catalog
+            - name: Run complete functional inventory with serial files
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:storybook:functional -- --no-file-parallelism --isolate
+            - name: Upload separate serial-file comparison evidence
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: storybook-functional-serial-comparison
+                  path: |
+                      verification-artifacts/
+                      **/__screenshots__/
+                  if-no-files-found: error

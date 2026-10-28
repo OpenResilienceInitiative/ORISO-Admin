@@ -131,6 +131,9 @@ export const Unavailable: Story = {
         msw: {
             handlers: [
                 http.get(userUrl, () => HttpResponse.json({ email: 'admin@example.org' })),
+                http.get('*/service/settingsadmin/smtp-sync-status', () =>
+                    HttpResponse.json({ revision: 1, appliedRevision: 1, status: 'APPLIED' }),
+                ),
                 http.get(summaryUrl, () =>
                     HttpResponse.json({ message: 'Platform SMTP Admin Settings are unavailable' }, { status: 502 }),
                 ),

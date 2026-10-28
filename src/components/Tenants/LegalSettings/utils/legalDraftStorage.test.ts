@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { clearLegalDraft, legalDraftKey, readLegalDraft, writeLegalDraft } from './legalDraftStorage';
 
 const key = legalDraftKey('dpa', '1:user-abc');

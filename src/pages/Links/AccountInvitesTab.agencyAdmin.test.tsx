@@ -1,8 +1,9 @@
+import { appendFileSync } from 'node:fs';
 import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Static import on purpose — see the note in AccountInvitesTab.test.tsx.
@@ -199,6 +200,54 @@ const agencyPage = (hits: Array<Record<string, unknown>>, total = hits.length, h
     hasMore,
 });
 
+const createInviteTrace = (caseName: string) => {
+    const started = performance.now();
+    const trace = (phase: string, details: Record<string, unknown> = {}) => {
+        const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
+        if (!destination) return;
+        appendFileSync(
+            destination,
+            `${JSON.stringify({
+                caseName,
+                file: 'src/pages/Links/AccountInvitesTab.agencyAdmin.test.tsx',
+                pid: process.pid,
+                traceId: `${process.pid}:${performance.timeOrigin}:${started}`,
+                phase,
+                atUTC: new Date().toISOString(),
+                elapsedMs: performance.now() - started,
+                inputs: [...document.querySelectorAll<HTMLInputElement>('input[role="combobox"]')].map((input) => ({
+                    id: input.id,
+                    value: input.value,
+                    focused: document.activeElement === input,
+                    expanded: input.getAttribute('aria-expanded'),
+                    controls: input.getAttribute('aria-controls'),
+                    disabled: input.disabled,
+                })),
+                options: [...document.querySelectorAll<HTMLElement>('[role="option"]')].map((option) => ({
+                    text: option.textContent,
+                    selected: option.getAttribute('aria-selected'),
+                    hidden: option.hidden,
+                    ariaHidden: option.getAttribute('aria-hidden'),
+                })),
+                listboxes: [...document.querySelectorAll<HTMLElement>('[role="listbox"]')].map((list) => ({
+                    id: list.id,
+                    text: list.textContent,
+                    hidden: list.hidden,
+                })),
+                topicControls: [...document.querySelectorAll('button')]
+                    .map((button) => button.textContent)
+                    .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                searchArgs: mocks.searchInviteAgencies.mock.calls,
+                agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
+                ...details,
+            })}\n`,
+        );
+    };
+    // The native finish hook also runs after an assertion failure or timeout.
+    if (process.env.ACCOUNT_INVITE_TRACE_FILE) onTestFinished(() => trace('test:finished'));
+    return trace;
+};
+
 describe.each([
     ['agency admin', UserRole.AgencyAdmin],
     ['restricted agency admin', UserRole.RestrictedAgencyAdmin],
@@ -284,12 +333,18 @@ describe.each([
     });
 
     it('with several own agencies: picks only among them, no new agency, no number stepping', async () => {
+        const trace = createInviteTrace(`${_label}: several own agencies`);
+        trace('test:start');
         mocks.searchInviteAgencies.mockResolvedValue(agencyPage([OWN_AGENCY, SECOND_AGENCY]));
         render(<CounsellorInvitesTab />);
         const user = userEvent.setup();
 
+        trace('findAgency:before');
         const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' });
+        trace('findAgency:after');
+        trace('searchReady:before');
         await waitFor(() => expect(mocks.searchInviteAgencies).toHaveBeenCalled());
+        trace('searchReady:after');
         expect(agency).toBeEnabled();
         expect(agency).toHaveValue('');
         await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
@@ -300,14 +355,24 @@ describe.each([
         // Neither the next-free-number stepping nor the "Stattdessen als BST-Admin" founding path.
         expect(screen.queryByText('Stattdessen als BST-Admin einladen')).not.toBeInTheDocument();
 
+        trace('openAgency:before');
         await user.click(agency);
+        trace('openAgency:after');
         expect(await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ })).toBeInTheDocument();
         expect(screen.queryByRole('option', { name: /Neu anlegen/ })).not.toBeInTheDocument();
         // A typed number of a foreign agency is not taken over (the backend would answer 403).
+        trace('type999:before');
         await user.type(agency, '999');
+        trace('type999:after');
         expect(screen.queryByRole('option', { name: /999/ })).not.toBeInTheDocument();
+        trace('clearAgency:before');
         await user.clear(agency);
-        await user.click(await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ }));
+        trace('clearAgency:after');
+        trace('findOwnOptionAfterClear:before');
+        const ownOption = await screen.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ });
+        trace('findOwnOptionAfterClear:after');
+        await user.click(ownOption);
+        trace('clickOwnOption:after');
 
         const send = screen.getByRole('button', { name: 'Einladen' });
         await waitFor(() => expect(send).toBeEnabled());
@@ -319,6 +384,7 @@ describe.each([
             agencyIdAllocationMode: 'EXISTING',
         });
         expect(mocks.nextFreeAgencyId).not.toHaveBeenCalled();
+        trace('test:done');
     });
 
     it('with more than 10 own agencies: the 11th and 12th are reachable via "Weitere anzeigen"', async () => {
@@ -385,36 +451,75 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
     });
 
     it('fills the empty Träger from the picked agency and keeps both after "Senden & nächste"', async () => {
+        const trace = createInviteTrace('platform admin: picked existing agency and next');
+        trace('render:before');
         render(<CounsellorInvitesTab />);
+        trace('render:after');
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        trace('email:find:before');
+        const email = await screen.findByLabelText('E-Mail');
+        trace('email:find:after');
+        trace('email:type:before');
+        await user.type(email, 'lisa.simpson@example.org');
+        trace('email:type:after');
+        trace('first-name:type:before');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        trace('first-name:type:after');
+        trace('last-name:type:before');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
+        trace('last-name:type:after');
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('');
 
         const agency = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        trace('agency:open:before');
         await user.click(agency);
-        await user.click(await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW));
+        trace('agency:open:after');
+        trace('agency:option:before');
+        const option = await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW);
+        trace('agency:option:after');
+        trace('agency:pick:before');
+        await user.click(option);
+        trace('agency:pick:after');
 
         // The Träger follows the agency as an existing unit; the card keeps its field open.
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        trace('tenant:readback:before');
         await waitFor(() => expect(tenant).toHaveValue('Caritas Südbaden · 7'), SLOW);
+        trace('tenant:readback:after');
 
+        trace('send-menu:open:before');
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
+        trace('send-menu:open:after');
+        trace('send-menu:option:before');
+        const nextOption = await screen.findByRole('menuitem', { name: /Senden & nächste/ });
+        trace('send-menu:option:after');
+        trace('send-menu:pick:before');
+        await user.click(nextOption);
+        trace('send-menu:pick:after');
+        trace('send:find:before');
         const send = await screen.findByRole('button', { name: 'Einladen & nächste' });
+        trace('send:find:after');
+        trace('send:enabled:before');
         await waitFor(() => expect(send).toBeEnabled(), SLOW);
+        trace('send:enabled:after');
+        trace('send:click:before');
         await user.click(send);
+        trace('send:click:after');
 
+        trace('send:called:before');
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        trace('send:called:after');
         expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
             agencyId: 14,
             agencyIdAllocationMode: 'EXISTING',
             tenantId: 7,
             tenantIdAllocationMode: 'EXISTING',
         });
+        trace('reset:email:before');
         await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+        trace('reset:email:after');
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Caritas Südbaden · 7');
         expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Mail v2 Einzeltest · 14');
+        trace('test:done');
     });
 });

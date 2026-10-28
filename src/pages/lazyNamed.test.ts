@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { CHUNK_RELOAD_FLAG, RELOAD_FALLBACK_MS, isChunkLoadError, loadChunk } from './lazyNamed';
 
 const chunkError = () => new Error('Failed to fetch dynamically imported module: /admin/assets/Edit-BFwFo16b.js');

@@ -1,10 +1,11 @@
-import { Alert, Button, Form, message, Modal } from 'antd';
+import { Alert, Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAdminFeedback } from '../../../../hooks/useAdminFeedback';
 import { CardDeck } from '../../../CardDeck';
 import { Card } from '../../../Card';
 import { CardEditable } from '../../../CardEditable';
@@ -44,6 +45,7 @@ const needsTransportConfirmation = (port: number | undefined, secure: boolean | 
     port != null && !((port === 465 && secure === true) || (port === 587 && secure === false));
 
 export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
+    const { message, modal: feedbackModal } = useAdminFeedback();
     const { t } = useTranslation();
     const { settings } = useAppConfigContext();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
@@ -222,7 +224,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                                 save();
                                 return;
                             }
-                            Modal.confirm({
+                            feedbackModal.confirm({
                                 title: t('tenants.appSettings.smtp.transportMismatchTitle'),
                                 content: t('tenants.appSettings.smtp.transportMismatchExplanation'),
                                 okText: t('tenants.appSettings.smtp.transportMismatchConfirm'),

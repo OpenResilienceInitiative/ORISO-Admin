@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TutorialStatisticsSection, TutorialStatisticsSectionProps } from './TutorialStatisticsSection';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';

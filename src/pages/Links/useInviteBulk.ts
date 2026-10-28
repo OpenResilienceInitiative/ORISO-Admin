@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     acceptBaseUrlForRole,
     resendAccountInvite,
@@ -25,6 +25,7 @@ interface UseInviteBulkOptions {
 
 /** The checked rows and what can be done with them: send and revoke, one request per row. */
 export const useInviteBulk = ({ invites, reload, explain, rememberGeneratedLink }: UseInviteBulkOptions) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false);

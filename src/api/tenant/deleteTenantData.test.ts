@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('../fetchData', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../fetchData')>();

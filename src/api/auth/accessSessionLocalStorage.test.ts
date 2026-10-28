@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import {
     ACCESS_TOKEN_VALID_UNTIL_KEY,
     REFRESH_TOKEN_VALID_UNTIL_KEY,

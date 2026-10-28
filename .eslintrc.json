@@ -7,6 +7,7 @@
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:jsx-a11y/recommended",
+        "plugin:storybook/recommended",
         "plugin:prettier/recommended",
         "plugin:cypress/recommended",
         "plugin:import/errors",
@@ -14,11 +15,10 @@
         "plugin:import/typescript"
     ],
     "parser": "@typescript-eslint/parser",
-    /*"files": ["*.ts", "*.tsx"],*/
     "parserOptions": {
         "project": "./tsconfig.eslint.json"
     },
-    "plugins": ["import", "@typescript-eslint", "jsx-a11y", "prettier", "cypress"],
+    "plugins": ["import", "@typescript-eslint", "jsx-a11y", "prettier", "cypress", "storybook", "testing-library"],
     "rules": {
         "react/require-default-props": "off",
         "import/no-named-as-default": 0,
@@ -50,14 +50,52 @@
                 "src/**/*.test.tsx",
                 "src/**/*.stories.ts",
                 "src/**/*.stories.tsx",
-                "src/test/**/*.ts"
+                "src/**/*.matrix.tsx",
+                "src/test/**/*.ts",
+                "src/utils/storybook/**/*.ts"
             ],
             "rules": {
                 "import/first": "off",
-                "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
+                "import/no-extraneous-dependencies": [
+                    "error",
+                    {
+                        "devDependencies": true
+                    }
+                ],
                 "react/function-component-definition": "off",
                 "@typescript-eslint/no-non-null-assertion": "off",
-                "no-underscore-dangle": ["error", { "allow": ["__APP_CONFIG__"] }]
+                "no-underscore-dangle": [
+                    "error",
+                    {
+                        "allow": ["__APP_CONFIG__"]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/**/*.stories.ts", "src/**/*.stories.tsx"],
+            "rules": {
+                "react-hooks/rules-of-hooks": "error"
+            }
+        },
+        {
+            "files": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+            "rules": {
+                "testing-library/await-async-queries": "error",
+                "testing-library/await-async-utils": "error",
+                "testing-library/await-async-events": "error",
+                "testing-library/no-await-sync-queries": "error"
+            }
+        },
+        {
+            "files": [".storybook/**/*.ts", ".storybook/**/*.tsx"],
+            "rules": {
+                "import/no-extraneous-dependencies": [
+                    "error",
+                    {
+                        "devDependencies": true
+                    }
+                ]
             }
         }
     ],

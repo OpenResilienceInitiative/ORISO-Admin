@@ -1,3 +1,4 @@
+import { storyRenderCleanup } from './storyRenderCleanup';
 import * as React from 'react';
 // antd's static APIs (message/notification/Modal.confirm) are silent no-ops
 // under React 19 without this patch — the app imports it in src/index.tsx,
@@ -5,10 +6,17 @@ import * as React from 'react';
 import '@ant-design/v5-patch-for-react-19';
 import type { Preview } from '@storybook/react-vite';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider } from 'antd';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
-import { initialize, mswLoader } from 'msw-storybook-addon';
+import { getWorker, initialize, mswLoader } from 'msw-storybook-addon';
+import { adminMessageConfig } from '../src/constants/adminMessageConfig';
+import { TransportFeedbackBridge } from '../src/components/TransportFeedbackBridge';
+import { beginStoryVerification, recordUnexpectedRequest } from './verification';
+import { isProductRequest } from './verificationIntegrity';
+import { a11yVerification } from './a11yVerification';
+import { createSharedStoryHandlers } from './fixtures';
+import { clearStoryQueryClients, createStoryQueryClient, releaseStoryQueryClient } from './queryClients';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
 
@@ -21,34 +29,25 @@ import './preview.css';
 // Initialise the shared i18next instance (side-effect import).
 import '../src/i18n';
 
-// Start the MSW request-mocking worker. Stories opt in with `parameters.msw.handlers`;
-// everything else passes through untouched (`onUnhandledRequest: 'bypass'`).
-// The worker URL must be resolved relative to the preview iframe: MSW's default is the
-// absolute '/mockServiceWorker.js', which on a sub-path deployment (Pre-Dev serves this
-// build under /storybook-admin/) hits the app's SPA fallback and returns text/html —
-// registration then fails and *every* story renders as an error page instead.
-initialize({
-    onUnhandledRequest: 'bypass',
-    serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
-});
+// Static modules and assets may load normally. Product requests must be backed
+// by story-local fixtures; a failed worker must never create a false-green test.
+initialize(
+    {
+        onUnhandledRequest(request) {
+            if (isProductRequest(request.url)) {
+                recordUnexpectedRequest(request);
+            }
+        },
+        serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
+    },
+    createSharedStoryHandlers(),
+);
 
-// Registration can fail wholesale in embedded/sandboxed browsers that refuse
-// service workers. Stories that declare no `parameters.msw.handlers` never
-// talk to the worker, so a failed registration must degrade to "no mocking"
-// instead of replacing EVERY story with the MSW error page.
-const tolerantMswLoader: typeof mswLoader = async (context) => {
-    try {
-        return await mswLoader(context);
-    } catch (error) {
-        if (context.parameters?.msw) throw error;
-        console.warn('[storybook] MSW worker unavailable, story runs unmocked:', error);
-        return {};
-    }
+const StoryProviders = ({ children }: { children: React.ReactNode }) => {
+    const [queryClient] = React.useState(createStoryQueryClient);
+    React.useEffect(() => () => releaseStoryQueryClient(queryClient), [queryClient]);
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
-
-const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-});
 
 const preview: Preview = {
     parameters: {
@@ -82,16 +81,41 @@ const preview: Preview = {
             storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
         },
     },
-    loaders: [tolerantMswLoader],
+    loaders: [mswLoader],
+    async beforeEach(context) {
+        if (import.meta.env.MODE === 'test') a11yVerification.begin(context);
+        return beginStoryVerification(context.parameters.verification?.expectedErrors, async () => {
+            const errors: unknown[] = [];
+            try {
+                await storyRenderCleanup.finish();
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                await clearStoryQueryClients();
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                getWorker().resetHandlers();
+            } catch (error) {
+                errors.push(error);
+            }
+            if (errors.length) throw new AggregateError(errors, errors.map(String).join('\n'));
+        });
+    },
     decorators: [
         (Story) => (
-            <QueryClientProvider client={queryClient}>
+            <StoryProviders>
                 <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <MemoryRouter>
-                        <Story />
-                    </MemoryRouter>
+                    <AntdApp component={false} message={adminMessageConfig}>
+                        <TransportFeedbackBridge />
+                        <MemoryRouter>
+                            <Story />
+                        </MemoryRouter>
+                    </AntdApp>
                 </ConfigProvider>
-            </QueryClientProvider>
+            </StoryProviders>
         ),
     ],
 };

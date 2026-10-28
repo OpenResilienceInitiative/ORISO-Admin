@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const styles = readFileSync(resolve(__dirname, './floatingLabelSelect.module.scss'), 'utf8');
 const component = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');

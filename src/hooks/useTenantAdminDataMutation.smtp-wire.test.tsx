@@ -1,6 +1,6 @@
 import React from 'react';
 import { transferableAbortController } from 'node:util';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TenantAdminData } from '../types/TenantAdminData';
@@ -8,7 +8,8 @@ import { useTenantAdminDataMutation } from './useTenantAdminDataMutation.hook';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('i18next', () => ({ default: { language: 'de', resolvedLanguage: 'de' } }));
-vi.mock('antd', () => ({
+vi.mock('antd', async () => ({
+    ...(await vi.importActual<typeof import('antd')>('antd')),
     notification: { success: vi.fn(), error: vi.fn() },
     message: { error: vi.fn() },
 }));

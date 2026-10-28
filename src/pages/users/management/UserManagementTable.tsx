@@ -1,4 +1,4 @@
-import { Alert, Button, Grid, Popover, notification } from 'antd';
+import { Alert, Button, Grid, Popover } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
 import { SortNotice } from '../../../components/UserTable/SortNotice';
@@ -50,6 +51,7 @@ interface UserManagementTableProps {
 }
 
 export const UserManagementTable = ({ figmaTableHeader = false }: UserManagementTableProps) => {
+    const { notification } = useAdminFeedback();
     const screens = Grid.useBreakpoint();
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;

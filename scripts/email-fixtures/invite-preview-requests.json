@@ -1,0 +1,61 @@
+[
+    {
+        "id": "standard",
+        "request": {
+            "subject": "Ihre Einladung zur Beratungsplattform, {{firstName}}",
+            "body": "Hallo {{firstName}} {{lastName}},\n\nSie wurden mit der Adresse {{email}} zur Beratungsplattform eingeladen.\nÜber diesen Link richten Sie Ihren Zugang ein:\n\n{{inviteLink}}\n\nViele Grüße\nIhr Team (Träger {{tenantId}})",
+            "language": "de"
+        }
+    },
+    {
+        "id": "short",
+        "request": {
+            "subject": "Ihr Zugang",
+            "body": "Hallo {{firstName}},\nhier ist Ihr Einladungslink: {{inviteLink}}",
+            "language": "de"
+        }
+    },
+    {
+        "id": "unknown",
+        "request": {
+            "subject": "Einladung für {{firstName}}",
+            "body": "Hallo {{firstName}},\ndieser Platzhalter existiert nicht: {{unbekannterPlatzhalter}}",
+            "language": "de"
+        }
+    },
+    {
+        "id": "empty",
+        "request": {
+            "subject": "",
+            "body": "",
+            "language": "de"
+        }
+    },
+    {
+        "id": "create-empty",
+        "request": {
+            "subject": "",
+            "body": "",
+            "kind": "TENANT_INVITE",
+            "language": "de"
+        }
+    },
+    {
+        "id": "create-subject",
+        "request": {
+            "subject": "Willkommen",
+            "body": "",
+            "kind": "TENANT_INVITE",
+            "language": "de"
+        }
+    },
+    {
+        "id": "create-complete",
+        "request": {
+            "subject": "Willkommen",
+            "body": "Ihr Zugang zur Beratung",
+            "kind": "TENANT_INVITE",
+            "language": "de"
+        }
+    }
+]

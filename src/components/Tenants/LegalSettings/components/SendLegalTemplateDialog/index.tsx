@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { notification } from 'antd';
+
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import getAgencyData from '../../../../../api/agency/getAgencyData';
 import {
     distributeAgencyLegalProposal,
@@ -80,6 +81,7 @@ export const SendLegalTemplateDialog = ({
     draftSavedAt,
     onClose,
 }: SendLegalTemplateDialogProps) => {
+    const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
     const [audience, setAudience] = useState<TenantLegalProposalAudience>('ALL');

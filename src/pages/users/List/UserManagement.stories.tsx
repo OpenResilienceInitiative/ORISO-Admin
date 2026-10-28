@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import i18n from 'i18next';
 import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
@@ -11,6 +12,7 @@ import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { UsersList } from './index';
+import { beginUserDiagnostic, observeUserDiagnosticRoute } from '../../../../scripts/story-user-diagnostic';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
 const CONSULTANTS_ENDPOINT = '*/service/users/consultants/search';
@@ -80,14 +82,23 @@ const halList = (list: object[]) => HttpResponse.json({ total: list.length, _emb
 // Every story also answers the saved-sort and filter-list calls; its own handlers come first and win.
 const DEFAULT_HANDLERS = [
     http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
+    http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 204 })),
     http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
     http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
 ];
 const withDefaults = (handlers: RequestHandler[]) => [...handlers, ...DEFAULT_HANDLERS];
 
+const DiagnosticRoute = ({ children }: { children: ReactNode }) => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return children;
+};
+
 const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
+    beforeEach: (context) => beginUserDiagnostic(context.name),
     parameters: { layout: 'fullscreen' },
     // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
@@ -95,7 +106,16 @@ const meta = {
         (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            return withSeededAdminProviders(Story, parameters.seedQueries);
+            return withSeededAdminProviders(
+                import.meta.env.VITE_ORISO_USER_SEQUENCE
+                    ? () => (
+                          <DiagnosticRoute>
+                              <Story />
+                          </DiagnosticRoute>
+                      )
+                    : Story,
+                parameters.seedQueries,
+            );
         },
     ],
 } satisfies Meta<typeof UsersList>;
@@ -206,9 +226,19 @@ const TENANT_ADMINS: CounselorData[] = [
     { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
 ];
 
+const DiagnosticUsersList = () => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return <UsersList />;
+};
+
 const onTenantAdminsTab = () => (
     <Routes location="/admin/users/tenant-admins">
-        <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+        <Route
+            path="/admin/users/:typeOfUsers"
+            element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+        />
     </Routes>
 );
 
@@ -296,7 +326,10 @@ const onTab = (tab: string) => () =>
     (
         <Routes>
             <Route path="/" element={<Navigate to={`/admin/users/${tab}`} replace />} />
-            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+            <Route
+                path="/admin/users/:typeOfUsers"
+                element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+            />
             <Route path="*" element={<EditTarget />} />
         </Routes>
     );

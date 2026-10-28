@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import {
     AUTH_ACCESS_TOKEN_COOKIE,
     AUTH_REFRESH_TOKEN_COOKIE,

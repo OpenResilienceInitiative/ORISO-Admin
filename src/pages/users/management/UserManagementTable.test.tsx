@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { MemoryRouter } from 'react-router-dom';
 import type { UserScopeFiltersProps } from './UserScopeFilters';
 import { TypeOfUser } from '../../../enums/TypeOfUser';

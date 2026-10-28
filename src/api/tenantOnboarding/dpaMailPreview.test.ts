@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { dpaInvitePreviewEndpoint, publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../fetchData';
 import { getAdminDpaMailPreview, getPublicDpaMailPreview } from './dpaMailPreview';

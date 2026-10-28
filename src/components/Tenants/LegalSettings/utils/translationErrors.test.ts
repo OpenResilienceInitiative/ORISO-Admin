@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { TranslationApiError } from '../../../../api/tenant/translation';
 import { TRANSLATION_DEFAULT_ERROR_KEY, getTranslationErrorKey } from './translationErrors';
 

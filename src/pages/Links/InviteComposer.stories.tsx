@@ -13,6 +13,8 @@ import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
+import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
+import invitePreviewFixtures from '../../utils/storybook/invitePreviewFixtures.json';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
 import {
     AGENCIES,
@@ -1053,6 +1055,7 @@ export const TenantTabCreateAndUseTemplate: Story = {
     parameters: {
         msw: {
             handlers: [
+                createInviteEmailPreviewHandler(),
                 http.post(INVITES_ENDPOINT, async ({ request }) => {
                     createdInviteWithNewTemplate(await request.json());
                     return HttpResponse.json({ id: 99 }, { status: 201 });
@@ -1080,6 +1083,13 @@ export const TenantTabCreateAndUseTemplate: Story = {
         await userEvent.type(dialog.getByLabelText('Vorlagenname'), 'Neue Einladung');
         await userEvent.type(dialog.getByLabelText('Betreff'), 'Willkommen');
         await userEvent.type(dialog.getByLabelText('Inhalt'), 'Ihr Zugang zur Beratung');
+        const completePreview = invitePreviewFixtures.find((fixture) => fixture.id === 'create-complete');
+        if (!completePreview) throw new Error('The recorded complete invitation preview is missing');
+        const preview = within(dialog.getByRole('region', { name: 'E-Mail-Vorschau' }));
+        await waitFor(() =>
+            expect(preview.getByTitle('E-Mail-Vorschau')).toHaveAttribute('srcdoc', completePreview.response.html),
+        );
+        await expect(preview.queryByRole('status')).not.toBeInTheDocument();
         await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
         await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
         await expect(canvas.getByRole('button', { name: /Neue Einladung/ })).toBeVisible();

@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node env: fetch/Request/AbortController all come from the same realm, avoiding
 // the jsdom-vs-undici "signal is not an AbortSignal" mismatch. No DOM is needed here.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 
 // fetchData statically pulls in antd / i18next / appConfig / auth side effects.
 // Stub them so the unit stays focused on the self-healing 401 retry flow and we
@@ -30,6 +30,8 @@ vi.mock('../appConfig', () => ({
 }));
 const messageError = vi.hoisted(() => vi.fn());
 vi.mock('antd', () => ({ message: { error: messageError } }));
+// These node tests isolate HTTP/auth contracts; the real dispatcher owns DOM/no-window tests.
+vi.mock('./transportFeedback', () => ({ captureTransportFeedback: () => messageError }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first

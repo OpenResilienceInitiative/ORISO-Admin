@@ -1,11 +1,40 @@
-import { beforeAll } from 'vitest';
-import { setProjectAnnotations } from '@storybook/react-vite';
+import { setProjectAnnotations } from 'storybook/internal/preview-api';
+import { renderToCanvas } from '@storybook/react/entry-preview';
+import { getProjectAnnotations } from 'virtual:/@storybook/builder-vite/project-annotations.js';
+import { storyRenderCleanup, type NativeStoryRenderer } from './storyRenderCleanup';
+import { beforeEach, afterEach } from 'vite-plus/test';
+import { captureVerificationBrowser } from './axeWitness';
+import { a11yVerification } from './a11yVerification';
+import { finishStoryVerification } from './verification';
 
-// Reuse the exact preview the Storybook UI renders with (antd theme, i18n,
-// MSW loader, react-query, router) so a component test can never pass against
-// a different environment than the one a human reviews in the browser.
-import * as previewAnnotations from './preview';
+// Explicitly preserve the builder's complete composed annotations (including a11y and MSW).
+// This capture is installed only in Vitest, so normal Storybook UI rendering remains native.
+const capturedNativeRenderer: NativeStoryRenderer = async (context, canvas) => {
+    const teardown = await renderToCanvas(context, canvas);
+    if (typeof teardown !== 'function') throw new Error('Native Storybook renderer returned no teardown');
+    return storyRenderCleanup.retain(teardown);
+};
+setProjectAnnotations([getProjectAnnotations(), { renderToCanvas: capturedNativeRenderer }]);
 
-const annotations = setProjectAnnotations([previewAnnotations]);
+beforeEach(({ task }) => {
+    Object.assign(task.meta, { verificationBrowser: captureVerificationBrowser() });
+});
 
-beforeAll(annotations.beforeAll);
+// Assert in the current test. Story cleanup alone runs when the next story
+// starts, which would attribute an error to the wrong story and leak state.
+afterEach(async ({ task }) => {
+    const errors: unknown[] = [];
+    try {
+        a11yVerification.finish((evidence) => {
+            Object.assign(task.meta, { verificationA11y: evidence });
+        });
+    } catch (error) {
+        errors.push(error);
+    }
+    try {
+        await finishStoryVerification();
+    } catch (error) {
+        errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, errors.map(String).join('\n'));
+});

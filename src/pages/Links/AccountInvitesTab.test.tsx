@@ -1,8 +1,9 @@
+import { appendFileSync } from 'node:fs';
 import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
@@ -202,6 +203,111 @@ const renderTenantTab = () => {
 beforeEach(() => {
     mocks.superAdmin = false;
 });
+
+const requiredTopicsDefaultName = /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/;
+
+const captureTopicsFieldSnapshot = (slot: HTMLElement) => {
+    const started = performance.now();
+    const queryStarted = performance.now();
+    // This is the actual visible role/name matcher, not a guessed accessible name.
+    const target = within(slot).queryByRole('button', { name: requiredTopicsDefaultName });
+    const queryDurationMs = performance.now() - queryStarted;
+    const visibilityChain = [];
+    for (let node: HTMLElement | null = slot; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        visibilityChain.push({
+            tag: node.tagName,
+            hidden: node.hidden,
+            ariaHidden: node.getAttribute('aria-hidden'),
+            display: style.display,
+            visibility: style.visibility,
+        });
+    }
+    return {
+        capturedAtUTC: new Date().toISOString(),
+        requiredRole: 'button',
+        requiredName: String(requiredTopicsDefaultName),
+        queryDurationMs,
+        matchesRequiredVisibleRoleName: target !== null,
+        connected: slot.isConnected,
+        collapsed: slot.getAttribute('data-collapsed'),
+        visibilityChain,
+        buttons: [...slot.querySelectorAll<HTMLButtonElement>('button')].map((button) => ({
+            tag: button.tagName,
+            role: button.getAttribute('role'),
+            type: button.type,
+            ariaLabel: button.getAttribute('aria-label'),
+            labelledBy: (button.getAttribute('aria-labelledby') ?? '')
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((id) => ({ id, text: document.getElementById(id)?.textContent ?? null })),
+            title: button.title,
+            text: button.textContent,
+            disabled: button.disabled,
+            hidden: button.hidden,
+            ariaHidden: button.getAttribute('aria-hidden'),
+            connected: button.isConnected,
+            matchesRequiredVisibleRoleName: button === target,
+        })),
+        // Includes the small scoped role query, attributes and visibility reads.
+        snapshotDurationMs: performance.now() - started,
+    };
+};
+
+const createInviteTrace = (caseName: string) => {
+    const started = performance.now();
+    let lastTopicsFieldSnapshot: ReturnType<typeof captureTopicsFieldSnapshot> | undefined;
+    const trace = (
+        phase: string,
+        details: Record<string, unknown> & { topicsFieldSnapshot?: ReturnType<typeof captureTopicsFieldSnapshot> } = {},
+    ) => {
+        const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
+        if (!destination) return;
+        if (details.topicsFieldSnapshot) lastTopicsFieldSnapshot = details.topicsFieldSnapshot;
+        appendFileSync(
+            destination,
+            `${JSON.stringify({
+                caseName,
+                file: 'src/pages/Links/AccountInvitesTab.test.tsx',
+                pid: process.pid,
+                traceId: `${process.pid}:${performance.timeOrigin}:${started}`,
+                phase,
+                atUTC: new Date().toISOString(),
+                elapsedMs: performance.now() - started,
+                inputs: [...document.querySelectorAll<HTMLInputElement>('input[role="combobox"]')].map((input) => ({
+                    id: input.id,
+                    value: input.value,
+                    focused: document.activeElement === input,
+                    expanded: input.getAttribute('aria-expanded'),
+                    controls: input.getAttribute('aria-controls'),
+                    disabled: input.disabled,
+                })),
+                options: [...document.querySelectorAll<HTMLElement>('[role="option"]')].map((option) => ({
+                    text: option.textContent,
+                    selected: option.getAttribute('aria-selected'),
+                    hidden: option.hidden,
+                    ariaHidden: option.getAttribute('aria-hidden'),
+                })),
+                listboxes: [...document.querySelectorAll<HTMLElement>('[role="listbox"]')].map((list) => ({
+                    id: list.id,
+                    text: list.textContent,
+                    hidden: list.hidden,
+                })),
+                topicControls: [...document.querySelectorAll('button')]
+                    .map((button) => button.textContent)
+                    .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                // Preserve the last pre/post-query field state even if teardown has emptied the DOM.
+                lastTopicsFieldSnapshot,
+                searchArgs: mocks.searchInviteAgencies.mock.calls,
+                agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
+                ...details,
+            })}\n`,
+        );
+    };
+    // The native finish hook also runs after an assertion failure or timeout.
+    if (process.env.ACCOUNT_INVITE_TRACE_FILE) onTestFinished(() => trace('test:finished'));
+    return trace;
+};
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -606,19 +712,38 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('resets Rolle to Berater:in after the guided BST-Admin invite went out', async () => {
+        const trace = createInviteTrace('resets Rolle to Berater:in after the guided BST-Admin invite went out');
+        trace('fill:before');
         const user = await fill();
-        await user.click(
-            await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+        trace('fill:after');
+        trace('guided-bst-admin:find:before');
+        const guided = await screen.findByRole(
+            'button',
+            { name: 'Stattdessen als BST-Admin einladen' },
+            { timeout: 10_000 },
         );
+        trace('guided-bst-admin:find:after');
+        trace('guided-bst-admin:click:before');
+        await user.click(guided);
+        trace('guided-bst-admin:click:after');
+        trace('invite:enabled:before');
         await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        trace('invite:enabled:after');
+        trace('invite:send:before');
         await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+        trace('invite:send:after');
+        trace('invite:created:before');
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        trace('invite:created:after');
 
         // The next person typed into the fresh bar is a counsellor again, not a second BST-Admin.
+        trace('role:reset:before');
         await waitFor(() =>
             expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
         );
+        trace('role:reset:after');
         expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
+        trace('test:finished');
     });
 
     // The invite card rests its selects as value pills from the start; only typed fields open expanded.
@@ -1011,43 +1136,106 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('applies the next agency’s default again after an earlier manual choice', async () => {
-        mocks.searchInviteAgencies.mockImplementation(async (query: string) => ({
-            hits: query.startsWith('Diak')
-                ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
-                : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
-            total: 1,
-            hasMore: false,
-            page: 1,
-        }));
-        mocks.getAgencyDataById.mockImplementation(async (id: string) => ({
-            _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
-        }));
-        render(<CounsellorInvitesTab />);
+        const trace = createInviteTrace('next agency default after manual choice');
+        trace('test:start');
+        mocks.searchInviteAgencies.mockImplementation(async (query: string) => {
+            trace('search:called', { query });
+            return {
+                hits: query.startsWith('Diak')
+                    ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
+                    : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
+                total: 1,
+                hasMore: false,
+                page: 1,
+            };
+        });
+        mocks.getAgencyDataById.mockImplementation(async (id: string) => {
+            const result = {
+                _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
+            };
+            trace('agencyDefault:answered', { id, result });
+            return result;
+        });
+        const { container } = render(<CounsellorInvitesTab />);
+        const fieldSlot = (key: 'topics' | 'agency') => {
+            // Resolve the current node on each use; do not retain a slot across rerenders.
+            const slots = container.querySelectorAll<HTMLElement>(`[data-field-key="${key}"]`);
+            expect(slots).toHaveLength(1);
+            return slots[0];
+        };
         const user = userEvent.setup();
-        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgency:before');
+        const agency = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgency:after');
+        trace('typeDiak:before');
         await user.type(agency, 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW));
+        trace('typeDiak:after');
+        trace('findDiak:before');
+        const diakOption = await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW);
+        trace('findDiak:after');
+        await user.click(diakOption);
+        trace('clickDiak:after');
+        trace('default14:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'), SLOW);
-        const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
-        await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
-        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW));
+        trace('default14:after');
+        trace('queryTopics:before');
+        const topicsQueryStarted = performance.now();
+        const topics = within(fieldSlot('topics')).queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        trace('queryTopics:after', { queryDurationMs: performance.now() - topicsQueryStarted });
+        trace('openTopics:before');
+        await user.click(
+            topics ?? within(fieldSlot('topics')).getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }),
+        );
+        trace('openTopics:after');
+        trace('findManualPermission:before');
+        const manualPermission = await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW);
+        trace('findManualPermission:after');
+        await user.click(manualPermission);
+        trace('chooseManualPermission:after');
 
-        const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:before');
+        const agencyPillQueryStarted = performance.now();
+        const agencyPill = within(fieldSlot('agency')).queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:after', { queryDurationMs: performance.now() - agencyPillQueryStarted });
+        trace('openAgencyPill:before', { present: !!agencyPill });
         if (agencyPill) await user.click(agencyPill);
-        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('openAgencyPill:after');
+        trace('findAgencyField:before');
+        const agencyField = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgencyField:after');
+        trace('clearAgency:before');
         await user.clear(agencyField);
+        trace('clearAgency:after');
+        trace('typeCari:before');
         await user.type(agencyField, 'Cari');
-        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW));
+        trace('typeCari:after');
+        trace('findCari:before');
+        const cariOption = await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW);
+        trace('findCari:after');
+        await user.click(cariOption);
+        trace('clickCari:after');
 
         // The new agency's default applies again: the earlier manual choice belonged to Diakonie Lahr.
+        trace('default15:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'), SLOW);
+        trace('default15:after');
+        trace('assertCreateDefault:before', {
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
+        const createDefaultQueryStarted = performance.now();
         expect(
-            await screen.findByRole(
-                'button',
-                { name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/ },
-                SLOW,
-            ),
+            await within(fieldSlot('topics')).findByRole('button', { name: requiredTopicsDefaultName }, SLOW),
         ).toBeInTheDocument();
+        const createDefaultQueryDurationMs = performance.now() - createDefaultQueryStarted;
+        trace('assertCreateDefault:after', {
+            queryDurationMs: createDefaultQueryDurationMs,
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
+        trace('test:done');
     });
 
     it('drops the agency default again when the admin switches to a new agency', async () => {

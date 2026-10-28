@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { message } from 'antd';
+
 import { useTranslation } from 'react-i18next';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { agencyIdAllocationClient, type IdAllocationClient } from '../../api/idAllocation/idAllocation';
 import {
     createSelfAssignment,
@@ -56,6 +57,7 @@ export const SelfAssignDialog = ({
     onClose,
     onAssigned,
 }: SelfAssignDialogProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const roles = SELF_ASSIGN_ROLES as SelfAssignmentRole[];
     const [role, setRole] = useState<SelfAssignmentRole>(roles[0]);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { PermissionAction } from '../enums/PermissionAction';
 import { Resource } from '../enums/Resource';
 import { getDefaultSettingsPath, getSettingsTabs } from './settingsTabs';

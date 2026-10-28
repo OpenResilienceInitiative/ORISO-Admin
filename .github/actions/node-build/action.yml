@@ -19,7 +19,9 @@ runs:
           # --ignore-scripts blocks arbitrary dependency postinstall scripts from
           # executing in CI (supply-chain hardening). Admin is a Vite app and does
           # not rely on any dependency lifecycle script to build.
-          run: npm ci --ignore-scripts
+          run: |
+              npm ci --ignore-scripts
+              npm run prepare:runtime
 
         # src/components/IconCatalog/iconCatalog.generated.json has to stay
         # committed — ESLint resolves the Storybook page's import of it long

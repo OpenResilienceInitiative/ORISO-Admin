@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { compile } from 'sass';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // Compile the shared Sass mixin: phone media rules and container-stacked boards
 // must both receive the filter presentation from merged PR1129.

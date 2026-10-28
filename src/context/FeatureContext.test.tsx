@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { FeatureFlag } from '../enums/FeatureFlag';
 import { FeatureProvider, useFeatureContext } from './FeatureContext';
 

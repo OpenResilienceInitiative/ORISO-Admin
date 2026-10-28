@@ -1,9 +1,10 @@
-import { message, notification, Checkbox } from 'antd';
+import { Checkbox } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useState } from 'react';
 import { CheckboxChangeEvent } from 'antd/es/checkbox';
 import i18next from 'i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { useDeleteConsultantOrAgencyAdmin } from '../../../../../hooks/useDeleteConsultantOrAdmin';
 import { Modal } from '../../../../../components/Modal';
 import { Text } from '../../../../../components/text/Text';
@@ -17,6 +18,7 @@ interface DeleteUserModalProps {
 }
 
 export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUserModalProps) => {
+    const { message, notification } = useAdminFeedback();
     const { t } = useTranslation();
     const [hasSessions, setHasSessions] = useState(false);
     const [lastConsultantOfAgency, setLastConsultantOfAgency] = useState(false);

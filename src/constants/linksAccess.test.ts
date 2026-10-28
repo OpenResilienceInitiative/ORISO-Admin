@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { UserRole } from '../enums/UserRole';
 import { hasRoleFor } from '../components/Layout/adminNavFixtures';
 import {
