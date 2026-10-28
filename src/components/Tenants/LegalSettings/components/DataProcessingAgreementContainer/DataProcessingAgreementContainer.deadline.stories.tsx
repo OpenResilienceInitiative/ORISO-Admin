@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import i18n from 'i18next';
+import type { TenantDpaStatusInfo } from '../../../../../types/dpa';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import { legalDraftKey } from '../../utils/legalDraftStorage';
@@ -25,6 +26,7 @@ let published = false;
 let publishedContent: Record<string, string> = content;
 let requests: Array<{ content: unknown; deadline: string | null }> = [];
 let gateReads = 0;
+let recipientStatusReads = 0;
 let graceActive = false;
 
 const handlers = [
@@ -76,6 +78,7 @@ const meta = {
         publishedContent = content;
         requests = [];
         gateReads = 0;
+        recipientStatusReads = 0;
         graceActive = !!context.parameters.grace;
         const roles = context.args.readOnly
             ? [UserRole.RestrictedAgencyAdmin]
@@ -225,6 +228,17 @@ export const SingleTenantRecipientAfterExpiry: Story = {
         singleTenantRecipient: true,
         msw: {
             handlers: [
+                http.get('*/service/tenantadmin/7/dpa/status', () => {
+                    recipientStatusReads += 1;
+                    return HttpResponse.json({
+                        tenantId: 7,
+                        status: 'OUTDATED',
+                        currentDpaVersion: initialVersion.activationDate,
+                        signingDeadlineAt: '2020-01-01T12:00:00Z',
+                        renewalGraceActive: false,
+                        newCounsellingAllowed: false,
+                    } satisfies TenantDpaStatusInfo);
+                }),
                 http.post('*/service/tenantadmin/7/dpa/invite', () =>
                     HttpResponse.json({
                         signLink: 'https://example.org/dpa?token=renewed-contract',
@@ -242,6 +256,7 @@ export const SingleTenantRecipientAfterExpiry: Story = {
         const canvas = within(canvasElement);
         await canvas.findByText('Deutscher Vertragsentwurf');
         await expect(await canvas.findByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
+        await expect(recipientStatusReads).toBeGreaterThan(0);
         await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
         await expect(
             canvas.queryByRole('button', { name: /^(Bearbeiten|Entwurf bearbeiten)$/ }),

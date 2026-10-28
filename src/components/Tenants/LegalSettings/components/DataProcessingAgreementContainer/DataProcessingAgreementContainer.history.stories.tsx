@@ -8,6 +8,7 @@ import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook
 import { DataProcessingAgreementContainer } from './index';
 
 const currentVersion = '2026-09-30T12:00:00';
+let tenantReads = 0;
 const signedVersion = '2026-07-01T12:00:00';
 const meta = {
     title: 'Organisms/Legal/DataProcessingAgreementContainer/Signature history',
@@ -21,9 +22,10 @@ const meta = {
                 http.get('*/service/tenant/public/*', () =>
                     HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } }),
                 ),
-                http.get('*/service/tenant', () =>
-                    HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } }),
-                ),
+                http.get('*/service/tenant/7', () => {
+                    tenantReads += 1;
+                    return HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } });
+                }),
                 http.post('*/service/useradmin/dpa-invites/preview', () =>
                     HttpResponse.json({ subject: 'Contract documents', html: '<p>Forwarding preview</p>' }),
                 ),
@@ -65,6 +67,7 @@ const meta = {
     },
     args: { tenantId: 7 },
     beforeEach: async (context) => {
+        tenantReads = 0;
         setStoryAuth([UserRole.TenantAdmin], 7);
         await i18n.changeLanguage(context.parameters.locale ?? 'de');
     },
@@ -76,6 +79,7 @@ const historyPlay: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(String(i18n.t('legal.dpa.sign.previousRetained')))).toBeVisible();
     await expect(canvas.getByText(/Erika Mustermann/)).toBeVisible();
+    await expect(tenantReads).toBeGreaterThan(0);
     await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
     await expect(canvasElement.querySelector('[contenteditable="true"]')).toBeNull();
