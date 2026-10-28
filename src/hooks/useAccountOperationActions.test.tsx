@@ -42,13 +42,15 @@ it('restores the original A unknown action after A to B to A and retires only an
             ids.push(intent.id);
             if (outcome === 'unknown') throw new TypeError('reply lost');
             if (outcome === 'refused')
-                throw new Response(null, {
-                    status: 403,
-                    headers: {
-                        'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
-                        'X-ORISO-Mutation-Operation': intent.id,
-                    },
-                });
+                return Promise.reject(
+                    new Response(null, {
+                        status: 403,
+                        headers: {
+                            'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+                            'X-ORISO-Mutation-Operation': intent.id,
+                        },
+                    }),
+                );
         });
     await expect(submit()).rejects.toThrow('reply lost');
     session.token = tokenFor('person-B', 1);
