@@ -51,6 +51,7 @@ it('restores the original A unknown action after A to B to A and retires only an
                         },
                     }),
                 );
+            return undefined;
         });
     await expect(submit()).rejects.toThrow('reply lost');
     session.token = tokenFor('person-B', 1);
