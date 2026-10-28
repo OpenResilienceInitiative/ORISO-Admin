@@ -207,7 +207,7 @@ jobs:
                   npm run prepare:runtime
             - name: Install Chromium
               run: npx playwright install --with-deps chromium
-            - name: Observe one warning case in a fresh bounded process
+            - name: Run bounded selected Storybook evidence
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
                   FIXTURE_DIAGNOSTIC_SELECTION: ${{ matrix.selection }}

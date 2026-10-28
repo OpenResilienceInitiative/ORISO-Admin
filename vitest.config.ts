@@ -6,14 +6,10 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { readVerificationProfile, readControlInvocation } from './scripts/verification-profile.mjs';
 import { axeWitnessPlugin } from './scripts/verification-axe-witness.mjs';
 import { fileURLToPath } from 'node:url';
-import { fixtureComparatorProbePlugin } from './scripts/fixture-comparator-probe.mjs';
 import { checkFieldFormBackport } from './scripts/field-form-backport.mjs';
 
 // Check only: preparation is explicit via project postinstall or prepare:runtime.
 checkFieldFormBackport();
-
-const fixtureDiagnostic = process.env.VITE_ORISO_FIXTURE_DIAGNOSTIC;
-const comparatorProbe = fixtureComparatorProbePlugin(fixtureDiagnostic, process.env.VERIFICATION_ARTIFACTS_DIR);
 
 const verificationProfile = readVerificationProfile();
 const controlInvocation = readControlInvocation();
@@ -120,7 +116,6 @@ export default defineConfig({
                 extends: true,
                 plugins: [
                     axeWitnessPlugin(controlInvocation),
-                    ...(comparatorProbe ? [comparatorProbe] : []),
                     storybookTest({
                         configDir: '.storybook',
                         // Docs pages are not tests. Keeping them out also keeps
@@ -131,10 +126,7 @@ export default defineConfig({
                     }),
                 ],
                 optimizeDeps: {
-                    exclude: [
-                        ...(controlInvocation?.selection === 'axe-witness1' ? ['@storybook/addon-a11y'] : []),
-                        ...(comparatorProbe ? ['rc-util/es/isEqual', 'rc-util/es/isEqual.js'] : []),
-                    ],
+                    exclude: controlInvocation?.selection === 'axe-witness1' ? ['@storybook/addon-a11y'] : [],
                     // Vitest imports story files dynamically, so Vite's initial
                     // dependency crawl never sees them: the 40th story file
                     // discovers a new dependency, Vite re-optimizes, the browser

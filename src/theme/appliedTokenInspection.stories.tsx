@@ -284,8 +284,10 @@ export const ComponentOverrideAndRestore: Story = {
         const observation = () => findObservation(readReport(canvasElement), 'component:field-input:background-color');
         expect(observation().status).toBe('match');
         await withDeclaration(input, 'background-color', '#00ff00', async () => {
+            // Polling observes document mutations; normalization must happen once before it starts.
+            const overrideBackground = serialize('background-color', '#00ff00');
             await waitFor(() => {
-                expect(getComputedStyle(input).backgroundColor).toBe(serialize('background-color', '#00ff00'));
+                expect(getComputedStyle(input).backgroundColor).toBe(overrideBackground);
                 expect(observation()).toMatchObject({
                     expected,
                     actual: getComputedStyle(input).backgroundColor,

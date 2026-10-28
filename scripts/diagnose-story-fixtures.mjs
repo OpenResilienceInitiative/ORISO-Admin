@@ -6,7 +6,6 @@ import path from 'node:path';
 import { sourceIdentity } from './verification-provenance.mjs';
 import { diagnosticCaseOrder } from './diagnostic-case-order.mjs';
 import { checkFieldFormBackport } from './field-form-backport.mjs';
-import { comparatorContract, prepareComparatorProbe } from './fixture-comparator-probe.mjs';
 
 // Closed selection; fresh native process/browser lifetime per case, never an acceptance run.
 const selections = {
@@ -48,14 +47,6 @@ const selections = {
         '^(Blue Inverted German|Blue Inverted English)$',
         ['Blue Inverted German', 'Blue Inverted English'],
     ],
-    'deadline-warning': [
-        'src/components/Tenants/LegalSettings/components/DataProcessingAgreementContainer/DataProcessingAgreementContainer.deadline.stories.tsx',
-        'Failed Publication Keeps Draft$',
-    ],
-    'registration-warning': [
-        'src/pages/Agency/Edit/components/RegistrationSettings/RegistrationSettings.stories.tsx',
-        'Changing The Tenant Drops The Pick$',
-    ],
 };
 const userSequences = {
     'saved-sort-alone': ['SavedSortOnMount'],
@@ -93,7 +84,6 @@ if (Object.hasOwn(userSequences, selection)) {
     writeFileSync(generated, generatedBytes, { flag: 'wx' });
 }
 try {
-    if (!generated && !tokenSelection && !repairedRegression) prepareComparatorProbe(directory, selection);
     const source = sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA);
     const args = [
         path.resolve('node_modules/.bin/vp'),
@@ -124,8 +114,7 @@ try {
     writeFileSync(path.join(directory, 'input.json'), JSON.stringify(input, null, 2), { flag: 'wx' });
     const log = openSync(path.join(directory, 'child.log'), 'wx');
     const cleanDiagnosticEnv = { ...process.env };
-    for (const key of ['VITE_ORISO_USER_SEQUENCE', 'VITE_ORISO_TOKEN_DIAGNOSTIC', 'VITE_ORISO_FIXTURE_DIAGNOSTIC'])
-        delete cleanDiagnosticEnv[key];
+    for (const key of ['VITE_ORISO_USER_SEQUENCE', 'VITE_ORISO_TOKEN_DIAGNOSTIC']) delete cleanDiagnosticEnv[key];
     const child = spawn(process.execPath, args, {
         detached: process.platform !== 'win32',
         stdio: ['ignore', log, log],
@@ -136,9 +125,7 @@ try {
                 ? { VITE_ORISO_USER_SEQUENCE: selection }
                 : tokenSelection
                 ? { VITE_ORISO_TOKEN_DIAGNOSTIC: selection }
-                : repairedRegression
-                ? {}
-                : { VITE_ORISO_FIXTURE_DIAGNOSTIC: selection }),
+                : {}),
             VERIFICATION_ARTIFACTS_DIR: directory,
         },
     });
@@ -321,25 +308,7 @@ try {
             { flag: 'wx' },
         );
     } else {
-        const warnings = observations.filter((item) => item.fixtureDiagnostic === 'first-warning');
-        let interception;
-        try {
-            interception = JSON.parse(readFileSync(path.join(directory, 'comparator-probe/interception.json'), 'utf8'));
-        } catch {
-            /* Optimized-away interception is invalid evidence. */
-        }
-        observationComplete =
-            warnings.length === 1 &&
-            interception?.sha256 === comparatorContract.sha256 &&
-            interception.transforms === 1 &&
-            warnings[0].comparison?.sha256 === comparatorContract.sha256 &&
-            warnings[0].comparison?.module === comparatorContract.module &&
-            warnings[0].comparison?.comparisonId > 0;
-        writeFileSync(
-            path.join(directory, 'warning-receipt.json'),
-            JSON.stringify({ observationComplete, warnings, interception }, null, 2),
-            { flag: 'wx' },
-        );
+        throw new Error('Unknown selected evidence kind');
     }
     const complete =
         observationComplete &&
