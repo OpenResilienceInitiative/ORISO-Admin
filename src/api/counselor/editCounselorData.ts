@@ -107,20 +107,20 @@ const performEditCounselorData = async (
     const url = `${counselorEndpoint}/${id}`;
     const bodyData = JSON.stringify(strippedCounselor);
 
+    const profileIntent = operationIntent?.subIntent('profile');
     return (
-        fetchData({
-            url,
-            headersData: accountOperationHeaders(
-                operationIntent?.subIntent('profile'),
-                FETCH_METHODS.PUT,
+        settleAccountOperationStep(
+            operationIntent,
+            profileIntent,
+            fetchData({
                 url,
+                headersData: accountOperationHeaders(profileIntent, FETCH_METHODS.PUT, url, bodyData),
+                method: FETCH_METHODS.PUT,
+                skipAuth: false,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL],
                 bodyData,
-            ),
-            method: FETCH_METHODS.PUT,
-            skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL],
-            bodyData,
-        })
+            }),
+        )
             .then((response) => {
                 if (response.status === 200) {
                     return response.json();

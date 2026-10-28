@@ -75,6 +75,19 @@ register(
 );
 const { AccountOperationIntent, AccountOperationActions } = await import('../src/utils/accountOperationIntent.ts');
 
+const { recordAccountOperationResponse } = await import('../src/utils/accountOperationState.ts');
+const observedRefusal = (status, operation) => {
+    const response = new Response(null, {
+        status,
+        headers: {
+            'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+            'X-ORISO-Mutation-Operation': operation,
+        },
+    });
+    recordAccountOperationResponse(response, response);
+    return response;
+};
+
 for (const operation of ['registerTenantAdmin', 'sendTwoFactorEmail', 'activateTwoFactor']) {
     test(`public Wizard ${operation} keeps its request ID after an unknown outcome`, async () => {
         const { createHttpTenantAdminOnboardingClient } = await import(
@@ -263,15 +276,7 @@ for (const [file, exported, options, payload] of [
         globalThis.__accountIntentFetch = (request) => {
             requests.push(request);
             return fail
-                ? Promise.reject(
-                      new Response(null, {
-                          status: 400,
-                          headers: {
-                              'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
-                              'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
-                          },
-                      }),
-                  )
+                ? Promise.reject(observedRefusal(400, request.headersData['Idempotency-Key']))
                 : Promise.resolve({ status: 200, json: async () => ({ _embedded: {} }) });
         };
         try {
@@ -366,16 +371,7 @@ test('a compound save cannot retire after a previous agency step completed and t
     globalThis.__accountIntentFetch = (request) => {
         observed.push(request);
         if (observed.length === 2) return Promise.reject(new TypeError('profile reply lost'));
-        if (observed.length === 3)
-            return Promise.reject(
-                new Response(null, {
-                    status: 403,
-                    headers: {
-                        'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
-                        'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
-                    },
-                }),
-            );
+        if (observed.length === 3) return Promise.reject(observedRefusal(403, request.headersData['Idempotency-Key']));
         return Promise.resolve({ status: 200, json: async () => ({ _embedded: {} }) });
     };
     try {

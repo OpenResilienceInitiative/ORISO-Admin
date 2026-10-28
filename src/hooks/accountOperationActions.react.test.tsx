@@ -12,6 +12,8 @@ import {
     useUserTwoFactorSendEmailCode,
 } from './useUserTwoFactorAuth.hook';
 import { TypeOfUser } from '../enums/TypeOfUser';
+import { AccountOperationIntent, isTerminalAccountOperationRefusal } from '../utils/accountOperationIntent';
+import { recordAccountOperationResponse } from '../utils/accountOperationState';
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), tenantRecord: { username: 'original-login' } }));
 vi.mock('../api/fetchData', async () => {
@@ -184,5 +186,105 @@ describe('mounted account mutation ownership with real React Query', () => {
         expect(keyAt(1)).toBe(keyAt(0));
         expect(bodyAt(1)).toBe(bodyAt(0));
         expect(keyAt(2)).not.toBe(keyAt(0));
+    });
+});
+
+[TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].forEach((typeOfUser) => {
+    describe(`C2 actual ${typeOfUser} composite API through its mounted mutation hook`, () => {
+        it.each([400, 403, 409])(
+            'finishes known agency success plus observed profile refusal %s before an unchanged new Save',
+            async (status) => {
+                let parent: AccountOperationIntent | undefined;
+                const failure = new Error('verified profile refusal');
+                mocks.fetch
+                    .mockResolvedValueOnce({ status: 200 })
+                    .mockImplementationOnce((request) => {
+                        const response = new Response(null, {
+                            status,
+                            headers: {
+                                'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+                                'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
+                            },
+                        });
+                        // This test replaces fetchData's boundary, so register the same
+                        // copied transport evidence that the real helper records.
+                        recordAccountOperationResponse(failure, response);
+                        return Promise.reject(failure);
+                    })
+                    .mockResolvedValueOnce({ status: 200 })
+                    .mockResolvedValueOnce({ status: 200, json: async () => ({ _embedded: {} }) });
+                const { result } = renderHook(
+                    () =>
+                        useAddOrUpdateConsultantOrAdmin({
+                            id: '42',
+                            typeOfUser,
+                            onError: (_error, variables) => {
+                                parent = variables.operationIntent;
+                            },
+                        }),
+                    { wrapper: wrapperFor() },
+                );
+                const submitted = { email: 'same@example.test', agencies: [{ value: '7' }] };
+                await act(async () => {
+                    await expect(result.current.mutateAsync(submitted as never)).rejects.toBe(failure);
+                });
+                expect(parent).toBeDefined();
+                expect(
+                    isTerminalAccountOperationRefusal(failure, parent),
+                    'agency success must not become whole-save NO_EFFECT',
+                ).toBe(false);
+                expect(mocks.fetch).toHaveBeenCalledTimes(2);
+                expect(mocks.fetch.mock.calls[0][0].url).toContain(
+                    `${typeOfUser === TypeOfUser.Consultants ? 'consultants' : 'agencyadmins'}/42/agencies`,
+                );
+                await act(async () => {
+                    await result.current.mutateAsync(submitted as never);
+                });
+                expect(mocks.fetch).toHaveBeenCalledTimes(4);
+                expect(keyAt(2), 'C2-known-partial-result-starts-fresh-agency-child').not.toBe(keyAt(0));
+                expect(keyAt(3), 'C2-known-partial-result-starts-fresh-profile-child').not.toBe(keyAt(1));
+                expect(bodyAt(2)).toBe(bodyAt(0));
+                expect(bodyAt(3)).toBe(bodyAt(1));
+            },
+        );
+
+        it('preserves exact children when agency succeeded, profile stayed unknown and a later agency retry is verified refused', async () => {
+            const failure = new Error('verified later agency refusal');
+            mocks.fetch
+                .mockResolvedValueOnce({ status: 200 })
+                .mockRejectedValueOnce(new TypeError('profile reply lost'))
+                .mockImplementationOnce((request) => {
+                    const response = new Response(null, {
+                        status: 403,
+                        headers: {
+                            'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+                            'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
+                        },
+                    });
+                    recordAccountOperationResponse(failure, response);
+                    return Promise.reject(failure);
+                })
+                .mockResolvedValueOnce({ status: 200 })
+                .mockResolvedValueOnce({ status: 200, json: async () => ({ _embedded: {} }) });
+            const { result } = renderHook(() => useAddOrUpdateConsultantOrAdmin({ id: '42', typeOfUser }), {
+                wrapper: wrapperFor(),
+            });
+            const submitted = { email: 'same@example.test', agencies: [{ value: '7' }] };
+            await act(async () => {
+                await expect(result.current.mutateAsync(submitted as never)).rejects.toThrow('profile reply lost');
+            });
+            await act(async () => {
+                await expect(result.current.mutateAsync(submitted as never)).rejects.toBe(failure);
+            });
+            await act(async () => {
+                await result.current.mutateAsync(submitted as never);
+            });
+            expect(mocks.fetch).toHaveBeenCalledTimes(5);
+            expect(keyAt(2)).toBe(keyAt(0));
+            expect(keyAt(3)).toBe(keyAt(0));
+            expect(keyAt(4)).toBe(keyAt(1));
+            expect(bodyAt(3)).toBe(bodyAt(0));
+            expect(bodyAt(4)).toBe(bodyAt(1));
+        });
     });
 });

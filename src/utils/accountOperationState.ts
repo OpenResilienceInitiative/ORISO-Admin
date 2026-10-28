@@ -6,7 +6,12 @@ export const bindings = new WeakMap<AccountOperationIntent, string>();
 export const children = new WeakMap<AccountOperationIntent, Map<string, AccountOperationIntent>>();
 export const acknowledgements = new WeakMap<AccountOperationIntent, () => void>();
 
-const completedCompositeSteps = new WeakSet<AccountOperationIntent>();
+type CompositeStepOutcome = 'unknown' | 'success' | 'refused';
+const compositeSteps = new WeakMap<AccountOperationIntent, Map<AccountOperationIntent, CompositeStepOutcome>>();
+const hasKnownCompositeOutcome = (parent: AccountOperationIntent | undefined): boolean => {
+    const steps = parent ? compositeSteps.get(parent) : undefined;
+    return !!steps?.size && [...steps.values()].every((outcome) => outcome !== 'unknown');
+};
 const compositeRefusals = new WeakMap<object, string>();
 
 const uncertainIntents = new WeakSet<AccountOperationIntent>();
@@ -44,15 +49,14 @@ export const isTerminalAccountOperationRefusal = (error: unknown, intent?: Accou
         status = (error as Error & { status?: number }).status;
     }
     status = response?.status ?? status;
-    const raw = typeof Response !== 'undefined' && error instanceof Response ? error : undefined;
-    const outcome = response?.outcome ?? raw?.headers.get('X-ORISO-Mutation-Outcome');
-    const operation = response?.operation ?? raw?.headers.get('X-ORISO-Mutation-Operation');
+    const outcome = response?.outcome;
+    const operation = response?.operation;
     if (
         object &&
         intent &&
         outcome === 'NO_EFFECT' &&
         operation === intent.id &&
-        [400, 403, 409].includes(status ?? 0)
+        [400, 403, 409].includes(response?.status ?? 0)
     ) {
         verifiedRefusals.set(object, intent.id);
         uncertainErrors.delete(object);
@@ -86,31 +90,46 @@ export const settleAccountOperation = async <T>(
         acknowledgeAccountOperation(intent);
         return response;
     } catch (error) {
-        if (accountOperationFailed(intent, error)) acknowledgeAccountOperation(intent);
+        // A partial save with every issued child settled is complete, but its
+        // earlier successful child means the whole save was not NO_EFFECT.
+        if (hasKnownCompositeOutcome(intent) || accountOperationFailed(intent, error)) {
+            acknowledgeAccountOperation(intent);
+        }
         throw error;
     }
 };
 
-/** A child refusal only retires a whole save before any earlier effect completed. */
+/** Track each issued child, retaining the whole action while any result is unknown. */
 export const settleAccountOperationStep = async <T>(
     parent: AccountOperationIntent | undefined,
     child: AccountOperationIntent | undefined,
     result: Promise<T>,
 ): Promise<T> => {
+    let steps: Map<AccountOperationIntent, CompositeStepOutcome> | undefined;
+    if (parent && child) {
+        steps = compositeSteps.get(parent);
+        if (!steps) {
+            steps = new Map();
+            compositeSteps.set(parent, steps);
+        }
+        if (!steps.has(child)) steps.set(child, 'unknown');
+    }
     try {
         const response = await result;
-        if (parent) completedCompositeSteps.add(parent);
+        if (child) steps?.set(child, 'success');
         return response;
     } catch (error) {
-        if (
-            parent &&
-            child &&
-            !completedCompositeSteps.has(parent) &&
-            isTerminalAccountOperationRefusal(error, child) &&
-            error !== null &&
-            (typeof error === 'object' || typeof error === 'function')
-        ) {
-            compositeRefusals.set(error, parent.id);
+        if (parent && child && steps && isTerminalAccountOperationRefusal(error, child)) {
+            // A refusal during a later replay cannot erase an already observed
+            // successful effect, nor finish a still-unknown sibling.
+            if (steps.get(child) !== 'success') steps.set(child, 'refused');
+            if (
+                [...steps.values()].every((outcome) => outcome === 'refused') &&
+                error !== null &&
+                (typeof error === 'object' || typeof error === 'function')
+            ) {
+                compositeRefusals.set(error, parent.id);
+            }
         }
         throw error;
     }

@@ -36,20 +36,20 @@ const performEditAgencyAdminData = async (
         username, // MATRIX MIGRATION: backend handles encoding
         twoFactorAuth,
     });
+    const profileIntent = operationIntent?.subIntent('profile');
     return (
-        fetchData({
-            url,
-            headersData: accountOperationHeaders(
-                operationIntent?.subIntent('profile'),
-                FETCH_METHODS.PUT,
+        settleAccountOperationStep(
+            operationIntent,
+            profileIntent,
+            fetchData({
                 url,
+                headersData: accountOperationHeaders(profileIntent, FETCH_METHODS.PUT, url, bodyData),
+                method: FETCH_METHODS.PUT,
+                skipAuth: false,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL],
                 bodyData,
-            ),
-            method: FETCH_METHODS.PUT,
-            skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL],
-            bodyData,
-        })
+            }),
+        )
             .then((response) => response.json())
             // eslint-disable-next-line no-underscore-dangle
             .then((data: { _embedded: CounselorData }) => data?._embedded)
