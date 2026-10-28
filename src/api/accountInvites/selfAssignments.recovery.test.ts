@@ -51,7 +51,8 @@ describe('own Consultant identity through self-assignment', () => {
             fetchMock.mockResolvedValueOnce(new Response(null, { status })).mockResolvedValueOnce(success());
             let revision = 1;
             vi.mocked(tryRefreshAccessToken).mockImplementation(async () => {
-                setSessionTokens(token('self-admin', ++revision), 'test-refresh');
+                revision += 1;
+                setSessionTokens(token('self-admin', revision), 'test-refresh');
                 return true;
             });
 
