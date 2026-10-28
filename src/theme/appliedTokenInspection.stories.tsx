@@ -88,6 +88,7 @@ const captureTokenCSS = (
     target: Element | null,
     id: string,
     expected: string,
+    motionEvent?: { type: string; property?: string; elapsedTime?: number; truncated: boolean },
 ) => {
     markTokenDiagnostic(phase, context, () => {
         try {
@@ -95,8 +96,24 @@ const captureTokenCSS = (
             const observation = report?.observations?.find((entry: Observation) => entry.id === id);
             const selector = observation?.target?.selector;
             const reportedTarget = selector ? canvas.querySelector(selector) : null;
+            const computed = target ? getComputedStyle(target) : null;
+            const animationsSupported = !!target && typeof target.getAnimations === 'function';
+            const animations = animationsSupported ? target.getAnimations() : [];
             return {
                 id,
+                motionEvent,
+                motion: {
+                    transitionProperty: computed?.transitionProperty,
+                    transitionDuration: computed?.transitionDuration,
+                    transitionDelay: computed?.transitionDelay,
+                    animationsSupported,
+                    animationCount: animations.length,
+                    animationsTruncated: animations.length > 4,
+                    animations: animations.slice(0, 4).map((animation) => ({
+                        playState: animation.playState,
+                        currentTime: typeof animation.currentTime === 'number' ? animation.currentTime : null,
+                    })),
+                },
                 selector,
                 sameTarget: target === reportedTarget,
                 connected: target?.isConnected ?? false,
@@ -120,6 +137,34 @@ const captureTokenCSS = (
             return { id, receiptError: 'CSS target/report could not be read' };
         }
     });
+};
+
+// Event receipts belong only to this selected play lifetime; never to ordinary feature observation.
+const beginTokenMotionDiagnostic = (
+    prefix: string,
+    canvas: HTMLElement,
+    context: InspectionReport['context'],
+    target: Element | null,
+    id: string,
+    expected: string,
+) => {
+    if (!import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC || !target) return () => {};
+    let count = 0;
+    const types = ['transitionend', 'transitioncancel', 'animationend', 'animationcancel'];
+    const receipt = (event: Event) => {
+        if (event.target !== target) return;
+        count += 1;
+        if (count > 9) return;
+        captureTokenCSS(`${prefix}:motion-completion`, canvas, context, target, id, expected, {
+            type: count === 9 ? 'receipt-limit' : event.type,
+            property: event instanceof TransitionEvent ? event.propertyName : undefined,
+            elapsedTime:
+                event instanceof TransitionEvent || event instanceof AnimationEvent ? event.elapsedTime : undefined,
+            truncated: count === 9,
+        });
+    };
+    types.forEach((type) => target.addEventListener(type, receipt));
+    return () => types.forEach((type) => target.removeEventListener(type, receipt));
 };
 
 const withDeclaration = async (
@@ -325,6 +370,14 @@ export const ComponentOverrideAndRestore: Story = {
         ];
         const observation = () => findObservation(readReport(canvasElement), 'component:field-input:background-color');
         expect(observation().status).toBe('match');
+        const releaseMotion = beginTokenMotionDiagnostic(
+            'override',
+            canvasElement,
+            contexts[0],
+            input,
+            'component:field-input:background-color',
+            expected,
+        );
         captureTokenCSS(
             'override:before-mutation',
             canvasElement,
@@ -357,6 +410,14 @@ export const ComponentOverrideAndRestore: Story = {
                             within(canvasElement).getByRole('row', { name: /field-input.*background-color/ }),
                         ).toHaveTextContent('mismatch');
                     });
+                    captureTokenCSS(
+                        'override:assertion-passed',
+                        canvasElement,
+                        contexts[0],
+                        input,
+                        'component:field-input:background-color',
+                        expected,
+                    );
                 } catch (error) {
                     captureTokenCSS(
                         'override:failure-before-restore',
@@ -369,6 +430,15 @@ export const ComponentOverrideAndRestore: Story = {
                     throw error;
                 }
             });
+            await waitFor(() => expect(observation().status).toBe('match'));
+            captureTokenCSS(
+                'override:restored-assertion-passed',
+                canvasElement,
+                contexts[0],
+                input,
+                'component:field-input:background-color',
+                expected,
+            );
         } catch (error) {
             captureTokenCSS(
                 'override:failure-after-restore',
@@ -388,8 +458,8 @@ export const ComponentOverrideAndRestore: Story = {
                 'component:field-input:background-color',
                 expected,
             );
+            releaseMotion();
         }
-        await waitFor(() => expect(observation().status).toBe('match'));
     },
 };
 
@@ -472,22 +542,37 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
             import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC && button.target
                 ? canvasElement.querySelector(button.target.selector)
                 : null;
+        const normalizedExpected = serialize('background-color', expected);
+        const releaseMotion = beginTokenMotionDiagnostic(
+            'bridge',
+            canvasElement,
+            context,
+            diagnosticTarget,
+            button.id,
+            expected,
+        );
         captureTokenCSS('bridge:before-assert', canvasElement, context, diagnosticTarget, button.id, expected);
         try {
-            expect(button).toMatchObject({
-                expected,
-                status: 'match',
+            await waitFor(() => {
+                const current = findObservation(
+                    readReport(canvasElement),
+                    'component:bridge-primary-button:background-color',
+                );
+                expect(current).toMatchObject({ expected, status: 'match' });
+                expect(current.target).toMatchObject({ selector: expect.any(String), property: 'background-color' });
+                const target = current.target ? canvasElement.querySelector(current.target.selector) : null;
+                if (!(target instanceof HTMLButtonElement))
+                    throw new Error('The observation must name the real M3 button');
+                expect(target).toHaveAccessibleName(i18n.t('save'));
+                expect(current.actual).toBe(getComputedStyle(target).backgroundColor);
+                expect(current.actual).toBe(normalizedExpected);
             });
-            expect(button.target).toMatchObject({ selector: expect.any(String), property: 'background-color' });
-            const target = button.target ? canvasElement.querySelector(button.target.selector) : null;
-            if (!(target instanceof HTMLButtonElement)) throw new Error('The observation must name the real M3 button');
-            expect(target).toHaveAccessibleName(i18n.t('save'));
-            expect(button.actual).toBe(getComputedStyle(target).backgroundColor);
-            expect(button.actual).toBe(serialize('background-color', button.expected));
+            captureTokenCSS('bridge:assertion-passed', canvasElement, context, diagnosticTarget, button.id, expected);
         } catch (error) {
             captureTokenCSS('bridge:failure', canvasElement, context, diagnosticTarget, button.id, expected);
             throw error;
         } finally {
+            releaseMotion();
             captureTokenCSS('bridge:finally', canvasElement, context, diagnosticTarget, button.id, expected);
         }
     },

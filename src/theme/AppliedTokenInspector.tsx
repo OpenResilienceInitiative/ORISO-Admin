@@ -17,9 +17,21 @@ export const observeTokenReference = (target: HTMLElement, schedule: () => void)
     });
     const styles = new MutationObserver(schedule);
     styles.observe(document.head, { childList: true, subtree: true, characterData: true });
+    // Computed CSS can finish changing after the last style/class mutation.
+    const motionEvents = ['transitionend', 'transitioncancel', 'animationend', 'animationcancel'];
+    const completed = (event: Event) => {
+        if (
+            event.target instanceof Element &&
+            target.contains(event.target) &&
+            !event.target.closest('[data-applied-token-inspector]')
+        )
+            schedule();
+    };
+    motionEvents.forEach((type) => target.addEventListener(type, completed));
     return () => {
         attributes.disconnect();
         styles.disconnect();
+        motionEvents.forEach((type) => target.removeEventListener(type, completed));
     };
 };
 

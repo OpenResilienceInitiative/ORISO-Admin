@@ -148,3 +148,69 @@ describe('real DOM reference observation ownership (not computed CSS evidence)',
         }
     });
 });
+
+describe('CSS completion observation mechanism (mocked computed value, not browser CSS proof)', () => {
+    it.each(['transitionend', 'transitioncancel', 'animationend', 'animationcancel'])(
+        'refreshes a changed computed result without a DOM mutation at %s',
+        async (type) => {
+            const reference = document.createElement('div');
+            const input = document.createElement('input');
+            reference.append(input);
+            document.body.append(reference);
+            let color = 'rgb(1, 2, 3)';
+            const computed = document.createElement('span').style;
+            Object.defineProperty(computed, 'backgroundColor', { get: () => color });
+            const read = vi.spyOn(window, 'getComputedStyle').mockReturnValue(computed);
+            let report = getComputedStyle(input).backgroundColor;
+            const refresh = vi.fn(() => {
+                report = getComputedStyle(input).backgroundColor;
+            });
+            const release = observeTokenReference(reference, refresh);
+            try {
+                color = 'rgb(4, 5, 6)';
+                await Promise.resolve();
+                expect(refresh).not.toHaveBeenCalled();
+                expect(report).toBe('rgb(1, 2, 3)');
+                input.dispatchEvent(new Event(type, { bubbles: true }));
+                expect(refresh).toHaveBeenCalledTimes(1);
+                expect(report).toBe('rgb(4, 5, 6)');
+            } finally {
+                release();
+                read.mockRestore();
+                reference.remove();
+            }
+        },
+    );
+    it('ignores foreign and inspector output completion, and releases all motion listeners idempotently', () => {
+        const reference = document.createElement('div');
+        const input = document.createElement('input');
+        reference.append(input);
+        const foreign = document.createElement('button');
+        const output = document.createElement('section');
+        output.setAttribute('data-applied-token-inspector', '');
+        document.body.append(reference, foreign, output);
+        const refresh = vi.fn();
+        const release = observeTokenReference(reference, refresh);
+        try {
+            ['transitionend', 'transitioncancel', 'animationend', 'animationcancel'].forEach((type) => {
+                foreign.dispatchEvent(new Event(type, { bubbles: true }));
+                output.dispatchEvent(new Event(type, { bubbles: true }));
+            });
+            expect(refresh).not.toHaveBeenCalled();
+            reference.append(output);
+            output.dispatchEvent(new Event('transitionend', { bubbles: true }));
+            expect(refresh).not.toHaveBeenCalled();
+            release();
+            release();
+            ['transitionend', 'transitioncancel', 'animationend', 'animationcancel'].forEach((type) =>
+                input.dispatchEvent(new Event(type, { bubbles: true })),
+            );
+            expect(refresh).not.toHaveBeenCalled();
+        } finally {
+            release();
+            reference.remove();
+            foreign.remove();
+            output.remove();
+        }
+    });
+});
