@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import {
     ConsultantPersonalFields,
@@ -742,6 +743,18 @@ export const UserEditOrAdd = () => {
             </Page.BackWithActions>
 
             <ThemeProvider theme={orisoMuiTheme}>
+                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        targetTenantId={singleData.tenantId}
+                        canManage={can(
+                            PermissionAction.Update,
+                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
+                        )}
+                    />
+                )}
                 <Form
                     disabled={isReadOnly}
                     labelAlign="left"

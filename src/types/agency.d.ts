@@ -70,6 +70,10 @@ export interface AgencyData {
     demographics?: AgencyDemographicsData;
     description: string;
     offline: boolean;
+    active?: boolean | null;
+    ownActive?: boolean;
+    tenantActive?: boolean | null;
+    restrictions?: string[];
     online: boolean;
     postcode: string;
     street?: string;

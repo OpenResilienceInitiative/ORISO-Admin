@@ -25,6 +25,7 @@ import { TenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
 import styles from './styles.module.scss';
+import { statusLabel, statusValue } from '../../../components/EntityStatusCard/presentation';
 
 const TENANT_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
     beraterCount: 'BERATERCOUNT',
@@ -133,6 +134,22 @@ export const TenantsList = () => {
             sortOrder: getTenantColumnSortOrder('name', tableState),
             showSorterTooltip: false,
             render: (name: string) => <>{decodeHTML(name)}</>,
+        },
+        {
+            title: t('entityStatus.title'),
+            dataIndex: 'active',
+            key: 'active',
+            width: 100,
+            render: (active: boolean | null | undefined, tenant: TenantData) => (
+                <span
+                    data-testid="entity-status-list"
+                    data-entity-kind="tenant"
+                    data-entity-id={tenant.id}
+                    data-active={statusValue(active)}
+                >
+                    {t(statusLabel(active))}
+                </span>
+            ),
         },
         !settings.multitenancyWithSingleDomainEnabled && {
             width: 150,
