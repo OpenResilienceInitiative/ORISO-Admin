@@ -48,7 +48,7 @@ const eventFixtures = {
     ],
     'Unhandled Rejection': [
         { kind: 'unhandled-rejection', message: 'controlled unhandled rejection' },
-        { kind: 'console-error', message: 'controlled unhandled rejection' },
+        { kind: 'console-error', message: '[object PromiseRejectionEvent]' },
     ],
     'Unexpected Request': [
         { kind: 'unexpected-request', message: 'GET http://localhost:63315/service/__verification_unexpected__' },
@@ -70,11 +70,9 @@ const eventFixtures = {
     'Known Operational Error': [{ kind: 'console-error', message: 'approved story independent console failure' }],
 };
 const fixtureEvidence = (title, failure, control) => {
-    const slugs = {
-        'Strict Addon Violation': 'strict-addon-violation',
-        'Duplicate Audit': 'duplicate-audit',
-    };
-    const storyId = `controls--${slugs[title] ?? title}`;
+    const storyId = `verificationcontrols-temporary--${title.toLowerCase().replaceAll(' ', '-')}`;
+    const decorated = (message) =>
+        `\n\x1b[34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/${storyId}&addonPanel=storybook/interactions/panel\x1b[39m\n\n${message}`;
     const details = [];
     const functional = control.profile === 'functional-pilot';
     const events = eventFixtures[title];
@@ -142,7 +140,7 @@ const fixtureEvidence = (title, failure, control) => {
         const message = toHaveNoViolations(raw).message();
         reports.push({ result: { error: message, errorDetails: { name: 'Error', message } } });
         details.push(
-            { name: 'Error', message },
+            { name: 'Error', message: decorated(message) },
             { name: 'Error', message: `Unapproved accessibility violation in ${storyId}: ${fingerprints.join('\n')}` },
         );
     }
@@ -153,7 +151,7 @@ const fixtureEvidence = (title, failure, control) => {
     if (title === 'Audit Error') {
         const error = new ElementA11yParameterError();
         details.push(
-            { name: error.name, message: error.message },
+            { name: error.name, message: decorated(error.message) },
             { name: 'Error', message: 'Accessibility audit missing, malformed, failed, or unexpected engine version' },
         );
     }

@@ -70,7 +70,7 @@ const eventFixtures: Record<
     ],
     'Unhandled Rejection': [
         { kind: 'unhandled-rejection', message: 'controlled unhandled rejection' },
-        { kind: 'console-error', message: 'controlled unhandled rejection' },
+        { kind: 'console-error', message: '[object PromiseRejectionEvent]' },
     ],
     'Unexpected Request': [
         { kind: 'unexpected-request', message: 'GET http://localhost:63315/service/__verification_unexpected__' },
@@ -92,11 +92,9 @@ const eventFixtures: Record<
     'Known Operational Error': [{ kind: 'console-error', message: 'approved story independent console failure' }],
 };
 const fixtureEvidence = (title: string, failure: string | null, control: typeof capsule) => {
-    const slugs: Record<string, string> = {
-        'Strict Addon Violation': 'strict-addon-violation',
-        'Duplicate Audit': 'duplicate-audit',
-    };
-    const storyId = `controls--${slugs[title] ?? title}`;
+    const storyId = `verificationcontrols-temporary--${title.toLowerCase().replaceAll(' ', '-')}`;
+    const decorated = (message: string) =>
+        `\n\x1b[34mClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/${storyId}&addonPanel=storybook/interactions/panel\x1b[39m\n\n${message}`;
     const details: any[] = [];
     const functional = control.profile === 'functional-pilot';
     const events = eventFixtures[title];
@@ -164,7 +162,7 @@ const fixtureEvidence = (title: string, failure: string | null, control: typeof 
         const message = toHaveNoViolations(raw).message();
         reports.push({ result: { error: message, errorDetails: { name: 'Error', message } } });
         details.push(
-            { name: 'Error', message },
+            { name: 'Error', message: decorated(message) },
             { name: 'Error', message: `Unapproved accessibility violation in ${storyId}: ${fingerprints.join('\n')}` },
         );
     }
@@ -175,7 +173,7 @@ const fixtureEvidence = (title: string, failure: string | null, control: typeof 
     if (title === 'Audit Error') {
         const error = new ElementA11yParameterError();
         details.push(
-            { name: error.name, message: error.message },
+            { name: error.name, message: decorated(error.message) },
             { name: 'Error', message: 'Accessibility audit missing, malformed, failed, or unexpected engine version' },
         );
     }
@@ -581,3 +579,47 @@ it('rejects extra error text hidden in the deliberate functional duplicate-audit
         'Unexpected injected audit error evidence',
     );
 });
+
+it.each(['origin', 'story', 'panel', 'duplicate', 'suffix', 'missing'])(
+    'rejects a changed or missing source-defined Storybook debug banner: %s',
+    (kind) => {
+        const directory = packet();
+        const cases = readFileSync(path.join(directory, 'run-current/cases.jsonl'), 'utf8')
+            .split('\n')
+            .map((line) => JSON.parse(line));
+        const details = cases.find((item) => item.name === 'Low Contrast').errorDetails;
+        const first = details[0];
+        if (kind === 'origin') first.message = first.message.replace('localhost:6006', 'other.example');
+        if (kind === 'story') first.message = first.message.replace('--low-contrast', '--unnamed-button');
+        if (kind === 'panel') first.message = first.message.replace('storybook/interactions/panel', 'other/panel');
+        if (kind === 'duplicate') first.message += first.message;
+        if (kind === 'suffix') first.message += '\nextra failure';
+        if (kind === 'missing') first.message = first.message.slice(first.message.indexOf('expect(received)'));
+        replaceCaseErrors(directory, 'Low Contrast', details);
+        expect(() => assertControlPhase(directory, 'capture', 1, capsule)).toThrow();
+    },
+);
+
+it.each(['missing', 'duplicate', 'reason-as-companion', 'wrong-reason'])(
+    'rejects a changed PromiseRejectionEvent forwarding contract: %s',
+    (kind) => {
+        const { directory, current, cases } = functionalPacket();
+        const details = cases.find((item) => item.name === 'Unhandled Rejection').errorDetails;
+        const events = details[0].verificationFailures.unexpected;
+        if (kind === 'missing')
+            events.splice(
+                events.findIndex((event) => event.kind === 'console-error'),
+                1,
+            );
+        if (kind === 'duplicate') events.push({ kind: 'console-error', message: '[object PromiseRejectionEvent]' });
+        if (kind === 'reason-as-companion')
+            events.find((event) => event.kind === 'console-error').message = 'controlled unhandled rejection';
+        if (kind === 'wrong-reason')
+            events.find((event) => event.kind === 'unhandled-rejection').message = 'different rejection';
+        details[0].message = `Story verification failed:\n${events
+            .map((event) => `${event.kind}: ${event.message}`)
+            .join('\n')}`;
+        replaceCaseErrors(directory, 'Unhandled Rejection', details);
+        expect(() => assertControlPhase(directory, 'verify', 1, current)).toThrow();
+    },
+);

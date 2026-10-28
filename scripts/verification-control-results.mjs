@@ -98,11 +98,19 @@ const functionalEvents = (title, events) => {
     // Pinned browser error-catcher forwards owned window events to console.error.
     const forwarded = {
         'Uncaught Error': 'Uncaught Error: controlled uncaught error',
-        'Unhandled Rejection': 'controlled unhandled rejection',
+        'Unhandled Rejection': '[object PromiseRejectionEvent]',
     }[title];
     if (forwarded) take('console-error', (value) => value === forwarded);
     assert.deepEqual(remaining, [], `Unexpected or duplicate ${title} event`);
     assert.ok(events.length, 'Empty failure evidence');
+};
+
+// Pinned addon-vitest setup-file modifies the first addon failure with this banner.
+// The configured plugin uses its default origin; do not learn it from child output.
+const debugFailure = (title, record, message) => {
+    const storyId = `verificationcontrols-temporary--${title.toLowerCase().replaceAll(' ', '-')}`;
+    assert.equal(record.a11y?.storyId, storyId, 'Debug banner control identity mismatch');
+    return `\nClick to debug the error directly in Storybook: http://localhost:6006/?path=/story/${storyId}&addonPanel=storybook/interactions/panel\n\n${message}`;
 };
 
 const assertCaseFailures = (test, record, capsule, baselines) => {
@@ -192,7 +200,8 @@ const assertCaseFailures = (test, record, capsule, baselines) => {
             const approved = baselines.some(
                 (entry) => entry.storyId === record.a11y.storyId && entry.environment === record.a11y.environment,
             );
-            if (!approved && raw.violations.length) expectedMessages.push(toHaveNoViolations(raw).message());
+            if (!approved && raw.violations.length)
+                expectedMessages.push(debugFailure(test.title, record, toHaveNoViolations(raw).message()));
         }
         const auditPrefix =
             'Accessibility audit requires exactly one fresh version1 raw report and only its pinned strict assertion companion; received';
@@ -200,7 +209,7 @@ const assertCaseFailures = (test, record, capsule, baselines) => {
         if (test.title === 'Duplicate Audit') expectedMessages.push(`${auditPrefix} 2 reports (1 valid raw)`);
         if (test.title === 'Audit Error')
             expectedMessages.push(
-                engineError.message,
+                debugFailure(test.title, record, engineError.message),
                 'Accessibility audit missing, malformed, failed, or unexpected engine version',
             );
     }
@@ -226,7 +235,10 @@ const assertCaseFailures = (test, record, capsule, baselines) => {
         } else {
             assert.equal(
                 error.name,
-                error.message === engineError.message ? engineError.name : 'Error',
+                test.title === 'Audit Error' &&
+                    plain(error.message) === debugFailure(test.title, record, engineError.message)
+                    ? engineError.name
+                    : 'Error',
                 'Unexpected error leaf type',
             );
             actualMessages.push(plain(error.message));

@@ -1,0 +1,211 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { unlinkSync, mkdirSync, writeFileSync, openSync, closeSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { sourceIdentity } from './verification-provenance.mjs';
+
+// Closed selection; fresh native process/browser lifetime per case, never an acceptance run.
+const selections = {
+    'deadline-warning': [
+        'src/components/Tenants/LegalSettings/components/DataProcessingAgreementContainer/DataProcessingAgreementContainer.deadline.stories.tsx',
+        'Failed Publication Keeps Draft$',
+    ],
+    'registration-warning': [
+        'src/pages/Agency/Edit/components/RegistrationSettings/RegistrationSettings.stories.tsx',
+        'Changing The Tenant Drops The Pick$',
+    ],
+};
+const userSequences = {
+    'tenant-alone': ['TenantAdminsForPlatformAdmin'],
+    'error-tenant-error': ['Error', 'TenantAdminsForPlatformAdmin', 'Error'],
+    'tenant-error-tenant': ['TenantAdminsForPlatformAdmin', 'Error', 'TenantAdminsForPlatformAdmin'],
+};
+assert.equal(process.argv.length, 3, 'Supply one closed diagnostic selection');
+const selection = process.argv[2];
+assert.ok(
+    Object.hasOwn(selections, selection) || Object.hasOwn(userSequences, selection),
+    'Unknown diagnostic selection',
+);
+const directory = path.resolve('verification-artifacts', 'fixture-diagnostic', selection);
+mkdirSync(directory, { recursive: true });
+let generated;
+let generatedBytes;
+let originalSourceSHA256;
+if (Object.hasOwn(userSequences, selection)) {
+    generated = 'src/pages/users/List/UserManagement.fixture-diagnostic.stories.tsx';
+    const original = readFileSync('src/pages/users/List/UserManagement.stories.tsx', 'utf8');
+    originalSourceSHA256 = createHash('sha256').update(original).digest('hex');
+    generatedBytes =
+        original.replace(
+            "title: 'Organisms/Pages/Users/UserManagement',",
+            `title: 'Diagnostic/UserManagement/${selection}', includeStories: ['Case1', 'Case2', 'Case3'],`,
+        ) +
+        '\n' +
+        userSequences[selection]
+            .map((name, index) => `export const Case${index + 1} = { ...${name}, name: 'Case ${index + 1}' };\n`)
+            .join('');
+    writeFileSync(generated, generatedBytes, { flag: 'wx' });
+}
+try {
+    const source = sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA);
+    const args = [
+        path.resolve('node_modules/.bin/vp'),
+        'test',
+        'run',
+        '--project',
+        'storybook',
+        ...(generated ? [generated] : [selections[selection][0], '--testNamePattern', selections[selection][1]]),
+    ];
+    const input = {
+        selection,
+        ...(generated && {
+            generated: {
+                path: generated,
+                originalSourceSHA256,
+                bytes: generatedBytes,
+                sha256: createHash('sha256').update(generatedBytes).digest('hex'),
+            },
+        }),
+        source,
+        command: [process.execPath, ...args],
+        profile: 'functional-pilot',
+        acceptance: false,
+        timeoutMs: 180000,
+        startedAtUTC: new Date().toISOString(),
+    };
+    writeFileSync(path.join(directory, 'input.json'), JSON.stringify(input, null, 2), { flag: 'wx' });
+    const log = openSync(path.join(directory, 'child.log'), 'wx');
+    const child = spawn(process.execPath, args, {
+        detached: process.platform !== 'win32',
+        stdio: ['ignore', log, log],
+        env: {
+            ...process.env,
+            ORISO_VERIFICATION_PROFILE: 'functional-pilot',
+            ...(generated ? { VITE_ORISO_USER_SEQUENCE: selection } : { VITE_ORISO_FIXTURE_DIAGNOSTIC: selection }),
+            VERIFICATION_ARTIFACTS_DIR: directory,
+        },
+    });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+        timedOut = true;
+        try {
+            if (process.platform !== 'win32') process.kill(-child.pid, 'SIGKILL');
+            else child.kill('SIGKILL');
+        } catch (error) {
+            if (error.code !== 'ESRCH') throw error;
+        }
+    }, 180000);
+    const outcome = await new Promise((resolve) => {
+        child.on('error', (error) => resolve({ error: error.message }));
+        child.on('close', (exitCode, signal) => resolve({ exitCode, signal }));
+    });
+    clearTimeout(timer);
+    closeSync(log);
+    const runs = readdirSync(directory).filter((name) => name.startsWith('run-'));
+    let inventory;
+    if (runs.length === 1) {
+        const file = path.join(directory, runs[0], 'inventory.json');
+        try {
+            inventory = JSON.parse(readFileSync(file, 'utf8'));
+        } catch {
+            /* Missing evidence remains explicit. */
+        }
+    }
+    const expectedCount = generated ? userSequences[selection].length : 1;
+    let sequenceMatches = !generated;
+    if (generated && runs.length === 1) {
+        const events = readFileSync(path.join(directory, runs[0], 'events.jsonl'), 'utf8')
+            .trim()
+            .split('\n')
+            .map(JSON.parse);
+        const actual = events
+            .filter((event) => ['ready', 'result'].includes(event.event))
+            .map((event) => `${event.event}:${event.name}`);
+        const expected = userSequences[selection].flatMap((_, offset) => {
+            const index = offset + 1;
+            return [`ready:Case ${index}`, `result:Case ${index}`];
+        });
+        sequenceMatches = JSON.stringify(actual) === JSON.stringify(expected);
+        writeFileSync(
+            path.join(directory, 'sequence.json'),
+            JSON.stringify({ actual, expected, sequenceMatches }, null, 2),
+            { flag: 'wx' },
+        );
+    }
+    let bindingsMatch = false;
+    let diagnosticOmittedCases = [];
+    if (runs.length === 1 && inventory) {
+        const run = path.join(directory, runs[0]);
+        const provenance = JSON.parse(readFileSync(path.join(run, 'provenance.json'), 'utf8'));
+        const cases = readFileSync(path.join(run, 'cases.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+        const reference = { path: 'provenance.json', runId: provenance.runId };
+        const executedCases = cases.filter((item) => ['passed', 'failed'].includes(item.state));
+        diagnosticOmittedCases = cases
+            .filter((item) => !['passed', 'failed'].includes(item.state))
+            .map((item) => ({ name: item.name, state: item.state }));
+        const wantedNames = generated
+            ? userSequences[selection].map((_, index) => `Case ${index + 1}`)
+            : [selections[selection][1].slice(0, -1)];
+        bindingsMatch =
+            JSON.stringify(provenance.source) === JSON.stringify(source) &&
+            provenance.profile === 'functional-pilot' &&
+            JSON.stringify(inventory.provenance) === JSON.stringify(reference) &&
+            executedCases.length === expectedCount &&
+            cases.every(
+                (item) =>
+                    path.resolve(item.file) === path.resolve(generated ?? selections[selection][0]) &&
+                    JSON.stringify(item.provenance) === JSON.stringify(reference),
+            ) &&
+            executedCases.every(
+                (item, index) =>
+                    item.name === wantedNames[index] && JSON.stringify(item.provenance) === JSON.stringify(reference),
+            );
+    }
+    const complete =
+        bindingsMatch &&
+        inventory?.inventoryComplete === true &&
+        inventory.executed === expectedCount &&
+        sequenceMatches;
+    writeFileSync(
+        path.join(directory, 'outcome.json'),
+        JSON.stringify(
+            {
+                ...outcome,
+                timedOut,
+                endedAtUTC: new Date().toISOString(),
+                completeSelectedInventory: complete,
+                diagnosticOmittedCases,
+                acceptance: false,
+                note: 'Diagnostic only; raw warning and normal verification failures retained.',
+            },
+            null,
+            2,
+        ),
+        { flag: 'wx' },
+    );
+    console.info(
+        JSON.stringify({ selection, ...outcome, timedOut, completeSelectedInventory: complete, acceptance: false }),
+    );
+    process.exitCode = !timedOut && complete && outcome.exitCode === 0 ? 0 : 1;
+} finally {
+    if (generated) {
+        const unchanged = readFileSync(generated, 'utf8') === generatedBytes;
+        if (unchanged) unlinkSync(generated);
+        else process.exitCode = 1;
+        writeFileSync(
+            path.join(directory, 'cleanup.json'),
+            JSON.stringify(
+                {
+                    ownedPath: generated,
+                    removed: unchanged,
+                    foreignBytesPreserved: !unchanged,
+                    sourceAfterCleanup: sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA),
+                },
+                null,
+                2,
+            ),
+            { flag: 'wx' },
+        );
+    }
+}

@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import i18n from 'i18next';
+import { beginFixtureDiagnostic } from '../../../../../../scripts/story-fixture-diagnostic';
 import type { TenantDpaStatusInfo } from '../../../../../types/dpa';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
@@ -74,6 +75,7 @@ const meta = {
     parameters: { layout: 'padded', msw: { handlers } },
     args: { tenantId: 7 },
     beforeEach: (context) => {
+        const releaseDiagnostic = beginFixtureDiagnostic('deadline-warning');
         published = !!context.parameters.renewal;
         publishedContent = content;
         requests = [];
@@ -95,7 +97,10 @@ const meta = {
                 baseVersionId: published ? initialVersion.activationDate : undefined,
             }),
         );
-        return () => localStorage.removeItem(DRAFT_KEY);
+        return () => {
+            localStorage.removeItem(DRAFT_KEY);
+            releaseDiagnostic();
+        };
     },
 } satisfies Meta<typeof DataProcessingAgreementContainer>;
 export default meta;

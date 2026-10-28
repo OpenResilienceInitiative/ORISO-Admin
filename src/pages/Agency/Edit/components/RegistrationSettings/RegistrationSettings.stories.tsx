@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { beginFixtureDiagnostic } from '../../../../../../scripts/story-fixture-diagnostic';
 import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
 import {
     getSessionAccessToken,
@@ -98,6 +99,7 @@ const meta = {
     component: Harness,
     parameters: { msw: { handlers: [http.get('*/service/users/consultants/search*', search)] } },
     beforeEach: async () => {
+        const releaseDiagnostic = beginFixtureDiagnostic('registration-warning');
         const previousAccess = getSessionAccessToken();
         const previousRefresh = getSessionRefreshToken();
         const previousLanguage = i18n.language;
@@ -106,6 +108,7 @@ const meta = {
         asPlatformAdmin();
         await i18n.changeLanguage('de');
         return async () => {
+            releaseDiagnostic();
             setSessionTokens(previousAccess, previousRefresh);
             await i18n.changeLanguage(previousLanguage);
         };

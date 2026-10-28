@@ -116,11 +116,14 @@ jobs:
               run: npm run generate:icon-catalog
 
             - name: Verify functional controls and matched axe callsite witness
+              id: functional_controls
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
               run: npm run test:verification-controls:functional
 
             - name: Run full functional Storybook inventory
+              # Keep controls failure red while collecting ordinary fixture evidence.
+              if: ${{ !cancelled() && (steps.functional_controls.outcome == 'success' || steps.functional_controls.outcome == 'failure') }}
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
               run: npm run test:storybook:functional
@@ -161,5 +164,39 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: storybook-strict20-diagnostic
+                  path: verification-artifacts/
+                  if-no-files-found: error
+
+    story-fixture-diagnostics:
+        name: Fixture origin diagnostic (${{ matrix.selection }}, not acceptance)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        strategy:
+            fail-fast: false
+            matrix:
+                selection:
+                    [deadline-warning, registration-warning, tenant-alone, error-tenant-error, tenant-error-tenant]
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+            - name: Install dependencies
+              run: npm ci --ignore-scripts
+            - name: Install Chromium
+              run: npx playwright install --with-deps chromium
+            - name: Observe one warning case in a fresh bounded process
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+                  FIXTURE_DIAGNOSTIC_SELECTION: ${{ matrix.selection }}
+              run: node scripts/diagnose-story-fixtures.mjs "$FIXTURE_DIAGNOSTIC_SELECTION"
+            - name: Upload raw diagnostic evidence
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: fixture-origin-${{ matrix.selection }}
                   path: verification-artifacts/
                   if-no-files-found: error
