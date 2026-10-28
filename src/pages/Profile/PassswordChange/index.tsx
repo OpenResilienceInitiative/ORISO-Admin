@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
+import { ReactComponent as LockIcon } from '../../../resources/img/svg/lock.svg';
 import { validatePasswordCriteria } from '../../../utils/validateInputValue';
 import styles from './styles.module.scss';
 
@@ -39,6 +40,7 @@ export const PasswordChange = () => {
     return (
         <CardEditable
             titleKey="profile.passwordChange.title"
+            headerIcon={<LockIcon />}
             subTitleKey="profile.passwordChange.info"
             saveKey="profile.passwordChange.save"
             onSave={(data, opts) => updateData(data as any, opts)}

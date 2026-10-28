@@ -5,6 +5,7 @@ import { GrantConsultantIdentityModal } from '../../../components/GrantConsultan
 import { UserRole } from '../../../enums/UserRole';
 import { useUserData } from '../../../hooks/useUserData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { ReactComponent as SearchPersonIcon } from '../../../resources/img/svg/person_search_filled.svg';
 import styles from './styles.module.scss';
 
 const CONSULTANT_ROLE = 'consultant';
@@ -38,7 +39,11 @@ export const SelfConsultantIdentity = () => {
     const mayGrant = hasRole(UserRole.UserAdmin);
 
     return (
-        <Card titleKey="grantConsultantIdentity.self.title" subTitleKey="grantConsultantIdentity.self.text">
+        <Card
+            titleKey="grantConsultantIdentity.self.title"
+            subTitleKey="grantConsultantIdentity.self.text"
+            headerIcon={<SearchPersonIcon />}
+        >
             {isConsultant ? (
                 <p className={styles.note}>{t('grantConsultantIdentity.self.already')}</p>
             ) : (
