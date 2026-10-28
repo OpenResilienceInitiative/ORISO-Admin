@@ -10,6 +10,9 @@ import { convertToOptions } from '../../utils/convertToOptions';
 import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIdentityData';
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
+import { useAccountOperationActions } from '../../hooks/useAccountOperationActions';
+import { isTerminalAccountOperationRefusal } from '../../utils/accountOperationIntent';
+import { FETCH_ERRORS } from '../../api/fetchData';
 import styles from './styles.module.scss';
 
 interface GrantConsultantIdentityModalProps {
@@ -17,6 +20,9 @@ interface GrantConsultantIdentityModalProps {
     tenantId?: number | string;
     onSuccess?: () => void;
     disabled?: boolean;
+    /** A role refresh may hide the trigger while the original receipt is still pending. */
+    hideTrigger?: boolean;
+    recoverOwnGrant?: boolean;
     /** i18n key of the trigger button; the self-service entry in the profile words it for "me". */
     buttonLabelKey?: string;
     /** i18n key of the success toast; the self-service entry addresses the admin directly. */
@@ -33,10 +39,13 @@ export const GrantConsultantIdentityModal = ({
     tenantId,
     onSuccess,
     disabled,
+    hideTrigger,
+    recoverOwnGrant,
     buttonLabelKey = 'grantConsultantIdentity.button',
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
     const { t } = useTranslation();
+    const actions = useAccountOperationActions();
     const [form] = Form.useForm<GrantConsultantIdentityFormValues>();
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,11 +101,15 @@ export const GrantConsultantIdentityModal = ({
             const topicIds = (values.topicIds || []).map(({ value }) => `${value}`);
 
             setIsSubmitting(true);
-            await grantConsultantIdentityData(adminId, {
-                formalLanguage: true,
-                agencyIds,
-                topicIds,
-            });
+            await actions.run(
+                'grant-consultant-identity',
+                adminId,
+                { formalLanguage: true, agencyIds, topicIds },
+                (payload, intent) =>
+                    recoverOwnGrant
+                        ? grantConsultantIdentityData(adminId, payload, intent, { recoverOwnGrant: true })
+                        : grantConsultantIdentityData(adminId, payload, intent),
+            );
 
             message.success({ content: t(successMessageKey), duration: 8 });
             closeModal();
@@ -107,7 +120,13 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            message.error({ content: t('message.grantConsultantIdentity.error'), duration: 8 });
+            let key = 'accountOperation.outcomeUnknown';
+            if (error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED) {
+                key = 'accountOperation.identityChanged';
+            } else if (isTerminalAccountOperationRefusal(error)) {
+                key = 'message.grantConsultantIdentity.error';
+            }
+            message.error({ content: t(key), duration: 8 });
         } finally {
             setIsSubmitting(false);
         }
@@ -115,9 +134,11 @@ export const GrantConsultantIdentityModal = ({
 
     return (
         <>
-            <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
-                {t(buttonLabelKey)}
-            </Button>
+            {!hideTrigger && (
+                <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
+                    {t(buttonLabelKey)}
+                </Button>
+            )}
             {open && (
                 <Modal
                     titleKey="grantConsultantIdentity.modal.title"

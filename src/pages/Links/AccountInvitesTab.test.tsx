@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event';
 // timed out in CI while every other test in this file stayed under 4s. A static
 // import moves that cost into the file's (untimed) collection phase.
 import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
+import { AccountOperationIntent } from '../../utils/accountOperationIntent';
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
@@ -1332,6 +1333,33 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             await waitFor(() => expect(mocks.resendAccountInvite).toHaveBeenCalledWith(5, expect.anything()));
         });
 
+        it('keeps the original role-add request identity after a timeout', async () => {
+            mocks.listAccountInvites.mockResolvedValue(invitesPage([acceptedRow]));
+            mocks.addConsultantRole.mockRejectedValueOnce(new Error('TIMEOUT')).mockResolvedValueOnce({
+                consultantId: 'c-6',
+                role: 'AGENCY_ADMIN',
+                agencyIds: [12],
+            });
+            render(<CounsellorInvitesTab />);
+            const user = userEvent.setup();
+            const openRoleMenu = async () => {
+                await user.click(await screen.findByRole('button', { name: /^Rolle von Anke Roth/ }));
+                await user.click(within(await screen.findByRole('menu')).getByText('+ auch BST-Admin'));
+            };
+
+            await openRoleMenu();
+            await waitFor(() => expect(mocks.addConsultantRole).toHaveBeenCalledTimes(1));
+            expect(await screen.findByText('accountOperation.outcomeUnknown')).toBeInTheDocument();
+            await waitFor(() => expect(screen.getByRole('button', { name: /^Rolle von Anke Roth/ })).toBeEnabled());
+            await openRoleMenu();
+            await waitFor(() => expect(mocks.addConsultantRole).toHaveBeenCalledTimes(2));
+
+            const [first, retry] = mocks.addConsultantRole.mock.calls;
+            expect(first[2]).toBeInstanceOf(AccountOperationIntent);
+            expect(retry[2]).toBe(first[2]);
+            expect(retry[1]).toEqual(first[1]);
+        });
+
         it('adds "auch BST-Admin" to an accepted counsellor in the agency of the invite', async () => {
             mocks.listAccountInvites.mockResolvedValue(invitesPage([acceptedRow]));
             mocks.addConsultantRole.mockResolvedValue({ consultantId: 'c-6', role: 'AGENCY_ADMIN', agencyIds: [12] });
@@ -1342,7 +1370,11 @@ describe('CounsellorInvitesTab — invite wiring', () => {
             await user.click(within(await screen.findByRole('menu')).getByText('+ auch BST-Admin'));
 
             await waitFor(() =>
-                expect(mocks.addConsultantRole).toHaveBeenCalledWith('c-6', { role: 'AGENCY_ADMIN', agencyId: 12 }),
+                expect(mocks.addConsultantRole).toHaveBeenCalledWith(
+                    'c-6',
+                    { role: 'AGENCY_ADMIN', agencyId: 12 },
+                    expect.any(AccountOperationIntent),
+                ),
             );
             expect(await screen.findByText('„auch BST-Admin“ hinzugefügt.')).toBeInTheDocument();
             await waitFor(() =>

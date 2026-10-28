@@ -10,6 +10,7 @@ import { UserRole } from '../../../enums/UserRole';
 import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
+import { USER_DATA_KEY } from '../../../hooks/useUserData.hook';
 import { UsersList } from './index';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
@@ -95,7 +96,11 @@ const meta = {
         (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            return withSeededAdminProviders(Story, parameters.seedQueries);
+            return withSeededAdminProviders(Story, (client) => {
+                client.setQueryDefaults([USER_DATA_KEY], { staleTime: Infinity });
+                client.setQueryData([USER_DATA_KEY], { userId: 'storybook-operator', scopedAccountCommands: true });
+                parameters.seedQueries?.(client);
+            });
         },
     ],
 } satisfies Meta<typeof UsersList>;
@@ -393,8 +398,8 @@ export const AgencyAdminsTab: Story = {
     },
     play: async ({ canvasElement, step }) => {
         await expectPeople(canvasElement);
-        await step('delete asks with the counsellor dialog', () =>
-            expectDeleteDialog(canvasElement, /Berater wirklich löschen/),
+        await step('delete asks with the administrator dialog', () =>
+            expectDeleteDialog(canvasElement, /Administratorzugang entfernen/),
         );
     },
 };
@@ -413,7 +418,7 @@ export const TenantAdminsTab: Story = {
         await expectPeople(canvasElement);
         await step('person cell with "Auch Berater*in"', () => expectPersonCell(canvasElement, 'Auch Berater*in'));
         await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+            expectDeleteDialog(canvasElement, /Administratorzugang entfernen/),
         );
     },
 };
@@ -436,7 +441,7 @@ export const PlatformAdminsTab: Story = {
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
         await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+            expectDeleteDialog(canvasElement, /Administratorzugang entfernen/),
         );
     },
 };

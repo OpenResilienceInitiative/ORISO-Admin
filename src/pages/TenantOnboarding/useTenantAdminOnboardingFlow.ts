@@ -224,11 +224,11 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                 return;
             }
             setOrganisation(organisationData);
-            setDpa(dpaData);
+            setDpa(dpaData?.accepted && invite?.dpaVersion ? { ...dpaData, version: invite.dpaVersion } : dpaData);
             setSubmitError(null);
             setState({ phase: 'account' });
         },
-        [],
+        [invite?.dpaVersion],
     );
 
     const goBackToOrganisation = useCallback(() => {

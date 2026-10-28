@@ -4,8 +4,24 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { X_REASON } from '../../../../../api/fetchData';
 import { DeleteUserModal } from './index';
+import { DeleteTenantAdminModal } from '../DeleteTenantAdmin';
+import type { CounselorData } from '../../../../../types/counselor';
+import { AccountOperationIntent, settleAccountOperation } from '../../../../../utils/accountOperationIntent';
+import { recordAccountOperationResponse } from '../../../../../utils/accountOperationState';
 
 const deleteMutation = vi.fn();
+const currentUser = { userId: 'signed-in-admin', scopedAccountCommands: false as boolean | null };
+const currentQuery = { isError: false };
+
+vi.mock('../../../../../hooks/useUserData.hook', () => ({
+    useUserData: () => ({ data: currentUser, isError: currentQuery.isError }),
+}));
+
+vi.mock('../../../../../hooks/useDeleteTenantAdmin', () => ({
+    useDeleteTenantAdmin: (options: { onError: (error: Error | Response) => void }) => ({
+        mutate: (variables: unknown) => deleteMutation(variables, options),
+    }),
+}));
 
 vi.mock('../../../../../hooks/useDeleteConsultantOrAdmin', () => ({
     useDeleteConsultantOrAgencyAdmin: (options: { onError: (error: Error | Response) => void }) => ({
@@ -42,6 +58,8 @@ vi.mock('../../../../../components/text/Text', () => ({
 
 describe('DeleteUserModal', () => {
     beforeEach(() => {
+        currentUser.scopedAccountCommands = false;
+        currentQuery.isError = false;
         deleteMutation.mockReset();
         deleteMutation.mockImplementation((_variables, options) => {
             options.onError(
@@ -68,5 +86,178 @@ describe('DeleteUserModal', () => {
 
         await user.click(screen.getByRole('checkbox'));
         expect(forceDelete).toBeEnabled();
+    });
+
+    it('explains a changed signed-in person separately from an unknown removal outcome', async () => {
+        currentUser.scopedAccountCommands = true;
+        deleteMutation.mockImplementation((_variables, options) => {
+            options.onError(new Error('REQUEST_IDENTITY_CHANGED'));
+        });
+        render(<DeleteUserModal typeOfUser="consultants" deleteUserId="consultant-1" onClose={vi.fn()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.getByRole('alert')).toHaveTextContent('accountOperation.identityChanged');
+        expect(screen.queryByText('accountOperation.outcomeUnknown')).not.toBeInTheDocument();
+    });
+
+    it('explains that removing an administrator keeps the consultant account and requires separate deletion', () => {
+        currentUser.scopedAccountCommands = true;
+        render(
+            <DeleteUserModal typeOfUser="admins" deleteUserId="combined-admin" hasOtherIdentity onClose={vi.fn()} />,
+        );
+
+        expect(screen.getByText('identityRemoval.remaining.consultant')).toBeVisible();
+        expect(screen.queryByText('identityRemoval.remaining.administrator')).not.toBeInTheDocument();
+    });
+
+    it('explains that removing a consultant keeps their administrator account', () => {
+        currentUser.scopedAccountCommands = true;
+        render(
+            <DeleteUserModal
+                typeOfUser="consultants"
+                deleteUserId="combined-consultant"
+                hasOtherIdentity
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText('identityRemoval.remaining.administrator')).toBeVisible();
+        expect(screen.queryByText('identityRemoval.remaining.consultant')).not.toBeInTheDocument();
+    });
+
+    it('does not invent a remaining account for a known single identity', () => {
+        render(
+            <DeleteUserModal
+                typeOfUser="consultants"
+                deleteUserId="single-consultant"
+                hasOtherIdentity={false}
+                onClose={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByText(/identityRemoval\.(remaining|possibleRemaining)/)).not.toBeInTheDocument();
+    });
+
+    it('uses conditional wording when the server did not provide the other-identity flag', () => {
+        currentUser.scopedAccountCommands = true;
+        render(<DeleteUserModal typeOfUser="admins" deleteUserId="unknown-admin" onClose={vi.fn()} />);
+
+        expect(screen.getByText('identityRemoval.possibleRemaining.consultant')).toBeVisible();
+        expect(screen.queryByText('identityRemoval.remaining.consultant')).not.toBeInTheDocument();
+    });
+
+    it('requires another administrator to remove the signed-in administrator identity', async () => {
+        currentUser.scopedAccountCommands = true;
+        render(<DeleteUserModal typeOfUser="admins" deleteUserId={currentUser.userId} onClose={vi.fn()} />);
+        expect(screen.getByRole('button', { name: 'delete' })).toBeDisabled();
+        expect(screen.getByText('identityRemoval.selfAdministrator')).toBeVisible();
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(deleteMutation).not.toHaveBeenCalled();
+    });
+
+    it('waits for a confirmed server mode before enabling deletion', () => {
+        currentUser.scopedAccountCommands = null;
+        render(<DeleteUserModal typeOfUser="consultants" deleteUserId="consultant" onClose={vi.fn()} />);
+        expect(screen.getByRole('button', { name: 'delete' })).toBeDisabled();
+        expect(screen.getByText('identityRemoval.checkingAvailability')).toBeVisible();
+    });
+
+    it('does not promise preservation for a combined identity on the legacy server', () => {
+        render(<DeleteUserModal typeOfUser="consultants" deleteUserId="combined" hasOtherIdentity onClose={vi.fn()} />);
+        expect(screen.getByRole('button', { name: 'delete' })).toBeDisabled();
+        expect(screen.getByText('identityRemoval.unavailable')).toBeVisible();
+    });
+
+    it('does not offer a different force request after an unproven scoped refusal', async () => {
+        currentUser.scopedAccountCommands = true;
+        render(<DeleteUserModal typeOfUser="consultants" deleteUserId="consultant" onClose={vi.fn()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'delete' })).toBeEnabled();
+        expect(screen.getByText('accountOperation.outcomeUnknown')).toBeVisible();
+    });
+
+    it('explains a blocked retry instead of silently switching command mode', async () => {
+        deleteMutation.mockImplementation((_variables, options) =>
+            options.onError(new Error('ACCOUNT_COMMANDS_UNAVAILABLE')),
+        );
+        render(
+            <DeleteUserModal
+                typeOfUser="consultants"
+                deleteUserId="consultant"
+                hasOtherIdentity={false}
+                onClose={vi.fn()}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.getByRole('alert')).toHaveTextContent('identityRemoval.retryUnavailable');
+    });
+
+    it('keeps a scoped refusal unknown even if current metadata has switched to legacy', async () => {
+        const response = new Response(JSON.stringify({ reason: X_REASON.CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS }), {
+            status: 400,
+        });
+        recordAccountOperationResponse(response, response);
+        await expect(settleAccountOperation(new AccountOperationIntent(), Promise.reject(response))).rejects.toBe(
+            response,
+        );
+        deleteMutation.mockImplementation((_variables, options) => options.onError(response));
+        render(
+            <DeleteUserModal
+                typeOfUser="consultants"
+                deleteUserId="consultant"
+                hasOtherIdentity={false}
+                onClose={vi.fn()}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('accountOperation.outcomeUnknown');
+    });
+
+    it.each(['consultants', 'admins', 'tenant-admins'] as const)(
+        'does not promise identity preservation in legacy mode when removing %s',
+        (kind) => {
+            if (kind === 'tenant-admins') {
+                render(
+                    <DeleteTenantAdminModal
+                        user={{ id: 'target', firstname: 'Anna', lastname: 'Test' } as CounselorData}
+                        onClose={vi.fn()}
+                    />,
+                );
+            } else {
+                render(<DeleteUserModal typeOfUser={kind} deleteUserId="target" onClose={vi.fn()} />);
+            }
+            expect(screen.queryByText(/identityRemoval\.(remaining|possibleRemaining)/)).not.toBeInTheDocument();
+        },
+    );
+
+    it.each(['consultants', 'admins'] as const)(
+        'explains failed availability loading and blocks %s removal even with stale cached data',
+        async (kind) => {
+            currentUser.scopedAccountCommands = true;
+            currentQuery.isError = true;
+            render(<DeleteUserModal typeOfUser={kind} deleteUserId="target" onClose={vi.fn()} />);
+            expect(screen.getByText('identityRemoval.availabilityFailed')).toBeVisible();
+            expect(screen.queryByText('identityRemoval.checkingAvailability')).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'delete' })).toBeDisabled();
+            await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+            expect(deleteMutation).not.toHaveBeenCalled();
+        },
+    );
+
+    it('explains a changed person during Tenant Administrator removal', async () => {
+        currentUser.scopedAccountCommands = true;
+        deleteMutation.mockImplementation((_variables, options) =>
+            options.onError(new Error('REQUEST_IDENTITY_CHANGED')),
+        );
+        render(
+            <DeleteTenantAdminModal
+                user={{ id: 'target', firstname: 'Anna', lastname: 'Test' } as CounselorData}
+                onClose={vi.fn()}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.getByRole('alert')).toHaveTextContent('accountOperation.identityChanged');
+        expect(screen.queryByText('accountOperation.outcomeUnknown')).not.toBeInTheDocument();
     });
 });

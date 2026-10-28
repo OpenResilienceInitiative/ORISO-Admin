@@ -2,6 +2,11 @@ import { counselorEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { withUtcInstants } from '../../utils/backendInstant';
 import { accountInvitesEndpoint, type AccountInviteDTO } from './accountInvites';
+import {
+    type AccountOperationIntent,
+    accountOperationHeaders,
+    settleAccountOperation,
+} from '../../utils/accountOperationIntent';
 
 /** Roles an invite may swap between before acceptance; a Träger-level role needs a new invite. */
 export type ChangeableInviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN';
@@ -53,13 +58,19 @@ export const changeAccountInviteRole = async (
 export const addConsultantRole = async (
     consultantId: string,
     request: AddConsultantRoleRequest,
+    operationIntent?: AccountOperationIntent,
 ): Promise<AddedConsultantRole> => {
-    const response = await fetchData({
-        url: `${counselorEndpoint}/${encodeURIComponent(consultantId)}/roles`,
-        method: FETCH_METHODS.POST,
-        skipAuth: false,
-        responseHandling: ROLE_ERRORS,
-        bodyData: JSON.stringify(request),
-    });
-    return response.json();
+    const url = `${counselorEndpoint}/${encodeURIComponent(consultantId)}/roles`;
+    const bodyData = JSON.stringify(request);
+    return settleAccountOperation(
+        operationIntent,
+        fetchData({
+            url,
+            headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url, bodyData),
+            method: FETCH_METHODS.POST,
+            skipAuth: false,
+            responseHandling: ROLE_ERRORS,
+            bodyData,
+        }).then((response) => response.json()),
+    );
 };

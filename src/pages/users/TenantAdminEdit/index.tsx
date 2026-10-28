@@ -81,7 +81,7 @@ const TenantAdminEditor = () => {
         return tenants?.data ?? [];
     }, [lockTenantToOwn, ownTenantId, ownTenant?.id, ownTenant?.name, tenants?.data]);
 
-    const { mutate } = useAddOrUpdateTenantAdmin({
+    const { mutate, onAccountEdit } = useAddOrUpdateTenantAdmin({
         id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
@@ -108,11 +108,12 @@ const TenantAdminEditor = () => {
     );
     const onCancel = useCallback(() => {
         if (isEditing) {
+            onAccountEdit?.();
             setReadOnly(true);
         } else {
             navigate(listPath);
         }
-    }, [isEditing, listPath, navigate]);
+    }, [isEditing, listPath, navigate, onAccountEdit]);
 
     // Never pass an inaccessible or foreign cached record to the title or form,
     // including while a background refetch is still running.
@@ -167,6 +168,7 @@ const TenantAdminEditor = () => {
                     layout="vertical"
                     form={form}
                     onFinish={onSave}
+                    onValuesChange={onAccountEdit}
                     initialValues={{ tenantId, ...data }}
                 >
                     <Row gutter={[24, 24]}>

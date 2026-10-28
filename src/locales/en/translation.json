@@ -1,4 +1,8 @@
 {
+    "accountOperation.outcomeUnknown": "We could not confirm the result. The change may have been saved. Check the current setting before changing these details.",
+    "accountOperation.preconditionFailed": "The current setting does not permit this step. Check whether it is already complete.",
+    "accountOperation.identityChanged": "The signed-in account changed. Check which account is signed in before trying again.",
+    "accountOperation.refused": "The change was refused. Check your access and the current setting before trying again.",
     "page.tabs.previous": "Scroll tabs left",
     "page.tabs.next": "Scroll tabs right",
     "accountSetup.title": "Set the password for your existing account",
@@ -2787,5 +2791,18 @@
     "registrationGuide.agencyAdmin.steps.1": "Sign in to the Admin area with the credentials you set up. Use your second factor if required.",
     "registrationGuide.agencyAdmin.steps.2": "Open your counselling centre and complete the available address and contact details.",
     "registrationGuide.agencyAdmin.steps.3": "Check the available settings before inviting your team or clients to use the service.",
-    "registrationGuide.agencyAdmin.tutorials": "You can read this quick start without signing in. If you also provide counselling, enabled tours are available in the counselling app under Help → Tours."
+    "registrationGuide.agencyAdmin.tutorials": "You can read this quick start without signing in. If you also provide counselling, enabled tours are available in the counselling app under Help → Tours.",
+    "identityRemoval.remaining.consultant": "The counsellor account and all its data will remain. To delete that account too, the person or another authorised person must arrange its deletion separately.",
+    "identityRemoval.remaining.administrator": "The administrator account will remain. To delete that account too, another authorised administrator must delete it separately.",
+    "identityRemoval.possibleRemaining.consultant": "If this person also has a counsellor account, that account and its data will remain. Any deletion must be arranged separately.",
+    "identityRemoval.possibleRemaining.administrator": "If this person also has an administrator account, that account will remain. Another authorised person must delete it separately if required.",
+    "identityRemoval.administrator.title": "Remove administrator access?",
+    "identityRemoval.administrator.confirm": "Are you sure you want to remove this administrator access?",
+    "identityRemoval.administrator.success": "Administrator access has been removed.",
+    "identityRemoval.selfAdministrator": "You cannot remove your own administrator access. Another authorised administrator must do this.",
+    "identityRemoval.checkingAvailability": "We are checking whether this action is available. Please try again after your account details have loaded.",
+    "identityRemoval.availabilityFailed": "We could not check whether this action is available. Please reload your account details before trying the removal.",
+    "identityRemoval.unavailable": "This identity cannot currently be removed safely while keeping the other account. Please contact your administrator.",
+    "identityRemoval.retryUnavailable": "This removal is not safely available at the moment. Keep the removal options unchanged and retry when the action is available again.",
+    "identityRemoval.administrator.confirmNamed": "Are you sure you want to remove administrator access for {{name}}?"
 }

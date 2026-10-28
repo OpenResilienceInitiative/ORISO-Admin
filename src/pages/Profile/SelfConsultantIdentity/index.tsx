@@ -24,8 +24,7 @@ export const SelfConsultantIdentity = () => {
     const { t } = useTranslation();
     const { roles, hasRole, isSuperAdmin, isTechnicalAccount, tenantId } = useUserRoles();
     const { data: userData } = useUserData();
-    // Realm roles live in the token, which only refreshes on the next sign-in; remember the grant
-    // locally so the card does not offer it a second time in this session.
+    // Keep successful receipt state separately from role observations during token renewal.
     const [granted, setGranted] = useState(false);
 
     const userId: string | undefined = userData?.userId;
@@ -39,21 +38,22 @@ export const SelfConsultantIdentity = () => {
 
     return (
         <Card titleKey="grantConsultantIdentity.self.title" subTitleKey="grantConsultantIdentity.self.text">
-            {isConsultant ? (
-                <p className={styles.note}>{t('grantConsultantIdentity.self.already')}</p>
-            ) : (
-                <div className={styles.body}>
-                    <GrantConsultantIdentityModal
-                        adminId={userId}
-                        tenantId={tenantId ?? undefined}
-                        disabled={!mayGrant}
-                        buttonLabelKey="grantConsultantIdentity.self.button"
-                        successMessageKey="message.grantConsultantIdentity.selfSuccess"
-                        onSuccess={() => setGranted(true)}
-                    />
-                    {!mayGrant && <p className={styles.note}>{t('grantConsultantIdentity.self.noPermission')}</p>}
-                </div>
-            )}
+            {isConsultant && <p className={styles.note}>{t('grantConsultantIdentity.self.already')}</p>}
+            <div className={styles.body}>
+                <GrantConsultantIdentityModal
+                    adminId={userId}
+                    tenantId={tenantId ?? undefined}
+                    disabled={!mayGrant}
+                    hideTrigger={isConsultant}
+                    recoverOwnGrant
+                    buttonLabelKey="grantConsultantIdentity.self.button"
+                    successMessageKey="message.grantConsultantIdentity.selfSuccess"
+                    onSuccess={() => setGranted(true)}
+                />
+                {!isConsultant && !mayGrant && (
+                    <p className={styles.note}>{t('grantConsultantIdentity.self.noPermission')}</p>
+                )}
+            </div>
         </Card>
     );
 };

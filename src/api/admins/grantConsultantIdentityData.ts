@@ -1,5 +1,7 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { grantConsultantIdentityEndpoint } from '../../appConfig';
+import { type AccountOperationIntent, accountOperationHeaders } from '../../utils/accountOperationIntent';
+import { settleOwnConsultantIdentityMutation } from '../../utils/settleOwnConsultantIdentityMutation';
 
 export interface GrantConsultantIdentityInput {
     isGroupchatConsultant?: boolean;
@@ -18,28 +20,37 @@ export interface GrantConsultantIdentityInput {
  * @param input - consultant identity payload
  * @return the raw fetch response
  */
-export const grantConsultantIdentityData = (
+export const grantConsultantIdentityData = async (
     adminId: string,
     input: GrantConsultantIdentityInput,
+    operationIntent?: AccountOperationIntent,
+    options: { recoverOwnGrant?: boolean } = {},
 ): Promise<Response> => {
     const { isGroupchatConsultant, absent, absenceMessage, formalLanguage, agencyIds, topicIds } = input;
 
-    return fetchData({
-        url: grantConsultantIdentityEndpoint(adminId),
+    const url = grantConsultantIdentityEndpoint(adminId);
+    const bodyData = JSON.stringify({
+        isGroupchatConsultant: !!isGroupchatConsultant,
+        absent: !!absent,
+        ...(absenceMessage ? { absenceMessage } : {}),
+        formalLanguage: !!formalLanguage,
+        agencyIds: agencyIds || [],
+        topicIds: topicIds || [],
+    });
+    const request = {
+        url,
+        headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url, bodyData),
         method: FETCH_METHODS.POST,
         skipAuth: false,
         responseHandling: [
             FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
-            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CATCH_ALL_SILENT,
         ],
-        bodyData: JSON.stringify({
-            isGroupchatConsultant: !!isGroupchatConsultant,
-            absent: !!absent,
-            ...(absenceMessage ? { absenceMessage } : {}),
-            formalLanguage: !!formalLanguage,
-            agencyIds: agencyIds || [],
-            topicIds: topicIds || [],
-        }),
+        bodyData,
+    };
+    return settleOwnConsultantIdentityMutation(adminId, operationIntent, () => fetchData(request), {
+        recoverOwnIdentity: options.recoverOwnGrant === true,
     });
 };

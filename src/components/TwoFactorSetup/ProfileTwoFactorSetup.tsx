@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { M3Switch } from '../M3Switch';
 import { M3Button } from '../M3Button';
 import { FETCH_ERRORS } from '../../api/fetchData';
+import { isTerminalAccountOperationRefusal } from '../../utils/accountOperationIntent';
 import { OVERLAY_FUNCTIONS, OverlayItem, OverlayWrapper, Overlay } from '../overlay/Overlay';
 import { BUTTON_TYPES } from '../button/Button';
 import { InputField, InputFieldItem, InputFieldLabelState } from '../inputField/InputField';
@@ -45,9 +46,9 @@ export interface ProfileTwoFactorSetupProps {
 export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetupProps) => {
     const { t } = useTranslation();
     const { data: userData } = useUserData();
-    const { mutate: updateOrSetTwoFactorAuth } = useUserTwoFactorAuth();
-    const { mutate: deleteTwoFactorAuth } = useUserTwoFactorDelete();
-    const { mutate: setEmailForActivationCode } = useUserTwoFactorSendEmailCode();
+    const { mutate: updateOrSetTwoFactorAuth, onAccountEdit: activationEdited } = useUserTwoFactorAuth();
+    const { mutate: deleteTwoFactorAuth, onAccountEdit: deleteEdited } = useUserTwoFactorDelete();
+    const { mutate: setEmailForActivationCode, onAccountEdit: emailEdited } = useUserTwoFactorSendEmailCode();
     const [overlayActive, setOverlayActive] = useState<boolean>(false);
     const [otpLabelState, setOtpLabelState] = useState<InputFieldLabelState>();
     const [otp, setOtp] = useState<string>('');
@@ -119,12 +120,16 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
         };
     };
 
-    const handleOtpChange = useCallback((event) => {
-        const validityData = validateOtp(event.target.value);
-        setOtpLabelState(validityData.validity);
-        setOtpLabel(validityData.label);
-        setOtp(event.target.value);
-    }, []);
+    const handleOtpChange = useCallback(
+        (event) => {
+            activationEdited?.();
+            const validityData = validateOtp(event.target.value);
+            setOtpLabelState(validityData.validity);
+            setOtpLabel(validityData.label);
+            setOtp(event.target.value);
+        },
+        [activationEdited],
+    );
 
     const handleAuthTokenUpdate = useCallback(
         (triggerNextStep) => {
@@ -132,6 +137,7 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                 { twoFactorType, otp, secret: userData?.twoFactorAuth.secret },
                 {
                     onSuccess: () => {
+                        deleteEdited?.();
                         if (twoFactorType === TwoFactorType.App) {
                             setOverlayActive(false);
                         }
@@ -139,17 +145,37 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
                             triggerNextStep();
                         }
                     },
-                    onError: ({ message }) => {
+                    onError: (error) => {
+                        const { message } = error;
                         if (message === FETCH_ERRORS.BAD_REQUEST) {
                             setOtpLabel(defaultOtpLabel);
                             setOtpInputInfo(t('twoFactorAuth.activate.otp.input.label.error'));
                             setOtpLabelState('invalid');
+                            return;
                         }
+                        let key = 'accountOperation.outcomeUnknown';
+                        if (message === FETCH_ERRORS.PRECONDITION_FAILED) {
+                            key = 'accountOperation.preconditionFailed';
+                        } else if (message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED) {
+                            key = 'accountOperation.identityChanged';
+                        } else if (isTerminalAccountOperationRefusal(error)) {
+                            key = 'accountOperation.refused';
+                        }
+                        setOtpLabel(defaultOtpLabel);
+                        setOtpInputInfo(t(key));
                     },
                 },
             );
         },
-        [overlayActive, otp],
+        [
+            defaultOtpLabel,
+            deleteEdited,
+            otp,
+            t,
+            twoFactorType,
+            updateOrSetTwoFactorAuth,
+            userData?.twoFactorAuth.secret,
+        ],
     );
 
     const otpInputItem: InputFieldItem = useMemo(
@@ -198,12 +224,16 @@ export const ProfileTwoFactorSetup = ({ required = false }: ProfileTwoFactorSetu
         };
     };
 
-    const handleEmailChange = useCallback((event) => {
-        const validityData = validateEmail(event.target.value);
-        setEmailLabelState(validityData.validity);
-        setEmailLabel(validityData.label);
-        setEmail(event.target.value);
-    }, []);
+    const handleEmailChange = useCallback(
+        (event) => {
+            emailEdited?.();
+            const validityData = validateEmail(event.target.value);
+            setEmailLabelState(validityData.validity);
+            setEmailLabel(validityData.label);
+            setEmail(event.target.value);
+        },
+        [emailEdited],
+    );
 
     const sendEmailActivationCode = useCallback(
         (triggerNextStep) => {

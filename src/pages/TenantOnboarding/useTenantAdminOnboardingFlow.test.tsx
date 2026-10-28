@@ -38,6 +38,31 @@ const createClient = (overrides: Partial<TenantAdminOnboardingClient> = {}): Ten
 });
 
 describe('useTenantAdminOnboardingFlow', () => {
+    it.each([undefined, 'caller-supplied-version'])(
+        'registers the contract version displayed at consent instead of %s',
+        async (suppliedVersion) => {
+            const displayedVersion = '2026-10-21T12:00:00Z';
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaVersion: displayedVersion }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+            const consent = { ...DPA, ...(suppliedVersion ? { version: suppliedVersion } : {}) };
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, consent));
+            await act(async () => {
+                await result.current.submitAccount('SecurePass1!');
+            });
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
+                organisation: ORGANISATION,
+                dpa: { ...DPA, version: displayedVersion },
+                account: { password: 'SecurePass1!' },
+                reservedTenantId: 21,
+                tenantIdReservationToken: 'reservation-token-21',
+            });
+            expect(consent.version).toBe(suppliedVersion);
+        },
+    );
+
     it('walks the happy path: loading → organisation → account → two-factor → done', async () => {
         const client = createClient();
         const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));

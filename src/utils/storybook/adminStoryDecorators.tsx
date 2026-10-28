@@ -19,9 +19,15 @@ const toBase64Url = (value: object): string =>
     btoa(JSON.stringify(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 /** Install a fake (unsigned) access token so `useUserRoles` resolves the given roles/tenant. */
-export const setStoryAuth = (roles: UserRole[], tenantId = 0): void => {
+export const setStoryAuth = (roles: UserRole[], tenantId = 0, subject = 'storybook-operator'): void => {
     const header = toBase64Url({ alg: 'none', typ: 'JWT' });
-    const payload = toBase64Url({ realm_access: { roles }, tenantId, exp: 9_999_999_999 });
+    const payload = toBase64Url({
+        realm_access: { roles },
+        tenantId,
+        sub: subject,
+        iss: 'https://storybook.oriso.test/realm',
+        exp: 9_999_999_999,
+    });
     setSessionTokens(`${header}.${payload}.storybook`, 'storybook-refresh');
 };
 

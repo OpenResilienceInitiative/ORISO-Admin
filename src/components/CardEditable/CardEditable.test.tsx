@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CardEditable } from './index';
@@ -127,5 +127,24 @@ describe('CardEditable', () => {
         deferredErrors[0]();
 
         await waitFor(() => expect(screen.getByLabelText('Name')).toBeDisabled());
+    });
+
+    it('reports real edit-away-and-back events without losing save or dirty-state behavior', async () => {
+        const user = userEvent.setup();
+        const edited = vi.fn();
+        const saved = vi.fn();
+        render(
+            <CardEditable titleKey="card.title" onSave={saved} onValuesChange={edited} initialValues={{ name: 'ACME' }}>
+                <MuiFormField name="name" label="Name" />
+            </CardEditable>,
+        );
+        expect(edited).not.toHaveBeenCalled();
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Changed' } });
+        fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'ACME' } });
+        expect(edited).toHaveBeenCalledTimes(2);
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(saved).toHaveBeenCalled());
+        expect(saved.mock.calls[0][0]).toEqual({ name: 'ACME' });
     });
 });

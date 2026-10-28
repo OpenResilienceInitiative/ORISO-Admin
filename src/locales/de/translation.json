@@ -1,4 +1,8 @@
 {
+    "accountOperation.outcomeUnknown": "Das Ergebnis konnte nicht bestätigt werden. Die Änderung wurde möglicherweise gespeichert. Prüfen Sie die aktuelle Einstellung, bevor Sie diese Angaben ändern.",
+    "accountOperation.preconditionFailed": "Die aktuelle Einstellung erlaubt diesen Schritt nicht. Prüfen Sie, ob er bereits abgeschlossen ist.",
+    "accountOperation.identityChanged": "Das angemeldete Konto hat sich geändert. Prüfen Sie vor einem erneuten Versuch, welches Konto angemeldet ist.",
+    "accountOperation.refused": "Die Änderung wurde abgelehnt. Prüfen Sie Ihre Berechtigung und die aktuelle Einstellung, bevor Sie es erneut versuchen.",
     "page.tabs.previous": "Tabs nach links scrollen",
     "page.tabs.next": "Tabs nach rechts scrollen",
     "accountSetup.title": "Passwort für Ihr bestehendes Konto festlegen",
@@ -2787,5 +2791,18 @@
     "registrationGuide.agencyAdmin.steps.1": "Melden Sie sich mit Ihren eingerichteten Zugangsdaten im Admin-Bereich an. Nutzen Sie bei Bedarf Ihren zweiten Faktor.",
     "registrationGuide.agencyAdmin.steps.2": "Öffnen Sie Ihre Beratungsstelle und ergänzen Sie die verfügbaren Angaben zu Adresse und Kontakt.",
     "registrationGuide.agencyAdmin.steps.3": "Prüfen Sie die angebotenen Einstellungen, bevor Sie Ihr Team oder Ratsuchende zur Nutzung einladen.",
-    "registrationGuide.agencyAdmin.tutorials": "Diese Kurzanleitung ist ohne Anmeldung verfügbar. Wenn Sie auch beraten, finden Sie freigeschaltete Rundgänge in der Beratungs-App unter Hilfe → Rundgänge."
+    "registrationGuide.agencyAdmin.tutorials": "Diese Kurzanleitung ist ohne Anmeldung verfügbar. Wenn Sie auch beraten, finden Sie freigeschaltete Rundgänge in der Beratungs-App unter Hilfe → Rundgänge.",
+    "identityRemoval.remaining.consultant": "Das Beraterkonto und alle zugehörigen Daten bleiben erhalten. Wenn auch dieses Konto gelöscht werden soll, muss die Person selbst oder eine berechtigte Person die separate Löschung veranlassen.",
+    "identityRemoval.remaining.administrator": "Das Administratorkonto bleibt erhalten. Wenn auch dieses Konto gelöscht werden soll, muss eine andere berechtigte Administratorin oder ein anderer berechtigter Administrator es separat löschen.",
+    "identityRemoval.possibleRemaining.consultant": "Falls die Person auch ein Beraterkonto hat, bleiben dieses Konto und seine Daten erhalten. Eine gewünschte Löschung muss separat veranlasst werden.",
+    "identityRemoval.possibleRemaining.administrator": "Falls die Person auch ein Administratorkonto hat, bleibt dieses Konto erhalten. Eine gewünschte Löschung muss eine andere berechtigte Person separat durchführen.",
+    "identityRemoval.administrator.title": "Administratorzugang entfernen?",
+    "identityRemoval.administrator.confirm": "Möchten Sie diesen Administratorzugang wirklich entfernen?",
+    "identityRemoval.administrator.success": "Der Administratorzugang wurde entfernt.",
+    "identityRemoval.selfAdministrator": "Sie können Ihren eigenen Administratorzugang nicht entfernen. Eine andere berechtigte Administratorin oder ein anderer berechtigter Administrator muss dies tun.",
+    "identityRemoval.checkingAvailability": "Die Verfügbarkeit dieser Aktion wird geprüft. Bitte versuchen Sie es nach dem Laden Ihrer Kontodaten erneut.",
+    "identityRemoval.availabilityFailed": "Die Verfügbarkeit dieser Aktion konnte nicht geprüft werden. Bitte laden Sie Ihre Kontodaten erneut, bevor Sie die Löschung versuchen.",
+    "identityRemoval.unavailable": "Die einzelne Identität kann derzeit nicht sicher entfernt werden. Das andere Konto soll erhalten bleiben. Bitte wenden Sie sich an Ihre Administration.",
+    "identityRemoval.retryUnavailable": "Diese Löschung ist derzeit nicht sicher verfügbar. Lassen Sie die Löschoptionen unverändert und versuchen Sie es erneut, sobald die Aktion wieder verfügbar ist.",
+    "identityRemoval.administrator.confirmNamed": "Möchten Sie den Administratorzugang von {{name}} wirklich entfernen?"
 }

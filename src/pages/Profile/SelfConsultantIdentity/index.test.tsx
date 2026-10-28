@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { useEffect } from 'react';
 import { SelfConsultantIdentity } from './index';
 
 vi.mock('react-i18next', () => {
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     isSuperAdmin: false,
     userId: 'kc-admin-1' as string | undefined,
     modalProps: vi.fn(),
+    unmounted: vi.fn(),
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
@@ -31,8 +33,10 @@ vi.mock('../../../hooks/useUserData.hook', () => ({
 }));
 
 vi.mock('../../../components/GrantConsultantIdentityModal', () => ({
-    GrantConsultantIdentityModal: (props: { adminId: string; disabled?: boolean }) => {
+    GrantConsultantIdentityModal: (props: { adminId: string; disabled?: boolean; hideTrigger?: boolean }) => {
         mocks.modalProps(props);
+        useEffect(() => () => mocks.unmounted(), []);
+        if (props.hideTrigger) return <span data-testid="retained-grant-action" />;
         return (
             <button type="button" disabled={props.disabled}>
                 grant
@@ -46,6 +50,7 @@ describe('SelfConsultantIdentity', () => {
         mocks.isSuperAdmin = false;
         mocks.userId = 'kc-admin-1';
         mocks.modalProps.mockReset();
+        mocks.unmounted.mockReset();
     });
 
     it('offers a Beratungsstellen-Admin the grant for their own account', () => {
@@ -85,5 +90,15 @@ describe('SelfConsultantIdentity', () => {
         const { container } = render(<SelfConsultantIdentity />);
 
         expect(container).toBeEmptyDOMElement();
+    });
+
+    it('retains the original action while refreshed roles already include consultant', () => {
+        mocks.roles = ['agency-admin', 'user-admin'];
+        const { rerender } = render(<SelfConsultantIdentity />);
+        mocks.roles = ['agency-admin', 'user-admin', 'consultant'];
+        rerender(<SelfConsultantIdentity />);
+        expect(mocks.unmounted).not.toHaveBeenCalled();
+        expect(screen.getByTestId('retained-grant-action')).toBeInTheDocument();
+        expect(mocks.modalProps).toHaveBeenLastCalledWith(expect.objectContaining({ recoverOwnGrant: true }));
     });
 });

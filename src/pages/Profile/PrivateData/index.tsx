@@ -8,7 +8,7 @@ import { useUserData } from '../../../hooks/useUserData.hook';
 export const PrivateData = () => {
     const { t } = useTranslation();
     const { data, isLoading } = useUserData();
-    const { mutate: updateData } = useUpdateUserData({
+    const { mutate: updateData, onAccountEdit } = useUpdateUserData({
         onSuccess: () => {
             notification.success({ message: t('profile.privateData.success') });
         },
@@ -16,6 +16,7 @@ export const PrivateData = () => {
 
     return (
         <CardEditable
+            onValuesChange={onAccountEdit}
             isLoading={isLoading}
             titleKey="profile.privateData.title"
             initialValues={{ ...data, firstname: data?.firstName, lastname: data?.lastName }}

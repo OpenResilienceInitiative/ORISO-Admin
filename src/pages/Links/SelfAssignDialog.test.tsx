@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { message } from 'antd';
 import type { SelfAssignments } from '../../api/accountInvites/selfAssignments';
 import { SelfAssignDialog } from './SelfAssignDialog';
+import { AccountOperationIntent } from '../../utils/accountOperationIntent';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -28,6 +29,40 @@ const deferred = <T,>() => {
 const AGENCY = { id: 12, name: 'Beratungsstelle Springfield Mitte' };
 
 describe('SelfAssignDialog', () => {
+    it('keeps its original request identity when self-assignment is retried after a timeout', async () => {
+        const assign = vi.fn().mockRejectedValueOnce(new Error('TIMEOUT')).mockResolvedValueOnce({
+            role: 'COUNSELLOR',
+            agencyId: 12,
+            userId: 'same-account',
+            consultantIdentityCreated: true,
+        });
+        const onClose = vi.fn();
+        render(
+            <SelfAssignDialog
+                initialAgency={AGENCY}
+                loadAgencyTopics={async () => [{ id: 2, name: 'Sucht' }]}
+                loadAssignments={async () => ({ agencyAdminAgencyIds: [], counsellorAgencyIds: [] })}
+                assign={assign}
+                onClose={onClose}
+            />,
+        );
+        const confirm = screen.getByRole('button', { name: 'links.selfAssign.confirm' });
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+        await waitFor(() => expect(assign).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText('accountOperation.outcomeUnknown')).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+        await waitFor(() => expect(confirm).toBeEnabled());
+        await userEvent.click(confirm);
+        await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
+
+        const [first, retry] = assign.mock.calls;
+        expect(first[1]).toBeInstanceOf(AccountOperationIntent);
+        expect(retry[1]).toBe(first[1]);
+        expect(retry[0]).toEqual(first[0]);
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps the newer assignments when an older load settles late', async () => {
         const older = deferred<SelfAssignments>();
         const props = {

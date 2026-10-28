@@ -9,6 +9,8 @@ import {
 import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSessionTokens } from './tokenSessionStore';
 
 import parseJwt from '../../utils/parseJWT';
+import { accountOperationOwner } from '../../utils/accountOperationOwner';
+import { invalidateAuthSession } from './invalidateAuthSession';
 
 const resolveExpiresInSeconds = (token: string | undefined, expiresIn?: number): number | undefined => {
     if (expiresIn) {
@@ -56,20 +58,6 @@ export const setTokens = async (
     });
 };
 
-const refreshTokens = (): Promise<void> => {
-    const currentTime = new Date().getTime();
-    const tokenExpiry = getTokenExpiryFromLocalStorage();
-
-    if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
-        logout(true);
-        return Promise.resolve();
-    }
-
-    return refreshAuthTokensViaBff().then((response) =>
-        setTokens(response.access_token, response.expires_in, response.refresh_token, response.refresh_expires_in),
-    );
-};
-
 let inflightTokenRefresh: Promise<boolean> | null = null;
 
 /**
@@ -80,13 +68,28 @@ let inflightTokenRefresh: Promise<boolean> | null = null;
  * out by itself — the caller decides what to do on failure. Used by fetchData to
  * self-heal a single 401 (lapsed/empty access token) before forcing a logout.
  */
-export const tryRefreshAccessToken = (): Promise<boolean> => {
+export const tryRefreshAccessToken = (options: { afterInFlight?: boolean } = {}): Promise<boolean> => {
+    const owner = accountOperationOwner(getSessionAccessToken());
     if (inflightTokenRefresh) {
+        if (options.afterInFlight) {
+            // A role-changing receipt needs a refresh started after its effect,
+            // rather than a timer/request that was already in flight before it.
+            return inflightTokenRefresh.then(() =>
+                accountOperationOwner(getSessionAccessToken()) === owner ? tryRefreshAccessToken() : false,
+            );
+        }
         return inflightTokenRefresh;
     }
 
     inflightTokenRefresh = refreshAuthTokensViaBff()
-        .then((response) => {
+        .then(async (response) => {
+            if (accountOperationOwner(getSessionAccessToken()) !== owner) {
+                // The response may already have set BFF cookies. Clear both
+                // existing session surfaces; never install the old person over
+                // a replacement session or claim that replacement was preserved.
+                await invalidateAuthSession();
+                return false;
+            }
             if (!response?.access_token || !response.refresh_token) {
                 return false;
             }
@@ -109,6 +112,20 @@ export const tryRefreshAccessToken = (): Promise<boolean> => {
         });
 
     return inflightTokenRefresh;
+};
+
+const refreshTokens = (): Promise<void> => {
+    const currentTime = new Date().getTime();
+    const tokenExpiry = getTokenExpiryFromLocalStorage();
+
+    if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
+        logout(true);
+        return Promise.resolve();
+    }
+
+    return tryRefreshAccessToken().then((refreshed) => {
+        if (!refreshed) logout(true);
+    });
 };
 
 const startTimers = ({

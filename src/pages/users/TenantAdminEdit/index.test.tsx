@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     useTenantData: vi.fn(),
     useTenantUserAdminData: vi.fn(),
     mutate: vi.fn(),
+    accountEdited: vi.fn(),
     useAddOrUpdateTenantAdmin: vi.fn(),
     location: { pathname: '/admin/users/tenant-admins/add', search: '' },
     params: { id: 'add' } as { id: string },
@@ -183,7 +184,7 @@ const asSuperAdmin = () =>
 describe('TenantAdminEditOrAdd', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.useAddOrUpdateTenantAdmin.mockReturnValue({ mutate: mocks.mutate });
+        mocks.useAddOrUpdateTenantAdmin.mockReturnValue({ mutate: mocks.mutate, onAccountEdit: mocks.accountEdited });
         mocks.location = { pathname: '/admin/users/tenant-admins/add', search: '' };
         mocks.params = { id: 'add' };
         mocks.useTenantData.mockReturnValue({ data: { id: 2, name: 'Tenant Zwei' } });
@@ -483,6 +484,16 @@ describe('TenantAdminEditOrAdd', () => {
                 data: { firstname: 'Anna', lastname: 'Muster', tenantId: '2' },
                 isLoading: false,
             });
+        });
+
+        it('ends the mounted tenant account edit intent when Cancel returns to read-only mode', () => {
+            grantAllPermissions();
+            asTenantScopedAdmin();
+            renderPage();
+            fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+            fireEvent.click(screen.getByRole('button', { name: 'btn.cancel' }));
+            expect(mocks.accountEdited, 'account-intent-tenant-inline-cancel').toHaveBeenCalledTimes(1);
+            expect(screen.getByRole('button', { name: 'edit' })).toBeInTheDocument();
         });
 
         it('shows the Edit action for a tenant admin with the update permission', () => {

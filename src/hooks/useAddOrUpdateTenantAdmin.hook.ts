@@ -1,4 +1,8 @@
+import { useCallback } from 'react';
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
+import { useAccountOperationActions } from './useAccountOperationActions';
+import { type AccountOperationVariables, bindAccountOperationMutation } from '../utils/accountMutationIntent';
+import { accountOperationHeaders, settleAccountOperation } from '../utils/accountOperationIntent';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminsEndpoint } from '../appConfig';
 import { CounselorData } from '../types/counselor';
@@ -7,7 +11,7 @@ import { TENANT_ADMIN_QUERY_KEY, TENANT_ADMINS_QUERY_KEY, useTenantUserAdminData
 import { parseHalResponse } from '../utils/parseHalResponse';
 
 interface UseAddOrUpdateTenantAdminOptions
-    extends UseMutationOptions<CounselorData, Error, CounselorData, Error | Response> {
+    extends UseMutationOptions<CounselorData, Error, CounselorData & AccountOperationVariables, Error | Response> {
     id?: string;
 }
 
@@ -15,8 +19,9 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
     const queryClient = useQueryClient();
     const { data } = useTenantUserAdminData({ id, enabled: !!id && id !== 'add' });
 
-    return useMutation({
-        mutationFn: async (formData) => {
+    const actions = useAccountOperationActions();
+    const mutation = useMutation({
+        mutationFn: async ({ operationIntent, ...formData }) => {
             const formValues = formData as CounselorData & { username?: string; password?: string };
             const resolvedUsername = formValues.username?.trim()
                 ? formValues.username.trim()
@@ -29,17 +34,26 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             }
             const bodyData = JSON.stringify(body);
 
-            const response = await fetchData({
-                url: `${tenantAdminsEndpoint}${id ? `/${id}` : ''}`,
-                method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
-                responseHandling: [
-                    FETCH_SUCCESS.CONTENT,
-                    FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
-                    FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
-                    FETCH_ERRORS.CATCH_ALL,
-                ],
-                bodyData,
-            });
+            const response = await settleAccountOperation(
+                operationIntent,
+                fetchData({
+                    url: `${tenantAdminsEndpoint}${id ? `/${id}` : ''}`,
+                    method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
+                    responseHandling: [
+                        FETCH_SUCCESS.CONTENT,
+                        FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+                        FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                        FETCH_ERRORS.CATCH_ALL,
+                    ],
+                    bodyData,
+                    headersData: accountOperationHeaders(
+                        operationIntent,
+                        id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
+                        `${tenantAdminsEndpoint}${id ? `/${id}` : ''}`,
+                        bodyData,
+                    ),
+                }),
+            );
 
             const normalizedResponse = await parseHalResponse(response);
             if (normalizedResponse && typeof normalizedResponse === 'object' && '_embedded' in normalizedResponse) {
@@ -62,4 +76,28 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             options?.onSuccess?.(responseData, variables, onMutateResult, context);
         },
     });
+    const target = `${tenantAdminsEndpoint}/${id}`;
+    const onAccountEdit = useCallback(() => {
+        if (id) actions.edited('tenant-admin-edit', target);
+    }, [actions, id, target]);
+    if (!id) return { ...mutation, onAccountEdit };
+    const materialize = (formData: CounselorData & AccountOperationVariables) => {
+        const values = formData as CounselorData & { username?: string };
+        return {
+            ...formData,
+            username: values.username?.trim() || data?.username || values.email,
+        };
+    };
+    return {
+        ...mutation,
+        onAccountEdit,
+        mutate: bindAccountOperationMutation(actions, 'tenant-admin-edit', target, mutation.mutate, materialize),
+        mutateAsync: bindAccountOperationMutation(
+            actions,
+            'tenant-admin-edit',
+            target,
+            mutation.mutateAsync,
+            materialize,
+        ),
+    };
 };
