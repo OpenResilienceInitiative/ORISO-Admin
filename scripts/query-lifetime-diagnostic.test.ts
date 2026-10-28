@@ -9,7 +9,7 @@ import {
     QUERY_LIFETIME_SELECTION,
 } from './query-lifetime-diagnostic';
 
-const owner = { id: 'diagnostic-usermanagement-users-prefix-through-tenant--case1', name: 'Case 1' };
+const owner = { id: 'diagnostic-usermanagement-users-prefix-through-tenant--case-1', name: 'Case 1' };
 const key = ['CONSULTANTS', undefined, 1, 'UPDATE_DATE', 'DESC', 10, {}, false];
 const url =
     'https://admin.example.test/service/users/consultants/search?query=*&page=1&perPage=10&order=DESC&field=UPDATE_DATE';
@@ -153,4 +153,31 @@ it('releases listeners idempotently and never replaces an original error when me
     expect(() => broken.bind(new QueryClient(), owner)).not.toThrow();
     expect(broken.invalid()).toBe(true);
     broken.release();
+});
+
+// Exact native CSF IDs captured in official baseline artifact12836944236.
+it.each([
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-1', 'Case 1'],
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-2', 'Case 2'],
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-3', 'Case 3'],
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-4', 'Case 4'],
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-5', 'Case 5'],
+    ['diagnostic-usermanagement-users-prefix-through-tenant--case-6', 'Case 6'],
+])('binds the captured Storybook owner %s without inventing an alias', (id, name) => {
+    const receipts: Record<string, unknown>[] = [];
+    const observer = createQueryLifetimeObserver(
+        (value) => receipts.push(value),
+        () => 0,
+    );
+    const client = new QueryClient();
+    observer.bind(client, { id, name });
+    const release = observer.mount(client);
+    expect(observer.invalid()).toBe(false);
+    expect(receipts.find((value) => value.phase === 'mounted')).toMatchObject({
+        owner: { id, name },
+        clientId: 'client-1',
+    });
+    release();
+    observer.release();
+    client.clear();
 });

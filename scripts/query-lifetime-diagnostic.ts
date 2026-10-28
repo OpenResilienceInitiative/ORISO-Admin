@@ -110,7 +110,7 @@ export const createQueryLifetimeObserver = (sink: (value: Receipt) => void, now:
                 }
                 if (
                     clients.size >= 24 ||
-                    !/^diagnostic-usermanagement-users-prefix-through-tenant--case[1-6]$/.test(owner.id) ||
+                    !/^diagnostic-usermanagement-users-prefix-through-tenant--case-[1-6]$/.test(owner.id) ||
                     !/^Case [1-6]$/.test(owner.name)
                 ) {
                     fail('unknown-owner');
