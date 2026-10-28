@@ -5,6 +5,67 @@ import { randomUUID } from 'node:crypto';
 import { BaseSequencer } from 'vite-plus/test/node';
 import { createRunProvenance, suppliedBrowser } from './verification-provenance.mjs';
 
+// Preserve only the bounded public error contract, never arbitrary error objects.
+// Unsupported/cyclic evidence is an explicit reporter failure, not an omitted child.
+export const caseErrorDetails = (error, depth = 0, ancestors = new Set(), budget = { nodes: 0, characters: 0 }) => {
+    budget.nodes += 1;
+    if (budget.nodes > 256) throw new Error('Public case error tree exceeds evidence budget');
+    const string = (value) => {
+        if (typeof value !== 'string') throw new Error('Unknown public error string');
+        budget.characters += value.length;
+        if (budget.characters > 1_000_000) throw new Error('Public case error strings exceed evidence budget');
+        return value;
+    };
+    if (depth > 16 || !error || typeof error !== 'object' || ancestors.has(error))
+        throw new Error('Unsupported or cyclic public case error evidence');
+    const next = new Set(ancestors).add(error);
+    if (typeof error.message !== 'string' || (error.name !== undefined && typeof error.name !== 'string'))
+        throw new Error('Unknown public case error shape');
+    const detail = { ...(error.name !== undefined && { name: string(error.name) }), message: string(error.message) };
+    if (depth === 0 && error.stack !== undefined) {
+        if (typeof error.stack !== 'string') throw new Error('Unknown public case stack');
+        detail.stack = string(error.stack);
+    }
+    if (error.errors !== undefined) {
+        if (!Array.isArray(error.errors) || error.errors.length > 100) throw new Error('Unknown aggregate children');
+        detail.errors = error.errors.map((child) => caseErrorDetails(child, depth + 1, next, budget));
+    }
+    if (error.cause !== undefined) detail.cause = caseErrorDetails(error.cause, depth + 1, next, budget);
+    if (error.verificationFailures !== undefined) {
+        const evidence = error.verificationFailures;
+        if (
+            !evidence ||
+            Object.keys(evidence).some((key) => !['unexpected', 'mismatches'].includes(key)) ||
+            !Array.isArray(evidence.unexpected) ||
+            !Array.isArray(evidence.mismatches) ||
+            evidence.unexpected.length + evidence.mismatches.length > 100
+        )
+            throw new Error('Unknown verification failure evidence');
+        const event = (value, mismatch = false) => {
+            if (
+                !value ||
+                Object.keys(value).some(
+                    (key) =>
+                        !(mismatch ? ['kind', 'message', 'expected', 'received'] : ['kind', 'message']).includes(key),
+                ) ||
+                typeof value.kind !== 'string' ||
+                typeof value.message !== 'string'
+            )
+                throw new Error('Unknown verification event');
+            return { kind: string(value.kind), message: string(value.message) };
+        };
+        detail.verificationFailures = {
+            unexpected: evidence.unexpected.map((value) => event(value)),
+            mismatches: evidence.mismatches.map((value) => {
+                if (!Number.isSafeInteger(value.expected) || !Number.isSafeInteger(value.received))
+                    throw new Error('Unknown verification mismatch');
+                return { ...event(value, true), expected: value.expected, received: value.received };
+            }),
+        };
+    }
+    return detail;
+};
+
 // Append completed cases immediately. If a worker stalls or CI cancels the job,
 // the artifact still distinguishes executed tests from queued/unfinished work.
 export default class VerificationReporter {
@@ -326,6 +387,13 @@ export default class VerificationReporter {
     onTestCaseResult(test) {
         const result = test.result();
         const diagnostic = test.diagnostic();
+        let errorDetails;
+        try {
+            errorDetails = result.errors?.map((error) => caseErrorDetails(error));
+        } catch (error) {
+            this.failProcess();
+            throw error;
+        }
         const browser = suppliedBrowser(test.meta?.());
         if (browser) this.browsers.set(JSON.stringify(browser), browser);
         this.event('result', test, { state: result.state });
@@ -349,6 +417,7 @@ export default class VerificationReporter {
                 durationMs: diagnostic?.duration,
                 retries: diagnostic?.retryCount || 0,
                 errors: result.errors?.map((error) => error.message),
+                errorDetails,
                 a11y: test.meta?.().verificationA11y,
             })}\n`,
         );

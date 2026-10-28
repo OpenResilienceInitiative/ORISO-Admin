@@ -44,3 +44,23 @@ describe('verification integrity', () => {
         (path) => expect(isProductRequest(`https://example.test${path}`)).toBe(false),
     );
 });
+
+it('preserves distinct multiline events and count mismatches on the same unchanged thrown Error', () => {
+    const recorder = createVerificationRecorder([{ kind: 'console-error', message: 'expected', count: 2 }]);
+    recorder.record('console-error', 'first line\nsecond line');
+    recorder.record('fallback', 'separate event');
+    expect(() => recorder.assertComplete()).toThrow(
+        expect.objectContaining({
+            name: 'Error',
+            message:
+                'Story verification failed:\nconsole-error: first line\nsecond line\nfallback: separate event\nconsole-error: expected: expected 2, received 0',
+            verificationFailures: {
+                unexpected: [
+                    { kind: 'console-error', message: 'first line\nsecond line' },
+                    { kind: 'fallback', message: 'separate event' },
+                ],
+                mismatches: [{ kind: 'console-error', message: 'expected', expected: 2, received: 0 }],
+            },
+        }),
+    );
+});

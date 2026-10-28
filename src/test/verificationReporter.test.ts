@@ -832,3 +832,64 @@ describe('recorded identity at a delayed ready callback', () => {
         expect(process.exitCode).toBe(1);
     });
 });
+
+it('retains bounded nested public aggregate/cause/event evidence beside unchanged message strings', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'admin-error-tree-'));
+    directories.push(directory);
+    const reporter = new VerificationReporter({ directory });
+    initialize(reporter);
+    const events = { unexpected: [{ kind: 'console-error', message: 'first\nsecond' }], mismatches: [] };
+    const leaf = Object.assign(new Error('Story verification failed:\nconsole-error: first\nsecond'), {
+        verificationFailures: events,
+    });
+    const cause = new Error('nested cause');
+    const nested = Object.assign(new AggregateError([leaf, new Error('cleanup failed')], 'joined aggregate'), {
+        cause,
+    });
+    const module = {
+        moduleId: path.resolve('src/test/verificationReporter.test.ts'),
+        children: { allTests: () => [] },
+    };
+    reporter.onTestRunStart([module]);
+    reporter.onTestCaseResult({
+        id: 'nested',
+        module,
+        fullName: 'nested',
+        options: { mode: 'run' },
+        result: () => ({ state: 'failed', errors: [nested] }),
+        diagnostic: () => ({}),
+    });
+    const packet = JSON.parse(readFileSync(path.join(directory, 'cases.jsonl'), 'utf8'));
+    expect(packet.errors).toEqual(['joined aggregate']);
+    expect(packet.errorDetails).toEqual([
+        {
+            name: nested.name,
+            message: nested.message,
+            stack: nested.stack,
+            errors: [
+                { name: leaf.name, message: leaf.message, verificationFailures: events },
+                { name: 'Error', message: 'cleanup failed' },
+            ],
+            cause: { name: 'Error', message: 'nested cause' },
+        },
+    ]);
+});
+
+it.each(['cycle', 'unknown-cause', 'unknown-children', 'unknown-event', 'budget'])(
+    'fails closed for unsupported recursive public evidence: %s',
+    async (kind) => {
+        // eslint-disable-next-line import/extensions
+        const { caseErrorDetails } = await import('../../scripts/verification-reporter.mjs');
+        const error: any = new Error('expected');
+        if (kind === 'cycle') error.cause = error;
+        if (kind === 'unknown-cause') error.cause = 'unstructured cause';
+        if (kind === 'unknown-children') error.errors = { hidden: 'failure' };
+        if (kind === 'unknown-event')
+            error.verificationFailures = {
+                unexpected: [{ kind: 'console-error', message: 'expected', extra: { hidden: 'failure' } }],
+                mismatches: [],
+            };
+        if (kind === 'budget') error.message = 'x'.repeat(1_000_001);
+        expect(() => caseErrorDetails(error)).toThrow();
+    },
+);

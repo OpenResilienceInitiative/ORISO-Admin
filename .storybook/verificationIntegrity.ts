@@ -29,10 +29,18 @@ export const createVerificationRecorder = (expected: ExpectedVerificationFailure
                 ).length;
                 return received === item.count
                     ? []
-                    : [`${item.kind}: ${item.message}: expected ${item.count}, received ${received}`];
+                    : [{ kind: item.kind, message: item.message, expected: item.count, received }];
             });
-            const messages = [...unexpected.map((failure) => `${failure.kind}: ${failure.message}`), ...mismatches];
-            if (messages.length) throw new Error(`Story verification failed:\n${messages.join('\n')}`);
+            const messages = [
+                ...unexpected.map((failure) => `${failure.kind}: ${failure.message}`),
+                ...mismatches.map(
+                    (item) => `${item.kind}: ${item.message}: expected ${item.expected}, received ${item.received}`,
+                ),
+            ];
+            if (messages.length)
+                throw Object.assign(new Error(`Story verification failed:\n${messages.join('\n')}`), {
+                    verificationFailures: { unexpected, mismatches },
+                });
         },
     };
 };

@@ -3,6 +3,19 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { validateControlCapsule } from './verification-profile.mjs';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
+import { ElementA11yParameterError } from 'storybook/internal/preview-errors';
+
+const require = createRequire(import.meta.url);
+const { toHaveNoViolations } = await import(
+    pathToFileURL(
+        path.join(
+            path.dirname(require.resolve('@storybook/addon-a11y/preview')),
+            '_browser-chunks/matchers-JIUQ3HVY.js',
+        ),
+    ).href
+);
+const plain = (value) => value.replace(/\x1b\[[0-9;]*m/g, '');
 
 const expected = new Map([
     ['Healthy', null],
@@ -26,7 +39,204 @@ const expected = new Map([
     ['Duplicate Audit', 'Accessibility audit requires exactly one'],
     ['Strict Addon Violation', 'Unapproved accessibility violation'],
 ]);
-export const assertControlPhase = (directory, phase, status, capsule) => {
+// These are fixture contracts, not approvals learned from child output.
+const functionalEvents = (title, events) => {
+    const exact = {
+        'Caught Error': [['console-error', 'controlled console error']],
+        'Known Operational Error': [['console-error', 'approved story independent console failure']],
+        Fallback: [['fallback', 'A failure fallback replaced the story']],
+        'Uncaught Error': [['uncaught-error', 'Uncaught Error: controlled uncaught error']],
+        'Unhandled Rejection': [['unhandled-rejection', 'controlled unhandled rejection']],
+    };
+    assert.ok(Array.isArray(events), 'Missing recorder events');
+    for (const event of events) {
+        assert.deepEqual(Object.keys(event).sort(), ['kind', 'message'], 'Unknown recorder event fields');
+        assert.equal(typeof event.kind, 'string');
+        assert.equal(typeof event.message, 'string');
+    }
+    const remaining = events.map((event) => ({ ...event }));
+    const take = (kind, predicate) => {
+        const index = remaining.findIndex((event) => event.kind === kind && predicate(event.message));
+        assert.ok(index >= 0, `Missing permitted ${title} ${kind} event`);
+        remaining.splice(index, 1);
+    };
+    for (const [kind, message] of exact[title] ?? []) take(kind, (value) => value === message);
+    if (title === 'Unexpected Request')
+        take('unexpected-request', (value) => {
+            if (!value.startsWith('GET ')) return false;
+            try {
+                const url = new URL(value.slice(4));
+                return (
+                    ['http:', 'https:'].includes(url.protocol) &&
+                    ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) &&
+                    url.pathname === '/service/__verification_unexpected__' &&
+                    !url.search &&
+                    !url.hash
+                );
+            } catch {
+                return false;
+            }
+        });
+    if (title === 'Production Boundary') {
+        take('fallback', (value) => value === 'A failure fallback replaced the story');
+        take(
+            'console-error',
+            (value) =>
+                value ===
+                '%o\n\n%s\n\n%s\n controlled production boundary failure The above error occurred in the <BrokenProductChild> component. React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.',
+        );
+        take(
+            'console-error',
+            (value) =>
+                /^\[ErrorBoundary:verification\] controlled production boundary failure (?:\n\s+at [^\n]+)+\n?$/.test(
+                    value,
+                ) &&
+                value.includes('at BrokenProductChild') &&
+                value.includes('at ErrorBoundary'),
+        );
+    }
+    // Pinned browser error-catcher forwards owned window events to console.error.
+    const forwarded = {
+        'Uncaught Error': 'Uncaught Error: controlled uncaught error',
+        'Unhandled Rejection': 'controlled unhandled rejection',
+    }[title];
+    if (forwarded) take('console-error', (value) => value === forwarded);
+    assert.deepEqual(remaining, [], `Unexpected or duplicate ${title} event`);
+    assert.ok(events.length, 'Empty failure evidence');
+};
+
+const assertCaseFailures = (test, record, capsule, baselines) => {
+    const details = record.errorDetails ?? [];
+    assert.deepEqual(
+        record.errors ?? [],
+        details.map((error) => error.message),
+        'Reporter message/detail mismatch',
+    );
+    assert.deepEqual(
+        test.failureMessages ?? [],
+        details.map((error) => error.stack || error.message),
+        'Native error/detail mismatch',
+    );
+    const leaves = [];
+    const visit = (error, depth = 0) => {
+        assert.ok(depth <= 16 && error && typeof error === 'object', 'Unsupported case error tree');
+        assert.ok(
+            Object.keys(error).every((key) =>
+                ['name', 'message', 'stack', 'errors', 'cause', 'verificationFailures'].includes(key),
+            ),
+            'Unknown case error fields',
+        );
+        assert.equal(typeof error.message, 'string');
+        if (depth > 0) assert.equal(error.stack, undefined, 'Unexpected nested stack field');
+        assert.equal(error.cause, undefined, 'Unexpected error cause');
+        if (error.name === 'AggregateError') {
+            assert.ok(Array.isArray(error.errors) && error.errors.length > 0, 'Missing aggregate children');
+            assert.equal(error.verificationFailures, undefined, 'Unexpected aggregate evidence');
+            assert.equal(
+                error.message,
+                error.errors.map((child) => `${child.name}: ${child.message}`).join('\n'),
+                'Unexpected aggregate message',
+            );
+            error.errors.forEach((child) => visit(child, depth + 1));
+        } else {
+            assert.equal(error.errors, undefined, 'Unexpected nested error evidence');
+            leaves.push(error);
+        }
+    };
+    details.forEach((error) => visit(error));
+    const expectedMessages = [];
+    const engineError = new ElementA11yParameterError();
+    let needsRecorder =
+        [
+            'Caught Error',
+            'Uncaught Error',
+            'Unhandled Rejection',
+            'Unexpected Request',
+            'Fallback',
+            'Production Boundary',
+        ].includes(test.title) ||
+        (test.title === 'Known Operational Error' && capsule.phase === 'verify');
+    if (capsule.profile === 'functional-pilot') {
+        if (test.title === 'Duplicate Audit') expectedMessages.push('Functional pilot unexpected audit report');
+    } else {
+        const raw = record.a11y?.reports?.find((report) => report.result?.violations)?.result;
+        const fingerprints = record.a11y?.fingerprints ?? [];
+        if (
+            [
+                'Low Contrast',
+                'Unnamed Button',
+                'Missing Alt',
+                'Known Baseline',
+                'Known Added Node',
+                'Known Worse Style',
+                'Known Operational Error',
+                'Strict Addon Violation',
+            ].includes(test.title)
+        ) {
+            assert.ok(raw, 'Missing strict raw result for error contract');
+            const allowed = [
+                ...(baselines.find(
+                    (entry) => entry.storyId === record.a11y.storyId && entry.environment === record.a11y.environment,
+                )?.fingerprints ?? []),
+            ];
+            const unexpected = fingerprints.filter((fingerprint) => {
+                const index = allowed.indexOf(fingerprint);
+                if (index < 0) return true;
+                allowed.splice(index, 1);
+                return false;
+            });
+            if (unexpected.length)
+                expectedMessages.push(
+                    `Unapproved accessibility violation in ${record.a11y.storyId}: ${unexpected.join('\n')}`,
+                );
+            const approved = baselines.some(
+                (entry) => entry.storyId === record.a11y.storyId && entry.environment === record.a11y.environment,
+            );
+            if (!approved && raw.violations.length) expectedMessages.push(toHaveNoViolations(raw).message());
+        }
+        const auditPrefix =
+            'Accessibility audit requires exactly one fresh version1 raw report and only its pinned strict assertion companion; received';
+        if (test.title === 'Missing Audit') expectedMessages.push(`${auditPrefix} 0 reports (0 valid raw)`);
+        if (test.title === 'Duplicate Audit') expectedMessages.push(`${auditPrefix} 2 reports (1 valid raw)`);
+        if (test.title === 'Audit Error')
+            expectedMessages.push(
+                engineError.message,
+                'Accessibility audit missing, malformed, failed, or unexpected engine version',
+            );
+    }
+    const actualMessages = [];
+    for (const error of leaves) {
+        if (error.verificationFailures !== undefined) {
+            assert.deepEqual(
+                Object.keys(error.verificationFailures).sort(),
+                ['mismatches', 'unexpected'],
+                'Unknown recorder evidence fields',
+            );
+            assert.ok(needsRecorder, 'Unexpected extra recorder failure');
+            needsRecorder = false;
+            assert.equal(error.name, 'Error');
+            assert.deepEqual(error.verificationFailures.mismatches, [], 'Unexpected expected-error count mismatch');
+            const events = error.verificationFailures.unexpected;
+            functionalEvents(test.title, events);
+            assert.equal(
+                error.message,
+                `Story verification failed:\n${events.map((event) => `${event.kind}: ${event.message}`).join('\n')}`,
+                'Recorder message/evidence mismatch',
+            );
+        } else {
+            assert.equal(
+                error.name,
+                error.message === engineError.message ? engineError.name : 'Error',
+                'Unexpected error leaf type',
+            );
+            actualMessages.push(plain(error.message));
+        }
+    }
+    assert.equal(needsRecorder, false, 'Missing functional recorder failure');
+    assert.deepEqual(actualMessages.sort(), expectedMessages.map(plain).sort(), 'Unexpected case failure set');
+};
+
+export const assertControlPhase = (directory, phase, status, capsule, baselines = []) => {
     validateControlCapsule(capsule);
     assert.equal(capsule.phase, phase);
     const witness = capsule.selection === 'axe-witness1';
@@ -98,13 +308,7 @@ export const assertControlPhase = (directory, phase, status, capsule) => {
         const record = matching[0];
         assert.equal(record.state, test.status, 'Native case state mismatch');
         assert.equal(record.retries ?? 0, 0, 'Control retries invalidate proof');
-        const failure = checks.get(test.title);
-        if (failure)
-            assert.ok(
-                record.errors?.some((error) => error.includes(failure)),
-                'Reporter case failed for the wrong reason',
-            );
-        else assert.deepEqual(record.errors ?? [], [], 'Healthy case contains errors');
+        assertCaseFailures(test, record, capsule, baselines);
         assert.equal(
             results.filter(
                 (event) => event.name === record.name && event.file === record.file && event.state === record.state,
@@ -125,7 +329,11 @@ export const assertControlPhase = (directory, phase, status, capsule) => {
             assert.equal(test.a11y.auditCount, 0);
             if (test.a11y.storyId.endsWith('--duplicate-audit')) {
                 assert.equal(test.a11y.reports.length, 1);
-                assert.ok(test.a11y.reports[0].result.error.includes('controlled duplicate audit'));
+                assert.deepEqual(
+                    test.a11y.reports[0].result,
+                    { error: 'controlled duplicate audit' },
+                    'Unexpected injected audit error evidence',
+                );
             } else assert.deepEqual(test.a11y.reports, [], 'Unexpected functional audit report');
         }
         return cases;

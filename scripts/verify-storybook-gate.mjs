@@ -66,7 +66,7 @@ const run = (phase, baselines = [], shuffle = false, options = { profile }) => {
     );
     writeFileSync(path.join(directory, 'controls.log'), `${result.stdout || ''}\n${result.stderr || ''}`);
     assert.ifError(result.error);
-    return assertControlPhase(directory, phase, result.status, capsule);
+    return assertControlPhase(directory, phase, result.status, capsule, baselines);
 };
 try {
     mkdirSync(path.dirname(fixture), { recursive: true });
