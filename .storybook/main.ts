@@ -1,6 +1,10 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 import { mergeConfig } from 'vite-plus';
 import { readControlInvocation } from '../scripts/verification-profile.mjs';
+import { checkFieldFormBackport } from '../scripts/field-form-backport.mjs';
+
+// Check only: preparation is explicit via project postinstall or prepare:runtime.
+checkFieldFormBackport();
 
 const control = readControlInvocation();
 const controlStories = {

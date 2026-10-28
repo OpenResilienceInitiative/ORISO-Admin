@@ -7,6 +7,10 @@ import { readVerificationProfile, readControlInvocation } from './scripts/verifi
 import { axeWitnessPlugin } from './scripts/verification-axe-witness.mjs';
 import { fileURLToPath } from 'node:url';
 import { fixtureComparatorProbePlugin } from './scripts/fixture-comparator-probe.mjs';
+import { checkFieldFormBackport } from './scripts/field-form-backport.mjs';
+
+// Check only: preparation is explicit via project postinstall or prepare:runtime.
+checkFieldFormBackport();
 
 const fixtureDiagnostic = process.env.VITE_ORISO_FIXTURE_DIAGNOSTIC;
 const comparatorProbe = fixtureComparatorProbePlugin(fixtureDiagnostic, process.env.VERIFICATION_ARTIFACTS_DIR);

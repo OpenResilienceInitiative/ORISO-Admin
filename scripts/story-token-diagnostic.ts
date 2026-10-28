@@ -5,7 +5,7 @@ export const markTokenDiagnostic = (
 ) => {
     const selection = import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC;
     if (!selection) return;
-    if (!['token-blue-alone', 'token-blue-transition'].includes(selection))
+    if (!['token-blue-alone', 'token-blue-transition', 'token-whole-module'].includes(selection))
         throw new Error('Unknown token diagnostic selection');
     console.info(JSON.stringify({ tokenDiagnostic: 'phase', selection, phase, context, at: performance.now() }));
 };

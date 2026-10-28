@@ -4,10 +4,40 @@ import { createHash } from 'node:crypto';
 import { unlinkSync, mkdirSync, writeFileSync, openSync, closeSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { sourceIdentity } from './verification-provenance.mjs';
+import { diagnosticCaseOrder } from './diagnostic-case-order.mjs';
+import { checkFieldFormBackport } from './field-form-backport.mjs';
 import { comparatorContract, prepareComparatorProbe } from './fixture-comparator-probe.mjs';
 
 // Closed selection; fresh native process/browser lifetime per case, never an acceptance run.
 const selections = {
+    'token-whole-module': [
+        'src/theme/appliedTokenInspection.stories.tsx',
+        '^(Red Light German|Red Light English|Red Inverted German|Red Inverted English|Blue Light German|Blue Light English|Blue Inverted German|Blue Inverted English|Component Override And Restore|Missing Effective Root And Restore|Unresolved Authored Root And Restore|Theme Bridge Blue Inverted English)$',
+        [
+            'Red Light German',
+            'Red Light English',
+            'Red Inverted German',
+            'Red Inverted English',
+            'Blue Light German',
+            'Blue Light English',
+            'Blue Inverted German',
+            'Blue Inverted English',
+            'Component Override And Restore',
+            'Missing Effective Root And Restore',
+            'Unresolved Authored Root And Restore',
+            'Theme Bridge Blue Inverted English',
+        ],
+    ],
+    'deadline-regression': [
+        'src/components/Tenants/LegalSettings/components/DataProcessingAgreementContainer/DataProcessingAgreementContainer.deadline.stories.tsx',
+        '^Failed Publication Keeps Draft$',
+        ['Failed Publication Keeps Draft'],
+    ],
+    'registration-regression': [
+        'src/pages/Agency/Edit/components/RegistrationSettings/RegistrationSettings.stories.tsx',
+        '^Changing The Tenant Drops The Pick$',
+        ['Changing The Tenant Drops The Pick'],
+    ],
     'token-blue-alone': [
         'src/theme/appliedTokenInspection.stories.tsx',
         '^Blue Inverted English$',
@@ -43,6 +73,7 @@ assert.ok(
 const directory = path.resolve('verification-artifacts', 'fixture-diagnostic', selection);
 mkdirSync(directory, { recursive: true });
 const tokenSelection = selection.startsWith('token-');
+const repairedRegression = ['deadline-regression', 'registration-regression'].includes(selection);
 let generated;
 let generatedBytes;
 let originalSourceSHA256;
@@ -62,7 +93,7 @@ if (Object.hasOwn(userSequences, selection)) {
     writeFileSync(generated, generatedBytes, { flag: 'wx' });
 }
 try {
-    if (!generated && !tokenSelection) prepareComparatorProbe(directory, selection);
+    if (!generated && !tokenSelection && !repairedRegression) prepareComparatorProbe(directory, selection);
     const source = sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA);
     const args = [
         path.resolve('node_modules/.bin/vp'),
@@ -83,6 +114,7 @@ try {
             },
         }),
         source,
+        ...(repairedRegression && { runtimeIntegration: checkFieldFormBackport() }),
         command: [process.execPath, ...args],
         profile: 'functional-pilot',
         acceptance: false,
@@ -91,16 +123,21 @@ try {
     };
     writeFileSync(path.join(directory, 'input.json'), JSON.stringify(input, null, 2), { flag: 'wx' });
     const log = openSync(path.join(directory, 'child.log'), 'wx');
+    const cleanDiagnosticEnv = { ...process.env };
+    for (const key of ['VITE_ORISO_USER_SEQUENCE', 'VITE_ORISO_TOKEN_DIAGNOSTIC', 'VITE_ORISO_FIXTURE_DIAGNOSTIC'])
+        delete cleanDiagnosticEnv[key];
     const child = spawn(process.execPath, args, {
         detached: process.platform !== 'win32',
         stdio: ['ignore', log, log],
         env: {
-            ...process.env,
+            ...cleanDiagnosticEnv,
             ORISO_VERIFICATION_PROFILE: 'functional-pilot',
             ...(generated
                 ? { VITE_ORISO_USER_SEQUENCE: selection }
                 : tokenSelection
                 ? { VITE_ORISO_TOKEN_DIAGNOSTIC: selection }
+                : repairedRegression
+                ? {}
                 : { VITE_ORISO_FIXTURE_DIAGNOSTIC: selection }),
             VERIFICATION_ARTIFACTS_DIR: directory,
         },
@@ -141,14 +178,20 @@ try {
             .trim()
             .split('\n')
             .map(JSON.parse);
-        const actual = events
-            .filter((event) => ['ready', 'result'].includes(event.event) && event.state !== 'skipped')
-            .map((event) => `${event.event}:${event.name}`);
-        const expected = wantedNames.flatMap((name) => [`ready:${name}`, `result:${name}`]);
-        sequenceMatches = JSON.stringify(actual) === JSON.stringify(expected);
+        const cases = readFileSync(path.join(directory, runs[0], 'cases.jsonl'), 'utf8')
+            .trim()
+            .split('\n')
+            .map(JSON.parse);
+        let ordering;
+        try {
+            ordering = diagnosticCaseOrder(events, cases, wantedNames);
+            sequenceMatches = true;
+        } catch (error) {
+            ordering = { error: error.message };
+        }
         writeFileSync(
             path.join(directory, 'sequence.json'),
-            JSON.stringify({ actual, expected, sequenceMatches }, null, 2),
+            JSON.stringify({ ...ordering, sequenceMatches }, null, 2),
             { flag: 'wx' },
         );
     }
@@ -222,13 +265,55 @@ try {
             ),
             { flag: 'wx' },
         );
+    } else if (repairedRegression) {
+        const run = runs.length === 1 ? path.join(directory, runs[0]) : undefined;
+        const cases = run
+            ? readFileSync(path.join(run, 'cases.jsonl'), 'utf8')
+                  .trim()
+                  .split('\n')
+                  .map(JSON.parse)
+                  .filter((item) => item.state !== 'skipped')
+            : [];
+        observationComplete =
+            outcome.exitCode === 0 &&
+            cases.length === 1 &&
+            cases.every(
+                (item) =>
+                    item.state === 'passed' &&
+                    (item.errors ?? []).length === 0 &&
+                    (item.errorDetails ?? []).length === 0 &&
+                    item.a11y?.profile === 'functional-pilot' &&
+                    item.a11y?.auditCount === 0 &&
+                    item.a11y?.reports?.length === 0 &&
+                    item.a11y?.compliance?.execution === 'NOT_RUN' &&
+                    item.a11y?.compliance?.status === 'DEFERRED' &&
+                    item.a11y?.compliance?.reason === 'pilot scope',
+            );
+        writeFileSync(
+            path.join(directory, 'repaired-regression.json'),
+            JSON.stringify(
+                {
+                    observationComplete,
+                    runtimeIntegration: checkFieldFormBackport(),
+                    comparatorInterceptionRequested: false,
+                    acceptance: false,
+                },
+                null,
+                2,
+            ),
+            { flag: 'wx' },
+        );
     } else if (tokenSelection) {
         const phases = observations.filter((item) => item.tokenDiagnostic === 'phase');
-        observationComplete = wantedNames.every((name) =>
-            phases.some(
-                (item) =>
-                    item.phase === 'play:after' && item.context?.locale === (name.endsWith('English') ? 'en' : 'de'),
-            ),
+        observationComplete = (selection === 'token-whole-module' ? wantedNames.slice(0, 8) : wantedNames).every(
+            (name) =>
+                phases.some(
+                    (item) =>
+                        item.phase === 'play:after' &&
+                        item.context?.locale === (name.endsWith('English') ? 'en' : 'de') &&
+                        item.context?.primaryColor === (name.startsWith('Red') ? '#A5000A' : '#1D4ED8') &&
+                        item.context?.scheme === (name.includes('Inverted') ? 'inverted' : 'light'),
+                ),
         );
         writeFileSync(
             path.join(directory, 'token-phases.json'),

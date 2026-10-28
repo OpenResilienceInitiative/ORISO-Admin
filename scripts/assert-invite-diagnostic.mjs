@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { diagnosticCaseOrder } from './diagnostic-case-order.mjs';
 
 const target = {
     group: 'CounsellorInvitesTab — platform admin picks an existing agency first',
@@ -26,13 +27,18 @@ const cases = readFileSync(path.join(run, 'cases.jsonl'), 'utf8').trim().split('
 const events = readFileSync(path.join(run, 'events.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
 const executed = cases.filter((item) => ['passed', 'failed'].includes(item.state));
 const names = expected.map((item) => `${item.group} > ${item.title}`);
-const actualOrder = events
-    .filter((item) => ['ready', 'result'].includes(item.event) && item.state !== 'skipped')
-    .map((item) => `${item.event}:${item.name}`);
-const expectedOrder = names.flatMap((name) => [`ready:${name}`, `result:${name}`]);
-const native = JSON.parse(readFileSync(path.join(directory, 'native.json'), 'utf8'))
-    .testResults.flatMap((suite) => suite.assertionResults)
-    .filter((item) => ['passed', 'failed'].includes(item.status));
+let actualOrder, expectedOrder, orderError;
+try {
+    const ordering = diagnosticCaseOrder(events, cases, names);
+    actualOrder = ordering.actual;
+    expectedOrder = ordering.expected;
+} catch (error) {
+    orderError = error.message;
+}
+const nativeAll = JSON.parse(readFileSync(path.join(directory, 'native.json'), 'utf8')).testResults.flatMap(
+    (suite) => suite.assertionResults,
+);
+const native = nativeAll.filter((item) => ['passed', 'failed'].includes(item.status));
 const trace = readFileSync(path.join(directory, 'trace.jsonl'), 'utf8')
     .trim()
     .split('\n')
@@ -48,7 +54,19 @@ const checks = {
             (item, index) =>
                 item.title === expected[index].title && item.ancestorTitles.join(' > ') === expected[index].group,
         ),
-    order: JSON.stringify(actualOrder) === JSON.stringify(expectedOrder),
+    nativeAccounting:
+        nativeAll.length === cases.length &&
+        nativeAll.every((item) => {
+            const name = [...item.ancestorTitles, item.title].join(' > ');
+            const matching = cases.filter((record) => record.name === name);
+            return (
+                matching.length === 1 &&
+                (matching[0].state === 'skipped'
+                    ? item.status === 'skipped' && (item.failureMessages ?? []).length === 0
+                    : item.status === matching[0].state)
+            );
+        }),
+    order: !orderError,
     source: JSON.stringify(provenance.source) === JSON.stringify(input.source),
     profile: provenance.profile === 'strict',
     run:
@@ -70,6 +88,7 @@ writeFileSync(
             checks,
             actualOrder,
             expectedOrder,
+            orderError,
             tracePhases: trace.map((item) => ({ phase: item.phase, elapsedMs: item.elapsedMs })),
             omittedCases: cases.filter((item) => item.state === 'skipped').map((item) => item.name),
         },

@@ -5,6 +5,10 @@ import eslintPlugin from 'vite-plugin-eslint';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { existsSync, readFileSync } from 'node:fs';
 import { authBffDevPlugin } from './vite.authBffPlugin';
+import { checkFieldFormBackport } from './scripts/field-form-backport.mjs';
+
+// Check only: preparation is explicit via project postinstall or prepare:runtime.
+checkFieldFormBackport();
 
 // All React-dependent libraries must share one chunk. Splitting them (e.g. vendor-antd,
 // vendor-draftjs, vendor-mui) causes init-order bugs: those bundles call React.createElement

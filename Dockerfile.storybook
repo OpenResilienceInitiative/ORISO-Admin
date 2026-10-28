@@ -17,6 +17,9 @@ RUN npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
+# Reviewed first-party runtime preparation; dependency lifecycle scripts remain disabled.
+RUN npm run prepare:runtime
+
 # Build Storybook static files (prebuild-storybook runs the SB typecheck)
 RUN npm run build-storybook
 

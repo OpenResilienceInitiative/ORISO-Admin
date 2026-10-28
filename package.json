@@ -65,6 +65,8 @@
     "web-vitals": "^5.3.0"
   },
   "scripts": {
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "postinstall": "node scripts/prepare-runtime.mjs",
     "prestart": "node scripts/generate-runtime-env.js",
     "start": "vp dev",
     "build": "tsc && vp build",
