@@ -1,6 +1,6 @@
-import { FETCH_ERRORS } from '../api/fetchData';
 import { message } from 'antd';
 import i18next from 'i18next';
+import { FETCH_ERRORS } from '../api/fetchData';
 import { tryRefreshAccessToken } from '../api/auth/auth';
 import logout from '../api/auth/logout';
 import { getSessionAccessToken } from '../api/auth/tokenSessionStore';
