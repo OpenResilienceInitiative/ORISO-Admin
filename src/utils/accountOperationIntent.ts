@@ -7,4 +7,5 @@ export {
     acknowledgeAccountOperation,
     isTerminalAccountOperationRefusal,
     settleAccountOperation,
+    settleAccountOperationStep,
 } from './accountOperationState';

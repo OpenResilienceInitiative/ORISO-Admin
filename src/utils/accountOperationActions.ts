@@ -1,3 +1,4 @@
+import { ownAccountOperation } from './accountOperationOwner';
 import { AccountOperationIntent } from './accountOperationIdentity';
 import { AccountOperationSlot, type AccountOperationAttempt } from './accountOperationSlot';
 import { accountOperationFailed } from './accountOperationState';
@@ -6,6 +7,23 @@ import { accountOperationFailed } from './accountOperationState';
 export class AccountOperationActions {
     private slots = new Map<string, AccountOperationSlot<unknown>>();
 
+    private owner?: string;
+
+    private readonly readOwner?: () => string;
+
+    constructor(readOwner?: () => string) {
+        this.readOwner = readOwner;
+    }
+
+    private currentOwner(): string | undefined {
+        const owner = this.readOwner?.();
+        if (owner !== this.owner) {
+            this.slots.clear();
+            this.owner = owner;
+        }
+        return owner;
+    }
+
     edited(operation: string, target: string): void {
         // An intentional edit supersedes the previous form action. Its already
         // captured transport retry still owns its old immutable intent object.
@@ -13,6 +31,7 @@ export class AccountOperationActions {
     }
 
     private slotFor(operation: string, target: string) {
+        this.currentOwner();
         const key = JSON.stringify([operation, target]);
         let slot = this.slots.get(key);
         if (!slot) {
@@ -29,7 +48,9 @@ export class AccountOperationActions {
         materialize?: (payload: T) => T,
     ): AccountOperationAttempt<T> {
         const slot = this.slotFor(operation, target) as AccountOperationSlot<T>;
-        return slot.prepare(operation, target, payload, materialize);
+        const attempt = slot.prepare(operation, target, payload, materialize);
+        if (this.owner !== undefined) ownAccountOperation(attempt.intent, this.owner);
+        return attempt;
     }
 
     async run<T, R>(
@@ -39,7 +60,7 @@ export class AccountOperationActions {
         send: (payload: T, intent: AccountOperationIntent) => Promise<R>,
     ): Promise<R> {
         const slot = this.slotFor(operation, target);
-        const attempt = slot.prepare(operation, target, payload);
+        const attempt = this.prepare(operation, target, payload);
         let result: R;
         try {
             result = await send(attempt.payload as T, attempt.intent);

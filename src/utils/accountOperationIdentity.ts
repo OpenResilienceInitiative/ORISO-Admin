@@ -1,3 +1,4 @@
+import { inheritAccountOperationOwner, registerAccountOperationHeaders } from './accountOperationOwner';
 import { bindings, children } from './accountOperationState';
 
 /** A correlation ID for one account action. It grants no authority. */
@@ -19,7 +20,7 @@ export class AccountOperationIntent {
             throw new Error('Intent already belongs to a different account operation');
         }
         bindings.set(this, binding);
-        return { 'Idempotency-Key': this.id };
+        return registerAccountOperationHeaders({ 'Idempotency-Key': this.id }, this);
     }
 
     /** Separate effects of one save have separate, stable request IDs. */
@@ -34,6 +35,7 @@ export class AccountOperationIntent {
             subIntent = new AccountOperationIntent();
             subIntents.set(name, subIntent);
         }
+        inheritAccountOperationOwner(this, subIntent);
         return subIntent;
     }
 }

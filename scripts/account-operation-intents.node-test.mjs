@@ -263,7 +263,15 @@ for (const [file, exported, options, payload] of [
         globalThis.__accountIntentFetch = (request) => {
             requests.push(request);
             return fail
-                ? Promise.reject(Object.assign(new Error('BAD_REQUEST'), { status: 400 }))
+                ? Promise.reject(
+                      new Response(null, {
+                          status: 400,
+                          headers: {
+                              'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+                              'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
+                          },
+                      }),
+                  )
                 : Promise.resolve({ status: 200, json: async () => ({ _embedded: {} }) });
         };
         try {
@@ -330,3 +338,56 @@ for (const [file, exported, options, payload] of [
         }
     });
 }
+
+test('mounted actions allocate fresh ownership for a new account and preserve captured retries', async () => {
+    const { assertAccountOperationOwner } = await import('../src/utils/accountOperationOwner.ts');
+    let owner = 'first-person';
+    const actions = new AccountOperationActions(() => owner);
+    const original = actions.prepare('save', '/users/data', { displayName: 'Same' });
+    assert.equal(actions.prepare('save', '/users/data', original.payload).intent, original.intent);
+    const firstHeaders = original.intent.headersFor('PATCH', '/users/data', '{}');
+    owner = 'second-person';
+    const next = actions.prepare('save', '/users/data', original.payload);
+    assert.notEqual(next.intent.id, original.intent.id);
+    assert.throws(() => assertAccountOperationOwner(firstHeaders, owner, owner), /REQUEST_IDENTITY_CHANGED/);
+    const childHeaders = original.intent.subIntent('agency').headersFor('PUT', '/agency', '{}');
+    assert.throws(() => assertAccountOperationOwner(childHeaders, owner, owner), /REQUEST_IDENTITY_CHANGED/);
+    assertAccountOperationOwner(next.intent.headersFor('PATCH', '/users/data', '{}'), owner, owner);
+    // An old acknowledgement cannot end the new person's action.
+    actions.prepare('save', '/users/data', original.payload);
+    assert.equal(actions.prepare('save', '/users/data', original.payload).intent, next.intent);
+});
+
+test('a compound save cannot retire after a previous agency step completed and the profile outcome stayed unknown', async () => {
+    const { useAddOrUpdateConsultantOrAdmin } = await import('../src/hooks/useAddOrUpdateConsultantOrAgencyAdmin.ts');
+    const mutation = useAddOrUpdateConsultantOrAdmin({ id: 'target-id', typeOfUser: 'consultants' });
+    const previous = globalThis.__accountIntentFetch;
+    const observed = [];
+    globalThis.__accountIntentFetch = (request) => {
+        observed.push(request);
+        if (observed.length === 2) return Promise.reject(new TypeError('profile reply lost'));
+        if (observed.length === 3)
+            return Promise.reject(
+                new Response(null, {
+                    status: 403,
+                    headers: {
+                        'X-ORISO-Mutation-Outcome': 'NO_EFFECT',
+                        'X-ORISO-Mutation-Operation': request.headersData['Idempotency-Key'],
+                    },
+                }),
+            );
+        return Promise.resolve({ status: 200, json: async () => ({ _embedded: {} }) });
+    };
+    try {
+        const payload = { firstname: 'Test', agencies: [{ value: '7' }] };
+        await assert.rejects(mutation.mutateAsync(payload), /profile reply lost/);
+        const parent = globalThis.__lastAccountMutationVariables.operationIntent;
+        await assert.rejects(mutation.mutateAsync(payload));
+        await mutation.mutateAsync(payload);
+        assert.equal(globalThis.__lastAccountMutationVariables.operationIntent, parent);
+        assert.equal(observed[0].headersData['Idempotency-Key'], observed[3].headersData['Idempotency-Key']);
+        assert.equal(observed[1].headersData['Idempotency-Key'], observed[4].headersData['Idempotency-Key']);
+    } finally {
+        globalThis.__accountIntentFetch = previous;
+    }
+});

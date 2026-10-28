@@ -353,3 +353,79 @@ test('a frozen account mutation cannot infer its original subject from the refre
         globalThis.fetch = previousFetch;
     }
 });
+
+for (const status of [400, 403, 412, 422]) {
+    test(`a first unsigned ${status} cannot retire an account attempt`, async () => {
+        await withObservedMutationResponse(
+            (_request, number) => new Response(null, { status: number === 1 ? status : 204 }),
+            async (run, requests) => {
+                await assert.rejects(run());
+                await run();
+                assert.equal(requests[1], requests[0]);
+            },
+        );
+    });
+}
+
+test('separate transport invocations refuse a captured action after an account switch', async () => {
+    const { fetchData } = await import('../src/api/fetchData.ts');
+    const previous = globalThis.fetch;
+    const intent = new AccountOperationIntent();
+    const url = 'https://unit.oriso.invalid/users/data';
+    let requests = 0;
+    globalThis.__accountAuthToken = tokenFor('first-person', 1);
+    globalThis.fetch = async () => {
+        requests++;
+        throw new TypeError('response lost');
+    };
+    const run = () =>
+        fetchData({
+            url,
+            method: 'PATCH',
+            bodyData: '{}',
+            timeout: 1,
+            headersData: intent.headersFor('PATCH', url, '{}'),
+        });
+    try {
+        await assert.rejects(run(), /response lost/);
+        globalThis.__accountAuthToken = tokenFor('second-person', 1);
+        await assert.rejects(run(), /REQUEST_IDENTITY_CHANGED/);
+        assert.equal(requests, 1, 'the original action body never reaches another account');
+        globalThis.__accountAuthToken = tokenFor('first-person', 2);
+        await assert.rejects(run(), /response lost/);
+        assert.equal(requests, 2, 'same-person token renewal retains the original action');
+    } finally {
+        globalThis.fetch = previous;
+        delete globalThis.__accountAuthToken;
+    }
+});
+
+test('an anonymous captured action cannot become authenticated on a later invocation', async () => {
+    const { fetchData } = await import('../src/api/fetchData.ts');
+    const previous = globalThis.fetch;
+    const intent = new AccountOperationIntent();
+    const url = 'https://unit.oriso.invalid/users/data';
+    let requests = 0;
+    globalThis.__accountAuthToken = tokenFor('signed-in-person', 1);
+    globalThis.fetch = async () => {
+        requests++;
+        throw new TypeError('response lost');
+    };
+    const run = (skipAuth) =>
+        fetchData({
+            url,
+            method: 'PATCH',
+            bodyData: '{}',
+            skipAuth,
+            timeout: 1,
+            headersData: intent.headersFor('PATCH', url, '{}'),
+        });
+    try {
+        await assert.rejects(run(true), /response lost/);
+        await assert.rejects(run(false), /REQUEST_IDENTITY_CHANGED/);
+        assert.equal(requests, 1);
+    } finally {
+        globalThis.fetch = previous;
+        delete globalThis.__accountAuthToken;
+    }
+});

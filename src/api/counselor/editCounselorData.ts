@@ -4,6 +4,7 @@ import {
     accountOperationHeaders,
     acknowledgeAccountOperation,
     settleAccountOperation,
+    settleAccountOperationStep,
 } from '../../utils/accountOperationIntent';
 import { CounselorData } from '../../types/counselor';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
@@ -100,7 +101,8 @@ const performEditCounselorData = async (
     };
 
     const ids = ((formData.agencies as LabeledValue[])?.map(({ value }) => value) || []) as string[];
-    await putAgenciesForCounselor(id, ids, {}, operationIntent?.subIntent('agencies'));
+    const agencyIntent = operationIntent?.subIntent('agencies');
+    await settleAccountOperationStep(operationIntent, agencyIntent, putAgenciesForCounselor(id, ids, {}, agencyIntent));
 
     const url = `${counselorEndpoint}/${id}`;
     const bodyData = JSON.stringify(strippedCounselor);

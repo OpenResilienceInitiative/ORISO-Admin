@@ -1,5 +1,6 @@
 import { message } from 'antd';
 import i18next from 'i18next';
+import { accountOperationOwner, assertAccountOperationOwner } from '../utils/accountOperationOwner';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
@@ -291,6 +292,14 @@ const requestSubject = (props: FetchDataProps, accessToken: string): string | nu
 const fetchWithToken = async (props: FetchDataProps, accessToken: string): Promise<any> => {
     const hasIntent = Object.keys(props.headersData ?? {}).some((header) => header.toLowerCase() === 'idempotency-key');
     const originalSubject = hasIntent ? requestSubject(props, accessToken) : null;
+    const manualAuthorization = new Headers({ ...props.headersData }).get('Authorization');
+    assertAccountOperationOwner(
+        props.headersData,
+        accountOperationOwner(accessToken),
+        props.skipAuth
+            ? 'anonymous'
+            : accountOperationOwner(manualAuthorization?.replace(/^Bearer /, '') ?? accessToken),
+    );
     try {
         return await executeFetchData(props, accessToken);
     } catch (error) {

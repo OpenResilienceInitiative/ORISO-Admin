@@ -6,6 +6,9 @@ export const bindings = new WeakMap<AccountOperationIntent, string>();
 export const children = new WeakMap<AccountOperationIntent, Map<string, AccountOperationIntent>>();
 export const acknowledgements = new WeakMap<AccountOperationIntent, () => void>();
 
+const completedCompositeSteps = new WeakSet<AccountOperationIntent>();
+const compositeRefusals = new WeakMap<object, string>();
+
 const uncertainIntents = new WeakSet<AccountOperationIntent>();
 const uncertainErrors = new WeakSet<object>();
 const verifiedRefusals = new WeakMap<object, string>();
@@ -33,6 +36,7 @@ export const acknowledgeAccountOperation = (intent?: AccountOperationIntent) => 
 export const isTerminalAccountOperationRefusal = (error: unknown, intent?: AccountOperationIntent): boolean => {
     const object = error !== null && (typeof error === 'object' || typeof error === 'function') ? error : undefined;
     const response = object ? observedResponses.get(object) : undefined;
+    if (object && intent && compositeRefusals.get(object) === intent.id) return true;
     let status: number | undefined;
     if (typeof Response !== 'undefined' && error instanceof Response) {
         status = error.status;
@@ -54,7 +58,9 @@ export const isTerminalAccountOperationRefusal = (error: unknown, intent?: Accou
         uncertainErrors.delete(object);
         return true;
     }
-    if (intent && (outcome != null || operation != null)) return false;
+    // A remote account attempt needs a matching committed receipt. HTTP
+    // status alone cannot prove that an earlier native effect did not occur.
+    if (intent) return false;
     if (object && uncertainErrors.has(object)) return false;
     const verifiedOperation = object ? verifiedRefusals.get(object) : undefined;
     if (verifiedOperation !== undefined && (!intent || verifiedOperation === intent.id)) return true;
@@ -81,6 +87,31 @@ export const settleAccountOperation = async <T>(
         return response;
     } catch (error) {
         if (accountOperationFailed(intent, error)) acknowledgeAccountOperation(intent);
+        throw error;
+    }
+};
+
+/** A child refusal only retires a whole save before any earlier effect completed. */
+export const settleAccountOperationStep = async <T>(
+    parent: AccountOperationIntent | undefined,
+    child: AccountOperationIntent | undefined,
+    result: Promise<T>,
+): Promise<T> => {
+    try {
+        const response = await result;
+        if (parent) completedCompositeSteps.add(parent);
+        return response;
+    } catch (error) {
+        if (
+            parent &&
+            child &&
+            !completedCompositeSteps.has(parent) &&
+            isTerminalAccountOperationRefusal(error, child) &&
+            error !== null &&
+            (typeof error === 'object' || typeof error === 'function')
+        ) {
+            compositeRefusals.set(error, parent.id);
+        }
         throw error;
     }
 };
