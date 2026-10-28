@@ -712,19 +712,38 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('resets Rolle to Berater:in after the guided BST-Admin invite went out', async () => {
+        const trace = createInviteTrace('resets Rolle to Berater:in after the guided BST-Admin invite went out');
+        trace('fill:before');
         const user = await fill();
-        await user.click(
-            await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+        trace('fill:after');
+        trace('guided-bst-admin:find:before');
+        const guided = await screen.findByRole(
+            'button',
+            { name: 'Stattdessen als BST-Admin einladen' },
+            { timeout: 10_000 },
         );
+        trace('guided-bst-admin:find:after');
+        trace('guided-bst-admin:click:before');
+        await user.click(guided);
+        trace('guided-bst-admin:click:after');
+        trace('invite:enabled:before');
         await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        trace('invite:enabled:after');
+        trace('invite:send:before');
         await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+        trace('invite:send:after');
+        trace('invite:created:before');
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        trace('invite:created:after');
 
         // The next person typed into the fresh bar is a counsellor again, not a second BST-Admin.
+        trace('role:reset:before');
         await waitFor(() =>
             expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
         );
+        trace('role:reset:after');
         expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
+        trace('test:finished');
     });
 
     // The invite card rests its selects as value pills from the start; only typed fields open expanded.

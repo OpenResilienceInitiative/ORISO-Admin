@@ -157,7 +157,7 @@ const publishPlay: NonNullable<Story['play']> = async ({ canvasElement, paramete
         await expect(JSON.parse(publishedContent.en__meta)).toMatchObject({ mt: true, src: 'de' });
     }
     await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
-    await expect(await canvas.findByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+    await waitFor(() => expect(canvas.getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible());
 };
 
 export const FirstPublication: Story = { play: publishPlay };
@@ -199,7 +199,7 @@ export const AgencyRecipientAfterExpiry: Story = {
     parameters: { renewal: true },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+        await waitFor(() => expect(canvas.getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible());
         await expect(await canvas.findByText('Die neue AVV-Fassung muss erneut unterschrieben werden.')).toBeVisible();
         await expect(canvas.getByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();

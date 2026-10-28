@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { createVerificationRecorder, isProductRequest } from '../../.storybook/verificationIntegrity';
 
+const errorFixture = (stack?: () => string | undefined) => {
+    const NativeError = Error;
+    return class extends NativeError {
+        constructor() {
+            super();
+            if (stack) Object.defineProperty(this, 'stack', { get: stack });
+        }
+    };
+};
+
 describe('verification integrity', () => {
     it.each(['console-error', 'uncaught-error', 'unhandled-rejection', 'unexpected-request', 'fallback'] as const)(
         'rejects an unexpected %s even when rendering completed',
@@ -100,24 +110,15 @@ it.each(['lines', 'characters', 'missing', 'throwing'] as const)(
         const NativeError = Error;
         let reads = 0;
         const recorder = createVerificationRecorder();
-        vi.stubGlobal(
-            'Error',
-            class extends NativeError {
-                constructor() {
-                    super();
-                    Object.defineProperty(this, 'stack', {
-                        get() {
-                            reads += 1;
-                            if (kind === 'throwing') throw new NativeError('stack unavailable');
-                            if (kind === 'missing') return undefined;
-                            return kind === 'lines'
-                                ? Array.from({ length: 30 }, (_, i) => `frame${i}`).join('\n')
-                                : 'x'.repeat(5000);
-                        },
-                    });
-                }
-            },
-        );
+        const FixtureError = errorFixture(() => {
+            reads += 1;
+            if (kind === 'throwing') throw new NativeError('stack unavailable');
+            if (kind === 'missing') return undefined;
+            return kind === 'lines' ? Array.from({ length: 30 }, (_, i) => `frame${i}`).join('\n') : 'x'.repeat(5000);
+        });
+        // Exercise the fallback stack bounds explicitly; native capture may replace a fixture's getter.
+        Object.defineProperty(FixtureError, 'captureStackTrace', { value: undefined });
+        vi.stubGlobal('Error', FixtureError);
         try {
             recorder.record('console-error', 'first');
             recorder.record('fallback', 'second');
@@ -164,6 +165,54 @@ it('distinguishes no recorded event from unavailable stack on a missing expected
                 reason: 'no-recorded-event',
                 truncated: false,
             },
+        }),
+    );
+});
+
+it('retains the application caller beyond recorder frames under the unchanged native stack budget', () => {
+    const recorder = createVerificationRecorder();
+    const forwarded = (depth: number): void => {
+        if (depth === 0) recorder.record('console-error', 'native budget');
+        else forwarded(depth - 1);
+    };
+    function knownApplicationCaller() {
+        forwarded(7);
+    }
+    knownApplicationCaller();
+    expect(() => recorder.assertComplete()).toThrow(
+        expect.objectContaining({
+            verificationOrigin: expect.objectContaining({ stack: expect.stringContaining('knownApplicationCaller') }),
+        }),
+    );
+});
+
+it.each(['missing', 'throwing'] as const)('retains the original recording stack when native capture is %s', (kind) => {
+    const NativeError = Error;
+    const FallbackError = errorFixture();
+    Object.defineProperty(FallbackError, 'captureStackTrace', {
+        value:
+            kind === 'missing'
+                ? undefined
+                : () => {
+                      throw new NativeError('capture failed');
+                  },
+    });
+    const recorder = createVerificationRecorder();
+    vi.stubGlobal('Error', FallbackError);
+    try {
+        recorder.record('fallback', 'original event');
+    } finally {
+        vi.unstubAllGlobals();
+    }
+    expect(() => recorder.assertComplete()).toThrow(
+        expect.objectContaining({
+            message: 'Story verification failed:\nfallback: original event',
+            verificationOrigin: expect.objectContaining({
+                status: 'captured',
+                kind: 'fallback',
+                message: 'original event',
+                stack: expect.any(String),
+            }),
         }),
     );
 });

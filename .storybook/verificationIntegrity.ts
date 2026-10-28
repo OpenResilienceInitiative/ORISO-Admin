@@ -23,10 +23,23 @@ type VerificationOrigin = {
     stack?: string;
     reason?: 'stack-unavailable' | 'no-recorded-event';
 };
-const captureFirstOrigin = (kind: VerificationFailureKind, message: string): VerificationOrigin => {
+const captureFirstOrigin = (
+    kind: VerificationFailureKind,
+    message: string,
+    record: (kind: VerificationFailureKind, message: string) => void,
+): VerificationOrigin => {
     const event = { version: 1, attribution: 'first-recorded-event', kind, message } as const;
     try {
-        const stack = new Error().stack;
+        const error = new Error();
+        if (typeof Error.captureStackTrace === 'function') {
+            try {
+                // Omit only our instrumentation frames, retaining the actual recording caller.
+                Error.captureStackTrace(error, record);
+            } catch {
+                // Keep the original Error stack when native capture is unavailable or fails.
+            }
+        }
+        const stack = error.stack;
         if (typeof stack === 'string' && stack.length > 0) {
             const bounded = stack.split('\n').slice(0, 16).join('\n').slice(0, 4096);
             return { ...event, status: 'captured', stack: bounded, truncated: bounded !== stack };
@@ -42,11 +55,12 @@ const captureFirstOrigin = (kind: VerificationFailureKind, message: string): Ver
 export const createVerificationRecorder = (expected: ExpectedVerificationFailure[] = []) => {
     let firstOrigin: VerificationOrigin | undefined;
     const failures: Array<{ kind: VerificationFailureKind; message: string }> = [];
+    function record(kind: VerificationFailureKind, message: string) {
+        failures.push({ kind, message });
+        if (failures.length === 1) firstOrigin = captureFirstOrigin(kind, message, record);
+    }
     return {
-        record(kind: VerificationFailureKind, message: string) {
-            failures.push({ kind, message });
-            if (failures.length === 1) firstOrigin = captureFirstOrigin(kind, message);
-        },
+        record,
         assertComplete() {
             const unexpected = failures.filter(
                 (failure) => !expected.some((item) => item.kind === failure.kind && item.message === failure.message),
