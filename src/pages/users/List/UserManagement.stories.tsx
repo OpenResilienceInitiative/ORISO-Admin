@@ -418,7 +418,7 @@ export const TenantAdminsTab: Story = {
         await expectPeople(canvasElement);
         await step('person cell with "Auch Berater*in"', () => expectPersonCell(canvasElement, 'Auch Berater*in'));
         await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+            expectDeleteDialog(canvasElement, /Administratorzugang entfernen/),
         );
     },
 };
@@ -441,7 +441,7 @@ export const PlatformAdminsTab: Story = {
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
         await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+            expectDeleteDialog(canvasElement, /Administratorzugang entfernen/),
         );
     },
 };

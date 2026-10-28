@@ -1,16 +1,7 @@
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { grantConsultantIdentityEndpoint } from '../../appConfig';
-import {
-    type AccountOperationIntent,
-    accountOperationHeaders,
-    settleAccountOperation,
-    hasVerifiedAccountOperationRefusal,
-} from '../../utils/accountOperationIntent';
-import { observedAccountOperationStatus } from '../../utils/accountOperationState';
-import { accountOperationOwner } from '../../utils/accountOperationOwner';
-import { tryRefreshAccessToken } from '../auth/auth';
-import { getSessionAccessToken } from '../auth/tokenSessionStore';
-import parseJwt from '../../utils/parseJWT';
+import { type AccountOperationIntent, accountOperationHeaders } from '../../utils/accountOperationIntent';
+import { settleOwnConsultantIdentityMutation } from '../../utils/settleOwnConsultantIdentityMutation';
 
 export interface GrantConsultantIdentityInput {
     isGroupchatConsultant?: boolean;
@@ -46,10 +37,6 @@ export const grantConsultantIdentityData = async (
         agencyIds: agencyIds || [],
         topicIds: topicIds || [],
     });
-    const initialToken = getSessionAccessToken();
-    const initialOwner = accountOperationOwner(initialToken);
-    const ownGrant =
-        options.recoverOwnGrant === true && !!operationIntent && parseJwt(initialToken ?? '')?.sub === adminId;
     const request = {
         url,
         headersData: accountOperationHeaders(operationIntent, FETCH_METHODS.POST, url, bodyData),
@@ -63,21 +50,10 @@ export const grantConsultantIdentityData = async (
         ],
         bodyData,
     };
-    const send = () => settleAccountOperation(operationIntent, fetchData(request));
-    try {
-        return await send();
-    } catch (error) {
-        if (
-            !ownGrant ||
-            hasVerifiedAccountOperationRefusal(error) ||
-            ![403, 503].includes(observedAccountOperationStatus(error) ?? 0)
-        )
-            throw error;
-        // Native self-grant can commit before the reply is lost. A fresh token
-        // sees its changed roles; only the original receipt replay settles it.
-        if (!(await tryRefreshAccessToken())) throw error;
-        if (accountOperationOwner(getSessionAccessToken()) !== initialOwner)
-            throw new Error(FETCH_ERRORS.REQUEST_IDENTITY_CHANGED);
-        return send();
-    }
+    return settleOwnConsultantIdentityMutation(
+        adminId,
+        operationIntent,
+        () => fetchData(request),
+        options.recoverOwnGrant === true,
+    );
 };

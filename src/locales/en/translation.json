@@ -2802,5 +2802,6 @@
     "identityRemoval.selfAdministrator": "You cannot remove your own administrator access. Another authorised administrator must do this.",
     "identityRemoval.checkingAvailability": "We are checking whether this action is available. Please try again after your account details have loaded.",
     "identityRemoval.unavailable": "This identity cannot currently be removed safely while keeping the other account. Please contact your administrator.",
-    "identityRemoval.retryUnavailable": "This removal is not safely available at the moment. Keep the removal options unchanged and retry when the action is available again."
+    "identityRemoval.retryUnavailable": "This removal is not safely available at the moment. Keep the removal options unchanged and retry when the action is available again.",
+    "identityRemoval.administrator.confirmNamed": "Are you sure you want to remove administrator access for {{name}}?"
 }

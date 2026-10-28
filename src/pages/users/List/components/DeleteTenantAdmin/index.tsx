@@ -46,8 +46,7 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
 
     return (
         <Modal
-            titleKey="tenantAdmins.delete.description"
-            titleKeyOptions={{ name: `${user.firstname} ${user.lastname}`.trim() }}
+            titleKey="identityRemoval.administrator.title"
             icon={<DeleteOutlineOutlinedIcon />}
             cancelLabelKey="btn.cancel.uppercase"
             okLabelKey="delete"
@@ -61,6 +60,9 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
             }}
             onClose={onClose}
         >
+            <p>
+                {t('identityRemoval.administrator.confirmNamed', { name: `${user.firstname} ${user.lastname}`.trim() })}
+            </p>
             <IdentityRemovalNotice removing="administrator" hasOtherIdentity={hasOtherIdentity} />
             {policy.unavailableReason && <p id={guardId}>{t(policy.unavailableReason)}</p>}
             {failure && <p role="alert">{t(failure)}</p>}
