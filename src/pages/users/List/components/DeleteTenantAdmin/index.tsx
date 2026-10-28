@@ -7,6 +7,7 @@ import { Modal } from '../../../../../components/Modal';
 import { CounselorData } from '../../../../../types/counselor';
 import { IdentityRemovalNotice, otherIdentityFromRow } from '../IdentityRemovalNotice';
 import { useIdentityRemovalPolicy } from '../../../../../hooks/useIdentityRemovalPolicy';
+import { FETCH_ERRORS } from '../../../../../api/fetchData';
 import {
     hasVerifiedAccountOperationRefusal,
     isTerminalAccountOperationRefusal,
@@ -31,7 +32,9 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
             onClose();
         },
         onError: (error) => {
-            if (error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE') {
+            if (error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED) {
+                setFailure('accountOperation.identityChanged');
+            } else if (error instanceof Error && error.message === FETCH_ERRORS.ACCOUNT_COMMANDS_UNAVAILABLE) {
                 setFailure('identityRemoval.retryUnavailable');
             } else if (
                 (policy.scoped && !hasVerifiedAccountOperationRefusal(error)) ||
@@ -63,7 +66,7 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
             <p>
                 {t('identityRemoval.administrator.confirmNamed', { name: `${user.firstname} ${user.lastname}`.trim() })}
             </p>
-            <IdentityRemovalNotice removing="administrator" hasOtherIdentity={hasOtherIdentity} />
+            {policy.scoped && <IdentityRemovalNotice removing="administrator" hasOtherIdentity={hasOtherIdentity} />}
             {policy.unavailableReason && <p id={guardId}>{t(policy.unavailableReason)}</p>}
             {failure && <p role="alert">{t(failure)}</p>}
         </Modal>

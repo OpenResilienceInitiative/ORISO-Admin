@@ -2801,6 +2801,7 @@
     "identityRemoval.administrator.success": "Der Administratorzugang wurde entfernt.",
     "identityRemoval.selfAdministrator": "Sie können Ihren eigenen Administratorzugang nicht entfernen. Eine andere berechtigte Administratorin oder ein anderer berechtigter Administrator muss dies tun.",
     "identityRemoval.checkingAvailability": "Die Verfügbarkeit dieser Aktion wird geprüft. Bitte versuchen Sie es nach dem Laden Ihrer Kontodaten erneut.",
+    "identityRemoval.availabilityFailed": "Die Verfügbarkeit dieser Aktion konnte nicht geprüft werden. Bitte laden Sie Ihre Kontodaten erneut, bevor Sie die Löschung versuchen.",
     "identityRemoval.unavailable": "Die einzelne Identität kann derzeit nicht sicher entfernt werden. Das andere Konto soll erhalten bleiben. Bitte wenden Sie sich an Ihre Administration.",
     "identityRemoval.retryUnavailable": "Diese Löschung ist derzeit nicht sicher verfügbar. Lassen Sie die Löschoptionen unverändert und versuchen Sie es erneut, sobald die Aktion wieder verfügbar ist.",
     "identityRemoval.administrator.confirmNamed": "Möchten Sie den Administratorzugang von {{name}} wirklich entfernen?"

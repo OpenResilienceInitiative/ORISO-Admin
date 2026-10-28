@@ -49,7 +49,7 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, hasOtherIdentity, on
                 setFailure('accountOperation.identityChanged');
                 return;
             }
-            if (error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE') {
+            if (error instanceof Error && error.message === FETCH_ERRORS.ACCOUNT_COMMANDS_UNAVAILABLE) {
                 setFailure('identityRemoval.retryUnavailable');
                 return;
             }
@@ -120,10 +120,12 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, hasOtherIdentity, on
                         : 'identityRemoval.administrator.confirm',
                 )}
             </p>
-            <IdentityRemovalNotice
-                removing={typeOfUser === 'consultants' ? 'consultant' : 'administrator'}
-                hasOtherIdentity={hasOtherIdentity}
-            />
+            {policy.scoped && (
+                <IdentityRemovalNotice
+                    removing={typeOfUser === 'consultants' ? 'consultant' : 'administrator'}
+                    hasOtherIdentity={hasOtherIdentity}
+                />
+            )}
             {policy.unavailableReason && <p id={guardId}>{t(policy.unavailableReason)}</p>}
             {failure && <p role="alert">{t(failure)}</p>}
 

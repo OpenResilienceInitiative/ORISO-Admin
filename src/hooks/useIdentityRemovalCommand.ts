@@ -3,6 +3,7 @@ import { useAccountOperationActions } from './useAccountOperationActions';
 import { useUserData } from './useUserData.hook';
 import { getSessionAccessToken } from '../api/auth/tokenSessionStore';
 import { accountOperationOwner } from '../utils/accountOperationOwner';
+import { FETCH_ERRORS } from '../api/fetchData';
 import {
     hasVerifiedAccountOperationRefusal,
     isTerminalAccountOperationRefusal,
@@ -21,12 +22,12 @@ export const useIdentityRemovalCommand = (operation: string) => {
         send: (payload: T, intent?: AccountOperationIntent) => Promise<R>,
     ): Promise<R> => {
         const scoped = data?.scopedAccountCommands;
-        if (scoped !== true && scoped !== false) throw new Error('ACCOUNT_COMMANDS_UNAVAILABLE');
+        if (scoped !== true && scoped !== false) throw new Error(FETCH_ERRORS.ACCOUNT_COMMANDS_UNAVAILABLE);
         const key = JSON.stringify([accountOperationOwner(getSessionAccessToken()), operation, target]);
         const fingerprint = JSON.stringify(payload);
         const original = pending.current.get(key);
         if (original && (original.scoped !== scoped || original.fingerprint !== fingerprint)) {
-            throw new Error('ACCOUNT_COMMANDS_UNAVAILABLE');
+            throw new Error(FETCH_ERRORS.ACCOUNT_COMMANDS_UNAVAILABLE);
         }
         const custody = original ?? { scoped, fingerprint };
         pending.current.set(key, custody);

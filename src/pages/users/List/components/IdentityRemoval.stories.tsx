@@ -15,6 +15,7 @@ interface ExampleProps {
     removing: 'consultants' | 'admins' | 'tenant-admins';
     hasOtherIdentity?: boolean;
     scopedAccountCommands: boolean | null;
+    availabilityError: boolean;
     targetId: string;
     onClose: () => void;
 }
@@ -42,6 +43,7 @@ const meta = {
         removing: 'consultants',
         hasOtherIdentity: true,
         scopedAccountCommands: true,
+        availabilityError: false,
         targetId: 'storybook-target',
         onClose: fn(),
     },
@@ -54,6 +56,15 @@ const meta = {
                     userId: 'storybook-operator',
                     scopedAccountCommands: args.scopedAccountCommands,
                 });
+                if (args.availabilityError) {
+                    client
+                        .getQueryCache()
+                        .find({ queryKey: [USER_DATA_KEY] })
+                        ?.setState({
+                            status: 'error',
+                            error: new Error('Synthetic current-user availability failure'),
+                        });
+                }
             });
         },
     ],
@@ -116,6 +127,22 @@ export const LegacyCombinedIdentityUnavailable: Story = {
 export const AvailabilityPending: Story = {
     args: { scopedAccountCommands: null },
     play: ({ canvasElement }) => assertBlocked(canvasElement, 'identityRemoval.checkingAvailability'),
+};
+export const AvailabilityFailed: Story = {
+    args: { availabilityError: true },
+    play: ({ canvasElement }) => assertBlocked(canvasElement, 'identityRemoval.availabilityFailed'),
+};
+export const LegacyPureIdentity: Story = {
+    args: { scopedAccountCommands: false, hasOtherIdentity: undefined },
+    play: async ({ canvasElement }) => {
+        const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog'));
+        await Promise.all(
+            ['administrator', 'consultant'].map((identity) =>
+                expect(dialog.queryByText(String(i18n.t(`identityRemoval.possibleRemaining.${identity}`)))).toBeNull(),
+            ),
+        );
+        await expect(dialog.getByRole('button', { name: String(i18n.t('delete')) })).toBeEnabled();
+    },
 };
 
 let requests: { key: string | null; url: string }[] = [];
