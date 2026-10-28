@@ -7,6 +7,7 @@ import { CardEditable } from '../../../CardEditable';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
+import { DirectInviteCard } from './DirectInviteCard';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
@@ -60,6 +61,8 @@ export type PermissionsSettingsViewProps = {
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Centre page: the Träger's policies for "Direkteinladung erlauben" (a Träger "off" wins). */
+    traegerDirectInvitePolicies?: Record<string, PolicyValue<boolean>>;
     /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
     recipientScope?: Omit<RecipientScopeControlProps, 'level' | 'disabled'>;
 };
@@ -82,6 +85,7 @@ export const PermissionsSettingsView = ({
     pendingPolicyFields,
     onPolicyChange,
     recipientScope,
+    traegerDirectInvitePolicies,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
@@ -381,6 +385,20 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardDeck.Item>
                         ))}
+                        {/* ORISO-Admin#1242: direct links per chat type, after the conversation types they open. */}
+                        <CardDeck.Item className={styles.chatTypeCardSlot}>
+                            <DirectInviteCard
+                                restrictedFields={restrictedFields}
+                                policyLevel={policyLevel}
+                                permissionPolicies={permissionPolicies}
+                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
+                                traegerPolicies={traegerDirectInvitePolicies}
+                                pendingPolicyFields={pendingPolicyFields}
+                                openPolicyMenu={openPolicyMenu}
+                                onOpenPolicyMenu={setOpenPolicyMenu}
+                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                            />
+                        </CardDeck.Item>
                     </CardDeck>
                 </div>
             )}

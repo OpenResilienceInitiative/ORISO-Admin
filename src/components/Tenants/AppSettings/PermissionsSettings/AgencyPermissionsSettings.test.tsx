@@ -204,3 +204,47 @@ describe('AgencyPermissionsSettings notification channels', () => {
         }
     });
 });
+
+// ORISO-Admin#1242: a Träger "off" for direct invitations locks the centre's row; an unset centre value follows it.
+describe('AgencyPermissionsSettings direct invitations', () => {
+    it("locks a chat type the Träger switched off and saves the centre's own choice", async () => {
+        const user = userEvent.setup();
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? Response.json({
+                      tenantId: 2,
+                      policies: {
+                          featureDirectInviteVideoEnabled: { value: false, mode: 'SUGGESTED', inherited: false },
+                          featureDirectInviteChatEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+                      },
+                  })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            await waitFor(() =>
+                expect(
+                    within(policy('featureDirectInviteVideoEnabled')).getByRole('button', {
+                        name: /Weitere Informationen|more information/i,
+                    }),
+                ).toBeTruthy(),
+            );
+            expect(
+                screen.getByText(/Ihr Träger hat das ausgeschaltet|Your Träger has switched this off/i),
+            ).toBeTruthy();
+
+            const chat = policy('featureDirectInviteChatEnabled');
+            await user.click(within(chat).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
+            await user.click(
+                within(chat).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
+            );
+            const payload = mocks.mutate.mock.calls.at(-1)?.[0] as { settings: Record<string, unknown> };
+            expect(payload.settings.featureDirectInviteChatEnabled).toBe(false);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
