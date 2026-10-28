@@ -117,6 +117,11 @@ try {
         source,
         ...(repairedRegression && { runtimeIntegration: checkFieldFormBackport() }),
         ...(querySelection && {
+            experiment: 'native-renderer-teardown-v1',
+            nativeRendererCleanupSource: {
+                path: '.storybook/storyRenderCleanup.ts',
+                sha256: createHash('sha256').update(readFileSync('.storybook/storyRenderCleanup.ts')).digest('hex'),
+            },
             queryObserverSource: {
                 path: 'scripts/query-lifetime-diagnostic.ts',
                 sha256: createHash('sha256').update(readFileSync('scripts/query-lifetime-diagnostic.ts')).digest('hex'),
@@ -319,18 +324,65 @@ try {
                 );
             });
             assert.ok(
-                queries.size > 0 && requests.size > 0 && arrivals.size > 0,
-                'Missing query/request/arrival witness',
+                (queries.size === 0 && requests.size === 0 && arrivals.size === 0) ||
+                    (queries.size > 0 && requests.size > 0 && arrivals.size > 0),
+                'Incomplete present query/request/arrival stream',
             );
             assert.equal(
                 input.queryObserverSource.sha256,
                 createHash('sha256').update(readFileSync(input.queryObserverSource.path)).digest('hex'),
                 'Observer source changed during run',
             );
+            assert.equal(
+                input.nativeRendererCleanupSource.sha256,
+                createHash('sha256').update(readFileSync(input.nativeRendererCleanupSource.path)).digest('hex'),
+                'Native cleanup source changed during run',
+            );
         } catch (error) {
             validationError = error.message;
         }
-        const invalid = !!validationError;
+        const orderFailures = [];
+        if (input.experiment !== 'native-renderer-teardown-v1') orderFailures.push('Unknown counterprobe experiment');
+        const owners = receipts.filter((item) => item.phase === 'mounted');
+        wantedNames.forEach((name) => {
+            const own = owners.filter((item) => item.owner?.name === name);
+            if (!own.length) orderFailures.push(`Missing owner ${name}`);
+            own.forEach((mountedOwner) => {
+                const id = mountedOwner.owner.id;
+                const unmount = receipts.find((item) => item.phase === 'unmounted' && item.owner?.id === id);
+                ['before-cancel-clear', 'before-reset-handlers'].forEach((boundary) => {
+                    const marker = receipts.find(
+                        (item) => item.phase === 'boundary' && item.ownerId === id && item.boundary === boundary,
+                    );
+                    const snapshot = marker?.clients?.find((item) => item.clientId === mountedOwner.clientId);
+                    if (
+                        !unmount ||
+                        !marker ||
+                        unmount.sequence >= marker.sequence ||
+                        !snapshot ||
+                        snapshot.mounted ||
+                        snapshot.renderedConnected !== false ||
+                        snapshot.canvasChildCount !== 0 ||
+                        snapshot.cachedObserverCount !== 0
+                    )
+                        orderFailures.push(`Live owner at ${boundary}: ${name}`);
+                });
+                const reset = receipts.find(
+                    (item) =>
+                        item.phase === 'boundary' && item.ownerId === id && item.boundary === 'after-reset-handlers',
+                );
+                if (
+                    reset &&
+                    receipts.some(
+                        (item) => item.phase === 'dispatch' && item.owner?.id === id && item.sequence > reset.sequence,
+                    )
+                )
+                    orderFailures.push(`Post-reset old-owner dispatch: ${name}`);
+            });
+        });
+        const mappingInvalid = !!validationError;
+        const noRequestStream = !receipts.some((item) => ['query', 'dispatch', 'msw'].includes(item.phase));
+        const invalid = mappingInvalid || orderFailures.length > 0;
         observationComplete = !invalid;
         const mounted = receipts.filter((item) => item.phase === 'mounted');
         const lifetimeReceiptsComplete = wantedNames.every((name) =>
@@ -365,7 +417,9 @@ try {
                     observationComplete,
                     invalid,
                     validationError,
-                    mappingStatus: invalid ? 'INVALID' : 'PROVEN_UNIQUE',
+                    mappingStatus: mappingInvalid ? 'INVALID' : noRequestStream ? 'NOT_OBSERVED' : 'PROVEN_UNIQUE',
+                    teardownOrderValid: orderFailures.length === 0,
+                    orderFailures,
                     lifetimeReceiptsComplete,
                     finalNativeUnmountObserved,
                     receipts,

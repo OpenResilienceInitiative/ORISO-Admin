@@ -1,3 +1,4 @@
+import { storyRenderCleanup } from './storyRenderCleanup';
 import {
     queryLifetimeEnabled,
     observeQueryBoundary,
@@ -99,6 +100,13 @@ const preview: Preview = {
         if (import.meta.env.MODE === 'test') a11yVerification.begin(context);
         return beginStoryVerification(context.parameters.verification?.expectedErrors, async () => {
             const errors: unknown[] = [];
+            try {
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'before-native-teardown' }));
+                await storyRenderCleanup.finish();
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'after-native-teardown' }));
+            } catch (error) {
+                errors.push(error);
+            }
             try {
                 observeQueryBoundary(() => ({ ownerId: context.id, phase: 'before-cancel-clear' }));
                 await clearStoryQueryClients();

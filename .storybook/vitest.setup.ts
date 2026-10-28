@@ -1,7 +1,20 @@
+import { setProjectAnnotations } from 'storybook/internal/preview-api';
+import { renderToCanvas } from '@storybook/react/entry-preview';
+import { getProjectAnnotations } from 'virtual:/@storybook/builder-vite/project-annotations.js';
+import { storyRenderCleanup, type NativeStoryRenderer } from './storyRenderCleanup';
 import { beforeEach, afterEach } from 'vite-plus/test';
 import { captureVerificationBrowser } from './axeWitness';
 import { a11yVerification } from './a11yVerification';
 import { finishStoryVerification } from './verification';
+
+// Explicitly preserve the builder's complete composed annotations (including a11y and MSW).
+// This capture is installed only in Vitest, so normal Storybook UI rendering remains native.
+const capturedNativeRenderer: NativeStoryRenderer = async (context, canvas) => {
+    const teardown = await renderToCanvas(context, canvas);
+    if (typeof teardown !== 'function') throw new Error('Native Storybook renderer returned no teardown');
+    return storyRenderCleanup.retain(teardown);
+};
+setProjectAnnotations([getProjectAnnotations(), { renderToCanvas: capturedNativeRenderer }]);
 
 beforeEach(({ task }) => {
     Object.assign(task.meta, { verificationBrowser: captureVerificationBrowser() });

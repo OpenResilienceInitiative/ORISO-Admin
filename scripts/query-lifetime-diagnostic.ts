@@ -47,7 +47,10 @@ export const createQueryLifetimeObserver = (sink: (value: Receipt) => void, now:
     let invalid = false;
     let released = false;
     const dispose: Array<() => void> = [];
-    const clients = new Map<QueryClient, { id: string; owner: Owner; mounted: boolean; canvas?: HTMLElement }>();
+    const clients = new Map<
+        QueryClient,
+        { id: string; owner: Owner; mounted: boolean; canvas?: HTMLElement; root?: Element | null }
+    >();
     const invocations = new WeakMap<AbortSignal, { id: string; clientId: string; owner: Owner; key: unknown[] }>();
     const dispatches: Array<{
         id: string;
@@ -135,6 +138,7 @@ export const createQueryLifetimeObserver = (sink: (value: Receipt) => void, now:
                     return;
                 }
                 entry.mounted = true;
+                entry.root = entry.canvas?.firstElementChild ?? null;
                 event('mounted', {
                     clientId: entry.id,
                     owner: entry.owner,
@@ -250,11 +254,17 @@ export const createQueryLifetimeObserver = (sink: (value: Receipt) => void, now:
                 event('boundary', {
                     ownerId,
                     boundary: phase,
-                    clients: [...clients.values()].map((entry) => ({
+                    clients: [...clients.entries()].map(([client, entry]) => ({
                         clientId: entry.id,
                         owner: entry.owner,
                         mounted: entry.mounted,
                         connected: entry.canvas?.isConnected ?? false,
+                        renderedConnected: entry.root?.isConnected ?? null,
+                        canvasChildCount: entry.canvas?.childElementCount ?? null,
+                        cachedObserverCount: client
+                            .getQueryCache()
+                            .getAll()
+                            .reduce((total, query) => total + query.getObserversCount(), 0),
                     })),
                 }),
             );
