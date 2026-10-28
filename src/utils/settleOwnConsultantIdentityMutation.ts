@@ -42,8 +42,8 @@ export const settleOwnConsultantIdentityMutation = async <T>(
         result = await attempt();
     }
     if (ownMutation && options.renewOwnSuccess) {
-        // The receipt already settled the mutation. Renew the removed role before
-        // dependent reads; a failed renewal must never cause another DELETE.
+        // The receipt already settled the mutation. Renew the changed roles before
+        // dependent reads; a failed renewal must never replay the acknowledged mutation.
         if (accountOperationOwner(getSessionAccessToken()) !== owner)
             throw new Error(FETCH_ERRORS.REQUEST_IDENTITY_CHANGED);
         const refreshed = await tryRefreshAccessToken({ afterInFlight: true });
