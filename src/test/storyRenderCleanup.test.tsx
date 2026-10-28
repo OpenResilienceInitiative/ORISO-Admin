@@ -185,3 +185,71 @@ it('retains a once-only teardown rejection and all cleanup plus recorder failure
         sink.mockRestore();
     }
 });
+
+it.each(['false', 'absent'])(
+    'scopes the native teardown act environment from %s and restores its property',
+    async (initial) => {
+        const prior = Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+        const cleanup = createStoryRenderCleanup();
+        const view = specimen();
+        const renderer: NativeStoryRenderer = async (context, canvas) => {
+            const native = await renderToCanvas(context, canvas);
+            if (typeof native !== 'function') throw new Error('Missing native teardown');
+            return cleanup.retain(native);
+        };
+        const canvas = document.createElement('div');
+        document.body.append(canvas);
+        const sink = vi.spyOn(console, 'error');
+        try {
+            const story = composeStory(
+                { render: view.render },
+                { title: 'Native cleanup/Act scope' },
+                { renderToCanvas: renderer },
+            );
+            await story.run({ canvasElement: canvas });
+            if (initial === 'absent') Reflect.deleteProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+            else
+                Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+                    value: false,
+                    writable: true,
+                    configurable: true,
+                });
+            const before = Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+            sink.mockClear();
+            await cleanup.finish();
+            expect(view.mounted()).toBe(false);
+            expect(sink.mock.calls.flat().map(String).join('\n')).not.toContain('not configured to support act');
+            expect(Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT')).toEqual(before);
+        } finally {
+            await cleanup.finish();
+            view.client.clear();
+            canvas.remove();
+            sink.mockRestore();
+            if (prior) Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', prior);
+            else Reflect.deleteProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+        }
+    },
+);
+
+it('restores the exact prior act property after asynchronous native rejection', async () => {
+    const prior = Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+    const descriptor = { value: false, writable: true, configurable: true, enumerable: false };
+    Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', descriptor);
+    const cleanup = createStoryRenderCleanup();
+    const failure = new Error('native scoped failure');
+    let during: unknown;
+    cleanup.retain(async () => {
+        await Promise.resolve();
+        during = Reflect.get(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+        throw failure;
+    });
+    try {
+        await expect(cleanup.finish()).rejects.toBe(failure);
+        expect(during).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT')).toEqual(descriptor);
+        await expect(cleanup.finish()).rejects.toBe(failure);
+    } finally {
+        if (prior) Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', prior);
+        else Reflect.deleteProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+    }
+});

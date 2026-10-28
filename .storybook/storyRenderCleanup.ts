@@ -10,7 +10,22 @@ export const createStoryRenderCleanup = () => {
     return {
         retain(teardown: NativeTeardown) {
             let pending: Promise<void> | undefined;
-            const once = () => (pending ??= Promise.resolve().then(teardown));
+            const once = () =>
+                (pending ??= Promise.resolve().then(async () => {
+                    const prior = Object.getOwnPropertyDescriptor(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+                    Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', {
+                        value: true,
+                        writable: true,
+                        configurable: true,
+                        enumerable: prior?.enumerable ?? true,
+                    });
+                    try {
+                        await teardown();
+                    } finally {
+                        if (prior) Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', prior);
+                        else Reflect.deleteProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT');
+                    }
+                }));
             active = once;
             return once;
         },

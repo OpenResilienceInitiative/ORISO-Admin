@@ -4,7 +4,7 @@ const fetchDataMock = vi.fn();
 vi.mock('../api/fetchData', () => ({
     fetchData: (...args: unknown[]) => fetchDataMock(...args),
     FETCH_METHODS: { GET: 'GET' },
-    FETCH_ERRORS: { BAD_REQUEST: 'BAD_REQUEST' },
+    FETCH_ERRORS: { BAD_REQUEST: 'BAD_REQUEST', ABORT: 'ABORT' },
 }));
 // removeEmbedded just unwraps the HAL envelope; pass the list through.
 vi.mock('./removeEmbedded', () => ({ default: (r: unknown) => r }));
@@ -196,5 +196,43 @@ it.each(['primary', 'safe-sort'] as const)(
             rejectHeld(abort);
             await pending.catch(() => undefined);
         }
+    },
+);
+
+it.each([false, true])('does not dispatch an already-aborted entry (rethrow=%s)', async (rethrowOnFailure) => {
+    const controller = new AbortController();
+    controller.abort();
+    fetchDataMock.mockResolvedValue(list(['must not arrive']));
+    const pending = fetchUserSearchWithSortFallback({
+        url: 'https://api/users?query=*',
+        signal: controller.signal,
+        rethrowOnFailure,
+    });
+    if (rethrowOnFailure) await expect(pending).rejects.toThrow('ABORT');
+    else await expect(pending).resolves.toEqual({ data: [], total: 0 });
+    expect(fetchDataMock).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+    'does not dispatch a safe-sort retry after cancellation (rethrow=%s)',
+    async (rethrowOnFailure) => {
+        const controller = new AbortController();
+        fetchDataMock
+            .mockImplementationOnce(() => {
+                controller.abort();
+                return Promise.reject(new Error('BAD_REQUEST'));
+            })
+            .mockResolvedValue(list(['must not arrive']));
+        const pending = fetchUserSearchWithSortFallback({
+            url: 'https://api/users?query=*',
+            sortBy: 'LASTNAME',
+            order: 'DESC',
+            signal: controller.signal,
+            rethrowOnFailure,
+        });
+        if (rethrowOnFailure) await expect(pending).rejects.toThrow('ABORT');
+        else await expect(pending).resolves.toEqual({ data: [], total: 0 });
+        expect(fetchDataMock).toHaveBeenCalledTimes(1);
+        expect(fetchDataMock.mock.calls[0][0].signal).toBe(controller.signal);
     },
 );
