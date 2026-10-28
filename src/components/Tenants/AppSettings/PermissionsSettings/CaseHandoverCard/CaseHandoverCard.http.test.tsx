@@ -6,6 +6,9 @@ import i18n from '../../../../../i18n';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
 import { CaseHandoverCard } from './index';
+import { SuperAdminPermissionsSettings } from '../SuperAdminPermissionsSettings';
+import { TenantPermissionsSettings } from '../TenantPermissionsSettings';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 
 // FE#1725: the card reads and writes the rules of one Träger, named by `tenantId`.
 // Seam: the HTTP boundary (global fetch); the real hook and fetchData run.
@@ -51,14 +54,32 @@ const storedPolicies = (): Policy[] => [
 const server = {
     store: new Map<string, Policy[]>(),
     putStatus: 200,
+    masterPutStatus: 200,
+    master: { value: true, mode: 'SUGGESTED', inherited: false } as PolicyValue<boolean>,
+    canonicalWrites: [] as Array<Record<string, unknown>>,
     requests: [] as Array<{ method: string; url: string }>,
 };
 
 const fetchStub = vi.fn(async (request: Request) => {
     const url = new URL(request.url);
     server.requests.push({ method: request.method, url: request.url });
+    if (url.pathname.endsWith('/controls') || url.pathname.endsWith('/permission-policies')) {
+        const platform = url.pathname.endsWith('/controls');
+        if (request.method === 'PUT') {
+            const body = await request.json();
+            server.canonicalWrites.push(body);
+            if (server.masterPutStatus !== 200) return new Response('{}', { status: server.masterPutStatus });
+            server.master = (platform ? body.permissionPolicies : body.policies).caseHandoverEnabled;
+        }
+        const policies = { caseHandoverEnabled: server.master };
+        return Response.json(
+            platform ? { permissionsPageEnabled: true, permissionPolicies: policies } : { tenantId: 7, policies },
+        );
+    }
     if (!url.pathname.endsWith('/case-handover/reason-policies')) {
-        return new Response('not found', { status: 404 });
+        return request.method === 'GET'
+            ? Response.json({ id: 7, name: 'Synthetic handover tenant', settings: {} })
+            : new Response('not found', { status: 404 });
     }
     const tenantId = url.searchParams.get('tenantId') ?? '';
     if (request.method === 'GET') {
@@ -107,6 +128,9 @@ beforeEach(() => {
     server.store.set('7', storedPolicies());
     server.store.set('8', storedPolicies());
     server.putStatus = 200;
+    server.masterPutStatus = 200;
+    server.master = { value: true, mode: 'SUGGESTED', inherited: false };
+    server.canonicalWrites.length = 0;
     server.requests.length = 0;
     vi.stubGlobal('fetch', fetchStub);
 });
@@ -244,4 +268,124 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         expect(i18n.getFixedT('de')('tenants.permissions.consent.effect.OPT_OUT')).toMatch(oneSentence);
         expect(i18n.getFixedT('en')('tenants.permissions.consent.effect.OPT_OUT')).toMatch(oneSentence);
     });
+});
+
+const mountPolicyPage = (level: 'platform' | 'tenant') =>
+    render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            {level === 'platform' ? (
+                <SuperAdminPermissionsSettings tenantId="platform" />
+            ) : (
+                <TenantPermissionsSettings tenantId="7" />
+            )}
+        </QueryClientProvider>,
+    );
+
+const masterButton = async () => {
+    const card = await screen.findByTestId('case-handover-card');
+    const row = await waitFor(() => {
+        const found = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+        if (!found) throw new Error('Case handover master policy is missing');
+        return found;
+    });
+    return within(row).findByRole('button', { name: /Open policy choices/i });
+};
+
+const chooseMaster = async (enabled: boolean) => {
+    const user = userEvent.setup();
+    await user.click(await masterButton());
+    await user.click(
+        screen.getByRole('button', {
+            name: i18n.t(`tenants.permissions.policy.${enabled ? 'activationSuggested' : 'deactivationSuggested'}`),
+        }),
+    );
+};
+
+// The real policy containers, card, hooks and fetchData run together at this HTTP seam.
+describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (level) => {
+    it('keeps mixed individual reason choices through master OFF, ON and a fresh mount', async () => {
+        access.isSuperAdmin = level === 'platform';
+        const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+        server.store.set('7', mixed);
+        const view = mountPolicyPage(level);
+
+        await chooseMaster(false);
+        await waitFor(() => expect(server.master.value).toBe(false));
+        await waitFor(async () => expect(await masterButton()).toBeEnabled());
+        await chooseMaster(true);
+        await waitFor(() => expect(server.master.value).toBe(true));
+        await waitFor(async () => expect(await masterButton()).toBeEnabled());
+
+        expect(server.canonicalWrites).toHaveLength(2);
+        expect(
+            server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
+        ).toEqual([]);
+        expect(server.store.get('7')).toEqual(mixed);
+        view.unmount();
+        mountPolicyPage(level);
+        expect(await masterButton()).toHaveAccessibleName(
+            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
+        );
+        expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
+    });
+
+    it('rolls back a failed master write without any reason-policy writes', async () => {
+        access.isSuperAdmin = level === 'platform';
+        server.masterPutStatus = 500;
+        const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+        server.store.set('7', mixed);
+        mountPolicyPage(level);
+
+        await chooseMaster(false);
+        await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
+        await waitFor(async () =>
+            expect(await masterButton()).toHaveAccessibleName(
+                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
+            ),
+        );
+        expect(
+            server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
+        ).toEqual([]);
+        expect(server.store.get('7')).toEqual(mixed);
+        expect(server.master.value).toBe(true);
+    });
+});
+
+describe('agency handover master HTTP boundary', () => {
+    it.each([true, false])(
+        'keeps parent value %s suggested, read-only and free of cross-scope saves',
+        async (value) => {
+            // Even an actor who can edit the tenant must not write it from the agency card.
+            access.tenantUpdate = true;
+            const onFeaturePolicyChange = vi.fn();
+            render(
+                <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                    <CaseHandoverCard
+                        tenantId={7}
+                        policyLevel="agency"
+                        permissionPolicies={{ caseHandoverEnabled: { value, mode: 'SUGGESTED', inherited: true } }}
+                        openPolicyMenu="caseHandoverEnabled"
+                        onFeaturePolicyChange={onFeaturePolicyChange}
+                    />
+                </QueryClientProvider>,
+            );
+
+            const master = await masterButton();
+            expect(master).toBeDisabled();
+            expect(master).toHaveAccessibleName(
+                expect.stringContaining(
+                    i18n.t(`tenants.permissions.policy.${value ? 'activationSuggested' : 'deactivationSuggested'}`),
+                ),
+            );
+            expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
+            expect(
+                screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
+            ).toBeNull();
+            await userEvent.setup().click(master);
+            expect(await clientConsentButton()).toBeDisabled();
+            expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
+            expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+            expect(server.requests.every(({ method }) => method === 'GET')).toBe(true);
+        },
+    );
 });

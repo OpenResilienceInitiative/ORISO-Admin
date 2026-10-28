@@ -93,9 +93,35 @@ describe('CaseHandoverCard', () => {
         mocks.mutationState.isPending = false;
     });
 
-    it('master policy selection writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
+    it('keeps the agency master read-only even when the parent only suggests it', async () => {
         const user = userEvent.setup();
-        render(<CaseHandoverCard tenantId={7} />);
+        const onFeaturePolicyChange = vi.fn();
+        render(
+            <CaseHandoverCard
+                tenantId={7}
+                policyLevel="agency"
+                openPolicyMenu="caseHandoverEnabled"
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: true } }}
+                onFeaturePolicyChange={onFeaturePolicyChange}
+            />,
+        );
+
+        const master = screen.getByRole('button', {
+            name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+        });
+        expect(master).toBeDisabled();
+        expect(screen.getByText('tenants.permissions.card.caseHandover.readOnlyNote')).toBeVisible();
+        expect(screen.queryByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeNull();
+        await user.click(master);
+        expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('master selection writes only the canonical policy and preserves individual reasons', async () => {
+        const user = userEvent.setup();
+        const onFeaturePolicyChange = vi.fn();
+        mocks.policies = [mocks.defaultPolicies[0], { ...mocks.defaultPolicies[1], enabled: false }];
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={onFeaturePolicyChange} />);
 
         await user.click(
             screen.getByRole('button', {
@@ -104,19 +130,12 @@ describe('CaseHandoverCard', () => {
         );
         await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
 
-        await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith(
-                [
-                    expect.objectContaining({
-                        code: 'COUNSELLOR_ASKED_FOR_ADVICE',
-                        enabled: false,
-                        policyAuthority: null,
-                    }),
-                    expect.objectContaining({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
-                ],
-                expect.anything(),
-            );
+        expect(onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
         });
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.policies.map(({ enabled }) => enabled)).toEqual([true, false]);
     });
 
     it('client-consent policy updates only the active reason', async () => {
@@ -137,6 +156,7 @@ describe('CaseHandoverCard', () => {
                     expect.objectContaining({
                         code: 'COUNSELLOR_ASKED_FOR_ADVICE',
                         clientConsentRequired: false,
+                        policyAuthority: null,
                         clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
                     }),
                     expect.objectContaining({
@@ -245,7 +265,7 @@ describe('CaseHandoverCard', () => {
 
     it('opens all four policy choices plus information from the master policy button', async () => {
         const user = userEvent.setup();
-        render(<CaseHandoverCard tenantId={7} />);
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={vi.fn()} />);
 
         await user.click(
             screen.getByRole('button', {
@@ -263,7 +283,7 @@ describe('CaseHandoverCard', () => {
     it('locks the master policy while a reason-policy save is pending', () => {
         mocks.mutationState.isPending = true;
 
-        render(<CaseHandoverCard tenantId={7} />);
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={vi.fn()} />);
 
         expect(
             screen.getByRole('button', {
@@ -273,7 +293,7 @@ describe('CaseHandoverCard', () => {
     });
 
     // FE#1725: no silent rollback; the edit stays and an error says it was not saved.
-    it('keeps the edit and shows an error when the save fails', async () => {
+    it('keeps the reason edit and shows an error when its save fails', async () => {
         mocks.mutate.mockImplementation((_payload, options) => {
             options?.onError?.(new Error('save failed'));
         });
@@ -282,22 +302,19 @@ describe('CaseHandoverCard', () => {
 
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.consent.noneSuggested' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'tenants.permissions.card.caseHandover.saveFailed.other',
         );
-        await user.click(
-            screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.deactivationSuggested',
-            }),
-        );
         expect(
-            screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }),
-        ).toHaveAttribute('aria-current', 'page');
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
+            }),
+        ).toHaveAccessibleName(/tenants.permissions.consent.noneSuggested/);
     });
 
     it('steps Advice Needed duration by 15 minutes from the three-hour default without a maximum', async () => {

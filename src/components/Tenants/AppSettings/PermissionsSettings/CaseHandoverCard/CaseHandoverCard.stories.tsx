@@ -86,7 +86,7 @@ const meta = {
         },
     },
     args: {
-        onModuleEnabledChange: () => undefined,
+        onFeaturePolicyChange: () => undefined,
         onClientConsentPolicyChange: () => undefined,
         onNotificationTemplateChange: () => undefined,
         onMaxAccessDurationChange: () => undefined,

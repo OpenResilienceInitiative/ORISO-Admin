@@ -43,7 +43,6 @@ export type CaseHandoverCardViewProps = {
     /** No Träger in scope (platform-wide page): explain where the rules are set instead. */
     noTenant?: boolean;
     moduleEnabled: boolean;
-    onModuleEnabledChange: (enabled: boolean) => void;
     onClientConsentPolicyChange: (code: string, clientConsent: CaseHandoverConsentPolicy) => void;
     onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
     onMaxAccessDurationChange: (code: string, minutes: number) => void;
@@ -68,12 +67,11 @@ export const CaseHandoverCardView = ({
     policies,
     isLoading,
     isSaving = false,
-    canEdit,
+    canEdit: canEditTenantPolicies,
     saveError = null,
     onRetrySave,
     noTenant = false,
     moduleEnabled,
-    onModuleEnabledChange,
     onClientConsentPolicyChange,
     onNotificationTemplateChange,
     onMaxAccessDurationChange,
@@ -111,6 +109,9 @@ export const CaseHandoverCardView = ({
     };
 
     const comingSoon = t('tenants.permissions.card.caseHandover.comingSoon');
+    const masterSetOnTraeger = policyLevel === 'agency';
+    const canEdit = canEditTenantPolicies && !masterSetOnTraeger;
+    const canEditMaster = canEdit && Boolean(onFeaturePolicyChange);
 
     return (
         <Card
@@ -118,6 +119,31 @@ export const CaseHandoverCardView = ({
             headerIcon={<CaseHandoverIcon width={40} height={40} />}
             titleKey="tenants.permissions.card.caseHandover.title"
         >
+            <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
+            {(!isLoading || noTenant) && (
+                <div className={styles.featureRow}>
+                    <PermissionPolicyControl
+                        featureKey="caseHandoverEnabled"
+                        label={t('tenants.permissions.card.caseHandover.enabled')}
+                        level={policyLevel}
+                        policy={
+                            permissionPolicies?.caseHandoverEnabled ?? {
+                                value: moduleEnabled,
+                                mode: 'SUGGESTED',
+                                inherited: true,
+                            }
+                        }
+                        open={canEditMaster && currentOpenPolicyMenu === 'caseHandoverEnabled'}
+                        pending={pendingPolicyFields?.has('caseHandoverEnabled')}
+                        disabled={isSaving || !canEditMaster}
+                        onOpenChange={(open) => canEditMaster && setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
+                        onChange={(next) => {
+                            if (!canEditMaster) return;
+                            onFeaturePolicyChange?.('caseHandoverEnabled', next);
+                        }}
+                    />
+                </div>
+            )}
             {noTenant && <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.noTenant')}</p>}
             {!noTenant && isLoading && (
                 <div data-testid="case-handover-card-loading">
@@ -126,7 +152,6 @@ export const CaseHandoverCardView = ({
             )}
             {!noTenant && !isLoading && (
                 <>
-                    <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
                     {!canEdit && (
                         <p className={styles.readOnlyNote} data-testid="case-handover-read-only-note">
                             {t('tenants.permissions.card.caseHandover.readOnlyNote')}
@@ -150,29 +175,6 @@ export const CaseHandoverCardView = ({
                             }
                         />
                     )}
-
-                    <div className={styles.featureRow}>
-                        <PermissionPolicyControl
-                            featureKey="caseHandoverEnabled"
-                            label={t('tenants.permissions.card.caseHandover.enabled')}
-                            level={policyLevel}
-                            policy={
-                                permissionPolicies?.caseHandoverEnabled ?? {
-                                    value: moduleEnabled,
-                                    mode: canEdit ? 'SUGGESTED' : 'ENFORCED',
-                                    inherited: !canEdit,
-                                }
-                            }
-                            open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
-                            pending={pendingPolicyFields?.has('caseHandoverEnabled')}
-                            disabled={isSaving}
-                            onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
-                            onChange={(next) => {
-                                onFeaturePolicyChange?.('caseHandoverEnabled', next);
-                                onModuleEnabledChange(next.value);
-                            }}
-                        />
-                    </div>
 
                     <div
                         className={styles.reasonTabs}
