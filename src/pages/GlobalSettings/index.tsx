@@ -31,6 +31,7 @@ import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hoo
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
+import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettings/SupportEmailSettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
@@ -97,6 +98,11 @@ export const GlobalLoginSettingsPage = () => {
                     <section className={styles.globalConfigCardSlot}>
                         <ThemeProvider theme={orisoMuiTheme}>
                             <OneTopicPerAgencySettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <SupportEmailSettingsCardContainer />
                         </ThemeProvider>
                     </section>
                     <section className={styles.globalConfigCardSlot}>
