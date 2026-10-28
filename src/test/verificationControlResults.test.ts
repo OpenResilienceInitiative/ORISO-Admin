@@ -364,7 +364,7 @@ it('requires a complete healthy one-case witness before evaluating a disconnecte
 it.each(['strict', 'functional-pilot'])(
     'accepts fresh %s evidence emitted by the real reporter lifecycle',
     (profile) => {
-        const strict = { ...capsule, source: sourceIdentity(process.cwd()) };
+        const strict = { ...capsule, source: sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA) };
         const { directory, current } =
             profile === 'strict'
                 ? { directory: packet(strict), current: strict }
