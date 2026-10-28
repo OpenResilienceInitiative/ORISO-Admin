@@ -1,6 +1,7 @@
 import { theme as antdTheme } from 'antd';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { buildAdminAntdTheme } from './antdM3Theme';
+import { observationStatus } from './appliedTokenInspection';
 import { computeOrisoPalette } from '../utils/theme/orisoScheme';
 
 // The bridge must stay a pure derivation of the OrisoScheme palette. To test the
@@ -95,4 +96,21 @@ describe('buildAdminAntdTheme', () => {
             expect(token?.controlHeight).toBe(40);
         });
     });
+});
+
+it('keeps the inverted primary seed/derived difference visible as an inspector mismatch', () => {
+    const options = { seeds: { accentDark: '#1D4ED8' }, scheme: 'inverted' as const };
+    const expected = computeOrisoPalette(options.seeds, options.scheme).tokens['--m3-primary'];
+    const config = buildAdminAntdTheme(options);
+    const applied = antdTheme.getDesignToken(config).colorPrimary;
+    expect(config.algorithm).toBe(antdTheme.darkAlgorithm);
+    expect(config.token?.colorPrimary).toBe(expected);
+    expect(applied).not.toBe(expected);
+    expect(
+        observationStatus({
+            actual: applied,
+            authored: null,
+            normalized: { expected, actual: applied, calculated: expected },
+        }),
+    ).toBe('mismatch');
 });

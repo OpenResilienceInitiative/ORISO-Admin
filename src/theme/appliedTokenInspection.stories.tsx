@@ -27,6 +27,7 @@ interface Observation {
     expected: string;
     actual: string | null;
     status: 'match' | 'mismatch' | 'missing' | 'unresolved';
+    issues: string[];
     target?: { selector: string; property: string };
     contrast?: { foreground: string; background: string; ratio: number | null; status: 'measured' | 'unresolved' };
 }
@@ -542,7 +543,15 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
             import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC && button.target
                 ? canvasElement.querySelector(button.target.selector)
                 : null;
+        // Preserve the pre-existing product scheme: the dark algorithm derives this role from the raw M3 seed.
+        // The inspector must expose this known baseline colour difference, not relabel it as a match.
+        const resolvedPrimary = antdTheme.getDesignToken(
+            buildAdminAntdTheme({ seeds: { accentDark: context.primaryColor }, scheme: context.scheme }),
+        ).colorPrimary;
         const normalizedExpected = serialize('background-color', expected);
+        const normalizedResolved = serialize('background-color', resolvedPrimary);
+        expect(normalizedResolved).not.toBe(normalizedExpected);
+        const issue = `bridge-primary-button background-color: mismatch; expected ${expected}, applied ${normalizedResolved}`;
         const releaseMotion = beginTokenMotionDiagnostic(
             'bridge',
             canvasElement,
@@ -558,14 +567,33 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
                     readReport(canvasElement),
                     'component:bridge-primary-button:background-color',
                 );
-                expect(current).toMatchObject({ expected, status: 'match' });
-                expect(current.target).toMatchObject({ selector: expect.any(String), property: 'background-color' });
+                expect(document.documentElement.style.getPropertyValue('--m3-primary').trim()).toBe(expected);
+                expect(getComputedStyle(document.documentElement).getPropertyValue('--m3-primary').trim()).toBe(
+                    expected,
+                );
+                expect(current).toMatchObject({
+                    expected,
+                    actual: normalizedResolved,
+                    status: 'mismatch',
+                    source: 'buildAdminAntdTheme().token.colorPrimary ← computeOrisoPalette --m3-primary',
+                });
+                expect(current.issues).toEqual([issue]);
+                expect(current.target).toEqual({
+                    selector: '[data-token-inspection-bridge] button.ant-btn-primary',
+                    property: 'background-color',
+                });
                 const target = current.target ? canvasElement.querySelector(current.target.selector) : null;
                 if (!(target instanceof HTMLButtonElement))
                     throw new Error('The observation must name the real M3 button');
+                expect(target.isConnected && canvasElement.contains(target)).toBe(true);
+                expect(canvasElement.querySelectorAll(current.target!.selector)).toHaveLength(1);
                 expect(target).toHaveAccessibleName(i18n.t('save'));
                 expect(current.actual).toBe(getComputedStyle(target).backgroundColor);
-                expect(current.actual).toBe(normalizedExpected);
+                expect(current.actual).toBe(normalizedResolved);
+                const row = within(canvasElement).getByRole('row', { name: /bridge-primary-button.*background-color/ });
+                expect(row).toBeVisible();
+                expect(row).toHaveTextContent('mismatch');
+                expect(row).toHaveTextContent(issue);
             });
             captureTokenCSS('bridge:assertion-passed', canvasElement, context, diagnosticTarget, button.id, expected);
         } catch (error) {
