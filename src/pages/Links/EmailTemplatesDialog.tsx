@@ -1,11 +1,13 @@
-import { Alert, Button, Input, message, Select, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, message, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import {
     createInviteEmailTemplate,
+    deleteInviteEmailTemplate,
     InviteEmailTemplateDTO,
     InviteEmailTemplateKind,
     listInviteEmailTemplates,
@@ -21,9 +23,7 @@ import {
 } from '../../components/PlaceholderTemplate';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { canEditSharedTemplates, resolveVisibleTemplateKinds } from '../../constants/linksAccess';
-import { useTenantsData } from '../../hooks/useTenantsData';
-import { convertToOptions } from '../../utils/convertToOptions';
-import { MuiSwitch } from '../../components/mui/MuiSwitchField';
+import { LANGUAGE_OPTIONS } from '../../utils/language';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
@@ -46,6 +46,8 @@ interface EmailTemplatesDialogProps {
     onClose: () => void;
     /** Fired after any successful create/update so the opener can refetch its template select. */
     onChanged?: (template: InviteEmailTemplateDTO) => void;
+    /** A deletion invalidates a choice; it must never be treated as a saved template. */
+    onDeleted?: (id: number) => void;
     /**
      * Picker mode: passing `onSelect` turns the overview list into the way
      * of choosing a template — clicking a row's name hands it back to the opener,
@@ -94,6 +96,7 @@ export const EmailTemplatesDialog = ({
     initialTemplateId,
     onClose,
     onChanged,
+    onDeleted,
     onSelect,
     selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
@@ -106,18 +109,8 @@ export const EmailTemplatesDialog = ({
     const [submitting, setSubmitting] = useState(false);
     const [view, setView] = useState<'list' | 'form'>('list');
     const { isSuperAdmin, hasRole, tenantId: activeTenantId } = useUserRoles();
-    /* Templates carry no tenant: one text is shared by the whole platform and each
-       tenant's branding is applied when the mail is rendered. What an admin may see
-       is therefore drawn along KIND — the kinds their Links tabs send with — and
-       only the platform operator, who owns the shared text, may change it. Listing
-       every kind for everyone showed tenant admins the platform's tenant-invite and
-       contract-forward templates, with an Edit that rewrote the mail every other
-       tenant sends (v2.0.8 QA 1.13).
-
-       Creating stays open to tenant admins, for the one kind they send with — an
-       owner decision (2026-09-23), not an oversight. A template a tenant admin
-       creates is therefore still visible to every other tenant, and stays so until
-       templates carry an owning tenant on the server. */
+    // The server owns tenant visibility and per-row edit rights. The kind list
+    // additionally limits this surface to the invitation roles the caller uses.
     const visibleKindsKey = resolveVisibleTemplateKinds({ isSuperAdmin, hasRole }).join(',');
     // Keyed on the joined list: `hasRole` is a fresh function every render, and an
     // unstable array here would refire the template request on every render.
@@ -136,25 +129,33 @@ export const EmailTemplatesDialog = ({
     );
     // `editable: false` alone does not say why; only an unowned row is the platform's shared one.
     const lockReasonFor = useCallback(
-        (template: InviteEmailTemplateDTO) =>
-            template.tenantId == null && !isSuperAdmin ? sharedTemplateLockReason : noPermissionLockReason,
-        [isSuperAdmin, noPermissionLockReason, sharedTemplateLockReason],
+        (template: InviteEmailTemplateDTO) => {
+            if (template.systemDefault)
+                return t(
+                    'links.templates.systemTemplateProtected',
+                    'System templates can only be copied into a new template.',
+                );
+            if (template.tenantId == null && !isSuperAdmin) return sharedTemplateLockReason;
+            return noPermissionLockReason;
+        },
+        [isSuperAdmin, noPermissionLockReason, sharedTemplateLockReason, t],
     );
     // The server answers per row; the role rule covers a server without `editable`.
     const mayEditTemplate = useCallback((template: InviteEmailTemplateDTO) => template.editable ?? canEdit, [canEdit]);
-    // Preview context is deliberately separate from the persisted template draft.
-    const [previewTenant, setPreviewTenant] = useState('platform');
-    const {
-        data: previewTenants,
-        isLoading: previewTenantsLoading,
-        isError: previewTenantsFailed,
-    } = useTenantsData({
-        perPage: 1000,
-        enabled: isSuperAdmin && view === 'form',
-    });
-    const selectedPreviewTenantId = previewTenant === 'platform' ? undefined : Number(previewTenant);
-    const scopedTenantId = activeTenantId && activeTenantId > 0 ? activeTenantId : undefined;
-    const previewTenantId = isSuperAdmin ? selectedPreviewTenantId : scopedTenantId;
+    const mayDeleteTemplate = useCallback(
+        (template: InviteEmailTemplateDTO) => !template.systemDefault && mayEditTemplate(template),
+        [mayEditTemplate],
+    );
+    const deleteLockReasonFor = useCallback(
+        (template: InviteEmailTemplateDTO) => {
+            if (template.systemDefault)
+                return t('links.templates.systemDeleteProtected', 'System templates cannot be deleted.');
+            return lockReasonFor(template);
+        },
+        [lockReasonFor, t],
+    );
+    // Preview uses the current account's design. Branding follows tenant settings automatically.
+    const previewTenantId = !isSuperAdmin && activeTenantId && activeTenantId > 0 ? activeTenantId : undefined;
 
     const [editingTemplate, setEditingTemplate] = useState<InviteEmailTemplateDTO | null>(null);
     const [draftMeta, setDraftMeta] = useState<TemplateDraftMeta>({
@@ -173,6 +174,10 @@ export const EmailTemplatesDialog = ({
      * instead of a second overlay (see {@link guardDraft}).
      */
     const [discardPrompt, setDiscardPrompt] = useState<(() => void) | null>(null);
+    const [overwritePrompt, setOverwritePrompt] = useState(false);
+    const [deletePrompt, setDeletePrompt] = useState<InviteEmailTemplateDTO | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState(false);
 
     const kindLabel = useCallback((kind: InviteEmailTemplateKind) => t(`links.templates.kind.${kind}`, kind), [t]);
 
@@ -350,10 +355,11 @@ export const EmailTemplatesDialog = ({
     const draftComplete =
         draftMeta.name.trim().length > 0 && draftValues.subject.trim().length > 0 && draftValues.body.trim().length > 0;
 
-    const onSave = useCallback(async () => {
+    const persistDraft = useCallback(async () => {
         if (!draftComplete || submitting) {
             return;
         }
+        setOverwritePrompt(false);
         setSubmitting(true);
         // Same payload contract as the pre-module form: subject/body verbatim,
         // language normalised to null when blank.
@@ -403,6 +409,44 @@ export const EmailTemplatesDialog = ({
         submitting,
         t,
     ]);
+
+    const onSave = () => {
+        if (!draftComplete || submitting) return;
+        if (editingTemplate) setOverwritePrompt(true);
+        else persistDraft();
+    };
+
+    const loadExistingTemplate = (id: string) => {
+        const template = kindTemplates.find((entry) => String(entry.id) === id);
+        if (!template) return;
+        guardDraft(() => {
+            if (mayEditTemplate(template)) openEditForm(template);
+            else {
+                openCreateFromTemplate(template);
+                // Protected sources can be loaded, but are saved as a new owned copy.
+                setDraftMeta((meta) => ({ ...meta, name: template.name }));
+                if (draftBaselineRef.current) draftBaselineRef.current.name = template.name;
+            }
+        });
+    };
+
+    const confirmDelete = async () => {
+        if (!deletePrompt || deleting || !mayDeleteTemplate(deletePrompt)) return;
+        setDeleting(true);
+        setDeleteError(false);
+        try {
+            await deleteInviteEmailTemplate(deletePrompt.id);
+            setTemplates((current) => current.filter((template) => template.id !== deletePrompt.id));
+            onDeleted?.(deletePrompt.id);
+            setDeletePrompt(null);
+            message.success(t('links.templates.deleted', 'Template deleted'));
+            await loadTemplates();
+        } catch {
+            setDeleteError(true);
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     const renderName = useCallback(
         (value: string, template: InviteEmailTemplateDTO) => {
@@ -485,16 +529,6 @@ export const EmailTemplatesDialog = ({
                 className: styles.hideOnPhone,
             },
             {
-                title: t('links.templates.col.active', 'Active'),
-                dataIndex: 'active',
-                key: 'active',
-                render: (value: boolean) => (
-                    <Tag color={value ? 'green' : 'default'}>
-                        {value ? t('links.templates.activeYes', 'Active') : t('links.templates.activeNo', 'Inactive')}
-                    </Tag>
-                ),
-            },
-            {
                 title: t('links.templates.col.actions', 'Actions'),
                 key: 'actions',
                 render: (_: unknown, template: InviteEmailTemplateDTO) => (
@@ -514,22 +548,39 @@ export const EmailTemplatesDialog = ({
                                 </span>
                             </M3Tooltip>
                         )}
-                        {/* The backend exposes no DELETE for invite-email-templates yet
-                            (AccountInviteController: POST/PUT/GET only), so per #314 the
-                            delete action ships disabled with an explanatory tooltip
-                            instead of inventing an endpoint. */}
-                        <Tooltip title={t('links.templates.deleteUnavailable', 'Backend-Endpoint fehlt (#314)')}>
-                            <span>
-                                <Button danger disabled size="small">
+                        <M3Tooltip
+                            text={mayDeleteTemplate(template) ? undefined : deleteLockReasonFor(template)}
+                            portal
+                        >
+                            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger around a disabled button */}
+                            <span tabIndex={mayDeleteTemplate(template) ? undefined : 0}>
+                                <Button
+                                    danger
+                                    disabled={!mayDeleteTemplate(template)}
+                                    size="small"
+                                    onClick={() => {
+                                        setDeleteError(false);
+                                        setDeletePrompt(template);
+                                    }}
+                                >
                                     {t('links.templates.delete', 'Delete')}
                                 </Button>
                             </span>
-                        </Tooltip>
+                        </M3Tooltip>
                     </div>
                 ),
             },
         ],
-        [kindLabel, lockReasonFor, mayEditTemplate, openEditForm, renderName, t],
+        [
+            kindLabel,
+            lockReasonFor,
+            mayEditTemplate,
+            mayDeleteTemplate,
+            deleteLockReasonFor,
+            openEditForm,
+            renderName,
+            t,
+        ],
     );
 
     const listFooter = (
@@ -578,17 +629,103 @@ export const EmailTemplatesDialog = ({
         </div>
     ) : undefined;
 
+    const editorFooter = (
+        <footer className={styles.editorFooter} data-testid="template-editor-footer">
+            <div>
+                <div className={styles.footerFields}>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-load-template`}>
+                            {t('links.templates.existingTemplates', 'Existing templates')}
+                        </label>
+                        <Select
+                            id={`${fieldId}-load-template`}
+                            placeholder={t('links.templates.loadTemplate', 'Load template')}
+                            value={editingTemplate ? String(editingTemplate.id) : undefined}
+                            options={kindTemplates.map((entry) => ({ value: String(entry.id), label: entry.name }))}
+                            onChange={loadExistingTemplate}
+                            showSearch
+                            optionFilterProp="label"
+                            disabled={submitting}
+                        />
+                    </div>
+                    <div className={styles.metaField}>
+                        <label className={styles.metaLabel} htmlFor={`${fieldId}-name`}>
+                            {t('links.templates.field.name', 'Vorlagenname')}
+                        </label>
+                        <Input
+                            id={`${fieldId}-name`}
+                            value={draftMeta.name}
+                            disabled={submitting}
+                            onChange={(event) => setDraftMeta((meta) => ({ ...meta, name: event.target.value }))}
+                        />
+                    </div>
+                </div>
+                {!draftComplete && (
+                    <p className={styles.saveHint} id={saveHintId} role="status">
+                        {t(
+                            'links.templates.saveIncomplete',
+                            'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
+                        )}
+                    </p>
+                )}
+            </div>
+            <div className={styles.footerActions}>
+                <DialogButton disabled={submitting} onClick={() => guardDraft(backToList)}>
+                    {t('cancel')}
+                </DialogButton>
+                <DialogButton
+                    primary
+                    disabled={submitting || !draftComplete}
+                    aria-describedby={draftComplete ? undefined : saveHintId}
+                    onClick={onSave}
+                >
+                    {t('save')}
+                </DialogButton>
+            </div>
+        </footer>
+    );
+    const overwriteFooter = (
+        <div className={styles.footerActions}>
+            <DialogButton
+                ref={(button: HTMLButtonElement | null) => button?.focus()}
+                onClick={() => setOverwritePrompt(false)}
+            >
+                {t('links.templates.overwriteCancel', 'Abbrechen')}
+            </DialogButton>
+            <DialogButton primary onClick={persistDraft}>
+                {t('links.templates.overwriteConfirm', 'Überschreiben')}
+            </DialogButton>
+        </div>
+    );
+
     if (view === 'form') {
         const formTitleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
         const formDescriptionKey = editingTemplate
             ? 'links.templates.editDescription'
             : 'links.templates.newDescription';
 
+        let titleKey = formTitleKey;
+        let descriptionKey = formDescriptionKey;
+        if (discardPrompt) {
+            titleKey = 'links.templates.discardTitle';
+            descriptionKey = 'links.templates.discardDescription';
+        } else if (overwritePrompt) {
+            titleKey = 'links.templates.overwriteTitle';
+            descriptionKey = 'links.templates.overwriteDescription';
+        }
+        const closeForm = (intent: () => void) => {
+            if (submitting) return;
+            if (overwritePrompt) setOverwritePrompt(false);
+            else if (discardPrompt) cancelDiscardPrompt();
+            else guardDraft(intent);
+        };
         return (
             <PlaceholderTemplateDialog
-                titleKey={discardPrompt ? 'links.templates.discardTitle' : formTitleKey}
-                descriptionKey={discardPrompt ? 'links.templates.discardDescription' : formDescriptionKey}
-                footer={discardFooter}
+                icon={<DescriptionOutlinedIcon data-testid="template-header-icon" />}
+                titleKey={titleKey}
+                descriptionKey={descriptionKey}
+                scrollableBody
+                footer={discardFooter ?? (overwritePrompt ? overwriteFooter : editorFooter)}
                 saveDisabled={submitting || !draftComplete}
                 saveDescribedBy={draftComplete ? undefined : saveHintId}
                 width={1180}
@@ -597,10 +734,11 @@ export const EmailTemplatesDialog = ({
                 // ask first when the draft carries unsaved edits — and while the
                 // question is up, either gesture answers it with "Abbrechen"
                 // instead of parking a second intent over the pending one.
-                onClose={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(backToList))}
-                onDismiss={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(onClose))}
+                onClose={() => closeForm(backToList)}
+                onDismiss={() => closeForm(onClose)}
                 onSave={onSave}
             >
+                {overwritePrompt && <p className={styles.discardBody}>{editingTemplate?.name}</p>}
                 {discardPrompt && (
                     <p className={styles.discardBody} role="status">
                         {t('links.templates.discardBody', 'Diese Vorlage wurde geändert, aber noch nicht gespeichert.')}
@@ -609,17 +747,21 @@ export const EmailTemplatesDialog = ({
                 {/* While the discard question is up, the form stays MOUNTED but
                     hidden and inert: the draft, the caret and the preview frame
                     survive an "Abbrechen" untouched. */}
-                <div className={discardPrompt ? styles.formHidden : undefined} inert={discardPrompt != null}>
+                <div
+                    className={discardPrompt || overwritePrompt ? styles.formHidden : undefined}
+                    inert={discardPrompt != null || overwritePrompt}
+                >
                     {/* Persistence metadata around the editor: what the API stores per
                         template beyond subject/body. The editor below owns the tokenised
                         content and the live preview. */}
                     <div className={styles.metaFields}>
                         <div className={styles.metaField}>
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
-                                {t('links.templates.field.kind', 'Kind')}
+                                {t('links.templates.field.kind', 'Template for')}
                             </label>
                             <Select
                                 id={`${fieldId}-kind`}
+                                disabled={submitting || editingTemplate?.systemDefault === true}
                                 options={visibleKinds.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
                                 value={draftMeta.kind}
                                 onChange={(kind: InviteEmailTemplateKind) =>
@@ -628,72 +770,40 @@ export const EmailTemplatesDialog = ({
                             />
                         </div>
                         <div className={styles.metaField}>
-                            <label className={styles.metaLabel} htmlFor={`${fieldId}-name`}>
-                                {t('links.templates.field.name', 'Vorlagenname')}
-                            </label>
-                            <Input
-                                id={`${fieldId}-name`}
-                                value={draftMeta.name}
-                                onChange={(event) => setDraftMeta((meta) => ({ ...meta, name: event.target.value }))}
-                            />
-                        </div>
-                        <div className={styles.metaField}>
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-language`}>
                                 {t('links.templates.field.language', 'Language')}
                             </label>
-                            <Input
+                            <Select
                                 id={`${fieldId}-language`}
-                                placeholder="de"
+                                disabled={submitting || editingTemplate?.systemDefault === true}
                                 value={draftMeta.language}
-                                onChange={(event) =>
-                                    setDraftMeta((meta) => ({ ...meta, language: event.target.value }))
-                                }
-                            />
-                        </div>
-                        <div className={styles.metaField}>
-                            <label className={styles.metaLabel} htmlFor={`${fieldId}-active`}>
-                                {t('links.templates.field.active', 'Active')}
-                            </label>
-                            {/* D2 — „wieder ant stuff anstatt mui". The shared M3
-                                switch, not antd's. This call site owns its own
-                                state and its own <label>, so it takes the bare
-                                MuiSwitch rather than the Form.Item-bound field. */}
-                            <MuiSwitch
-                                checked={draftMeta.active}
-                                id={`${fieldId}-active`}
-                                onChange={(active) => setDraftMeta((meta) => ({ ...meta, active }))}
+                                options={[
+                                    { value: '', label: t('links.templates.languageAutomatic', 'Automatic') },
+                                    ...LANGUAGE_OPTIONS.filter((option) => option.value !== 'de@informal').map(
+                                        (option) => ({ value: option.value, label: t(option.labelKey) }),
+                                    ),
+                                    ...(draftMeta.language &&
+                                    !LANGUAGE_OPTIONS.some(
+                                        (option) =>
+                                            option.value !== 'de@informal' && option.value === draftMeta.language,
+                                    )
+                                        ? [
+                                              {
+                                                  value: draftMeta.language,
+                                                  label:
+                                                      draftMeta.language === 'de@informal'
+                                                          ? t('language.options.de@informal')
+                                                          : draftMeta.language,
+                                              },
+                                          ]
+                                        : []),
+                                ]}
+                                onChange={(language: string) => setDraftMeta((meta) => ({ ...meta, language }))}
                             />
                         </div>
                     </div>
-                    {isSuperAdmin && (
-                        <div className={styles.metaField}>
-                            <label className={styles.metaLabel} htmlFor={`${fieldId}-preview-tenant`}>
-                                {t('links.templates.previewTenant', 'Vorschau für')}
-                            </label>
-                            <Select
-                                id={`${fieldId}-preview-tenant`}
-                                value={previewTenant}
-                                onChange={setPreviewTenant}
-                                showSearch
-                                optionFilterProp="label"
-                                loading={previewTenantsLoading}
-                                options={[
-                                    { value: 'platform', label: t('links.templates.previewPlatform', 'Plattform') },
-                                    ...convertToOptions(previewTenants?.data ?? [], 'name', 'id'),
-                                ]}
-                            />
-                            {previewTenantsFailed && (
-                                <Alert
-                                    type="error"
-                                    message={t(
-                                        'links.templates.previewTenantsFailed',
-                                        'Träger für die Vorschau konnten nicht geladen werden.',
-                                    )}
-                                />
-                            )}
-                        </div>
-                    )}
                     <InviteEmailTemplateEditor
+                        hideTemplateChooser
                         tenantId={previewTenantId}
                         activeTemplateId={editingTemplate?.id}
                         // The preview follows the template's own language, not the admin UI locale.
@@ -726,16 +836,6 @@ export const EmailTemplatesDialog = ({
                             }
                         }}
                     />
-                    {/* #713 house rule: a disabled primary action must say why —
-                        linked to the save button via aria-describedby. */}
-                    {!draftComplete && (
-                        <p className={styles.saveHint} id={saveHintId} role="status">
-                            {t(
-                                'links.templates.saveIncomplete',
-                                'Vorlagenname, Betreff und Inhalt ausfüllen, um zu speichern.',
-                            )}
-                        </p>
-                    )}
                 </div>
             </PlaceholderTemplateDialog>
         );
@@ -745,43 +845,86 @@ export const EmailTemplatesDialog = ({
     /* List view                                                             */
     /* --------------------------------------------------------------------- */
 
+    let listDescriptionKey = onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription';
+    if (deletePrompt) listDescriptionKey = 'links.templates.deleteDescription';
+
     return (
         <Modal
-            titleKey="links.templates.dialogTitle"
-            descriptionKey={onSelect ? 'links.templates.pickHint' : 'links.templates.dialogDescription'}
+            scrollableBody
+            titleKey={deletePrompt ? 'links.templates.deleteTitle' : 'links.templates.dialogTitle'}
+            descriptionKey={listDescriptionKey}
             icon={<EmailOutlinedIcon />}
-            onClose={onClose}
-            footer={listFooter}
+            onClose={() => {
+                if (!deleting) {
+                    if (deletePrompt) setDeletePrompt(null);
+                    else onClose();
+                }
+            }}
+            footer={
+                deletePrompt ? (
+                    <div className={styles.footerActions}>
+                        <DialogButton
+                            disabled={deleting}
+                            ref={(button: HTMLButtonElement | null) => button?.focus()}
+                            onClick={() => setDeletePrompt(null)}
+                        >
+                            {t('links.templates.overwriteCancel', 'Abbrechen')}
+                        </DialogButton>
+                        <DialogButton disabled={deleting} destructive onClick={confirmDelete}>
+                            {t('links.templates.delete', 'Delete')}
+                        </DialogButton>
+                    </div>
+                ) : (
+                    listFooter
+                )
+            }
             width={1180}
         >
-            <ListingTable
-                rowKey="id"
-                loading={loading}
-                columns={columns}
-                dataSource={sortedTemplates}
-                pagination={false}
-                scroll={{ y: 'auto' }}
-                onRow={(template: InviteEmailTemplateDTO) => ({
-                    className: classNames({
-                        [styles.pickableRow]: isSelectable(template),
-                        [styles.selectedRow]: template.id === selectedTemplateId,
-                    }),
-                    // The whole row is a hit area for picking, but its own
-                    // buttons (name, edit) keep their meaning.
-                    onClick: (event: MouseEvent<HTMLElement>) => {
-                        if ((event.target as HTMLElement).closest('button')) return;
-                        if (isSelectable(template)) {
-                            onSelect?.(template);
-                        } else if (!onSelect && mayEditTemplate(template) && isPhone()) {
-                            // No double-click on a touch screen (a double tap zooms): one tap edits (#1127).
-                            openEditForm(template);
-                        }
-                    },
-                    // Manager-only mode: without picking, a row click is free
-                    // for the edit shortcut — for whoever may edit at all.
-                    onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
-                })}
-            />
+            {deletePrompt && (
+                <div role="status">
+                    <p>{deletePrompt.name}</p>
+                    {deleteError && (
+                        <Alert
+                            type="error"
+                            message={t(
+                                'links.templates.deleteFailed',
+                                'Could not delete template. It may still be used by queued invitations.',
+                            )}
+                        />
+                    )}
+                </div>
+            )}
+            <div className={deletePrompt ? styles.formHidden : undefined} inert={deletePrompt != null}>
+                <ListingTable
+                    rowKey="id"
+                    loading={loading}
+                    columns={columns}
+                    dataSource={sortedTemplates}
+                    pagination={false}
+                    scroll={{ y: 'auto' }}
+                    onRow={(template: InviteEmailTemplateDTO) => ({
+                        className: classNames({
+                            [styles.pickableRow]: isSelectable(template),
+                            [styles.selectedRow]: template.id === selectedTemplateId,
+                        }),
+                        // The whole row is a hit area for picking, but its own
+                        // buttons (name, edit) keep their meaning.
+                        onClick: (event: MouseEvent<HTMLElement>) => {
+                            if ((event.target as HTMLElement).closest('button')) return;
+                            if (isSelectable(template)) {
+                                onSelect?.(template);
+                            } else if (!onSelect && mayEditTemplate(template) && isPhone()) {
+                                // No double-click on a touch screen (a double tap zooms): one tap edits (#1127).
+                                openEditForm(template);
+                            }
+                        },
+                        // Manager-only mode: without picking, a row click is free
+                        // for the edit shortcut — for whoever may edit at all.
+                        onDoubleClick:
+                            onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
+                    })}
+                />
+            </div>
         </Modal>
     );
 };

@@ -5,6 +5,8 @@ import { http, HttpResponse, delay } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
+import previewDe from '../../components/EmailPreview/fixtures/invite-long-content-de.html?raw';
+import previewEn from '../../components/EmailPreview/fixtures/invite-platform-en.html?raw';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -20,6 +22,8 @@ const TEMPLATES: InviteEmailTemplateDTO[] = [
         id: 1,
         kind: 'TENANT_INVITE',
         name: 'Träger-Willkommen (Standard)',
+        systemDefault: true,
+        editable: false,
         language: 'de',
         subject: 'Ihr Zugang zur Beratungsplattform',
         body: 'Hallo {{firstName}},\n\nüber diesen Link richten Sie Ihren Zugang ein: {{inviteLink}}',
@@ -31,6 +35,8 @@ const TEMPLATES: InviteEmailTemplateDTO[] = [
         id: 2,
         kind: 'TENANT_INVITE',
         name: 'Träger-Willkommen (englisch)',
+        systemDefault: true,
+        editable: false,
         language: 'en',
         subject: 'Your access to the counselling platform',
         body: 'Hello {{firstName}},\n\nset up your access here: {{inviteLink}}',
@@ -111,10 +117,40 @@ const templatesByKind = http.get(TEMPLATES_ENDPOINT, ({ request }) => {
     return HttpResponse.json(TEMPLATES.filter((template) => !kind || template.kind === kind));
 });
 
+/** Server-rendered mail fixtures: the story never invents a second mail renderer. */
+const previewHandler = http.post(`${TEMPLATES_ENDPOINT}/preview`, async ({ request }) => {
+    const draft = (await request.json()) as { language?: string; subject?: string; kind?: string };
+    return HttpResponse.json({
+        templateId: null,
+        templateName: null,
+        kind: draft.kind ?? 'TENANT_INVITE',
+        language: draft.language || 'de',
+        subject: draft.subject || 'Ihre Einladung',
+        html: draft.language === 'en' ? previewEn : previewDe,
+        plainText: 'Synthetic invitation preview',
+        sampleAcceptUrl: 'https://example.invalid/preview',
+    });
+});
+const updatedTemplate = http.put(`${TEMPLATES_ENDPOINT}/:id`, async ({ request, params }) =>
+    HttpResponse.json({
+        ...TEMPLATES.find((template) => String(template.id) === params.id),
+        ...((await request.json()) as object),
+    }),
+);
+const deletedTemplate = http.delete(`${TEMPLATES_ENDPOINT}/:id`, () => new HttpResponse(null, { status: 204 }));
+
 const createdTemplate = http.post(TEMPLATES_ENDPOINT, async ({ request }) => {
     const body = (await request.json()) as Partial<InviteEmailTemplateDTO>;
     return HttpResponse.json(
-        { ...TEMPLATES[0], ...body, id: 99, createDate: '2026-07-13T10:00:00Z', updateDate: null },
+        {
+            ...TEMPLATES[0],
+            ...body,
+            systemDefault: false,
+            editable: true,
+            id: 99,
+            createDate: '2026-07-13T10:00:00Z',
+            updateDate: null,
+        },
         { status: 201 },
     );
 });
@@ -129,7 +165,7 @@ const meta = {
                 component:
                     'Template manager/picker of the invite tabs. Since #746 the create/edit view is the ' +
                     'placeholder-template module in the house dialog shell: per-kind token pickers, template ' +
-                    'split button (load / new-from) and the live e-mail-kit preview. Persistence stays on the ' +
+                    'persistent footer (existing-template loader and name), explicit overwrite confirmation, language select and the live e-mail-kit preview. Persistence stays on the ' +
                     'existing invite-email-template endpoints.',
             },
         },
@@ -152,7 +188,11 @@ type Story = StoryObj<typeof meta>;
 
 /** List view with templates of every kind, the opening tab's kind sorted first. */
 export const Filled: Story = {
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
+        },
+    },
 };
 
 /**
@@ -163,7 +203,11 @@ export const Filled: Story = {
  */
 export const Picker: Story = {
     args: { picker: true, selectedTemplateId: 1 },
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
+        },
+    },
 };
 
 /**
@@ -173,13 +217,19 @@ export const Picker: Story = {
  */
 export const CreateView: Story = {
     args: { initialView: 'create' },
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
+        },
+    },
 };
 
 /** No templates yet — the empty state an admin lands on before creating the first one. */
 export const Empty: Story = {
     parameters: {
-        msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])), createdTemplate] },
+        msw: {
+            handlers: [previewHandler, http.get(TEMPLATES_ENDPOINT, () => HttpResponse.json([])), createdTemplate],
+        },
     },
 };
 
@@ -188,6 +238,9 @@ export const Loading: Story = {
     parameters: {
         msw: {
             handlers: [
+                previewHandler,
+                updatedTemplate,
+                deletedTemplate,
                 http.get(TEMPLATES_ENDPOINT, async () => {
                     await delay('infinite');
                     return HttpResponse.json([]);
@@ -216,6 +269,9 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
     parameters: {
         msw: {
             handlers: [
+                previewHandler,
+                updatedTemplate,
+                deletedTemplate,
                 http.get(
                     TEMPLATES_ENDPOINT,
                     ({ request }) =>
@@ -232,6 +288,7 @@ export const TraegerAdminOwnAndPlatformTemplates: Story = {
                                 ...TEMPLATES[3],
                                 id: 32,
                                 name: 'Berater-Willkommen (Plattform)',
+                                systemDefault: true,
                                 tenantId: null,
                                 editable: false,
                             },
@@ -281,6 +338,9 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
     parameters: {
         msw: {
             handlers: [
+                previewHandler,
+                updatedTemplate,
+                deletedTemplate,
                 http.get(
                     TEMPLATES_ENDPOINT,
                     ({ request }) =>
@@ -332,7 +392,11 @@ export const LockReasonReadableOnFirstAndLastRow: Story = {
 /** A newly created active template closes the picker and becomes the invitation choice. */
 export const CreateAndUse: Story = {
     args: { picker: true, selectedTemplateId: 1, initialView: 'create' },
-    parameters: { msw: { handlers: [templatesByKind, createdTemplate] } },
+    parameters: {
+        msw: {
+            handlers: [previewHandler, templatesByKind, createdTemplate, updatedTemplate, deletedTemplate],
+        },
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -344,5 +408,127 @@ export const CreateAndUse: Story = {
         await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
         await waitFor(() => expect(body.queryByRole('dialog')).not.toBeInTheDocument());
         await expect(canvas.getByText('Neue Einladung')).toBeInTheDocument();
+    },
+};
+
+/** Complete editor anatomy, including scroll/body/footer geometry in the real browser. */
+export const FooterEditor: Story = {
+    ...CreateView,
+    play: async ({ canvasElement }) => {
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagen verwalten' }));
+        const dialog = within(await body.findByRole('dialog'));
+        const footer = dialog.getByTestId('template-editor-footer');
+        await expect(within(footer).getByLabelText('Vorlagenname')).toBeInTheDocument();
+        await expect(within(footer).getByLabelText('Bisherige Vorlagen')).toHaveRole('combobox');
+        await expect(dialog.getByLabelText('Sprache')).toHaveRole('combobox');
+        await expect(dialog.queryByRole('switch')).not.toBeInTheDocument();
+        await expect(dialog.getByTestId('template-header-icon')).toBeInTheDocument();
+        await expect(dialog.queryByLabelText('Vorschau im Design von')).not.toBeInTheDocument();
+        await expect(
+            dialog.queryByText('Träger für die Vorschau konnten nicht geladen werden.'),
+        ).not.toBeInTheDocument();
+        await expect(dialog.queryByRole('button', { name: 'Vorlagenmenü öffnen' })).not.toBeInTheDocument();
+        await body.findByTitle('E-Mail-Vorschau');
+        await waitFor(() => expect(doc.querySelector('.ant-modal[class*="ant-zoom"]')).toBeNull());
+        if (doc.defaultView!.innerWidth > 920) {
+            const subject = dialog.getByLabelText('Betreff');
+            const content = dialog.getByLabelText('Inhalt');
+            const name = within(footer).getByLabelText('Vorlagenname');
+            const frame = dialog.getByTitle('E-Mail-Vorschau');
+            await waitFor(() => {
+                const input = content.getBoundingClientRect();
+                const preview = frame.getBoundingClientRect();
+                expect(preview.height).toBeGreaterThan(300);
+                expect(Math.abs(input.width - preview.width)).toBeLessThan(2);
+                expect(
+                    Math.abs(subject.getBoundingClientRect().width - name.getBoundingClientRect().width),
+                ).toBeLessThan(2);
+                expect(Math.abs(input.bottom - preview.bottom)).toBeLessThan(2);
+            });
+        }
+        const scrollBody = doc.querySelector('.ant-modal-body') as HTMLElement;
+        const before = footer.getBoundingClientRect();
+        await expect(before.bottom).toBeLessThanOrEqual(doc.defaultView!.innerHeight);
+        scrollBody.scrollTop = scrollBody.scrollHeight;
+        const after = footer.getBoundingClientRect();
+        await expect(Math.abs(before.top - after.top)).toBeLessThan(1);
+        await expect(after.bottom).toBeLessThanOrEqual(doc.defaultView!.innerHeight);
+    },
+};
+
+export const FooterEditorMobile: Story = {
+    ...FooterEditor,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/** Loading an existing template keeps its identity; cancellation leaves the draft intact. */
+export const LoadAndOverwrite: Story = {
+    ...CreateView,
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagen verwalten' }));
+        const dialog = within(await body.findByRole('dialog'));
+        await userEvent.click(dialog.getByLabelText('Bisherige Vorlagen'));
+        await userEvent.click(
+            await body.findByText('Träger-Willkommen (Kurzfassung)', { selector: '.ant-select-item-option-content' }),
+        );
+        await expect(dialog.getByLabelText('Vorlagenname')).toHaveValue('Träger-Willkommen (Kurzfassung)');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await expect(body.getByText('Vorlage überschreiben?')).toBeInTheDocument();
+        await userEvent.click(body.getByRole('button', { name: 'Abbrechen' }));
+        await expect(dialog.getByLabelText('Vorlagenname')).toHaveValue('Träger-Willkommen (Kurzfassung)');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await userEvent.click(body.getByRole('button', { name: 'Überschreiben' }));
+        await body.findByText('E-Mail-Vorlagen');
+    },
+};
+
+/** The existing Träger fixtures are reused for the same editor flow at both scoped roles. */
+export const TraegerFooterEditor: Story = {
+    ...TraegerAdminOwnAndPlatformTemplates,
+    args: { templateKind: 'COUNSELLOR_INVITE', initialView: 'create' },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagen verwalten' }));
+        const dialog = within(await body.findByRole('dialog'));
+        await expect(dialog.queryByLabelText('Vorschau im Design von')).not.toBeInTheDocument();
+        await userEvent.click(dialog.getByLabelText('Bisherige Vorlagen'));
+        await userEvent.click(
+            await body.findByText('Unsere eigene Berater-Einladung', { selector: '.ant-select-item-option-content' }),
+        );
+        await expect(dialog.getByLabelText('Vorlagenname')).toHaveValue('Unsere eigene Berater-Einladung');
+        await userEvent.click(dialog.getByRole('button', { name: 'Speichern' }));
+        await expect(body.getByRole('button', { name: 'Überschreiben' })).toBeEnabled();
+        await userEvent.click(body.getByRole('button', { name: 'Abbrechen' }));
+    },
+};
+
+export const AgencyFooterEditor: Story = {
+    ...TraegerFooterEditor,
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin], 1);
+            return <Story />;
+        },
+    ],
+};
+
+export const DeleteConfirmation: Story = {
+    ...Filled,
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagen verwalten' }));
+        const name = await body.findByText('Träger-Willkommen (Kurzfassung)');
+        await userEvent.click(within(name.closest('tr') as HTMLElement).getByRole('button', { name: 'Löschen' }));
+        await expect(body.getByText('Vorlage löschen?')).toBeInTheDocument();
+        await expect(
+            within(canvasElement.ownerDocument.querySelector('.ant-modal-footer') as HTMLElement).getByRole('button', {
+                name: 'Löschen',
+            }),
+        ).toBeEnabled();
+        await userEvent.click(body.getByRole('button', { name: 'Abbrechen' }));
+        await expect(body.getByText('Träger-Willkommen (Kurzfassung)')).toBeInTheDocument();
     },
 };
