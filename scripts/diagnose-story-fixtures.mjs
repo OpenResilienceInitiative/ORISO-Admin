@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { unlinkSync, mkdirSync, writeFileSync, openSync, closeSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { sourceIdentity } from './verification-provenance.mjs';
+import { comparatorContract, prepareComparatorProbe } from './fixture-comparator-probe.mjs';
 
 // Closed selection; fresh native process/browser lifetime per case, never an acceptance run.
 const selections = {
@@ -48,6 +49,7 @@ if (Object.hasOwn(userSequences, selection)) {
     writeFileSync(generated, generatedBytes, { flag: 'wx' });
 }
 try {
+    if (!generated) prepareComparatorProbe(directory, selection);
     const source = sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA);
     const args = [
         path.resolve('node_modules/.bin/vp'),
@@ -162,7 +164,73 @@ try {
                     item.name === wantedNames[index] && JSON.stringify(item.provenance) === JSON.stringify(reference),
             );
     }
+    const observations = readFileSync(path.join(directory, 'child.log'), 'utf8')
+        .split('\n')
+        .flatMap((line) => {
+            try {
+                return [JSON.parse(line.replace(/\x1b\[[0-9;]*m/g, ''))];
+            } catch {
+                return [];
+            }
+        });
+    let observationComplete;
+    if (generated) {
+        const requests = observations.filter((item) => item.userDiagnostic === 'dispatch');
+        observationComplete = userSequences[selection].every((name, index) => {
+            const caseName = `Case ${index + 1}`;
+            const own = requests.filter((item) => item.caseName === caseName);
+            const tenant = own.filter((item) => item.path === '/service/useradmin/tenantadmins/search');
+            const consultant = own.filter((item) => item.path === '/service/users/consultants/search');
+            return name === 'TenantAdminsForPlatformAdmin'
+                ? tenant.length > 0 &&
+                      consultant.length === 0 &&
+                      tenant.every(
+                          (item) =>
+                              item.route?.typeOfUsers === 'tenant-admins' &&
+                              item.route?.pathname === '/admin/users/tenant-admins',
+                      )
+                : consultant.length > 0 && tenant.length === 0;
+        });
+        writeFileSync(
+            path.join(directory, 'request-ownership.json'),
+            JSON.stringify(
+                {
+                    observationComplete,
+                    requests,
+                    finalCallbackObserved: observations.some(
+                        (item) => item.userDiagnostic === 'end' && item.caseName === `Case ${expectedCount}`,
+                    ),
+                    limitation:
+                        'No final story callback is invented; observer lifetime ends with its fresh child process.',
+                },
+                null,
+                2,
+            ),
+            { flag: 'wx' },
+        );
+    } else {
+        const warnings = observations.filter((item) => item.fixtureDiagnostic === 'first-warning');
+        let interception;
+        try {
+            interception = JSON.parse(readFileSync(path.join(directory, 'comparator-probe/interception.json'), 'utf8'));
+        } catch {
+            /* Optimized-away interception is invalid evidence. */
+        }
+        observationComplete =
+            warnings.length === 1 &&
+            interception?.sha256 === comparatorContract.sha256 &&
+            interception.transforms === 1 &&
+            warnings[0].comparison?.sha256 === comparatorContract.sha256 &&
+            warnings[0].comparison?.module === comparatorContract.module &&
+            warnings[0].comparison?.comparisonId > 0;
+        writeFileSync(
+            path.join(directory, 'warning-receipt.json'),
+            JSON.stringify({ observationComplete, warnings, interception }, null, 2),
+            { flag: 'wx' },
+        );
+    }
     const complete =
+        observationComplete &&
         bindingsMatch &&
         inventory?.inventoryComplete === true &&
         inventory.executed === expectedCount &&

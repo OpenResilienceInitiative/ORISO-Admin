@@ -7,6 +7,13 @@ export const beginFixtureDiagnostic = (selection: 'deadline-warning' | 'registra
     if (requested !== selection) return () => {};
     const original = console.error;
     let observed = false;
+    let comparison: Record<string, unknown> | undefined;
+    const onComparison = (event: Event) => {
+        const detail = (event as CustomEvent).detail;
+        if (detail.phase === 'enter') comparison = detail.receipt;
+        else if (detail.phase === 'exit' && comparison?.comparisonId === detail.comparisonId) comparison = undefined;
+    };
+    window.addEventListener('oriso-fixture-comparison', onComparison);
     console.info(JSON.stringify({ fixtureDiagnostic: 'begin', selection, freshProcessRequired: true }));
     const observer: typeof console.error = (...args) => {
         if (
@@ -18,6 +25,7 @@ export const beginFixtureDiagnostic = (selection: 'deadline-warning' | 'registra
                 JSON.stringify({
                     fixtureDiagnostic: 'first-warning',
                     selection,
+                    comparison,
                     stack: new Error('First circular-reference warning origin').stack?.slice(0, 6000),
                 }),
             );
@@ -26,6 +34,7 @@ export const beginFixtureDiagnostic = (selection: 'deadline-warning' | 'registra
     };
     console.error = observer;
     return () => {
+        window.removeEventListener('oriso-fixture-comparison', onComparison);
         const sinkStillOwned = console.error === observer;
         if (sinkStillOwned) console.error = original;
         console.info(JSON.stringify({ fixtureDiagnostic: 'end', selection, observed, sinkStillOwned }));
