@@ -9,7 +9,15 @@ export const observeUserDiagnosticRoute = (pathname: string, typeOfUsers?: strin
 export const beginUserDiagnostic = (caseName: string) => {
     const selection = import.meta.env.VITE_ORISO_USER_SEQUENCE;
     if (!selection) return () => {};
-    if (!['tenant-alone', 'error-tenant-error', 'tenant-error-tenant'].includes(selection))
+    if (
+        ![
+            'tenant-alone',
+            'error-tenant-error',
+            'tenant-error-tenant',
+            'saved-sort-alone',
+            'filter-saved-sort',
+        ].includes(selection)
+    )
         throw new Error('Unknown user diagnostic sequence');
     route = undefined;
     const original = window.fetch;
@@ -58,7 +66,10 @@ export const beginUserDiagnostic = (caseName: string) => {
         );
         if (!sinkStillOwned) throw new Error('User diagnostic fetch changed before cleanup');
         const tenantCase =
-            selection === 'error-tenant-error' ? caseName === 'Case 2' : ['Case 1', 'Case 3'].includes(caseName);
+            selection === 'error-tenant-error'
+                ? caseName === 'Case 2'
+                : ['tenant-alone', 'tenant-error-tenant'].includes(selection) &&
+                  ['Case 1', 'Case 3'].includes(caseName);
         if (tenantCase && (consultants !== 0 || tenantAdmins < 1 || route?.typeOfUsers !== 'tenant-admins'))
             throw new Error('User diagnostic tenant route/request ownership invariant failed');
     };

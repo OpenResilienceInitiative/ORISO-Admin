@@ -79,7 +79,7 @@ const historyPlay: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(String(i18n.t('legal.dpa.sign.previousRetained')))).toBeVisible();
     await expect(canvas.getByText(/Erika Mustermann/)).toBeVisible();
-    await expect(tenantReads).toBeGreaterThan(0);
+    await waitFor(() => expect(tenantReads).toBeGreaterThan(0));
     await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
     await expect(canvasElement.querySelector('[contenteditable="true"]')).toBeNull();

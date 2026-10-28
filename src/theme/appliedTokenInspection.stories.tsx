@@ -9,6 +9,7 @@ import * as fieldStories from '../components/FieldTokens.stories';
 import * as bridgeStories from './AdminThemeBridge.stories';
 import { buildAdminAntdTheme } from './antdM3Theme';
 import i18n from '../i18n';
+import { markTokenDiagnostic } from '../../scripts/story-token-diagnostic';
 import { applyAdminInvertedTheme, applyAdminTheme } from '../utils/applyAdminTheme';
 import { contrastRatio } from '../utils/contrastRatio';
 import { computeOrisoPalette, type OrisoSchemeName } from '../utils/theme/orisoScheme';
@@ -63,6 +64,7 @@ const findObservation = (report: InspectionReport, id: string) => {
 
 // Independent test probe: an author stylesheet must not recolour the expected value.
 const serialize = (property: string, value: string) => {
+    markTokenDiagnostic(`serialize:${property}:before`);
     expect(CSS.supports(property, value), `${property}: ${value} must be valid CSS`).toBe(true);
     const probe = document.createElement('span');
     probe.hidden = true;
@@ -70,6 +72,7 @@ const serialize = (property: string, value: string) => {
     document.body.append(probe);
     try {
         const result = getComputedStyle(probe).getPropertyValue(property).trim();
+        markTokenDiagnostic(`serialize:${property}:computed`);
         expect(result, `${property}: ${value} must resolve`).not.toBe('');
         return result;
     } finally {
@@ -113,14 +116,20 @@ const prepareContext =
             rule?.remove();
             if (style === null) document.documentElement.removeAttribute('style');
             else document.documentElement.setAttribute('style', style);
+            markTokenDiagnostic('restore:language:before', context);
             await i18n.changeLanguage(language);
+            markTokenDiagnostic('restore:language:after', context);
             if (documentLanguage === null) document.documentElement.removeAttribute('lang');
             else document.documentElement.setAttribute('lang', documentLanguage);
         };
         try {
+            markTokenDiagnostic('prepare:language:before', context);
             await i18n.changeLanguage(context.locale);
+            markTokenDiagnostic('prepare:language:after', context);
             const apply = context.scheme === 'light' ? applyAdminTheme : applyAdminInvertedTheme;
+            markTokenDiagnostic('prepare:theme:before', context);
             expect(apply({ primaryColor: context.primaryColor })).toBe(true);
+            markTokenDiagnostic('prepare:theme:after', context);
             return restore;
         } catch (error) {
             await restore();
@@ -165,9 +174,15 @@ const colorOver = (value: string, background?: string) => {
 };
 
 const fieldContract = (context: InspectionReport['context']): Story => ({
-    render: (_, storyContext) => reference(context, storyContext),
+    render: (_, storyContext) => {
+        markTokenDiagnostic('render:before', context);
+        const rendered = reference(context, storyContext);
+        markTokenDiagnostic('render:after', context);
+        return rendered;
+    },
     beforeEach: prepareContext(context),
     play: async ({ canvasElement }) => {
+        markTokenDiagnostic('play:before', context);
         const container = canvasElement;
         const screen = within(canvasElement);
         const table = screen.getByRole('table', { name: 'Applied design tokens' });
@@ -175,11 +190,15 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
             expect(within(table).getByRole('columnheader', { name })).toBeVisible();
         });
         const { tokens } = computeOrisoPalette({ accentDark: context.primaryColor }, context.scheme);
+        markTokenDiagnostic('play:report:before', context);
         const report = readReport(canvasElement);
+        markTokenDiagnostic('play:report:after', context);
         expect(report.context).toMatchObject(context);
+        markTokenDiagnostic('play:palette:before', context);
         Object.entries(tokens)
             .filter(([name]) => name.startsWith('--admin-field-'))
             .forEach(([name, expected]) => {
+                markTokenDiagnostic(`play:palette:${name}:before`, context);
                 const observation = findObservation(report, `palette:${name}`);
                 expect(observation).toMatchObject({ name, expected, status: 'match' });
                 expect(observation.meaning).not.toBe('');
@@ -188,7 +207,9 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
                     getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
                 );
                 expect(within(table).getByRole('rowheader', { name }).closest('tr')).toBeVisible();
+                markTokenDiagnostic(`play:palette:${name}:after`, context);
             });
+        markTokenDiagnostic('play:palette:after', context);
         const input = container.querySelector('input.ant-input:not([disabled])');
         expect(input).toBeInstanceOf(HTMLElement);
         if (!(input instanceof HTMLElement)) throw new Error('The real Antd Input must render');
@@ -198,6 +219,7 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
         expect(field).toMatchObject({ expected: tokens['--admin-field-surface'], status: 'match' });
         expect(field.actual).toBe(observed.backgroundColor);
         expect(observed.backgroundColor).toBe(serialize('background-color', tokens['--admin-field-surface']));
+        markTokenDiagnostic('play:token-math:before', context);
         expect(field.contrast).toEqual({
             foreground: observed.color,
             background: observed.backgroundColor,
@@ -207,6 +229,7 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
                 colorOver(observed.backgroundColor),
             ),
         });
+        markTokenDiagnostic('play:token-math:after', context);
         const canonical = antdTheme.getDesignToken(
             buildAdminAntdTheme({ seeds: { accentDark: context.primaryColor }, scheme: context.scheme }),
         );
@@ -227,6 +250,7 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
         expect(workspace.contains(input)).toBe(true);
         expect(spacing.actual).toBe(getComputedStyle(workspace).gap);
 
+        markTokenDiagnostic('play:accessibility:before', context);
         expect(i18n.resolvedLanguage).toBe(context.locale);
         expect(document.documentElement.lang).toBe(context.locale);
         expect(input).toHaveAccessibleName(i18n.t('search'));
@@ -235,6 +259,7 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
         });
         expect(disabledSelect).toBeDisabled();
         expect(disabledSelect.closest('.ant-select')).toHaveAttribute('aria-disabled', 'true');
+        markTokenDiagnostic('play:after', context);
     },
 });
 

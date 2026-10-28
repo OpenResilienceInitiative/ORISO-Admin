@@ -226,7 +226,7 @@ const TENANT_ADMINS: CounselorData[] = [
     { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
 ];
 
-const TenantAdminContent = () => {
+const DiagnosticUsersList = () => {
     const location = useLocation();
     const { typeOfUsers } = useParams();
     observeUserDiagnosticRoute(location.pathname, typeOfUsers);
@@ -237,7 +237,7 @@ const onTenantAdminsTab = () => (
     <Routes location="/admin/users/tenant-admins">
         <Route
             path="/admin/users/:typeOfUsers"
-            element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <TenantAdminContent /> : <UsersList />}
+            element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
         />
     </Routes>
 );
@@ -326,7 +326,10 @@ const onTab = (tab: string) => () =>
     (
         <Routes>
             <Route path="/" element={<Navigate to={`/admin/users/${tab}`} replace />} />
-            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+            <Route
+                path="/admin/users/:typeOfUsers"
+                element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+            />
             <Route path="*" element={<EditTarget />} />
         </Routes>
     );

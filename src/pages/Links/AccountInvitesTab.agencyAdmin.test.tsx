@@ -451,36 +451,75 @@ describe('CounsellorInvitesTab — platform admin picks an existing agency first
     });
 
     it('fills the empty Träger from the picked agency and keeps both after "Senden & nächste"', async () => {
+        const trace = createInviteTrace('platform admin: picked existing agency and next');
+        trace('render:before');
         render(<CounsellorInvitesTab />);
+        trace('render:after');
         const user = userEvent.setup();
-        await user.type(await screen.findByLabelText('E-Mail'), 'lisa.simpson@example.org');
+        trace('email:find:before');
+        const email = await screen.findByLabelText('E-Mail');
+        trace('email:find:after');
+        trace('email:type:before');
+        await user.type(email, 'lisa.simpson@example.org');
+        trace('email:type:after');
+        trace('first-name:type:before');
         await user.type(screen.getByLabelText('Vorname'), 'Lisa');
+        trace('first-name:type:after');
+        trace('last-name:type:before');
         await user.type(screen.getByLabelText('Name'), 'Simpson');
+        trace('last-name:type:after');
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('');
 
         const agency = screen.getByRole('combobox', { name: 'Beratungsstelle' });
+        trace('agency:open:before');
         await user.click(agency);
-        await user.click(await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW));
+        trace('agency:open:after');
+        trace('agency:option:before');
+        const option = await screen.findByRole('option', { name: /Mail v2 Einzeltest/ }, SLOW);
+        trace('agency:option:after');
+        trace('agency:pick:before');
+        await user.click(option);
+        trace('agency:pick:after');
 
         // The Träger follows the agency as an existing unit; the card keeps its field open.
         const tenant = screen.getByRole('combobox', { name: 'Träger' });
+        trace('tenant:readback:before');
         await waitFor(() => expect(tenant).toHaveValue('Caritas Südbaden · 7'), SLOW);
+        trace('tenant:readback:after');
 
+        trace('send-menu:open:before');
         await user.click(screen.getByRole('button', { name: 'Sendeoptionen' }));
-        await user.click(await screen.findByRole('menuitem', { name: /Senden & nächste/ }));
+        trace('send-menu:open:after');
+        trace('send-menu:option:before');
+        const nextOption = await screen.findByRole('menuitem', { name: /Senden & nächste/ });
+        trace('send-menu:option:after');
+        trace('send-menu:pick:before');
+        await user.click(nextOption);
+        trace('send-menu:pick:after');
+        trace('send:find:before');
         const send = await screen.findByRole('button', { name: 'Einladen & nächste' });
+        trace('send:find:after');
+        trace('send:enabled:before');
         await waitFor(() => expect(send).toBeEnabled(), SLOW);
+        trace('send:enabled:after');
+        trace('send:click:before');
         await user.click(send);
+        trace('send:click:after');
 
+        trace('send:called:before');
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        trace('send:called:after');
         expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
             agencyId: 14,
             agencyIdAllocationMode: 'EXISTING',
             tenantId: 7,
             tenantIdAllocationMode: 'EXISTING',
         });
+        trace('reset:email:before');
         await waitFor(() => expect(screen.getByLabelText('E-Mail')).toHaveValue(''));
+        trace('reset:email:after');
         expect(screen.getByRole('combobox', { name: 'Träger' })).toHaveValue('Caritas Südbaden · 7');
         expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toHaveValue('Mail v2 Einzeltest · 14');
+        trace('test:done');
     });
 });

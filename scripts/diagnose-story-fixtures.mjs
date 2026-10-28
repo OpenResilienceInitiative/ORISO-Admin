@@ -8,6 +8,16 @@ import { comparatorContract, prepareComparatorProbe } from './fixture-comparator
 
 // Closed selection; fresh native process/browser lifetime per case, never an acceptance run.
 const selections = {
+    'token-blue-alone': [
+        'src/theme/appliedTokenInspection.stories.tsx',
+        '^Blue Inverted English$',
+        ['Blue Inverted English'],
+    ],
+    'token-blue-transition': [
+        'src/theme/appliedTokenInspection.stories.tsx',
+        '^(Blue Inverted German|Blue Inverted English)$',
+        ['Blue Inverted German', 'Blue Inverted English'],
+    ],
     'deadline-warning': [
         'src/components/Tenants/LegalSettings/components/DataProcessingAgreementContainer/DataProcessingAgreementContainer.deadline.stories.tsx',
         'Failed Publication Keeps Draft$',
@@ -18,6 +28,8 @@ const selections = {
     ],
 };
 const userSequences = {
+    'saved-sort-alone': ['SavedSortOnMount'],
+    'filter-saved-sort': ['FilterResetsCardsAt390', 'SavedSortOnMount'],
     'tenant-alone': ['TenantAdminsForPlatformAdmin'],
     'error-tenant-error': ['Error', 'TenantAdminsForPlatformAdmin', 'Error'],
     'tenant-error-tenant': ['TenantAdminsForPlatformAdmin', 'Error', 'TenantAdminsForPlatformAdmin'],
@@ -30,6 +42,7 @@ assert.ok(
 );
 const directory = path.resolve('verification-artifacts', 'fixture-diagnostic', selection);
 mkdirSync(directory, { recursive: true });
+const tokenSelection = selection.startsWith('token-');
 let generated;
 let generatedBytes;
 let originalSourceSHA256;
@@ -49,7 +62,7 @@ if (Object.hasOwn(userSequences, selection)) {
     writeFileSync(generated, generatedBytes, { flag: 'wx' });
 }
 try {
-    if (!generated) prepareComparatorProbe(directory, selection);
+    if (!generated && !tokenSelection) prepareComparatorProbe(directory, selection);
     const source = sourceIdentity(process.cwd(), process.env.VERIFICATION_SOURCE_SHA);
     const args = [
         path.resolve('node_modules/.bin/vp'),
@@ -84,7 +97,11 @@ try {
         env: {
             ...process.env,
             ORISO_VERIFICATION_PROFILE: 'functional-pilot',
-            ...(generated ? { VITE_ORISO_USER_SEQUENCE: selection } : { VITE_ORISO_FIXTURE_DIAGNOSTIC: selection }),
+            ...(generated
+                ? { VITE_ORISO_USER_SEQUENCE: selection }
+                : tokenSelection
+                ? { VITE_ORISO_TOKEN_DIAGNOSTIC: selection }
+                : { VITE_ORISO_FIXTURE_DIAGNOSTIC: selection }),
             VERIFICATION_ARTIFACTS_DIR: directory,
         },
     });
@@ -114,20 +131,20 @@ try {
             /* Missing evidence remains explicit. */
         }
     }
-    const expectedCount = generated ? userSequences[selection].length : 1;
-    let sequenceMatches = !generated;
-    if (generated && runs.length === 1) {
+    const wantedNames = generated
+        ? userSequences[selection].map((_, index) => `Case ${index + 1}`)
+        : selections[selection][2] ?? [selections[selection][1].slice(0, -1)];
+    const expectedCount = wantedNames.length;
+    let sequenceMatches = false;
+    if (runs.length === 1) {
         const events = readFileSync(path.join(directory, runs[0], 'events.jsonl'), 'utf8')
             .trim()
             .split('\n')
             .map(JSON.parse);
         const actual = events
-            .filter((event) => ['ready', 'result'].includes(event.event))
+            .filter((event) => ['ready', 'result'].includes(event.event) && event.state !== 'skipped')
             .map((event) => `${event.event}:${event.name}`);
-        const expected = userSequences[selection].flatMap((_, offset) => {
-            const index = offset + 1;
-            return [`ready:Case ${index}`, `result:Case ${index}`];
-        });
+        const expected = wantedNames.flatMap((name) => [`ready:${name}`, `result:${name}`]);
         sequenceMatches = JSON.stringify(actual) === JSON.stringify(expected);
         writeFileSync(
             path.join(directory, 'sequence.json'),
@@ -146,9 +163,6 @@ try {
         diagnosticOmittedCases = cases
             .filter((item) => !['passed', 'failed'].includes(item.state))
             .map((item) => ({ name: item.name, state: item.state }));
-        const wantedNames = generated
-            ? userSequences[selection].map((_, index) => `Case ${index + 1}`)
-            : [selections[selection][1].slice(0, -1)];
         bindingsMatch =
             JSON.stringify(provenance.source) === JSON.stringify(source) &&
             provenance.profile === 'functional-pilot' &&
@@ -206,6 +220,19 @@ try {
                 null,
                 2,
             ),
+            { flag: 'wx' },
+        );
+    } else if (tokenSelection) {
+        const phases = observations.filter((item) => item.tokenDiagnostic === 'phase');
+        observationComplete = wantedNames.every((name) =>
+            phases.some(
+                (item) =>
+                    item.phase === 'play:after' && item.context?.locale === (name.endsWith('English') ? 'en' : 'de'),
+            ),
+        );
+        writeFileSync(
+            path.join(directory, 'token-phases.json'),
+            JSON.stringify({ observationComplete, phases, acceptance: false }, null, 2),
             { flag: 'wx' },
         );
     } else {
