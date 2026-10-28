@@ -78,6 +78,17 @@ describe('DeleteUserModal', () => {
         expect(forceDelete).toBeEnabled();
     });
 
+    it('explains a changed signed-in person separately from an unknown removal outcome', async () => {
+        currentUser.scopedAccountCommands = true;
+        deleteMutation.mockImplementation((_variables, options) => {
+            options.onError(new Error('REQUEST_IDENTITY_CHANGED'));
+        });
+        render(<DeleteUserModal typeOfUser="consultants" deleteUserId="consultant-1" onClose={vi.fn()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'delete' }));
+        expect(screen.getByRole('alert')).toHaveTextContent('accountOperation.identityChanged');
+        expect(screen.queryByText('accountOperation.outcomeUnknown')).not.toBeInTheDocument();
+    });
+
     it('explains that removing an administrator keeps the consultant account and requires separate deletion', () => {
         render(
             <DeleteUserModal typeOfUser="admins" deleteUserId="combined-admin" hasOtherIdentity onClose={vi.fn()} />,

@@ -4,6 +4,7 @@ import { AccountOperationIntent } from '../../utils/accountOperationIntent';
 import { getSessionAccessToken, setSessionTokens } from '../auth/tokenSessionStore';
 import { tryRefreshAccessToken } from '../auth/auth';
 import { deleteCounselorData } from '../counselor/deleteCounselorData';
+import logout from '../auth/logout';
 
 vi.mock('../auth/auth', async () => {
     const store = await import('../auth/tokenSessionStore');
@@ -20,7 +21,95 @@ beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockReset();
     vi.mocked(tryRefreshAccessToken).mockReset();
+    vi.mocked(logout).mockClear();
     setSessionTokens(token('self-admin', 1), 'test-refresh');
+});
+
+describe('known successful own Consultant removal', () => {
+    it('renews before resolving the successful result without another DELETE', async () => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        vi.mocked(tryRefreshAccessToken).mockImplementation(async () => {
+            setSessionTokens(token('self-admin', 2), 'test-refresh');
+            return true;
+        });
+        const result = await deleteCounselorData('self-admin', false, new AccountOperationIntent());
+        expect(result.status).toBe(204);
+        expect(getSessionAccessToken()).toBe(token('self-admin', 2));
+        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(logout).not.toHaveBeenCalled();
+    });
+
+    it('keeps the acknowledged success and returns to login when renewal fails', async () => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        vi.mocked(tryRefreshAccessToken).mockResolvedValue(false);
+        await expect(deleteCounselorData('self-admin', false, new AccountOperationIntent())).resolves.toMatchObject({
+            status: 204,
+        });
+        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(1);
+        expect(logout).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not refresh or log out a person who replaced the session during the successful DELETE', async () => {
+        fetchMock.mockImplementation(async () => {
+            setSessionTokens(token('another-person', 2), 'other-refresh');
+            return new Response(null, { status: 204 });
+        });
+        await expect(deleteCounselorData('self-admin', false, new AccountOperationIntent())).rejects.toThrow(
+            'REQUEST_IDENTITY_CHANGED',
+        );
+        expect(tryRefreshAccessToken).not.toHaveBeenCalled();
+        expect(logout).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry the acknowledged replay when its later session renewal fails', async () => {
+        fetchMock
+            .mockResolvedValueOnce(new Response(null, { status: 503 }))
+            .mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.mocked(tryRefreshAccessToken).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+        await expect(deleteCounselorData('self-admin', false, new AccountOperationIntent())).resolves.toMatchObject({
+            status: 204,
+        });
+        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(2);
+        expect(logout).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+        ['another-person', 'https://auth.example.test'],
+        ['self-admin', 'https://other.example.test'],
+    ])('refuses changed success-callback ownership %s / %s without replay or logout', async (sub, iss) => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        vi.mocked(tryRefreshAccessToken).mockImplementation(async () => {
+            setSessionTokens(token(sub, 2, iss), 'test-refresh');
+            return true;
+        });
+        await expect(deleteCounselorData('self-admin', false, new AccountOperationIntent())).rejects.toThrow(
+            'REQUEST_IDENTITY_CHANGED',
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(logout).not.toHaveBeenCalled();
+    });
+
+    it.each(['peer', 'legacy'] as const)('does not renew a successful %s removal', async (kind) => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        await deleteCounselorData(
+            kind === 'peer' ? 'someone-else' : 'self-admin',
+            false,
+            kind === 'peer' ? new AccountOperationIntent() : undefined,
+        );
+        expect(tryRefreshAccessToken).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves the existing successful own-grant re-login behavior', async () => {
+        fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+        await grantConsultantIdentityData('self-admin', input, new AccountOperationIntent(), { recoverOwnGrant: true });
+        expect(tryRefreshAccessToken).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe.each([
@@ -35,8 +124,8 @@ describe.each([
         method: 'DELETE',
         invoke: (target: string, intent?: AccountOperationIntent) => deleteCounselorData(target, false, intent),
     },
-])('actual own consultant identity $name recovery', ({ method, invoke }) => {
-    it.each([403, 503])('renews once after unknown %s and replays the exact body and UUID', async (status) => {
+])('actual own consultant identity $name recovery', ({ name, method, invoke }) => {
+    it.each([403, 503])('recovers unknown %s once and replays the exact body and UUID', async (status) => {
         fetchMock
             .mockResolvedValueOnce(new Response(null, { status }))
             .mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -46,7 +135,9 @@ describe.each([
         });
         const intent = new AccountOperationIntent();
         await invoke('self-admin', intent);
-        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(1);
+        // Removal renews again after the receipt: this replay may have been the
+        // first attempt to commit. The successful DELETE itself is never replayed.
+        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(name === 'removal' ? 2 : 1);
         expect(fetchMock).toHaveBeenCalledTimes(2);
         const [first, replay] = fetchMock.mock.calls.map(([request, init]) => new Request(request, init));
         expect(first.method).toBe(method);
@@ -125,7 +216,7 @@ describe.each([
             .mockResolvedValueOnce(new Response(null, { status: 204 }));
         vi.mocked(tryRefreshAccessToken).mockResolvedValue(true);
         await invoke('self-admin', intent);
-        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(1);
+        expect(tryRefreshAccessToken).toHaveBeenCalledTimes(name === 'removal' ? 2 : 1);
         const replay = new Request(...fetchMock.mock.calls[1]);
         expect(replay.headers.get('Idempotency-Key')).toBe(intent.id);
     });

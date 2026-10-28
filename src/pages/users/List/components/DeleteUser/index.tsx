@@ -7,7 +7,7 @@ import i18next from 'i18next';
 import { useDeleteConsultantOrAgencyAdmin } from '../../../../../hooks/useDeleteConsultantOrAdmin';
 import { Modal } from '../../../../../components/Modal';
 import { Text } from '../../../../../components/text/Text';
-import { X_REASON } from '../../../../../api/fetchData';
+import { FETCH_ERRORS, X_REASON } from '../../../../../api/fetchData';
 import { extractApiErrorReason } from '../../../../../utils/extractApiErrorMessage';
 import { IdentityRemovalNotice } from '../IdentityRemovalNotice';
 import { useIdentityRemovalPolicy } from '../../../../../hooks/useIdentityRemovalPolicy';
@@ -45,6 +45,10 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, hasOtherIdentity, on
             onClose();
         },
         onError: async (error: Error | Response) => {
+            if (error instanceof Error && error.message === FETCH_ERRORS.REQUEST_IDENTITY_CHANGED) {
+                setFailure('accountOperation.identityChanged');
+                return;
+            }
             if (error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE') {
                 setFailure('identityRemoval.retryUnavailable');
                 return;

@@ -50,10 +50,7 @@ export const grantConsultantIdentityData = async (
         ],
         bodyData,
     };
-    return settleOwnConsultantIdentityMutation(
-        adminId,
-        operationIntent,
-        () => fetchData(request),
-        options.recoverOwnGrant === true,
-    );
+    return settleOwnConsultantIdentityMutation(adminId, operationIntent, () => fetchData(request), {
+        recoverOwnIdentity: options.recoverOwnGrant === true,
+    });
 };

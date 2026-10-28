@@ -5,13 +5,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDeleteConsultantOrAgencyAdmin } from './useDeleteConsultantOrAdmin';
 import { useDeleteTenantAdmin } from './useDeleteTenantAdmin';
 import { fetchData } from '../api/fetchData';
+import { tryRefreshAccessToken } from '../api/auth/auth';
 
 vi.mock('../api/fetchData', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../api/fetchData')>()),
     fetchData: vi.fn(),
 }));
 const session = vi.hoisted(() => ({ scopedAccountCommands: true as boolean | null }));
-vi.mock('./useUserData.hook', () => ({ useUserData: () => ({ data: session }) }));
+vi.mock('./useUserData.hook', () => ({ USER_DATA_KEY: 'user-data', useUserData: () => ({ data: session }) }));
+vi.mock('../api/auth/auth', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../api/auth/auth')>()),
+    tryRefreshAccessToken: vi.fn(),
+}));
 vi.mock('../api/auth/tokenSessionStore', () => ({
     getSessionAccessToken: () =>
         `e30.${btoa(JSON.stringify({ sub: 'operator', iss: 'https://auth.example.test' }))}.test`,
@@ -27,7 +32,28 @@ describe('actual identity removal hooks', () => {
     beforeEach(() => {
         session.scopedAccountCommands = true;
         vi.mocked(fetchData).mockReset();
+        vi.mocked(tryRefreshAccessToken).mockReset();
     });
+
+    it.each(['operator', 'target'])(
+        'reloads current-user metadata only for own successful removal of %s',
+        async (id) => {
+            const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+            client.setQueryData(['user-data'], { userId: 'operator' });
+            const invalidated = vi.spyOn(client, 'invalidateQueries');
+            vi.mocked(fetchData).mockResolvedValue(undefined);
+            vi.mocked(tryRefreshAccessToken).mockResolvedValue(true);
+            const { result } = renderHook(() => useDeleteConsultantOrAgencyAdmin({ typeOfUser: 'consultants' }), {
+                wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+            });
+            await act(async () => {
+                await result.current.mutateAsync({ id });
+            });
+            const ownMetadata = invalidated.mock.calls.filter(([options]) => options?.queryKey?.[0] === 'user-data');
+            expect(ownMetadata).toHaveLength(id === 'operator' ? 1 : 0);
+            expect(tryRefreshAccessToken).toHaveBeenCalledTimes(id === 'operator' ? 1 : 0);
+        },
+    );
 
     it.each(['consultants', 'admins', 'tenant-admins'] as const)(
         'keeps the same UUID after an unknown %s removal and creates a new action after success',

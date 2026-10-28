@@ -23,5 +23,8 @@ export const deleteCounselorData = (counselorDataId: string, forceDelete = false
             FETCH_ERRORS.CATCH_ALL_SILENT,
         ],
     };
-    return settleOwnConsultantIdentityMutation(counselorDataId, intent, () => fetchData(request), true);
+    return settleOwnConsultantIdentityMutation(counselorDataId, intent, () => fetchData(request), {
+        recoverOwnIdentity: true,
+        renewOwnSuccess: true,
+    });
 };
