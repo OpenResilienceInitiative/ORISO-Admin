@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+    assignableConsultants,
     consultantCreationBlockedReason,
     isConsultantSectionVisible,
     mayBeVisibleInRegistration,
@@ -87,5 +88,37 @@ describe('mayBeVisibleInRegistration', () => {
         expect(
             mayBeVisibleInRegistration({ ...activating, hasAssignedConsultants: false, hasSelectedConsultants: false }),
         ).toBe(false);
+    });
+});
+
+describe('assignableConsultants', () => {
+    const own = { id: 1, tenantId: '7' };
+    const ownToo = { id: 2, tenantId: 7 };
+    const foreign = { id: 3, tenantId: '99' };
+    const deleted = { id: 4, tenantId: '7', deleteDate: '2026-01-01T00:00:00Z' };
+    const all = [own, ownToo, foreign, deleted];
+    const input = { consultants: all, assignedIds: new Set<string>(), requiresTenant: true };
+
+    it('offers only counsellors of the Träger the centre belongs to', () => {
+        // The reported bug: a platform admin saw, and could pick, counsellors of other Träger.
+        expect(assignableConsultants({ ...input, tenantId: 7 }).map(({ id }) => id)).toEqual([1, 2]);
+    });
+
+    it('offers nobody while a platform admin has not chosen the Träger yet', () => {
+        expect(assignableConsultants({ ...input, tenantId: undefined })).toEqual([]);
+    });
+
+    it('keeps every counsellor on a single-tenant deployment, where no Träger can be chosen', () => {
+        expect(
+            assignableConsultants({ ...input, tenantId: undefined, requiresTenant: false }).map(({ id }) => id),
+        ).toEqual([1, 2, 3]);
+    });
+
+    it('does not offer someone again who is already assigned', () => {
+        expect(assignableConsultants({ ...input, tenantId: 7, assignedIds: new Set(['1']) })).toEqual([ownToo]);
+    });
+
+    it('does not offer a counsellor whose tenant is unknown for a known Träger', () => {
+        expect(assignableConsultants({ ...input, consultants: [{ id: 5 }], tenantId: 7 })).toEqual([]);
     });
 });

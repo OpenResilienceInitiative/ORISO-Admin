@@ -87,6 +87,9 @@ export default ({ mode }) => {
                 }),
         ].filter(Boolean),
         css: {
+            // Less imports call back into Vite's resolver; keep that work in
+            // one thread to avoid worker-to-parent handshake timeouts.
+            preprocessorMaxWorkers: 0,
             preprocessorOptions: {
                 less: {
                     javascriptEnabled: true,
