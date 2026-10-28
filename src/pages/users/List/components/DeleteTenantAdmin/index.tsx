@@ -30,15 +30,18 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
             });
             onClose();
         },
-        onError: (error) =>
-            setFailure(
-                error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE'
-                    ? 'identityRemoval.retryUnavailable'
-                    : (policy.scoped && !hasVerifiedAccountOperationRefusal(error)) ||
-                      !isTerminalAccountOperationRefusal(error)
-                    ? 'accountOperation.outcomeUnknown'
-                    : 'message.error.default',
-            ),
+        onError: (error) => {
+            if (error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE') {
+                setFailure('identityRemoval.retryUnavailable');
+            } else if (
+                (policy.scoped && !hasVerifiedAccountOperationRefusal(error)) ||
+                !isTerminalAccountOperationRefusal(error)
+            ) {
+                setFailure('accountOperation.outcomeUnknown');
+            } else {
+                setFailure('message.error.default');
+            }
+        },
     });
 
     return (

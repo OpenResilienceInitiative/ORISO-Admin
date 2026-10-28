@@ -211,10 +211,12 @@ const fitAndFocus: (width: number, height: number) => NonNullable<Story['play']>
         await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
         // Ant Modal moves focus after its entry animation and at the focus sentinels.
         await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
-        for (let step = 0; step < 3; step += 1) {
-            await userEvent.tab();
-            await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
-        }
+        await userEvent.tab();
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+        await userEvent.tab();
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+        await userEvent.tab();
+        await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
         await expect(within(dialog).getByText(String(i18n.t('identityRemoval.remaining.consultant')))).toBeVisible();
     };
 
