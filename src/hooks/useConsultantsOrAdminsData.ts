@@ -1,4 +1,5 @@
 import { useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { observeQueryContext } from '../../scripts/query-lifetime-diagnostic';
 import { agencyAdminsSearchEndpoint, tenantAdminsSearchEndpoint, usersConsultantsSearchEndpoint } from '../appConfig';
 import { USER_TABLE_DEFAULT_ORDER, USER_TABLE_DEFAULT_SORT } from '../constants/userTableSort';
 import { TypeOfUser } from '../enums/TypeOfUser';
@@ -42,8 +43,9 @@ export const useConsultantsOrAdminsData = ({
 
     return useQuery({
         queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize, filters, rethrowOnFailure],
-        queryFn: ({ signal }) =>
-            fetchUserSearchWithSortFallback({
+        queryFn: (context) => {
+            observeQueryContext(() => context);
+            return fetchUserSearchWithSortFallback({
                 url: `${baseUrl}?query=${encodeURIComponent(search || '*')}&page=${current || 1}&perPage=${
                     pageSize || 10
                 }${userSearchFilterParams(filters, { agencies: typeOfUser !== TypeOfUser.TenantAdmins })}`,
@@ -52,8 +54,9 @@ export const useConsultantsOrAdminsData = ({
                 current,
                 pageSize,
                 rethrowOnFailure,
-                signal,
-            }),
+                signal: context.signal,
+            });
+        },
         ...(options as object),
         retry: false,
         refetchOnWindowFocus: false,

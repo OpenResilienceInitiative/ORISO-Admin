@@ -1,3 +1,9 @@
+import {
+    queryLifetimeEnabled,
+    observeQueryBoundary,
+    observeQueryMSW,
+    observeQueryUnhandled,
+} from '../scripts/query-lifetime-diagnostic';
 import * as React from 'react';
 // antd's static APIs (message/notification/Modal.confirm) are silent no-ops
 // under React 19 without this patch — the app imports it in src/index.tsx,
@@ -33,12 +39,22 @@ import '../src/i18n';
 initialize(
     {
         onUnhandledRequest(request) {
-            if (isProductRequest(request.url)) recordUnexpectedRequest(request);
+            if (isProductRequest(request.url)) {
+                observeQueryUnhandled(() => request);
+                recordUnexpectedRequest(request);
+            }
         },
         serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
     },
     createSharedStoryHandlers(),
 );
+
+// Temporary exact-selection observer. Original worker, handlers and error policy stay active.
+if (queryLifetimeEnabled()) {
+    (['request:start', 'request:match', 'request:unhandled', 'request:end'] as const).forEach((phase) => {
+        getWorker().events.on(phase, (event) => observeQueryMSW(phase, event));
+    });
+}
 
 const StoryProviders = ({ children }: { children: React.ReactNode }) => {
     const [queryClient] = React.useState(createStoryQueryClient);
@@ -84,12 +100,16 @@ const preview: Preview = {
         return beginStoryVerification(context.parameters.verification?.expectedErrors, async () => {
             const errors: unknown[] = [];
             try {
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'before-cancel-clear' }));
                 await clearStoryQueryClients();
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'after-cancel-clear' }));
             } catch (error) {
                 errors.push(error);
             }
             try {
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'before-reset-handlers' }));
                 getWorker().resetHandlers();
+                observeQueryBoundary(() => ({ ownerId: context.id, phase: 'after-reset-handlers' }));
             } catch (error) {
                 errors.push(error);
             }
