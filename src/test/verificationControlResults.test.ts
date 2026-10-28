@@ -108,6 +108,7 @@ const fixtureEvidence = (title: string, failure: string | null, control: typeof 
                 name: error.name,
                 message: error.message,
                 verificationFailures: error.verificationFailures,
+                verificationOrigin: error.verificationOrigin,
             });
         }
     }
@@ -469,12 +470,18 @@ it.each([
     'production-missing',
     'unknown-event-field',
     'unknown-leaf-field',
+    'unknown-origin-field',
+    'origin-stack-budget',
+    'origin-first-event',
 ])('rejects complete native/reporter agreement on an unpermitted failure set: %s', (kind) => {
     const { directory, current, cases } = functionalPacket();
     const title = kind.startsWith('production') ? 'Production Boundary' : 'Caught Error';
     const test = cases.find((item) => item.name === title);
     let details = test.errorDetails;
     const extra = { name: 'Error', message: 'unrelated cleanup/token/API failure' };
+    if (kind === 'unknown-origin-field') details[0].verificationOrigin.hidden = true;
+    if (kind === 'origin-stack-budget') details[0].verificationOrigin.stack = 'x'.repeat(4097);
+    if (kind === 'origin-first-event') details[0].verificationOrigin.message = 'unrelated';
     if (kind === 'extra-leaf') details.push(extra);
     if (kind === 'nested-extra-leaf') details = [aggregate([aggregate(details), extra])];
     if (kind === 'aggregate-suffix') {

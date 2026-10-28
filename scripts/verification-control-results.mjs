@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { verificationOriginDetails } from './verification-reporter.mjs';
 import { validateControlCapsule } from './verification-profile.mjs';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -130,11 +131,17 @@ const assertCaseFailures = (test, record, capsule, baselines) => {
         assert.ok(depth <= 16 && error && typeof error === 'object', 'Unsupported case error tree');
         assert.ok(
             Object.keys(error).every((key) =>
-                ['name', 'message', 'stack', 'errors', 'cause', 'verificationFailures'].includes(key),
+                ['name', 'message', 'stack', 'errors', 'cause', 'verificationFailures', 'verificationOrigin'].includes(
+                    key,
+                ),
             ),
             'Unknown case error fields',
         );
         assert.equal(typeof error.message, 'string');
+        if (error.verificationOrigin !== undefined) {
+            assert.ok(error.verificationFailures, 'Origin without recorder evidence');
+            verificationOriginDetails(error.verificationOrigin);
+        }
         if (depth > 0) assert.equal(error.stack, undefined, 'Unexpected nested stack field');
         assert.equal(error.cause, undefined, 'Unexpected error cause');
         if (error.name === 'AggregateError') {
@@ -227,6 +234,15 @@ const assertCaseFailures = (test, record, capsule, baselines) => {
             assert.deepEqual(error.verificationFailures.mismatches, [], 'Unexpected expected-error count mismatch');
             const events = error.verificationFailures.unexpected;
             functionalEvents(test.title, events);
+            if (error.verificationOrigin !== undefined) {
+                // These controlled recorders declare no expected events; first record is events[0].
+                assert.equal(error.verificationOrigin.kind, events[0]?.kind, 'First recorded origin kind mismatch');
+                assert.equal(
+                    error.verificationOrigin.message,
+                    events[0]?.message,
+                    'First recorded origin message mismatch',
+                );
+            }
             assert.equal(
                 error.message,
                 `Story verification failed:\n${events.map((event) => `${event.kind}: ${event.message}`).join('\n')}`,

@@ -841,6 +841,15 @@ it('retains bounded nested public aggregate/cause/event evidence beside unchange
     const events = { unexpected: [{ kind: 'console-error', message: 'first\nsecond' }], mismatches: [] };
     const leaf = Object.assign(new Error('Story verification failed:\nconsole-error: first\nsecond'), {
         verificationFailures: events,
+        verificationOrigin: {
+            version: 1,
+            attribution: 'first-recorded-event',
+            status: 'captured',
+            kind: 'console-error',
+            message: 'first\nsecond',
+            stack: 'Error\n at recordingCaller',
+            truncated: false,
+        },
     });
     const cause = new Error('nested cause');
     const nested = Object.assign(new AggregateError([leaf, new Error('cleanup failed')], 'joined aggregate'), {
@@ -867,7 +876,12 @@ it('retains bounded nested public aggregate/cause/event evidence beside unchange
             message: nested.message,
             stack: nested.stack,
             errors: [
-                { name: leaf.name, message: leaf.message, verificationFailures: events },
+                {
+                    name: leaf.name,
+                    message: leaf.message,
+                    verificationFailures: events,
+                    verificationOrigin: leaf.verificationOrigin,
+                },
                 { name: 'Error', message: 'cleanup failed' },
             ],
             cause: { name: 'Error', message: 'nested cause' },
@@ -893,3 +907,69 @@ it.each(['cycle', 'unknown-cause', 'unknown-children', 'unknown-event', 'budget'
         expect(() => caseErrorDetails(error)).toThrow();
     },
 );
+
+it('round trips only bounded optional first-recorded attribution beside canonical recorder events', async () => {
+    // eslint-disable-next-line import/extensions -- Native Node reporter uses an explicit ESM entry.
+    const { caseErrorDetails } = await import('../../scripts/verification-reporter.mjs');
+    const evidence = { unexpected: [{ kind: 'console-error', message: 'boom' }], mismatches: [] };
+    const origin = {
+        version: 1,
+        attribution: 'first-recorded-event',
+        kind: 'console-error',
+        message: 'boom',
+        status: 'captured',
+        stack: 'Error\n at originalCaller',
+        truncated: false,
+    };
+    const error = Object.assign(new Error('Story verification failed:\nconsole-error: boom'), {
+        verificationFailures: evidence,
+        verificationOrigin: origin,
+    });
+    expect(caseErrorDetails(error)).toMatchObject({ verificationFailures: evidence, verificationOrigin: origin });
+    [
+        {
+            version: 1,
+            attribution: 'first-recorded-event',
+            status: 'unavailable',
+            reason: 'stack-unavailable',
+            kind: 'console-error',
+            message: 'boom',
+            truncated: false,
+        },
+        {
+            version: 1,
+            attribution: 'first-recorded-event',
+            status: 'unavailable',
+            reason: 'no-recorded-event',
+            truncated: false,
+        },
+    ].forEach((unavailable) => {
+        expect(
+            caseErrorDetails({ ...error, message: error.message, verificationOrigin: unavailable }).verificationOrigin,
+        ).toEqual(unavailable);
+    });
+    expect(() => caseErrorDetails({ message: 'unrelated', verificationOrigin: origin })).toThrow(
+        'Origin without recorder evidence',
+    );
+
+    [
+        { ...origin, extra: true },
+        { ...origin, stack: 'x'.repeat(4097) },
+        { ...origin, stack: 'x\n'.repeat(16) },
+        { ...origin, status: 'unknown' },
+        { ...origin, truncated: 'false' },
+        { ...origin, reason: 'stack-unavailable' },
+        { ...origin, version: 2 },
+        { ...origin, stack: '' },
+        { version: 1, attribution: 'first-recorded-event', status: 'unavailable', reason: 'unknown', truncated: false },
+        {
+            version: 1,
+            attribution: 'first-recorded-event',
+            status: 'unavailable',
+            reason: 'no-recorded-event',
+            truncated: true,
+        },
+    ].forEach((malformed) => {
+        expect(() => caseErrorDetails({ ...error, message: error.message, verificationOrigin: malformed })).toThrow();
+    });
+});

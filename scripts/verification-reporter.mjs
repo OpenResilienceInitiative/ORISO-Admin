@@ -5,6 +5,37 @@ import { randomUUID } from 'node:crypto';
 import { BaseSequencer } from 'vite-plus/test/node';
 import { createRunProvenance, suppliedBrowser } from './verification-provenance.mjs';
 
+// Optional diagnostic attribution only. It never approves events, messages or counts.
+export const verificationOriginDetails = (origin) => {
+    if (!origin || typeof origin !== 'object' || Array.isArray(origin)) throw new Error('Unknown verification origin');
+    const base = ['version', 'attribution', 'status', 'truncated'];
+    const captured = origin.status === 'captured';
+    const noEvent = origin.status === 'unavailable' && origin.reason === 'no-recorded-event';
+    const keys = [...base, ...(noEvent ? [] : ['kind', 'message']), ...(captured ? ['stack'] : ['reason'])];
+    if (
+        Object.keys(origin).length !== keys.length ||
+        Object.keys(origin).some((key) => !keys.includes(key)) ||
+        origin.version !== 1 ||
+        origin.attribution !== 'first-recorded-event' ||
+        typeof origin.truncated !== 'boolean' ||
+        (!captured && origin.status !== 'unavailable') ||
+        (!noEvent &&
+            (!['console-error', 'uncaught-error', 'unhandled-rejection', 'unexpected-request', 'fallback'].includes(
+                origin.kind,
+            ) ||
+                typeof origin.message !== 'string')) ||
+        (captured &&
+            (typeof origin.stack !== 'string' ||
+                origin.stack.length === 0 ||
+                origin.stack.length > 4096 ||
+                origin.stack.split('\n').length > 16)) ||
+        (!captured &&
+            (!['stack-unavailable', 'no-recorded-event'].includes(origin.reason) || origin.truncated !== false))
+    )
+        throw new Error('Unknown verification origin schema');
+    return Object.fromEntries(keys.map((key) => [key, origin[key]]));
+};
+
 // Preserve only the bounded public error contract, never arbitrary error objects.
 // Unsupported/cyclic evidence is an explicit reporter failure, not an omitted child.
 export const caseErrorDetails = (error, depth = 0, ancestors = new Set(), budget = { nodes: 0, characters: 0 }) => {
@@ -62,6 +93,10 @@ export const caseErrorDetails = (error, depth = 0, ancestors = new Set(), budget
                 return { ...event(value, true), expected: value.expected, received: value.received };
             }),
         };
+    }
+    if (error.verificationOrigin !== undefined) {
+        if (error.verificationFailures === undefined) throw new Error('Origin without recorder evidence');
+        detail.verificationOrigin = verificationOriginDetails(error.verificationOrigin);
     }
     return detail;
 };
