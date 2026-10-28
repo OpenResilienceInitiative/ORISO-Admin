@@ -9,7 +9,7 @@ permissions:
     contents: read
 
 concurrency:
-    group: client-diagnostic-${{ github.ref }}
+    group: client-diagnostic-${{ github.ref }}-${{ github.sha }}
     cancel-in-progress: true
 
 jobs:

@@ -429,3 +429,14 @@ test('an anonymous captured action cannot become authenticated on a later invoca
         delete globalThis.__accountAuthToken;
     }
 });
+
+test('unreadable tokens are never retained as ownership or assumed to establish the same retry subject', async () => {
+    const { accountOperationOwner, assertAccountOperationOwner } = await import(
+        '../src/utils/accountOperationOwner.ts'
+    );
+    const owner = accountOperationOwner('synthetic-unreadable-credential');
+    assert.equal(owner, 'unverified');
+    const headers = new AccountOperationIntent().headersFor('PATCH', '/users/data', '{}');
+    assertAccountOperationOwner(headers, owner, owner);
+    assert.throws(() => assertAccountOperationOwner(headers, owner, owner), /REQUEST_IDENTITY_CHANGED/);
+});

@@ -14,10 +14,10 @@ export const accountOperationOwner = (token: string | null | undefined): string 
             return JSON.stringify(['subject', payload.iss ?? null, payload.sub]);
         }
     } catch {
-        // An unreadable token may make its first attempt, but a different token
-        // cannot be assumed to belong to the same person. Nothing is persisted.
+        // An unreadable token may make its first attempt, but cannot establish
+        // a stable retry owner. Never retain the token in ownership state.
     }
-    return JSON.stringify(['unreadable', token]);
+    return 'unverified';
 };
 
 export const ownAccountOperation = (intent: AccountOperationIntent, owner: string): void => {
@@ -47,7 +47,7 @@ export const assertAccountOperationOwner = (
     const previous = requestOwners.get(intent);
     if (
         (actionOwner !== undefined && actionOwner !== currentOwner) ||
-        (previous !== undefined && previous !== requestOwner)
+        (previous !== undefined && (previous !== requestOwner || previous === 'unverified'))
     ) {
         throw new Error('REQUEST_IDENTITY_CHANGED');
     }
