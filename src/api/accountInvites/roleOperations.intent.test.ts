@@ -16,34 +16,18 @@ interface RoleOperationCase {
     send: (intent: AccountOperationIntent) => Promise<unknown>;
 }
 
-// Reflect.apply lets this regression reach the existing two-argument runtime boundary
-// before its optional intent parameter is implemented, without an unchecked type cast.
 const cases: RoleOperationCase[] = [
     {
         name: 'granting a consultant identity to an admin',
-        send: (intent) =>
-            Reflect.apply(grantConsultantIdentityData, undefined, [
-                'admin-1',
-                { agencyIds: ['12'], topicIds: ['3'] },
-                intent,
-            ]),
+        send: (intent) => grantConsultantIdentityData('admin-1', { agencyIds: ['12'], topicIds: ['3'] }, intent),
     },
     {
         name: 'adding agency administration to a consultant',
-        send: (intent) =>
-            Reflect.apply(addConsultantRole, undefined, [
-                'consultant-1',
-                { role: 'AGENCY_ADMIN', agencyId: 12 },
-                intent,
-            ]),
+        send: (intent) => addConsultantRole('consultant-1', { role: 'AGENCY_ADMIN', agencyId: 12 }, intent),
     },
     {
         name: 'granting a consultant identity through self-assignment',
-        send: (intent) =>
-            Reflect.apply(createSelfAssignment, undefined, [
-                { role: 'COUNSELLOR', agencyId: 12, topicIds: [3] },
-                intent,
-            ]),
+        send: (intent) => createSelfAssignment({ role: 'COUNSELLOR', agencyId: 12, topicIds: [3] }, intent),
     },
 ];
 

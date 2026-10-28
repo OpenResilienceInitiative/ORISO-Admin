@@ -14,7 +14,6 @@ const hasKnownCompositeOutcome = (parent: AccountOperationIntent | undefined): b
 };
 const compositeRefusals = new WeakMap<object, string>();
 
-const uncertainIntents = new WeakSet<AccountOperationIntent>();
 const uncertainErrors = new WeakSet<object>();
 const verifiedRefusals = new WeakMap<object, string>();
 const observedResponses = new WeakMap<object, { status: number; outcome: string | null; operation: string | null }>();
@@ -41,7 +40,6 @@ export const recordAccountOperationResponse = (error: unknown, response: Respons
 
 export const acknowledgeAccountOperation = (intent?: AccountOperationIntent) => {
     if (intent) {
-        uncertainIntents.delete(intent);
         acknowledgements.get(intent)?.();
     }
 };
@@ -75,16 +73,13 @@ export const isTerminalAccountOperationRefusal = (error: unknown, intent?: Accou
     // status alone cannot prove that an earlier native effect did not occur.
     if (intent) return false;
     if (object && uncertainErrors.has(object)) return false;
-    const verifiedOperation = object ? verifiedRefusals.get(object) : undefined;
-    if (verifiedOperation !== undefined && (!intent || verifiedOperation === intent.id)) return true;
-    if (intent && uncertainIntents.has(intent)) return false;
+    if (object && verifiedRefusals.has(object)) return true;
     return status !== undefined && [400, 403, 412, 422].includes(status);
 };
 
 export const accountOperationFailed = (intent: AccountOperationIntent | undefined, error: unknown): boolean => {
     const terminal = isTerminalAccountOperationRefusal(error, intent);
     if (!terminal && intent) {
-        uncertainIntents.add(intent);
         if (error !== null && (typeof error === 'object' || typeof error === 'function')) uncertainErrors.add(error);
     }
     return terminal;
