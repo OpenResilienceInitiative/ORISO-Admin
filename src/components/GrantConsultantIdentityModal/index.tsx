@@ -20,6 +20,9 @@ interface GrantConsultantIdentityModalProps {
     tenantId?: number | string;
     onSuccess?: () => void;
     disabled?: boolean;
+    /** A role refresh may hide the trigger while the original receipt is still pending. */
+    hideTrigger?: boolean;
+    recoverOwnGrant?: boolean;
     /** i18n key of the trigger button; the self-service entry in the profile words it for "me". */
     buttonLabelKey?: string;
     /** i18n key of the success toast; the self-service entry addresses the admin directly. */
@@ -36,6 +39,8 @@ export const GrantConsultantIdentityModal = ({
     tenantId,
     onSuccess,
     disabled,
+    hideTrigger,
+    recoverOwnGrant,
     buttonLabelKey = 'grantConsultantIdentity.button',
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
@@ -100,7 +105,10 @@ export const GrantConsultantIdentityModal = ({
                 'grant-consultant-identity',
                 adminId,
                 { formalLanguage: true, agencyIds, topicIds },
-                (payload, intent) => grantConsultantIdentityData(adminId, payload, intent),
+                (payload, intent) =>
+                    recoverOwnGrant
+                        ? grantConsultantIdentityData(adminId, payload, intent, { recoverOwnGrant: true })
+                        : grantConsultantIdentityData(adminId, payload, intent),
             );
 
             message.success({ content: t(successMessageKey), duration: 8 });
@@ -126,9 +134,11 @@ export const GrantConsultantIdentityModal = ({
 
     return (
         <>
-            <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
-                {t(buttonLabelKey)}
-            </Button>
+            {!hideTrigger && (
+                <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
+                    {t(buttonLabelKey)}
+                </Button>
+            )}
             {open && (
                 <Modal
                     titleKey="grantConsultantIdentity.modal.title"

@@ -1,7 +1,7 @@
 import { message, notification, Checkbox } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { CheckboxChangeEvent } from 'antd/es/checkbox';
 import i18next from 'i18next';
 import { useDeleteConsultantOrAgencyAdmin } from '../../../../../hooks/useDeleteConsultantOrAdmin';
@@ -9,28 +9,54 @@ import { Modal } from '../../../../../components/Modal';
 import { Text } from '../../../../../components/text/Text';
 import { X_REASON } from '../../../../../api/fetchData';
 import { extractApiErrorReason } from '../../../../../utils/extractApiErrorMessage';
+import { IdentityRemovalNotice } from '../IdentityRemovalNotice';
+import { useIdentityRemovalPolicy } from '../../../../../hooks/useIdentityRemovalPolicy';
+import {
+    hasVerifiedAccountOperationRefusal,
+    isTerminalAccountOperationRefusal,
+} from '../../../../../utils/accountOperationIntent';
 
 interface DeleteUserModalProps {
     typeOfUser: 'consultants' | 'admins';
     deleteUserId: string;
+    hasOtherIdentity?: boolean;
     onClose: () => void;
 }
 
-export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUserModalProps) => {
+export const DeleteUserModal = ({ typeOfUser, deleteUserId, hasOtherIdentity, onClose }: DeleteUserModalProps) => {
     const { t } = useTranslation();
     const [hasSessions, setHasSessions] = useState(false);
     const [lastConsultantOfAgency, setLastConsultantOfAgency] = useState(false);
     const [force, setForce] = useState(false);
-    const { mutate: deleteConsultant } = useDeleteConsultantOrAgencyAdmin({
+    const [failure, setFailure] = useState<string>();
+    const policy = useIdentityRemovalPolicy(deleteUserId, typeOfUser === 'admins', hasOtherIdentity);
+    const guardId = useId();
+    const { mutate: deleteConsultant, isPending } = useDeleteConsultantOrAgencyAdmin({
         typeOfUser,
         onSuccess: () => {
             message.success({
-                content: t('message.counselor.delete.success'),
+                content: t(
+                    typeOfUser === 'consultants'
+                        ? 'message.counselor.delete.success'
+                        : 'identityRemoval.administrator.success',
+                ),
                 duration: 3,
             });
             onClose();
         },
         onError: async (error: Error | Response) => {
+            if (error instanceof Error && error.message === 'ACCOUNT_COMMANDS_UNAVAILABLE') {
+                setFailure('identityRemoval.retryUnavailable');
+                return;
+            }
+            if (
+                (policy.scoped && !hasVerifiedAccountOperationRefusal(error)) ||
+                !isTerminalAccountOperationRefusal(error)
+            ) {
+                setFailure('accountOperation.outcomeUnknown');
+                return;
+            }
+            setFailure(undefined);
             if (error instanceof Response) {
                 const reason = await extractApiErrorReason(error);
                 switch (reason) {
@@ -64,18 +90,38 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
 
     return (
         <Modal
-            titleKey="counselor.modal.headline.delete"
+            titleKey={
+                typeOfUser === 'consultants' ? 'counselor.modal.headline.delete' : 'identityRemoval.administrator.title'
+            }
             icon={<DeleteOutlineOutlinedIcon />}
             closable={false}
             cancelLabelKey="btn.cancel.uppercase"
             // The confirm action is hidden entirely for the last consultant of an
             // agency (no valid delete), else labelled force/normal delete.
             okLabelKey={lastConsultantOfAgency ? undefined : deleteLabelKey}
-            confirmDisabled={hasSessions && !force}
-            onConfirm={() => deleteConsultant({ id: deleteUserId, forceDelete: hasSessions })}
+            confirmDisabled={!!policy.unavailableReason || isPending || (hasSessions && !force)}
+            confirmDescribedBy={policy.unavailableReason ? guardId : undefined}
+            onConfirm={() => {
+                if (!policy.unavailableReason && !isPending && (!hasSessions || force)) {
+                    setFailure(undefined);
+                    deleteConsultant({ id: deleteUserId, forceDelete: hasSessions });
+                }
+            }}
             onClose={onClose}
         >
-            <p>{t('counselor.modal.text.delete.text')}</p>
+            <p>
+                {t(
+                    typeOfUser === 'consultants'
+                        ? 'counselor.modal.text.delete.text'
+                        : 'identityRemoval.administrator.confirm',
+                )}
+            </p>
+            <IdentityRemovalNotice
+                removing={typeOfUser === 'consultants' ? 'consultant' : 'administrator'}
+                hasOtherIdentity={hasOtherIdentity}
+            />
+            {policy.unavailableReason && <p id={guardId}>{t(policy.unavailableReason)}</p>}
+            {failure && <p role="alert">{t(failure)}</p>}
 
             {hasSessions && !lastConsultantOfAgency && (
                 <Checkbox onChange={onChange} checked={force}>

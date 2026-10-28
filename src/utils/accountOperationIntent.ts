@@ -6,6 +6,7 @@ export { AccountOperationActions } from './accountOperationActions';
 export {
     acknowledgeAccountOperation,
     isTerminalAccountOperationRefusal,
+    hasVerifiedAccountOperationRefusal,
     settleAccountOperation,
     settleAccountOperationStep,
 } from './accountOperationState';

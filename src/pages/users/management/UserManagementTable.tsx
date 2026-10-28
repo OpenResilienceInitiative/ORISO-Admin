@@ -30,6 +30,7 @@ import decodeHTML from '../../../utils/decodeHTML';
 import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
+import { otherIdentityFromRow } from '../List/components/IdentityRemovalNotice';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
 import { mapSorterToApiField } from './useUserTableColumns';
 import { TenantTable } from './TenantTable';
@@ -73,7 +74,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
     const [search, setSearch] = useState('');
-    const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+    const [deleteUser, setDeleteUser] = useState<CounselorData | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
 
@@ -186,7 +187,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             if (isTenantAdmins || isPlatformAdmins) {
                 setDeleteTenantAdmin(record);
             } else {
-                setDeleteUserId(record.id);
+                setDeleteUser(record);
             }
         },
         [isTenantAdmins, isPlatformAdmins],
@@ -256,7 +257,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         (isConsultants && canSeeLinksSection({ isSuperAdmin, hasRole })) || (isTenantAdmins && isSuperAdmin);
 
     const onCloseDelete = useCallback(() => {
-        setDeleteUserId(null);
+        setDeleteUser(null);
         setDeleteTenantAdmin(null);
         refetch();
     }, [refetch]);
@@ -446,9 +447,10 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     onDelete={onDeleteTenant}
                 />
             )}
-            {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
+            {deleteUser && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
                 <DeleteUserModal
-                    deleteUserId={deleteUserId}
+                    deleteUserId={deleteUser.id}
+                    hasOtherIdentity={otherIdentityFromRow(deleteUser)}
                     onClose={onCloseDelete}
                     typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
                 />

@@ -19,6 +19,15 @@ const uncertainErrors = new WeakSet<object>();
 const verifiedRefusals = new WeakMap<object, string>();
 const observedResponses = new WeakMap<object, { status: number; outcome: string | null; operation: string | null }>();
 
+export const observedAccountOperationStatus = (error: unknown): number | undefined =>
+    error !== null && (typeof error === 'object' || typeof error === 'function')
+        ? observedResponses.get(error)?.status
+        : undefined;
+
+/** Only a transport reply matched to the settled scoped attempt can prove no effect. */
+export const hasVerifiedAccountOperationRefusal = (error: unknown): boolean =>
+    error !== null && (typeof error === 'object' || typeof error === 'function') && verifiedRefusals.has(error);
+
 // Internal transport evidence; arbitrary Error properties cannot create an acknowledgement.
 export const recordAccountOperationResponse = (error: unknown, response: Response) => {
     if (error !== null && (typeof error === 'object' || typeof error === 'function')) {
