@@ -96,4 +96,35 @@ describe('DirectInviteCard', () => {
         expect(screen.queryByText('tenants.permissions.policy.activationEnforced')).toBeNull();
         expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeTruthy();
     });
+    it('locks a Beratungsstelle row the Träger enforces on, so it cannot be restricted', () => {
+        renderCard({
+            policyLevel: 'agency',
+            fallbackValues: { [VIDEO]: false },
+            traegerPolicies: { [VIDEO]: { value: true, mode: 'ENFORCED' } },
+        });
+
+        expect(readOnlyButton('video')).toBeTruthy();
+        expect(row(VIDEO).querySelector('[data-testid="CheckIcon"]')).toBeTruthy();
+        expect(screen.getByText('tenants.permissions.directInvite.enforcedOnTraeger')).toBeTruthy();
+    });
+
+    it('shows no Beratungsstelle rows while the Träger policies are loading', () => {
+        renderCard({ policyLevel: 'agency', traegerPoliciesStatus: 'pending' });
+
+        expect(screen.getByTestId('direct-invite-traeger-loading')).toBeTruthy();
+        [CHAT, AUDIO, VIDEO].forEach((field) => expect(row(field)).toBeNull());
+    });
+
+    it('says the Träger setting could not be loaded instead of editable defaults', () => {
+        renderCard({ policyLevel: 'agency', traegerPoliciesStatus: 'error' });
+
+        expect(screen.getByRole('status').textContent).toBe('tenants.permissions.directInvite.traegerUnavailable');
+        [CHAT, AUDIO, VIDEO].forEach((field) => expect(row(field)).toBeNull());
+    });
+
+    it('ignores the Träger status outside the Beratungsstelle page', () => {
+        renderCard({ policyLevel: 'tenant', traegerPoliciesStatus: 'error' });
+
+        [CHAT, AUDIO, VIDEO].forEach((field) => expect(row(field)).toBeTruthy());
+    });
 });

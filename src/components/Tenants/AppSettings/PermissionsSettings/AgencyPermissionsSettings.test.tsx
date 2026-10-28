@@ -247,4 +247,25 @@ describe('AgencyPermissionsSettings direct invitations', () => {
             vi.unstubAllGlobals();
         }
     });
+    it('shows no editable direct-invite rows when the Träger policies cannot be read', async () => {
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? new Response(null, { status: 403 })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            expect(
+                await screen.findByText(
+                    /Einstellung des Trägers konnte nicht geladen|Träger's setting could not be loaded/i,
+                ),
+            ).toBeTruthy();
+            expect(policy('featureDirectInviteChatEnabled')).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
 });

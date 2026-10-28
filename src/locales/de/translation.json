@@ -2794,5 +2794,7 @@
     "tenants.permissions.directInvite.audio": "Audioanruf",
     "tenants.permissions.directInvite.video": "Videoanruf",
     "tenants.permissions.directInvite.offOnTraeger": "Ihr Träger hat das ausgeschaltet. Eine Beratungsstelle kann es deshalb hier nicht einschalten.",
-    "tenants.permissions.directInvite.callsNote": "Audio- und Videoanrufe per Direktlink brauchen zusätzlich die eingeschalteten Anruf-Einstellungen. Wird die Erlaubnis entzogen, funktionieren bestehende Links nicht mehr."
+    "tenants.permissions.directInvite.callsNote": "Audio- und Videoanrufe per Direktlink brauchen zusätzlich die eingeschalteten Anruf-Einstellungen. Wird die Erlaubnis entzogen, funktionieren bestehende Links nicht mehr.",
+    "tenants.permissions.directInvite.enforcedOnTraeger": "Ihr Träger legt das verbindlich fest. Eine Beratungsstelle kann es deshalb hier nicht ändern.",
+    "tenants.permissions.directInvite.traegerUnavailable": "Die Einstellung des Trägers konnte nicht geladen werden. Deshalb kann sie hier gerade nicht geändert werden."
 }

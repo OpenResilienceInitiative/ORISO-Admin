@@ -104,3 +104,22 @@ export const BeratungsstelleOverridden: Story = {
         traegerPolicies: policies(allowed, allowed, allowed),
     },
 };
+
+/** Beratungsstelle page, the Träger made video a requirement: the centre cannot switch it off. */
+export const BeratungsstelleEnforcedByTraeger: Story = {
+    args: {
+        policyLevel: 'agency',
+        permissionPolicies: undefined,
+        fallbackValues: {},
+        traegerPolicies: policies(allowed, allowed, { value: true, mode: 'ENFORCED', inherited: false }),
+    },
+};
+
+/** Beratungsstelle page, the Träger policies could not be read (e.g. 403): no editable defaults. */
+export const BeratungsstelleTraegerUnavailable: Story = {
+    args: {
+        policyLevel: 'agency',
+        permissionPolicies: undefined,
+        traegerPoliciesStatus: 'error',
+    },
+};

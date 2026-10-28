@@ -1,7 +1,6 @@
 @use '../../../../../styles/muiSpacing' as mui;
 
 /* ORISO-Admin#1242 — same row rhythm as the advice-seeker card (AskerPermissionsCard). */
-
 .intro {
     margin: mui.$mui-unit * 1.5 0 mui.$mui-unit * 2.5;
     font-size: 16px;

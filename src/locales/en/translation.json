@@ -2794,5 +2794,7 @@
     "tenants.permissions.directInvite.audio": "Audio call",
     "tenants.permissions.directInvite.video": "Video call",
     "tenants.permissions.directInvite.offOnTraeger": "Your Träger has switched this off, so a counselling centre cannot switch it on here.",
-    "tenants.permissions.directInvite.callsNote": "Audio and video calls by direct link also need the call settings to be on. Withdrawing the permission stops existing links from working."
+    "tenants.permissions.directInvite.callsNote": "Audio and video calls by direct link also need the call settings to be on. Withdrawing the permission stops existing links from working.",
+    "tenants.permissions.directInvite.enforcedOnTraeger": "Your Träger has made this a requirement, so a counselling centre cannot change it here.",
+    "tenants.permissions.directInvite.traegerUnavailable": "The Träger's setting could not be loaded, so it cannot be changed here right now."
 }

@@ -393,6 +393,7 @@ export const PermissionsSettingsView = ({
                                 permissionPolicies={permissionPolicies}
                                 fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
                                 traegerPolicies={traegerDirectInvitePolicies}
+                                traegerPoliciesStatus={traegerChannelPoliciesStatus}
                                 pendingPolicyFields={pendingPolicyFields}
                                 openPolicyMenu={openPolicyMenu}
                                 onOpenPolicyMenu={setOpenPolicyMenu}
