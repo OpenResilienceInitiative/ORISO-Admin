@@ -2,19 +2,21 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { allocateControlInvocation, allocateControlPhase } from './verification-control-invocation.mjs';
 import { assertControlPhase } from './verification-control-results.mjs';
 
 // Use the normal provider. Broken fixtures live outside source scans and never
 // enter the ordinary inventory. Startup/collection failures are not proof.
 const root = process.cwd();
-const artifacts = path.resolve(process.env.VERIFICATION_ARTIFACTS_DIR || 'verification-artifacts/controls');
+const invocation = allocateControlInvocation(
+    path.resolve(process.env.VERIFICATION_ARTIFACTS_DIR || 'verification-artifacts/controls'),
+);
+const artifacts = invocation.directory;
 const fixture = path.join(root, '.superpowers/verification-controls/controls.stories.tsx');
 mkdirSync(path.dirname(fixture), { recursive: true });
-mkdirSync(artifacts, { recursive: true });
 writeFileSync(fixture, readFileSync(new URL('./verification/controls.stories.txt', import.meta.url)), { flag: 'wx' });
 const run = (phase, baselines = [], shuffle = false) => {
-    const directory = path.join(artifacts, phase + (shuffle ? '-shuffled' : ''));
-    mkdirSync(directory, { recursive: true });
+    const { directory, capsule } = allocateControlPhase(invocation, phase, shuffle);
     const reportPath = path.join(directory, 'controls.json');
     const startedAtUTC = new Date().toISOString();
     const result = spawnSync(
@@ -35,6 +37,7 @@ const run = (phase, baselines = [], shuffle = false) => {
                 ...process.env,
                 VERIFICATION_ARTIFACTS_DIR: directory,
                 ORISO_VERIFICATION_CONTROLS: 'true',
+                ORISO_CONTROL_INVOCATION_JSON: JSON.stringify(capsule),
                 ORISO_A11Y_CONTROL_PHASE: phase,
                 ORISO_A11Y_BASELINE_JSON: JSON.stringify(baselines),
             },
@@ -59,7 +62,7 @@ const run = (phase, baselines = [], shuffle = false) => {
     );
     writeFileSync(path.join(directory, 'controls.log'), `${result.stdout || ''}\n${result.stderr || ''}`);
     assert.ifError(result.error);
-    return assertControlPhase(directory, phase, result.status);
+    return assertControlPhase(directory, phase, result.status, capsule);
 };
 try {
     const captured = run('capture');

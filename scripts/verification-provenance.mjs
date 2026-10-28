@@ -44,7 +44,22 @@ export const sourceIdentity = (cwd, suppliedRevision) => {
     };
 };
 
+const controlInvocation = () => {
+    if (process.env.ORISO_VERIFICATION_CONTROLS !== 'true') return {};
+    const control = JSON.parse(process.env.ORISO_CONTROL_INVOCATION_JSON || 'null');
+    if (
+        !control ||
+        control.profile !== 'strict' ||
+        !control.invocationId ||
+        !['capture', 'verify'].includes(control.phase) ||
+        typeof control.shuffle !== 'boolean'
+    )
+        throw new Error('Trusted strict control invocation required');
+    return { control };
+};
+
 export const createRunProvenance = ({ runId, projects, inputs }) => ({
+    ...controlInvocation(),
     schemaVersion: 1,
     runId,
     startedAt: new Date().toISOString(),
