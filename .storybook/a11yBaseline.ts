@@ -40,6 +40,8 @@ interface RunContext {
     reporting: { reports: { type?: string; version?: number; result?: unknown; status?: string }[] };
 }
 interface GateOptions {
+    profile?: 'strict' | 'functional-pilot';
+    witness?: () => { moduleLoaded: boolean; invocationCount: number } | undefined;
     entries: A11yBaselineEntry[];
     environment: (context: RunContext) => string;
     styles: (target: NodeResult['target']) => unknown;
@@ -158,7 +160,15 @@ export const fingerprintViolations = (result: { violations: AuditRule[] }, style
         )
         .sort();
 
-export const createA11yBaselineGate = ({ entries, environment, styles, today }: GateOptions) => {
+export const createA11yBaselineGate = ({
+    entries,
+    environment,
+    styles,
+    today,
+    profile = 'strict',
+    witness,
+}: GateOptions) => {
+    if (!['strict', 'functional-pilot'].includes(profile)) throw new Error('Unsupported verification profile');
     let active:
         | {
               context: RunContext;
@@ -175,10 +185,16 @@ export const createA11yBaselineGate = ({ entries, environment, styles, today }: 
             throw new Error('Accessibility audit stale or missing reporting identity');
         const original = context.parameters;
         const a11y = original.a11y ?? {};
-        if (a11y.disable || a11y.test === 'off' || context.globals.a11y?.manual || context.globals.ghostStories)
+        if (
+            profile === 'strict' &&
+            (a11y.disable || a11y.test === 'off' || context.globals.a11y?.manual || context.globals.ghostStories)
+        )
             throw new Error('Accessibility audit disabled or manual: the normal gate requires an automatic audit');
         const identity = environment(context);
-        const matching = entries.filter((entry) => entry.storyId === context.id && entry.environment === identity);
+        const matching =
+            profile === 'strict'
+                ? entries.filter((entry) => entry.storyId === context.id && entry.environment === identity)
+                : [];
         if (matching.length > 1) throw new Error('Accessibility audit duplicate approvals');
         const [entry] = matching;
         if (
@@ -188,7 +204,13 @@ export const createA11yBaselineGate = ({ entries, environment, styles, today }: 
             throw new Error('Accessibility audit approval expired or missing ownership');
         sequence += 1;
         active = { context, original, environment: identity, entry, token: sequence };
-        context.parameters = { ...original, a11y: { ...a11y, test: entry ? 'todo' : 'error' } };
+        context.parameters = {
+            ...original,
+            a11y:
+                profile === 'functional-pilot'
+                    ? { ...a11y, disable: true, test: 'off' }
+                    : { ...a11y, test: entry ? 'todo' : 'error' },
+        };
     };
     const finish = (record: (evidence: unknown) => void = () => undefined) => {
         if (!active) throw new Error('Accessibility audit missing active story identity');
@@ -196,6 +218,31 @@ export const createA11yBaselineGate = ({ entries, environment, styles, today }: 
         active = undefined;
         try {
             const reports = run.context.reporting.reports.filter((report) => report.type === 'a11y');
+            const observation = witness?.();
+            if (profile === 'functional-pilot') {
+                record({
+                    profile,
+                    storyId: run.context.id,
+                    token: run.token,
+                    environment: run.environment,
+                    compliance: { status: 'DEFERRED', execution: 'NOT_RUN', reason: 'pilot scope' },
+                    auditCount: reports.filter((report) => isAuditResult(report.result)).length,
+                    reports: reports.map((report) => ({
+                        ...report,
+                        result:
+                            isRecord(report.result) && report.result.error
+                                ? { ...report.result, error: String(report.result.error) }
+                                : report.result,
+                    })),
+                    witness: observation,
+                });
+                if (reports.length) throw new Error('Functional pilot unexpected audit report');
+                if (run.context.parameters.a11y?.disable !== true || run.context.parameters.a11y?.test !== 'off')
+                    throw new Error('Trusted functional profile was mutated');
+                if (observation && (!observation.moduleLoaded || observation.invocationCount !== 0))
+                    throw new Error('Functional pilot unexpected axe callsite execution or missing observer');
+                return;
+            }
             const valid = reports.filter((report): report is typeof report & { result: AuditResult } =>
                 isAuditResult(report.result),
             );
@@ -217,6 +264,8 @@ export const createA11yBaselineGate = ({ entries, environment, styles, today }: 
                 observationFailure = error;
             }
             record({
+                profile,
+                witness: observation,
                 storyId: run.context.id,
                 token: run.token,
                 environment: run.environment,

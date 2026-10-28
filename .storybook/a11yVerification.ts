@@ -1,5 +1,6 @@
 import { canonical, createA11yBaselineGate } from './a11yBaseline';
 import { approvedA11yBaselines } from './a11yBaselines';
+import { readInstalledAxeWitness } from './axeWitness';
 
 const styles = (target: unknown) => {
     if (!Array.isArray(target) || target.some((selector) => typeof selector !== 'string'))
@@ -33,6 +34,8 @@ const styles = (target: unknown) => {
 // Test-only injected entries are possible exclusively in the isolated controls
 // project. Ordinary runs consume only the reviewed source-owned approvals.
 export const a11yVerification = createA11yBaselineGate({
+    profile: import.meta.env.ORISO_VERIFICATION_PROFILE,
+    witness: readInstalledAxeWitness,
     entries: import.meta.env.ORISO_A11Y_CONTROL_BASELINES ?? approvedA11yBaselines,
     environment: (context) =>
         canonical({

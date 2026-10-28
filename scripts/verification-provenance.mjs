@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { readControlInvocation, readVerificationProfile } from './verification-profile.mjs';
 
 const require = createRequire(import.meta.url);
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' });
@@ -44,22 +45,9 @@ export const sourceIdentity = (cwd, suppliedRevision) => {
     };
 };
 
-const controlInvocation = () => {
-    if (process.env.ORISO_VERIFICATION_CONTROLS !== 'true') return {};
-    const control = JSON.parse(process.env.ORISO_CONTROL_INVOCATION_JSON || 'null');
-    if (
-        !control ||
-        control.profile !== 'strict' ||
-        !control.invocationId ||
-        !['capture', 'verify'].includes(control.phase) ||
-        typeof control.shuffle !== 'boolean'
-    )
-        throw new Error('Trusted strict control invocation required');
-    return { control };
-};
-
 export const createRunProvenance = ({ runId, projects, inputs }) => ({
-    ...controlInvocation(),
+    ...(readControlInvocation() && { control: readControlInvocation() }),
+    profile: readVerificationProfile(),
     schemaVersion: 1,
     runId,
     startedAt: new Date().toISOString(),
@@ -75,9 +63,20 @@ export const createRunProvenance = ({ runId, projects, inputs }) => ({
 });
 
 export const suppliedBrowser = (meta) => {
-    const userAgent = meta?.verificationA11y?.reports?.find((report) => report.result?.testEnvironment?.userAgent)
+    const rawUserAgent = meta?.verificationA11y?.reports?.find((report) => report.result?.testEnvironment?.userAgent)
         ?.result.testEnvironment.userAgent;
+    const supplied = meta?.verificationBrowser;
+    if (supplied && (typeof supplied.userAgent !== 'string' || !supplied.userAgent))
+        throw new Error('Invalid runtime browser identity');
+    if (supplied && rawUserAgent && supplied.userAgent !== rawUserAgent)
+        throw new Error('Navigator/axe browser identity mismatch');
+    const userAgent = supplied?.userAgent ?? rawUserAgent;
     if (typeof userAgent !== 'string') return undefined;
     const chromium = /(?:HeadlessChrome|Chrome)\/([\d.]+)/.exec(userAgent);
-    return { name: chromium ? 'chromium' : 'browser', ...(chromium && { version: chromium[1] }), userAgent };
+    return {
+        ...supplied,
+        name: chromium ? 'chromium' : 'browser',
+        ...(chromium && { version: chromium[1] }),
+        userAgent,
+    };
 };

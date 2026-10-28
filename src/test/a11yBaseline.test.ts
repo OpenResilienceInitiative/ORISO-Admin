@@ -290,3 +290,69 @@ describe('completed raw audit evidence on observation failure', () => {
         expect(ctx.parameters).toBe(original);
     });
 });
+
+describe('trusted functional pilot', () => {
+    const functional = () => {
+        const options = {
+            profile: 'functional-pilot' as const,
+            entries: [{ ...baseline(), expires: '2000-01-01' }],
+            environment: () => 'controlled',
+            styles: () => {
+                throw new Error('must not fingerprint');
+            },
+            today: () => '2026-10-28',
+        };
+        return createA11yBaselineGate(options);
+    };
+    it('disables the addon without consulting approvals and records NOT_RUN', () => {
+        const ctx = context();
+        const original = ctx.parameters;
+        const bridge = functional();
+        bridge.begin(ctx);
+        expect(ctx.parameters.a11y).toMatchObject({ disable: true, test: 'off' });
+        const evidence: unknown[] = [];
+        bridge.finish((value) => evidence.push(value));
+        expect(evidence[0]).toMatchObject({
+            profile: 'functional-pilot',
+            auditCount: 0,
+            reports: [],
+            compliance: { status: 'DEFERRED', execution: 'NOT_RUN' },
+        });
+        expect(evidence[0]).not.toHaveProperty('fingerprints');
+        expect(ctx.parameters).toBe(original);
+    });
+    it('retains and rejects unexpected executed error reports', () => {
+        const ctx = context('new');
+        const bridge = functional();
+        bridge.begin(ctx);
+        ctx.reporting.reports.push({ type: 'a11y', result: { error: new Error('unexpected execution') } });
+        const evidence: unknown[] = [];
+        expect(() => bridge.finish((value) => evidence.push(value))).toThrow('unexpected audit report');
+        expect(evidence[0]).toMatchObject({ reports: [{ result: { error: 'Error: unexpected execution' } }] });
+    });
+    it.each(['raw', 'counter'])('retains and rejects unexpected functional %s execution', (kind) => {
+        const ctx = context('new');
+        const original = ctx.parameters;
+        const bridge = createA11yBaselineGate({
+            entries: [],
+            environment: () => 'controlled',
+            styles: () => [],
+            today: () => '2026-10-28',
+            profile: 'functional-pilot',
+            witness: () => ({ moduleLoaded: true, invocationCount: kind === 'counter' ? 1 : 0 }),
+        });
+        bridge.begin(ctx);
+        if (kind === 'raw') report(ctx, result([]));
+        const evidence: unknown[] = [];
+        expect(() => bridge.finish((value) => evidence.push(value))).toThrow();
+        expect(evidence[0]).toMatchObject({ auditCount: kind === 'raw' ? 1 : 0 });
+        expect(ctx.parameters).toBe(original);
+    });
+    it('rejects a story re-enabling both addon switches even before any report', () => {
+        const ctx = context('new');
+        const bridge = functional();
+        bridge.begin(ctx);
+        Object.assign(ctx.parameters.a11y, { disable: false, test: 'error' });
+        expect(() => bridge.finish()).toThrow('functional profile was mutated');
+    });
+});
