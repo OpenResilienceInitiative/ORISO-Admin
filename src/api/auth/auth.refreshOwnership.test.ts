@@ -3,6 +3,9 @@ import { handleTokenRefresh, tryRefreshAccessToken } from './auth';
 import { clearAuthTokensViaBff, refreshAuthTokensViaBff, setAuthTokensViaBff } from './authBffClient';
 import { clearSessionTokens, getSessionAccessToken, setSessionTokens } from './tokenSessionStore';
 import type { LoginData } from '../../types/loginData';
+import { AccountOperationIntent } from '../../utils/accountOperationIntent';
+import { recordAccountOperationResponse } from '../../utils/accountOperationState';
+import { settleOwnConsultantIdentityMutation } from '../../utils/settleOwnConsultantIdentityMutation';
 import {
     ACCESS_TOKEN_VALID_UNTIL_KEY,
     REFRESH_TOKEN_VALID_UNTIL_KEY,
@@ -44,6 +47,40 @@ beforeEach(() => {
 });
 
 describe('actual refresh session ownership', () => {
+    it.each([403, 503])('recovers an unknown own mutation after an older refresh for status %s', async (status) => {
+        const older = deferred();
+        const afterMutation = deferred();
+        vi.mocked(refreshAuthTokensViaBff)
+            .mockReturnValueOnce(older.promise)
+            .mockReturnValueOnce(afterMutation.promise);
+        const beforeMutation = tryRefreshAccessToken();
+        const intent = new AccountOperationIntent('11111111-1111-4111-8111-111111111111');
+        const observedTokens: string[] = [];
+        const observedKeys: string[] = [];
+        const error = new Error('Synthetic lost role-changing reply');
+        recordAccountOperationResponse(error, new Response(null, { status }));
+        const send = async () => {
+            observedTokens.push(getSessionAccessToken());
+            observedKeys.push(intent.headersFor('DELETE', '/consultants/original')['Idempotency-Key']);
+            if (observedTokens.length === 1) throw error;
+            if (getSessionAccessToken() !== token('original', 3))
+                throw new Error('Pre-mutation roles cannot read receipt');
+            return 'committed-receipt';
+        };
+        const recovery = settleOwnConsultantIdentityMutation('original', intent, send, { recoverOwnIdentity: true });
+        const outcome = recovery.then(
+            (value) => ({ value }),
+            (failure) => ({ failure }),
+        );
+        older.resolve(response('original', 2));
+        afterMutation.resolve(response('original', 3));
+        await expect(beforeMutation).resolves.toBe(true);
+        await expect(outcome).resolves.toEqual({ value: 'committed-receipt' });
+        expect(observedTokens).toEqual([token('original', 1), token('original', 3)]);
+        expect(observedKeys).toEqual([intent.id, intent.id]);
+        expect(getSessionAccessToken()).toBe(token('original', 3));
+    });
+
     it('keeps one in-flight request for ordinary same-person callers', async () => {
         const pending = deferred();
         vi.mocked(refreshAuthTokensViaBff).mockReturnValue(pending.promise);

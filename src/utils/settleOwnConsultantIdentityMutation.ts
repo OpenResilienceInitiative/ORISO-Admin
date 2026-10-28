@@ -36,7 +36,7 @@ export const settleOwnConsultantIdentityMutation = async <T>(
             throw error;
         // Refresh once as the same person and replay the original request.
         // Observing the changed roles is not a replacement for its receipt.
-        if (!(await tryRefreshAccessToken())) throw error;
+        if (!(await tryRefreshAccessToken({ afterInFlight: true }))) throw error;
         if (accountOperationOwner(getSessionAccessToken()) !== owner)
             throw new Error(FETCH_ERRORS.REQUEST_IDENTITY_CHANGED);
         result = await attempt();
