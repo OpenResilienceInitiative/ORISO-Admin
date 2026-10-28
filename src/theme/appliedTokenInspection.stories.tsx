@@ -80,6 +80,48 @@ const serialize = (property: string, value: string) => {
     }
 };
 
+// Diagnostic reads are lazy and never run in ordinary stories or polling callbacks.
+const captureTokenCSS = (
+    phase: string,
+    canvas: HTMLElement,
+    context: InspectionReport['context'],
+    target: Element | null,
+    id: string,
+    expected: string,
+) => {
+    markTokenDiagnostic(phase, context, () => {
+        try {
+            const report = JSON.parse(within(canvas).getByLabelText('Applied token report').textContent || 'null');
+            const observation = report?.observations?.find((entry: Observation) => entry.id === id);
+            const selector = observation?.target?.selector;
+            const reportedTarget = selector ? canvas.querySelector(selector) : null;
+            return {
+                id,
+                selector,
+                sameTarget: target === reportedTarget,
+                connected: target?.isConnected ?? false,
+                contained: target ? canvas.contains(target) : false,
+                computed: target ? getComputedStyle(target).backgroundColor : null,
+                selectorCount: selector ? canvas.querySelectorAll(selector).length : 0,
+                authoredBackground: target instanceof HTMLElement ? target.style.backgroundColor : null,
+                authoredPriority:
+                    target instanceof HTMLElement ? target.style.getPropertyPriority('background-color') : null,
+                expected,
+                report: observation
+                    ? { actual: observation.actual, expected: observation.expected, status: observation.status }
+                    : null,
+                root: {
+                    fieldSurface: document.documentElement.style.getPropertyValue('--admin-field-surface'),
+                    primary: document.documentElement.style.getPropertyValue('--m3-primary'),
+                    language: document.documentElement.lang,
+                },
+            };
+        } catch {
+            return { id, receiptError: 'CSS target/report could not be read' };
+        }
+    });
+};
+
 const withDeclaration = async (
     target: HTMLElement,
     property: string,
@@ -283,21 +325,70 @@ export const ComponentOverrideAndRestore: Story = {
         ];
         const observation = () => findObservation(readReport(canvasElement), 'component:field-input:background-color');
         expect(observation().status).toBe('match');
-        await withDeclaration(input, 'background-color', '#00ff00', async () => {
-            // Polling observes document mutations; normalization must happen once before it starts.
-            const overrideBackground = serialize('background-color', '#00ff00');
-            await waitFor(() => {
-                expect(getComputedStyle(input).backgroundColor).toBe(overrideBackground);
-                expect(observation()).toMatchObject({
+        captureTokenCSS(
+            'override:before-mutation',
+            canvasElement,
+            contexts[0],
+            input,
+            'component:field-input:background-color',
+            expected,
+        );
+        try {
+            await withDeclaration(input, 'background-color', '#00ff00', async () => {
+                // Polling observes document mutations; normalization must happen once before it starts.
+                const overrideBackground = serialize('background-color', '#00ff00');
+                captureTokenCSS(
+                    'override:before-assert',
+                    canvasElement,
+                    contexts[0],
+                    input,
+                    'component:field-input:background-color',
                     expected,
-                    actual: getComputedStyle(input).backgroundColor,
-                    status: 'mismatch',
-                });
-                expect(
-                    within(canvasElement).getByRole('row', { name: /field-input.*background-color/ }),
-                ).toHaveTextContent('mismatch');
+                );
+                try {
+                    await waitFor(() => {
+                        expect(getComputedStyle(input).backgroundColor).toBe(overrideBackground);
+                        expect(observation()).toMatchObject({
+                            expected,
+                            actual: getComputedStyle(input).backgroundColor,
+                            status: 'mismatch',
+                        });
+                        expect(
+                            within(canvasElement).getByRole('row', { name: /field-input.*background-color/ }),
+                        ).toHaveTextContent('mismatch');
+                    });
+                } catch (error) {
+                    captureTokenCSS(
+                        'override:failure-before-restore',
+                        canvasElement,
+                        contexts[0],
+                        input,
+                        'component:field-input:background-color',
+                        expected,
+                    );
+                    throw error;
+                }
             });
-        });
+        } catch (error) {
+            captureTokenCSS(
+                'override:failure-after-restore',
+                canvasElement,
+                contexts[0],
+                input,
+                'component:field-input:background-color',
+                expected,
+            );
+            throw error;
+        } finally {
+            captureTokenCSS(
+                'override:after-restore',
+                canvasElement,
+                contexts[0],
+                input,
+                'component:field-input:background-color',
+                expected,
+            );
+        }
         await waitFor(() => expect(observation().status).toBe('match'));
     },
 };
@@ -374,15 +465,30 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
         const context = contexts[7];
         expect(readReport(canvasElement).context).toMatchObject(context);
         const button = findObservation(readReport(canvasElement), 'component:bridge-primary-button:background-color');
-        expect(button).toMatchObject({
-            expected: computeOrisoPalette({ accentDark: context.primaryColor }, context.scheme).tokens['--m3-primary'],
-            status: 'match',
-        });
-        expect(button.target).toMatchObject({ selector: expect.any(String), property: 'background-color' });
-        const target = button.target ? canvasElement.querySelector(button.target.selector) : null;
-        if (!(target instanceof HTMLButtonElement)) throw new Error('The observation must name the real M3 button');
-        expect(target).toHaveAccessibleName(i18n.t('save'));
-        expect(button.actual).toBe(getComputedStyle(target).backgroundColor);
-        expect(button.actual).toBe(serialize('background-color', button.expected));
+        const expected = computeOrisoPalette({ accentDark: context.primaryColor }, context.scheme).tokens[
+            '--m3-primary'
+        ];
+        const diagnosticTarget =
+            import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC && button.target
+                ? canvasElement.querySelector(button.target.selector)
+                : null;
+        captureTokenCSS('bridge:before-assert', canvasElement, context, diagnosticTarget, button.id, expected);
+        try {
+            expect(button).toMatchObject({
+                expected,
+                status: 'match',
+            });
+            expect(button.target).toMatchObject({ selector: expect.any(String), property: 'background-color' });
+            const target = button.target ? canvasElement.querySelector(button.target.selector) : null;
+            if (!(target instanceof HTMLButtonElement)) throw new Error('The observation must name the real M3 button');
+            expect(target).toHaveAccessibleName(i18n.t('save'));
+            expect(button.actual).toBe(getComputedStyle(target).backgroundColor);
+            expect(button.actual).toBe(serialize('background-color', button.expected));
+        } catch (error) {
+            captureTokenCSS('bridge:failure', canvasElement, context, diagnosticTarget, button.id, expected);
+            throw error;
+        } finally {
+            captureTokenCSS('bridge:finally', canvasElement, context, diagnosticTarget, button.id, expected);
+        }
     },
 };
