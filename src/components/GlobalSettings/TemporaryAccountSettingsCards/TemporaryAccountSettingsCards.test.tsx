@@ -180,9 +180,13 @@ it('reloads the confirmed settings after a conflict', async () => {
 
 it('sends the revision an open card was loaded with, so a sibling conflict cannot overwrite newer values', async () => {
     let stored = defaults;
+    let reads = 0;
     const payloads: TemporaryAccountSettings[] = [];
     server.use(
-        http.get(ENDPOINT, () => HttpResponse.json(stored)),
+        http.get(ENDPOINT, () => {
+            reads += 1;
+            return HttpResponse.json(stored);
+        }),
         http.put(ENDPOINT, async ({ request }) => {
             const body = (await request.json()) as TemporaryAccountSettings;
             payloads.push(body);
@@ -202,6 +206,8 @@ it('sends the revision an open card was loaded with, so a sibling conflict canno
     await userEvent.click(messages.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(payloads).toHaveLength(1));
     expect(await screen.findByText(/Die Einstellungen wurden zwischenzeitlich geändert/)).toBeVisible();
+    // The conflict refetch has brought revision 1 into the shared query.
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
     await userEvent.click(guest.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(payloads).toHaveLength(2));
     expect(payloads[1].revision).toBe(0);
