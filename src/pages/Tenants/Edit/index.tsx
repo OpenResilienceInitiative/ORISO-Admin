@@ -46,7 +46,7 @@ export const TenantEditOrAdd = () => {
                             titleKey: 'tenants.edit.tabs.general',
                             iconName: 'master_data',
                         },
-                        !settings.multitenancyWithSingleDomainEnabled && {
+                        {
                             to: `/admin/tenants/${id}/theme-settings`,
                             titleKey: 'tenants.edit.tabs.themeSettings',
                             iconName: 'appearance',

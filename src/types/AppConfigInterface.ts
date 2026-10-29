@@ -39,6 +39,8 @@ export interface AppConfigInterface {
     globalFeatureSystemNotificationEmailsEnabled?: boolean;
     /** Platform policy (ADR-014 amendment 2026-09-25): every agency holds at most one topic. */
     oneTopicPerAgencyEnabled?: boolean;
+    /** Fallback support e-mail shown to counsellors when a centre has no chat-reachable admin (ORISO-Frontend#1915). */
+    supportEmail?: string;
     /** ORISO-Frontend#1876: postcode prefill when an asker requests further counselling. */
     furtherCounsellingPostcodeMode?: FurtherCounsellingPostcodeMode;
     /** ORISO-Frontend#1876: reaction to two accepted conversations on the same topic. */

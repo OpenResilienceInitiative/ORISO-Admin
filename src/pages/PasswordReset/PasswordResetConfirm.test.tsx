@@ -35,6 +35,7 @@ describe('PasswordResetConfirmForm', () => {
             expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'SecurePass1!');
         });
         expect(await screen.findByRole('heading', { name: 'passwordReset.successTitle' })).toBeInTheDocument();
+        expect(screen.getByText('passwordReset.successDescription.counsellorHint')).toBeInTheDocument();
     });
 
     it('keeps the form visible and shows a non-destructive error when confirmation fails', async () => {
