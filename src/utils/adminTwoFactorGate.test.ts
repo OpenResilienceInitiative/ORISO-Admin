@@ -38,6 +38,42 @@ describe('requiresMandatoryTwoFactor (#891)', () => {
             expect(gate({ roles: [UserRole.TenantAdmin], userData: userData(false) })).toBe(true);
         });
 
+        // Platform (super) admins: tenant-admin + agency-admin with tenantId 0
+        // (useUserRoles.isSuperAdmin). Mandatory for them too (ORISO-Frontend#1931
+        // product decision); the role sets are the ones UserService and the Helm
+        // break-glass runbook actually grant, so a narrower set would still be caught.
+        describe.each([
+            ['created by UserService', [UserRole.UserAdmin, UserRole.AgencyAdmin, UserRole.TenantAdmin]],
+            [
+                'with topic-admin (multi-domain)',
+                [UserRole.UserAdmin, UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.TopicAdmin],
+            ],
+            [
+                'break-glass (every admin role)',
+                [
+                    UserRole.UserAdmin,
+                    UserRole.TenantAdmin,
+                    UserRole.SingleTenantAdmin,
+                    UserRole.AgencyAdmin,
+                    UserRole.TopicAdmin,
+                    UserRole.RestrictedAgencyAdmin,
+                ],
+            ],
+        ])('platform admin %s', (_label, roles) => {
+            it('is held on the enrolment screen without an active factor', () => {
+                expect(hasMandatoryTwoFactorRole(roles)).toBe(true);
+                expect(gate({ roles, userData: userData(false) })).toBe(true);
+            });
+
+            it('is held while the 2FA state is unknown', () => {
+                expect(gate({ roles, userData: undefined })).toBe(true);
+            });
+
+            it('passes once the factor is active', () => {
+                expect(gate({ roles, userData: userData(true) })).toBe(false);
+            });
+        });
+
         it('covers mixed-role accounts through their admin role', () => {
             const roles = [UserRole.TopicAdmin, UserRole.AgencyAdmin];
             expect(gate({ roles, userData: userData(false) })).toBe(true);
