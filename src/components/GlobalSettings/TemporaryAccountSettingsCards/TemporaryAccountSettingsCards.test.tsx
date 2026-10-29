@@ -135,11 +135,21 @@ it.each([
     expect(saved).toBe(false);
 });
 
-it('is not shown to a Träger admin and asks the server nothing', () => {
+it('is not shown to a Träger admin and asks the server nothing', async () => {
+    const requests: string[] = [];
+    server.events.on('request:start', ({ request }) => {
+        if (request.url.includes('temporary-account-settings')) requests.push(request.url);
+    });
     signInAs(7);
     showCards();
+    // Settle on a later render tick: a GET would already have started by then.
+    await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+    });
+    server.events.removeAllListeners();
     expect(screen.queryByText('Temporäre Gastkonten')).not.toBeInTheDocument();
     expect(screen.queryByText('Nachrichten von temporären Konten')).not.toBeInTheDocument();
+    expect(requests).toEqual([]);
 });
 
 it('shows a load failure in both cards without making defaults editable', async () => {
