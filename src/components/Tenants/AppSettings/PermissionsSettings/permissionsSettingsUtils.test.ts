@@ -10,6 +10,7 @@ import {
     getEnforcedOnFields,
     getForcedOffFields,
     getRestrictedFields,
+    platformPresetValues,
     isSubToggleDisabled,
     syncMasterTogglesToTenantAdminControls,
 } from './permissionsSettingsUtils';
@@ -224,5 +225,30 @@ describe('permissions settings utils', () => {
         expect(
             isSubToggleDisabled({ key: 'anonymous' } as any, ['settings', 'featureAnonymousChatEnabled'], false),
         ).toBe(false);
+    });
+});
+
+// ORISO-Admin#1242 / TenantService#332: an omitted direct-invite field keeps the stored value, so a save
+// must always carry an explicit boolean for all three.
+describe('platformPresetValues direct invitations', () => {
+    const keys = [
+        'featureDirectInviteChatEnabled',
+        'featureDirectInviteAudioEnabled',
+        'featureDirectInviteVideoEnabled',
+    ];
+
+    it('seeds all three as explicit true', () => {
+        const preset = platformPresetValues();
+        keys.forEach((key) => expect(preset[key]).toBe(true));
+    });
+
+    it('takes the resolved policy value over the seed', () => {
+        const preset = platformPresetValues({
+            permissionPolicies: {
+                featureDirectInviteVideoEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+            },
+        });
+        expect(preset.featureDirectInviteVideoEnabled).toBe(false);
+        expect(preset.featureDirectInviteChatEnabled).toBe(true);
     });
 });

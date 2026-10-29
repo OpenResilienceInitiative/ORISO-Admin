@@ -73,6 +73,11 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureMediaAiScanOneOnOneChatsEnabled: false,
     featureMediaAiScanGroupChatsEnabled: false,
     featureMediaAiScanSupervisionChatsEnabled: false,
+    // ORISO-Admin#1242: TenantService#332 keeps the stored value when a save omits these, so every
+    // save sends them explicitly; default on like every conversation feature.
+    featureDirectInviteChatEnabled: true,
+    featureDirectInviteAudioEnabled: true,
+    featureDirectInviteVideoEnabled: true,
 } as const;
 
 export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {

@@ -1,3 +1,15 @@
+export const FURTHER_COUNSELLING_POSTCODE_MODES = ['SMART', 'ALWAYS_EMPTY'] as const;
+export type FurtherCounsellingPostcodeMode = (typeof FURTHER_COUNSELLING_POSTCODE_MODES)[number];
+
+/** Display order of the admin card. Only the first mode is accepted by CTS until ORISO-Frontend#1878. */
+export const TOPIC_DUPLICATE_MODES = [
+    'INFORM_EXISTING_COUNSELLOR_ONCE',
+    'INFORM_BOTH_ONCE',
+    'INFORM_BOTH_EVERY_MESSAGE',
+    'FORBID',
+] as const;
+export type TopicDuplicateMode = (typeof TOPIC_DUPLICATE_MODES)[number];
+
 export interface AppConfigInterface {
     /** Feature flag to enable SSO on budibase */
     budibaseSSO?: boolean; //
@@ -29,6 +41,10 @@ export interface AppConfigInterface {
     oneTopicPerAgencyEnabled?: boolean;
     /** Fallback support e-mail shown to counsellors when a centre has no chat-reachable admin (ORISO-Frontend#1915). */
     supportEmail?: string;
+    /** ORISO-Frontend#1876: postcode prefill when an asker requests further counselling. */
+    furtherCounsellingPostcodeMode?: FurtherCounsellingPostcodeMode;
+    /** ORISO-Frontend#1876: reaction to two accepted conversations on the same topic. */
+    topicDuplicateMode?: TopicDuplicateMode;
     globalSmtpEnabled?: boolean;
     globalSmtpHost?: string;
     globalSmtpPort?: string;

@@ -66,6 +66,8 @@ export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
 export const accountInactivityActivityEndpoint = `${userServiceURL}/service/users/account-inactivity/activity`;
+// Temporary accounts from direct links (ORISO-Admin#1241, ORISO-UserService#1476): platform admin only.
+export const temporaryAccountSettingsEndpoint = `${userServiceURL}/service/users/admin/temporary-account-settings`;
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
