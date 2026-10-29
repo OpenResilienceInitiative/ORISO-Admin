@@ -285,15 +285,14 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
-const masterButton = async () => {
-    const card = await screen.findByTestId('case-handover-card');
-    const row = await waitFor(() => {
-        const found = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
-        if (!found) throw new Error('Case handover master policy is missing');
-        return found;
-    });
-    return within(row).findByRole('button', { name: /Open policy choices/i });
+const currentMasterButton = () => {
+    const card = screen.getByTestId('case-handover-card');
+    const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+    if (!row) throw new Error('Case handover master policy is missing');
+    return within(row).getByRole('button', { name: /Open policy choices/i });
 };
+
+const masterButton = () => waitFor(currentMasterButton);
 
 const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
@@ -315,10 +314,10 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.master.value).toBe(false));
-        await waitFor(async () => expect(await masterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
         await chooseMaster(true);
         await waitFor(() => expect(server.master.value).toBe(true));
-        await waitFor(async () => expect(await masterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
 
         expect(server.canonicalWrites).toHaveLength(2);
         expect(
@@ -381,7 +380,7 @@ describe('agency handover master HTTP boundary', () => {
                     i18n.t(`tenants.permissions.policy.${value ? 'activationSuggested' : 'deactivationSuggested'}`),
                 ),
             );
-            expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
+            expect(await screen.findByText(/Träger administration sets these rules/i)).toBeVisible();
             expect(
                 screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
             ).toBeNull();
