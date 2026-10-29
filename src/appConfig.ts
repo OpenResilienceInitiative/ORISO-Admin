@@ -8,6 +8,8 @@ const { subdomain } = getLocationVariables();
 
 export const mainURL = runtimeConfig.apiBaseUrl;
 export const appURL = runtimeConfig.appBaseUrl;
+/** APP_URL exactly as configured; '' when unset (unlike `appURL`, no API fallback). */
+export const configuredAppURL = runtimeConfig.configuredAppUrl;
 export const matrixURL = runtimeConfig.matrixBaseUrl;
 const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;

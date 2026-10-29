@@ -1,12 +1,13 @@
-import { appURL } from '../../../appConfig';
+import { configuredAppURL } from '../../../appConfig';
 
 /**
  * Base URL of the counselling app (ORISO-Frontend), or `null` when the admin does not know it.
- * `runtimeConfig.appBaseUrl` falls back to the API URL — the admin's own origin on a single-domain
- * deployment — so only an absolute http(s) URL on a different origin counts as a known app URL.
+ * Reads the explicitly configured APP_URL only: `runtimeConfig.appBaseUrl` falls back to the API URL,
+ * which may be a different origin than the counselling app. An absolute http(s) URL on the admin's own
+ * origin is hidden too (single-domain deployments).
  */
 export const getCounsellingAppUrl = (
-    baseUrl: string = appURL,
+    baseUrl: string = configuredAppURL,
     currentOrigin: string = window.location.origin,
 ): string | null => {
     const trimmed = baseUrl.trim();

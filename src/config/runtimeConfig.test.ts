@@ -170,3 +170,16 @@ describe('runtimeConfig app base URL', () => {
         expect(runtimeConfig.appBaseUrl).toBe('https://app.example.org');
     });
 });
+
+describe('runtimeConfig configuredAppUrl', () => {
+    it('is empty when APP_URL is unset, while appBaseUrl still falls back to the API', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'api.example.org' });
+        expect(runtimeConfig.configuredAppUrl).toBe('');
+        expect(runtimeConfig.appBaseUrl).toBe('https://api.example.org');
+    });
+
+    it('is the configured APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'api.example.org', APP_URL: 'app.example.org' });
+        expect(runtimeConfig.configuredAppUrl).toBe('https://app.example.org');
+    });
+});
