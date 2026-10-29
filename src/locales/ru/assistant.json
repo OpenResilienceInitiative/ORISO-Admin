@@ -31,5 +31,11 @@
     "tenants.permissions.asker.channels.browserSelfHelp": "Браузер для групп взаимопомощи",
     "settings.assistant.inherit": "Использовать унаследованную настройку",
     "settings.assistant.inheritedIcon": "Унаследованный значок",
-    "settings.assistant.loadError": "Не удалось загрузить настройки. Попробуйте ещё раз."
+    "settings.assistant.loadError": "Не удалось загрузить настройки. Попробуйте ещё раз.",
+    "tenants.permissions.asker.collection.title": "Где можно оставить адрес электронной почты",
+    "tenants.permissions.asker.collection.agencyCounselling": "Адрес электронной почты при консультировании",
+    "tenants.permissions.asker.collection.liveChat": "Адрес электронной почты в живом чате",
+    "tenants.permissions.asker.collection.selfHelp": "Адрес электронной почты в группах взаимопомощи",
+    "tenants.permissions.asker.collection.masterOff": "Сначала разрешите адрес электронной почты для аккаунта. Выбранные настройки сохраняются.",
+    "tenants.permissions.asker.collection.description": "Эти настройки разрешают сбор адреса. Они не делают адрес обязательным и не меняют отправку уведомлений."
 }

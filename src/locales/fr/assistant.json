@@ -31,5 +31,11 @@
     "tenants.permissions.asker.channels.browserSelfHelp": "Navigateur pour les groupes d’entraide",
     "settings.assistant.inherit": "Utiliser le réglage hérité",
     "settings.assistant.inheritedIcon": "Icône héritée",
-    "settings.assistant.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer."
+    "settings.assistant.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer.",
+    "tenants.permissions.asker.collection.title": "Où une adresse e-mail peut être communiquée",
+    "tenants.permissions.asker.collection.agencyCounselling": "Adresse e-mail pour le conseil",
+    "tenants.permissions.asker.collection.liveChat": "Adresse e-mail dans le chat en direct",
+    "tenants.permissions.asker.collection.selfHelp": "Adresse e-mail dans les groupes d’entraide",
+    "tenants.permissions.asker.collection.masterOff": "Autorisez d’abord les adresses e-mail pour le compte. Ces choix sont conservés.",
+    "tenants.permissions.asker.collection.description": "Ces réglages autorisent la collecte. Ils ne rendent pas l’adresse obligatoire et ne modifient pas les notifications."
 }

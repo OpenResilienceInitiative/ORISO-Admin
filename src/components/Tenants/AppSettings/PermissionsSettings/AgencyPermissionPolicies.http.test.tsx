@@ -60,6 +60,9 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
         const accountPolicies = {
             featureDisplayNameEditable: { value: false, mode: 'SUGGESTED', inherited: true },
             featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            featureAskerEmailCollectionAgencyCounsellingEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
+            featureAskerEmailCollectionLiveChatEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            featureAskerEmailCollectionSelfHelpEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
         };
         vi.stubGlobal(
             'fetch',
@@ -88,6 +91,9 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             [
                 ['featureDisplayNameEditable', 'deactivationSuggested', 'BlockIcon'],
                 ['featureAskerEmailEnabled', 'activationSuggested', 'CheckIcon'],
+                ['featureAskerEmailCollectionAgencyCounsellingEnabled', 'deactivationSuggested', 'BlockIcon'],
+                ['featureAskerEmailCollectionLiveChatEnabled', 'activationSuggested', 'CheckIcon'],
+                ['featureAskerEmailCollectionSelfHelpEnabled', 'deactivationSuggested', 'BlockIcon'],
             ].map(async ([key, action, icon]) => {
                 await waitFor(() => expect(document.querySelector(`[data-feature-policy="${key}"]`)).not.toBeNull());
                 const row = within(document.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`)!);
