@@ -1,0 +1,33 @@
+@use '../../../styles/muiSpacing' as mui;
+
+.card {
+    width: 100%;
+}
+
+.group {
+    display: grid;
+    gap: mui.$mui-unit;
+    margin: 0 0 mui.$mui-unit * 2;
+}
+
+.groupTitle {
+    margin: 0;
+    color: var(--m3-on-surface);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.groupHint {
+    margin: 0;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.scope {
+    margin: mui.$mui-unit 0 0;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+}
