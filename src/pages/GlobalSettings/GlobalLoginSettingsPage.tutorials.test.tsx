@@ -25,6 +25,9 @@ vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => (
 vi.mock('../../components/GlobalSettings/OneTopicPerAgencySettingsCard', () => ({
     OneTopicPerAgencySettingsCardContainer: () => <div data-testid="topics-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div />,
 }));
