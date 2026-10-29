@@ -32,6 +32,8 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
+import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
+import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
@@ -98,6 +100,16 @@ export const GlobalLoginSettingsPage = () => {
                     <section className={styles.globalConfigCardSlot}>
                         <ThemeProvider theme={orisoMuiTheme}>
                             <OneTopicPerAgencySettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <FurtherCounsellingPostcodeSettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <TopicDuplicateSettingsCardContainer />
                         </ThemeProvider>
                     </section>
                     <section className={styles.globalConfigCardSlot}>
