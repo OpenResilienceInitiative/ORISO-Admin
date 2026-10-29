@@ -1,6 +1,7 @@
 import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from 'use-debounce';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import {
     acceptBaseUrlForRole,
@@ -28,6 +29,7 @@ import {
 } from '../../api/agency/searchInviteAgencies';
 import { resolveInviteViewerScope } from '../../constants/linksAccess';
 import { Modal } from '../../components/Modal';
+import { GlobalSearchBar } from '../../components/GlobalSearch/GlobalSearchBar';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -36,14 +38,14 @@ import { InviteComposer, type InviteSendMode, type InviteSubmitOutcome } from '.
 import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import { useInvitePanelCollapsed } from './InvitePanel';
-import { InviteSearchField, useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
+import { useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
 import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
 import { toCreateInviteRequest } from './inviteRequest';
 import { isBulkSelectable, type InviteTab } from './inviteRules';
 import { useInviteBulk } from './useInviteBulk';
-import { useInviteList } from './useInviteList';
+import { INITIAL_INVITE_QUERY, useInviteList, type InviteListQuery } from './useInviteList';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
@@ -105,12 +107,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
     const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
     const [roleSavingIds, setRoleSavingIds] = useState<number[]>([]);
-    // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
-    // (see loadInvites) and the board already filters it client-side by status
-    // bucket, so the query joins that same client-side pipeline instead of
-    // introducing a second, server-paged source the summary counts could not be
-    // derived from.
-    const [searchQuery, setSearchQuery] = useState('');
+    const [listQuery, setListQuery] = useState<InviteListQuery>(INITIAL_INVITE_QUERY);
+    const [listRequest] = useDebounce(listQuery, 250);
+    const searchQuery = listQuery.query;
+    const setSearchQuery = useCallback((query: string) => {
+        setListQuery((current) => ({ ...current, query, page: 1 }));
+    }, []);
 
     // tenantId is a STRING in the JWT: "0" (platform admin) is truthy, so only > 0 is a real own Träger.
     const jwtTenantId = Number(parseUserAuthInfo().tenantId);
@@ -121,7 +123,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const viewerScope: InviteViewerScope = resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
     const tab: InviteTab = isTenantInvite ? 'tenant' : 'counsellor';
-    const { invites, setInvites, tileCounts, loading, reload: loadInvites } = useInviteList(tab, viewerScope);
+    const {
+        invites,
+        setInvites,
+        tileCounts,
+        totalElements,
+        loading: listLoading,
+        error: loadError,
+        reload: loadInvites,
+    } = useInviteList(tab, viewerScope, listRequest);
+    const loading = listLoading || listRequest !== listQuery;
 
     // The backend scopes the agency search per role, so an empty query returns
     // exactly the agency admin's own agencies.
@@ -288,7 +299,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             explainInviteError(error, { t, action, role, idKind: isTenantInvite ? 'tenant' : 'agency' }),
         [isTenantInvite, targetRole, t],
     );
-    const bulk = useInviteBulk({ invites, reload: loadInvites, explain, rememberGeneratedLink });
+    const bulk = useInviteBulk({
+        invites,
+        selectionScope: JSON.stringify([tab, viewerScope, searchQuery.trim(), listQuery.phase]),
+        reload: loadInvites,
+        explain,
+        rememberGeneratedLink,
+    });
 
     // The platform admin picks an existing Träger by name.
     const searchTenantsForPicker = useCallback(async (query: string, page = 1) => {
@@ -655,12 +672,35 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     <InviteProgressBoard
                         invites={invites}
                         loading={loading}
+                        error={loadError}
+                        onRetry={() => {
+                            loadInvites();
+                        }}
                         searchQuery={searchQuery}
+                        serverList={{
+                            page: listQuery.page,
+                            pageSize: listQuery.pageSize,
+                            total: totalElements,
+                            filter: listQuery.phase,
+                            sort: listQuery.sort,
+                            onPageChange: (page) => setListQuery((current) => ({ ...current, page })),
+                            onPageSizeChange: (pageSize) =>
+                                setListQuery((current) => ({ ...current, pageSize, page: 1 })),
+                            onFilterChange: (phase) => setListQuery((current) => ({ ...current, phase, page: 1 })),
+                            onSortChange: (sort) => setListQuery((current) => ({ ...current, sort, page: 1 })),
+                        }}
                         toolbarSearch={
-                            <InviteSearchField
-                                query={searchQuery}
-                                placeholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
-                                onChange={setSearchQuery}
+                            <GlobalSearchBar
+                                variant="pill"
+                                defaultExpanded
+                                clearable
+                                inputType="search"
+                                value={searchQuery}
+                                searchPlaceholder={t(
+                                    'links.inviteProgress.searchPlaceholder',
+                                    'Einladungen durchsuchen',
+                                )}
+                                onSearchChange={setSearchQuery}
                             />
                         }
                         toolbarActions={moreMenu.moreButton}
@@ -668,7 +708,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         selectedIds={bulk.selectedIds}
                         onSelectionChange={bulk.setSelectedIds}
                         isRowSelectable={isBulkSelectable}
-                        selectionDisabled={bulk.running}
+                        selectionDisabled={bulk.running || loading}
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
                         onRevoke={onRevoke}

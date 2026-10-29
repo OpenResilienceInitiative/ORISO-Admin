@@ -66,6 +66,39 @@ describe('account invite API', () => {
         );
     });
 
+    it('sends the literal query, lifecycle buckets and ordering with the requested server page', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 2, size: 10 });
+
+        await listAccountInvites({
+            page: 2,
+            size: 10,
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progressPhases: ['NEEDS_ACTION', 'CLOSED'],
+            sort: 'recipient',
+            sortDirection: 'asc',
+        });
+
+        const request = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example');
+        expect(Object.fromEntries(request.searchParams)).toEqual({
+            page: '2',
+            size: '10',
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progress_phase: 'NEEDS_ACTION,CLOSED',
+            sort: 'recipient',
+            sort_direction: 'asc',
+        });
+    });
+
+    it('does not send whitespace-only search as a filter', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ query: '  \t ' });
+        expect(new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams.has('query')).toBe(
+            false,
+        );
+    });
+
     it('reads the zoneless UTC timestamps of the invite list as UTC', async () => {
         mocks.fetchData.mockResolvedValueOnce({
             content: [{ id: 1, createDate: '2026-09-21T17:26:02', expiresAt: null }],

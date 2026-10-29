@@ -2,6 +2,7 @@ import { ChangeEvent, KeyboardEvent, ReactNode, useEffect, useRef, useState } fr
 import { SearchOutlined } from '@ant-design/icons';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseIcon from '@mui/icons-material/Close';
 import { Input, type InputRef } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,10 @@ export interface GlobalSearchBarProps {
     /** Sibling row controls (fields, split buttons, actions) rendered after the search control. */
     children?: ReactNode;
     className?: string;
+    /** Show a keyboard-accessible action that clears and submits the empty query. */
+    clearable?: boolean;
+    /** Search semantics for list filters; text preserves the existing toolbar contract. */
+    inputType?: 'text' | 'search';
     /** Initial expansion state of the search control. */
     defaultExpanded?: boolean;
     /** Row content rendered BEFORE the search pill (e.g. the composer's "⋮" more-menu). */
@@ -63,6 +68,8 @@ export const GlobalSearchBar = ({
     ariaLabel,
     children,
     className,
+    clearable = false,
+    inputType = 'text',
     defaultExpanded = false,
     expandedWidth = 360,
     leading,
@@ -214,6 +221,7 @@ export const GlobalSearchBar = ({
                             autoComplete="search"
                             className={styles.input}
                             name="search"
+                            type={inputType}
                             onChange={handleSearchChange}
                             onClick={onInputClick}
                             onFocus={onInputFocus}
@@ -222,6 +230,19 @@ export const GlobalSearchBar = ({
                             ref={inputRef}
                             value={searchValue}
                             variant="borderless"
+                        />
+                    )}
+                    {expanded && clearable && searchValue && (
+                        <IconButton
+                            icon={<CloseIcon />}
+                            size={32}
+                            ariaLabel={t('globalSearch.clear', 'Suche leeren')}
+                            onClick={() => {
+                                if (!isControlled) setInternalValue('');
+                                onSearchChange?.('');
+                                onSearch?.('');
+                                inputRef.current?.focus({ preventScroll: true });
+                            }}
                         />
                     )}
                     {trailingButton}

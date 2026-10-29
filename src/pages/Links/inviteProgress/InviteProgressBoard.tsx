@@ -219,6 +219,22 @@ export interface InviteProgressBoardProps {
     toolbarSearch?: ReactNode;
     /** Trailing toolbar controls, e.g. the more-menu (right of the pagination). */
     toolbarActions?: ReactNode;
+    /** Already filtered and sorted server page; omit for self-contained previews and local lists. */
+    serverList?: InviteProgressServerList;
+    error?: boolean;
+    onRetry?: () => void;
+}
+
+export interface InviteProgressServerList {
+    page: number;
+    pageSize: number;
+    total: number;
+    filter: LifecyclePhase | null;
+    sort: DataTableSort | null;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
+    onFilterChange: (filter: LifecyclePhase | null) => void;
+    onSortChange: (sort: DataTableSort | null) => void;
 }
 
 /** Board widths from which all seven columns fit without squeezing the one-line track. */
@@ -350,14 +366,19 @@ export const InviteProgressBoard = ({
     tileCounts,
     toolbarSearch,
     toolbarActions,
+    serverList,
+    error = false,
+    onRetry,
 }: InviteProgressBoardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language || 'de';
-    const [filter, setFilter] = useState<InviteFilter>(null);
+    const [localFilter, setFilter] = useState<InviteFilter>(null);
+    const filter = serverList ? serverList.filter : localFilter;
     // Phones only (CSS): the chip row folds behind a toggle; the selected chip stays visible.
     const [filtersOpen, setFiltersOpen] = useState(false);
     const chipsId = useId();
-    const [sort, setSort] = useState<DataTableSort | null>(null);
+    const [localSort, setSort] = useState<DataTableSort | null>(null);
+    const sort = serverList ? serverList.sort : localSort;
 
     const isTenantTab = targetRole === 'TENANT_ADMIN';
     const boardRef = useRef<HTMLElement>(null);
@@ -409,30 +430,36 @@ export const InviteProgressBoard = ({
         DETAIL_ORDER.filter((detail) => (details[detail] ?? 0) > 0)
             .map((detail) => `${details[detail]} ${detailLabel(detail)}`)
             .join(' · ') || t('links.inviteProgress.detail.none', 'keine');
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
+    const [localPage, setPage] = useState(1);
+    const [localPageSize, setPageSize] = useState(20);
+    const page = serverList ? serverList.page : localPage;
+    const pageSize = serverList ? serverList.pageSize : localPageSize;
 
     // A changed filter always restarts at page 1 — page 3 of a filter that only
     // has one page would otherwise show the empty slot with rows available.
     useEffect(() => {
-        setPage(1);
-    }, [filter, searchQuery]);
+        if (!serverList) setPage(1);
+    }, [filter, searchQuery, serverList]);
 
-    // The chips count the WHOLE list, not the search result: they are the
-    // overview the search is run against, and a "3 Abgeschlossen" that silently
-    // meant "3 among the rows matching fisch" would be a different number every
-    // keystroke.
+    // Server counts cover the complete query result before phase filtering and
+    // paging. Standalone stories keep deriving their counts from the local list.
     const phaseCounts = useMemo(() => tileCounts ?? countLifecyclePhases(invites), [tileCounts, invites]);
     const allCount = tileCounts
         ? LIFECYCLE_PHASES.reduce((sum, phase) => sum + tileCounts[phase].total, 0)
         : invites.length;
 
     const searched = useMemo(
-        () => (searchQuery.trim() ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery)) : invites),
-        [invites, searchQuery],
+        () =>
+            !serverList && searchQuery.trim()
+                ? invites.filter((invite) => matchesInviteQuery(invite, searchQuery))
+                : invites,
+        [invites, searchQuery, serverList],
     );
 
-    const filtered = useMemo(() => searched.filter((invite) => matchesFilter(invite, filter)), [searched, filter]);
+    const filtered = useMemo(
+        () => (serverList ? searched : searched.filter((invite) => matchesFilter(invite, filter))),
+        [searched, filter, serverList],
+    );
 
     /**
      * Switching a chip also prunes the selection down to the rows the
@@ -443,6 +470,10 @@ export const InviteProgressBoard = ({
      * which covers the search-query dimension.
      */
     const applyFilter = (next: InviteFilter) => {
+        if (serverList) {
+            serverList.onFilterChange(next);
+            return;
+        }
         setFilter(next);
         if (selectedIds.length === 0) return;
         const stillVisible = selectedIds.filter((id) =>
@@ -464,16 +495,17 @@ export const InviteProgressBoard = ({
     // Pagination is deliberately excluded: moving to page 2 must not silently
     // drop a selection that spans more than one page.
     useEffect(() => {
+        if (serverList) return;
         const visibleIds = new Set(searched.map((invite) => invite.id));
         const pruned = selectedIds.filter((id) => visibleIds.has(id));
         if (pruned.length !== selectedIds.length) {
             onSelectionChange(pruned);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps -- reacts to the SEARCH RESULT changing, not to the selection itself (that would set-state loop)
-    }, [searched]);
+    }, [searched, serverList]);
 
     const sorted = useMemo(() => {
-        if (!sort) return filtered;
+        if (serverList || !sort) return filtered;
         const factor = sort.direction === 'asc' ? 1 : -1;
         return [...filtered].sort((a, b) => {
             if (sort.key === 'invitedAt') {
@@ -482,19 +514,23 @@ export const InviteProgressBoard = ({
             // Ordered by the string the cell renders, not by the e-mail behind it.
             return factor * inviteDisplayName(a).localeCompare(inviteDisplayName(b), locale);
         });
-    }, [filtered, sort, locale]);
+    }, [filtered, sort, locale, serverList]);
 
-    const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
+    const resultTotal = serverList ? serverList.total : sorted.length;
+    const pageCount = Math.max(1, Math.ceil(resultTotal / pageSize));
     const effectivePage = Math.min(page, pageCount);
-    const pageRows = sorted.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+    const pageRows = serverList ? sorted : sorted.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
 
     // The clamp above only fixes what is rendered. Writing it back keeps the
     // state honest: a shrinking list (revoke + refetch) that grows again would
     // otherwise snap back to the old, higher page without the admin touching
     // the pager.
     useEffect(() => {
-        if (page > pageCount) setPage(pageCount);
-    }, [page, pageCount]);
+        if (!loading && !error && page > pageCount) {
+            if (serverList) serverList.onPageChange(pageCount);
+            else setPage(pageCount);
+        }
+    }, [page, pageCount, loading, error, serverList]);
 
     // A chip beside the role chip: a column pushed the actions out of 1440px, a select made rows taller.
     const showTopicPermission = targetRole !== 'TENANT_ADMIN';
@@ -548,7 +584,7 @@ export const InviteProgressBoard = ({
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    const emptyUnfiltered = invites.length === 0;
+    const emptyUnfiltered = invites.length === 0 && filter == null && !searchQuery.trim() && !error;
     const unfiltered = filter == null && !searchQuery.trim();
     // A short list gets a hint and fading stand-in rows, so the table reads as "fills up here".
     const showNextHint = !loading && unfiltered && invites.length >= 1 && invites.length <= 3;
@@ -569,9 +605,14 @@ export const InviteProgressBoard = ({
             compact
             page={effectivePage}
             pageSize={pageSize}
-            total={sorted.length}
-            onPageChange={setPage}
+            total={resultTotal}
+            disabled={loading}
+            onPageChange={serverList ? serverList.onPageChange : setPage}
             onPageSizeChange={(size) => {
+                if (serverList) {
+                    serverList.onPageSizeChange(size);
+                    return;
+                }
                 setPageSize(size);
                 setPage(1);
             }}
@@ -905,16 +946,32 @@ export const InviteProgressBoard = ({
                         stackedOnMobile
                         loading={loading}
                         skeletonColumns={columns.length}
-                        isEmpty={sorted.length === 0 && !emptyUnfiltered}
+                        isEmpty={error || (sorted.length === 0 && !emptyUnfiltered)}
                         empty={
-                            <div className={styles.empty}>
+                            <div className={styles.empty} role={error ? 'alert' : undefined}>
                                 <EmptyStateIcon aria-hidden className={styles.emptyGraphic} />
                                 <p className={styles.emptyBody}>
-                                    {t('links.inviteProgress.empty.filtered', 'Keine Einladungen für diesen Filter.')}
+                                    {error
+                                        ? t('links.error.loadFailed', 'Could not load links')
+                                        : t(
+                                              'links.inviteProgress.empty.filtered',
+                                              'Keine Einladungen für diesen Filter.',
+                                          )}
                                 </p>
+                                {error && onRetry && (
+                                    <M3Button variant="tonal" onClick={onRetry}>
+                                        {t('links.inviteProgress.retry', 'Erneut laden')}
+                                    </M3Button>
+                                )}
                             </div>
                         }
-                        header={<DataTableHeader columns={columns} sort={sort} onSortChange={setSort} />}
+                        header={
+                            <DataTableHeader
+                                columns={columns}
+                                sort={sort}
+                                onSortChange={serverList ? serverList.onSortChange : setSort}
+                            />
+                        }
                     >
                         {emptyUnfiltered
                             ? Array.from({ length: PLACEHOLDER_ROWS }, (_, index) => (

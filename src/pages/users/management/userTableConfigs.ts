@@ -136,7 +136,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         showAgencyExpand: true,
         showStatus: true,
         editPathPrefix: '/admin/users/agency-admins',
-        searchPlaceholderKey: 'consultant-search-placeholder',
+        searchPlaceholderKey: 'admin-search-placeholder',
         columns: [
             ...baseIdentityColumns(),
             col('agency', true, false, 220),
@@ -155,7 +155,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         showAgencyExpand: false,
         showStatus: true,
         editPathPrefix: '/admin/users/tenant-admins',
-        searchPlaceholderKey: 'consultant-search-placeholder',
+        searchPlaceholderKey: 'admin-search-placeholder',
         columns: [
             ...tenantAdminIdentityColumns(),
             // Right after the person, so a platform admin sees the Träger without scrolling.
@@ -175,7 +175,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         showAgencyExpand: false,
         showStatus: true,
         editPathPrefix: routePathNames.platformAdmins,
-        searchPlaceholderKey: 'consultant-search-placeholder',
+        searchPlaceholderKey: 'admin-search-placeholder',
         columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 80)],
     },
     [TypeOfUser.Users]: {
