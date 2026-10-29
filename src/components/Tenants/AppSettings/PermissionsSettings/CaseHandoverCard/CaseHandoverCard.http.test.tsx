@@ -54,6 +54,7 @@ const storedPolicies = (): Policy[] => [
 const server = {
     store: new Map<string, Policy[]>(),
     putStatus: 200,
+    reasonGetStatus: 200,
     masterPutStatus: 200,
     master: { value: true, mode: 'SUGGESTED', inherited: false } as PolicyValue<boolean>,
     canonicalWrites: [] as Array<Record<string, unknown>>,
@@ -83,6 +84,8 @@ const fetchStub = vi.fn(async (request: Request) => {
     }
     const tenantId = url.searchParams.get('tenantId') ?? '';
     if (request.method === 'GET') {
+        if (server.reasonGetStatus !== 200)
+            return new Response('private upstream failure body', { status: server.reasonGetStatus });
         return Response.json(server.store.get(tenantId) ?? []);
     }
     if (server.putStatus !== 200) {
@@ -128,6 +131,7 @@ beforeEach(() => {
     server.store.set('7', storedPolicies());
     server.store.set('8', storedPolicies());
     server.putStatus = 200;
+    server.reasonGetStatus = 200;
     server.masterPutStatus = 200;
     server.master = { value: true, mode: 'SUGGESTED', inherited: false };
     server.canonicalWrites.length = 0;
@@ -386,6 +390,69 @@ describe('agency handover master HTTP boundary', () => {
             expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
             expect(onFeaturePolicyChange).not.toHaveBeenCalled();
             expect(server.requests.every(({ method }) => method === 'GET')).toBe(true);
+        },
+    );
+});
+
+describe('independent master while reason HTTP authority is unavailable', () => {
+    it.each(['tenant', 'agency'] as const)('keeps the loaded %s master and retries only reasons', async (level) => {
+        server.reasonGetStatus = 500;
+        const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+        server.store.set('7', mixed);
+        const onFeaturePolicyChange = vi.fn();
+        if (level === 'tenant') mountPolicyPage('tenant');
+        else
+            render(
+                <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                    <CaseHandoverCard
+                        tenantId={7}
+                        policyLevel="agency"
+                        permissionPolicies={{ caseHandoverEnabled: server.master }}
+                        onFeaturePolicyChange={onFeaturePolicyChange}
+                    />
+                </QueryClientProvider>,
+            );
+        const alert = await screen.findByTestId('case-handover-card-error');
+        expect(await masterButton()).toHaveAccessibleName(
+            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
+        );
+        if (level === 'agency') {
+            expect(await masterButton()).toBeDisabled();
+            expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
+        } else expect(await masterButton()).toBeEnabled();
+        expect(screen.queryByRole('tablist', { name: /Handover reasons/i })).not.toBeInTheDocument();
+        expect(alert).not.toHaveTextContent('private upstream failure body');
+        server.reasonGetStatus = 200;
+        await userEvent.setup().click(within(alert).getByRole('button', { name: /try again/i }));
+        await screen.findByRole('tablist', { name: /Handover reasons/i });
+        expect(screen.queryByTestId('case-handover-card-error')).not.toBeInTheDocument();
+        expect(server.store.get('7')).toEqual(mixed);
+        expect(server.requests.filter(({ method }) => method === 'PUT')).toEqual([]);
+        expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+    });
+    it.each([
+        { value: true, mode: 'ENFORCED', key: 'activationEnforced' },
+        { value: false, mode: 'ENFORCED', key: 'deactivationEnforced' },
+        { value: true, mode: 'SUGGESTED', key: 'activationSuggested' },
+        { value: false, mode: 'SUGGESTED', key: 'deactivationSuggested' },
+    ] as const)(
+        'saves canonical $key without reason writes during reason GET failure',
+        async ({ value, mode, key }) => {
+            server.reasonGetStatus = 500;
+            const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+            server.store.set('7', mixed);
+            mountPolicyPage('tenant');
+            await screen.findByTestId('case-handover-card-error');
+            await userEvent.setup().click(await masterButton());
+            await userEvent
+                .setup()
+                .click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
+            await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
+            expect(server.master).toMatchObject({ value, mode });
+            expect(
+                server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
+            ).toEqual([]);
+            expect(server.store.get('7')).toEqual(mixed);
         },
     );
 });

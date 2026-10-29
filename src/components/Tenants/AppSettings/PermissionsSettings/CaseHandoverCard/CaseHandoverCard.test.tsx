@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseHandoverCard } from './index';
+import { CaseHandoverCardView, type CaseHandoverCardViewProps } from './CaseHandoverCardView';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
@@ -45,7 +46,8 @@ const mocks = vi.hoisted(() => ({
             policyAuthority: 'platform-admin-default-case-handover-policy',
         },
     ],
-    dataState: { isError: false },
+    dataState: { isError: false, isLoading: false },
+    refetch: vi.fn(),
     mutationState: { isPending: false },
 }));
 
@@ -64,8 +66,9 @@ vi.mock('../../../../../hooks/useCaseHandoverReasonPolicies', async (importOrigi
     ...(await importOriginal<typeof import('../../../../../hooks/useCaseHandoverReasonPolicies')>()),
     useCaseHandoverReasonPoliciesData: () => ({
         data: mocks.policies,
-        isLoading: false,
+        isLoading: mocks.dataState.isLoading,
         isError: mocks.dataState.isError,
+        refetch: mocks.refetch,
     }),
     useCaseHandoverReasonPoliciesMutation: () => ({
         isPending: mocks.mutationState.isPending,
@@ -90,6 +93,7 @@ describe('CaseHandoverCard', () => {
         mocks.mutate.mockReset();
         mocks.policies = mocks.defaultPolicies;
         mocks.dataState.isError = false;
+        mocks.dataState.isLoading = false;
         mocks.mutationState.isPending = false;
     });
 
@@ -335,7 +339,8 @@ describe('CaseHandoverCard', () => {
         render(<CaseHandoverCard tenantId={7} />);
 
         expect(screen.getByTestId('case-handover-card-error')).toBeInTheDocument();
-        expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
+        expect(screen.getByTestId('case-handover-card')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
     });
 
     // After US#1245 the endpoint answers the neutral codes only.
@@ -408,4 +413,88 @@ describe('CaseHandoverCard', () => {
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
     });
+});
+
+describe('reason state is independent from the canonical master view', () => {
+    const viewProps = (): CaseHandoverCardViewProps => ({
+        policies: mocks.defaultPolicies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onClientConsentPolicyChange: vi.fn(),
+        onNotificationTemplateChange: vi.fn(),
+        onMaxAccessDurationChange: vi.fn(),
+        onFeaturePolicyChange: vi.fn(),
+    });
+    it('keeps a loaded canonical master available while only reasons are loading', () => {
+        render(
+            <CaseHandoverCardView
+                {...viewProps()}
+                isLoading
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } }}
+            />,
+        );
+        expect(screen.getByRole('button', { name: /caseHandover.enabled:.*openMenu/ })).toBeEnabled();
+        expect(screen.getByTestId('case-handover-card-loading')).toBeVisible();
+    });
+    it('shows a reason error without stale reason controls and retains canonical master pending semantics', () => {
+        render(
+            <CaseHandoverCardView
+                {...viewProps()}
+                loadError="Reasons unavailable"
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } }}
+                pendingPolicyFields={new Set(['caseHandoverEnabled'])}
+            />,
+        );
+        expect(screen.getByRole('button', { name: /caseHandover.enabled:.*openMenu/ })).toBeDisabled();
+        expect(screen.getByTestId('case-handover-card-error')).toHaveTextContent('Reasons unavailable');
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    });
+    it.each([undefined, JSON.parse('{"caseHandoverEnabled":{"value":true,"mode":"UNKNOWN"}}')])(
+        'does not invent a master from reason preferences without valid canonical authority on reason error',
+        (permissionPolicies) => {
+            render(
+                <CaseHandoverCardView
+                    {...viewProps()}
+                    loadError="Reasons unavailable"
+                    permissionPolicies={permissionPolicies}
+                />,
+            );
+            expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+            expect(screen.getByTestId('case-handover-card-error')).toBeVisible();
+        },
+    );
+});
+
+it('withholds stale canonical master authority until the owning Träger is resolved', async () => {
+    mocks.policies = mocks.defaultPolicies;
+    mocks.dataState.isError = false;
+    mocks.dataState.isLoading = false;
+    const onFeaturePolicyChange = vi.fn();
+    const permissionPolicies = { caseHandoverEnabled: { value: true, mode: 'SUGGESTED' as const, inherited: false } };
+    const view = render(
+        <CaseHandoverCard
+            tenantPending
+            permissionPolicies={permissionPolicies}
+            onFeaturePolicyChange={onFeaturePolicyChange}
+        />,
+    );
+    expect(screen.getByTestId('case-handover-card-loading')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+    expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+    view.rerender(
+        <CaseHandoverCard
+            tenantId={7}
+            tenantPending={false}
+            permissionPolicies={permissionPolicies}
+            onFeaturePolicyChange={onFeaturePolicyChange}
+        />,
+    );
+    const master = screen.getByRole('button', { name: /caseHandover.enabled:.*openMenu/ });
+    expect(master).toBeEnabled();
+    await userEvent.setup().click(master);
+    await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
+    expect(onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', { value: false, mode: 'SUGGESTED' });
 });

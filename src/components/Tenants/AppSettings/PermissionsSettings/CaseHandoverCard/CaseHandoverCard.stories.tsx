@@ -461,3 +461,78 @@ export const Loading: Story = {
         moduleEnabled: false,
     },
 };
+
+/** LOCAL view fixture: reason GET failed independently from a loaded canonical master. */
+export const TenantReasonLoadFailed: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        policyLevel: 'tenant',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+        onFeaturePolicyChange: fn(),
+        onRetryLoad: fn(),
+        onClientConsentPolicyChange: fn(),
+    },
+    render: function ReasonLoadFailedStory(args) {
+        const { t } = useTranslation();
+        return <CaseHandoverCardView {...args} loadError={t('error.loading')} />;
+    },
+    play: async ({ canvas, args }) => {
+        const row = canvas
+            .getByTestId('case-handover-card')
+            .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+        await expect(row).not.toBeNull();
+        if (!row) throw new Error('Loaded canonical master missing');
+        await userEvent.click(within(row).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/ }));
+        await expect(
+            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
+        ).toBeVisible();
+        await expect(
+            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
+        ).toBeVisible();
+        await userEvent.click(
+            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
+        );
+        await expect(args.onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        await expect(args.onClientConsentPolicyChange).not.toHaveBeenCalled();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+        const alert = canvas.getByTestId('case-handover-card-error');
+        await expect(alert).toBeVisible();
+        await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
+        await expect(args.onRetryLoad).toHaveBeenCalled();
+    },
+};
+
+/** Agency projection remains read-only even when the inherited master is only suggested. */
+export const AgencyReasonLoadFailed: Story = {
+    args: {
+        ...TenantReasonLoadFailed.args,
+        policyLevel: 'agency',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: true } },
+        onFeaturePolicyChange: fn(),
+        onRetryLoad: fn(),
+    },
+    render: TenantReasonLoadFailed.render,
+    play: async ({ canvas, args }) => {
+        const row = canvas
+            .getByTestId('case-handover-card')
+            .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+        await expect(row).not.toBeNull();
+        if (!row) throw new Error('Loaded inherited master missing');
+        await expect(within(row).getByRole('button')).toBeDisabled();
+        await expect(canvas.getByTestId('case-handover-read-only-note')).toBeVisible();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+        await expect(args.onFeaturePolicyChange).not.toHaveBeenCalled();
+        await userEvent.click(
+            within(canvas.getByTestId('case-handover-card-error')).getByRole('button', {
+                name: /Erneut versuchen|Try again/i,
+            }),
+        );
+        await expect(args.onRetryLoad).toHaveBeenCalled();
+    },
+};

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
     ReasonPolicySaveFailure,
@@ -54,7 +53,7 @@ export const CaseHandoverCard = ({
     const { isSuperAdmin } = useUserRoles();
     const canEdit = policyLevel !== 'agency' && canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
 
-    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData(tenantId);
+    const { data, isLoading, isError, refetch } = useCaseHandoverReasonPoliciesData(tenantId);
     const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation(tenantId);
 
     // Local mirror so toggles respond immediately; server refetch re-syncs it.
@@ -110,13 +109,11 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
-    if (isError) {
-        return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
-    }
-
     return (
         <CaseHandoverCardView
             policies={policies}
+            loadError={isError ? t('error.loading') : null}
+            onRetryLoad={() => refetch()}
             isLoading={tenantPending || isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
@@ -128,7 +125,7 @@ export const CaseHandoverCard = ({
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}
-            permissionPolicies={permissionPolicies}
+            permissionPolicies={tenantPending ? undefined : permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}
