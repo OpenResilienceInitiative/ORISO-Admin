@@ -2787,5 +2787,14 @@
     "registrationGuide.agencyAdmin.steps.1": "Melden Sie sich mit Ihren eingerichteten Zugangsdaten im Admin-Bereich an. Nutzen Sie bei Bedarf Ihren zweiten Faktor.",
     "registrationGuide.agencyAdmin.steps.2": "Öffnen Sie Ihre Beratungsstelle und ergänzen Sie die verfügbaren Angaben zu Adresse und Kontakt.",
     "registrationGuide.agencyAdmin.steps.3": "Prüfen Sie die angebotenen Einstellungen, bevor Sie Ihr Team oder Ratsuchende zur Nutzung einladen.",
-    "registrationGuide.agencyAdmin.tutorials": "Diese Kurzanleitung ist ohne Anmeldung verfügbar. Wenn Sie auch beraten, finden Sie freigeschaltete Rundgänge in der Beratungs-App unter Hilfe → Rundgänge."
+    "registrationGuide.agencyAdmin.tutorials": "Diese Kurzanleitung ist ohne Anmeldung verfügbar. Wenn Sie auch beraten, finden Sie freigeschaltete Rundgänge in der Beratungs-App unter Hilfe → Rundgänge.",
+    "tenants.permissions.directInvite.title": "Direkteinladung erlauben",
+    "tenants.permissions.directInvite.description": "Legt fest, ob Beratende einen Direktlink erstellen dürfen, der eine Person direkt zu ihnen führt – getrennt nach Chat-Art. Nur wenn es erlaubt ist, sehen Beratende die Karte „Direktlink“.",
+    "tenants.permissions.directInvite.chat": "Chat",
+    "tenants.permissions.directInvite.audio": "Audioanruf",
+    "tenants.permissions.directInvite.video": "Videoanruf",
+    "tenants.permissions.directInvite.offOnTraeger": "Ihr Träger hat das ausgeschaltet. Eine Beratungsstelle kann es deshalb hier nicht einschalten.",
+    "tenants.permissions.directInvite.callsNote": "Audio- und Videoanrufe per Direktlink brauchen zusätzlich die eingeschalteten Anruf-Einstellungen. Wird die Erlaubnis entzogen, funktionieren bestehende Links nicht mehr.",
+    "tenants.permissions.directInvite.enforcedOnTraeger": "Ihr Träger legt das verbindlich fest. Eine Beratungsstelle kann es deshalb hier nicht ändern.",
+    "tenants.permissions.directInvite.traegerUnavailable": "Die Einstellung des Trägers konnte nicht geladen werden. Deshalb kann sie hier gerade nicht geändert werden."
 }
