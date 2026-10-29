@@ -1,5 +1,5 @@
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
-import type { PolicyValue } from './permissionPolicy';
+import type { InternalGroupChatPolicies, PolicyValue } from './permissionPolicy';
 
 export type TenantAdminControls = {
     permissionsPageEnabled?: boolean | null;
@@ -11,4 +11,6 @@ export type TenantAdminControls = {
         appearance?: boolean | null;
     };
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    /** Platform preset for internal group chats (ORISO-TenantService#321). */
+    internalGroupChat?: InternalGroupChatPolicies;
 };
