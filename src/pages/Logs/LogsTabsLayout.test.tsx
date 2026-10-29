@@ -38,13 +38,34 @@ const tabTargets = () =>
 
 describe('LogsTabsLayout', () => {
     it('gives the platform admin the case-handover and inactive-account tabs', () => {
-        renderLayout({ showSupervisor: false, showCaseHandover: true, showInactive: true });
+        renderLayout({ showSupervisor: false, showCaseHandover: true, showInactive: true, showDeletion: false });
 
         expect(tabTargets()).toEqual([routePathNames.caseHandoverLogs, routePathNames.inactiveAccountAuditLogs]);
     });
 
+    it('gives the platform admin the deletion-log tab after the inactive-account tab', () => {
+        renderLayout({
+            showSupervisor: false,
+            showCaseHandover: true,
+            showInactive: true,
+            showDeletion: true,
+        });
+
+        expect(tabTargets()).toEqual([
+            routePathNames.caseHandoverLogs,
+            routePathNames.inactiveAccountAuditLogs,
+            routePathNames.deletionAuditLogs,
+        ]);
+    });
+
+    it('never gives the deletion-log tab to an admin below platform level', () => {
+        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
+
+        expect(tabTargets()).not.toContain(routePathNames.deletionAuditLogs);
+    });
+
     it('gives a Träger admin the supervision and case-handover tabs, never the platform audit', () => {
-        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false });
+        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
 
         expect(tabTargets()).toEqual([routePathNames.logs, routePathNames.caseHandoverLogs]);
     });
@@ -52,21 +73,24 @@ describe('LogsTabsLayout', () => {
     it('gives a Beratungsstellen-Admin the same tabbed section, not a separate menu entry', () => {
         // The lower role levels are exactly what a platform-admin test account never exercises —
         // the blind spot ORISO-Admin#84 was reported from.
-        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false });
+        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
 
         expect(screen.getByRole('tablist')).toBeInTheDocument();
         expect(screen.getAllByRole('tab')).toHaveLength(2);
     });
 
     it('renders no tablist when the admin may read no log view at all', () => {
-        renderLayout({ showSupervisor: false, showCaseHandover: false, showInactive: false });
+        renderLayout({ showSupervisor: false, showCaseHandover: false, showInactive: false, showDeletion: false });
 
         expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
     it('marks only the supervision tab active on /admin/logs, not its sub-route siblings', () => {
         // `/admin/logs` is a prefix of both sibling routes, so the tab needs an exact match.
-        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: true }, routePathNames.logs);
+        renderLayout(
+            { showSupervisor: true, showCaseHandover: true, showInactive: true, showDeletion: false },
+            routePathNames.logs,
+        );
 
         const active = screen.getAllByRole('tab').filter((tab) => tab.getAttribute('aria-current') === 'page');
         expect(active).toHaveLength(1);
@@ -75,7 +99,7 @@ describe('LogsTabsLayout', () => {
 
     it('does not keep the supervision tab active on the case-handover sub-route', () => {
         renderLayout(
-            { showSupervisor: true, showCaseHandover: true, showInactive: true },
+            { showSupervisor: true, showCaseHandover: true, showInactive: true, showDeletion: false },
             routePathNames.caseHandoverLogs,
         );
 

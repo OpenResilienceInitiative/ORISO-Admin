@@ -4,6 +4,7 @@ import { Resource } from '../enums/Resource';
 import {
     canEditCaseHandoverReasonPolicies,
     canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
     canSeeSupervisorLogs,
 } from './caseHandoverAccess';
 
@@ -48,5 +49,20 @@ describe('canEditCaseHandoverReasonPolicies', () => {
         expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Tenant))).toBe(true);
         expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Consultant))).toBe(false);
         expect(canEditCaseHandoverReasonPolicies(false, () => false)).toBe(false);
+    });
+});
+
+describe('canSeeDeletionAuditLogsFor', () => {
+    const canUpdateTenant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Update && resource === Resource.Tenant;
+
+    it('is for platform admins that may update tenants, like the inactive-account audit', () => {
+        expect(canSeeDeletionAuditLogsFor(true, canUpdateTenant)).toBe(true);
+    });
+
+    it('denies every admin below platform level, whatever else they may read', () => {
+        expect(canSeeDeletionAuditLogsFor(false, canUpdateTenant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(false, canReadConsultant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(true, () => false)).toBe(false);
     });
 });
