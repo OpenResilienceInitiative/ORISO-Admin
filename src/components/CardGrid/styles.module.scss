@@ -10,3 +10,19 @@
 
     align-items: stretch;
 }
+
+/* Masonry: CSS columns instead of the grid. Each child is one unbreakable card; the gap
+   below it replaces the grid's row gap. Column count follows the same floor and cap. */
+
+.cardGrid.masonry {
+    display: block;
+    column-count: var(--field-grid-max-columns, 3);
+    column-gap: var(--field-grid-column-gap);
+    column-width: var(--field-grid-min, 280px);
+
+    > * {
+        display: block;
+        margin-bottom: var(--field-grid-row-gap);
+        break-inside: avoid;
+    }
+}

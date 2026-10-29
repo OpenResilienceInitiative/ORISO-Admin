@@ -1,15 +1,18 @@
-import { Col, Row } from 'antd';
 import { Page } from '../../components/Page';
+import { CardGrid } from '../../components/CardGrid';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { UserRole } from '../../enums/UserRole';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { Documentation } from './Documentation';
 import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
+import { Absence } from './Absence';
 import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
+import { RolesAndAssignment } from './RolesAndAssignment';
 import { SelfConsultantIdentity } from './SelfConsultantIdentity';
 import { Card } from '../../components/Card';
+import { ReactComponent as VerifiedIcon } from '../../resources/img/svg/verified.svg';
 import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
 
 export const UserProfile = () => {
@@ -20,25 +23,20 @@ export const UserProfile = () => {
         <Page>
             <Page.Title titleKey="profile.title" subTitleKey="profile.title.text" />
 
-            <Row gutter={[24, 24]}>
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-                    {!hasRole(UserRole.TenantAdmin) && <PrivateData />}
-                    <LanguageSettings />
-                    <PasswordChange />
-                    {settings.documentationEnabled && <Documentation />}
-                </Col>
-
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-                    <TourOverviewSection />
-                    <SelfConsultantIdentity />
-                </Col>
-
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-                    <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
-                        <TwoFactorSetup context="profile" />
-                    </Card>
-                </Col>
-            </Row>
+            {/* Masonry: cards of different heights stack in columns, nothing scrolls sideways. */}
+            <CardGrid masonry minCardWidth={380} maxColumns={3}>
+                {!hasRole(UserRole.TenantAdmin) && <PrivateData />}
+                <RolesAndAssignment />
+                <SelfConsultantIdentity />
+                <PasswordChange />
+                <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle" headerIcon={<VerifiedIcon />}>
+                    <TwoFactorSetup context="profile" />
+                </Card>
+                <LanguageSettings />
+                <Absence />
+                <TourOverviewSection />
+                {settings.documentationEnabled && <Documentation />}
+            </CardGrid>
         </Page>
     );
 };
