@@ -85,10 +85,18 @@ describe('account invite API', () => {
             size: '10',
             tab: 'UNIT',
             query: 'Müller 100% _',
-            progress_phase: 'NEEDS_ACTION,CLOSED',
+            progress_phases: 'NEEDS_ACTION,CLOSED',
             sort: 'recipient',
             sort_direction: 'asc',
         });
+    });
+
+    it('keeps the scalar phase contract for a single selected bucket', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ progressPhases: ['DONE'] });
+        const params = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams;
+        expect(params.get('progress_phase')).toBe('DONE');
+        expect(params.has('progress_phases')).toBe(false);
     });
 
     it('does not send whitespace-only search as a filter', async () => {

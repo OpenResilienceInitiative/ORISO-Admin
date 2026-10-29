@@ -267,7 +267,12 @@ export const listAccountInvites = async (
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
     if (params.query?.trim()) search.set('query', params.query.trim());
-    if (params.progressPhases?.length) search.set('progress_phase', params.progressPhases.join(','));
+    if (params.progressPhases?.length) {
+        search.set(
+            params.progressPhases.length > 1 ? 'progress_phases' : 'progress_phase',
+            params.progressPhases.join(','),
+        );
+    }
     if (params.sort) search.set('sort', params.sort);
     if (params.sortDirection) search.set('sort_direction', params.sortDirection);
 
