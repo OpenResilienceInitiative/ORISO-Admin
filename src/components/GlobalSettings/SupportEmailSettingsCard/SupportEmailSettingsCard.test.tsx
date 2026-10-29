@@ -1,4 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
+import { useEffect, useState, type ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
+import { UseAppConfigProvider, useAppConfigContext } from '../../../context/useAppConfig';
 import { SupportEmailSettingsCard, SupportEmailSettingsCardContainer } from '.';
 
 const SAVED = 'Einstellungen wurden aktualisiert.';
@@ -62,6 +64,30 @@ it('shows the stored address and renders read-only for non-superadmins', () => {
     expect(emailInput()).toHaveValue('hilfe@example.org');
     expect(emailInput()).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+});
+
+/** Mirrors AppSettingsWrapper: children mount only after the settings are seeded. */
+const SeedSupportEmail = ({ value, children }: { value: string; children: ReactNode }) => {
+    const { setManualSettings } = useAppConfigContext();
+    const [seeded, setSeeded] = useState(false);
+    useEffect(() => {
+        setManualSettings({ supportEmail: value });
+        setSeeded(true);
+    }, [setManualSettings, value]);
+    return seeded ? children : null;
+};
+
+it('maps settings.supportEmail from the app config onto the card', async () => {
+    render(
+        <QueryClientProvider client={new QueryClient()}>
+            <UseAppConfigProvider>
+                <SeedSupportEmail value="konfiguriert@example.org">
+                    <SupportEmailSettingsCardContainer />
+                </SeedSupportEmail>
+            </UseAppConfigProvider>
+        </QueryClientProvider>,
+    );
+    expect(await screen.findByLabelText('Support-E-Mail-Adresse')).toHaveValue('konfiguriert@example.org');
 });
 
 it('renders an empty field when nothing is configured', () => {
