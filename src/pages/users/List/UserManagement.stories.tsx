@@ -599,7 +599,12 @@ export const LicenceLimitIgnoresSearch: Story = {
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
 
         await user.click(canvas.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await canvas.findByPlaceholderText(/Suche nach E-Mail-Adresse/), 'Muster');
+        await user.type(
+            await canvas.findByRole('textbox', {
+                name: /Vorname, Nachname, Anzeigename, E-Mail, ID oder Beratungsstelle/,
+            }),
+            'Muster',
+        );
         await waitFor(() => expect(canvas.queryByText('Ben Beispiel')).toBeNull());
         await expect(await canvas.findByText(/^3\/3 Berater/)).toBeVisible();
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();

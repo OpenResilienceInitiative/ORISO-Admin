@@ -5,7 +5,14 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { message } from 'antd';
 import userEvent from '@testing-library/user-event';
 import { InviteCsvImportModal } from './InviteCsvImportModal';
+import { findStoredCsvInvite } from './inviteRequest';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
+
+const recoveryApi = vi.hoisted(() => ({ listAccountInvites: vi.fn() }));
+vi.mock('../../api/accountInvites/accountInvites', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../api/accountInvites/accountInvites')>()),
+    listAccountInvites: recoveryApi.listAccountInvites,
+}));
 
 // antd's Modal/Tooltip/Table query matchMedia, which jsdom does not implement.
 window.matchMedia ??= ((query: string) => ({
@@ -75,7 +82,6 @@ describe('InviteCsvImportModal', () => {
                 createInvite={createInvite}
                 idKind="tenant"
                 parseResult={parseResult}
-                takenTenantIds={new Set([1, 2, 4])}
                 onClose={onClose}
                 onCreated={onCreated}
                 // eslint-disable-next-line react/jsx-props-no-spreading
@@ -83,7 +89,7 @@ describe('InviteCsvImportModal', () => {
             />,
         );
 
-    it('auto-populates empty Träger-IDs with consecutive free ids, skipping taken and batch ids', async () => {
+    it('leaves unspecified Träger IDs to server AUTO allocation and preserves explicit IDs', async () => {
         renderModal(
             parseResultOf({
                 rows: [
@@ -101,19 +107,180 @@ describe('InviteCsvImportModal', () => {
             }),
         );
 
-        // Taken: 1, 2, 4. Explicit: 5. Autos: 3 (row 1) and 6 (row 3, skipping 4 + 5).
-        expect(rowCells('a@example.org').getByText('3')).toBeInTheDocument();
+        // Only the explicit number is shown before creation; empty cells stay AUTO.
+        expect(rowCells('a@example.org').getByText('Automatisch')).toBeInTheDocument();
         expect(rowCells('b@example.org').getByText('5')).toBeInTheDocument();
-        expect(rowCells('c@example.org').getByText('6')).toBeInTheDocument();
+        expect(rowCells('c@example.org').getByText('Automatisch')).toBeInTheDocument();
 
-        // The batch ids flow into the sequential createAccountInvite calls.
+        // Manual rows reserve first; unspecified rows keep AUTO in the sequential requests.
         await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
         await waitFor(() => expect(createInvite).toHaveBeenCalledTimes(3));
-        expect(createInvite.mock.calls.map(([row]) => row.id)).toEqual([3, 5, 6]);
+        expect(createInvite.mock.calls.map(([row]) => row.id)).toEqual([5, undefined, undefined]);
         await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
         expect(onCreated).toHaveBeenCalledTimes(1);
         // Deterministically consume the success message instead of leaving it mid-render.
         expect(await screen.findByText('3 Empfänger angelegt')).toBeInTheDocument();
+    });
+
+    it('recovers an SMTP-stored row independently of a filtered page and never recreates it', async () => {
+        createInvite.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_TRANSPORT_FAILED' }), {
+                status: 502,
+            }),
+        );
+        const recoverStoredInvite = vi
+            .fn()
+            .mockResolvedValue({ id: 81, recipientEmail: 'hidden@example.org', inviteStatus: 'DRAFT', tenantId: 8 });
+        const parseResult = parseResultOf({
+            rows: [{ line: 1, email: 'hidden@example.org', firstName: 'A', lastName: 'One', missingName: false }],
+        });
+        const { rerender } = renderModal(parseResult, { invites: [], recoverStoredInvite });
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+        expect(await rowCells('hidden@example.org').findByText('Angelegt, nicht versendet')).toBeInTheDocument();
+        expect(recoverStoredInvite).toHaveBeenCalledWith(
+            expect.objectContaining({ recipientEmail: 'hidden@example.org' }),
+        );
+        rerender(
+            <InviteCsvImportModal
+                createInvite={createInvite}
+                idKind="tenant"
+                parseResult={parseResult}
+                invites={[]}
+                {...{ recoverStoredInvite }}
+                onClose={onClose}
+                onCreated={onCreated}
+            />,
+        );
+        expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        expect(createInvite).toHaveBeenCalledTimes(1);
+    });
+
+    it('recovers a tenant-admin SMTP invite imported from the counsellor tab into the own tenant', async () => {
+        let stored = false;
+        const invitation = {
+            id: 81,
+            recipientEmail: 'owner@example.org',
+            targetRole: 'TENANT_ADMIN',
+            inviteStatus: 'DRAFT',
+            tenantId: 7,
+        };
+        createInvite.mockImplementation(async () => {
+            stored = true;
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- the server stores the invite before SMTP fails
+            throw new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED' }), { status: 502 });
+        });
+        recoveryApi.listAccountInvites.mockImplementation(
+            async ({ tab, targetRole }: { tab: string; targetRole: string }) => ({
+                content: stored && tab === 'TENANT' && targetRole === 'TENANT_ADMIN' ? [invitation] : [],
+                totalPages: 1,
+            }),
+        );
+        renderModal(
+            parseResultOf({
+                rows: [
+                    {
+                        line: 1,
+                        email: 'owner@example.org',
+                        firstName: 'A',
+                        lastName: 'One',
+                        role: 'TENANT_ADMIN',
+                        target: 'EXISTING',
+                        missingName: false,
+                    },
+                ],
+            }),
+            {
+                idKind: 'agency',
+                tabRole: 'COUNSELLOR',
+                viewerScope: 'tenant',
+                ownTenantKnown: true,
+                invites: [],
+                recoverStoredInvite: findStoredCsvInvite,
+            },
+        );
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+        expect(await rowCells('owner@example.org').findByText('Angelegt, nicht versendet')).toBeInTheDocument();
+        expect(recoveryApi.listAccountInvites).toHaveBeenCalledWith(
+            expect.objectContaining({ query: 'owner@example.org', tab: 'TENANT', targetRole: 'TENANT_ADMIN' }),
+        );
+        expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        expect(createInvite).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the returned AUTO allocation when another row fails and the preview stays open', async () => {
+        createInvite.mockImplementation(async (row: { recipientEmail: string }) => {
+            if (row.recipientEmail === 'auto@example.org') return { inviteId: 91, allocatedId: 8 };
+            // eslint-disable-next-line @typescript-eslint/no-throw-literal -- mirrors the request boundary
+            throw new Response(null, { status: 409 });
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'auto@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    {
+                        line: 2,
+                        email: 'manual@example.org',
+                        firstName: 'B',
+                        lastName: 'Two',
+                        id: 9,
+                        missingName: false,
+                    },
+                ],
+            }),
+        );
+        await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+        expect(await rowCells('auto@example.org').findByText('Angelegt')).toBeInTheDocument();
+        expect(rowCells('auto@example.org').getByText('8')).toBeInTheDocument();
+        expect(createInvite.mock.calls[0][0].id).toBe(9);
+        expect(createInvite.mock.calls[1][0].id).toBeUndefined();
+    });
+    it('blocks another create while authoritative SMTP recovery is unavailable', async () => {
+        createInvite.mockRejectedValue(new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED' }), { status: 502 }));
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'uncertain@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                ],
+            }),
+            { invites: [], recoverStoredInvite: vi.fn().mockRejectedValue(new Error('lookup offline')) },
+        );
+        await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
+        expect(await screen.findByText(/Ob die Einladung gespeichert wurde/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        expect(createInvite).toHaveBeenCalledTimes(1);
+    });
+
+    it('reserves explicit tenant IDs before AUTO can consume a later manual row number', async () => {
+        const reserved = new Set([1]); // ID 1 is hidden on another page.
+        createInvite.mockImplementation(async (row: { id?: number }) => {
+            if (row.id != null) {
+                expect(reserved.has(row.id)).toBe(false);
+                reserved.add(row.id);
+                return { allocatedId: row.id };
+            }
+            let id = 1;
+            while (reserved.has(id)) id += 1;
+            reserved.add(id);
+            return { allocatedId: id };
+        });
+        renderModal(
+            parseResultOf({
+                rows: [
+                    { line: 1, email: 'auto@example.org', firstName: 'A', lastName: 'One', missingName: false },
+                    {
+                        line: 2,
+                        email: 'manual@example.org',
+                        firstName: 'B',
+                        lastName: 'Two',
+                        id: 2,
+                        missingName: false,
+                    },
+                ],
+            }),
+        );
+        await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+        expect(createInvite.mock.calls.map(([row]) => row.id)).toEqual([2, undefined]);
     });
 
     it('marks a per-row 409 as "Träger-ID vergeben" and keeps the modal open', async () => {
@@ -280,7 +447,11 @@ describe('InviteCsvImportModal', () => {
                 { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', missingName: false },
             ],
         });
-        const { rerender } = renderModal(parseResult);
+        const { rerender } = renderModal(parseResult, {
+            recoverStoredInvite: vi
+                .fn()
+                .mockResolvedValue({ id: 5, recipientEmail: 'A@example.org', inviteStatus: 'DRAFT' }),
+        });
 
         await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
         expect(await screen.findByText('0 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
@@ -293,7 +464,6 @@ describe('InviteCsvImportModal', () => {
                 idKind="tenant"
                 invites={[{ id: 5, recipientEmail: 'A@example.org', inviteStatus: 'DRAFT' } as never]}
                 parseResult={parseResult}
-                takenTenantIds={new Set([1, 2, 4])}
                 onClose={onClose}
                 onCreated={onCreated}
             />,
@@ -313,7 +483,7 @@ describe('InviteCsvImportModal', () => {
         const parseResult = parseResultOf({
             rows: [{ line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', missingName: false }],
         });
-        const { rerender } = renderModal(parseResult);
+        const { rerender } = renderModal(parseResult, { recoverStoredInvite: vi.fn().mockResolvedValue(undefined) });
         await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
         expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
 
@@ -324,7 +494,6 @@ describe('InviteCsvImportModal', () => {
                 idKind="tenant"
                 invites={[{ id: 3, recipientEmail: 'a@example.org', inviteStatus: 'EXPIRED' } as never]}
                 parseResult={parseResult}
-                takenTenantIds={new Set([1, 2, 4])}
                 onClose={onClose}
                 onCreated={onCreated}
             />,
@@ -375,7 +544,7 @@ describe('InviteCsvImportModal', () => {
                     { line: 2, email: 'b@example.org', firstName: 'B', lastName: 'Two', id: 42, missingName: false },
                 ],
             }),
-            { idKind: 'agency', takenTenantIds: undefined },
+            { idKind: 'agency' },
         );
 
         // The agency id space is not resolvable client-side: an explicit id shows as
@@ -428,7 +597,7 @@ describe('InviteCsvImportModal', () => {
                     { line: 1, email: 'a@example.org', firstName: 'A', lastName: 'One', id: 42, missingName: false },
                 ],
             }),
-            { idKind: 'agency', takenTenantIds: undefined },
+            { idKind: 'agency' },
         );
 
         await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));

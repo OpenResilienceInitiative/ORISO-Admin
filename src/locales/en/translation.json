@@ -2511,6 +2511,7 @@
     "links.csvImport.status.waitingNoAdmin": "No agency admin: the agency-admin row for this new agency is still missing.",
     "links.csvImport.status.waitingHint": "Goes out once the agency has been created.",
     "links.csvImport.status.storedNotSent": "Created, not sent",
+    "links.csvImport.status.storageUnconfirmedHint": "The invite could not be checked for storage. Check the invite before importing it again.",
     "links.csvImport.status.storedNotSentHint": "The invite is saved. Resend it from the list once e-mail delivery works.",
     "links.composer.alsoCounsellor.no": "Administration only",
     "links.composer.alsoCounsellor.yes": "Also counsels",

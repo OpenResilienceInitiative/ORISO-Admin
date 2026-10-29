@@ -42,7 +42,7 @@ import { useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
 import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
-import { toCreateInviteRequest } from './inviteRequest';
+import { findStoredCsvInvite, toCreateInviteRequest } from './inviteRequest';
 import { isBulkSelectable, type InviteTab } from './inviteRules';
 import { useInviteBulk } from './useInviteBulk';
 import { INITIAL_INVITE_QUERY, useInviteList, type InviteListQuery } from './useInviteList';
@@ -177,64 +177,6 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const ownTenantName =
         knownOwnTenantName ??
         (resolvedOwnTenant && resolvedOwnTenant.id === currentTenantId ? resolvedOwnTenant.name : undefined);
-
-    // Client-side taken-id knowledge (existing tenants + still-active
-    // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
-    // validates against the authoritative allocation endpoints (#570); this set
-    // only pre-flags collisions in the CSV import preview.
-    const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
-
-    useEffect(() => {
-        // Only the platform admin founds new Träger, so only they need the taken numbers.
-        if (!isTenantInvite || !isSuperAdmin) return undefined;
-        let cancelled = false;
-        const loadAllTenantIds = async () => {
-            const perPage = 200;
-            const ids: number[] = [];
-            let page = 1;
-            let total = Number.POSITIVE_INFINITY;
-            while (ids.length < total) {
-                // Pagination is intentionally sequential so each response determines whether another page exists.
-                // eslint-disable-next-line no-await-in-loop
-                const response = await searchTenantData({ page, perPage });
-                const pageIds = (response.data ?? [])
-                    .map((tenant) => tenant.id)
-                    .filter((id): id is number => id != null);
-                ids.push(...pageIds);
-                total = response.total ?? ids.length;
-                if (response.data.length === 0) break;
-                page += 1;
-            }
-            if (!cancelled) {
-                setExistingTenantIds(new Set(ids));
-            }
-        };
-        loadAllTenantIds().catch(() => {
-            // Best-effort pre-flagging only — the CSV preview falls back to the backend's 409.
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [isTenantInvite, isSuperAdmin]);
-
-    // Active-invite tenant ids used to need a second, dedicated full fetch;
-    // since the board loads the COMPLETE list (see loadInvites), they are now a
-    // plain derivation of it — the just-created invite is reflected on reload.
-    const activeInviteTenantIds = useMemo(
-        () =>
-            new Set(
-                invites
-                    .filter((invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT')
-                    .map((invite) => invite.tenantId)
-                    .filter((id): id is number => id != null),
-            ),
-        [invites],
-    );
-
-    const takenTenantIds = useMemo(
-        () => new Set<number>([...existingTenantIds, ...activeInviteTenantIds]),
-        [existingTenantIds, activeInviteTenantIds],
-    );
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
@@ -417,6 +359,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             );
             return {
                 inviteId: created?.id,
+                allocatedId: isTenantInvite ? created?.tenantId ?? undefined : created?.agencyId ?? undefined,
                 waiting: created?.inviteStatus === 'WAITING_FOR_UNIT',
                 noUnitAdmin: created?.queueProblem === 'NO_UNIT_ADMIN',
             };
@@ -754,7 +697,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     viewerScope={viewerScope}
                     ownTenantKnown={currentTenantId != null}
                     parseResult={csvImport.result}
-                    takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
+                    recoverStoredInvite={findStoredCsvInvite}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => loadInvites()}
                 />

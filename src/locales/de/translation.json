@@ -2511,6 +2511,7 @@
     "links.csvImport.status.waitingNoAdmin": "Keine BST-Admin: Für diese neue Beratungsstelle fehlt noch die Zeile der BST-Admin.",
     "links.csvImport.status.waitingHint": "Geht raus, sobald die Beratungsstelle angelegt ist.",
     "links.csvImport.status.storedNotSent": "Angelegt, nicht versendet",
+    "links.csvImport.status.storageUnconfirmedHint": "Ob die Einladung gespeichert wurde, konnte nicht geprüft werden. Prüfen Sie die Einladung vor einem erneuten Import.",
     "links.csvImport.status.storedNotSentHint": "Die Einladung ist gespeichert. Senden Sie sie aus der Liste erneut, sobald der E-Mail-Versand funktioniert.",
     "links.composer.alsoCounsellor.no": "Nur Verwaltung",
     "links.composer.alsoCounsellor.yes": "Berät auch",
