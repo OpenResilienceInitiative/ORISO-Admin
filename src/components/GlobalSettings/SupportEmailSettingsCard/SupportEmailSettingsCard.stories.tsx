@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import i18n from '../../../i18n';
 import { SupportEmailSettingsCard } from '.';
 
 /** ORISO-Frontend#1915: fallback support address when a counselling centre has no chat-reachable admin. */
@@ -19,6 +20,12 @@ const meta = {
         ),
     ],
     args: { value: '', isLoading: false, onSave: fn() },
+    // The play functions query German labels; the preview does not pin i18next's language.
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('de');
+        return () => i18n.changeLanguage(previousLanguage);
+    },
 } satisfies Meta<typeof SupportEmailSettingsCard>;
 export default meta;
 type Story = StoryObj<typeof meta>;
