@@ -88,6 +88,7 @@ export const supervisorLogsEndpoint = `${userServiceURL}/service/users/superviso
 export const caseHandoverLogsEndpoint = `${userServiceURL}/service/users/case-handover/logs`;
 export const caseHandoverReasonPoliciesEndpoint = `${userServiceURL}/service/users/case-handover/reason-policies`;
 export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
+export const deletionAuditLogsEndpoint = `${userServiceURL}/service/users/deletion-audit-logs`;
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const adminListPreferencesEndpoint = `${userServiceURL}/service/useradmin/list-preferences`;
 export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
@@ -137,6 +138,7 @@ const routePathNames = {
     logs: '/admin/logs',
     caseHandoverLogs: '/admin/logs/case-handover',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
+    deletionAuditLogs: '/admin/logs/deletions',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
     imprint: '/impressum',
