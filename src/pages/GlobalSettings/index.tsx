@@ -32,6 +32,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
+import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -113,6 +114,13 @@ export const GlobalLoginSettingsPage = () => {
                                 <AccountInactivitySettingsCardContainer />
                             </ThemeProvider>
                         </section>
+                    )}
+                    {/* ORISO-Admin#1241: temporary guest accounts and their messages, next to the
+                        account-inactivity card. Platform admin only. */}
+                    {isSuperAdmin && (
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <TemporaryAccountSettingsCardsContainer slotClassName={styles.globalConfigCardSlot} />
+                        </ThemeProvider>
                     )}
                     {isSuperAdmin && (
                         <section className={styles.globalConfigCardSlot}>
