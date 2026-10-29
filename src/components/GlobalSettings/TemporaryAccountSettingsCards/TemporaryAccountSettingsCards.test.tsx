@@ -167,3 +167,33 @@ it('reloads the confirmed settings after a conflict', async () => {
     expect(await screen.findByText(/Die Einstellungen wurden zwischenzeitlich geändert/)).toBeVisible();
     await waitFor(() => expect(screen.getByLabelText(/Löschen nach dem Auflegen/)).toHaveValue(45));
 });
+
+it('sends the revision an open card was loaded with, so a sibling conflict cannot overwrite newer values', async () => {
+    let stored = defaults;
+    const payloads: TemporaryAccountSettings[] = [];
+    server.use(
+        http.get(ENDPOINT, () => HttpResponse.json(stored)),
+        http.put(ENDPOINT, async ({ request }) => {
+            const body = (await request.json()) as TemporaryAccountSettings;
+            payloads.push(body);
+            if (body.revision !== stored.revision) return new HttpResponse(null, { status: 409 });
+            stored = { ...body, revision: stored.revision + 1 };
+            return HttpResponse.json(stored);
+        }),
+    );
+    showCards();
+    const guest = await guestCard();
+    await userEvent.click(await guest.findByRole('button', { name: 'Bearbeiten' }));
+    const messages = await messagesCard();
+    await userEvent.click(await messages.findByRole('button', { name: 'Bearbeiten' }));
+    // Another admin changes the lifetimes meanwhile; the messages card hits the conflict first.
+    stored = { ...defaults, callDeleteAfterMinutes: 45, revision: 1 };
+    await userEvent.click(messages.getByRole('radio', { name: 'Immer behalten' }));
+    await userEvent.click(messages.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(payloads).toHaveLength(1));
+    expect(await screen.findByText(/Die Einstellungen wurden zwischenzeitlich geändert/)).toBeVisible();
+    await userEvent.click(guest.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(payloads).toHaveLength(2));
+    expect(payloads[1].revision).toBe(0);
+    expect(stored.callDeleteAfterMinutes).toBe(45);
+});

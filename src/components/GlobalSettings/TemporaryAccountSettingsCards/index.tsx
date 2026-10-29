@@ -31,15 +31,27 @@ export interface TemporaryAccountSettingsCardProps {
 
 type NumberField = keyof typeof TEMPORARY_ACCOUNT_LIMITS;
 
-/** Keeps the form on the confirmed server values while the card is not being edited. */
-const SyncConfirmedSettings = ({ data, editing }: { data?: TemporaryAccountSettings; editing: boolean }) => {
+/**
+ * Keeps the form on the confirmed server values while the card is not being edited, and records the
+ * revision those values came from. A save sends that revision, so stale values end in a 409.
+ */
+const SyncConfirmedSettings = ({
+    data,
+    editing,
+    onSynced,
+}: {
+    data?: TemporaryAccountSettings;
+    editing: boolean;
+    onSynced: (revision: number) => void;
+}) => {
     const form = Form.useFormInstance();
     const syncedRevision = useRef<number | undefined>(undefined);
     useEffect(() => {
         if (!data || editing || syncedRevision.current === data.revision) return;
         form.setFieldsValue(data);
         syncedRevision.current = data.revision;
-    }, [data, editing, form]);
+        onSynced(data.revision);
+    }, [data, editing, form, onSynced]);
     return null;
 };
 
@@ -79,6 +91,7 @@ export const TemporaryGuestAccountsSettingsCard = ({
 }: TemporaryAccountSettingsCardProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    const syncedRevision = useRef<number | undefined>(undefined);
 
     return (
         <CardEditable
@@ -107,6 +120,7 @@ export const TemporaryGuestAccountsSettingsCard = ({
                         callMaxLifetimeHours: values.callMaxLifetimeHours,
                         chatInactivityDays: values.chatInactivityDays,
                         hidePasswordField: values.hidePasswordField === true,
+                        revision: syncedRevision.current ?? data.revision,
                     },
                     options,
                 );
@@ -114,7 +128,13 @@ export const TemporaryGuestAccountsSettingsCard = ({
         >
             {({ editing }) => (
                 <>
-                    <SyncConfirmedSettings data={data} editing={editing} />
+                    <SyncConfirmedSettings
+                        data={data}
+                        editing={editing}
+                        onSynced={(revision) => {
+                            syncedRevision.current = revision;
+                        }}
+                    />
                     {Boolean(error) && (
                         <Alert severity="error">{t('globalSettings.temporaryAccounts.error.load')}</Alert>
                     )}
@@ -154,6 +174,7 @@ export const TemporaryMessagesSettingsCard = ({
 }: TemporaryAccountSettingsCardProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
+    const syncedRevision = useRef<number | undefined>(undefined);
 
     return (
         <CardEditable
@@ -169,12 +190,25 @@ export const TemporaryMessagesSettingsCard = ({
             formProp={form}
             onSave={(values: Partial<TemporaryAccountSettings>, options) => {
                 if (!data || !values.messageRetention) return;
-                onSave({ ...data, messageRetention: values.messageRetention }, options);
+                onSave(
+                    {
+                        ...data,
+                        messageRetention: values.messageRetention,
+                        revision: syncedRevision.current ?? data.revision,
+                    },
+                    options,
+                );
             }}
         >
             {({ editing }) => (
                 <>
-                    <SyncConfirmedSettings data={data} editing={editing} />
+                    <SyncConfirmedSettings
+                        data={data}
+                        editing={editing}
+                        onSynced={(revision) => {
+                            syncedRevision.current = revision;
+                        }}
+                    />
                     {Boolean(error) && (
                         <Alert severity="error">{t('globalSettings.temporaryAccounts.error.load')}</Alert>
                     )}
