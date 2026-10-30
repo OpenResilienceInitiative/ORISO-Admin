@@ -61,16 +61,28 @@ describe('applyAdminTheme', () => {
         );
     });
 
-    it('renders field surfaces one step lighter than the workspace background', () => {
+    it('renders field surfaces one step lighter than the card surface they sit on', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const card = root.style.getPropertyValue('--admin-form-card-surface');
+        const field = root.style.getPropertyValue('--admin-field-surface');
+        const hover = root.style.getPropertyValue('--admin-field-surface-hover');
+
+        expect(relativeLuminance(field)).toBeGreaterThan(relativeLuminance(card));
+        expect(relativeLuminance(hover)).toBeGreaterThan(relativeLuminance(card));
+    });
+
+    it('sets tiles and dialogs darker than the workspace, like the M3 dialog on its light scrim', () => {
         const root = document.createElement('div');
         applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
 
         const workspace = root.style.getPropertyValue('--admin-workspace-background');
-        const field = root.style.getPropertyValue('--admin-field-surface');
-        const hover = root.style.getPropertyValue('--admin-field-surface-hover');
+        const card = root.style.getPropertyValue('--admin-form-card-surface');
 
-        expect(relativeLuminance(field)).toBeGreaterThan(relativeLuminance(workspace));
-        expect(relativeLuminance(hover)).toBeGreaterThan(relativeLuminance(workspace));
+        expect(workspace).toBe('#fcf9f9');
+        expect(card).toBe('#eae7e8');
+        expect(relativeLuminance(card)).toBeLessThan(relativeLuminance(workspace));
     });
 
     it('derives the tonal selection tokens from the tenant seed', () => {

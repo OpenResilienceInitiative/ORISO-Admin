@@ -23,9 +23,9 @@ describe('subsection switcher colour source (#900)', () => {
 
     it('uses the same selected M3 tokens on desktop tabs and mobile chips', () => {
         expect(desktopTabs).toMatch(/background:\s*var\(--m3-secondary,\s*#4c555f\)/);
-        expect(desktopTabs).toMatch(/color:\s*var\(--m3-primary-fixed,\s*#ffdad5\)/);
+        expect(desktopTabs).toMatch(/color:\s*var\(--m3-primary-fixed,\s*#ffe2de\)/);
         expect(mobileChips).toMatch(/background:\s*var\(--m3-secondary,\s*#4c555f\)/);
-        expect(mobileChips).toMatch(/color:\s*var\(--m3-primary-fixed,\s*#ffdad5\)/);
+        expect(mobileChips).toMatch(/color:\s*var\(--m3-primary-fixed,\s*#ffe2de\)/);
     });
 
     it('does not hardcode the former token fallbacks as bare hex on desktop tabs', () => {
