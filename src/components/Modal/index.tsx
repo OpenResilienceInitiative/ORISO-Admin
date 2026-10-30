@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { ReactNode } from 'react';
 import styles from './styles.module.scss';
 
-export { DialogButton } from './DialogButton';
+import { DialogButton } from './DialogButton';
+
+export { DialogButton };
 
 export interface ModalProps {
     titleKey?: string;
@@ -51,6 +53,8 @@ export interface ModalProps {
     showDivider?: boolean;
     /** Disables the confirm text button (e.g. while submitting). */
     confirmDisabled?: boolean;
+    /** Shows the spinner on the confirm button and disables it while a request is pending. */
+    confirmLoading?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
     /**
@@ -101,6 +105,7 @@ export const Modal = ({
     icon,
     showDivider = true,
     confirmDisabled = false,
+    confirmLoading = false,
     closable = true,
     maskClosable = true,
     keyboard = true,
@@ -119,15 +124,15 @@ export const Modal = ({
                 </button>
             )}
             {okLabelKey && (
-                <button
-                    type="button"
+                <DialogButton
+                    primary
                     aria-describedby={confirmDescribedBy}
-                    className={classNames(styles.actionButton, styles.actionButtonPrimary)}
                     disabled={confirmDisabled}
+                    loading={confirmLoading}
                     onClick={onConfirm}
                 >
                     {t(okLabelKey)}
-                </button>
+                </DialogButton>
             )}
         </div>
     ) : null;

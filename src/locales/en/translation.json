@@ -976,7 +976,7 @@
     "deletionWindow.cancel.action": "Cancel deletion",
     "deletionWindow.cancel.title": "Cancel deletion?",
     "deletionWindow.cancel.text": "Sign-in works again right away, and the account is no longer read-only. Password and two-factor authentication stay exactly as they were.",
-    "deletionWindow.cancel.notRestored": "Not restored: memberships in private chats, the public profile link and the profile picture, and any sessions that were deleted together with the account.",
+    "deletionWindow.cancel.notRestored": "Cancelling does not restore memberships in private chats, the public profile link, the profile picture, or sessions and rooms, if they have already been removed.",
     "deletionWindow.cancel.confirm": "Cancel deletion",
     "deletionWindow.cancel.success": "Deletion cancelled. The account can sign in again.",
     "deletionWindow.pause.action": "Pause deletion",

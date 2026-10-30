@@ -1072,7 +1072,7 @@
     "deletionWindow.cancel.action": "Löschung abbrechen",
     "deletionWindow.cancel.title": "Löschung abbrechen?",
     "deletionWindow.cancel.text": "Die Anmeldung funktioniert sofort wieder und das Konto ist nicht mehr schreibgeschützt. Passwort und Zwei-Faktor-Authentifizierung bleiben unverändert.",
-    "deletionWindow.cancel.notRestored": "Nicht wiederhergestellt werden: Mitgliedschaften in privaten Chats, der öffentliche Profil-Link und das Profilbild sowie Sitzungen, die zusammen mit dem Konto gelöscht wurden.",
+    "deletionWindow.cancel.notRestored": "Beim Abbrechen werden Mitgliedschaften in privaten Chats, der öffentliche Profil-Link, das Profilbild sowie Sitzungen und Räume nicht wiederhergestellt, falls sie bereits entfernt wurden.",
     "deletionWindow.cancel.confirm": "Löschung abbrechen",
     "deletionWindow.cancel.success": "Löschung abgebrochen. Das Konto kann sich wieder anmelden.",
     "deletionWindow.pause.action": "Löschung pausieren",

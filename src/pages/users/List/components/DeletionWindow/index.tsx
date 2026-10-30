@@ -1,7 +1,7 @@
 import { message } from 'antd';
 import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
 import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS } from '../../../../../api/fetchData';
 import { Modal } from '../../../../../components/Modal';
@@ -18,6 +18,8 @@ interface DeletionWindowModalProps {
     consultantId: string;
     onClose: () => void;
 }
+
+type MutateCallbacks = { onSuccess: () => void; onError: (error: unknown) => void };
 
 const DEFAULT_MONTHS = 3;
 const MONTH_CHOICES = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -51,20 +53,29 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
         if (key) message.error({ content: t(key), duration: 5 });
     };
 
-    const { mutate: cancelDeletion } = useCancelConsultantDeletion({
-        onSuccess: () => {
-            message.success({ content: t('deletionWindow.cancel.success'), duration: 3 });
-            onClose();
-        },
-        onError,
-    });
-    const { mutate: pauseDeletion } = usePauseConsultantDeletion({
-        onSuccess: () => {
-            message.success({ content: t('deletionWindow.pause.success'), duration: 3 });
-            onClose();
-        },
-        onError,
-    });
+    const cancelMutation = useCancelConsultantDeletion();
+    const pauseMutation = usePauseConsultantDeletion();
+    const pending = cancelMutation.isPending || pauseMutation.isPending;
+
+    // Synchronous single-flight: state alone lags a render behind a fast double click.
+    const inFlight = useRef(false);
+    const submit = (successKey: string, send: (callbacks: MutateCallbacks) => void) => {
+        if (inFlight.current) return;
+        inFlight.current = true;
+        // Per-call callbacks only run for this request while this modal is mounted, so a late
+        // answer can never close or toast over a newer modal.
+        send({
+            onSuccess: () => {
+                inFlight.current = false;
+                message.success({ content: t(successKey), duration: 3 });
+                onClose();
+            },
+            onError: (error) => {
+                inFlight.current = false;
+                onError(error);
+            },
+        });
+    };
 
     if (mode === 'cancel') {
         return (
@@ -73,7 +84,12 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
                 icon={<RestoreFromTrashOutlinedIcon />}
                 cancelLabelKey="btn.cancel.uppercase"
                 okLabelKey="deletionWindow.cancel.confirm"
-                onConfirm={() => cancelDeletion(consultantId)}
+                confirmLoading={pending}
+                onConfirm={() =>
+                    submit('deletionWindow.cancel.success', (callbacks) =>
+                        cancelMutation.mutate(consultantId, callbacks),
+                    )
+                }
                 onClose={onClose}
             >
                 <p>{t('deletionWindow.cancel.text')}</p>
@@ -89,7 +105,12 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
             cancelLabelKey="btn.cancel.uppercase"
             okLabelKey="deletionWindow.pause.confirm"
             confirmDisabled={reason.trim() === ''}
-            onConfirm={() => pauseDeletion({ id: consultantId, reason, months })}
+            confirmLoading={pending}
+            onConfirm={() =>
+                submit('deletionWindow.pause.success', (callbacks) =>
+                    pauseMutation.mutate({ id: consultantId, reason, months }, callbacks),
+                )
+            }
             onClose={onClose}
         >
             <p>{t('deletionWindow.pause.text')}</p>
