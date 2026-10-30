@@ -1,0 +1,16 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    margin-top: 16px;
+    gap: 4px;
+    text-align: left;
+}
+
+.control {
+    padding: 8px 12px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    background: var(--m3-surface, #fcf9f8);
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 400 14px/20px var(--m3-body-font-family);
+}
