@@ -1403,6 +1403,8 @@
     "legal.consent.error.empty.description": "Ohne Satz kann die Datenschutzerklärung nicht veröffentlicht werden. Übernehmen Sie die Plattformvorlage oder schreiben Sie einen eigenen Satz.",
     "legal.consent.error.missingLegalLinks.title": "Ohne den Pflicht-Platzhalter nicht veröffentlichbar",
     "legal.consent.error.missingLegalLinks.description": "Der Einwilligungssatz muss den Platzhalter enthalten, der zu den klickbaren Links auf Datenschutzerklärung und Impressum wird. Fügen Sie ihn über „Platzhalter einfügen“ an der passenden Stelle ein:",
+    "legal.consent.warning.runTogether.title": "Wörter laufen zusammen",
+    "legal.consent.warning.runTogether.item": "„{{first}}“ und „{{second}}“ laufen zusammen. Fügen Sie ein Leerzeichen oder Wörter dazwischen ein.",
     "legal.consent.publishBlocked.title": "Veröffentlichen nicht möglich",
     "legal.consent.publishBlocked.description": "In folgenden Sprachen fehlt der Einwilligungssatz oder sein Pflicht-Platzhalter: {{languages}}. Ergänzen Sie ihn dort und veröffentlichen Sie erneut.",
     "legal.consent.template.platform.name": "Plattformvorlage",

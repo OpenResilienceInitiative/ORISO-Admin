@@ -114,3 +114,48 @@ describe('LegalConsentField — dialog (#862)', () => {
         expect(screen.getByTestId('consent-missing-token-error')).toBeInTheDocument();
     });
 });
+
+describe('LegalConsentField — placeholders that run together (#1255)', () => {
+    it('warns inside the dialog and names both placeholders', async () => {
+        render(
+            <LegalConsentField
+                language="en"
+                value="I have read the {{legal_links}}{{Thema}}."
+                onChange={() => undefined}
+            />,
+        );
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+
+        const warning = screen.getByTestId('consent-run-together-warning');
+        expect(warning).toHaveTextContent('legal.consent.warning.runTogether.title');
+        expect(warning).toHaveTextContent('legal.consent.warning.runTogether.item:{{legal_links}}:{{Thema}}');
+    });
+
+    it('drops the warning once a space separates them', async () => {
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}." onChange={() => undefined} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        const input = screen.getByRole('textbox');
+        await userEvent.clear(input);
+        await userEvent.click(input);
+        await userEvent.paste('Neu {{legal_links}}{{Thema}}.');
+        expect(screen.getByTestId('consent-run-together-warning')).toBeInTheDocument();
+
+        await userEvent.clear(input);
+        await userEvent.click(input);
+        await userEvent.paste('Neu {{legal_links}} {{Thema}}.');
+        expect(screen.queryByTestId('consent-run-together-warning')).not.toBeInTheDocument();
+    });
+
+    it('still applies the sentence with the warning shown', async () => {
+        const onChange = vi.fn();
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}{{Thema}}." onChange={onChange} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        expect(screen.getByTestId('consent-run-together-warning')).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
+
+        expect(onChange).toHaveBeenCalledWith('Alt {{legal_links}}{{Thema}}.');
+    });
+});

@@ -12,6 +12,7 @@ import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
+    runTogetherPlaceholders,
 } from '../../utils/consentTextValidation';
 import styles from './styles.module.scss';
 
@@ -83,6 +84,7 @@ export const LegalConsentField = ({
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
+    const draftRunTogether = runTogetherPlaceholders(draft);
 
     const openDialog = () => {
         setDraft(seed(value));
@@ -170,6 +172,25 @@ export const LegalConsentField = ({
                                         {t('legal.consent.error.missingLegalLinks.description')}{' '}
                                         <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
                                     </>
+                                }
+                            />
+                        )}
+                        {/* A warning, not a blocker: "Apply" and Publish stay available (#1255). */}
+                        {draftRunTogether.length > 0 && (
+                            <Alert
+                                className={styles.notice}
+                                type="warning"
+                                showIcon
+                                data-testid="consent-run-together-warning"
+                                message={t('legal.consent.warning.runTogether.title')}
+                                description={
+                                    <ul className={styles.runTogetherList}>
+                                        {draftRunTogether.map(({ first, second }) => (
+                                            <li key={`${first} ${second}`}>
+                                                {t('legal.consent.warning.runTogether.item', { first, second })}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 }
                             />
                         )}
