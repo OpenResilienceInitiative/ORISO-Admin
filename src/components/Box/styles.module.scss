@@ -4,7 +4,7 @@ $box-border-radius: 28px;
 .box {
     padding: $grid-base * 2;
     margin-bottom: $grid-base;
-    background: #f6f3f3;
+    background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: $box-border-radius;
 
     @media only screen and (min-width: 600px) {

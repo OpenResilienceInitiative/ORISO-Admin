@@ -173,7 +173,14 @@
     --m3-on-background: #281715;
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
-    --admin-workspace-background: #e4e2e2;
+
+    /* Workspace = M3 surface (lightest tier). Tiles, containers and dialogs sit ON it in
+       surface-container-high, exactly like the M3 dialog over its light scrim. */
+    --admin-workspace-background: #fcf9f9;
+
+    /* One surface for every tile, container and dialog. A later "light" mode remaps only this. */
+    --admin-form-card-surface: #eae7e8;
+    --admin-card-outline: transparent;
 
     /* Layout raster — Figma "Site Template" 1285-80496.
        Horizontally: sidebar 128 · arrow-rail gutter 60 · card inset 24, so a
@@ -192,7 +199,7 @@
 
     /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
        0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
-    --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
+    --admin-card-elevation: 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%);
 
     /*
      * The search control's surface (#713 follow-up, owner findings 2 + 3:
@@ -275,7 +282,7 @@
 }
 
 body {
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 }
 
 /* ── M3 type scale (Figma Admin.ORISO variable defs) ───────────────────────────

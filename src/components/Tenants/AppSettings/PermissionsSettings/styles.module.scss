@@ -52,8 +52,8 @@
 
 .chatTypeCard {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
-    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
-    box-shadow: var(--m3-elevation-1, 0 1px 2px rgb(0 0 0 / 30%));
+    border: 1px solid var(--admin-card-outline, transparent);
+    box-shadow: var(--admin-card-elevation, 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%));
     border-radius: 28px;
     padding: calc(mui.$mui-unit * 4);
     display: flex;
@@ -62,12 +62,6 @@
     max-height: none;
     overflow: visible;
     color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
-    transition: border-color 180ms ease, box-shadow 180ms ease;
-
-    &:hover {
-        border-color: color-mix(in srgb, var(--m3-outline, #747878) 44%, transparent);
-        box-shadow: var(--m3-elevation-2, 0 4px 8px rgb(0 0 0 / 18%));
-    }
 }
 
 /* Centered header: icon on top, title below, both centered */

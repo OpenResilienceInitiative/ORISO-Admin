@@ -42,14 +42,14 @@
 .deadlineInput {
     width: 7rem;
     padding: mui.$mui-unit mui.$mui-unit * 1.5;
-    border: 1px solid var(--m3-outline, #74777f);
+    border: 1px solid var(--m3-outline, #747878);
     border-radius: mui.$mui-unit;
     background: transparent;
     color: inherit;
     font: inherit;
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #005cbb);
+        outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -80,8 +80,8 @@
     padding: 2px mui.$mui-unit;
     border-radius: mui.$mui-unit * 1.5;
     margin-right: mui.$mui-unit;
-    background: var(--m3-secondary-container, #dae2f9);
-    color: var(--m3-on-secondary-container, #131c2b);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
     font-size: 12px;
     font-weight: 500;
 }

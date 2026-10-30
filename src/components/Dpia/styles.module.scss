@@ -27,7 +27,7 @@
 
     min-height: 100%;
     background: var(--m3-surface-container, #f0edee);
-    color: var(--m3-on-surface, #1a1c1e);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 16px;
     line-height: 1.6;
 
@@ -302,7 +302,7 @@
     border: 1px solid var(--dpia-hair);
     background: var(--m3-surface-container, #f0edee);
     border-radius: 25px;
-    color: var(--m3-on-surface, #1a1c1e);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 12.5px;
     font-weight: 600;
     text-decoration: none;
@@ -633,7 +633,7 @@
     span {
         display: inline-flex;
         align-items: center;
-        color: var(--m3-error, #cc0000);
+        color: var(--m3-error, #b1005e);
         font-size: 11.5px;
         font-weight: 700;
         gap: 4px;

@@ -125,7 +125,8 @@ const DEFAULT_NAV_INDICATOR = '#410001';
 const STAGE_SURFACE = '#281715';
 const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
-    '--admin-workspace-background': '#e4e2e2',
+    // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
+    '--admin-workspace-background': '#fcf9f9',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -150,7 +151,7 @@ const ADMIN_TABLE_TOKENS = {
 
 /**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
- * `--admin-workspace-background` (#e4e2e2, surface-container-highest tier) so
+ * the card surface (#eae7e8, surface-container-high tier) so
  * inputs read as raised instead of muddy, with a subtle outline-variant border.
  * Selection is an "illuminated" light primary-container tonal derived from the
  * tenant seed. `--admin-form-field-surface` above is the legacy alias consumed

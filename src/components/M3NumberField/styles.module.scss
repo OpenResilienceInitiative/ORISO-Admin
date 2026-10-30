@@ -168,7 +168,7 @@
 }
 
 .root:has(.fieldError) .supportingText {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 }
 
 /* Variant: outlined — transparent pill, outline-variant border, on-surface-variant content. */
@@ -220,11 +220,11 @@
  */
 
 .fieldError {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 
     .main,
     .stepper {
-        border-color: var(--m3-error, #ba1a1a);
+        border-color: var(--m3-error, #b1005e);
     }
 }
 

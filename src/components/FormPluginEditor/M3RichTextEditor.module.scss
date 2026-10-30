@@ -479,7 +479,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 @media (max-width: 599px) {
     .toolbarScroll {
         padding-bottom: 4px;
-        scrollbar-color: var(--m3-outline, #747778) transparent;
+        scrollbar-color: var(--m3-outline, #747878) transparent;
         scrollbar-width: thin;
 
         &::-webkit-scrollbar {
@@ -488,7 +488,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
         }
 
         &::-webkit-scrollbar-thumb {
-            background: var(--m3-outline, #747778);
+            background: var(--m3-outline, #747878);
             border-radius: 999px;
         }
     }
@@ -828,7 +828,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     min-height: 0;
     flex-direction: column;
     padding: 12px;
-    background: var(--m3-surface-container-low, #f4f1f2);
+    background: var(--m3-surface-container-low, #f6f3f3);
     border: 1px solid $m3-outline-variant;
     border-radius: 14px;
 }
@@ -838,7 +838,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     gap: 8px;
     align-items: center;
     justify-content: space-between;
-    color: var(--m3-primary, #273270);
+    color: var(--m3-primary, #a5000a);
 
     button {
         display: inline-flex;
@@ -855,7 +855,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .comparisonDetail {
     padding: 4px 0 8px;
-    color: var(--m3-primary, #273270);
+    color: var(--m3-primary, #a5000a);
     font-size: 12px;
 }
 
@@ -993,7 +993,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     border: 1px solid $m3-outline-variant;
     background: transparent;
     border-radius: 100px;
-    color: var(--m3-primary, #273270);
+    color: var(--m3-primary, #a5000a);
     cursor: pointer;
     white-space: nowrap;
 }

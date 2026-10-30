@@ -12,7 +12,7 @@ import permissionStyles from './components/Tenants/AppSettings/PermissionsSettin
 /**
  * Card-surface inventory for the admin (#card-surfaces). Every card the app
  * renders is shown here on the REAL workspace background
- * (--admin-workspace-background #e4e2e2) — the same trick the Field Tokens
+ * (--admin-workspace-background #fcf9f9, M3 surface) — the same trick the Field Tokens
  * foundation uses — so surface contrast, border and elevation are reviewable in
  * context instead of on Storybook's white canvas.
  *
@@ -50,7 +50,7 @@ const Workspace = ({ children }: { children: React.ReactNode }) => (
                 alignItems: 'flex-start',
                 padding: 32,
                 minHeight: '100vh',
-                background: 'var(--admin-workspace-background, #e4e2e2)',
+                background: 'var(--admin-workspace-background, #fcf9f9)',
             }}
         >
             {children}

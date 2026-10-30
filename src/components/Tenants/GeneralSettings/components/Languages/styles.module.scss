@@ -63,10 +63,10 @@
         align-items: center;
         justify-content: center;
         padding: 6px 12px;
-        border: 1px solid #c4c7c8;
-        background: #ffffff;
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
+        background: var(--admin-field-surface, #fcf9f9);
         border-radius: 8px;
-        color: #141c25;
+        color: var(--m3-on-surface, #1b1b1c);
         cursor: pointer;
         font-size: 14px;
         font-weight: 500;
@@ -76,9 +76,10 @@
     }
 
     &:global(.ant-checkbox-wrapper-checked) > span:last-child {
-        border-color: #d8e0e9;
-        background: #dfeaf6;
-        color: #141c25;
+        /* Same selected-chip look as the language chips in CaseHandoverCard. */
+        border-color: var(--m3-secondary-container, #646d78);
+        background: var(--m3-secondary-container, #646d78);
+        color: var(--m3-on-secondary-container, #e7effc);
         font-weight: 600;
     }
 
