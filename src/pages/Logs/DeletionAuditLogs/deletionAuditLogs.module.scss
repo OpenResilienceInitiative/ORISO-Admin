@@ -5,6 +5,7 @@
 
 /* Filters stay on one row; a row wider than the container scrolls locally, never the page.
    The padding keeps focus outlines inside the scrollport. */
+
 .toolbar {
     display: flex;
     min-width: 0;
