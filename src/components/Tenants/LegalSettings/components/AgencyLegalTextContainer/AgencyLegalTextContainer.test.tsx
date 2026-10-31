@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
     refetch: vi.fn(),
     card: vi.fn(),
     canEditLegalText: vi.fn(() => true),
+    tenantData: vi.fn((): unknown => undefined),
 }));
 
 vi.mock('../../hooks/useAgencyLegalDraft', () => ({
@@ -38,7 +39,7 @@ vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
 vi.mock('../../../../../hooks/usePublishDepartmentImprint.hook', () => ({
     usePublishDepartmentImprint: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData: () => ({ data: undefined }) }));
+vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData: () => ({ data: h.tenantData() }) }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData: () => ({ data: undefined }) }));
 vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
     useTranslateLegalContent: () => ({ translate: vi.fn() }),
@@ -92,6 +93,7 @@ describe('AgencyLegalTextContainer', () => {
         h.useDepartmentDpp.mockReset();
         h.card.mockReset();
         h.canEditLegalText.mockReset().mockReturnValue(true);
+        h.tenantData.mockReset().mockReturnValue(undefined);
     });
 
     it('edits the agency-wide text before a department is chosen', () => {
@@ -258,6 +260,67 @@ describe('AgencyLegalTextContainer', () => {
 
             expect(await screen.findByTestId('own-text-4')).toBeInTheDocument();
             expect(screen.queryByTestId('own-text-3')).not.toBeInTheDocument();
+        });
+    });
+
+    describe('follows the Träger text until the Beratungsstelle has wording of its own (#132)', () => {
+        const traeger = { content: { privacy: { de: '<p>Träger text</p>' } } };
+        const mountedSeed = () => h.card.mock.calls.at(-1)?.[0];
+
+        it('starts a new Beratungsstelle from the Träger text', () => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue(traeger);
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: undefined }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({ de: '<p>Träger text</p>' });
+            expect(mountedSeed().publicationStatus).toBe('INHERITED_FROM_TRAEGER');
+        });
+
+        it.each([
+            ['an emptied language entry', { de: '' }],
+            ['an empty paragraph', { de: '<p>&nbsp;</p>' }],
+        ])('does not let %s hide the Träger text', (_label, own) => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue(traeger);
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: { privacy: own } }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({ de: '<p>Träger text</p>' });
+            expect(mountedSeed().publicationStatus).toBe('INHERITED_FROM_TRAEGER');
+        });
+
+        it('keeps the own wording of a Beratungsstelle that customised one language', () => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue({
+                content: { privacy: { de: '<p>Träger text</p>', en: '<p>Träger EN</p>' } },
+            });
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: { privacy: { de: '<p>agency wide</p>', en: '' } } }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({
+                de: '<p>agency wide</p>',
+                en: '<p>Träger EN</p>',
+            });
+            expect(mountedSeed().publicationStatus).toBe('PUBLISHED');
         });
     });
 });
