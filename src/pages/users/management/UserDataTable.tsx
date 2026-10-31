@@ -5,6 +5,8 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
+import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
 import { Link } from 'react-router-dom';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
@@ -58,6 +60,9 @@ export interface UserDataTableProps {
     onSortChange: (sortBy: string, order: 'ASC' | 'DESC') => void;
     onEdit: (row: CounselorData) => void;
     onDelete: (row: CounselorData) => void;
+    /** Only passed where the caller may end a running deletion (consultants); shown on IN_DELETION rows. */
+    onCancelDeletion?: (row: CounselorData) => void;
+    onPauseDeletion?: (row: CounselorData) => void;
     page: number;
     pageSize: number;
     total: number;
@@ -85,6 +90,8 @@ export const UserDataTable = ({
     onSortChange,
     onEdit,
     onDelete,
+    onCancelDeletion,
+    onPauseDeletion,
     page,
     pageSize,
     total,
@@ -288,6 +295,26 @@ export const UserDataTable = ({
                                   },
                               ]
                             : []),
+                        ...(pending && onCancelDeletion
+                            ? [
+                                  {
+                                      key: 'cancelDeletion',
+                                      label: t('deletionWindow.cancel.action'),
+                                      icon: <RestoreFromTrashOutlinedIcon />,
+                                      onSelect: () => onCancelDeletion(row),
+                                  },
+                              ]
+                            : []),
+                        ...(pending && onPauseDeletion
+                            ? [
+                                  {
+                                      key: 'pauseDeletion',
+                                      label: t('deletionWindow.pause.action'),
+                                      icon: <PauseCircleOutlineOutlinedIcon />,
+                                      onSelect: () => onPauseDeletion(row),
+                                  },
+                              ]
+                            : []),
                         ...(canDelete
                             ? [
                                   {
@@ -333,6 +360,20 @@ export const UserDataTable = ({
                                 ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name })}
                                 disabled={pending}
                                 onClick={() => onEdit(row)}
+                            />
+                        )}
+                        {pending && onCancelDeletion && (
+                            <IconButton
+                                icon={<RestoreFromTrashOutlinedIcon />}
+                                ariaLabel={t('deletionWindow.cancel.action')}
+                                onClick={() => onCancelDeletion(row)}
+                            />
+                        )}
+                        {pending && onPauseDeletion && (
+                            <IconButton
+                                icon={<PauseCircleOutlineOutlinedIcon />}
+                                ariaLabel={t('deletionWindow.pause.action')}
+                                onClick={() => onPauseDeletion(row)}
                             />
                         )}
                         {canDelete && (
@@ -384,6 +425,8 @@ export const UserDataTable = ({
                     onLoadMore={() => onPageChange(page + 1)}
                     onEdit={canEdit ? onEdit : undefined}
                     onDelete={canDelete ? onDelete : undefined}
+                    onCancelDeletion={onCancelDeletion}
+                    onPauseDeletion={onPauseDeletion}
                     details={cardFacts}
                     ariaLabel={ariaLabel}
                 />
