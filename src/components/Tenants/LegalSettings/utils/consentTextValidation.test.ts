@@ -5,6 +5,7 @@ import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
+    runTogetherPlaceholders,
 } from './consentTextValidation';
 
 describe('hasMandatoryConsentToken', () => {
@@ -57,5 +58,41 @@ describe('consentPublicationBlockers', () => {
     it('blocks publication as soon as one language is affected', () => {
         expect(canPublishConsentText({ de: 'Ich stimme zu.' })).toBe(false);
         expect(canPublishConsentText({ de: 'Ich habe {{legal_links}} gelesen.' })).toBe(true);
+    });
+});
+
+describe('runTogetherPlaceholders (#1255)', () => {
+    it('names two placeholders that touch, and a space removes the warning', () => {
+        expect(runTogetherPlaceholders('Ich habe die {{legal_links}}{{Thema}} gelesen')).toEqual([
+            { first: '{{legal_links}}', second: '{{Thema}}' },
+        ]);
+        expect(runTogetherPlaceholders('Ich habe die {{legal_links}} {{Thema}} gelesen')).toEqual([]);
+    });
+
+    it('names a placeholder that touches a word, on either side', () => {
+        expect(runTogetherPlaceholders('zum {{Thema}}Advice')).toEqual([{ first: '{{Thema}}', second: 'Advice' }]);
+        expect(runTogetherPlaceholders('Ich habe die{{legal_links}} gelesen')).toEqual([
+            { first: 'die', second: '{{legal_links}}' },
+        ]);
+    });
+
+    it('does not warn for punctuation next to a placeholder', () => {
+        expect(runTogetherPlaceholders('zum Thema {{Thema}}.')).toEqual([]);
+        expect(runTogetherPlaceholders('({{Thema}}), {{Beratungsstelle}}!')).toEqual([]);
+    });
+
+    it('finds every spot of the sentence that reached help-seekers glued together (ORISO-Frontend#1920)', () => {
+        expect(runTogetherPlaceholders('testing {{legal_links}}{{Thema}}{{Beratungsstelle}}')).toEqual([
+            { first: '{{legal_links}}', second: '{{Thema}}' },
+            { first: '{{Thema}}', second: '{{Beratungsstelle}}' },
+        ]);
+    });
+
+    it('counts letters of any language and names the token without inner spaces', () => {
+        expect(runTogetherPlaceholders('{{ Thema }}Ärger')).toEqual([{ first: '{{Thema}}', second: 'Ärger' }]);
+    });
+
+    it('is empty for an absent sentence', () => {
+        expect(runTogetherPlaceholders(undefined)).toEqual([]);
     });
 });

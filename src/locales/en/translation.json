@@ -1995,6 +1995,8 @@
     "legal.consent.error.empty.description": "Without a sentence the privacy policy cannot be published. Take the platform template or write your own.",
     "legal.consent.error.missingLegalLinks.title": "Cannot be published without the mandatory placeholder",
     "legal.consent.error.missingLegalLinks.description": "The consent sentence must contain the placeholder that becomes the clickable links to the data protection policy and the imprint. Insert it at the right position via “Insert placeholder”:",
+    "legal.consent.warning.runTogether.title": "Words will run together",
+    "legal.consent.warning.runTogether.item": "“{{first}}” and “{{second}}” will run together. Add a space or words between them.",
     "legal.consent.publishBlocked.title": "Publication not possible",
     "legal.consent.publishBlocked.description": "The consent sentence or its mandatory placeholder is missing in these languages: {{languages}}. Add it there and publish again.",
     "legal.consent.template.platform.name": "Platform template",
