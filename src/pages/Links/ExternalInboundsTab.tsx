@@ -193,15 +193,19 @@ export const ExternalInboundsTab = () => {
                         <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
                             {t('links.copy', 'Copy')}
                         </Button>
-                        {record.status === 'ACTIVE' && (
-                            <Button
-                                size="small"
-                                className={listingTableStyles.copyButton}
-                                onClick={() => setLinkToDeactivate(record)}
-                            >
-                                {t('links.deactivate', 'Deactivate')}
-                            </Button>
-                        )}
+                        {/* The list holds every link kind; only an external live-chat inbound
+                            is switched off here. */}
+                        {record.status === 'ACTIVE' &&
+                            record.linkKind === LINK_KIND &&
+                            record.chatType === 'LIVE_CHAT' && (
+                                <Button
+                                    size="small"
+                                    className={listingTableStyles.copyButton}
+                                    onClick={() => setLinkToDeactivate(record)}
+                                >
+                                    {t('links.deactivate', 'Deactivate')}
+                                </Button>
+                            )}
                     </>
                 ),
             },

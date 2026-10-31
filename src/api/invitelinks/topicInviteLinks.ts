@@ -113,7 +113,8 @@ export const deactivateTopicInviteLink = async (linkId: number, tenantId?: numbe
         method: FETCH_METHODS.POST,
         skipAuth: false,
         headersData: inviteLinkHeaders(tenantId),
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        // The tab shows its own error; CATCH_ALL would stack a second, generic toast on it.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     });
     return withUtcInstants(await response.json());
 };

@@ -35,8 +35,11 @@ vi.mock('antd', async () => {
 // Real English wording, so the test reads what an admin reads.
 const translations = en as Record<string, string>;
 // A stable `t`, like the real hook's: the tab reloads its list when `t` changes.
-const t = (key: string, fallback?: string | Record<string, unknown>) =>
-    translations[key] ?? (typeof fallback === 'string' ? fallback : key);
+const t = (key: string, fallback?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
+    const values = typeof fallback === 'object' ? fallback : options ?? {};
+    const text = translations[key] ?? (typeof fallback === 'string' ? fallback : key);
+    return text.replace(/{{\s*(\w+)\s*}}/g, (_, name: string) => String(values[name] ?? `{{${name}}}`));
+};
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t }) }));
 
 window.matchMedia ??= ((query: string) => ({
@@ -97,6 +100,17 @@ describe('ExternalInboundsTab deactivate', () => {
         expect(screen.getAllByRole('button', { name: 'Deactivate' })).toHaveLength(1);
     });
 
+    it('offers deactivate only for external live-chat inbounds, not other link kinds', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(
+            page([link({ id: 1, linkKind: 'TENANT' }), link({ id: 2, linkKind: 'COUNSELLOR' })]),
+        );
+
+        render(<ExternalInboundsTab />);
+
+        await screen.findAllByText('Sozialberatung');
+        expect(screen.queryByRole('button', { name: 'Deactivate' })).toBeNull();
+    });
+
     it('asks first, then deactivates and reloads the list', async () => {
         mocks.listTopicInviteLinks
             .mockResolvedValueOnce(page([link()]))
@@ -109,6 +123,7 @@ describe('ExternalInboundsTab deactivate', () => {
 
         expect(mocks.deactivateTopicInviteLink).not.toHaveBeenCalled();
         const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText(/Sozialberatung/)).toBeTruthy();
         await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }));
 
         await waitFor(() => expect(mocks.deactivateTopicInviteLink).toHaveBeenCalledWith(1));
