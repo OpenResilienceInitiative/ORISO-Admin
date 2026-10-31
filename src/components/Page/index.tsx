@@ -3,6 +3,7 @@ import {
     AppsOutlined,
     BalanceOutlined,
     CategoryOutlined,
+    ChatOutlined,
     ChevronLeft,
     EmailOutlined,
     ManageAccountsOutlined,
@@ -99,6 +100,7 @@ const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) =
 export const tabIcons: Record<string, SvgIconComponent> = {
     appearance: CategoryOutlined,
     email_server: EmailOutlined,
+    erstantwort: ChatOutlined,
     functionalities: AppsOutlined,
     functionality_access: AdminPanelSettingsOutlined,
     global_config: SettingsOutlined,

@@ -2,75 +2,86 @@
 
 /* Träger editor for the Erstantwort Bausteine (ORISO-Admin#601).
  *
- * Sits on the MUI 8px grid like the other settings surfaces, and uses the shared
- * M3 tokens rather than fresh literals so it follows the theme.
+ * One M3 `Card` holds everything; sections are separated by hairline dividers, not by
+ * boxes. Colours come from the shared M3 tokens.
  */
 
 .card {
+    width: 100%;
+    min-width: 0;
+    max-width: 960px;
+    box-sizing: border-box;
+}
+
+.body {
     display: flex;
+    min-width: 0;
     flex-direction: column;
-    gap: mui.$mui-unit * 3;
+    padding: 0 0 mui.$mui-unit * 2;
 }
 
-.title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 400;
-}
-
-.intro,
-.deadlineHelp,
-.bausteinHelp {
-    margin: 0;
-    color: var(--m3-on-surface-variant, #444748);
-    font-size: 14px;
-    line-height: 1.45;
-}
-
-.deadline {
+.section {
     display: flex;
-    max-width: 22rem;
+    min-width: 0;
     flex-direction: column;
     gap: mui.$mui-unit;
+    padding: mui.$mui-unit * 2 0;
+    border-top: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 28%, transparent);
 }
 
-.deadlineLabel {
-    font-size: 14px;
+.deadlineField {
+    max-width: 22rem;
+}
+
+.help {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.mandatory {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
     font-weight: 500;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
-.deadlineInput {
-    width: 7rem;
-    padding: mui.$mui-unit mui.$mui-unit * 1.5;
-    border: 1px solid var(--m3-outline, #74777f);
-    border-radius: mui.$mui-unit;
-    background: transparent;
-    color: inherit;
+.sectionToggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--m3-on-surface, #1b1c1c);
+    cursor: pointer;
     font: inherit;
+    gap: mui.$mui-unit;
+    text-align: left;
 
     &:focus-visible {
+        border-radius: mui.$mui-unit;
         outline: 2px solid var(--m3-primary, #005cbb);
         outline-offset: 2px;
     }
 }
 
-.baustein {
-    display: flex;
-    flex-direction: column;
-    gap: mui.$mui-unit;
-}
-
-.mandatory {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--m3-on-surface-variant, #444748);
-}
-
-.bausteinTitle {
+.sectionToggleTitle {
     flex: 1;
     font-size: 16px;
     font-weight: 500;
+}
+
+.chevron {
+    transition: transform 150ms ease;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
 }
 
 /* "Pflicht" beside the section title, so the one mandatory Baustein is visible
@@ -79,15 +90,46 @@
 .mandatoryChip {
     padding: 2px mui.$mui-unit;
     border-radius: mui.$mui-unit * 1.5;
-    margin-right: mui.$mui-unit;
     background: var(--m3-secondary-container, #dae2f9);
     color: var(--m3-on-secondary-container, #131c2b);
     font-size: 12px;
     font-weight: 500;
 }
 
-.bausteinDetails {
+.panel {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: mui.$mui-unit;
+}
+
+/* The fluid editor is a container-query box; without min-width:0 a flex child grows
+   past the card and cuts off the language/version bar on wide screens. */
+
+.panel > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.platformPreview {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border-radius: mui.$mui-unit * 1.5;
+    background: var(--m3-surface-container-highest, #e4e2e2);
+    gap: mui.$mui-unit * 0.5;
+}
+
+.platformPreviewLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+}
+
+.platformPreviewText {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1c1c);
+    font-size: 14px;
+    line-height: 20px;
 }
