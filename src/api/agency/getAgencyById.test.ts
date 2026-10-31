@@ -47,6 +47,39 @@ describe('getAgencyDataById', () => {
         expect(messageError).not.toHaveBeenCalled();
     });
 
+    it('derives online from offline so the edit form binds a real value (#1466)', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(response(200, { _embedded: { id: '0', name: 'Test', offline: false } })),
+        );
+
+        // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as the mapping
+        const { _embedded: embedded } = await getAgencyDataById('0');
+
+        expect(embedded.online).toBe(true);
+        expect(embedded.offline).toBe(false);
+    });
+
+    it('derives online=false for an agency that is offline', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue(response(200, { _embedded: { id: '0', name: 'Test', offline: true } })),
+        );
+
+        // eslint-disable-next-line no-underscore-dangle -- HAL envelope, same as the mapping
+        const { _embedded: embedded } = await getAgencyDataById('0');
+
+        expect(embedded.online).toBe(false);
+    });
+
+    it('leaves a payload without offline untouched', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { _embedded: { id: '42', name: 'Test' } })));
+
+        const result = await getAgencyDataById('42');
+
+        expect(result).toEqual({ _embedded: { id: '42', name: 'Test' } });
+    });
+
     it('rejects with AgencyAccessError on a 404 (non-existent agency), without showing a toast', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(404)));
 
