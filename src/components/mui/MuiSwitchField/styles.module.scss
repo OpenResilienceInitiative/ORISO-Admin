@@ -47,7 +47,7 @@
     font-family: var(--m3-body-font-family);
 }
 
-.helperTextError {
+.helperTextError:global(.MuiFormHelperText-root.Mui-error) {
     color: var(--form-error);
 }
 

@@ -91,6 +91,7 @@ export const CaseHandoverLogsPage = () => {
         <>
             {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
             <ListingTable<CaseHandoverLogEntry>
+                scrollRegionLabel={t('caseHandoverLogs.title')}
                 rowKey={(row) => `${row.requestId}`}
                 loading={isLoading}
                 columns={columns}
