@@ -1,3 +1,5 @@
+@use '../../styles/muiSpacing' as mui;
+
 /*
  * DPIA document page — layout taken from the v3 mockups (2a desktop / 2b mobile).
  * Colours come exclusively from the admin design tokens in `src/app.css`; the
@@ -58,17 +60,17 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 24px;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 3;
     border-bottom: 1px solid var(--dpia-hair);
     background: var(--m3-surface-container-lowest, #ffffff);
-    gap: 16px;
+    gap: mui.$mui-unit * 2;
 }
 
 .brand {
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: 12px;
+    gap: mui.$mui-unit * 1.5;
 }
 
 .logoSlot {
@@ -106,7 +108,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: mui.$mui-unit * 1.5;
 }
 
 .version {
@@ -119,7 +121,7 @@
 /* Segmented KDG / DSGVO switch, rendered as a radio group for assistive tech. */
 .segmented {
     display: inline-flex;
-    padding: 3px;
+    padding: mui.$mui-unit * 0.375;
     border: 1px solid rgb(0 0 0 / 20%);
     background: var(--m3-surface-container, #f0edee);
     border-radius: 25px;
@@ -127,7 +129,7 @@
 }
 
 .segment {
-    padding: 4px 16px;
+    padding: mui.$mui-unit * 0.5 mui.$mui-unit * 2;
     border: none;
     background: transparent;
     border-radius: 25px;
@@ -146,11 +148,11 @@
 .segmentActive {
     background: var(--m3-primary, #a5000a);
     box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
-    color: #ffffff;
+    color: var(--m3-on-primary, #ffffff);
 }
 
 .statusPill {
-    padding: 2px 10px;
+    padding: mui.$mui-unit * 0.25 mui.$mui-unit * 1.25;
     border: 1px solid var(--dpia-anno-line);
     background: var(--dpia-anno-bg);
     border-radius: 25px;
@@ -169,7 +171,7 @@
     font: inherit;
     font-size: 13px;
     font-weight: 600;
-    gap: 8px;
+    gap: mui.$mui-unit;
 
     &:focus-visible {
         outline: 2px solid var(--focus-blue, #199fff);
@@ -210,12 +212,12 @@
 
 /* ------------------------------------------------------------------- hero */
 .hero {
-    padding: 28px 24px 0;
+    padding: mui.$mui-unit * 3.5 mui.$mui-unit * 3 0;
 }
 
 .heroCard {
     max-width: 1240px;
-    padding: 28px 32px 24px;
+    padding: mui.$mui-unit * 3.5 mui.$mui-unit * 4 mui.$mui-unit * 3;
     border: 1px solid var(--dpia-hair);
     border-left: 4px solid var(--m3-primary, #a5000a);
     margin: 0 auto;
@@ -233,7 +235,7 @@
 }
 
 .heroCard h1 {
-    margin: 8px 0;
+    margin: mui.$mui-unit 0;
     font-size: 32px;
     font-weight: 500;
     letter-spacing: -0.01em;
@@ -250,20 +252,20 @@
 .facts {
     display: flex;
     flex-wrap: wrap;
-    margin-top: 14px;
-    gap: 8px;
+    margin-top: mui.$mui-unit * 1.75;
+    gap: mui.$mui-unit;
 }
 
 .fact {
     display: inline-flex;
     align-items: center;
-    padding: 6px 14px;
+    padding: mui.$mui-unit * 0.75 mui.$mui-unit * 1.75;
     border: 1px solid var(--dpia-line);
     background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: 12px;
     font-size: 12.5px;
     font-weight: 600;
-    gap: 7px;
+    gap: mui.$mui-unit * 0.875;
 
     svg {
         color: var(--m3-primary, #a5000a);
@@ -283,22 +285,22 @@
     // DpiaDocumentPage.tsx); 61px is only the pre-JS/no-JS fallback.
     top: var(--dpia-appbar-height, 61px);
     border-bottom: 1px solid var(--dpia-hair);
-    margin-top: 24px;
+    margin-top: mui.$mui-unit * 3;
     background: var(--m3-surface-container-lowest, #ffffff);
 }
 
 .chapterNavInner {
     display: flex;
     max-width: 1240px;
-    padding: 12px 24px;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 3;
     margin: 0 auto;
-    gap: 8px;
+    gap: mui.$mui-unit;
     overflow-x: auto;
 }
 
 .chip {
     flex: none;
-    padding: 7px 15px;
+    padding: mui.$mui-unit * 0.875 mui.$mui-unit * 1.875;
     border: 1px solid var(--dpia-hair);
     background: var(--m3-surface-container, #f0edee);
     border-radius: 25px;
@@ -333,20 +335,20 @@
 .chipCurrent {
     border-color: var(--m3-primary, #a5000a);
     background: var(--m3-primary, #a5000a);
-    color: #ffffff;
+    color: var(--m3-on-primary, #ffffff);
 }
 
 /* --------------------------------------------------------------- sections */
 .body {
     max-width: 1240px;
-    padding: 0 24px 64px;
+    padding: 0 mui.$mui-unit * 3 mui.$mui-unit * 8;
     margin: 0 auto;
 }
 
 .section {
-    padding: 26px 30px 28px;
+    padding: mui.$mui-unit * 3.25 mui.$mui-unit * 3.75 mui.$mui-unit * 3.5;
     border: 1px solid var(--dpia-hair);
-    margin-top: 20px;
+    margin-top: mui.$mui-unit * 2.5;
     background: var(--m3-surface-container-lowest, #ffffff);
     border-radius: 24px;
     box-shadow: 0 3px 0 1px rgb(0 0 0 / 10%);
@@ -355,27 +357,27 @@
     scroll-margin-top: calc(var(--dpia-appbar-height, 61px) + var(--dpia-chapternav-height, 61px));
 
     h2 {
-        margin: 0 0 10px;
+        margin: 0 0 mui.$mui-unit * 1.25;
         font-size: 24px;
         font-weight: 500;
         line-height: 32px;
     }
 
     h3 {
-        margin: 26px 0 8px;
+        margin: mui.$mui-unit * 3.25 0 mui.$mui-unit;
         font-size: 17px;
         font-weight: 600;
     }
 
     p {
         max-width: 74ch;
-        margin: 0 0 14px;
+        margin: 0 0 mui.$mui-unit * 1.75;
     }
 }
 
 .chapterNo {
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: mui.$mui-unit * 0.25;
     color: var(--m3-primary, #a5000a);
     font-family: var(--dpia-mono);
     font-size: 13px;
@@ -383,7 +385,7 @@
 
 .norm {
     display: inline-block;
-    padding: 0 7px;
+    padding: 0 mui.$mui-unit * 0.875;
     border: 1px solid var(--dpia-line);
     background: var(--dpia-wash);
     border-radius: 4px;
@@ -395,9 +397,9 @@
 
 .internalNote {
     max-width: 68ch;
-    padding: 10px 14px;
+    padding: mui.$mui-unit * 1.25 mui.$mui-unit * 1.75;
     border: 1.5px dashed var(--dpia-anno-line);
-    margin: 14px 0 4px;
+    margin: mui.$mui-unit * 1.75 0 mui.$mui-unit * 0.5;
     background: var(--dpia-anno-bg);
     border-radius: 4px;
     color: var(--dpia-anno-ink);
@@ -405,7 +407,7 @@
     line-height: 1.55;
 
     code {
-        padding: 0 3px;
+        padding: 0 mui.$mui-unit * 0.375;
         background: rgb(0 0 0 / 5%);
         border-radius: 2px;
         font-family: var(--dpia-mono);
@@ -415,8 +417,8 @@
 
 .internalTag {
     display: inline-block;
-    padding: 1.5px 6px;
-    margin-right: 8px;
+    padding: mui.$mui-unit * 0.1875 mui.$mui-unit * 0.75;
+    margin-right: mui.$mui-unit;
     background: var(--dpia-anno-ink);
     border-radius: 2px;
     color: #ffffff;
@@ -429,13 +431,13 @@
 /* ----------------------------------------------------------- key figures */
 .figures {
     display: grid;
-    margin: 18px 0 6px;
-    gap: 14px;
+    margin: mui.$mui-unit * 2.25 0 mui.$mui-unit * 0.75;
+    gap: mui.$mui-unit * 1.75;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .figure {
-    padding: 16px 16px 13px;
+    padding: mui.$mui-unit * 2 mui.$mui-unit * 2 mui.$mui-unit * 1.625;
     border: 1px solid var(--dpia-hair);
     border-top: 3px solid var(--m3-primary, #a5000a);
     background: var(--m3-surface-container-low, #f6f3f3);
@@ -450,7 +452,7 @@
 }
 
 .figureLabel {
-    margin-top: 2px;
+    margin-top: mui.$mui-unit * 0.25;
     color: var(--m3-on-surface-variant, #444748);
     font-size: 12.5px;
     line-height: 1.35;
@@ -464,13 +466,13 @@
 /* --------------------------------------------------------- role hierarchy */
 .roleGrid {
     display: grid;
-    margin: 16px 0 14px;
-    gap: 12px;
+    margin: mui.$mui-unit * 2 0 mui.$mui-unit * 1.75;
+    gap: mui.$mui-unit * 1.5;
     grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
 }
 
 .roleCard {
-    padding: 14px 16px 12px;
+    padding: mui.$mui-unit * 1.75 mui.$mui-unit * 2 mui.$mui-unit * 1.5;
     border: 1px solid var(--dpia-hair);
     border-top: 4px solid var(--m3-primary, #a5000a);
     background: var(--m3-surface-container-low, #f6f3f3);
@@ -478,7 +480,7 @@
 }
 
 .roleTier2 {
-    border-top-color: var(--m3-primary-outline, #930008);
+    border-top-color: var(--m3-on-primary-fixed-variant, #930008);
 }
 
 .roleTier3 {
@@ -492,8 +494,8 @@
 .roleHead {
     display: flex;
     align-items: center;
-    margin-bottom: 6px;
-    gap: 8px;
+    margin-bottom: mui.$mui-unit * 0.75;
+    gap: mui.$mui-unit;
 
     svg {
         color: var(--m3-primary, #a5000a);
@@ -506,7 +508,7 @@
 }
 
 .roleDesc {
-    margin-bottom: 10px;
+    margin-bottom: mui.$mui-unit * 1.25;
     color: var(--m3-on-surface-variant, #444748);
     font-size: 12.5px;
     line-height: 1.5;
@@ -515,11 +517,11 @@
 .roleTags {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: mui.$mui-unit * 0.625;
 }
 
 .realmRole {
-    padding: 2px 7px;
+    padding: mui.$mui-unit * 0.25 mui.$mui-unit * 0.875;
     background: var(--dpia-wash);
     border-radius: 3px;
     color: var(--m3-primary, #a5000a);
@@ -529,7 +531,7 @@
 }
 
 .mfaFlag {
-    padding: 1px 8px;
+    padding: mui.$mui-unit * 0.125 mui.$mui-unit;
     border: 1px solid var(--dpia-success-line);
     background: var(--dpia-success-wash);
     border-radius: 25px;
@@ -541,31 +543,31 @@
 .clientStrip {
     display: flex;
     align-items: flex-start;
-    padding: 13px 16px;
+    padding: mui.$mui-unit * 1.625 mui.$mui-unit * 2;
     border: 1px solid var(--dpia-line);
-    margin-bottom: 18px;
+    margin-bottom: mui.$mui-unit * 2.25;
     background: var(--dpia-wash);
     border-radius: 8px;
     font-size: 13px;
-    gap: 12px;
+    gap: mui.$mui-unit * 1.5;
     line-height: 1.55;
 
     > svg {
-        margin-top: 1px;
+        margin-top: mui.$mui-unit * 0.125;
         color: var(--m3-primary, #a5000a);
     }
 }
 
 /* ------------------------------------------------------ permission matrix */
 .scrollHint {
-    margin-bottom: 8px;
+    margin-bottom: mui.$mui-unit;
     color: var(--m3-on-surface-variant, #444748);
     font-size: 11.5px;
 }
 
 .tableScroll {
     border: 1px solid var(--dpia-hair);
-    margin: 0 0 6px;
+    margin: 0 0 mui.$mui-unit * 0.75;
     border-radius: 8px;
     overflow-x: auto;
 
@@ -582,7 +584,7 @@
     font-size: 13px;
 
     th {
-        padding: 9px 14px;
+        padding: mui.$mui-unit * 1.125 mui.$mui-unit * 1.75;
         border-bottom: 2px solid var(--dpia-hair);
         background: var(--m3-surface-container, #f0edee);
         color: var(--m3-on-surface-variant, #444748);
@@ -599,7 +601,7 @@
     }
 
     td {
-        padding: 8px 14px;
+        padding: mui.$mui-unit mui.$mui-unit * 1.75;
         border-bottom: 1px solid var(--dpia-hair-soft);
         vertical-align: top;
     }
@@ -610,7 +612,7 @@
 }
 
 .cellYes {
-    color: var(--m3-success, #0a882f);
+    color: var(--admin-status-success, #0a882f);
     font-weight: 700;
     text-align: center;
 }
@@ -636,7 +638,7 @@
         color: var(--m3-error, #cc0000);
         font-size: 11.5px;
         font-weight: 700;
-        gap: 4px;
+        gap: mui.$mui-unit * 0.5;
     }
 }
 
@@ -644,7 +646,7 @@
 .split {
     display: grid;
     align-items: start;
-    gap: 18px;
+    gap: mui.$mui-unit * 2.25;
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
 }
 
@@ -652,8 +654,8 @@
     display: flex;
     flex-direction: column;
     padding: 0;
-    margin: 12px 0 6px;
-    gap: 5px;
+    margin: mui.$mui-unit * 1.5 0 mui.$mui-unit * 0.75;
+    gap: mui.$mui-unit * 0.625;
     list-style: none;
 }
 
@@ -661,7 +663,7 @@
     display: flex;
     align-items: center;
     font-size: 13px;
-    gap: 10px;
+    gap: mui.$mui-unit * 1.25;
 }
 
 .cascadeDot {
@@ -684,14 +686,14 @@
 .cascadeLine {
     width: 1.5px;
     height: 12px;
-    margin-left: 4.5px;
+    margin-left: mui.$mui-unit * 0.5625;
     background: var(--dpia-hair);
 }
 
 .cascadeNote {
-    padding: 12px 14px;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 1.75;
     border: 1px solid var(--dpia-hair);
-    margin-top: 10px;
+    margin-top: mui.$mui-unit * 1.25;
     background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: 8px;
     color: var(--m3-on-surface-variant, #444748);
@@ -702,19 +704,19 @@
 /* ------------------------------------------------------ counselling types */
 .typeGrid {
     display: grid;
-    margin: 16px 0;
-    gap: 14px;
+    margin: mui.$mui-unit * 2 0;
+    gap: mui.$mui-unit * 1.75;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
 .typeCard {
-    padding: 16px 18px 14px;
+    padding: mui.$mui-unit * 2 mui.$mui-unit * 2.25 mui.$mui-unit * 1.75;
     border: 1px solid var(--dpia-hair);
     background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: 8px;
 
     h4 {
-        margin: 0 0 6px;
+        margin: 0 0 mui.$mui-unit * 0.75;
         font-size: 14.5px;
         font-weight: 700;
     }
@@ -728,7 +730,7 @@
 
     > svg {
         display: block;
-        margin-bottom: 10px;
+        margin-bottom: mui.$mui-unit * 1.25;
         color: var(--m3-primary, #a5000a);
     }
 }
@@ -747,9 +749,9 @@
 
 .plannedBadge {
     display: inline-block;
-    padding: 1px 6px;
+    padding: mui.$mui-unit * 0.125 mui.$mui-unit * 0.75;
     border: 1px solid var(--dpia-warn-line);
-    margin-left: 6px;
+    margin-left: mui.$mui-unit * 0.75;
     background: var(--dpia-warn-bg);
     border-radius: 2px;
     color: var(--dpia-anno-ink);
@@ -763,9 +765,9 @@
 /** Same amber family as .plannedBadge — flags Chapter 3's sample key figures. */
 .sampleBadge {
     display: inline-block;
-    padding: 1px 6px;
+    padding: mui.$mui-unit * 0.125 mui.$mui-unit * 0.75;
     border: 1px solid var(--dpia-warn-line);
-    margin-bottom: 10px;
+    margin-bottom: mui.$mui-unit * 1.25;
     background: var(--dpia-warn-bg);
     border-radius: 2px;
     color: var(--dpia-anno-ink);
@@ -777,10 +779,10 @@
 
 .planBox {
     max-width: 74ch;
-    padding: 14px 18px;
+    padding: mui.$mui-unit * 1.75 mui.$mui-unit * 2.25;
     border: 1px solid var(--dpia-warn-line);
     border-left: 4px solid var(--dpia-warn-ink);
-    margin: 14px 0 8px;
+    margin: mui.$mui-unit * 1.75 0 mui.$mui-unit;
     background: var(--dpia-warn-bg-soft);
     border-radius: 8px;
 
@@ -793,11 +795,11 @@
 .planTitle {
     display: flex;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: mui.$mui-unit * 0.75;
     color: var(--dpia-anno-ink);
     font-size: 12px;
     font-weight: 800;
-    gap: 8px;
+    gap: mui.$mui-unit;
     letter-spacing: 0.1em;
     text-transform: uppercase;
 }
@@ -805,20 +807,20 @@
 .measures {
     display: flex;
     flex-wrap: wrap;
-    margin: 12px 0 8px;
-    gap: 8px;
+    margin: mui.$mui-unit * 1.5 0 mui.$mui-unit;
+    gap: mui.$mui-unit;
 }
 
 .measure {
     display: inline-flex;
     align-items: center;
-    padding: 5px 12px;
+    padding: mui.$mui-unit * 0.625 mui.$mui-unit * 1.5;
     border: 1px solid var(--dpia-hair);
     background: var(--m3-surface-container, #f0edee);
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
-    gap: 6px;
+    gap: mui.$mui-unit * 0.75;
 
     svg {
         color: var(--m3-primary, #a5000a);
@@ -861,8 +863,8 @@
        the chapter chips, so it scrolls away and only the chips stay put. */
 
     .appbar {
-        padding: 10px 14px;
-        gap: 10px;
+        padding: mui.$mui-unit * 1.25 mui.$mui-unit * 1.75;
+        gap: mui.$mui-unit * 1.25;
     }
 
     .version {
@@ -870,15 +872,15 @@
     }
 
     .chapterNavInner {
-        padding: 10px 14px;
+        padding: mui.$mui-unit * 1.25 mui.$mui-unit * 1.75;
     }
 
     .hero {
-        padding: 16px 14px 0;
+        padding: mui.$mui-unit * 2 mui.$mui-unit * 1.75 0;
     }
 
     .heroCard {
-        padding: 20px 18px 18px;
+        padding: mui.$mui-unit * 2.5 mui.$mui-unit * 2.25 mui.$mui-unit * 2.25;
     }
 
     .heroCard h1 {
@@ -886,11 +888,11 @@
     }
 
     .body {
-        padding: 0 14px 48px;
+        padding: 0 mui.$mui-unit * 1.75 mui.$mui-unit * 6;
     }
 
     .section {
-        padding: 20px 16px 22px;
+        padding: mui.$mui-unit * 2.5 mui.$mui-unit * 2 mui.$mui-unit * 2.75;
         border-radius: 8px;
         // scroll-margin-top inherited from the 1024px block above (chapter-nav height only).
     }
