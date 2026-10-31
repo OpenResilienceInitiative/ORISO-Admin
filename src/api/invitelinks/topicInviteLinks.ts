@@ -12,7 +12,7 @@ import {
 export type TopicInviteLinkKind = 'TENANT' | 'COUNSELLOR' | 'EXTERNAL_INBOUND';
 export type TopicInviteLinkChatType = 'LIVE_CHAT';
 export type TopicInviteLinkAnonymity = 'FULL';
-export type TopicInviteLinkStatus = 'ACTIVE' | 'USED' | 'EXPIRED';
+export type TopicInviteLinkStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'DISABLED';
 
 export interface TopicInviteLinkDTO {
     id: number;
@@ -104,6 +104,19 @@ export const createTopicInviteLink = async (
         bodyData: JSON.stringify(payload),
     });
     return response.json();
+};
+
+/** POST /useradmin/invitelinks/{id}/deactivate — switches an ACTIVE link off (status DISABLED). */
+export const deactivateTopicInviteLink = async (linkId: number, tenantId?: number): Promise<TopicInviteLinkDTO> => {
+    const response = await fetchData({
+        url: `${invitelinksEndpoint}/${linkId}/deactivate`,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        headersData: inviteLinkHeaders(tenantId),
+        // The tab shows its own error; CATCH_ALL would stack a second, generic toast on it.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
+    return withUtcInstants(await response.json());
 };
 
 export const CHAT_TYPE_OPTIONS: { value: TopicInviteLinkChatType; label: string }[] = [

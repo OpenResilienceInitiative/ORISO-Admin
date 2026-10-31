@@ -3,6 +3,7 @@ import { FETCH_METHODS } from '../fetchData';
 import {
     buildTopicInviteLinkUrl,
     createTopicInviteLink,
+    deactivateTopicInviteLink,
     formatAnonymityLabel,
     formatChatTypeLabel,
     listTopicInviteLinks,
@@ -92,5 +93,23 @@ describe('topic invite links API', () => {
         expect(formatChatTypeLabel('UNKNOWN')).toBe('UNKNOWN');
         expect(formatAnonymityLabel('FULL')).toBe('Full');
         expect(formatAnonymityLabel('PARTIAL')).toBe('PARTIAL');
+    });
+
+    it('deactivates a link with a POST to its deactivate route', async () => {
+        mocks.fetchData.mockResolvedValueOnce({
+            json: async () => ({ id: 4, token: 't', status: 'DISABLED', createDate: '2026-01-01T10:00:00' }),
+        });
+
+        const result = await deactivateTopicInviteLink(4, 77);
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: `${invitelinksEndpoint}/4/deactivate`,
+                method: FETCH_METHODS.POST,
+                skipAuth: false,
+                headersData: expect.objectContaining({ 'X-Tenant-Id': '77' }),
+            }),
+        );
+        expect(result.status).toBe('DISABLED');
     });
 });

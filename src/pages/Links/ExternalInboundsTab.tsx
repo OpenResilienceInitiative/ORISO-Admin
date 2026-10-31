@@ -6,12 +6,14 @@ import {
     buildTopicInviteLinkUrl,
     CHAT_TYPE_OPTIONS,
     createTopicInviteLink,
+    deactivateTopicInviteLink,
     formatAnonymityLabel,
     formatChatTypeLabel,
     listTopicInviteLinks,
     TopicInviteLinkDTO,
 } from '../../api/invitelinks/topicInviteLinks';
 import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
+import { Modal } from '../../components/Modal';
 import { ListingTable, listingTableStyles } from '../../components/ListingTable';
 import { useTenantTopics } from '../../hooks/useTenantTopics';
 import { AnonymityTag, StatusTag } from './components/StatusTag';
@@ -27,6 +29,7 @@ export const ExternalInboundsTab = () => {
     const [links, setLinks] = useState<TopicInviteLinkDTO[]>([]);
     const [loadingLinks, setLoadingLinks] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [linkToDeactivate, setLinkToDeactivate] = useState<TopicInviteLinkDTO | null>(null);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
 
     const topicOptions = useMemo(() => topics.map((topic) => ({ value: topic.id, label: topic.name })), [topics]);
@@ -107,6 +110,22 @@ export const ExternalInboundsTab = () => {
         [form, loadLinks, pagination.pageSize, t],
     );
 
+    const onDeactivate = useCallback(async () => {
+        if (!linkToDeactivate) {
+            return;
+        }
+        const { id } = linkToDeactivate;
+        setLinkToDeactivate(null);
+        try {
+            await deactivateTopicInviteLink(id);
+            message.success(t('links.deactivated', 'Link deactivated'));
+        } catch {
+            message.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
+        }
+        // Reload either way: a failed call is most often a link that changed state meanwhile.
+        await loadLinks(pagination.current, pagination.pageSize);
+    }, [linkToDeactivate, loadLinks, pagination, t]);
+
     const onTableChange = useCallback(
         (tablePagination: TablePaginationConfig) => {
             const nextPage = tablePagination.current ?? 1;
@@ -170,9 +189,24 @@ export const ExternalInboundsTab = () => {
                 title: t('links.col.link', 'Link'),
                 key: 'link',
                 render: (_: unknown, record: TopicInviteLinkDTO) => (
-                    <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
-                        {t('links.copy', 'Copy')}
-                    </Button>
+                    <>
+                        <Button size="small" className={listingTableStyles.copyButton} onClick={() => copyLink(record)}>
+                            {t('links.copy', 'Copy')}
+                        </Button>
+                        {/* The list holds every link kind; only an external live-chat inbound
+                            is switched off here. */}
+                        {record.status === 'ACTIVE' &&
+                            record.linkKind === LINK_KIND &&
+                            record.chatType === 'LIVE_CHAT' && (
+                                <Button
+                                    size="small"
+                                    className={listingTableStyles.copyButton}
+                                    onClick={() => setLinkToDeactivate(record)}
+                                >
+                                    {t('links.deactivate', 'Deactivate')}
+                                </Button>
+                            )}
+                    </>
                 ),
             },
         ],
@@ -237,6 +271,18 @@ export const ExternalInboundsTab = () => {
                 }}
                 onChange={onTableChange}
             />
+
+            {linkToDeactivate !== null && (
+                <Modal
+                    titleKey="links.deactivateConfirm.title"
+                    contentKey="links.deactivateConfirm.body"
+                    contentKeyOptions={{ topic: resolveTopicName(linkToDeactivate) }}
+                    okLabelKey="links.deactivate"
+                    cancelLabelKey="links.deactivateConfirm.cancel"
+                    onConfirm={onDeactivate}
+                    onClose={() => setLinkToDeactivate(null)}
+                />
+            )}
         </>
     );
 };
