@@ -95,6 +95,7 @@ const SelectField = <V extends string>({
             }}
         >
             <FloatingLabelSelect<V>
+                virtual={false}
                 className={variant === 'panel' ? panelStyles.select : className}
                 disabled={disabled}
                 label={label}

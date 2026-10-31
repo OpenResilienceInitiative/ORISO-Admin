@@ -102,11 +102,11 @@ export const AdminSidebar = ({ items, activityLogs, account, logout, lang, curre
                 ))}
 
                 {activityLogs && activityLogs.items.length > 0 && (
-                    <li className="menuSection" role="group" aria-label={activityLogs.label}>
+                    <li className="menuSection">
                         <span className="menuSectionLabel" lang={lang}>
                             {activityLogs.label}
                         </span>
-                        <ul className="menuSectionItems">
+                        <ul className="menuSectionItems" aria-label={activityLogs.label}>
                             {activityLogs.items.map((item) => (
                                 <li key={item.key} className="menuItem">
                                     <NavItemLink item={item} lang={lang} currentPath={currentPath} />

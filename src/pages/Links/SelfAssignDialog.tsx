@@ -191,6 +191,7 @@ export const SelfAssignDialog = ({
         >
             <div className={styles.body}>
                 <FloatingLabelSelect<SelfAssignmentRole>
+                    virtual={false}
                     disabled={roles.length < 2}
                     label={t('links.composer.role', 'Rolle')}
                     options={roles.map((value) => ({ value, label: roleLabel(value) }))}

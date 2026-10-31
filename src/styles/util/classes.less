@@ -42,3 +42,16 @@
 .w-200 {
     width: 200px;
 }
+
+// Keep explanatory text available to assistive technology without reserving space.
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    margin: -1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
