@@ -27,8 +27,8 @@
 .chip {
     padding: 0 4px 0 12px;
     border-color: transparent;
-    background: var(--m3-secondary-container, #dae2ee);
-    color: var(--m3-on-secondary-container, #171c22);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
 }
 
 .label {
@@ -87,7 +87,7 @@
     min-width: 220px;
     padding: 8px 0;
     border-radius: 4px;
-    background: var(--m3-surface-container, #eeeeef);
+    background: var(--m3-surface-container, #f0edee);
     box-shadow: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
 }
 

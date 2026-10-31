@@ -79,7 +79,7 @@ const Stage = ({ width, label, children }: { width: number | string; label: stri
 export const WizardPair: StoryObj = {
     render: () => (
         <ConfigProvider theme={buildAdminAntdTheme()}>
-            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #fcf9f9)' }}>
                 <Stage width={1000} label="1000px container → both cards share the row">
                     <CardGrid>
                         <TenantCard />
@@ -102,7 +102,7 @@ export const WizardPair: StoryObj = {
 export const ThreeCardsWrap: StoryObj = {
     render: () => (
         <ConfigProvider theme={buildAdminAntdTheme()}>
-            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #fcf9f9)' }}>
                 <Stage width={1000} label="1000px container, 3 cards → 2 + 1">
                     <CardGrid>
                         <TenantCard />

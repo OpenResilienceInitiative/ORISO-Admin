@@ -51,7 +51,7 @@
     margin: auto;
     background: var(--m3-surface-container-high, #eae7e8);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+    box-shadow: var(--admin-card-elevation, 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%));
 
     /* Fields tonal with the card instead of white cut-outs (#594.8). */
     --input-bg: var(--m3-surface-container-highest, #e4e2e2);

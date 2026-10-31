@@ -38,8 +38,8 @@
 }
 
 .fieldError .outline {
-    border-color: var(--m3-error, #ba1a1a);
-    box-shadow: inset 0 0 0 1px var(--m3-error, #ba1a1a);
+    border-color: var(--m3-error, #b1005e);
+    box-shadow: inset 0 0 0 1px var(--m3-error, #b1005e);
 }
 
 .fieldDisabled {
@@ -135,7 +135,7 @@
 }
 
 .fieldError .label {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 }
 
 .supportingText {
@@ -147,7 +147,7 @@
 }
 
 .fieldError .supportingText {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 }
 
 @media (prefers-reduced-motion: reduce) {

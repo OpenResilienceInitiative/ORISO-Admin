@@ -39,12 +39,12 @@
     white-space: nowrap;
 
     &:hover {
-        background: var(--m3-surface-container-highest, #e2e2e5);
+        background: var(--m3-surface-container-highest, #e4e2e2);
         color: var(--m3-on-surface, #1b1b1c);
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #9f4143);
+        outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: 2px;
     }
 
@@ -61,8 +61,8 @@
     background: var(--m3-surface-container-low, #f6f3f3);
 
     &:disabled {
-        background: var(--m3-surface-container, #eeeeef);
-        color: var(--m3-on-surface-variant, #747478);
+        background: var(--m3-surface-container, #f0edee);
+        color: var(--m3-on-surface-variant, #444748);
     }
 }
 
@@ -81,7 +81,7 @@
     font-size: 14px;
     font-weight: 400;
     line-height: 18px;
-    color: var(--m3-on-surface-variant, #646d78);
+    color: var(--m3-on-surface-variant, #444748);
     text-align: right;
 }
 
