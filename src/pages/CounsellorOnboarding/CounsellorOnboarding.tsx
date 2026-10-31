@@ -94,6 +94,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         invite,
         data,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         topicLanguageError,
@@ -230,6 +231,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
+                    passwordRejection={passwordRejection}
                     existingAccountSetup
                     passwordRules={passwordFormRules(t)}
                     passwordHintKey="cards.advisorAccount.passwordHint"

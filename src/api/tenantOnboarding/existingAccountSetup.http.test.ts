@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { completeExistingAccountSetup, InviteLinkError } from './tenantOnboarding';
+import { AccountSetupPasswordError, completeExistingAccountSetup, InviteLinkError } from './tenantOnboarding';
 import { publicAccountInvitesEndpoint } from '../../appConfig';
 
 vi.mock('../auth/auth', () => ({
@@ -63,6 +63,20 @@ describe('existing account setup through the real public HTTP transport', () => 
         recordResponse(new Response(null, { status }));
         await expect(completeExistingAccountSetup('opaque', 'Aa1!bbbb')).rejects.toThrow();
     });
+
+    it.each([
+        ['UNCHANGED', { message: 'Choose a password different from the initial password' }],
+        ['REJECTED', { message: 'Password does not meet the policy' }],
+        ['REJECTED', null],
+    ] as const)(
+        'turns a 400 password refusal into %s instead of a generic fault (Admin#1207)',
+        async (rejection, body) => {
+            recordResponse(new Response(body ? JSON.stringify(body) : null, { status: 400 }));
+            await expect(completeExistingAccountSetup('opaque', 'Aa1!bbbb')).rejects.toEqual(
+                new AccountSetupPasswordError(rejection),
+            );
+        },
+    );
 
     it('rejects an incomplete success body rather than inventing completion or public 2FA', async () => {
         recordResponse(new Response(JSON.stringify({ phase: 'PENDING_2FA_ACTIVATION' }), { status: 200 }));

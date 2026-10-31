@@ -6,14 +6,24 @@ import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../components/M3Button';
 import { MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { validatePasswordCriteria } from '../../utils/validateInputValue';
-import { TenantAdminOnboardingInviteDTO } from '../../api/tenantOnboarding/tenantOnboarding';
+import {
+    AccountSetupPasswordRejection,
+    TenantAdminOnboardingInviteDTO,
+} from '../../api/tenantOnboarding/tenantOnboarding';
 import styles from './styles.module.scss';
+
+const PASSWORD_REJECTION_KEYS: Record<AccountSetupPasswordRejection, string> = {
+    UNCHANGED: 'accountSetup.passwordUnchanged',
+    REJECTED: 'accountSetup.passwordRejected',
+};
 
 interface AccountStepProps {
     invite: Pick<TenantAdminOnboardingInviteDTO, 'recipientEmail' | 'joinsExistingTenant'>;
     busy: boolean;
     /** Set when the registration failed technically (retryable). */
     showRegistrationError: boolean;
+    /** Set when the server refused the chosen password; the link stays usable. */
+    passwordRejection?: AccountSetupPasswordRejection | null;
     /** Existing identity: choose a password, without registering an account. */
     existingAccountSetup?: boolean;
     /** Other roles reuse their existing credential policy, rather than inheriting the tenant rule. */
@@ -34,6 +44,7 @@ export const AccountStep = ({
     invite,
     busy,
     showRegistrationError,
+    passwordRejection = null,
     existingAccountSetup = false,
     passwordRules,
     passwordHintKey = 'passwordReset.passwordCriteria',
@@ -79,6 +90,11 @@ export const AccountStep = ({
                         ]),
                     ]}
                 />
+                {passwordRejection && (
+                    <Typography role="alert" color="error" variant="body2">
+                        {t(PASSWORD_REJECTION_KEYS[passwordRejection])}
+                    </Typography>
+                )}
                 <MuiPasswordFormField
                     name="repeatPassword"
                     label={t('tenantOnboarding.account.repeatPassword')}

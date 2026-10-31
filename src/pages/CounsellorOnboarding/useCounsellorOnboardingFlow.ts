@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeLanguage } from '../../utils/language';
 import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
-import { completeExistingAccountSetup } from '../../api/tenantOnboarding/tenantOnboarding';
+import {
+    AccountSetupPasswordError,
+    AccountSetupPasswordRejection,
+    completeExistingAccountSetup,
+} from '../../api/tenantOnboarding/tenantOnboarding';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -113,6 +117,8 @@ export const useCounsellorOnboardingFlow = (
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
     const [submitError, setSubmitError] = useState<CounsellorOnboardingSubmitError>(null);
+    // The server refused the chosen password (existing-account setup); the link stays usable.
+    const [passwordRejection, setPasswordRejection] = useState<AccountSetupPasswordRejection | null>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -138,6 +144,7 @@ export const useCounsellorOnboardingFlow = (
         busyRef.current = false;
         setBusy(false);
         setSubmitError(null);
+        setPasswordRejection(null);
     }, [inviteToken]);
     // Submits read the freshest collected data through a ref — the callbacks
     // stay stable while every keystroke updates `data`.
@@ -403,13 +410,18 @@ export const useCounsellorOnboardingFlow = (
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
+            setPasswordRejection(null);
             try {
                 await completeExistingAccountSetup(inviteToken, password);
                 if (inviteTokenRef.current === inviteToken) {
                     setState({ phase: 'done' });
                 }
             } catch (error) {
-                if (inviteTokenRef.current === inviteToken) {
+                if (inviteTokenRef.current !== inviteToken) {
+                    // A different link is shown meanwhile; this answer belongs to the old one.
+                } else if (error instanceof AccountSetupPasswordError) {
+                    setPasswordRejection(error.rejection);
+                } else {
                     failFlow(error, 'registration');
                 }
             } finally {
@@ -492,6 +504,7 @@ export const useCounsellorOnboardingFlow = (
         invite,
         data,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         topicLanguageError,

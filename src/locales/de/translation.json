@@ -9,6 +9,8 @@
     "accountSetup.success": "Ihr persönliches Passwort ist gespeichert. Melden Sie sich jetzt mit Ihrem Konto an. Die bisherigen Sicherheitsprüfungen bleiben bestehen.",
     "accountSetup.loginHint": "Beim Anmelden bleibt die erforderliche Zwei-Faktor-Authentifizierung bestehen.",
     "accountSetup.serviceError": "Das Passwort konnte nicht bestätigt werden. Es wurde kein erfolgreicher Abschluss gemeldet.",
+    "accountSetup.passwordUnchanged": "Bitte wählen Sie ein Passwort, das sich vom Einmalpasswort unterscheidet. Das Einmalpasswort kann nicht weiterverwendet werden.",
+    "accountSetup.passwordRejected": "Dieses Passwort wurde nicht angenommen. Bitte wählen Sie ein anderes Passwort.",
     "accountSetup.inProgress.title": "Die Einrichtung wird verarbeitet",
     "accountSetup.inProgress.description": "Die Einrichtung dieses Kontos wird bereits verarbeitet. Senden Sie das Passwort nicht erneut. Warten Sie und wenden Sie sich bei Bedarf an die Administration.",
     "accountSetup.operatorReview.title": "Die Einrichtung muss geprüft werden",

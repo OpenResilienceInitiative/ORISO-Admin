@@ -357,6 +357,31 @@ export const AccountStepStory: StoryObj = {
     ),
 };
 
+/** Admin#1207: the server refused the one-time password — the reason sits under the password field. */
+export const AccountStepPasswordUnchanged: StoryObj = {
+    render: () => (
+        <AccountStep
+            invite={STUB_INVITE_PROPS}
+            busy={false}
+            showRegistrationError={false}
+            passwordRejection="UNCHANGED"
+            existingAccountSetup
+            onSubmit={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByRole('alert')).toHaveTextContent(
+            /vom Einmalpasswort unterscheidet|differs from the one-time password/,
+        );
+    },
+};
+
+/** The same hint on a phone — the text wraps and stays fully visible. */
+export const AccountStepPasswordUnchangedMobile: StoryObj = {
+    ...AccountStepPasswordUnchanged,
+    ...PHONE_390,
+};
+
 /**
  * #594.7 — the terminal success state: shared status confirmation, the two
  * facts that matter spelled out separately, the assigned Träger-ID as a
