@@ -40,12 +40,14 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const activeTenantId = useRef(tenantId);
+    const tenantGeneration = useRef(0);
     const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
 
     useEffect(() => {
+        tenantGeneration.current += 1;
         activeTenantId.current = tenantId;
         pendingPolicyOperations.current = [];
         policyMutationQueue.current = Promise.resolve();
@@ -56,6 +58,9 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
         confirmedPolicyData.current = matchingPolicyData;
         setEffectivePolicyData(matchingPolicyData);
         setPendingPolicyFields(new Set());
+        return () => {
+            tenantGeneration.current += 1;
+        };
     }, [tenantId]);
 
     useEffect(() => {
@@ -141,11 +146,13 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             if (!confirmedPolicyData.current) return;
             if (String(confirmedPolicyData.current.tenantId) !== tenantId) return;
             const operation = { id: nextPolicyOperationId.current, tenantId, fieldKey, policy };
+            const operationGeneration = tenantGeneration.current;
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
             rebuildEffectivePolicyData();
             const run = async () => {
-                if (activeTenantId.current !== operation.tenantId) return;
+                if (activeTenantId.current !== operation.tenantId || tenantGeneration.current !== operationGeneration)
+                    return;
                 const confirmed = confirmedPolicyData.current;
                 if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
@@ -154,13 +161,19 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
-                    if (activeTenantId.current === operation.tenantId) {
+                    if (
+                        activeTenantId.current === operation.tenantId &&
+                        tenantGeneration.current === operationGeneration
+                    ) {
                         confirmedPolicyData.current = saved;
                     }
                 } catch {
                     // The mutation hook reports the error. Only confirmed server data is retained here.
                 } finally {
-                    if (activeTenantId.current === operation.tenantId) {
+                    if (
+                        activeTenantId.current === operation.tenantId &&
+                        tenantGeneration.current === operationGeneration
+                    ) {
                         pendingPolicyOperations.current = pendingPolicyOperations.current.filter(
                             ({ id }) => id !== operation.id,
                         );
@@ -176,19 +189,24 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     // Same queue as the switches, so a scope save and a switch save never overtake each other.
     const handleRecipientScopeSave = useCallback(
         (next: Pick<RecipientScopePolicy, 'value' | 'mode'>) => {
+            const operationGeneration = tenantGeneration.current;
             const save = policyMutationQueue.current.then(async () => {
                 const confirmed = confirmedPolicyData.current;
-                if (!confirmed || String(confirmed.tenantId) !== tenantId) {
+                if (
+                    !confirmed ||
+                    String(confirmed.tenantId) !== tenantId ||
+                    activeTenantId.current !== tenantId ||
+                    tenantGeneration.current !== operationGeneration
+                ) {
                     throw new Error('Permission policies of this Träger are not loaded');
                 }
                 const saved = await updateRecipientScope.mutateAsync({
                     ...withoutInternalGroupChat(confirmed),
                     ...toRecipientScopeWrite({ ...next, inherited: false }),
                 });
-                if (activeTenantId.current === tenantId) {
-                    confirmedPolicyData.current = saved;
-                    rebuildEffectivePolicyData();
-                }
+                if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
+                confirmedPolicyData.current = saved;
+                rebuildEffectivePolicyData();
                 notification.success({
                     message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
                     duration: 3,

@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, type ComponentProps } from 'react';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for tsc/Vite
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import i18n from '../../../../../i18n';
 import { AskerPermissionsCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 
@@ -111,5 +114,109 @@ export const RestrictedByPlatform: Story = {
 export const PendingAutosave: Story = {
     args: {
         pendingPolicyFields: new Set(['featureDisplayNameEditable']),
+    },
+};
+
+const collectionFields = [
+    'featureAskerEmailCollectionAgencyCounsellingEnabled',
+    'featureAskerEmailCollectionLiveChatEnabled',
+    'featureAskerEmailCollectionSelfHelpEnabled',
+] as const;
+const mixedCollectionPolicies: NonNullable<ComponentProps<typeof AskerPermissionsCard>['permissionPolicies']> = {
+    featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED' },
+    [collectionFields[0]]: { value: true, mode: 'SUGGESTED' },
+    [collectionFields[1]]: { value: false, mode: 'ENFORCED' },
+    [collectionFields[2]]: { value: true, mode: 'ENFORCED' },
+};
+
+/** Collection and notification delivery are independent. Mixed type choices stay stored. */
+export const CollectionMixedPreferences: Story = {
+    args: { permissionPolicies: mixedCollectionPolicies },
+};
+
+export const CollectionGlobalMasterOff: Story = {
+    args: {
+        policyLevel: 'platform',
+        permissionPolicies: {
+            ...mixedCollectionPolicies,
+            featureAskerEmailEnabled: { value: false, mode: 'SUGGESTED' },
+        },
+        onPolicyChange: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
+        await Promise.all(
+            collectionFields.map(async (field) => {
+                const row = canvasElement.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`)!;
+                await expect(within(row).getByRole('button')).toBeDisabled();
+                await userEvent.click(within(row).getByRole('button'));
+            }),
+        );
+        await expect(args.onPolicyChange).not.toHaveBeenCalled();
+    },
+};
+
+/** Recommendations remain truthful at Agency, where these account permissions are not editable. */
+export const AgencyCollectionReadOnly: Story = {
+    args: {
+        policyLevel: 'agency',
+        permissionPolicies: {
+            featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            [collectionFields[0]]: { value: true, mode: 'SUGGESTED', inherited: true },
+            [collectionFields[1]]: { value: false, mode: 'SUGGESTED', inherited: true },
+            [collectionFields[2]]: { value: true, mode: 'SUGGESTED', inherited: true },
+        },
+        onPolicyChange: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
+        await Promise.all(
+            collectionFields.map(async (field) => {
+                const row = canvasElement.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`)!;
+                await expect(within(row).getByRole('button')).toBeDisabled();
+                await expect(
+                    within(row).getByText(String(i18n.t('tenants.permissions.card.notifications.setOnTraeger'))),
+                ).toBeVisible();
+            }),
+        );
+        await expect(args.onPolicyChange).not.toHaveBeenCalled();
+    },
+};
+
+const EditableCollectionCard = (args: ComponentProps<typeof AskerPermissionsCard>) => {
+    const [permissionPolicies, setPermissionPolicies] = useState(args.permissionPolicies);
+    return (
+        <ControlledAskerPermissionsCard
+            {...args}
+            permissionPolicies={permissionPolicies}
+            onPolicyChange={(field, next) => {
+                setPermissionPolicies((current) => ({ ...current, [field]: next }));
+                args.onPolicyChange?.(field, next);
+            }}
+        />
+    );
+};
+
+export const CollectionFourStateMenus: Story = {
+    args: { policyLevel: 'platform', permissionPolicies: mixedCollectionPolicies, onPolicyChange: fn() },
+    render: (args) => <EditableCollectionCard {...args} />,
+    play: async ({ canvasElement, args }) => {
+        const page = within(canvasElement.ownerDocument.body);
+        const actions = ['activationEnforced', 'deactivationEnforced', 'activationSuggested', 'deactivationSuggested'];
+        await collectionFields.reduce(async (previousField, field) => {
+            await previousField;
+            const row = canvasElement.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`)!;
+            await actions.reduce(async (previousAction, action) => {
+                await previousAction;
+                await userEvent.click(within(row).getByRole('button'));
+                await userEvent.click(
+                    page.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${action}`) }),
+                );
+                await waitFor(() =>
+                    expect(within(row).getByRole('button')).toHaveAccessibleName(
+                        expect.stringContaining(i18n.t(`tenants.permissions.policy.${action}`)),
+                    ),
+                );
+            }, Promise.resolve());
+        }, Promise.resolve());
+        await expect(args.onPolicyChange).toHaveBeenCalledTimes(12);
     },
 };

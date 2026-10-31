@@ -31,5 +31,11 @@
     "tenants.permissions.asker.channels.browserSelfHelp": "መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ",
     "settings.assistant.inherit": "ዝተወርሰ ቅጥዒ ተጠቐም",
     "settings.assistant.inheritedIcon": "ዝተወርሰ ምልክት",
-    "settings.assistant.loadError": "ቅጥዕታት ክጽዓኑ ኣይከኣሉን። በጃኹም እንደገና ፈትኑ።"
+    "settings.assistant.loadError": "ቅጥዕታት ክጽዓኑ ኣይከኣሉን። በጃኹም እንደገና ፈትኑ።",
+    "tenants.permissions.asker.collection.title": "ኣድራሻ ኢ-መይል ክግደፈሉ ዝኽእል ቦታ",
+    "tenants.permissions.asker.collection.agencyCounselling": "ኣድራሻ ኢ-መይል ኣብ ምኽሪ",
+    "tenants.permissions.asker.collection.liveChat": "ኣድራሻ ኢ-መይል ኣብ ቀጥታ ዝርርብ",
+    "tenants.permissions.asker.collection.selfHelp": "ኣድራሻ ኢ-መይል ኣብ ጉጅለታት ርእሰ-ሓገዝ",
+    "tenants.permissions.asker.collection.masterOff": "መጀመርታ ንሕሳብ ኣድራሻ ኢ-መይል ፍቐድ። እዚ ምርጫ ይዕቀብ።",
+    "tenants.permissions.asker.collection.description": "እዞም ቅጥዕታት ኣድራሻ ንምእካብ ይፈቕዱ። ኣድራሻ ግዴታ ኣይገብሩን ምልክታታት ድማ ኣይቕይሩን።"
 }
