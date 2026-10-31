@@ -32,7 +32,7 @@ const outcomeColor: Record<string, string> = {
  * what became of it. Ids and role/type labels only — the backend keeps no names or e-mails here.
  */
 export const DeletionAuditLogsPage = () => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(20);
     const [targetType, setTargetType] = useState<string | undefined>(undefined);
@@ -52,7 +52,7 @@ export const DeletionAuditLogsPage = () => {
     const layout = useDeletionLogLayout(containerRef);
     const combined = layout !== 'wide';
 
-    const typeLabel = (value: string) => t(`deletionAudit.targetType.${value}`);
+    const typeLabel = (value: string) => t(`deletionAudit.targetType.${value}`, { defaultValue: value });
     const actorLabel = (value: string) => t(`deletionAudit.actor.${value}`, { defaultValue: value });
 
     // Wide keeps one column per field. Narrower containers fold type into the target and role into the
@@ -80,13 +80,13 @@ export const DeletionAuditLogsPage = () => {
             case 'createDate':
                 return (
                     <span className={styles.nowrap}>
-                        {row.createDate ? new Date(row.createDate).toLocaleString() : '-'}
+                        {row.createDate ? new Date(row.createDate).toLocaleString(i18n.language) : '-'}
                     </span>
                 );
             case 'outcome':
                 return (
                     <Tag color={outcomeColor[row.outcome] ?? 'default'}>
-                        {t(`deletionAudit.outcome.${row.outcome}`)}
+                        {t(`deletionAudit.outcome.${row.outcome}`, { defaultValue: row.outcome })}
                     </Tag>
                 );
             case 'target':
@@ -189,7 +189,7 @@ export const DeletionAuditLogsPage = () => {
                 header={<DataTableHeader columns={columns} />}
                 loading={isLoading}
                 skeletonColumns={columns.length}
-                isEmpty={rows.length === 0}
+                isEmpty={!isError && rows.length === 0}
                 empty={<AdminEmpty />}
                 footer={
                     <DataTablePagination

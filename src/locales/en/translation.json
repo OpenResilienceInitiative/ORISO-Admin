@@ -397,7 +397,7 @@
     "inactiveAudit.table.recipientAdminId": "Recipient admin ID",
     "inactiveAudit.table.emailDispatched": "Email dispatched",
     "deletionAudit.title": "Deletion log",
-    "deletionAudit.subTitle": "Who deleted what, and when. Ids and roles only - no names or messages are stored.",
+    "deletionAudit.subTitle": "Who deleted what, and when. IDs and roles only - no names or messages are stored.",
     "deletionAudit.filters.targetType": "Filter type",
     "deletionAudit.filters.outcome": "Filter outcome",
     "deletionAudit.filters.targetId": "Search target ID",

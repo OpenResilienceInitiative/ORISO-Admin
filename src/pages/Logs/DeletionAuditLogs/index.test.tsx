@@ -6,7 +6,7 @@ import { DeletionAuditLogsPage } from './index';
 const t = (key: string) => key;
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t }),
+    useTranslation: () => ({ t, i18n: { language: 'de' } }),
 }));
 
 vi.mock('../../../components/GlobalSearch', () => ({
@@ -54,34 +54,37 @@ const mocks = vi.hoisted(() => ({ isError: false, params: [] as any[] }));
 vi.mock('../../../hooks/useDeletionAuditLogsData', () => ({
     useDeletionAuditLogsData: (params: unknown) => {
         mocks.params.push(params);
+        // A failed request has no data, exactly as react-query reports it.
         return {
-            data: {
-                data: [
-                    {
-                        id: 1,
-                        actorId: 'admin-1',
-                        actorRole: 'PLATFORM_ADMIN',
-                        targetType: 'CONSULTANT',
-                        targetId: 'consultant-9',
-                        tenantId: 4,
-                        outcome: 'SCHEDULED',
-                        createDate: '2026-10-01T10:00:00Z',
-                    },
-                    {
-                        id: 2,
-                        actorId: null,
-                        actorRole: 'SYSTEM',
-                        targetType: 'CONSULTANT',
-                        targetId: 'consultant-9',
-                        tenantId: 4,
-                        outcome: 'EXECUTED',
-                        createDate: '2026-10-03T10:00:00Z',
-                    },
-                ],
-                total: 2,
-                page: 1,
-                perPage: 20,
-            },
+            data: mocks.isError
+                ? undefined
+                : {
+                      data: [
+                          {
+                              id: 1,
+                              actorId: 'admin-1',
+                              actorRole: 'PLATFORM_ADMIN',
+                              targetType: 'CONSULTANT',
+                              targetId: 'consultant-9',
+                              tenantId: 4,
+                              outcome: 'SCHEDULED',
+                              createDate: '2026-10-01T10:00:00Z',
+                          },
+                          {
+                              id: 2,
+                              actorId: null,
+                              actorRole: 'SYSTEM',
+                              targetType: 'CONSULTANT',
+                              targetId: 'consultant-9',
+                              tenantId: 4,
+                              outcome: 'EXECUTED',
+                              createDate: '2026-10-03T10:00:00Z',
+                          },
+                      ],
+                      total: 2,
+                      page: 1,
+                      perPage: 20,
+                  },
             isLoading: false,
             isError: mocks.isError,
         };
@@ -175,6 +178,8 @@ describe('DeletionAuditLogsPage', () => {
         render(<DeletionAuditLogsPage />);
 
         expect(screen.getByText('error.loading')).toBeInTheDocument();
+        // "No data" next to an error would read as "nothing was deleted".
+        expect(screen.queryByTestId('admin-empty')).not.toBeInTheDocument();
     });
 
     describe('data hook params', () => {
