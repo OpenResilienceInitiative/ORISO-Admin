@@ -1,7 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
-import { toCreateInviteRequest, type InviteDraft, type InviteRequestContext } from './inviteRequest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    findStoredCsvInvite,
+    toCreateInviteRequest,
+    type InviteDraft,
+    type InviteRequestContext,
+} from './inviteRequest';
 
+const listAccountInvites = vi.hoisted(() => vi.fn());
 vi.mock('../../api/accountInvites/accountInvites', () => ({
+    listAccountInvites,
     acceptBaseUrlForRole: (role: string) => `https://admin.test/accept/${role}`,
 }));
 
@@ -153,5 +160,46 @@ describe('toCreateInviteRequest from a CSV row', () => {
 
     it('omits an empty topic cell so the server decides', () => {
         expect(toCreateInviteRequest(row, counsellorTab)).not.toHaveProperty('topicPermission', expect.anything());
+    });
+});
+
+describe('CSV failed-operation recovery', () => {
+    beforeEach(() => {
+        listAccountInvites.mockReset();
+    });
+    const row = { recipientEmail: ' Hidden@Example.org ', role: 'TENANT_ADMIN' as const, target: 'NEW' as const };
+    it('finds the exact open recipient beyond a page of historical or partial matches without table filters', async () => {
+        listAccountInvites.mockResolvedValueOnce({
+            content: [
+                { recipientEmail: 'hidden@example.org', inviteStatus: 'EXPIRED' },
+                { recipientEmail: 'extra-hidden@example.org', inviteStatus: 'DRAFT' },
+            ],
+            totalPages: 2,
+        });
+        const stored = { id: 81, recipientEmail: 'HIDDEN@example.org', inviteStatus: 'DRAFT', tenantId: 8 };
+        listAccountInvites.mockResolvedValueOnce({ content: [stored], totalPages: 2 });
+        expect(await findStoredCsvInvite(row)).toEqual(stored);
+        expect(listAccountInvites.mock.calls.map(([params]) => params)).toEqual([
+            { query: 'hidden@example.org', tab: 'TENANT', targetRole: 'TENANT_ADMIN', page: 0, size: 100 },
+            { query: 'hidden@example.org', tab: 'TENANT', targetRole: 'TENANT_ADMIN', page: 1, size: 100 },
+        ]);
+    });
+    it.each(['TENANT_ADMIN', 'AGENCY_ADMIN', 'COUNSELLOR'] as const)(
+        'routes recovery by imported role %s',
+        async (role) => {
+            listAccountInvites.mockResolvedValue({ content: [], totalPages: 1 });
+            await findStoredCsvInvite({ ...row, role });
+            expect(listAccountInvites).toHaveBeenCalledWith(
+                expect.objectContaining({ targetRole: role, tab: role === 'TENANT_ADMIN' ? 'TENANT' : 'UNIT' }),
+            );
+        },
+    );
+    it('proves absence only after reading all matching pages', async () => {
+        listAccountInvites.mockResolvedValue({ content: [], totalPages: 1 });
+        expect(await findStoredCsvInvite(row)).toBeUndefined();
+    });
+    it('propagates an unavailable owner instead of returning an unsafe absence', async () => {
+        listAccountInvites.mockRejectedValue(new Error('owner offline'));
+        await expect(findStoredCsvInvite(row)).rejects.toThrow('owner offline');
     });
 });

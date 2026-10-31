@@ -82,6 +82,46 @@ const baseProps = () => ({
     onRevoke: vi.fn(),
 });
 
+const serverList = () => ({
+    page: 2,
+    pageSize: 20,
+    total: 61,
+    filter: null,
+    sort: null,
+    onPageChange: vi.fn(),
+    onPageSizeChange: vi.fn(),
+    onFilterChange: vi.fn(),
+    onSortChange: vi.fn(),
+});
+
+describe('InviteProgressBoard server results', () => {
+    it('uses server totals and delegates next-page navigation without slicing the supplied page again', async () => {
+        const user = userEvent.setup();
+        const paging = serverList();
+        render(<InviteProgressBoard {...baseProps()} invites={[invite(21), invite(22)]} serverList={paging} />);
+        expect(screen.getByText('21–40 von 61')).toBeInTheDocument();
+        expect(screen.getByText('person21@example.org')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(paging.onPageChange).toHaveBeenCalledWith(3);
+    });
+
+    it('keeps selections from other server pages', () => {
+        const props = baseProps();
+        render(<InviteProgressBoard {...props} selectedIds={[1]} invites={[invite(21)]} serverList={serverList()} />);
+        expect(props.onSelectionChange).not.toHaveBeenCalled();
+    });
+
+    it('delegates lifecycle and sort changes to the owner of the server request', async () => {
+        const user = userEvent.setup();
+        const paging = serverList();
+        render(<InviteProgressBoard {...baseProps()} serverList={paging} />);
+        await user.click(screen.getByRole('button', { name: /^Braucht Aktion/ }));
+        expect(paging.onFilterChange).toHaveBeenCalledWith('needsAction');
+        await user.click(screen.getByRole('button', { name: /^Empfänger/ }));
+        expect(paging.onSortChange).toHaveBeenCalledWith({ key: 'recipient', direction: 'asc' });
+    });
+});
+
 describe('InviteProgressBoard', () => {
     beforeEach(() => vi.clearAllMocks());
 

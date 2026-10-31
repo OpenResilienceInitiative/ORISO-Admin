@@ -9,6 +9,38 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('GlobalSearchBar', () => {
+    it('offers an accessible clear action for a controlled search input', async () => {
+        const user = userEvent.setup();
+        const onSearchChange = vi.fn();
+        const onSearch = vi.fn();
+        render(
+            <GlobalSearchBar
+                defaultExpanded
+                clearable
+                inputType="search"
+                value="Mona"
+                onSearchChange={onSearchChange}
+                onSearch={onSearch}
+            />,
+        );
+        expect(screen.getByRole('searchbox')).toHaveValue('Mona');
+        await user.click(screen.getByRole('button', { name: 'Suche leeren' }));
+        expect(onSearchChange).toHaveBeenCalledWith('');
+        expect(onSearch).toHaveBeenCalledWith('');
+        expect(screen.getByRole('searchbox')).toHaveFocus();
+    });
+
+    it('clears its uncontrolled value using the keyboard', async () => {
+        const user = userEvent.setup();
+        render(<GlobalSearchBar defaultExpanded clearable />);
+        const input = screen.getByRole('textbox');
+        await user.type(input, 'Mona');
+        const clear = screen.getByRole('button', { name: 'Suche leeren' });
+        clear.focus();
+        await user.keyboard('{Enter}');
+        expect(input).toHaveValue('');
+        expect(input).toHaveFocus();
+    });
     it('starts minimized and expands via the magnifier, collapsing on the next press', async () => {
         const user = userEvent.setup();
         const onExpandedChange = vi.fn();

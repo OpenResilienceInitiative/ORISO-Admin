@@ -12,7 +12,7 @@ import { InviteCsvImportModal } from './InviteCsvImportModal';
 
 /**
  * A parse result as `parseInviteCsv` would produce it for a mixed file: valid
- * rows (some without names, some without Träger-ID — those get auto-populated)
+ * rows (some without names, some without Träger-ID — those stay AUTO until create)
  * plus rejected rows carrying their line number and reason.
  */
 const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
@@ -39,8 +39,7 @@ const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
 /**
  * Allocation stub for the composer's Träger-ID field (the composer talks to an
  * `IdAllocationClient` since U4; stories inject a stub instead of the real
- * TenantService client). Ids 1, 2 and 4 are taken — matching the modal's
- * `takenTenantIds` below.
+ * TenantService client). Ids 1, 2 and 4 are taken in this composer fixture.
  */
 const TAKEN_IDS = new Set<number>([1, 2, 4]);
 
@@ -89,7 +88,6 @@ const CsvImportHarness = () => {
                         }
                     }}
                     parseResult={csvImport.result}
-                    takenTenantIds={new Set([1, 2, 4])}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => {}}
                 />
@@ -123,8 +121,8 @@ export const MoreMenuOpen: Story = {
 };
 
 /**
- * Preview modal with mixed rows: valid entries (Träger-IDs 3 and 5 auto-populated
- * around the explicit 7 and the taken ids 1, 2, 4), an importable row without
+ * Preview modal with mixed rows: valid entries (empty Träger-IDs stay AUTO;
+ * the explicit 7 is preserved), an importable row without
  * names (inline-editable), and two rejected rows (invalid e-mail on line 5,
  * invalid Träger-ID on line 6) that are excluded from the batch count.
  */
@@ -142,7 +140,6 @@ export const PreviewModalMixedRows: Story = {
                 }
             }}
             parseResult={MIXED_PARSE_RESULT}
-            takenTenantIds={new Set([1, 2, 4])}
             onClose={() => {}}
             onCreated={() => {}}
         />
