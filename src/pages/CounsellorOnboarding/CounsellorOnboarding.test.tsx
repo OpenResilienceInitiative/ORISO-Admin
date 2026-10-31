@@ -177,6 +177,25 @@ describe('CounsellorOnboarding', () => {
         expect(client.registerCounsellor).not.toHaveBeenCalled();
     });
 
+    it('shows the one-time-password hint instead of the generic error on a 400 (Admin#1207)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockRejectedValue(
+            new Response(JSON.stringify({ message: 'Choose a password different from the initial password' }), {
+                status: 400,
+            }),
+        );
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
+        expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'accountSetup.submit' })).toBeEnabled();
+    });
+
     it('never enters public TOTP from an incomplete setup response', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),

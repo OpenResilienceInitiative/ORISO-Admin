@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    AccountSetupPasswordError,
+    AccountSetupPasswordRejection,
     completeExistingAccountSetup,
     DpaAcceptanceData,
     InviteLinkError,
@@ -94,6 +96,8 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
     // The representative already confirmed (server-side `dpaSignedAt`, #1065).
     const [dpaConfirmed, setDpaConfirmed] = useState(false);
     const [submitError, setSubmitError] = useState<TenantAdminOnboardingSubmitError>(null);
+    // The server refused the chosen password (existing-account setup); the link stays usable.
+    const [passwordRejection, setPasswordRejection] = useState<AccountSetupPasswordRejection | null>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -119,6 +123,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         busyRef.current = false;
         setBusy(false);
         setSubmitError(null);
+        setPasswordRejection(null);
     }, [inviteToken]);
 
     useEffect(() => {
@@ -265,6 +270,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
+            setPasswordRejection(null);
             try {
                 if (existingAccount) {
                     await completeExistingAccountSetup(inviteToken, password);
@@ -298,7 +304,11 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
                     },
                 });
             } catch (error) {
-                if (!existingAccount || inviteTokenRef.current === inviteToken) {
+                if (error instanceof AccountSetupPasswordError) {
+                    if (inviteTokenRef.current === inviteToken) {
+                        setPasswordRejection(error.rejection);
+                    }
+                } else if (!existingAccount || inviteTokenRef.current === inviteToken) {
                     failFlow(error, 'registration');
                 }
             } finally {
@@ -385,6 +395,7 @@ export const useTenantAdminOnboardingFlow = (inviteToken: string, client: Tenant
         dpaForward,
         dpaConfirmed,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         markDpaForwarded,
