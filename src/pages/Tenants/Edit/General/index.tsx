@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useRef, useState } from 'react';
 import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,15 @@ export const GeneralTenantSettings = () => {
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
     const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
+    // Creating a Träger is two requests (tenant, then its first admin). A second Save while they run
+    // would create a second tenant whose admin call fails with "e-mail already taken" (Admin#1206).
+    // The ref blocks the second submit synchronously; the state drives the button's busy look.
+    const savingRef = useRef(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const finishSaving = () => {
+        savingRef.current = false;
+        setIsSaving(false);
+    };
 
     const extractTenantAdminPayload = (formData?: Record<string, any>) => {
         if (!formData) return null;
@@ -78,6 +87,13 @@ export const GeneralTenantSettings = () => {
 
     const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
 
+    const saveErrorHandler = createTenantSaveErrorHandler({
+        t,
+        setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
+        notifyError: (message) => notification.error({ message }),
+        canShowSubdomainError: shouldShowSubdomainField,
+    });
+
     const { mutate: update } = useAddOrUpdateTenant({
         id: isEditing ? id : null,
         onSuccess: (rData, submittedFormData) => {
@@ -89,6 +105,7 @@ export const GeneralTenantSettings = () => {
                         tenantId: String(rData.id),
                     } as any;
                     const completeSuccess = () => {
+                        finishSaving();
                         notification.success({ message: t('tenants.created.modal.title') });
                         navigate(routePathNames.tenants);
                     };
@@ -99,6 +116,7 @@ export const GeneralTenantSettings = () => {
                         deleteTenantData(rData.id)
                             .catch(() => undefined)
                             .finally(() => {
+                                finishSaving();
                                 notification.error({ message: conflictMessage });
                                 navigate(routePathNames.tenants);
                             });
@@ -109,6 +127,7 @@ export const GeneralTenantSettings = () => {
                         onError: rollbackAndExit,
                     });
                 } else {
+                    finishSaving();
                     notification.success({ message: t('tenants.created.modal.title') });
                     navigate(routePathNames.tenants);
                 }
@@ -122,17 +141,20 @@ export const GeneralTenantSettings = () => {
             }
             navigate(routePathNames.tenants);
         },
-        onError: createTenantSaveErrorHandler({
-            t,
-            setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
-            notifyError: (message) => notification.error({ message }),
-            canShowSubdomainError: shouldShowSubdomainField,
-        }),
+        onError: (error) => {
+            finishSaving();
+            saveErrorHandler(error);
+        },
     });
 
     const handleSave = (formData: Record<string, any>) => {
         // `topic` is frontend-only — strip it before it reaches the mutation.
         const { topic, ...rest } = formData;
+        if (!isEditing) {
+            if (savingRef.current) return;
+            savingRef.current = true;
+            setIsSaving(true);
+        }
         update(rest as unknown as TenantAdminData);
     };
 
@@ -287,10 +309,12 @@ export const GeneralTenantSettings = () => {
                         className={styles.createCard}
                         footer={
                             <>
-                                <M3Button onClick={() => navigate(routePathNames.tenants)}>
+                                <M3Button onClick={() => navigate(routePathNames.tenants)} disabled={isSaving}>
                                     {t('card.edit.cancel')}
                                 </M3Button>
-                                <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
+                                <M3Button onClick={() => form.submit()} loading={isSaving}>
+                                    {t('card.edit.save')}
+                                </M3Button>
                             </>
                         }
                     >
