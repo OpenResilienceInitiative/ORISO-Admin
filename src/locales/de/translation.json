@@ -2791,7 +2791,7 @@
     "legal.dpa.deadline.blockedRenewal": "Neue Beratungen sind gesperrt. Laufende Beratungen und die Unterschrift bleiben zugänglich.",
     "dpaBlocker.sign.staleVersion": "Die Vertragsfassung wurde inzwischen erneuert. Bitte laden Sie den aktuellen Vertrag neu, lesen Sie ihn und bestätigen Sie ihn erneut.",
     "legal.dpa.deadline.grace": "Neue Beratungen sind während der Übergangsfrist erlaubt. Bitte unterschreiben Sie die neue AVV-Fassung rechtzeitig.",
-    "tenants.appSettings.emailPreview.branding.textWordmark": "Diese Vorschau verwendet den Organisationsnamen als Textwortmarke statt eines Bildes.",
+    "tenants.appSettings.emailPreview.branding.textWordmark": "In dieser E-Mail wird kein Logo angezeigt, sie zeigt nur den Organisationsnamen. Mit einem hinterlegten Logo erscheinen Logo und Name zusammen.",
     "tenants.appSettings.emailPreview.meta.organisation": "Organisation",
     "twoFactorSetup.method": "Wie möchten Sie den zweiten Faktor erhalten?",
     "twoFactorSetup.email.description": "Wir senden den Einmalcode an die E-Mail-Adresse Ihrer Einladung.",
