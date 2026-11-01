@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
+// eslint-disable-next-line import/no-unresolved -- Storybook subpath export is invisible to the ESLint resolver.
+import { expect } from 'storybook/test';
 import { FormSwitchField } from './index';
 
 const meta = {
@@ -22,17 +24,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Default M3-styled switch rendering (see also Atoms/M3Switch). */
+/** M3-styled switch rendering (see also Atoms/M3Switch). */
 export const Default: Story = {
     args: { switchLabel: 'Benachrichtigungen' },
-};
-
-/** Legacy antd Switch rendering. */
-export const AntdVariant: Story = {
-    args: { switchVariant: 'antd' },
-};
-
-/** Explicit M3-styled switch rendering. */
-export const M3Variant: Story = {
-    args: { switchVariant: 'm3', switchLabel: 'Benachrichtigungen' },
+    play: async ({ canvas, userEvent }) => {
+        const toggle = canvas.getByRole('switch', { name: 'Benachrichtigungen' });
+        await expect(toggle).not.toBeChecked();
+        await userEvent.click(toggle);
+        await expect(toggle).toBeChecked();
+        await userEvent.click(toggle);
+        await expect(toggle).not.toBeChecked();
+    },
 };
