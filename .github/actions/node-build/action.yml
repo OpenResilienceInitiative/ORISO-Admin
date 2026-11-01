@@ -4,7 +4,7 @@ runs:
     using: 'composite'
     steps:
         - name: Set up Node.js
-          uses: actions/setup-node@v4
+          uses: actions/setup-node@v7
           with:
               # .nvmrc is the single source of truth for the Node version, shared with
               # local development (`nvm use` / `fnm use`) and declared again as
