@@ -129,6 +129,14 @@
     gap: 8px;
 }
 
+.cardsLoading {
+    display: flex;
+    align-items: center;
+    padding: 24px 16px;
+    color: var(--m3-on-surface-variant, #444748);
+    gap: 12px;
+}
+
 .cards .facts {
     flex-direction: column;
 }

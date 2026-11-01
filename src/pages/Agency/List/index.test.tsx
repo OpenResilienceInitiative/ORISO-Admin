@@ -357,6 +357,25 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         expect(screen.getByText('ID 42')).toBeInTheDocument();
     });
 
+    it('says that the first page is loading on a phone instead of showing an empty area', () => {
+        setWidth(390);
+        mocks.isLoading = true;
+
+        render(<AgencyList />);
+
+        expect(screen.getByRole('status')).toHaveTextContent('loading');
+    });
+
+    it('marks the server default order (name A–Z) in the header and reverses it on the first click', () => {
+        mocks.agencies = [buildAgency([])];
+
+        render(<AgencyList />);
+
+        expect(screen.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'ascending');
+        fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
+        expect(mocks.lastQuery).toMatchObject({ sortBy: 'NAME', order: 'DESC' });
+    });
+
     it('shows one card per centre on a phone', () => {
         setWidth(390);
         mocks.agencies = [

@@ -9,6 +9,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import CloseIcon from '@mui/icons-material/Close';
+import CircularProgress from '@mui/material/CircularProgress';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
     DataTable,
@@ -91,6 +92,7 @@ const AgencyCardList = ({
     onDelete,
     ariaLabel,
 }: AgencyCardListProps) => {
+    const { t } = useTranslation();
     const [pages, setPages] = useState<Pages>({ [page]: rows });
 
     useEffect(() => {
@@ -119,6 +121,13 @@ const AgencyCardList = ({
 
     return (
         <section className={styles.cards} aria-label={ariaLabel} aria-busy={loading || undefined}>
+            {/* First page still loading: say so instead of an empty area (the table shows skeleton rows). */}
+            {loading && shown.length === 0 && (
+                <div role="status" className={styles.cardsLoading}>
+                    <CircularProgress size={20} color="inherit" aria-hidden />
+                    {t('loading')}
+                </div>
+            )}
             {shown.map((row) => (
                 <UserCard
                     key={row.id}

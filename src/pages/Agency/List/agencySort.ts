@@ -8,8 +8,12 @@ export const AGENCY_SORT_FIELD_BY_COLUMN: Record<string, string> = {
     status: 'OFFLINE',
 };
 
-/** The header arrow for the server order, or none when the server sorts by a column not shown. */
+/**
+ * The header arrow for the server order: without an explicit field the AgencyService sorts by name
+ * (getAgencyData's default), a field without a column shows no arrow.
+ */
 export const agencySortOf = (sortBy: string | undefined, order: string | undefined): DataTableSort | null => {
+    if (!sortBy) return { key: 'name', direction: order === 'DESC' ? 'desc' : 'asc' };
     const key = Object.keys(AGENCY_SORT_FIELD_BY_COLUMN).find(
         (column) => AGENCY_SORT_FIELD_BY_COLUMN[column] === sortBy,
     );

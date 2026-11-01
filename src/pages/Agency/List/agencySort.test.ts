@@ -20,8 +20,11 @@ describe('agencySortOf', () => {
         expect(agencySortOf('POST_CODE', 'ASC')).toEqual({ key: 'address', direction: 'asc' });
     });
 
-    it('shows no arrow for the default order or a field without a column', () => {
-        expect(agencySortOf(undefined, undefined)).toBeNull();
+    it('shows the server default (name A–Z) when no field is set', () => {
+        expect(agencySortOf(undefined, undefined)).toEqual({ key: 'name', direction: 'asc' });
+    });
+
+    it('shows no arrow for a field without a column', () => {
         expect(agencySortOf('CREATE_DATE', 'ASC')).toBeNull();
     });
 });
