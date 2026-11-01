@@ -128,8 +128,8 @@ describe('CounsellorOnboarding', () => {
             renderFlow(client);
 
             // Preserve the existing consultant policy: an eight-character valid password works.
-            await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-            await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+            await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+            await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
             expect(screen.queryByLabelText('cards.advisorAccount.username')).not.toBeInTheDocument();
             expect(screen.queryByRole('heading', { name: 'cards.personalInfo.title' })).not.toBeInTheDocument();
             expect(screen.queryByRole('heading', { name: 'cards.focusTopics.title' })).not.toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('CounsellorOnboarding', () => {
                 expect.objectContaining({
                     url: expect.stringContaining('/raw-token/setup'),
                     skipAuth: true,
-                    bodyData: JSON.stringify({ password: 'Aa1!bbbb' }),
+                    bodyData: JSON.stringify({ password: 'Aa1!bbbbbbbbbbbb' }),
                 }),
             );
             expect(client.registerCounsellor).not.toHaveBeenCalled();
@@ -169,8 +169,8 @@ describe('CounsellorOnboarding', () => {
                 </Routes>
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         await user.click(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
         expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
@@ -185,8 +185,8 @@ describe('CounsellorOnboarding', () => {
         const before = mocks.fetchData.mock.calls.length;
         const user = userEvent.setup();
         renderFlow(client);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.serviceError');
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
@@ -216,8 +216,8 @@ describe('CounsellorOnboarding', () => {
                 <CounsellorOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         view.rerender(
             <MemoryRouter>
@@ -248,8 +248,8 @@ describe('CounsellorOnboarding', () => {
                 <CounsellorOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         await screen.findByRole('alert');
         view.rerender(
@@ -286,7 +286,7 @@ describe('CounsellorOnboarding', () => {
         expect(await screen.findByLabelText('cards.advisorAccount.email')).toHaveValue('lena@tenant.example');
         expect(screen.getByLabelText('cards.advisorAccount.email')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
 
         // Person: names come from the invite, read-only.
         expect(screen.getByLabelText('cards.personalInfo.firstName')).toHaveValue('Lena');
@@ -310,7 +310,7 @@ describe('CounsellorOnboarding', () => {
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-                account: { username: 'lena_b', password: 'SecurePass1!' },
+                account: { username: 'lena_b', password: 'SecurePassword1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
                 avatar: { kind: 'INITIALS' },
@@ -328,7 +328,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         // t is mocked to the raw key, so every motif tile shares one label — take the first.
         await user.click(screen.getAllByRole('radio', { name: 'counselor.avatar.motif' })[0]);
         await user.click(submit());
@@ -347,7 +347,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         await user.click(submit());
 
         await waitFor(() => expect(client.registerCounsellor).toHaveBeenCalled());
@@ -379,8 +379,16 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'Lena.B');
         expect(screen.getByText('message.error.username.format')).toBeInTheDocument();
 
+        // One character short of the 16-character rule, otherwise complete.
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'Abcdefghij1234!');
+        expect(screen.getByText('message.error.password.minLength')).toBeInTheDocument();
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), '5');
+        expect(screen.queryByText('message.error.password.minLength')).not.toBeInTheDocument();
+        expect(screen.queryByText('message.error.password.policy')).not.toBeInTheDocument();
+
         // Long enough but missing upper case, digit and special character.
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
+        await user.clear(screen.getByLabelText('cards.advisorAccount.password'));
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'passwordpassword');
         expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
 
         expect(submit()).toBeDisabled();
@@ -411,7 +419,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         expect(screen.getByRole('heading', { name: 'counsellorOnboarding.agency.title' })).toBeInTheDocument();
         expect(screen.getByText('counsellorOnboarding.topics.chooseHint')).toBeInTheDocument();
 
@@ -426,7 +434,7 @@ describe('CounsellorOnboarding', () => {
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-                account: { username: 'lena_b', password: 'SecurePass1!' },
+                account: { username: 'lena_b', password: 'SecurePassword1!' },
                 person: { salutation: undefined, position: undefined, title: undefined },
                 names: { publicName: undefined, internalDisplayName: undefined },
                 topicIds: [22],
@@ -469,7 +477,7 @@ describe('CounsellorOnboarding', () => {
         const user = userEvent.setup();
         renderFlow(client);
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'New centre');
         await user.click(submit());
         expect(await screen.findByTestId('wizard-topic-policy-error')).toHaveTextContent(
@@ -502,7 +510,7 @@ describe('CounsellorOnboarding', () => {
     describe('topic permission', () => {
         const fillAccount = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         };
         const topicChip = (name: string) => screen.getByRole('checkbox', { name });
         const registeredTopics = (client: CounsellorOnboardingClient) =>
@@ -693,7 +701,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         // Coverage is preselected — nothing else to pick.
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.submit' }));
 
@@ -719,7 +727,7 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         await user.click(await screen.findByLabelText('cards.advisorAccount.username'));
         await user.paste('oskar_b');
         await user.click(screen.getByLabelText('cards.advisorAccount.password'));
-        await user.paste('SecurePass1!');
+        await user.paste('SecurePassword1!');
     };
 
     it("shows the inviter's preset as a switch and sends it on register (on: topics like a counsellor)", async () => {
@@ -851,7 +859,7 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
             expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
             expect(client.registerCounsellor).toHaveBeenCalledWith(
                 'raw-token',
-                expect.objectContaining({ account: { username: 'oskar_b', password: 'SecurePass1!' } }),
+                expect.objectContaining({ account: { username: 'oskar_b', password: 'SecurePassword1!' } }),
             );
             expect(vi.mocked(client.registerCounsellor).mock.calls[0][1].agency).toBeUndefined();
         },
@@ -1179,8 +1187,8 @@ it.each(['COUNSELLOR', 'AGENCY_ADMIN'] as const)(
                 </Routes>
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         expect(await screen.findByText('accountSetup.success')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.done.toLogin' }));

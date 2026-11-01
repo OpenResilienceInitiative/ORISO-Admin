@@ -37,7 +37,7 @@ const handlersFor = (role: SetupRole) => {
                 typeof data !== 'object' ||
                 Object.keys(data).length !== 1 ||
                 !('password' in data) ||
-                data.password !== 'ChosenPass1!'
+                data.password !== 'ChosenPassword1!'
             ) {
                 return HttpResponse.json({ reason: 'INVALID_SETUP_REQUEST' }, { status: 400 });
             }
@@ -74,8 +74,8 @@ type Story = StoryObj<typeof meta>;
 
 const completePasswordSetup: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(await canvas.findByLabelText(/^(Passwort|Password)$/), 'ChosenPass1!');
-    await userEvent.type(canvas.getByLabelText(/^(Passwort wiederholen|Repeat password)$/), 'ChosenPass1!');
+    await userEvent.type(await canvas.findByLabelText(/^(Passwort|Password)$/), 'ChosenPassword1!');
+    await userEvent.type(canvas.getByLabelText(/^(Passwort wiederholen|Repeat password)$/), 'ChosenPassword1!');
     await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText(/Benutzername|Username/)).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: /Passwort speichern|Save password/ }));

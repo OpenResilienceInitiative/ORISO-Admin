@@ -27,12 +27,12 @@ describe('PasswordResetConfirmForm', () => {
             </MemoryRouter>,
         );
 
-        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
 
         await waitFor(() => {
-            expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'SecurePass1!');
+            expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'SecurePassword1!');
         });
         expect(await screen.findByRole('heading', { name: 'passwordReset.successTitle' })).toBeInTheDocument();
         expect(screen.getByText('passwordReset.successDescription.counsellorHint')).toBeInTheDocument();
@@ -47,8 +47,8 @@ describe('PasswordResetConfirmForm', () => {
             </MemoryRouter>,
         );
 
-        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent('passwordReset.confirmError');
