@@ -92,6 +92,7 @@ export const deletionAuditLogsEndpoint = `${userServiceURL}/service/users/deleti
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const adminListPreferencesEndpoint = `${userServiceURL}/service/useradmin/list-preferences`;
 export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
+export const adminStatisticsSettingsEndpoint = `${userServiceURL}/service/useradmin/statistics/settings`;
 export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;

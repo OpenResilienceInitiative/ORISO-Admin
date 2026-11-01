@@ -98,6 +98,8 @@ const conversationPeriodOrder: ConversationPeriodKey[] = [
 
 export const tenantTargetId = (tenantId: number) => `tenant-${tenantId}`;
 export const agencyTargetId = (agencyId: number) => `agency-${agencyId}`;
+/** The whole platform as one row (OBP #93); only platform admins receive it. */
+export const PLATFORM_TOTAL_TARGET_ID = 'platform-total';
 
 /* ---------- date helpers ---------- */
 
@@ -259,7 +261,7 @@ const buildTargetStatistics = (
         caseCharts: buildCaseChartValues(target.dailyNewSessions, now),
         conversation: buildConversationValues(target.sessionCountsByPeriod, target.groupChatCountsByPeriod),
         metrics: {
-            activeAgencies: target.targetType === 'TENANT' ? agencyRowCount || null : 1,
+            activeAgencies: target.targetType === 'AGENCY' ? 1 : agencyRowCount || null,
             activeConversations: target.metrics?.activeConversationsToday ?? null,
             cases: target.metrics?.activeCases ?? null,
             conversationsTotal: target.sessionCountsByPeriod?.total ?? null,
@@ -351,10 +353,23 @@ export const buildStatisticData = (
     const suppressionDisabled = Boolean(response.suppressionDisabled);
 
     if (response.scope === 'PLATFORM') {
+        // The backend's platform total is suppressed only when the platform itself is below its
+        // threshold. Adding up unsuppressed Träger instead would hide the whole platform as soon
+        // as every single Träger is small (OBP #93).
+        const platformRow = response.targets.find((target) => target.targetType === 'PLATFORM');
+        if (platformRow) {
+            statisticsById[PLATFORM_TOTAL_TARGET_ID] = buildTargetStatistics(
+                platformRow,
+                agencyRows.length,
+                lookups.topicNamesById,
+                now,
+            );
+        }
+
         return {
             targetsByScope: { platform: tenantTargets, tenant: tenantTargets, agency: [] },
             fallbackIdsByScope: {
-                platform: tenantTargets.map((target) => target.id),
+                platform: platformRow ? [PLATFORM_TOTAL_TARGET_ID] : tenantTargets.map((target) => target.id),
                 tenant: tenantTargets.map((target) => target.id),
                 agency: [],
             },
