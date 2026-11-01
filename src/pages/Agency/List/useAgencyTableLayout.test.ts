@@ -4,14 +4,14 @@ import { agencyTableLayoutFor, wideFrom } from './useAgencyTableLayout';
 describe('agencyTableLayoutFor', () => {
     it('needs more room for the wide row when the Träger and topics columns are shown', () => {
         expect(wideFrom({ tenant: false, topics: false })).toBe(920);
-        expect(wideFrom({ tenant: true, topics: true })).toBe(1270);
+        expect(wideFrom({ tenant: true, topics: true })).toBe(1290);
     });
 
     it.each([
         [639, 'phone'],
         [640, 'tablet'],
-        [1269, 'tablet'],
-        [1270, 'wide'],
+        [1289, 'tablet'],
+        [1290, 'wide'],
     ] as const)('shows the %ipx list with every column as %s', (width, layout) => {
         expect(agencyTableLayoutFor(width, { tenant: true, topics: true })).toBe(layout);
     });

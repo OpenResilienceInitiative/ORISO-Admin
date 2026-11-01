@@ -43,7 +43,8 @@ const ROWS: AgencyData[] = [
         postcode: '23966',
         city: 'Wismar',
         teamAgency: 'true',
-        topics: [{ id: 4, name: 'Familienberatung' }],
+        // A long topic name must not widen the row: the cell truncates it.
+        topics: [{ id: 4, name: 'Schwangerschaftskonfliktberatung nach § 219 StGB und Familienplanung' }],
     }),
     agency({ id: '7', name: 'Online-Beratung Süd', street: undefined, houseNumber: undefined, offline: true }),
     agency({ id: '9', name: 'Stelle in Auflösung', status: 'IN_DELETION', topics: [], phone: undefined }),
@@ -179,9 +180,9 @@ const expectLayout =
     };
 
 // Boundaries (responsive-tables.md): at and just below each measured threshold.
-/** Platform admin with every column: wide from 1270 px. */
-export const AllColumnsAtWideThreshold: Story = { args: { width: 1270 }, play: expectLayout('wide') };
-export const AllColumnsBelowWideThreshold: Story = { args: { width: 1269 }, play: expectLayout('tablet') };
+/** Platform admin with every column: wide from 1290 px. */
+export const AllColumnsAtWideThreshold: Story = { args: { width: 1290 }, play: expectLayout('wide') };
+export const AllColumnsBelowWideThreshold: Story = { args: { width: 1289 }, play: expectLayout('tablet') };
 
 /** No Träger and no topics column: wide from 920 px. */
 export const FewestColumnsAtWideThreshold: Story = {

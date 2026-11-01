@@ -2,12 +2,13 @@ import type { RefObject } from 'react';
 import { listLayoutFor, useMeasuredListLayout, type ListLayout } from '../../../hooks/useMeasuredListLayout';
 
 // Measured on the list container (navigation rail and page gutters already taken), not the
-// viewport, in Storybook "Pages/Agency/AgencyList" (2026-11-01): the wide row needs 904px, plus
-// 145px for the Träger column and 188px for the topics column; the tablet row fits down to 640px.
+// viewport, in Storybook "Pages/Agency/AgencyList" (2026-11-01) with long names and topics: the
+// wide row needs 904px, the topics column (capped at 180px) 212px more. The Träger chip keeps
+// 150px so it stays readable. The tablet row fits down to 640px.
 const PHONE_BELOW = 640;
 const WIDE_BASE = 920;
 const WIDE_TENANT = 150;
-const WIDE_TOPICS = 200;
+const WIDE_TOPICS = 220;
 
 export interface AgencyTableColumns {
     tenant: boolean;
