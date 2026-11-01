@@ -58,6 +58,13 @@ export interface AdminDashboardStatisticsResponse {
      * non-production environments only (fail-closed on the prod profile).
      */
     suppressionDisabled?: boolean;
+    /**
+     * Weeks covered by `dailyNewSessions`, the current week included (global statistics setting,
+     * UserService#1544). Missing from older backends, which always sent five.
+     */
+    chartWeeks?: number;
+    /** Months covered by `monthlyTopTopics`, the current month included. Older backends: four. */
+    topicMonths?: number;
     targets: AdminDashboardTarget[];
 }
 

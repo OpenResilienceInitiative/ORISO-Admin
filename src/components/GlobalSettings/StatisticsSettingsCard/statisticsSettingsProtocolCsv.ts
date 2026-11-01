@@ -1,9 +1,13 @@
 import type { TFunction } from 'i18next';
 import type { StatisticsSettingChange, StatisticsSettingKey } from '../../../types/StatisticsSettings';
 
-/** Label of a stored value: thresholds are plain numbers, switches are translated. */
-export const statisticsSettingValueLabel = (key: StatisticsSettingKey, value: string, t: TFunction) =>
-    key === 'messageCountTracking' ? t(`globalSettings.statistics.value.${value}`) : value;
+/** Label of a stored value: thresholds are plain numbers, switches are translated, windows carry their unit. */
+export const statisticsSettingValueLabel = (key: StatisticsSettingKey, value: string, t: TFunction): string => {
+    if (key === 'messageCountTracking') return t(`globalSettings.statistics.value.${value}`);
+    if (key === 'requestChartWeeks') return t('globalSettings.statistics.value.weeks', { count: Number(value) });
+    if (key === 'topicMonths') return t('globalSettings.statistics.value.months', { count: Number(value) });
+    return value;
+};
 
 // RFC 4180 quoting for ; " and line breaks; a leading = + - @ (or tab/CR) is prefixed with ' so a
 // spreadsheet shows the text instead of running it as a formula (admin login names are free text).

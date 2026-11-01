@@ -3,6 +3,8 @@ export const STATISTICS_SETTING_KEYS = [
     'tenantMinimumCounsellors',
     'platformMinimumCounsellors',
     'messageCountTracking',
+    'requestChartWeeks',
+    'topicMonths',
 ] as const;
 export type StatisticsSettingKey = (typeof STATISTICS_SETTING_KEYS)[number];
 

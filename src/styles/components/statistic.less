@@ -1489,3 +1489,15 @@
         bottom: min(var(--statistic-dashboard-tooltip-bottom, 0), calc(100% - 78px));
     }
 }
+
+// Week overview of the requests chart: one bar per configured week (5 to 26, UserService#1544),
+// so the column count comes from the data instead of the fixed seven weekdays.
+.statisticDashboard__bars.statisticDashboard__bars--weeks {
+    gap: clamp(2px, 0.8vw, 16px);
+    grid-template-columns: repeat(var(--bar-count, 7), minmax(0, 1fr));
+
+    .statisticDashboard__barDayLabel {
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+    }
+}

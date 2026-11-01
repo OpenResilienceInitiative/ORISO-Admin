@@ -27,12 +27,7 @@ import { ReactComponent as TextMessagesIcon } from '../resources/img/svg/statist
 import { ReactComponent as TopicIcon } from '../resources/img/svg/statistics-dashboard/topic.svg';
 import { ReactComponent as VideoCallsIcon } from '../resources/img/svg/statistics-dashboard/video-calls.svg';
 import { ReactComponent as VoiceMessagesIcon } from '../resources/img/svg/statistics-dashboard/voice-messages.svg';
-import {
-    casePeriodOptions,
-    conversationPeriodOptions,
-    defaultSelectedCaseDayByScope,
-    scopeOrder,
-} from './Statistic/statisticConstants';
+import { conversationPeriodOptions, defaultSelectedCaseDayByScope, scopeOrder } from './Statistic/statisticConstants';
 import {
     buildDonutSegments,
     getCaseAxisLabels,
@@ -47,10 +42,19 @@ import {
 } from './Statistic/statisticPreferences';
 import {
     buildCaseChartDateLabels,
+    buildCasePeriodOptions,
+    buildCaseWeekOverview,
+    CASE_WEEK_OVERVIEW_KEY,
     caseChartDayCodes,
+    casePeriodKeyForWeek,
+    DEFAULT_CHART_WEEKS,
+    DEFAULT_TOPIC_MONTHS,
+    emptyCaseCharts,
     getTodayDayCode,
     NO_DATA_LABEL,
+    noDataTopics,
     SUPPRESSED_DETAIL,
+    topicMenuKeyForMonth,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -241,6 +245,13 @@ const formatDashboardNumberText = (value: string, locale: string) => {
     });
 };
 
+const countedDashboardLabels: Array<{ pattern: RegExp; key: string }> = [
+    { pattern: /^vor (\d+) Wochen$/, key: 'statistic.dashboard.period.weeksAgo' },
+    { pattern: /^(\d+) Wochen im Überblick$/, key: 'statistic.dashboard.period.weekOverview' },
+    { pattern: /^Thema vor (\d+) Monaten$/, key: 'statistic.dashboard.text.topicMonthsAgo' },
+    { pattern: /^Vor (\d+) Monaten$/, key: 'statistic.dashboard.text.monthsAgo' },
+];
+
 const translateDashboardText = (translate: DashboardTranslate, value = '', locale = 'de-DE') => {
     if (!value) {
         return value;
@@ -275,7 +286,20 @@ const translateDashboardText = (translate: DashboardTranslate, value = '', local
 
     const key = dashboardTextKeyByValue[value];
 
-    return key ? translateDashboardKey(translate, key, value) : value;
+    if (key) {
+        return translateDashboardKey(translate, key, value);
+    }
+
+    // Labels generated for the configurable chart and topic windows (UserService#1544)
+    const countedLabel = countedDashboardLabels.find(({ pattern }) => pattern.test(value));
+
+    if (countedLabel) {
+        const count = Number(value.match(countedLabel.pattern)?.[1]);
+
+        return translateDashboardKey(translate, countedLabel.key, value, { count });
+    }
+
+    return value;
 };
 
 const translateDashboardValue = (translate: DashboardTranslate, value: string, locale: string) => {
@@ -290,8 +314,16 @@ const translateDashboardWeekday = (translate: DashboardTranslate, day: string) =
     return weekdayKey ? translateDashboardKey(translate, `statistic.dashboard.weekday.${weekdayKey}`, day) : day;
 };
 
+const translateCalendarWeek = (translate: DashboardTranslate, label: string) =>
+    label.replace(/^KW (\d+)/, (calendarWeek, week: string) =>
+        translateDashboardKey(translate, 'statistic.dashboard.chart.calendarWeek', calendarWeek, { week }),
+    );
+
 const translateDashboardDateLabel = (translate: DashboardTranslate, dateLabel: string) =>
-    dateLabel.replace(/^(Mo|Di|Mi|Do|Fr|Sa|So)(?=,)/, (day) => translateDashboardWeekday(translate, day));
+    translateCalendarWeek(
+        translate,
+        dateLabel.replace(/^(Mo|Di|Mi|Do|Fr|Sa|So)(?=,)/, (day) => translateDashboardWeekday(translate, day)),
+    );
 
 const localizeCardMenuOption = (
     option: CardMenuOption,
@@ -502,30 +534,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
     ],
     tenant: [
         {
@@ -639,30 +647,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             title: 'aktive Gespräche',
             icon: ConversationsIcon,
             iconTone: 'muted',
-        },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
         },
     ],
     agency: [
@@ -778,32 +762,36 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
     ],
 };
+
+const topicMenuLabel = (monthsAgo: number) => {
+    if (monthsAgo === 0) {
+        return 'Häufigstes Thema';
+    }
+
+    return monthsAgo === 1 ? 'Thema letzter Monat' : `Thema vor ${monthsAgo} Monaten`;
+};
+
+const topicMonthDetail = (monthsAgo: number) => {
+    if (monthsAgo === 0) {
+        return 'Dieser Monat';
+    }
+
+    return monthsAgo === 1 ? 'Letzter Monat' : `Vor ${monthsAgo} Monaten`;
+};
+
+/**
+ * One "most frequent topic" entry per month of the configured topic window (UserService#1544),
+ * appended to every scope's metric menu. The first four keep their established keys and labels.
+ */
+const buildTopicMetricOptions = (topicMonths: number): CardMenuOptionBlueprint[] =>
+    Array.from({ length: topicMonths }, (unused, monthsAgo) => ({
+        key: topicMenuKeyForMonth(monthsAgo),
+        label: topicMenuLabel(monthsAgo),
+        title: 'Häufigstes Thema',
+        icon: TopicIcon,
+    }));
 
 const duplicatedCommunicationMetricKeys = new Set<CardMenuKey>([
     'conversationsTotal',
@@ -853,12 +841,18 @@ const metricMenuDescriptionByKey: Record<CardMenuKey, string> = {
 
 const withMetricMenuDescription = (option: CardMenuOption): CardMenuOption => ({
     ...option,
-    description: option.description || metricMenuDescriptionByKey[option.key],
+    description:
+        option.description ||
+        metricMenuDescriptionByKey[option.key] ||
+        'Zeigt, welches Thema in diesem Monat die Beratung geprägt hat.',
 });
 
 const formatIntegerMetric = (value: number) => value.toLocaleString('de-DE');
 
-const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
+const getEmptyFilterTargetStatistics = (
+    chartWeeks = DEFAULT_CHART_WEEKS,
+    topicMonths = DEFAULT_TOPIC_MONTHS,
+): FilterTargetStatistics => ({
     suppressed: false,
     enquiriesPreviousMonth: null,
     metrics: {
@@ -876,18 +870,9 @@ const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
         textMessagesTotal: null,
         videoCalls: null,
         voiceMessages: null,
-        topTopic: { label: NO_DATA_LABEL, share: 0 },
-        previousMonth: { label: NO_DATA_LABEL, share: 0 },
-        twoMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
-        threeMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
+        topicsByMonth: noDataTopics(topicMonths),
     },
-    caseCharts: {
-        thisWeek: [0, 0, 0, 0, 0, 0, 0],
-        lastWeek: [0, 0, 0, 0, 0, 0, 0],
-        twoWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-        threeWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-        fourWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-    },
+    caseCharts: emptyCaseCharts(chartWeeks),
     conversation: {
         today: [0, 0, 0, 0],
         yesterday: [0, 0, 0, 0],
@@ -901,10 +886,7 @@ const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
 const pickStrongerTopic = (currentTopic: TopicStatistic, nextTopic: TopicStatistic) =>
     nextTopic.share > currentTopic.share ? nextTopic : currentTopic;
 
-type NumericFilterMetricKey = keyof Omit<
-    FilterTargetMetricStats,
-    'topTopic' | 'previousMonth' | 'twoMonthsAgo' | 'threeMonthsAgo'
->;
+type NumericFilterMetricKey = keyof Omit<FilterTargetMetricStats, 'topicsByMonth'>;
 
 const numericFilterMetricKeys: NumericFilterMetricKey[] = [
     'activeAgencies',
@@ -926,7 +908,12 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
 const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
     first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
-const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Record<string, FilterTargetStatistics>) =>
+const aggregateFilterTargetStatistics = (
+    targetIds: string[],
+    statisticsById: Record<string, FilterTargetStatistics>,
+    chartWeeks: number,
+    topicMonths: number,
+) =>
     targetIds.reduce<FilterTargetStatistics>((aggregatedStats, targetId) => {
         const targetStats = statisticsById[targetId];
 
@@ -942,27 +929,14 @@ const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Re
             }),
             {
                 ...aggregatedStats.metrics,
-                previousMonth: pickStrongerTopic(
-                    aggregatedStats.metrics.previousMonth,
-                    targetStats.metrics.previousMonth,
+                topicsByMonth: aggregatedStats.metrics.topicsByMonth.map((topic, monthsAgo) =>
+                    pickStrongerTopic(topic, targetStats.metrics.topicsByMonth[monthsAgo] ?? topic),
                 ),
-                threeMonthsAgo: pickStrongerTopic(
-                    aggregatedStats.metrics.threeMonthsAgo,
-                    targetStats.metrics.threeMonthsAgo,
-                ),
-                topTopic: pickStrongerTopic(aggregatedStats.metrics.topTopic, targetStats.metrics.topTopic),
-                twoMonthsAgo: pickStrongerTopic(aggregatedStats.metrics.twoMonthsAgo, targetStats.metrics.twoMonthsAgo),
             },
         );
 
-        const caseCharts = casePeriodOptions.reduce<Record<CasePeriodKey, number[]>>(
-            (nextCharts, { key }) => ({
-                ...nextCharts,
-                [key]: aggregatedStats.caseCharts[key].map(
-                    (value, index) => value + targetStats.caseCharts[key][index],
-                ),
-            }),
-            {} as Record<CasePeriodKey, number[]>,
+        const caseCharts = aggregatedStats.caseCharts.map((days, weeksAgo) =>
+            days.map((value, dayIndex) => value + (targetStats.caseCharts[weeksAgo]?.[dayIndex] ?? 0)),
         );
 
         const conversation = conversationPeriodOptions.reduce<Record<ConversationPeriodKey, ConversationValues>>(
@@ -985,7 +959,7 @@ const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Re
             conversation,
             metrics,
         };
-    }, getEmptyFilterTargetStatistics());
+    }, getEmptyFilterTargetStatistics(chartWeeks, topicMonths));
 
 const getEffectiveStatisticTargetIds = (
     activeScope: ScopeKey,
@@ -1019,13 +993,8 @@ const activityMetricKeys = numericFilterMetricKeys.filter(
 const isFilterStatsEmpty = (stats: FilterTargetStatistics): boolean =>
     !stats.enquiriesPreviousMonth &&
     activityMetricKeys.every((metricKey) => !stats.metrics[metricKey]) &&
-    [
-        stats.metrics.topTopic,
-        stats.metrics.previousMonth,
-        stats.metrics.twoMonthsAgo,
-        stats.metrics.threeMonthsAgo,
-    ].every((topic) => topic.share === 0) &&
-    Object.values(stats.caseCharts).every((weekValues) => weekValues.every((value) => value === 0)) &&
+    stats.metrics.topicsByMonth.every((topic) => topic.share === 0) &&
+    stats.caseCharts.every((weekValues) => weekValues.every((value) => value === 0)) &&
     Object.values(stats.conversation).every((segmentValues) => segmentValues.every((value) => value === 0));
 
 const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBadgeDefinition | undefined => {
@@ -1076,6 +1045,23 @@ const buildMetricOverridesFromFilterStats = (
     const emptyTopicHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : TOPIC_PENDING_HINT;
     const metricEmptyHint = (value: MetricValue) => (value === null ? emptyMetricHint : undefined);
     const topicEmptyHint = (topic: TopicStatistic) => (topic.label === NO_DATA_LABEL ? emptyTopicHint : undefined);
+    const topicOverride = (monthsAgo: number): Partial<CardMenuOption> => {
+        const topic = stats.metrics.topicsByMonth[monthsAgo] ?? { label: NO_DATA_LABEL, share: 0 };
+
+        return {
+            value: topic.label,
+            emptyHint: topicEmptyHint(topic),
+            detail: topicMonthDetail(monthsAgo),
+            trend: buildTopicTrend(topic),
+        };
+    };
+    // months beyond the four named keys, when the topic window is longer (UserService#1544)
+    const furtherTopicOverrides = Object.fromEntries(
+        stats.metrics.topicsByMonth
+            .map((unusedTopic, monthsAgo) => monthsAgo)
+            .filter((monthsAgo) => monthsAgo >= 4)
+            .map((monthsAgo) => [topicMenuKeyForMonth(monthsAgo), topicOverride(monthsAgo)]),
+    ) as Partial<Record<CardMenuKey, Partial<CardMenuOption>>>;
 
     return {
         activeAgencies: {
@@ -1138,54 +1124,38 @@ const buildMetricOverridesFromFilterStats = (
             trend: requestTrend,
         },
         phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        previousMonth: {
-            value: stats.metrics.previousMonth.label,
-            emptyHint: topicEmptyHint(stats.metrics.previousMonth),
-            detail: 'Letzter Monat',
-            trend: buildTopicTrend(stats.metrics.previousMonth),
-        },
+        previousMonth: topicOverride(1),
         textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        threeMonthsAgo: {
-            value: stats.metrics.threeMonthsAgo.label,
-            emptyHint: topicEmptyHint(stats.metrics.threeMonthsAgo),
-            detail: 'Vor 3 Monaten',
-            trend: buildTopicTrend(stats.metrics.threeMonthsAgo),
-        },
-        topTopic: {
-            value: stats.metrics.topTopic.label,
-            emptyHint: topicEmptyHint(stats.metrics.topTopic),
-            detail: 'Dieser Monat',
-            trend: buildTopicTrend(stats.metrics.topTopic),
-        },
-        twoMonthsAgo: {
-            value: stats.metrics.twoMonthsAgo.label,
-            emptyHint: topicEmptyHint(stats.metrics.twoMonthsAgo),
-            detail: 'Vor 2 Monaten',
-            trend: buildTopicTrend(stats.metrics.twoMonthsAgo),
-        },
+        threeMonthsAgo: topicOverride(3),
+        topTopic: topicOverride(0),
+        twoMonthsAgo: topicOverride(2),
         videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
         voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        ...furtherTopicOverrides,
     };
 };
 
+/** Seven day bars per week of the chart window, plus the week overview with one bar per week. */
 const buildCaseChartsFromFilterStats = (
     stats: FilterTargetStatistics,
-    dateLabelsByPeriod: Record<CasePeriodKey, string[]>,
+    dateLabelsByWeek: string[][],
     todayDayCode: string,
-): Record<CasePeriodKey, CaseChartBar[]> =>
-    casePeriodOptions.reduce(
-        (charts, { key }) => ({
-            ...charts,
-            [key]: caseChartDayCodes.map((day, index) => ({
+    now: Date,
+): Partial<Record<CasePeriodKey, CaseChartBar[]>> => ({
+    ...Object.fromEntries(
+        stats.caseCharts.map((days, weeksAgo) => [
+            casePeriodKeyForWeek(weeksAgo),
+            caseChartDayCodes.map((day, index) => ({
                 day,
-                dateLabel: dateLabelsByPeriod[key][index],
-                value: stats.caseCharts[key][index],
+                dateLabel: dateLabelsByWeek[weeksAgo]?.[index] ?? '',
+                value: days[index],
                 isDefaultSelected: day === todayDayCode,
             })),
-        }),
-        {} as Record<CasePeriodKey, CaseChartBar[]>,
-    );
+        ]),
+    ),
+    [CASE_WEEK_OVERVIEW_KEY]: buildCaseWeekOverview(stats.caseCharts, now),
+});
 
 const buildConversationByPeriodFromFilterStats = (
     stats: FilterTargetStatistics,
@@ -1254,6 +1224,7 @@ const getPersonalizedMetricCard = (
     card: StatisticCardBlueprint,
     activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
+    topicMonths: number,
 ): StatisticCardDefinition => {
     const displayCard = getDisplayMetricCard(card, metricOverrides);
 
@@ -1262,7 +1233,7 @@ const getPersonalizedMetricCard = (
         defaultMenuKey: defaultMetricKeyByCardKey[card.key],
         menuAriaLabel: 'Kennzahl in diesem Dashboard-Slot auswählen',
         menuLabel: 'Meine Kennzahl',
-        menuOptions: dashboardMetricOptionsByScope[activeScope]
+        menuOptions: [...dashboardMetricOptionsByScope[activeScope], ...buildTopicMetricOptions(topicMonths)]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
             .map((option) => withMetricMenuDescription(applyMenuOptionOverride(option, metricOverrides, option.key))),
     };
@@ -2051,9 +2022,9 @@ export const Statistic = () => {
         agency: '',
     });
     const [selectedCasePeriodByScope, setSelectedCasePeriodByScope] = useState<Record<ScopeKey, CasePeriodKey>>({
-        platform: 'thisWeek',
-        tenant: 'thisWeek',
-        agency: 'thisWeek',
+        platform: casePeriodKeyForWeek(0),
+        tenant: casePeriodKeyForWeek(0),
+        agency: casePeriodKeyForWeek(0),
     });
     const [selectedConversationPeriodByScope, setSelectedConversationPeriodByScope] = useState<
         Record<ScopeKey, ConversationPeriodKey>
@@ -2077,7 +2048,7 @@ export const Statistic = () => {
         isLoading: isStatisticLoading,
     } = useStatisticDashboardData();
     const navigate = useNavigate();
-    const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
+    const chartNow = useMemo(() => new Date(), []);
     const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
     const dashboard = dashboardByScope[activeScope];
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
@@ -2090,9 +2061,20 @@ export const Statistic = () => {
         () => getEffectiveStatisticTargetIds(activeScope, selectedFilterTargetIds, statisticData),
         [activeScope, selectedFilterTargetIds, statisticData],
     );
+    const { chartWeeks, topicMonths } = statisticData;
+    const caseChartDateLabelsByWeek = useMemo(
+        () => buildCaseChartDateLabels(chartNow, chartWeeks),
+        [chartNow, chartWeeks],
+    );
     const filteredStats = useMemo(
-        () => aggregateFilterTargetStatistics(effectiveStatisticTargetIds, statisticData.statisticsById),
-        [effectiveStatisticTargetIds, statisticData.statisticsById],
+        () =>
+            aggregateFilterTargetStatistics(
+                effectiveStatisticTargetIds,
+                statisticData.statisticsById,
+                chartWeeks,
+                topicMonths,
+            ),
+        [chartWeeks, effectiveStatisticTargetIds, statisticData.statisticsById, topicMonths],
     );
     const suppressedSelectedTargetCount = useMemo(
         () =>
@@ -2111,7 +2093,7 @@ export const Statistic = () => {
         () => [
             ...dashboard.topCards.map((card) => {
                 const localized = localizeStatisticCard(
-                    getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                    getPersonalizedMetricCard(card, activeScope, metricOverrides, statisticData.topicMonths),
                     translate,
                     locale,
                 );
@@ -2122,20 +2104,24 @@ export const Statistic = () => {
                 return { title: localized.title, value: localized.value };
             }),
         ],
-        [activeScope, dashboard, locale, metricOverrides, translate],
+        [activeScope, dashboard, locale, metricOverrides, topicMonths, translate],
     );
     const filteredCaseCharts = useMemo(
-        () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByPeriod, todayDayCode),
-        [caseChartDateLabelsByPeriod, filteredStats, todayDayCode],
+        () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByWeek, todayDayCode, chartNow),
+        [caseChartDateLabelsByWeek, chartNow, filteredStats, todayDayCode],
     );
     const filteredConversationByPeriod = useMemo(
         () => buildConversationByPeriodFromFilterStats(filteredStats),
         [filteredStats],
     );
-    const selectedCasePeriod = selectedCasePeriodByScope[activeScope];
+    // a period beyond a shortened window falls back to this week
+    const selectedCasePeriod = filteredCaseCharts[selectedCasePeriodByScope[activeScope]]
+        ? selectedCasePeriodByScope[activeScope]
+        : casePeriodKeyForWeek(0);
+    const isWeekOverview = selectedCasePeriod === CASE_WEEK_OVERVIEW_KEY;
     const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
     const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
-    const caseChart = filteredCaseCharts[selectedCasePeriod];
+    const caseChart = filteredCaseCharts[selectedCasePeriod] ?? [];
     const conversationData = filteredConversationByPeriod[selectedConversationPeriod];
     const selectedConversationSegmentLabel = conversationData.segments.some(
         (segment) => segment.label === selectedConversationSegment,
@@ -2151,8 +2137,8 @@ export const Statistic = () => {
     const caseAxisMax = useMemo(() => getCaseAxisMax(maxCaseValue), [maxCaseValue]);
     const yAxisLabels = useMemo(() => getCaseAxisLabels(maxCaseValue, locale), [locale, maxCaseValue]);
     const localizedCasePeriodOptions = useMemo(
-        () => localizePeriodOptions(casePeriodOptions, translate, locale),
-        [locale, translate],
+        () => localizePeriodOptions(buildCasePeriodOptions(chartWeeks), translate, locale),
+        [chartWeeks, locale, translate],
     );
     const localizedConversationPeriodOptions = useMemo(
         () => localizePeriodOptions(conversationPeriodOptions, translate, locale),
@@ -2418,7 +2404,12 @@ export const Statistic = () => {
                                         <StatisticCard
                                             key={card.key}
                                             card={localizeStatisticCard(
-                                                getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                                                getPersonalizedMetricCard(
+                                                    card,
+                                                    activeScope,
+                                                    metricOverrides,
+                                                    statisticData.topicMonths,
+                                                ),
                                                 translate,
                                                 locale,
                                             )}
@@ -2488,10 +2479,15 @@ export const Statistic = () => {
                                                         style={{ top: `${position}%` }}
                                                     />
                                                 ))}
-                                                <div className="statisticDashboard__bars">
+                                                <div
+                                                    className={`statisticDashboard__bars${
+                                                        isWeekOverview ? ' statisticDashboard__bars--weeks' : ''
+                                                    }`}
+                                                    style={{ '--bar-count': caseChart.length } as CSSProperties}
+                                                >
                                                     {caseChart.map((bar, index) => {
                                                         const height = Math.round((bar.value / caseAxisMax) * 100);
-                                                        const isSelected = bar.day === selectedCaseBar.day;
+                                                        const isSelected = bar.day === selectedCaseBar?.day;
                                                         const barStyle = {
                                                             '--bar-index': index,
                                                             height: `${height}%`,
@@ -2505,7 +2501,10 @@ export const Statistic = () => {
                                                             translate,
                                                             bar.dateLabel,
                                                         );
-                                                        const dayLabel = translateDashboardWeekday(translate, bar.day);
+                                                        // week overview: many bars, so only the week number below each
+                                                        const dayLabel = isWeekOverview
+                                                            ? bar.day.replace(/^KW /, '')
+                                                            : translateDashboardWeekday(translate, bar.day);
 
                                                         return (
                                                             <button
@@ -2516,12 +2515,21 @@ export const Statistic = () => {
                                                                         ? 'statisticDashboard__barSlot--selected'
                                                                         : ''
                                                                 }`}
-                                                                aria-label={translateDashboardKey(
-                                                                    translate,
-                                                                    'statistic.dashboard.chart.caseBarAria',
-                                                                    `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
-                                                                    { date: dateLabel, value: barValue },
-                                                                )}
+                                                                aria-label={
+                                                                    isWeekOverview
+                                                                        ? translateDashboardKey(
+                                                                              translate,
+                                                                              'statistic.dashboard.chart.weekBarAria',
+                                                                              `${bar.value} Beratungsfälle in ${bar.dateLabel}`,
+                                                                              { date: dateLabel, value: barValue },
+                                                                          )
+                                                                        : translateDashboardKey(
+                                                                              translate,
+                                                                              'statistic.dashboard.chart.caseBarAria',
+                                                                              `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
+                                                                              { date: dateLabel, value: barValue },
+                                                                          )
+                                                                }
                                                                 aria-current={isSelected ? 'true' : undefined}
                                                                 aria-pressed={isSelected}
                                                                 data-day={bar.day}

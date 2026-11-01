@@ -91,6 +91,40 @@ it('lists every setting one after another with its value and since when it appli
     expect(screen.getByText(/Beratende sehen ihre eigenen Zahlen immer vollständig/)).toBeVisible();
 });
 
+it('labels the dashboard time windows in weeks and months (UserService#1544)', async () => {
+    server.use(
+        http.get('*/useradmin/statistics/settings', () =>
+            HttpResponse.json({
+                ...initial,
+                settings: [
+                    ...initial.settings,
+                    {
+                        key: 'requestChartWeeks',
+                        value: '12',
+                        defaultValue: '5',
+                        options: ['5', '8', '12', '16', '20', '26'],
+                        effectiveFrom: '2026-11-01T10:00',
+                        changedBy: 'platform.admin',
+                    },
+                    {
+                        key: 'topicMonths',
+                        value: '4',
+                        defaultValue: '4',
+                        options: ['3', '4', '6', '12'],
+                        effectiveFrom: '2026-10-20T08:00',
+                        changedBy: null,
+                    },
+                ],
+            }),
+        ),
+    );
+    showCard();
+
+    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“: Zeitraum in Wochen/)).toHaveValue('12 Wochen');
+    expect(screen.getByLabelText(/^Häufigstes Thema: Zeitraum in Monaten/)).toHaveValue('4 Monate');
+    expect(screen.getByText('Gilt seit 01.11.2026')).toBeVisible();
+});
+
 it('saves the chosen values with the revision it read', async () => {
     let received: unknown;
     server.use(

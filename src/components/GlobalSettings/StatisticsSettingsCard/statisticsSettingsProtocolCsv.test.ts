@@ -36,6 +36,38 @@ describe('buildStatisticsSettingsProtocolCsv', () => {
         ]);
     });
 
+    it('writes the dashboard time windows with their unit (UserService#1544)', async () => {
+        await i18n.changeLanguage('de');
+        const csv = buildStatisticsSettingsProtocolCsv(
+            [
+                {
+                    key: 'requestChartWeeks',
+                    oldValue: '5',
+                    newValue: '12',
+                    changedById: 'admin-id',
+                    changedByName: 'platform.admin',
+                    effectiveFrom: '2026-11-01T10:00',
+                },
+                {
+                    key: 'topicMonths',
+                    oldValue: null,
+                    newValue: '4',
+                    changedById: null,
+                    changedByName: null,
+                    effectiveFrom: '2026-11-01T08:00',
+                },
+            ],
+            i18n.t,
+        );
+
+        expect(csv.slice(1).split('\r\n')).toEqual([
+            'Einstellung;Bisheriger Wert;Neuer Wert;Geändert von;Gilt ab',
+            'Diagramm „Beratungsfälle“: Zeitraum in Wochen;5 Wochen;12 Wochen;platform.admin;2026-11-01T10:00',
+            'Häufigstes Thema: Zeitraum in Monaten;;4 Monate;System;2026-11-01T08:00',
+            '',
+        ]);
+    });
+
     it('quotes separators and neutralises cells a spreadsheet would run as a formula', async () => {
         await i18n.changeLanguage('de');
         const csv = buildStatisticsSettingsProtocolCsv(
