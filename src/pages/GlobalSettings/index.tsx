@@ -31,7 +31,11 @@ import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hoo
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
+import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettings/SupportEmailSettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
+import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
+import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
+import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -101,6 +105,21 @@ export const GlobalLoginSettingsPage = () => {
                     </section>
                     <section className={styles.globalConfigCardSlot}>
                         <ThemeProvider theme={orisoMuiTheme}>
+                            <SupportEmailSettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <FurtherCounsellingPostcodeSettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <TopicDuplicateSettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
                             <CounsellorTutorialSettingsCardContainer />
                         </ThemeProvider>
                     </section>
@@ -113,6 +132,13 @@ export const GlobalLoginSettingsPage = () => {
                                 <AccountInactivitySettingsCardContainer />
                             </ThemeProvider>
                         </section>
+                    )}
+                    {/* ORISO-Admin#1241: temporary guest accounts and their messages, next to the
+                        account-inactivity card. Platform admin only. */}
+                    {isSuperAdmin && (
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <TemporaryAccountSettingsCardsContainer slotClassName={styles.globalConfigCardSlot} />
+                        </ThemeProvider>
                     )}
                     {isSuperAdmin && (
                         <section className={styles.globalConfigCardSlot}>

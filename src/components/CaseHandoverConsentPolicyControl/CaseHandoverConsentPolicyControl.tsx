@@ -69,6 +69,8 @@ export const CaseHandoverConsentPolicyControl = ({
     const option = (value: CaseHandoverConsentValue, mode: PermissionPolicyMode): M3FabMenuItem => ({
         key: policyKey({ value, mode }),
         label: t(labelKey(value, mode)),
+        // What the client experiences, right in the menu (FE#1725 story 32).
+        description: t(`tenants.permissions.consent.effect.${value}`),
         icon:
             mode === 'ENFORCED' ? (
                 <LockIcon />

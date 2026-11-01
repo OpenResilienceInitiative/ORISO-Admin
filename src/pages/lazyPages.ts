@@ -46,6 +46,7 @@ export const LazyInactiveAccountAuditLogsPage = lazyNamed(
     () => import('./Logs/InactiveAccountAuditLogs'),
     'InactiveAccountAuditLogsPage',
 );
+export const LazyDeletionAuditLogsPage = lazyNamed(() => import('./Logs/DeletionAuditLogs'), 'DeletionAuditLogsPage');
 export const LazyLinksPage = lazyNamed(() => import('./Links'), 'LinksPage');
 export const LazyLinksIndexRedirect = lazyNamed(() => import('./Links'), 'LinksIndexRedirect');
 export const LazyTenantInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'TenantInvitesTab');

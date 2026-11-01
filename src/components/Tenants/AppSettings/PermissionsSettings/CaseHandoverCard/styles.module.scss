@@ -255,3 +255,19 @@
 .footerTextButtonPrimary {
     color: var(--m3-secondary, #4c555f);
 }
+
+// Save failure: shown above the controls so the unsaved edit below stays in view.
+.saveError {
+    margin-bottom: 12px;
+}
+
+// Read-only reason: plain text on a tonal surface, not colour alone.
+.readOnlyNote {
+    padding: 8px 12px;
+    margin: 0 0 12px;
+    border-radius: 8px;
+    background: var(--m3-surface-container, #f3f3f3);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+    line-height: 20px;
+}

@@ -4,6 +4,7 @@ import { Resource } from '../enums/Resource';
 import {
     canEditCaseHandoverReasonPolicies,
     canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
     canSeeSupervisorLogs,
 } from './caseHandoverAccess';
 
@@ -39,12 +40,29 @@ describe('canReadCaseHandoverAdmin', () => {
 });
 
 describe('canEditCaseHandoverReasonPolicies', () => {
-    it('allows super admins and consultant updaters', () => {
-        const canUpdateConsultant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
-            action === PermissionAction.Update && resource === Resource.Consultant;
+    // The rules are Träger settings (FE#1725): Träger write access decides, not consultant admin.
+    it('allows super admins and Träger updaters, not consultant updaters alone (BST admins)', () => {
+        const canUpdate = (target: Resource) => (action: PermissionAction | PermissionAction[], resource: Resource) =>
+            action === PermissionAction.Update && resource === target;
 
         expect(canEditCaseHandoverReasonPolicies(true, () => false)).toBe(true);
-        expect(canEditCaseHandoverReasonPolicies(false, canUpdateConsultant)).toBe(true);
+        expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Tenant))).toBe(true);
+        expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Consultant))).toBe(false);
         expect(canEditCaseHandoverReasonPolicies(false, () => false)).toBe(false);
+    });
+});
+
+describe('canSeeDeletionAuditLogsFor', () => {
+    const canUpdateTenant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Update && resource === Resource.Tenant;
+
+    it('is for platform admins that may update tenants, like the inactive-account audit', () => {
+        expect(canSeeDeletionAuditLogsFor(true, canUpdateTenant)).toBe(true);
+    });
+
+    it('denies every admin below platform level, whatever else they may read', () => {
+        expect(canSeeDeletionAuditLogsFor(false, canUpdateTenant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(false, canReadConsultant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(true, () => false)).toBe(false);
     });
 });

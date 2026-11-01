@@ -35,3 +35,16 @@ export const useTenantAdminControlsMutation = ({
         },
     });
 };
+
+/**
+ * Saves the platform's recipient scope for internal group chats (ORISO-Admin#1215): no success
+ * toast of its own (the control reports it), and a controls refetch already running is cancelled so
+ * it cannot land after the save and bring the old scope back.
+ */
+export const useRecipientScopeControlsMutation = () => {
+    const queryClient = useQueryClient();
+    return useTenantAdminControlsMutation({
+        successMessageKey: false,
+        onMutate: () => queryClient.cancelQueries({ queryKey: [TENANT_ADMIN_CONTROLS_KEY] }),
+    });
+};

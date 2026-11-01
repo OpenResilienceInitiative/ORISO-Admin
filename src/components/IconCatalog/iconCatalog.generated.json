@@ -953,8 +953,8 @@
         "fileName": "delete.svg",
         "sourcePath": "src/resources/img/svg/delete.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Logs/LogsTabsLayout.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:download:base",

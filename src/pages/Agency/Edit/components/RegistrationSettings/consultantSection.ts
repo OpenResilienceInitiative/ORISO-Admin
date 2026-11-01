@@ -1,3 +1,5 @@
+import { isActiveRecord } from '../../../../../utils/deleteDate';
+
 /**
  * Who may see the consultant assignment block, and why the create button is off. Visible on a
  * saved agency without entering edit mode, so the "save the agency first" hint is reachable.
@@ -61,3 +63,40 @@ export const mayBeVisibleInRegistration = ({
     isAlreadyVisible,
 }: RegistrationVisibilityInput): boolean =>
     isAlreadyVisible || hasSelectedConsultants || hasAssignedConsultants === true;
+
+export interface AssignableConsultantsInput<T> {
+    /** Whatever the counsellor search returned — a platform admin's result spans every Träger. */
+    consultants: T[];
+    /** Counsellors already attached to this agency; they are listed apart, not offered again. */
+    assignedIds: ReadonlySet<string>;
+    /** The Träger the agency belongs to, or undefined while it is not known yet. */
+    tenantId: number | undefined;
+    /**
+     * The Träger must be chosen before anyone can be offered (a platform admin picks it in the
+     * form). False on single-tenant deployments and for admins whose token carries it.
+     */
+    requiresTenant: boolean;
+}
+
+/**
+ * Who may be assigned to an agency: active counsellors of the agency's own Träger (#953). The
+ * backend refuses a cross-Träger assignment as well; this keeps the picker from offering one.
+ * A Träger that is still unknown offers nobody when the admin has to choose it, so the first
+ * pick is never made from a list that mixes Träger.
+ */
+export const assignableConsultants = <T extends { id: string | number; tenantId?: string | number | null }>({
+    consultants,
+    assignedIds,
+    tenantId,
+    requiresTenant,
+}: AssignableConsultantsInput<T>): T[] => {
+    if (tenantId === undefined && requiresTenant) {
+        return [];
+    }
+    return consultants.filter(
+        (consultant) =>
+            isActiveRecord(consultant as { deleteDate?: string | null }) &&
+            !assignedIds.has(String(consultant.id)) &&
+            (tenantId === undefined || String(consultant.tenantId) === String(tenantId)),
+    );
+};

@@ -2,7 +2,10 @@ import { notification } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
-import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
+import {
+    useRecipientScopeControlsMutation,
+    useTenantAdminControlsMutation,
+} from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyVisibleTogglesAsValues,
@@ -10,8 +13,9 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { toRecipientScopeWrite, withStoredScopeOnly } from './RecipientScope/recipientScopePolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
-import type { PolicyValue } from '../../../../types/permissionPolicy';
+import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
 export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
@@ -29,6 +33,8 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         successMessageKey: false,
         onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
     });
+    // The scope control reports its own failure beside the edit, so no second, generic notification.
+    const updateRecipientScope = useRecipientScopeControlsMutation();
 
     useEffect(() => {
         if (platformControls && pendingPolicyOperations.current.length === 0) {
@@ -81,10 +87,10 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             const run = async () => {
                 const confirmed = confirmedPlatformControls.current;
                 if (!confirmed) return;
-                const next = {
+                const next = withStoredScopeOnly({
                     ...confirmed,
                     permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
-                };
+                });
                 try {
                     confirmedPlatformControls.current = await updateTenantAdminControls.mutateAsync(next);
                 } catch {
@@ -99,6 +105,31 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
         [rebuildEffectivePlatformControls, updateTenantAdminControls],
+    );
+
+    // Same queue as the switches, so a scope save and a switch save never overtake each other.
+    const handleRecipientScopeSave = useCallback(
+        (next: Pick<RecipientScopePolicy, 'value' | 'mode'>) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) throw new Error('Platform controls are not loaded');
+                confirmedPlatformControls.current = await updateRecipientScope.mutateAsync({
+                    ...confirmed,
+                    ...toRecipientScopeWrite({ ...next, inherited: false }),
+                });
+                rebuildEffectivePlatformControls();
+                notification.success({
+                    message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
+                    duration: 3,
+                });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            return save;
+        },
+        [rebuildEffectivePlatformControls, t, updateRecipientScope],
     );
 
     // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
@@ -137,6 +168,10 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             permissionPolicies={effectivePlatformControls?.permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
+            recipientScope={{
+                policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
+                onSave: handleRecipientScopeSave,
+            }}
         />
     );
 };

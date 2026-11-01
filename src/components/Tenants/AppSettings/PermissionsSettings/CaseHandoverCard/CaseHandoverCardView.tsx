@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Tooltip } from 'antd';
+import { Alert, Button, Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { Card } from '../../../../Card';
 import { M3DurationField } from '../../../../M3NumberField';
@@ -35,8 +35,13 @@ export type CaseHandoverCardViewProps = {
     policies: CaseHandoverReasonPolicy[];
     isLoading: boolean;
     isSaving?: boolean;
-    /** false = user may not edit platform reason policies → everything read-only. */
+    /** false = user may not edit this Träger's rules → everything read-only. */
     canEdit: boolean;
+    /** Why the last save failed; the unsaved edit stays visible meanwhile. */
+    saveError?: string | null;
+    onRetrySave?: () => void;
+    /** No Träger in scope (platform-wide page): explain where the rules are set instead. */
+    noTenant?: boolean;
     moduleEnabled: boolean;
     onModuleEnabledChange: (enabled: boolean) => void;
     onClientConsentPolicyChange: (code: string, clientConsent: CaseHandoverConsentPolicy) => void;
@@ -64,6 +69,9 @@ export const CaseHandoverCardView = ({
     isLoading,
     isSaving = false,
     canEdit,
+    saveError = null,
+    onRetrySave,
+    noTenant = false,
     moduleEnabled,
     onModuleEnabledChange,
     onClientConsentPolicyChange,
@@ -110,11 +118,38 @@ export const CaseHandoverCardView = ({
             headerIcon={<CaseHandoverIcon width={40} height={40} />}
             titleKey="tenants.permissions.card.caseHandover.title"
         >
-            {isLoading ? (
-                <Skeleton active paragraph={{ rows: 6 }} />
-            ) : (
+            {noTenant && <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.noTenant')}</p>}
+            {!noTenant && isLoading && (
+                <div data-testid="case-handover-card-loading">
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                </div>
+            )}
+            {!noTenant && !isLoading && (
                 <>
                     <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
+                    {!canEdit && (
+                        <p className={styles.readOnlyNote} data-testid="case-handover-read-only-note">
+                            {t('tenants.permissions.card.caseHandover.readOnlyNote')}
+                        </p>
+                    )}
+
+                    {saveError && (
+                        <Alert
+                            type="error"
+                            showIcon
+                            role="alert"
+                            className={styles.saveError}
+                            data-testid="case-handover-save-error"
+                            message={saveError}
+                            action={
+                                onRetrySave && (
+                                    <Button size="small" onClick={onRetrySave} disabled={isSaving}>
+                                        {t('tenants.permissions.card.caseHandover.saveFailed.retry')}
+                                    </Button>
+                                )
+                            }
+                        />
+                    )}
 
                     <div className={styles.featureRow}>
                         <PermissionPolicyControl

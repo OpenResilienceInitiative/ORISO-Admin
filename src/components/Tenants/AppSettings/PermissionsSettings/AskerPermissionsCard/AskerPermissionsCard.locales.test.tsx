@@ -69,13 +69,20 @@ const expectations = {
         'መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ',
     ],
 } as const;
+// FE#1725: the card shows channel switches only for tiles hidden on the page.
+const ALL_CHANNELS = ['AgencyCounselling', 'LiveChat', 'SelfHelp'].flatMap((context) =>
+    ['email', 'browser'].map((channel) => ({
+        field: `featureAsker${channel === 'email' ? 'Email' : 'Browser'}${context}Enabled`,
+        labelKey: `tenants.permissions.asker.channels.${channel}${context}`,
+    })),
+);
 afterEach(cleanup);
 describe('conversation notification policy labels', () => {
     it.each(Object.entries(expectations))('renders all seven new feature strings in %s', async (language, labels) => {
         await i18n.changeLanguage(language);
         render(
             <I18nextProvider i18n={i18n}>
-                <AskerPermissionsCard restrictedFields={new Set()} />
+                <AskerPermissionsCard restrictedFields={new Set()} channelToggles={ALL_CHANNELS} />
             </I18nextProvider>,
         );
         expect(screen.getByRole('heading', { name: labels[0] })).toBeTruthy();

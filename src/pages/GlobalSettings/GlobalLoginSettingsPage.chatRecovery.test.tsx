@@ -44,6 +44,9 @@ vi.mock('../../components/GlobalSettings/TranslationApiKeysCardContainer', () =>
 vi.mock('../../components/GlobalSettings/DocumentMasterDataCardContainer', () => ({
     DocumentMasterDataCardContainer: () => <div data-testid="document-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
 }));

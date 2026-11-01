@@ -4,6 +4,8 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
+import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
 import type { DisplayStatus } from '../../types/userDisplayStatus';
 import { IconButton } from '../IconButton';
 import { StatusBadge } from './StatusBadge';
@@ -22,6 +24,9 @@ export interface UserCardProps {
     /** Omitted = no permission; the button is left out. */
     onEdit?: () => void;
     onDelete?: () => void;
+    /** Only for an account whose deletion is running; stay enabled while edit and delete are not. */
+    onCancelDeletion?: () => void;
+    onPauseDeletion?: () => void;
     /** E.g. while the account is being deleted. */
     actionsDisabled?: boolean;
 }
@@ -37,6 +42,8 @@ export const UserCard = ({
     defaultExpanded = false,
     onEdit,
     onDelete,
+    onCancelDeletion,
+    onPauseDeletion,
     actionsDisabled = false,
 }: UserCardProps) => {
     const { t } = useTranslation();
@@ -67,6 +74,20 @@ export const UserCard = ({
                             ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name: displayName })}
                             disabled={actionsDisabled}
                             onClick={onEdit}
+                        />
+                    )}
+                    {onCancelDeletion && (
+                        <IconButton
+                            icon={<RestoreFromTrashOutlinedIcon />}
+                            ariaLabel={t('deletionWindow.cancel.action')}
+                            onClick={onCancelDeletion}
+                        />
+                    )}
+                    {onPauseDeletion && (
+                        <IconButton
+                            icon={<PauseCircleOutlineOutlinedIcon />}
+                            ariaLabel={t('deletionWindow.pause.action')}
+                            onClick={onPauseDeletion}
                         />
                     )}
                     {onDelete && (
