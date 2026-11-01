@@ -50,6 +50,8 @@ describe('CopyLinkRow', () => {
         const input = screen.getByLabelText('link.label') as HTMLInputElement;
         expect(input.selectionStart).toBe(0);
         expect(input.selectionEnd).toBe(LINK.length);
+        // Keyboard users land on the selected text, so their next copy shortcut copies the link.
+        expect(input).toHaveFocus();
         expect(screen.queryByRole('button', { name: 'link.copied' })).not.toBeInTheDocument();
     });
 });

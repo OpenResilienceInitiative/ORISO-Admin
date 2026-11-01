@@ -22,6 +22,9 @@ const COPY_FEEDBACK_MS = 2000;
 /** Copies via the hidden selection; only for contexts without the Clipboard API (plain http). */
 const copyBySelection = (input: HTMLInputElement | null): boolean => {
     if (!input) return false;
+    // Focus first: select() alone leaves keyboard focus on the button, and a manual copy
+    // would then miss the link.
+    input.focus();
     input.select();
     try {
         return typeof document.execCommand === 'function' && document.execCommand('copy');

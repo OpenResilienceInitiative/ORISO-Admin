@@ -42,7 +42,7 @@ import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIde
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
 import routePathNames, { appURL } from '../../../appConfig';
 import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
-import { buildPublicContactLinkUrl, PUBLIC_SLUG_PATTERN } from '../../../utils/publicContactLink';
+import { buildPublicContactLinkUrl, isValidPublicSlug } from '../../../utils/publicContactLink';
 import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
@@ -865,8 +865,14 @@ export const UserEditOrAdd = () => {
                                             placeholder={t('placeholder.publicSlug')}
                                             rules={[
                                                 {
-                                                    pattern: PUBLIC_SLUG_PATTERN,
-                                                    message: t('message.error.publicSlug.format'),
+                                                    // Same rule as the UserService, including the
+                                                    // id-shaped names it rejects (ORISO-UserService#1534).
+                                                    validator: (_, value?: string) =>
+                                                        !value || isValidPublicSlug(value)
+                                                            ? Promise.resolve()
+                                                            : Promise.reject(
+                                                                  new Error(t('message.error.publicSlug.format')),
+                                                              ),
                                                 },
                                             ]}
                                         />
