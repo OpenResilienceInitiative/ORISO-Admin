@@ -109,7 +109,11 @@ describe('AdminSidebar', () => {
                 ],
             },
         });
-        expect(screen.getByRole('group', { name: 'Activity logs' })).toBeInTheDocument();
+        const list = screen.getByRole('list', { name: 'Activity logs' });
+        const section = list.parentElement;
+        expect(section).toHaveRole('listitem');
+        expect(section?.parentElement).toHaveRole('list');
+        expect(list).toContainElement(screen.getByRole('link', { name: 'Case handover' }));
         expect(screen.getByRole('link', { name: 'Case handover' })).toHaveAttribute(
             'href',
             '/admin/logs/case-handover',
@@ -118,6 +122,6 @@ describe('AdminSidebar', () => {
 
     it('omits the activity-logs section when not provided', () => {
         renderSidebar();
-        expect(screen.queryByRole('group')).not.toBeInTheDocument();
+        expect(screen.queryByRole('list', { name: 'Activity logs' })).not.toBeInTheDocument();
     });
 });

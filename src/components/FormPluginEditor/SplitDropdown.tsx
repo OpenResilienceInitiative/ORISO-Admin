@@ -70,7 +70,7 @@ export const SplitDropdown = ({
                 aria-haspopup="menu"
             >
                 <span className={styles.versionLeading}>
-                    {icon}
+                    <span aria-hidden="true">{icon}</span>
                     <span>{label}</span>
                 </span>
                 <span className={styles.versionTrailing}>

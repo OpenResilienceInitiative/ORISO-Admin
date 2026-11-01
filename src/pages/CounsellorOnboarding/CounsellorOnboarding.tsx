@@ -407,6 +407,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 />
                 {counselling && (
                     <FloatingLabelSelect
+                        virtual={false}
                         label={t('cards.personalInfo.salutation')}
                         options={SALUTATION_KEYS.map((key) => ({
                             value: key,

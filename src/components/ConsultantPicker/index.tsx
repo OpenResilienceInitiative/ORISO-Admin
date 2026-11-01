@@ -62,7 +62,7 @@ export const ConsultantPicker = ({
     return (
         <div className={classNames(styles.picker, className)}>
             <FloatingLabelInput label={searchLabel} value={query} onChange={(event) => setQuery(event.target.value)} />
-            <div className={styles.chips} role="listbox" aria-label={searchLabel} aria-multiselectable>
+            <div className={styles.chips} role="group" aria-label={searchLabel}>
                 {visible.map((consultant) => (
                     <FilterChip
                         key={consultant.id}

@@ -60,3 +60,12 @@
         min-height: 22px;
     }
 }
+
+// Preserve the legacy switch's visible state words on a paired neutral track.
+.legacySwitch:global(.ant-switch:not(.ant-switch-checked)) {
+    background: var(--m3-surface-container-highest, #e4e2e2);
+
+    :global(.ant-switch-inner-unchecked) {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+}
