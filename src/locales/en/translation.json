@@ -536,6 +536,7 @@
     "tenants.list.tenantId": "Tenant ID",
     "tenants.list.maxConsultants": "Max. allowed consultants",
     "tenants.list.empty": "No data available",
+    "empty.noData": "No data",
     "tenants.list.new": "New",
     "tenants.list.deleteModal.title": "Do you really want to delete \"{{name}}\"?",
     "tenants.list.deleteModal.description": "Deleting a tenant also deletes all consultants, seekers, and their related data.",

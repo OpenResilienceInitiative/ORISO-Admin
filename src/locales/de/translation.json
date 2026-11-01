@@ -1315,6 +1315,7 @@
     "tenants.list.maxConsultants": "Max. erlaubte Berater",
     "tenants.list.mainTenantTag": "Haupt",
     "tenants.list.empty": "Keine Daten vorhanden",
+    "empty.noData": "Keine Daten",
     "tenants.list.new": "Neu",
     "tenants.list.deleteModal.title": "Möchten Sie wirklich „{{name}}“ löschen?",
     "tenants.list.deleteModal.description": "Wenn Sie den Träger löschen, werden automatisch auch alle Berater und Beraterinnen sowie Ratsuchende und deren Daten gelöscht.",
