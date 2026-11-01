@@ -1,47 +1,26 @@
-import { TablePaginationConfig } from 'antd';
+import type { DataTableSort } from '../../../components/DataTable';
 
-export const AGENCY_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
+/** Columns the AgencyService search can order by, and the `field` value it expects for each. */
+export const AGENCY_SORT_FIELD_BY_COLUMN: Record<string, string> = {
     id: 'ID',
-    createDate: 'CREATE_DATE',
     name: 'NAME',
-    postcode: 'POST_CODE',
-    city: 'CITY',
-    offline: 'OFFLINE',
+    address: 'POST_CODE',
+    status: 'OFFLINE',
 };
 
-export const getAgencyColumnSortOrder = (
-    dataIndex: keyof typeof AGENCY_SORT_FIELD_BY_DATA_INDEX,
-    tableState: TableState,
-): 'ascend' | 'descend' | undefined => {
-    if (!tableState.sortBy || tableState.sortBy !== AGENCY_SORT_FIELD_BY_DATA_INDEX[dataIndex]) {
-        return undefined;
-    }
-
-    return tableState.order === 'DESC' ? 'descend' : 'ascend';
+/** The header arrow for the server order, or none when the server sorts by a column not shown. */
+export const agencySortOf = (sortBy: string | undefined, order: string | undefined): DataTableSort | null => {
+    const key = Object.keys(AGENCY_SORT_FIELD_BY_COLUMN).find(
+        (column) => AGENCY_SORT_FIELD_BY_COLUMN[column] === sortBy,
+    );
+    return key ? { key, direction: order === 'DESC' ? 'desc' : 'asc' } : null;
 };
 
-export const getNextAgencyTableState = (
-    tableState: TableState,
-    pagination: TablePaginationConfig,
-    sorter: any,
-): TableState => {
-    const { current, pageSize } = pagination;
-
-    const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-    const sortField =
-        activeSorter?.field && typeof activeSorter.field === 'string'
-            ? AGENCY_SORT_FIELD_BY_DATA_INDEX[activeSorter.field]
-            : undefined;
-
-    if (!sortField || !activeSorter?.order) {
-        return { ...tableState, current, pageSize, sortBy: undefined, order: undefined };
+/** The next list state for a header click: back to page 1, the column's API field and direction. */
+export const nextAgencySortState = (state: TableState, sort: DataTableSort | null): TableState => {
+    const sortBy = sort ? AGENCY_SORT_FIELD_BY_COLUMN[sort.key] : undefined;
+    if (!sort || !sortBy) {
+        return { ...state, current: 1, sortBy: undefined, order: undefined };
     }
-
-    return {
-        ...tableState,
-        current,
-        pageSize,
-        sortBy: sortField,
-        order: activeSorter.order === 'descend' ? 'DESC' : 'ASC',
-    };
+    return { ...state, current: 1, sortBy, order: sort.direction === 'desc' ? 'DESC' : 'ASC' };
 };
