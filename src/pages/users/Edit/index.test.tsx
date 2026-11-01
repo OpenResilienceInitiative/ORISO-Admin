@@ -108,6 +108,7 @@ const translations: Record<string, string> = {
     'counselor.publicSlug.copied': 'Kontakt-Link kopiert',
     'message.error.publicSlug.format': 'Ungültiger Link-Name',
     'message.error.publicSlug.maxLength': 'Höchstens {{max}} Zeichen',
+    'counselor.publicSlug.hint': 'Kleinbuchstaben und Ziffern, bis {{max}} Zeichen',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -528,6 +529,28 @@ describe('public contact link (ORISO-UserService#1534)', () => {
 
         await screen.findByRole('button', { name: 'Kontakt-Link kopiert' });
         await expect(navigator.clipboard.readText()).resolves.toBe(expected);
+    });
+
+    it('names the 50-character limit next to the field', () => {
+        renderForm();
+
+        expect(screen.getByText('Kleinbuchstaben und Ziffern, bis 50 Zeichen')).toBeInTheDocument();
+    });
+
+    it('trusts the loaded detail record over a stale list row when the name was cleared', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: { data: [{ id: 'consultant-1', publicSlug: 'old-name', publicSlugStatus: 'APPROVED' }] },
+            isLoading: false,
+        };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', publicSlug: null, publicSlugStatus: null },
+            isLoading: false,
+        };
+        renderForm();
+
+        expect(await screen.findByLabelText('Name des öffentlichen Kontakt-Links')).toHaveValue('');
+        expect(screen.queryByLabelText('Öffentlicher Kontakt-Link')).not.toBeInTheDocument();
     });
 
     it('shows no link while no link name is active', async () => {

@@ -1066,6 +1066,7 @@
     "counselor.publicSlug.status.rejected": "Der zuletzt angefragte Link-Name wurde abgelehnt.",
     "counselor.publicSlug.status.title": "Öffentlicher Kontakt-Link",
     "counselor.publicSlug.url": "Vollständiger Kontakt-Link",
+    "counselor.publicSlug.hint": "Kleinbuchstaben und Ziffern, getrennt durch einzelne Bindestriche, höchstens {{max}} Zeichen.",
     "counselor.publicSlug.copy": "Link kopieren",
     "counselor.publicSlug.copied": "Link kopiert",
     "counselor.modal.headline.add": "Berater hinzufügen",

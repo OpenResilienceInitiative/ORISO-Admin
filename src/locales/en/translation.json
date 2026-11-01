@@ -1414,6 +1414,7 @@
     "counselor.publicSlug.status.rejected": "The last requested link name was rejected.",
     "counselor.publicSlug.status.title": "Public contact link",
     "counselor.publicSlug.url": "Full contact link",
+    "counselor.publicSlug.hint": "Lowercase letters and digits, separated by single hyphens, at most {{max}} characters.",
     "counselor.publicSlug.copy": "Copy link",
     "counselor.publicSlug.copied": "Link copied",
     "counselor.password": "One-time registration password",
