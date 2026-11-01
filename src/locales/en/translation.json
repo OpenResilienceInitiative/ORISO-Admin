@@ -310,6 +310,7 @@
     "message.error.password.policy": "Password must include upper and lower case letters, at least one number, and at least one special character.",
     "message.error.PASSWORD_NOT_VALID": "The password does not meet the security requirements. Use at least 8 characters with upper and lower case letters, at least one number, and one special character (e.g. @Consultantshazia1).",
     "message.error.publicSlug.format": "Only lowercase letters and digits separated by single hyphens are allowed (e.g. team-2).",
+    "message.error.publicSlug.maxLength": "The link name can be at most {{max}} characters long.",
     "message.error.EMAIL_NOT_AVAILABLE": "This email address is already in use.",
     "message.error.USERNAME_NOT_AVAILABLE": "This username is already taken.",
     "message.error.ROLE_NOT_FOUND": "The required user role is missing from the system and could not be assigned. Please contact your administrator.",

@@ -42,7 +42,7 @@ import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIde
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
 import routePathNames, { appURL } from '../../../appConfig';
 import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
-import { buildPublicContactLinkUrl, isValidPublicSlug } from '../../../utils/publicContactLink';
+import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from '../../../utils/publicContactLink';
 import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
@@ -867,14 +867,22 @@ export const UserEditOrAdd = () => {
                                                 {
                                                     // Same rule as the UserService, including the
                                                     // id-shaped names it rejects (ORISO-UserService#1534).
-                                                    validator: (_, value?: string) =>
-                                                        !value || isValidPublicSlug(value)
-                                                            ? Promise.resolve()
-                                                            : Promise.reject(
-                                                                  new Error(t('message.error.publicSlug.format')),
-                                                              ),
+                                                    validator: (_, value?: string) => {
+                                                        if (!value || isValidPublicSlug(value)) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        // Pasting bypasses maxLength; say why it is refused.
+                                                        const reason =
+                                                            value.length > PUBLIC_SLUG_MAX_LENGTH
+                                                                ? t('message.error.publicSlug.maxLength', {
+                                                                      max: PUBLIC_SLUG_MAX_LENGTH,
+                                                                  })
+                                                                : t('message.error.publicSlug.format');
+                                                        return Promise.reject(new Error(reason));
+                                                    },
                                                 },
                                             ]}
+                                            inputProps={{ maxLength: PUBLIC_SLUG_MAX_LENGTH }}
                                         />
                                         {isEditing && publicContactLinkUrl && (
                                             <CopyLinkRow

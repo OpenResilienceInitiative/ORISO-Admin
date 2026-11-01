@@ -373,6 +373,7 @@
     "message.error.password.policy": "Das Passwort erfüllt nicht die Anforderungen: mindestens 8 Zeichen, Groß- und Kleinbuchstaben, mindestens eine Zahl und ein Sonderzeichen.",
     "message.error.PASSWORD_NOT_VALID": "Das Passwort erfüllt nicht die Sicherheitsanforderungen. Bitte verwenden Sie mindestens 8 Zeichen mit Groß- und Kleinbuchstaben, mindestens einer Zahl und einem Sonderzeichen (z. B. @Consultantshazia1).",
     "message.error.publicSlug.format": "Erlaubt sind nur Kleinbuchstaben und Ziffern, getrennt durch einzelne Bindestriche (z. B. team-2).",
+    "message.error.publicSlug.maxLength": "Der Link-Name darf höchstens {{max}} Zeichen lang sein.",
     "message.eventType.add": "Erstberatungstyp wurde erstellt.",
     "message.eventType.update": "Erstberatungstyp wurde aktualisiert.",
     "message.eventType.delete": "Erstberatungstyp wurde gelöscht.",

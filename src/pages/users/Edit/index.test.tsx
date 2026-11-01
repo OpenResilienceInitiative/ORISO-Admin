@@ -107,6 +107,7 @@ const translations: Record<string, string> = {
     'counselor.publicSlug.copy': 'Kontakt-Link kopieren',
     'counselor.publicSlug.copied': 'Kontakt-Link kopiert',
     'message.error.publicSlug.format': 'Ungültiger Link-Name',
+    'message.error.publicSlug.maxLength': 'Höchstens {{max}} Zeichen',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -491,6 +492,25 @@ describe('public contact link (ORISO-UserService#1534)', () => {
             expect(mocks.mutate).not.toHaveBeenCalled();
         },
     );
+
+    // ORISO-UserService#1543
+    it('limits typing to 50 characters', () => {
+        renderForm();
+
+        expect(screen.getByLabelText('Name des öffentlichen Kontakt-Links')).toHaveAttribute('maxLength', '50');
+    });
+
+    it('rejects a pasted name longer than 50 characters with the length message', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        setField('Name des öffentlichen Kontakt-Links', 'a'.repeat(51));
+        await user.click(pageButton('Speichern'));
+
+        expect(await screen.findByText('Höchstens 50 Zeichen')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
 
     it('shows the full public link of the active link name with a copy button', async () => {
         const user = userEvent.setup();

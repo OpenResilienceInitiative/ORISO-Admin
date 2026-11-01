@@ -5,6 +5,9 @@
  */
 export const PUBLIC_SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
+/** Longest name the UserService saves (`PublicSlugFormat.MAX_LENGTH`, ORISO-UserService#1543). */
+export const PUBLIC_SLUG_MAX_LENGTH = 50;
+
 /**
  * Shapes Java's `UUID.fromString` accepts: five hex groups, at most 36 characters. The UserService
  * looks names up as consultant ids first and therefore rejects such names (`1-2-3-4-5`), because
@@ -15,7 +18,7 @@ const UUID_SHAPED = /^[0-9a-f]+(-[0-9a-f]+){4}$/;
 const looksLikeConsultantId = (slug: string): boolean => slug.length <= 36 && UUID_SHAPED.test(slug);
 
 export const isValidPublicSlug = (slug: string): boolean =>
-    PUBLIC_SLUG_PATTERN.test(slug) && !looksLikeConsultantId(slug);
+    slug.length <= PUBLIC_SLUG_MAX_LENGTH && PUBLIC_SLUG_PATTERN.test(slug) && !looksLikeConsultantId(slug);
 
 /**
  * The link advice seekers open: the counselling app resolves `/registration?cid=<name or id>`
