@@ -77,6 +77,7 @@ const translations: Record<string, string> = {
     'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
     'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
     'counselor.assignedSupervisor.noCandidates': 'Noch niemand freigegeben.',
+    'counselor.assignedSupervisor.onlySelf': 'Nur diese Person ist freigegeben.',
     'counselor.assignedSupervisor.truncated': 'Nur die ersten 1000 werden durchsucht.',
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
@@ -1392,6 +1393,27 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
         expect(screen.getByText('Liste konnte nicht geladen werden.')).toBeTruthy();
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
+    });
+
+    /**
+     * OBP 2.1 #105: the tester enabled "Supervisor" on the counsellor she was editing and was told
+     * nobody had been enabled. Nobody can supervise themselves, so the list is rightly empty, but the
+     * hint has to say why instead of suggesting the capability was not saved.
+     */
+    it('says the edited counsellor is the only supervisor, rather than that nobody is enabled', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = {
+            data: { data: [{ id: CONSULTANT_ID, firstname: 'Self', lastname: 'Supervisor', isSupervisor: true }] },
+            isLoading: false,
+            isError: false,
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Nur diese Person ist freigegeben.')).toBeTruthy();
+        expect(screen.queryByText('Noch niemand freigegeben.')).toBeNull();
     });
 
     it('locks the field and says so when the stored assignment could not be read', async () => {

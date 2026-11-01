@@ -257,9 +257,17 @@ export const UserEditOrAdd = () => {
         if (supervisorCandidatesTruncated) {
             return 'counselor.assignedSupervisor.truncated';
         }
-        return supervisorOptions.length === 0
-            ? 'counselor.assignedSupervisor.noCandidates'
-            : 'counselor.assignedSupervisor.hint';
+        if (supervisorOptions.length > 0) {
+            return 'counselor.assignedSupervisor.hint';
+        }
+        // A counsellor cannot supervise themselves. When they are the only one with the capability,
+        // say so: "nobody has been enabled" reads as if saving the capability had failed.
+        const editedIsOnlySupervisor = (supervisorCandidatesResponse?.data || []).some(
+            (candidate) => candidate.id === id && candidate.isSupervisor,
+        );
+        return editedIsOnlySupervisor
+            ? 'counselor.assignedSupervisor.onlySelf'
+            : 'counselor.assignedSupervisor.noCandidates';
     })();
 
     const hasSelectedAgencies = selectedAgencies.length > 0;
