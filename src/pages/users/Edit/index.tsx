@@ -40,7 +40,9 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
-import routePathNames from '../../../appConfig';
+import routePathNames, { appURL } from '../../../appConfig';
+import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
+import { buildPublicContactLinkUrl, PUBLIC_SLUG_PATTERN } from '../../../utils/publicContactLink';
 import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
@@ -677,6 +679,12 @@ export const UserEditOrAdd = () => {
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
 
+    // The saved, live name only: a name still being typed (or awaiting approval) does not open yet.
+    const publicContactLinkUrl = buildPublicContactLinkUrl(
+        consultantById?.publicSlug || singleData?.publicSlug,
+        appURL,
+    );
+
     const approvePendingPublicSlug = () => {
         form.setFieldsValue({
             publicSlug: pendingSlug,
@@ -857,11 +865,19 @@ export const UserEditOrAdd = () => {
                                             placeholder={t('placeholder.publicSlug')}
                                             rules={[
                                                 {
-                                                    pattern: /^[a-z]+(-[a-z]+)*$/,
+                                                    pattern: PUBLIC_SLUG_PATTERN,
                                                     message: t('message.error.publicSlug.format'),
                                                 },
                                             ]}
                                         />
+                                        {isEditing && publicContactLinkUrl && (
+                                            <CopyLinkRow
+                                                value={publicContactLinkUrl}
+                                                labelKey="counselor.publicSlug.url"
+                                                copyKey="counselor.publicSlug.copy"
+                                                copiedKey="counselor.publicSlug.copied"
+                                            />
+                                        )}
                                         <Form.Item name="pendingPublicSlug" hidden>
                                             <input />
                                         </Form.Item>
