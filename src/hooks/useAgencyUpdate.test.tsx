@@ -50,6 +50,42 @@ describe('useAgencyUpdate sequential card saves', () => {
         expect(laterUpdate.name).toBe('Updated name');
     });
 
+    // ORISO-Admin#1243: AgencyService rejects an incomplete stored contact that is echoed back,
+    // so switching the centre offline failed. Omitted, the service keeps the stored contact.
+    it('does not echo the stored data protection contact when a card switches the centre offline', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ online: false, postCodeRangesActive: false } as never);
+
+        const request = mocks.updateAgencyData.mock.calls[0][1];
+        expect(request.online).toBe(false);
+        expect(request.dataProtection).toBeUndefined();
+        // The cache still holds the contact for the other cards.
+        expect(queryClient.getQueryData<{ dataProtection?: unknown }>(['AGENCY', '282'])?.dataProtection).toEqual(
+            mocks.agency.dataProtection,
+        );
+    });
+
+    it('still sends the contact when a card puts the centre online, so the service can check it', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ online: true, postCodeRangesActive: false } as never);
+
+        expect(mocks.updateAgencyData.mock.calls[0][1].dataProtection).toEqual(mocks.agency.dataProtection);
+    });
+
     it('merges a later card patch with the latest optimistic agency state', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], mocks.agency);

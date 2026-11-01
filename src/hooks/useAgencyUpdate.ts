@@ -47,8 +47,17 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
+            // Switching the centre offline must not echo the stored data protection contact:
+            // AgencyService validates any contact it receives and rejected an incomplete stored one,
+            // so the centre could not be paused (#1243). Omitted, the service keeps the stored
+            // contact. Going online still sends it, so the service keeps checking it there.
+            const requestData =
+                data.online === false && data.dataProtection === undefined
+                    ? { ...mergedAgencyData, dataProtection: undefined }
+                    : mergedAgencyData;
+
             // Cache the accepted main write at once so a queued save uses what the server holds.
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
+            const response = await updateAgencyData(latestAgencyData, requestData, () =>
                 queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
             );
 

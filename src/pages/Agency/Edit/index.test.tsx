@@ -54,6 +54,10 @@ const mocks = vi.hoisted(() => ({
     legalForm: {
         setFields: vi.fn(),
         scrollToField: vi.fn(),
+        // The responsible card renders the responsible contact, so the service error lands there.
+        getFieldsValue: () => ({
+            dataProtection: { agencyDataProtectionResponsibleContact: { nameAndLegalForm: undefined } },
+        }),
     },
     agencyLegalProps: undefined as any,
 }));
@@ -166,13 +170,17 @@ vi.mock('../../../components/CardEditable', () => ({
     }: {
         children: any;
         initialValues?: object;
-        onSave?: (data: unknown, options: { onError: () => void }) => void;
+        onSave?: (data: unknown, options: { onError: () => void; form: unknown }) => void;
         titleKey?: string;
     }) {
+        // The real card hands its own form instance to onSave, so service field errors can
+        // land on it. Mirror that, or a field missing from the card is not observable.
+        const [form] = Form.useForm();
         return (
             <Form
+                form={form}
                 initialValues={initialValues}
-                onFinish={(values) => onSave?.(values, { onError: mocks.cardSaveOnError })}
+                onFinish={(values) => onSave?.(values, { onError: mocks.cardSaveOnError, form })}
             >
                 {typeof children === 'function'
                     ? children({ editing: true, form: undefined, startEditing: vi.fn() })
@@ -1152,5 +1160,57 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(saved.online).toBe(true);
         // The selection must reach the save, otherwise updateAgencyData has nothing to assign.
         expect(saved.consultantIds).toHaveLength(1);
+    });
+});
+
+// ORISO-Admin#1243: a platform admin switched a centre offline, AgencyService answered 400 because
+// the stored data protection contact was incomplete, and the registration card swallowed it — the
+// switch jumped back to online without a word.
+describe('AgencyPageEdit registration card service validation errors', () => {
+    const OFFICER_REQUIRED = 'agency.edit.settings.legal.validation.officer_required';
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = true;
+        mocks.cardSaveOnError.mockReset();
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+            dataProtection: { dataProtectionResponsibleEntity: 'DATA_PROTECTION_OFFICER' },
+        };
+    });
+
+    it('names a data protection error that has no field on the registration card', async () => {
+        const user = setupUser();
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.mutate.mockImplementation((_data, options) =>
+            options?.onError?.(
+                new Response(JSON.stringify({ field: 'dataProtection', reason: 'DATA_PROTECTION_OFFICER_IS_EMPTY' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            ),
+        );
+        renderWithClient(<AgencyPageEdit />);
+
+        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+
+        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED, duration: 8 }));
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
+        expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
+        notificationSpy.mockRestore();
     });
 });
