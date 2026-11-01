@@ -45,6 +45,7 @@ import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTop
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
+import { useSupervisionPrivacyConfirm } from '../../../components/SupervisionPrivacyConfirm';
 import {
     buildTopicsPayload,
     centreLabel,
@@ -179,6 +180,7 @@ export const UserEditOrAdd = () => {
      * honest signal.
      */
     const supervisorPickedByAdminRef = useRef(false);
+    const confirmSupervision = useSupervisionPrivacyConfirm();
     /**
      * Read the standing supervisor from the single-consultant record, not from the list row.
      * The form's list comes from `/service/users/consultants/search`, which leaves
@@ -843,10 +845,13 @@ export const UserEditOrAdd = () => {
                                                     // vanishing.
                                                     disabled={!canWriteStandingSupervisor || supervisorCandidatesFailed}
                                                     allowClear
+                                                    confirmEnable={confirmSupervision.confirmEnable}
                                                 />
                                             )}
                                         </ConsultantSettingsFields>
                                     )}
+                                    {/* OBP 2.1 #107: the first standing supervisor asks about the privacy policy. */}
+                                    {confirmSupervision.dialog}
                                 </Card>
 
                                 {isConsultantForm && (
