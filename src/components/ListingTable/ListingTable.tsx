@@ -3,6 +3,7 @@ import type { TableProps } from 'antd';
 import classNames from 'classnames';
 import { useRef, type CSSProperties } from 'react';
 import styles from './styles.module.scss';
+import { useTableScrollBoundary } from './useTableScrollBoundary';
 import { useAdminTableScrollY } from '../ResizableTable/useAdminTableScrollY';
 
 const scrollYToCssValue = (scrollY: string | number): string =>
@@ -15,8 +16,15 @@ const scrollYCssVar = (scrollY: string | number | undefined): CSSProperties => {
     return { '--admin-table-scroll-y': scrollYToCssValue(scrollY) } as CSSProperties;
 };
 
-export const ListingTable = <T extends object>({ className, scroll, style, ...props }: TableProps<T>) => {
+export const ListingTable = <T extends object>({
+    className,
+    scroll,
+    style,
+    scrollRegionLabel,
+    ...props
+}: TableProps<T> & { scrollRegionLabel?: string }) => {
     const hostRef = useRef<HTMLDivElement>(null);
+    useTableScrollBoundary(hostRef, scrollRegionLabel);
     const callerScrollY = scroll?.y;
     const measureDefaultScrollY = callerScrollY === undefined;
     const measuredScrollY = useAdminTableScrollY(hostRef, measureDefaultScrollY);

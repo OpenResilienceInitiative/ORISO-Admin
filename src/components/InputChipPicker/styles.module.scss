@@ -102,3 +102,8 @@
 .menu :global(.ant-dropdown-menu-item:hover) {
     background: var(--m3-state-layer-on-surface, rgb(27 27 28 / 8%));
 }
+
+/* The list exists for assistive technology only; the chips keep flowing in .row. */
+.chipList {
+    display: contents;
+}

@@ -4,14 +4,14 @@
  *
  * It does NOT use the house 38% disabled treatment. That control really is
  * disabled and therefore exempt from the contrast rule; this one is pressable —
- * it opens the explanation — so its label has to stay readable (≈5:1 on the card
- * surface at 78%). `opacity` is avoided for the same reason: it would fade the
+ * it opens the explanation — so its label has to stay readable (above4.5:1 on the card
+ * surface at 85%). `opacity` is avoided for the same reason: it would fade the
  * focus ring along with the text. */
 
 .unavailable button {
     border-color: var(--m3-outline-variant, #c4c7c8);
     border-style: dashed;
-    color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 78%, transparent);
+    color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 85%, transparent);
 }
 
 .body {

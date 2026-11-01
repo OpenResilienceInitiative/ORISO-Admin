@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import CircularProgress from '@mui/material/CircularProgress';
 import styles from './styles.module.scss';
@@ -39,25 +40,28 @@ export const M3Button = ({
     block = false,
     className,
     'aria-pressed': ariaPressed,
-}: M3ButtonProps) => (
-    <button
-        type={type === 'submit' ? 'submit' : 'button'}
-        disabled={disabled || loading}
-        aria-busy={loading || undefined}
-        aria-pressed={ariaPressed}
-        onClick={onClick}
-        className={classNames(styles.button, styles[variant], { [styles.block]: block }, className)}
-    >
-        {loading && (
-            <span className={styles.icon}>
-                <CircularProgress size={18} color="inherit" />
-            </span>
-        )}
-        {!loading && icon && (
-            <span className={styles.icon} aria-hidden>
-                {icon}
-            </span>
-        )}
-        {children}
-    </button>
-);
+}: M3ButtonProps) => {
+    const { t } = useTranslation();
+    return (
+        <button
+            type={type === 'submit' ? 'submit' : 'button'}
+            disabled={disabled || loading}
+            aria-busy={loading || undefined}
+            aria-pressed={ariaPressed}
+            onClick={onClick}
+            className={classNames(styles.button, styles[variant], { [styles.block]: block }, className)}
+        >
+            {loading && (
+                <span className={styles.icon}>
+                    <CircularProgress size={18} color="inherit" aria-label={t('loading')} />
+                </span>
+            )}
+            {!loading && icon && (
+                <span className={styles.icon} aria-hidden>
+                    {icon}
+                </span>
+            )}
+            {children}
+        </button>
+    );
+};

@@ -75,6 +75,8 @@ const FormSwitchFieldLocal = ({
                 </>
             ) : (
                 <Switch
+                    className={styles.legacySwitch}
+                    aria-label={switchLabel}
                     disabled={isDisabled}
                     size="default"
                     onChange={onSwitchChange}

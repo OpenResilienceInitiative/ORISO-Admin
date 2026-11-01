@@ -78,11 +78,11 @@
 
 /* Placeholder reason (not backend-seeded yet): selectable to inspect, greyed out. */
 .reasonTabPlaceholder {
-    color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+    color: var(--admin-form-muted-text, #444748);
 
     &.reasonTabActive {
-        border-bottom-color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
-        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 55%, transparent);
+        border-bottom-color: var(--admin-form-muted-text, #444748);
+        color: var(--m3-on-surface, #1b1b1c);
     }
 }
 
@@ -239,7 +239,7 @@
     letter-spacing: 0.1px;
 
     &:disabled {
-        color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+        color: var(--admin-form-muted-text, #444748);
         cursor: not-allowed;
     }
 

@@ -3,8 +3,12 @@
 }
 
 .label {
-    color: var(--label-color);
+    color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
     font-family: var(--m3-body-font-family);
+
+    &:global(.MuiFormLabel-root.Mui-disabled) {
+        color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
+    }
 }
 
 .group {
@@ -21,6 +25,9 @@
 }
 
 .disabled {
-    opacity: 0.5;
     cursor: not-allowed;
+
+    :global(.MuiRadio-root) {
+        opacity: 0.5;
+    }
 }

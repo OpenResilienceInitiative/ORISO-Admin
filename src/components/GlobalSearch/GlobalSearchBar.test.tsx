@@ -78,7 +78,7 @@ describe('GlobalSearchBar', () => {
         expect(onInputFocus).toHaveBeenCalled();
         expect(onInputKeyDown).toHaveBeenCalled();
         expect(onSearch).not.toHaveBeenCalled();
-        expect(input).toHaveAttribute('autocomplete', 'search');
+        expect(input).toHaveAttribute('autocomplete', 'off');
         expect(input).toHaveAttribute('name', 'search');
     });
 

@@ -199,6 +199,8 @@ const CardDeckRoot = ({ ariaLabel, children, className, deckClassName, nextLabel
                 ref={deckRef}
                 aria-label={ariaLabel}
                 data-admin-card-deck-scroll
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- A named scroll surface needs keyboard focus for native scrolling.
+                tabIndex={0}
                 role="group"
             >
                 <ul className={styles.list} aria-label={ariaLabel} data-admin-card-deck-list>

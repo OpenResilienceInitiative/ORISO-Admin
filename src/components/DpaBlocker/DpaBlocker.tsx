@@ -181,7 +181,7 @@ export const DpaBlocker = ({
                             would silently fall back to body text (the same trap
                             documented in DpaFormSection). */}
                         <div className={styles.hero}>
-                            <DpaIcon className={styles.heroIcon} />
+                            <DpaIcon className={styles.heroIcon} aria-hidden="true" />
                             {/* `lang` is what makes `hyphens: auto` work — without
                                 it the browser has no dictionary to break the long
                                 German compound with. */}

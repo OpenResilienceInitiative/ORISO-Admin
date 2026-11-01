@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ConfigProvider } from 'antd';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { userEvent, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { ReactComponent as ClockIcon } from '../../resources/img/svg/oriso/schedule_24px.svg';
 import { FloatingLabelSelect } from './index';
@@ -55,6 +55,7 @@ const Demo = ({ initial }: { initial?: string }) => {
     return (
         <OnCard>
             <FloatingLabelSelect
+                virtual={false}
                 label="Salutation"
                 options={SALUTATIONS}
                 value={value}
@@ -77,6 +78,7 @@ const LeadingIconDemo = () => {
     return (
         <OnCard>
             <FloatingLabelSelect
+                virtual={false}
                 label="Maximum Session Duration"
                 leadingIcon={<ClockIcon />}
                 options={DURATIONS}
@@ -94,6 +96,11 @@ export const Open: StoryObj = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('combobox'));
+        const options = within(canvasElement.ownerDocument.body).getAllByRole('option');
+        await expect(options).toHaveLength(SALUTATIONS.length);
+        await expect(options.find((option) => option.getAttribute('aria-selected') === 'true')).toHaveTextContent(
+            'Not Specified',
+        );
     },
 };
 
@@ -102,6 +109,7 @@ export const Error: StoryObj = {
     render: () => (
         <OnCard>
             <FloatingLabelSelect
+                virtual={false}
                 label="Salutation"
                 options={SALUTATIONS}
                 value="not_specified"
