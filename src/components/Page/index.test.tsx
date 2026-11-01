@@ -83,8 +83,11 @@ it('keeps the arrows on a deck that can scroll, even when the tabs overflow', ()
 });
 
 it('gives overflowing tabs the arrows when every card fits (#193)', () => {
+    // Stable like the real deck's memoised registration: a fresh object per render re-registers,
+    // re-renders this context consumer and loops until the worker runs out of memory.
+    const fittingNav = { ...cardNav, canScrollForward: false };
     const FittingDeck = () => {
-        useRegisterCardDeckNav('cards', { ...cardNav, canScrollForward: false });
+        useRegisterCardDeckNav('cards', fittingNav);
         return null;
     };
     const { container } = renderTabsWithDeck(FittingDeck);
