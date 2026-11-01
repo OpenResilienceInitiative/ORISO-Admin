@@ -41,7 +41,7 @@ const VALID_REQUIRED = {
     lastname: 'Lovelace',
     email: 'ada@example.org',
     username: 'ada',
-    password: 'Str0ng!pass',
+    password: 'Str0ng!passphrase',
 };
 
 const Harness = ({
