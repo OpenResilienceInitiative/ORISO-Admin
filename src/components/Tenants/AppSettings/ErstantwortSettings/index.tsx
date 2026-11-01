@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../../M3Button';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
+import { useErstantwortDefaults } from '../../../../hooks/useErstantwortDefaults.hook';
 import { useTranslateLegalContent } from '../../../../hooks/useTranslateLegalContent.hook';
 import { getTranslationErrorKey } from '../../LegalSettings/utils/translationErrors';
 import { TranslateOnPublishModal } from '../../LegalSettings/components/TranslateOnPublishModal';
@@ -63,6 +64,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
 
     const languageFormal = data?.settings?.extendedSettings?.languageFormal;
     const sourceLanguage = germanVariantFor(languageFormal);
+    const { data: platformDefaults } = useErstantwortDefaults(languageFormal === false);
     const targetLanguages = useMemo(
         () => translationTargetsFor(data?.settings?.activeLanguages),
         [data?.settings?.activeLanguages],
@@ -234,6 +236,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
                 contentByBaustein={content}
                 responseDeadlineDays={deadlineDays}
                 languageFormal={languageFormal}
+                platformDefaults={platformDefaults}
                 onChange={handleChange}
                 onDeadlineChange={handleDeadline}
                 disabled={readOnly}

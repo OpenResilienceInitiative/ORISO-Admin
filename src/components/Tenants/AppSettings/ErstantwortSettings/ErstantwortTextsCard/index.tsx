@@ -65,9 +65,9 @@ export interface ErstantwortTextsCardProps {
     footer?: ReactNode;
     /**
      * What the advice seeker reads when a field is left empty, as plain text per Baustein, and the
-     * fixed emergency-number sentence. Read-only. The Admin app has no source for these yet (they
-     * live in UserService `erstantwort/<locale>.json`), so the container passes nothing today and
-     * the previews stay hidden rather than showing an invented text.
+     * fixed emergency-number sentence. Read-only. Loaded by the container from
+     * `GET /useradmin/erstantwort/defaults`; when that fails nothing is passed and the previews
+     * stay hidden rather than showing an invented text.
      */
     platformDefaults?: {
         texts?: Partial<Record<ErstantwortBausteinKey, string>>;

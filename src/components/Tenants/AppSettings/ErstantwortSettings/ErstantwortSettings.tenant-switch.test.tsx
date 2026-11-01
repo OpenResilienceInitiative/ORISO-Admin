@@ -8,6 +8,9 @@ import { ErstantwortSettings } from './index';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../../api/fetchData', () => ({ fetchData: vi.fn(), FETCH_METHODS: { PUT: 'PUT' } }));
+vi.mock('../../../../hooks/useErstantwortDefaults.hook', () => ({
+    useErstantwortDefaults: () => ({ data: undefined }),
+}));
 vi.mock('../../../../api/tenant/getSingleTenantData', () => ({ getSingleTenantData: vi.fn() }));
 vi.mock('../../../FormPluginEditor/M3RichTextEditor', () => ({
     M3RichTextEditor: ({

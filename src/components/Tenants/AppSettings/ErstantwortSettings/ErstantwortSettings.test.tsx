@@ -2,7 +2,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TranslationApiError } from '../../../../api/tenant/translation';
 
-const { useSingleTenantData, mutateAsync, translate, editorRender } = vi.hoisted(() => ({
+const { useSingleTenantData, mutateAsync, translate, editorRender, useErstantwortDefaults } = vi.hoisted(() => ({
+    useErstantwortDefaults: vi.fn(() => ({ data: undefined })),
     useSingleTenantData: vi.fn(),
     mutateAsync: vi.fn(),
     translate: vi.fn(),
@@ -16,6 +17,10 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: (args: unknown) => useSingleTenantData(args),
+}));
+
+vi.mock('../../../../hooks/useErstantwortDefaults.hook', () => ({
+    useErstantwortDefaults: (informal: boolean) => useErstantwortDefaults(informal),
 }));
 
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
@@ -82,6 +87,16 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ErstantwortSettings', () => {
+    it("loads the platform texts for the Träger's German variant and offers them to the card", () => {
+        useSingleTenantData.mockReturnValue(tenantWith(['de'], {}, false));
+        useErstantwortDefaults.mockReturnValue({
+            data: { texts: { erstantwortGreeting: 'Platform hello' }, emergencyNumbers: '116 123' },
+        });
+        renderSettings();
+        expect(useErstantwortDefaults).toHaveBeenCalledWith(true);
+        expect(screen.getAllByTestId('erstantwort-platform-preview').length).toBeGreaterThan(0);
+    });
+
     it('shows the Träger text that is already stored', () => {
         renderSettings();
 
