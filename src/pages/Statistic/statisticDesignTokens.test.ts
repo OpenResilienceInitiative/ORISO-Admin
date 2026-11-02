@@ -33,6 +33,7 @@ describe('statistics page design tokens', () => {
         expect(rule('.statisticDashboard__trend--great')).toContain('color: var(--m3-on-secondary)');
         expect(rule('.statisticDashboard__legendItem--active')).toContain('color: var(--m3-on-secondary)');
         expect(rule('.statisticDashboard__legendItem--active')).not.toContain('--m3-primary-fixed');
+        expect(rule('.statisticDashboard__cardMenuItem--active:hover')).not.toContain('--m3-primary)');
         expect(rule('.statisticDashboard__barTooltip')).toContain('color: var(--m3-surface)');
         expect(rule('.statisticDashboard__barTooltip')).not.toContain('--m3-on-primary');
     });
