@@ -21,10 +21,7 @@ import { M3Button } from '../../M3Button';
 import { MuiSelectField } from '../../mui/MuiSelectField';
 import { useStatisticsSettings } from '../../../hooks/useStatisticsSettings.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import {
-    downloadStatisticsSettingsProtocol,
-    statisticsSettingValueLabel,
-} from './statisticsSettingsProtocolCsv';
+import { downloadStatisticsSettingsProtocol, statisticsSettingValueLabel } from './statisticsSettingsProtocolCsv';
 import styles from './styles.module.scss';
 
 interface Props {
