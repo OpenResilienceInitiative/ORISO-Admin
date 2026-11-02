@@ -1,4 +1,5 @@
-import { renderHook } from '@testing-library/react';
+import { render, renderHook } from '@testing-library/react';
+import { createElement, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useUserTableLayout } from './useUserTableLayout';
 
@@ -84,6 +85,33 @@ describe('first committed layout', () => {
         // A slow runner: the observer has not delivered its first entry yet.
         stubResizeObserver();
         expect(renderHook(() => useUserTableLayout({ current: element })).result.current).toBe('tablet');
+    });
+
+    it('measures before any passive effect runs, so the first paint already fits', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        let passiveEffectRan = false;
+        const measuredAfterPassiveEffect: boolean[] = [];
+        vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => {
+            measuredAfterPassiveEffect.push(passiveEffectRan);
+            return { width: 600 } as DOMRect;
+        });
+        stubResizeObserver();
+        const container = { current: element };
+        // A child's passive effect runs before its parent's, so a measurement
+        // in useEffect would happen after this one and fail the assertion.
+        const Child = () => {
+            useEffect(() => {
+                passiveEffectRan = true;
+            }, []);
+            return null;
+        };
+        const Probe = () => {
+            useUserTableLayout(container);
+            return createElement(Child);
+        };
+        render(createElement(Probe));
+        expect(measuredAfterPassiveEffect).toEqual([false]);
     });
 
     it('keeps the viewport layout while the container has no width yet', () => {
