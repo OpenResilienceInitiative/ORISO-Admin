@@ -49,6 +49,9 @@ export interface ListTopicInviteLinksParams {
     page?: number;
     size?: number;
     tenantId?: number;
+    /** Without it the server returns every link kind, account invites included. */
+    linkKind?: TopicInviteLinkKind;
+    status?: TopicInviteLinkStatus;
 }
 
 export const buildTopicInviteLinkUrl = (token: string, topicName?: string | null): string => {
@@ -67,7 +70,10 @@ export const listTopicInviteLinks = async (
     const page = params.page ?? 0;
     const size = params.size ?? 20;
     const raw = await fetchData({
-        url: `${invitelinksEndpoint}?${buildListQueryString(page, size)}`,
+        url: `${invitelinksEndpoint}?${buildListQueryString(page, size, {
+            linkKind: params.linkKind,
+            status: params.status,
+        })}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         headersData: inviteLinkHeaders(params.tenantId),

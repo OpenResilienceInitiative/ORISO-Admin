@@ -12,17 +12,30 @@ import {
     listTopicInviteLinks,
     TopicInviteLinkDTO,
 } from '../../api/invitelinks/topicInviteLinks';
-import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
-import { Modal } from '../../components/Modal';
-import { ListingTable, listingTableStyles } from '../../components/ListingTable';
+import { FloatingLabelSelect } from '../FloatingLabelSelect';
+import { Modal } from '../Modal';
+import { ListingTable, listingTableStyles } from '../ListingTable';
 import { useTenantTopics } from '../../hooks/useTenantTopics';
-import { AnonymityTag, StatusTag } from './components/StatusTag';
-import styles from './styles.module.scss';
+import type { LiveChatLinksAccess } from '../../constants/liveChatLinksAccess';
+import { AnonymityTag, StatusTag } from '../../pages/Links/components/StatusTag';
+import styles from './liveChatLinks.module.scss';
 
 const LINK_KIND = 'EXTERNAL_INBOUND' as const;
 const DEFAULT_ANONYMITY = 'FULL' as const;
 
-export const ExternalInboundsTab = () => {
+export interface LiveChatLinksProps {
+    /** `manage`: platform admin. `read`: Träger and Beratungsstellen admins copy only. */
+    mode: Exclude<LiveChatLinksAccess, 'none'>;
+}
+
+/**
+ * The links advice seekers open a live chat with, shown in Funktionszugriff
+ * next to the chat settings (ORISO-Admin#1321). Only the platform admin creates
+ * and switches them off; everyone else sees the active links of their scope —
+ * the server limits the list — and copies them.
+ */
+export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
+    const canManage = mode === 'manage';
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const { data: topics = [], isLoading: isLoadingTopics } = useTenantTopics(true);
@@ -56,6 +69,10 @@ export const ExternalInboundsTab = () => {
                 const response = await listTopicInviteLinks({
                     page: page - 1,
                     size: pageSize,
+                    // Without the kind filter the server also returns account invites.
+                    linkKind: LINK_KIND,
+                    // A copied link that no longer works is worse than none.
+                    status: canManage ? undefined : 'ACTIVE',
                 });
                 setLinks(response.content ?? []);
                 setPagination({
@@ -69,7 +86,7 @@ export const ExternalInboundsTab = () => {
                 setLoadingLinks(false);
             }
         },
-        [t],
+        [canManage, t],
     );
 
     useEffect(() => {
@@ -195,7 +212,8 @@ export const ExternalInboundsTab = () => {
                         </Button>
                         {/* The list holds every link kind; only an external live-chat inbound
                             is switched off here. */}
-                        {record.status === 'ACTIVE' &&
+                        {canManage &&
+                            record.status === 'ACTIVE' &&
                             record.linkKind === LINK_KIND &&
                             record.chatType === 'LIVE_CHAT' && (
                                 <Button
@@ -210,67 +228,80 @@ export const ExternalInboundsTab = () => {
                 ),
             },
         ],
-        [copyLink, resolveTopicName, t],
+        [canManage, copyLink, resolveTopicName, t],
     );
 
-    return (
-        <>
-            <Form
-                form={form}
-                className={listingTableStyles.createForm}
-                layout="inline"
-                initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value }}
-                onFinish={onCreate}
-            >
-                {/* The M3 outlined select with its floating label — the same
-                    control the invite composer one tab over uses. This form
-                    still ran antd's stock select with a left-hand label, its
-                    colon and weight-900 caps, which is where the "outdated ant
-                    components" reading came from. */}
-                <div className={listingTableStyles.formFields}>
-                    <Form.Item name="topicId" rules={[{ required: true, message: t('plsSelect') }]} noStyle>
-                        <FloatingLabelSelect
-                            allowClear
-                            className={styles.inboundField}
-                            label={t('links.form.topic', 'Topic')}
-                            loading={isLoadingTopics}
-                            options={topicOptions}
-                        />
-                    </Form.Item>
-                    <Form.Item name="chatType" rules={[{ required: true }]} noStyle>
-                        <FloatingLabelSelect
-                            className={styles.inboundField}
-                            label={t('links.form.chatType', 'Chat Type')}
-                            options={CHAT_TYPE_OPTIONS}
-                        />
-                    </Form.Item>
-                </div>
-                <Form.Item>
-                    <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={submitting}
-                        className={listingTableStyles.createButton}
-                    >
-                        {t('links.createLink', 'Create link')}
-                    </Button>
-                </Form.Item>
-            </Form>
+    const showEmptyHint = !canManage && !loadingLinks && pagination.total === 0;
 
-            <ListingTable
-                rowKey="id"
-                loading={loadingLinks}
-                columns={columns}
-                dataSource={links}
-                pagination={{
-                    current: pagination.current,
-                    pageSize: pagination.pageSize,
-                    total: pagination.total,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '30'],
-                }}
-                onChange={onTableChange}
-            />
+    return (
+        <section className={styles.section} aria-labelledby="live-chat-links-title">
+            <header className={styles.header}>
+                <h3 className={styles.title} id="live-chat-links-title">
+                    {t('liveChatLinks.title')}
+                </h3>
+                <p className={styles.hint}>
+                    {canManage ? t('liveChatLinks.manage.hint') : t('liveChatLinks.readOnly.hint')}
+                </p>
+            </header>
+            {canManage && (
+                <Form
+                    form={form}
+                    className={listingTableStyles.createForm}
+                    layout="inline"
+                    initialValues={{ chatType: CHAT_TYPE_OPTIONS[0].value }}
+                    onFinish={onCreate}
+                >
+                    {/* The M3 outlined select with its floating label — the same
+                        control the invite composer uses. */}
+                    <div className={listingTableStyles.formFields}>
+                        <Form.Item name="topicId" rules={[{ required: true, message: t('plsSelect') }]} noStyle>
+                            <FloatingLabelSelect
+                                allowClear
+                                className={styles.inboundField}
+                                label={t('links.form.topic', 'Topic')}
+                                loading={isLoadingTopics}
+                                options={topicOptions}
+                            />
+                        </Form.Item>
+                        <Form.Item name="chatType" rules={[{ required: true }]} noStyle>
+                            <FloatingLabelSelect
+                                className={styles.inboundField}
+                                label={t('links.form.chatType', 'Chat Type')}
+                                options={CHAT_TYPE_OPTIONS}
+                            />
+                        </Form.Item>
+                    </div>
+                    <Form.Item>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={submitting}
+                            className={listingTableStyles.createButton}
+                        >
+                            {t('links.createLink', 'Create link')}
+                        </Button>
+                    </Form.Item>
+                </Form>
+            )}
+
+            {showEmptyHint ? (
+                <p className={styles.empty}>{t('liveChatLinks.readOnly.empty')}</p>
+            ) : (
+                <ListingTable
+                    rowKey="id"
+                    loading={loadingLinks}
+                    columns={columns}
+                    dataSource={links}
+                    pagination={{
+                        current: pagination.current,
+                        pageSize: pagination.pageSize,
+                        total: pagination.total,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '30'],
+                    }}
+                    onChange={onTableChange}
+                />
+            )}
 
             {linkToDeactivate !== null && (
                 <Modal
@@ -283,6 +314,6 @@ export const ExternalInboundsTab = () => {
                     onClose={() => setLinkToDeactivate(null)}
                 />
             )}
-        </>
+        </section>
     );
 };

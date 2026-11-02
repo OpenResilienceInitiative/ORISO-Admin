@@ -39,7 +39,6 @@ import {
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
     LazyErstantwortSettingsPage,
-    LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
@@ -435,9 +434,14 @@ export const App = () => {
                                         {visibleLinksTabs.includes('counsellor') && (
                                             <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                                         )}
-                                        {visibleLinksTabs.includes('external-inbounds') && (
-                                            <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
-                                        )}
+                                        {/* Live-chat links moved to Funktionszugriff (ORISO-Admin#1321);
+                                            the old address keeps working for bookmarks. */}
+                                        <Route
+                                            path="external-inbounds"
+                                            element={
+                                                <Navigate to={`${routePathNames.themeSettings}/permissions`} replace />
+                                            }
+                                        />
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}

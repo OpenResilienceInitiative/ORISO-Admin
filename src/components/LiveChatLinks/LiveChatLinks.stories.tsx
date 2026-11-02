@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { TopicInviteLinkDTO } from '../../api/invitelinks/topicInviteLinks';
-import { ExternalInboundsTab } from './ExternalInboundsTab';
+import { LiveChatLinks } from './LiveChatLinks';
 
 const LINKS_ENDPOINT = '*/service/useradmin/invitelinks';
 const TOPICS_ENDPOINT = '*/service/topic/';
@@ -66,8 +66,9 @@ const defaultHandlers = [
 ];
 
 const meta = {
-    title: 'Organisms/Pages/Links/ExternalInbounds',
-    component: ExternalInboundsTab,
+    title: 'Organisms/LiveChatLinks',
+    component: LiveChatLinks,
+    args: { mode: 'manage' },
     parameters: { layout: 'padded' },
     decorators: [
         withAdminProviders,
@@ -76,22 +77,40 @@ const meta = {
             return <Story />;
         },
     ],
-} satisfies Meta<typeof ExternalInboundsTab>;
+} satisfies Meta<typeof LiveChatLinks>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * The tab as an admin meets it: the create row runs the M3 outlined selects with
- * floating labels (the same control the invite composer uses), the create action is
- * an M3 filled button, and the status/anonymity chips are tonal — no traffic lights.
+ * Platform admin in Einstellungen → Funktionszugriff (ORISO-Admin#1321): create
+ * row, list, copy and deactivate.
  */
 export const Filled: Story = {
     parameters: { msw: { handlers: defaultHandlers } },
 };
 
-/** Nothing created yet — the create row is the only thing on the page. */
+/** Platform admin, nothing created yet — the create row is the only thing on the page. */
 export const Empty: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(TOPICS_ENDPOINT, () => HttpResponse.json(TOPICS)),
+                http.get(LINKS_ENDPOINT, () => linksResponse([])),
+            ],
+        },
+    },
+};
+
+/** Träger or Beratungsstellen admin: active links of their area, copy only. */
+export const ReadOnly: Story = {
+    args: { mode: 'read' },
+    parameters: { msw: { handlers: defaultHandlers } },
+};
+
+/** Träger or Beratungsstellen admin without links: an explanation, not an empty table. */
+export const ReadOnlyEmpty: Story = {
+    args: { mode: 'read' },
     parameters: {
         msw: {
             handlers: [

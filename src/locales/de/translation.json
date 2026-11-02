@@ -3028,5 +3028,9 @@
     "tenants.permissions.directInvite.offOnTraeger": "Ihr Träger hat das ausgeschaltet. Eine Beratungsstelle kann es deshalb hier nicht einschalten.",
     "tenants.permissions.directInvite.callsNote": "Audio- und Videoanrufe per Direktlink brauchen zusätzlich die eingeschalteten Anruf-Einstellungen. Wird die Erlaubnis entzogen, funktionieren bestehende Links nicht mehr.",
     "tenants.permissions.directInvite.enforcedOnTraeger": "Ihr Träger legt das verbindlich fest. Eine Beratungsstelle kann es deshalb hier nicht ändern.",
-    "tenants.permissions.directInvite.traegerUnavailable": "Die Einstellung des Trägers konnte nicht geladen werden. Deshalb kann sie hier gerade nicht geändert werden."
+    "tenants.permissions.directInvite.traegerUnavailable": "Die Einstellung des Trägers konnte nicht geladen werden. Deshalb kann sie hier gerade nicht geändert werden.",
+    "liveChatLinks.title": "Live-Chat-Links",
+    "liveChatLinks.manage.hint": "Über diese Links starten Ratsuchende einen Live-Chat zu einem Thema. Träger und Beratungsstellen sehen die aktiven Links ihres Bereichs und können sie kopieren.",
+    "liveChatLinks.readOnly.hint": "Über diese Links starten Ratsuchende einen Live-Chat, zum Beispiel von Ihrer Website aus. Angelegt und abgeschaltet werden sie von der Plattform-Administration.",
+    "liveChatLinks.readOnly.empty": "Für Ihren Bereich gibt es noch keine aktiven Live-Chat-Links. Wenden Sie sich an die Plattform-Administration, wenn Sie einen brauchen."
 }

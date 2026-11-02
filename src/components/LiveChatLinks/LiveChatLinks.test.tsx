@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { TopicInviteLinkDTO } from '../../api/invitelinks/topicInviteLinks';
-import { ExternalInboundsTab } from './ExternalInboundsTab';
+import { LiveChatLinks } from './LiveChatLinks';
 import en from '../../locales/en/translation.json';
 
 const mocks = vi.hoisted(() => ({
@@ -82,7 +82,7 @@ const page = (content: TopicInviteLinkDTO[]) => ({
     size: 20,
 });
 
-describe('ExternalInboundsTab deactivate', () => {
+describe('LiveChatLinks — manage (platform admin)', () => {
     afterEach(cleanup);
 
     beforeEach(() => {
@@ -94,7 +94,7 @@ describe('ExternalInboundsTab deactivate', () => {
             page([link({ id: 1 }), link({ id: 2, status: 'DISABLED' }), link({ id: 3, status: 'EXPIRED' })]),
         );
 
-        render(<ExternalInboundsTab />);
+        render(<LiveChatLinks mode="manage" />);
 
         await screen.findAllByText('Sozialberatung');
         expect(screen.getAllByRole('button', { name: 'Deactivate' })).toHaveLength(1);
@@ -105,7 +105,7 @@ describe('ExternalInboundsTab deactivate', () => {
             page([link({ id: 1, linkKind: 'TENANT' }), link({ id: 2, linkKind: 'COUNSELLOR' })]),
         );
 
-        render(<ExternalInboundsTab />);
+        render(<LiveChatLinks mode="manage" />);
 
         await screen.findAllByText('Sozialberatung');
         expect(screen.queryByRole('button', { name: 'Deactivate' })).toBeNull();
@@ -118,7 +118,7 @@ describe('ExternalInboundsTab deactivate', () => {
         mocks.deactivateTopicInviteLink.mockResolvedValue(link({ status: 'DISABLED' }));
         const user = userEvent.setup();
 
-        render(<ExternalInboundsTab />);
+        render(<LiveChatLinks mode="manage" />);
         await user.click(await screen.findByRole('button', { name: 'Deactivate' }));
 
         expect(mocks.deactivateTopicInviteLink).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('ExternalInboundsTab deactivate', () => {
         mocks.listTopicInviteLinks.mockResolvedValue(page([link()]));
         const user = userEvent.setup();
 
-        render(<ExternalInboundsTab />);
+        render(<LiveChatLinks mode="manage" />);
         await user.click(await screen.findByRole('button', { name: 'Deactivate' }));
         const dialog = await screen.findByRole('dialog');
         await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -150,12 +150,79 @@ describe('ExternalInboundsTab deactivate', () => {
         mocks.deactivateTopicInviteLink.mockRejectedValue('FORBIDDEN');
         const user = userEvent.setup();
 
-        render(<ExternalInboundsTab />);
+        render(<LiveChatLinks mode="manage" />);
         await user.click(await screen.findByRole('button', { name: 'Deactivate' }));
         await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deactivate' }));
 
         await waitFor(() => expect(mocks.messageError).toHaveBeenCalledWith('Could not deactivate link'));
         expect(mocks.messageSuccess).not.toHaveBeenCalled();
         expect(screen.getByText('ACTIVE')).toBeTruthy();
+    });
+});
+
+describe('LiveChatLinks — what it asks the server for (ORISO-Admin#1321)', () => {
+    afterEach(cleanup);
+
+    beforeEach(() => {
+        Object.values(mocks).forEach((m) => m.mockReset());
+    });
+
+    it('asks for live-chat links only, not account invites', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([]));
+
+        render(<LiveChatLinks mode="manage" />);
+
+        await waitFor(() =>
+            expect(mocks.listTopicInviteLinks).toHaveBeenCalledWith(
+                expect.objectContaining({ linkKind: 'EXTERNAL_INBOUND', status: undefined }),
+            ),
+        );
+    });
+
+    it('in read-only mode asks for active links only', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([]));
+
+        render(<LiveChatLinks mode="read" />);
+
+        await waitFor(() =>
+            expect(mocks.listTopicInviteLinks).toHaveBeenCalledWith(
+                expect.objectContaining({ linkKind: 'EXTERNAL_INBOUND', status: 'ACTIVE' }),
+            ),
+        );
+    });
+});
+
+describe('LiveChatLinks — read only (Träger and Beratungsstellen admins)', () => {
+    afterEach(cleanup);
+
+    beforeEach(() => {
+        Object.values(mocks).forEach((m) => m.mockReset());
+    });
+
+    it('lets them copy a link but not create or deactivate one', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([link()]));
+
+        render(<LiveChatLinks mode="read" />);
+
+        await screen.findAllByText('Sozialberatung');
+        expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Deactivate' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Create link' })).toBeNull();
+    });
+
+    it('explains an empty list instead of showing an empty table', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([]));
+
+        render(<LiveChatLinks mode="read" />);
+
+        expect(await screen.findByText(translations['liveChatLinks.readOnly.empty'])).toBeTruthy();
+    });
+
+    it('says the platform admin manages the links', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([link()]));
+
+        render(<LiveChatLinks mode="read" />);
+
+        expect(await screen.findByText(translations['liveChatLinks.readOnly.hint'])).toBeTruthy();
     });
 });
