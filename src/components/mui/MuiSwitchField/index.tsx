@@ -70,6 +70,7 @@ interface MuiSwitchControlProps {
     disabled?: boolean;
     helpText?: string;
     switchLabel: string;
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -85,6 +86,7 @@ const MuiSwitchControl = ({
     disabled,
     helpText,
     switchLabel,
+    confirmEnable,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
@@ -95,6 +97,10 @@ const MuiSwitchControl = ({
     const helperText = (isError && errors[0]) || helpText || undefined;
 
     const handleChange = (_event: React.ChangeEvent<HTMLInputElement>, nextChecked: boolean) => {
+        if (nextChecked && confirmEnable) {
+            confirmEnable(() => onChange?.(true));
+            return;
+        }
         onChange?.(nextChecked);
     };
 
@@ -147,6 +153,11 @@ export interface MuiSwitchFieldProps {
      * string; required when `label` is a complex React node.
      */
     switchLabel?: string;
+    /**
+     * Asked before the switch turns ON; the value changes only when it calls `proceed`
+     * (e.g. the supervision privacy-policy confirmation). Turning it off never asks.
+     */
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -162,6 +173,7 @@ export const MuiSwitchField = ({
     helpText,
     className,
     switchLabel,
+    confirmEnable,
 }: MuiSwitchFieldProps) => {
     let accessibleSwitchLabel = switchLabel;
     if (!accessibleSwitchLabel) {
@@ -183,6 +195,7 @@ export const MuiSwitchField = ({
                     disabled={disabled}
                     helpText={helpText}
                     switchLabel={accessibleSwitchLabel}
+                    confirmEnable={confirmEnable}
                 />
             </Form.Item>
         </div>

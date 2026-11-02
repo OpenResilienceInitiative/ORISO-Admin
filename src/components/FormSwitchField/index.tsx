@@ -24,6 +24,8 @@ interface FormSwitchFieldProps {
     className?: string;
     switchLabel?: string;
     switchVariant?: SwitchVariant;
+    /** Asked before the switch turns ON; see `MuiSwitchField`. Turning it off never asks. */
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 interface FormSwitchFieldLocalProps {
@@ -37,6 +39,7 @@ interface FormSwitchFieldLocalProps {
     inverseValue?: boolean;
     switchLabel: string;
     switchVariant: SwitchVariant;
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 const FormSwitchFieldLocal = ({
@@ -50,12 +53,20 @@ const FormSwitchFieldLocal = ({
     inverseValue,
     switchLabel,
     switchVariant,
+    confirmEnable,
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const fieldChecked = inverseValue ? !checked : checked;
-    const onSwitchChange = (value: boolean) => onChange?.(inverseValue ? !value : value);
+    const onSwitchChange = (value: boolean) => {
+        const next = inverseValue ? !value : value;
+        if (next && confirmEnable) {
+            confirmEnable(() => onChange?.(true));
+            return;
+        }
+        onChange?.(next);
+    };
 
     return (
         <div className="formSwitchField__container">
@@ -105,6 +116,7 @@ export const FormSwitchField = ({
     unCheckedKey = 'no',
     switchLabel,
     switchVariant = 'm3',
+    confirmEnable,
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t('form.errors.required');
@@ -128,6 +140,7 @@ export const FormSwitchField = ({
                 inverseValue={inverseValue}
                 switchLabel={accessibleSwitchLabel}
                 switchVariant={switchVariant}
+                confirmEnable={confirmEnable}
             />
         </Form.Item>
     );

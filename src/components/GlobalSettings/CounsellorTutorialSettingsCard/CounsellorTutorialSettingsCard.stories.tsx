@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { useState } from 'react';
+import { message } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import i18n from '../../../i18n';
@@ -56,6 +58,72 @@ export const On: Story = {
             canvas.getByRole('switch', { name: 'Einführung bei neuen Beraterkonten automatisch starten' }),
         ).not.toBeChecked();
         await expect(canvas.queryByRole('button')).toBeNull();
+    },
+};
+
+/** Admin#1205: the platform admin switches tours centrally; the other controls stay a preview. */
+export const PlatformAdmin: Story = {
+    args: { toursEnabled: false, practiceEnabled: true, onToursChange: fn() },
+    render: function PlatformAdminStory(args) {
+        const [toursEnabled, setToursEnabled] = useState(args.toursEnabled);
+        return (
+            <CounsellorTutorialSettingsCard
+                {...args}
+                toursEnabled={toursEnabled}
+                onToursChange={(enabled) => {
+                    args.onToursChange?.(enabled);
+                    setToursEnabled(enabled);
+                }}
+            />
+        );
+    },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        await expect(tours).toBeEnabled();
+        await expect(tours).not.toBeChecked();
+        await userEvent.click(tours);
+        await expect(args.onToursChange).toHaveBeenCalledWith(true);
+        await expect(tours).toBeChecked();
+        await expect(canvas.getAllByText('Verfügbar')).toHaveLength(2);
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeDisabled();
+    },
+};
+
+export const Saving: Story = {
+    args: { toursEnabled: false, practiceEnabled: false, onToursChange: fn(), toursSaving: true },
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' })).toBeDisabled();
+    },
+};
+
+/** The save fails: the error message appears and the switch returns to the stored value. */
+export const SaveFailed: Story = {
+    args: { toursEnabled: true, practiceEnabled: true },
+    render: function SaveFailedStory(args) {
+        const [, setAttempts] = useState(0);
+        return (
+            <CounsellorTutorialSettingsCard
+                {...args}
+                onToursChange={() => {
+                    message.error({ content: String(i18n.t('globalSettings.tutorials.error.generic')), duration: 5 });
+                    setAttempts((attempts) => attempts + 1);
+                }}
+            />
+        );
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        await userEvent.click(tours);
+        await waitFor(() =>
+            expect(
+                within(canvasElement.ownerDocument.body).getByText(
+                    'Die Einstellung für Rundgänge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+                ),
+            ).toBeVisible(),
+        );
+        await waitFor(() => expect(tours).toBeChecked());
     },
 };
 

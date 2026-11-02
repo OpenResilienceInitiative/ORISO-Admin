@@ -31,6 +31,9 @@ vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => (
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
 }));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
+}));
 
 const showPage = () =>
     render(

@@ -11,6 +11,7 @@ import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { UsersList } from './index';
+import { SAVE_SORT_DELAY_MS } from '../../../hooks/useAdminListPreferences';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
 const CONSULTANTS_ENDPOINT = '*/service/users/consultants/search';
@@ -1183,10 +1184,17 @@ export const QuickSortChangesSaveOnce: Story = {
         await sortName();
         await sortName();
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
+        // Wait for the debounced save itself instead of a fixed 900 ms: on a loaded runner the two
+        // clicks, the 500 ms debounce and the request together took longer, and the check ran on [].
+        await waitFor(
+            () => expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]),
+            { timeout: 3000 },
+        );
+        // Then one more debounce window: a second save would have arrived by now.
         await new Promise((resolve) => {
-            setTimeout(resolve, 900);
+            setTimeout(resolve, SAVE_SORT_DELAY_MS + 200);
         });
-        await expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]);
+        await expect(savedBodies).toHaveLength(1);
     },
 };
 

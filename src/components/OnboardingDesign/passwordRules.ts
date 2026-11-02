@@ -1,10 +1,12 @@
+import { PASSWORD_MIN_LENGTH } from '../../utils/consultantCredentialRules';
+
 /**
- * One password rule for every invited-account screen (owner, 2026-10-13):
+ * One password rule for every invited-account screen (owner, 2026-10-30):
  * 16 characters, as the app's registration already demands. Träger admin
- * used 9 and counsellor / BST admin 8 before. The server must enforce the
- * same number before the production validators change.
+ * used 9 and counsellor / BST admin 8 before. Read from the Admin credential
+ * policy so the chips and the validators can never drift apart.
  */
-export const ONBOARDING_PASSWORD_MIN_LENGTH = 16;
+export const ONBOARDING_PASSWORD_MIN_LENGTH = PASSWORD_MIN_LENGTH;
 
 export type PasswordRuleId = 'length' | 'number' | 'upper' | 'lower' | 'special';
 

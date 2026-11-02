@@ -31,6 +31,9 @@ vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => (
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div />,
 }));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
+}));
 
 beforeEach(async () => i18n.changeLanguage('de'));
 

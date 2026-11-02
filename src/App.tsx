@@ -38,6 +38,7 @@ import {
     LazyAppSettingsPage,
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
+    LazyErstantwortSettingsPage,
     LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
@@ -241,6 +242,12 @@ export const App = () => {
                                             <Route
                                                 path={`${routePathNames.themeSettings}/legal`}
                                                 element={<LazyLegalSettingsPage />}
+                                            />
+                                        )}
+                                        {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
+                                            <Route
+                                                path={`${routePathNames.themeSettings}/erstantwort`}
+                                                element={<LazyErstantwortSettingsPage />}
                                             />
                                         )}
                                         {can(PermissionAction.Read, Resource.Tenant) && (
