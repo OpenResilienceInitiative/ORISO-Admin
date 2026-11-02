@@ -1,11 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// CardDeck measures/scrolls on mount; jsdom has no scrollTo.
-beforeEach(() => {
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-});
-
 vi.mock('react-i18next', () => {
     const t = (key?: string) => key ?? '';
     return {

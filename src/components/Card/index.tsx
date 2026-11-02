@@ -3,6 +3,8 @@ import Title from 'antd/lib/typography/Title';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Box } from '../Box';
+import { TileFill } from '../TileFill';
+import { TileHelpButton, type TileHelpTopic } from '../TileHelp';
 import { Tooltip } from '../tooltip/Tooltip';
 import { ReactComponent as InfoIcon } from '../../resources/img/svg/i.svg';
 import styles from './styles.module.scss';
@@ -27,6 +29,8 @@ interface CardProps {
     /** Optional footer slot: rendered below a top divider (M3 card action row —
      *  Back/Next, Cancel/Save, Edit, etc.). Shared by every wizard/settings card. */
     footer?: React.ReactNode;
+    /** Adds the info button that opens the explanation of this tile. */
+    help?: TileHelpTopic;
     /** Forwarded to the card root as `data-testid` (preserves existing test anchors). */
     dataTestId?: string;
 }
@@ -46,6 +50,7 @@ export const Card = ({
     variant = 'default',
     headerIcon,
     footer,
+    help,
     dataTestId,
     children,
 }: CardProps) => {
@@ -62,6 +67,7 @@ export const Card = ({
             })}
             contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
+            {help && <TileHelpButton topic={help} tileTitle={t(titleKey)} />}
             <div
                 className={classNames(styles.cardTitle, cardTitleClassName, {
                     [styles.hasSubtitle]: subTitle || subTitleKey,
@@ -96,6 +102,7 @@ export const Card = ({
             >
                 {isLoading && <Spin />}
                 {!isLoading && children}
+                {isDialog && !isLoading && help?.slides[0]?.visual && <TileFill visual={help.slides[0].visual} />}
             </div>
             {footer && <div className={styles.footer}>{footer}</div>}
         </Box>

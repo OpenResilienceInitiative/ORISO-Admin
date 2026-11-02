@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
-import { CardDeck } from '../../CardDeck';
+import { CardGrid } from '../../CardGrid';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -84,44 +84,39 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     };
     return (
         <div className={styles.appearancePage}>
-            <CardDeck
-                className={styles.cardDeck}
-                ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
-                previousLabel={t('tenant.settings.cardDeck.previous')}
-                nextLabel={t('tenant.settings.cardDeck.next')}
-            >
+            <CardGrid raster>
                 {showAppearance && (
-                    <CardDeck.Item className={styles.cardSlotImages}>
+                    <CardGrid.Item span={2}>
                         <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showAppearance && (
-                    <CardDeck.Item>
+                    <CardGrid.Item>
                         <AssistantIdentity tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showAppearance && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
+                    <CardGrid.Item>
                         <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showAppearance && (
-                    <CardDeck.Item className={styles.cardSlotTheme}>
+                    <CardGrid.Item span={2}>
                         <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showMasterData && (
-                    <CardDeck.Item>
+                    <CardGrid.Item>
                         <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
+                    <CardGrid.Item>
                         <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
                 {showMasterData && (
-                    <CardDeck.Item>
+                    <CardGrid.Item>
                         <CardEditable
                             key={`tenant-master-data-editable-${appearanceEditable}`}
                             allowEdit={isSuperAdmin}
@@ -153,9 +148,9 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                                 switchVariant="m3"
                             />
                         </CardEditable>
-                    </CardDeck.Item>
+                    </CardGrid.Item>
                 )}
-            </CardDeck>
+            </CardGrid>
         </div>
     );
 };

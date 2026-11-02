@@ -9,6 +9,7 @@ import {
     TEMPORARY_ACCOUNT_LIMITS,
     type TemporaryAccountSettings,
 } from '../../../types/TemporaryAccountSettings';
+import { CardGrid } from '../../CardGrid';
 import { FETCH_ERRORS } from '../../../api/fetchData';
 import { FieldGrid } from '../../FieldGrid';
 import { CardEditable } from '../../CardEditable';
@@ -232,7 +233,7 @@ export const TemporaryMessagesSettingsCard = ({
 };
 
 /** Both cards, platform admin only; they share one settings resource and its revision. */
-export const TemporaryAccountSettingsCardsContainer = ({ slotClassName }: { slotClassName?: string }) => {
+export const TemporaryAccountSettingsCardsContainer = () => {
     const { isSuperAdmin } = useUserRoles();
     const settings = useTemporaryAccountSettings(isSuperAdmin);
     if (!isSuperAdmin) return null;
@@ -251,12 +252,12 @@ export const TemporaryAccountSettingsCardsContainer = ({ slotClassName }: { slot
     };
     return (
         <>
-            <section className={slotClassName}>
+            <CardGrid.Item span={2}>
                 <TemporaryGuestAccountsSettingsCard {...props} />
-            </section>
-            <section className={slotClassName}>
+            </CardGrid.Item>
+            <CardGrid.Item>
                 <TemporaryMessagesSettingsCard {...props} />
-            </section>
+            </CardGrid.Item>
         </>
     );
 };

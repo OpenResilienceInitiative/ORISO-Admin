@@ -5,7 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { CardDeck } from '../../../CardDeck';
+import { CardGrid } from '../../../CardGrid';
 import { Card } from '../../../Card';
 import { CardEditable } from '../../../CardEditable';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../../mui/MuiFormField';
@@ -190,13 +190,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
-            <CardDeck
-                className={styles.smtpPage}
-                ariaLabel={t('tenants.appSettings.smtp.title')}
-                previousLabel={t('globalSettings.smtp.cardDeck.previous')}
-                nextLabel={t('globalSettings.smtp.cardDeck.next')}
-            >
-                <CardDeck.Item className={styles.smtpCardSlot}>
+            <CardGrid raster>
+                <CardGrid.Item>
                     <CardEditable
                         key={formKey}
                         className={styles.smtpCard}
@@ -346,8 +341,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             />
                         </div>
                     </CardEditable>
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.smtpCardSlot}>
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <Card
                         className={styles.smtpCard}
                         variant="dialog"
@@ -362,8 +357,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             {t('tenants.appSettings.smtp.test.button')}
                         </Button>
                     </Card>
-                </CardDeck.Item>
-            </CardDeck>
+                </CardGrid.Item>
+            </CardGrid>
         </ThemeProvider>
     );
 };

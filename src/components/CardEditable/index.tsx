@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
 import styles from './styles.module.scss';
+import type { TileHelpTopic } from '../TileHelp';
 import { Card, CardVariant } from '../Card';
 import { EditButton } from '../EditButton';
 
@@ -35,6 +36,7 @@ interface CardEditableProps {
     hideCancelButton?: boolean;
     onEdit?: () => void;
     tooltip?: string;
+    help?: TileHelpTopic;
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactElement<any> | number | string;
     editButtonPlacement?: 'header' | 'footer';
@@ -61,6 +63,7 @@ export const CardEditable = ({
     onSave,
     formProp,
     tooltip,
+    help,
     fullHeight,
     editButton,
     editButtonPlacement,
@@ -136,6 +139,7 @@ export const CardEditable = ({
             subTitle={subTitle}
             subTitleKey={subTitleKey}
             tooltip={tooltip}
+            help={help}
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
@@ -156,7 +160,7 @@ export const CardEditable = ({
                 onFinish={onFormSubmit}
                 disabled={!editing}
                 initialValues={initialValues}
-                className={classNames({ [styles.dialogForm]: variant === 'dialog' })}
+                className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
             >
                 {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
             </Form>

@@ -97,19 +97,19 @@ export const CounsellorTutorialSettingsCard = ({
                             name="practice"
                             label={t('globalSettings.tutorials.enablePractice')}
                             helpText={t('globalSettings.tutorials.enablePracticeHelp')}
-                            disabled
+                            unavailable
                         />
                         <MuiSwitchField
                             name="newAccountDefault"
                             label={t('globalSettings.tutorials.newAccountDefault')}
                             helpText={t('globalSettings.tutorials.newAccountDefaultHelp')}
-                            disabled
+                            unavailable
                         />
                         <MuiSwitchField
                             name="individualTours"
                             label={t('globalSettings.tutorials.individualTours')}
                             helpText={t('globalSettings.tutorials.individualToursHelp')}
-                            disabled
+                            unavailable
                         />
                     </Form>
                 </section>

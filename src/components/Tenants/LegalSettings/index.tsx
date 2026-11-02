@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../CustomIcons/LegalIcons';
-import { CardDeck } from '../../CardDeck';
+import { CardGrid } from '../../CardGrid';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -54,14 +54,9 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
     // processing agreement, the imprint and the privacy statement are always
     // visible in every view; editing stays restricted by permissions.
     return (
-        <CardDeck
-            className={styles.cardDeck}
-            ariaLabel={t('settings.subhead.legal')}
-            previousLabel={t('legal.cardDeck.previous')}
-            nextLabel={t('legal.cardDeck.next')}
-        >
+        <CardGrid raster>
             {settings?.multitenancyWithSingleDomainEnabled && (
-                <CardDeck.Item>
+                <CardGrid.Item span={3}>
                     <CardEditable
                         key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
                         allowEdit={isSuperAdmin}
@@ -84,12 +79,12 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                             />
                         </div>
                     </CardEditable>
-                </CardDeck.Item>
+                </CardGrid.Item>
             )}
-            <CardDeck.Item className={styles.documentEditorItem}>
+            <CardGrid.Item span={3}>
                 <DataProcessingAgreementContainer tenantId={finalTenantId} />
-            </CardDeck.Item>
-            <CardDeck.Item className={styles.documentEditorItem}>
+            </CardGrid.Item>
+            <CardGrid.Item span={3}>
                 <LegalTextCard
                     tenantId={finalTenantId}
                     draftTenantId={draftTenantId}
@@ -99,7 +94,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                     icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"
                 />
-            </CardDeck.Item>
+            </CardGrid.Item>
             {/* <LegalText
                 tenantId={finalTenantId}
                 fieldName={['content', 'termsAndConditions']}
@@ -114,7 +109,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                     field: ['content', 'confirmTermsAndConditions'],
                 }}
             /> */}
-            <CardDeck.Item className={styles.documentEditorItem}>{LegalTextElement}</CardDeck.Item>
-        </CardDeck>
+            <CardGrid.Item span={3}>{LegalTextElement}</CardGrid.Item>
+        </CardGrid>
     );
 };

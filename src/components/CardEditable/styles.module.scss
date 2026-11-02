@@ -58,6 +58,11 @@
     }
 }
 
+/* While editing, what stays locked has to look locked. */
+.formEditing {
+    --admin-field-disabled-opacity: 0.5;
+}
+
 .dialogFooterActions {
     min-height: 64px;
     align-items: center;
@@ -79,7 +84,7 @@
             justify-content: center;
             padding: 0 16px;
             border-radius: 100px;
-            color: #273270;
+            color: var(--m3-secondary, #4c555f);
             font-size: 14px;
             font-weight: 500;
             letter-spacing: 0.1px;
@@ -100,7 +105,7 @@
     border-radius: 100px;
     appearance: none;
     background: transparent;
-    color: #273270;
+    color: var(--m3-secondary, #4c555f);
     cursor: pointer;
     font-size: 14px;
     font-weight: 500 !important;
@@ -124,4 +129,16 @@
 
 .cardTitleClassName {
     min-height: 31.5px;
+}
+
+/* In the raster, rows stretch every tile to the tallest one. The content stays on top, the
+   action row stays on the bottom and the calm graphic (TileFill) takes the space between. */
+:global([data-admin-card-raster]) .dialogForm {
+    flex: 0 0 auto;
+    padding: 0 0 16px;
+}
+
+:global([data-admin-card-raster]) .dialogFooterActions {
+    order: 2;
+    margin: auto -24px -24px;
 }

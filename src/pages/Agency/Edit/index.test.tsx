@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -310,29 +310,6 @@ vi.mock('../../../components/CreateConsultantModal', () => ({
     },
 }));
 
-beforeAll(() => {
-    // The create flow now lays its cards out with CardDeck, whose mount effect
-    // calls deck.scrollTo — not implemented in jsdom. Stub it (as the CardDeck
-    // component's own test does) so the effect doesn't throw.
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-        configurable: true,
-        value: vi.fn(),
-    });
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            addEventListener: vi.fn(),
-            addListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-            matches: false,
-            media: query,
-            onchange: null,
-            removeEventListener: vi.fn(),
-            removeListener: vi.fn(),
-        })),
-    });
-});
-
 vi.mock('../../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: () => ({ tenantId: mocks.authTenantId }),
 }));
@@ -378,10 +355,8 @@ describe('AgencyPageEdit create flow', () => {
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
         // #620: create flow lays its three cards out in the responsive CardGrid —
-        // cards share the row width and wrap/stack below the floor. The fixed-width
-        // horizontal CardDeck must be gone from the create surface.
+        // cards share the row width and wrap/stack below the floor.
         expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
-        expect(container.querySelector('[data-admin-card-deck]')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 

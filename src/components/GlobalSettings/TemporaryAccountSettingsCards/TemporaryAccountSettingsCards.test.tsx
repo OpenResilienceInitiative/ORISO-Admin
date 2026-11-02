@@ -44,11 +44,15 @@ const showCards = () =>
         </QueryClientProvider>,
     );
 const guestCard = async () =>
-    within((await screen.findByText('Temporäre Gastkonten')).closest('.ant-card, section, article') as HTMLElement);
+    within(
+        (await screen.findByText('Temporäre Gastkonten')).closest(
+            '.ant-card, section, article, [data-admin-card-grid-item]',
+        ) as HTMLElement,
+    );
 const messagesCard = async () =>
     within(
         (await screen.findByText('Nachrichten von temporären Konten')).closest(
-            '.ant-card, section, article',
+            '.ant-card, section, article, [data-admin-card-grid-item]',
         ) as HTMLElement,
     );
 

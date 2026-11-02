@@ -8,7 +8,6 @@ import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
-import { CardDeck } from '../../../../components/CardDeck';
 import { CardGrid } from '../../../../components/CardGrid';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
@@ -168,14 +167,8 @@ export const GeneralTenantSettings = () => {
     if (isEditing) {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
-                <CardDeck
-                    ariaLabel={t('tenants.add.mainTenantTitle')}
-                    className={styles.tenantCardDeck}
-                    deckClassName={styles.tenantCardDeckScroll}
-                    previousLabel={t('agency.cardDeck.previous')}
-                    nextLabel={t('agency.cardDeck.next')}
-                >
-                    <CardDeck.Item className={styles.tenantCardDeckItem}>
+                <CardGrid raster>
+                    <CardGrid.Item>
                         <CardEditable
                             isLoading={isLoading}
                             editMode={false}
@@ -231,8 +224,8 @@ export const GeneralTenantSettings = () => {
                             </div>
                             <TraegerDpoFields wrapField={wrapInFieldGroup} />
                         </CardEditable>
-                    </CardDeck.Item>
-                </CardDeck>
+                    </CardGrid.Item>
+                </CardGrid>
             </ThemeProvider>
         );
     }

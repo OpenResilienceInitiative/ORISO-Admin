@@ -666,6 +666,16 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
+/** Keeps the table as narrow as these stories test it, whatever else the window has room for. */
+const withContentWidth =
+    (width: number): Decorator =>
+    (Story) =>
+        (
+            <div style={{ width, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        );
+
 export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
@@ -673,7 +683,7 @@ export const ConsultantsTabAt960: Story = {
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'tablet960', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -776,6 +786,7 @@ export const PlatformAdminsTabAt1280: Story = {
 export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
     globals: { viewport: { value: 'tablet960', isRotated: false } },
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -1268,7 +1279,7 @@ export const AccountsInNarrowDesktopContainer: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => (
-            <div style={{ width: 767, maxWidth: '100%' }}>
+            <div style={{ width: 647, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1290,7 +1301,7 @@ export const AccountsAtCardBoundary: Story = {
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: 768, maxWidth: '100%' }}>
+            <div style={{ width: 648, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1310,14 +1321,14 @@ export const AccountsOnTablet834: Story = {
     ...AccountsInNarrowDesktopContainer,
     parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
     globals: { viewport: { value: 'tablet834', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(586), withSidebarRail],
 };
 
 const accountsBoundary = (width: number, columns: number): Story => ({
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: width + 168, maxWidth: '100%' }}>
+            <div style={{ width: width + 48, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),

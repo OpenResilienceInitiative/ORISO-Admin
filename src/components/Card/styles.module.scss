@@ -34,6 +34,10 @@
 }
 
 .dialogCard {
+    position: relative;
+
+    /* A card that is not being edited shows its values at full strength (ORISO-Admin#1313). */
+    --admin-field-disabled-opacity: 1;
     --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);
     --input-label-bg: var(--admin-form-field-surface);
 

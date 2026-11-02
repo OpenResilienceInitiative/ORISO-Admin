@@ -44,7 +44,7 @@ const showPage = () =>
 
 const oneTopicSwitch = () => screen.getByRole('switch', { name: /genau einen Fachbereich/ });
 // Every card sits in its own <section>; the login card next to it has its own edit button.
-const oneTopicCard = () => within(oneTopicSwitch().closest('section') as HTMLElement);
+const oneTopicCard = () => within(oneTopicSwitch().closest('[data-admin-card-grid-item]') as HTMLElement);
 
 describe('GlobalLoginSettingsPage one-topic-per-agency switch access', () => {
     beforeEach(async () => {

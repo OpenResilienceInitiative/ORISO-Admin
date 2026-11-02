@@ -88,7 +88,7 @@ it('lists every setting one after another with its value and since when it appli
     expect(screen.getAllByText('Gilt seit 20.10.2026')).toHaveLength(2);
     expect(screen.getByText('Gilt seit 28.10.2026')).toBeVisible();
     expect(screen.getByText('Standardwert, noch nie geändert')).toBeVisible();
-    expect(screen.getByText(/Beratende sehen ihre eigenen Zahlen immer vollständig/)).toBeVisible();
+    expect(screen.getByText(/Die Mindestzahlen gelten nicht für die eigenen Zahlen/)).toBeVisible();
 });
 
 it('labels the dashboard time windows in weeks and months (UserService#1544)', async () => {
@@ -185,11 +185,13 @@ it('explains each section on its own', async () => {
     showCard();
 
     const section = async (name: RegExp) => within(await screen.findByRole('group', { name }));
-    expect(
-        (await section(/^Mindestzahl Beratende/)).getByText(/Unter dieser Zahl zeigen wir keine Statistik/),
-    ).toBeVisible();
+    expect((await section(/^Mindestzahl Beratende/)).getByText(/weniger Beratende als diese Zahl/)).toBeVisible();
     expect((await section(/^Stand der Zahlen/)).getByText(/Wie oft Admins neue Zahlen sehen/)).toBeVisible();
-    expect((await section(/^Zeiträume im Dashboard/)).getByText(/Wie weit das Dashboard zurückblickt/)).toBeVisible();
+    expect(
+        (await section(/^Zeiträume im Dashboard/)).getByText(
+            /Wie weit das Diagramm und das häufigste Thema zurückblicken/,
+        ),
+    ).toBeVisible();
     expect((await section(/^Erfassung/)).getByText(/Ob gesendete Nachrichten/)).toBeVisible();
     expect((await section(/^Protokoll/)).getByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
 });
