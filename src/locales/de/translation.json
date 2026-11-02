@@ -1238,7 +1238,7 @@
     "globalSettings.statistics.setting.tenantSnapshotInterval": "Stand für Träger",
     "globalSettings.statistics.setting.platformSnapshotInterval": "Stand für die Plattform",
     "globalSettings.statistics.stand.helpLabel": "Warum ein fester Stand?",
-    "globalSettings.statistics.stand.help": "Admins sehen die Zahlen nur als festen Stand. Beispiel: Steht um 10:00 Uhr „23“ und um 10:05 Uhr „24“, ist klar, dass gerade eine Person angefragt hat. Bei einem festen Stand ändert sich die Zahl nur einmal am Tag oder in der Woche und enthält alle Fälle dieser Zeit zusammen, ein einzelner Fall fällt kaum noch auf. Je seltener, desto besser der Datenschutz. Beratende sehen ihre eigenen Zahlen weiterhin sofort.",
+    "globalSettings.statistics.stand.help": "„Täglich“ und „Wöchentlich“ zeigen Admins nur einen festen Stand, „Live“ die aktuellen Zahlen. Beispiel: Steht um 10:00 Uhr „23“ und um 10:05 Uhr „24“, hat gerade eine Person angefragt. Bei einem festen Stand kommen alle neuen Fälle gemeinsam dazu. Das verrät einen einzelnen Fall viel schwerer, schließt es aber nicht ganz aus, etwa wenn nur ein Fall dazukam. Je seltener, desto besser der Datenschutz. Beratende sehen ihre eigenen Zahlen weiterhin sofort.",
     "globalSettings.statistics.value.LIVE": "Live (bei jedem Laden)",
     "globalSettings.statistics.value.DAILY": "Täglich um 6 Uhr",
     "globalSettings.statistics.value.WEEKLY": "Wöchentlich, Mo. 6 Uhr",

@@ -372,6 +372,28 @@ export const emptyStatisticData = (): StatisticData => ({
     referenceDate: null,
 });
 
+/**
+ * The time of a stand as a local date with the fields of German time, the zone of its cutoff, so a
+ * browser elsewhere still picks the same week and month as the "Stand" line shows.
+ */
+const readStandTime = (generatedAt: string, fallback: Date): Date => {
+    const standTime = new Date(generatedAt);
+    if (Number.isNaN(standTime.getTime())) return fallback;
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hourCycle: 'h23',
+        timeZone: 'Europe/Berlin',
+    }).formatToParts(standTime);
+    const field = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+
+    return new Date(field('year'), field('month') - 1, field('day'), field('hour'), field('minute'));
+};
+
 export const buildStatisticData = (
     response: AdminDashboardStatisticsResponse | undefined,
     lookups: StatisticNameLookups,
@@ -382,7 +404,7 @@ export const buildStatisticData = (
     }
 
     const snapshotInterval = response.snapshotInterval ?? 'LIVE';
-    const now = snapshotInterval === 'LIVE' ? today : new Date(response.generatedAt);
+    const now = snapshotInterval === 'LIVE' ? today : readStandTime(response.generatedAt, today);
 
     const windows: TimeWindows = {
         chartWeeks: resolveWindow(response.chartWeeks, DEFAULT_CHART_WEEKS, MAX_CHART_WEEKS),

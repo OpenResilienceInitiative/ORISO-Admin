@@ -531,7 +531,7 @@
     "globalSettings.statistics.setting.tenantSnapshotInterval": "Updates: organisations",
     "globalSettings.statistics.setting.platformSnapshotInterval": "Updates: platform",
     "globalSettings.statistics.stand.helpLabel": "Why a fixed snapshot?",
-    "globalSettings.statistics.stand.help": "Admins see the figures only as a fixed snapshot. Example: if a page shows “23” at 10:00 and “24” at 10:05, it is clear that one person has just asked for help. With a fixed snapshot the figure changes once a day or once a week and covers all cases of that time together, so a single case hardly stands out. The less often, the better the data protection. Counsellors still see their own figures straight away.",
+    "globalSettings.statistics.stand.help": "“Daily” and “Weekly” show admins only a fixed snapshot, “Live” the current figures. Example: if a page shows “23” at 10:00 and “24” at 10:05, one person has just asked for help. With a fixed snapshot all new cases arrive together. That makes a single case much harder to spot, but does not rule it out, for example if only one case was added. The less often, the better the data protection. Counsellors still see their own figures straight away.",
     "globalSettings.statistics.value.LIVE": "Live (every page load)",
     "globalSettings.statistics.value.DAILY": "Daily at 6:00",
     "globalSettings.statistics.value.WEEKLY": "Weekly, Mon 6:00",

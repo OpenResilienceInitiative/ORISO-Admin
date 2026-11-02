@@ -182,13 +182,32 @@ it('explains the stand fields in a tooltip, with an example and the counsellor e
     expect(tooltip).toHaveTextContent('Beratende sehen ihre eigenen Zahlen weiterhin sofort');
 });
 
+it('does not promise more protection than the stand gives', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    await userEvent.hover((await screen.findAllByRole('button', { name: 'Warum ein fester Stand?' }))[0]);
+
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('„Live“ die aktuellen Zahlen');
+    expect(tooltip).toHaveTextContent('schließt es aber nicht ganz aus');
+});
+
 it('saves a chosen stand', async () => {
     let received: { values?: Record<string, string> } | undefined;
     server.use(
         http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)),
         http.put('*/useradmin/statistics/settings', async ({ request }) => {
             received = (await request.json()) as { values?: Record<string, string> };
-            return HttpResponse.json(withStandFields);
+            return HttpResponse.json({
+                ...withStandFields,
+                revision: withStandFields.revision + 1,
+                settings: withStandFields.settings.map((setting) =>
+                    setting.key === 'agencySnapshotInterval'
+                        ? { ...setting, value: 'WEEKLY', effectiveFrom: '2026-11-03T09:00' }
+                        : setting,
+                ),
+            });
         }),
     );
     showCard();
@@ -201,6 +220,8 @@ it('saves a chosen stand', async () => {
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => expect(received?.values?.agencySnapshotInterval).toBe('WEEKLY'));
+    expect(await screen.findByText('Gilt seit 03.11.2026')).toBeVisible();
+    expect(screen.getByLabelText(/^Stand für Beratungsstellen/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
 });
 
 it('saves the chosen values with the revision it read', async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
@@ -230,9 +230,35 @@ describe('statisticDashboardData', () => {
             );
 
             expect(data.statisticsById['agency-11'].metrics.topicsByMonth[0].label).toBe('Schulden');
-            expect(data.referenceDate).toEqual(new Date(standAt));
             expect(data.generatedAt).toBe(standAt);
             expect(data.snapshotInterval).toBe('WEEKLY');
+        });
+
+        it('reads a stand in German time, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { referenceDate } = buildStatisticData(
+                    { generatedAt: '2026-11-02T05:00:00Z', scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [] },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(new Date('2026-11-02T05:00:00Z').getDate()).toBe(1);
+                expect(referenceDate?.getDate()).toBe(2);
+                expect(referenceDate?.getHours()).toBe(6);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('falls back to today when a stand has no readable time', () => {
+            const { referenceDate } = buildStatisticData(
+                { generatedAt: 'not a date', scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(referenceDate).toEqual(readLater);
         });
 
         it('keeps reading live numbers from today', () => {
