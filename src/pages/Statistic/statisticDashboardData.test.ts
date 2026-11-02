@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
@@ -14,6 +14,7 @@ import {
     getWeekStart,
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
+    formatStandDay,
 } from './statisticDashboardData';
 
 // Saturday, 11 July 2026 (local time)
@@ -213,6 +214,148 @@ describe('statisticDashboardData', () => {
         expect(buildStatisticData(tenantScopeResponse([agencyTarget()]), emptyLookups, now).suppressionDisabled).toBe(
             false,
         );
+    });
+
+    describe('fixed stand (UserService#1547)', () => {
+        const standAt = '2026-10-26T05:00:00Z';
+        const readLater = new Date('2026-11-02T04:00:00Z');
+        const topicRow = agencyTarget({
+            monthlyTopTopics: [{ month: '2026-10', topicId: 100, sessionCount: 3, sharePercent: 75 }],
+        });
+
+        it('reads a stand from the time it was calculated, not from today', () => {
+            const data = buildStatisticData(
+                {
+                    generatedAt: standAt,
+                    dataUntil: standAt.slice(0, 10),
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [topicRow],
+                },
+                { ...emptyLookups, topicNamesById: { '100': 'Schulden' } },
+                readLater,
+            );
+
+            expect(data.statisticsById['agency-11'].metrics.topicsByMonth[0].label).toBe('Schulden');
+            expect(data.generatedAt).toBe(standAt);
+            expect(data.snapshotInterval).toBe('WEEKLY');
+        });
+
+        it('puts the chart on the week of the stand, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { statisticsById } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-03T05:00:00Z',
+                        dataUntil: '2026-11-02',
+                        scope: 'TENANT',
+                        snapshotInterval: 'DAILY',
+                        targets: [agencyTarget({ dailyNewSessions: [{ date: '2026-11-02', count: 7 }] })],
+                    },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(statisticsById['agency-11'].caseCharts[0][0]).toBe(7);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('reads a stand from its newest full day, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { referenceDate, dataUntil } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-02T05:00:00Z',
+                        dataUntil: '2026-11-01',
+                        scope: 'TENANT',
+                        snapshotInterval: 'WEEKLY',
+                        targets: [],
+                    },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(dataUntil).toBe('2026-11-01');
+                expect(referenceDate?.getFullYear()).toBe(2026);
+                expect(referenceDate?.getMonth()).toBe(10);
+                expect(referenceDate?.getDate()).toBe(1);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('puts the weeks of a weekly stand into the week overview', () => {
+            const { statisticsById, referenceDate } = buildStatisticData(
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: '2026-11-01',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    chartWeeks: 2,
+                    targets: [
+                        {
+                            ...topicRow,
+                            dailyNewSessions: [],
+                            weeklyNewSessions: [
+                                { weekStart: '2026-10-19', count: 4 },
+                                { weekStart: '2026-10-26', count: 9 },
+                            ],
+                        },
+                    ],
+                },
+                emptyLookups,
+                readLater,
+            );
+
+            const bars = buildCaseWeekOverview(statisticsById['agency-11'].caseCharts, referenceDate as Date);
+            expect(bars.map((bar) => bar.value)).toEqual([4, 9]);
+            expect(bars[1].isDefaultSelected).toBe(true);
+        });
+
+        it('falls back to today when a stand has no readable time', () => {
+            const { referenceDate } = buildStatisticData(
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: 'not a date',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [],
+                },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(referenceDate).toEqual(readLater);
+        });
+
+        it('keeps reading live numbers from today', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', snapshotInterval: 'LIVE', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+
+        it('treats a backend without the field as live', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+    });
+
+    it('shows an unreadable stand day as it came, instead of crashing the page', () => {
+        expect(formatStandDay('not a date', 'de')).toBe('not a date');
+        expect(formatStandDay('2026-11-01', 'de')).toBe('01.11.2026');
     });
 
     it('computes week starts and day codes', () => {

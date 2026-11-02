@@ -5,6 +5,9 @@ export const STATISTICS_SETTING_KEYS = [
     'messageCountTracking',
     'requestChartWeeks',
     'topicMonths',
+    'agencySnapshotInterval',
+    'tenantSnapshotInterval',
+    'platformSnapshotInterval',
 ] as const;
 export type StatisticsSettingKey = (typeof STATISTICS_SETTING_KEYS)[number];
 

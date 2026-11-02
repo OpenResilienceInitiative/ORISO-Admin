@@ -1,6 +1,9 @@
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import { Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +36,16 @@ interface Props {
 
 type FormValues = Partial<Record<StatisticsSettingKey, string>>;
 
+const SECTIONS: { key: string; settings: StatisticsSettingKey[] }[] = [
+    {
+        key: 'minimum',
+        settings: ['agencyMinimumCounsellors', 'tenantMinimumCounsellors', 'platformMinimumCounsellors'],
+    },
+    { key: 'stand', settings: ['agencySnapshotInterval', 'tenantSnapshotInterval', 'platformSnapshotInterval'] },
+    { key: 'periods', settings: ['requestChartWeeks', 'topicMonths'] },
+    { key: 'tracking', settings: ['messageCountTracking'] },
+];
+
 const toFormValues = (data: StatisticsSettings): FormValues =>
     Object.fromEntries(data.settings.map((setting) => [setting.key, setting.value]));
 
@@ -59,6 +72,17 @@ const formatDay = (dateTime: string, language: string) => {
         timeZone: 'UTC',
     }).format(new Date(Date.UTC(year, month - 1, day)));
 };
+
+// MUI's default tooltip is a see-through grey; this one holds a paragraph and must stay readable.
+const helpTooltipSx = {
+    backgroundColor: '#000',
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: '20px',
+    maxWidth: 320,
+    p: 1.5,
+};
+const helpArrowSx = { color: '#000' };
 
 const sinceText = (effectiveFrom: string | null, t: TFunction, language: string) =>
     effectiveFrom
@@ -113,38 +137,107 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
                     {Boolean(error) && <Alert severity="error">{t('globalSettings.statistics.error.load')}</Alert>}
-                    <div className={styles.fields}>
-                        {data?.settings.map((setting) => (
-                            <div key={setting.key} className={styles.setting}>
-                                <MuiSelectField
-                                    name={setting.key}
-                                    label={`globalSettings.statistics.setting.${setting.key}`}
-                                    options={setting.options.map((option) => ({
-                                        value: option,
-                                        label: statisticsSettingValueLabel(setting.key, option, t),
-                                    }))}
-                                    required
-                                />
-                                <p className={styles.since}>{sinceText(setting.effectiveFrom, t, i18n.language)}</p>
-                            </div>
-                        ))}
-                    </div>
-                    <p className={styles.scope}>{t('globalSettings.statistics.ownStatisticsNotice')}</p>
-                    {data && (
-                        <div className={styles.protocol}>
-                            <M3Button
-                                variant="outlined"
-                                icon={<FileDownloadOutlinedIcon />}
-                                loading={isDownloading}
-                                onClick={handleDownload}
+                    <p className={styles.note}>{t('globalSettings.statistics.defaultNotice')}</p>
+                    <div className={styles.sections}>
+                        {data &&
+                            SECTIONS.map((section) => (
+                                <section
+                                    key={section.key}
+                                    role="group"
+                                    aria-labelledby={`statistics-section-${section.key}`}
+                                    className={styles.section}
+                                >
+                                    <div className={styles.sectionHeading}>
+                                        <h3 id={`statistics-section-${section.key}`}>
+                                            {t(`globalSettings.statistics.section.${section.key}`)}
+                                        </h3>
+                                        {section.key === 'stand' && (
+                                            <Tooltip
+                                                arrow
+                                                describeChild
+                                                enterTouchDelay={0}
+                                                leaveTouchDelay={8000}
+                                                title={t('globalSettings.statistics.stand.help')}
+                                                slotProps={{
+                                                    tooltip: { sx: helpTooltipSx },
+                                                    arrow: { sx: helpArrowSx },
+                                                }}
+                                            >
+                                                <IconButton
+                                                    aria-label={t('globalSettings.statistics.stand.helpLabel')}
+                                                    size="small"
+                                                >
+                                                    <InfoOutlinedIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                    </div>
+                                    <p className={styles.note}>
+                                        {t(`globalSettings.statistics.section.${section.key}Help`)}
+                                    </p>
+                                    {data.settings
+                                        .filter((setting) => section.settings.includes(setting.key))
+                                        .map((setting) => (
+                                            <div key={setting.key} className={styles.field}>
+                                                <label htmlFor={setting.key}>
+                                                    {t(`globalSettings.statistics.field.${setting.key}`)}
+                                                </label>
+                                                <MuiSelectField
+                                                    name={setting.key}
+                                                    help={sinceText(setting.effectiveFrom, t, i18n.language)}
+                                                    required
+                                                >
+                                                    {setting.options.map((option) => (
+                                                        <MuiSelectField.Option
+                                                            key={option}
+                                                            value={option}
+                                                            className={
+                                                                option === setting.defaultValue
+                                                                    ? styles.defaultOption
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {statisticsSettingValueLabel(setting.key, option, t)}
+                                                        </MuiSelectField.Option>
+                                                    ))}
+                                                </MuiSelectField>
+                                            </div>
+                                        ))}
+                                    {section.key === 'minimum' && (
+                                        <p className={styles.note}>
+                                            {t('globalSettings.statistics.ownStatisticsNotice')}
+                                        </p>
+                                    )}
+                                </section>
+                            ))}
+                        {data && (
+                            <section
+                                role="group"
+                                aria-labelledby="statistics-section-protocol"
+                                className={styles.section}
                             >
-                                {t('globalSettings.statistics.protocol.download')}
-                            </M3Button>
-                            {protocolError && (
-                                <Alert severity="error">{t('globalSettings.statistics.protocol.error')}</Alert>
-                            )}
-                        </div>
-                    )}
+                                <div className={styles.sectionHeading}>
+                                    <h3 id="statistics-section-protocol">
+                                        {t('globalSettings.statistics.section.protocol')}
+                                    </h3>
+                                </div>
+                                <p className={styles.note}>{t('globalSettings.statistics.protocol.hint')}</p>
+                                <div className={styles.protocol}>
+                                    <M3Button
+                                        variant="outlined"
+                                        icon={<FileDownloadOutlinedIcon />}
+                                        loading={isDownloading}
+                                        onClick={handleDownload}
+                                    >
+                                        {t('globalSettings.statistics.protocol.download')}
+                                    </M3Button>
+                                    {protocolError && (
+                                        <Alert severity="error">{t('globalSettings.statistics.protocol.error')}</Alert>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+                    </div>
                 </>
             )}
         </CardEditable>

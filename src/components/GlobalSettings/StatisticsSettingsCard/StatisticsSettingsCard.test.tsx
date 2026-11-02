@@ -81,10 +81,10 @@ const showCard = () =>
 it('lists every setting one after another with its value and since when it applies', async () => {
     showCard();
 
-    expect(await screen.findByLabelText(/^Mindestzahl Beratende je Beratungsstelle/)).toHaveValue('5');
-    expect(screen.getByLabelText(/^Mindestzahl Beratende je Träger/)).toHaveValue('5');
-    expect(screen.getByLabelText(/^Mindestzahl Beratende für die gesamte Plattform/)).toHaveValue('3');
-    expect(screen.getByLabelText(/^Gesendete Nachrichten der Beratenden zählen/)).toHaveValue('An');
+    expect(await screen.findByLabelText(/^Je Beratungsstelle/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Je Träger/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Gesamte Plattform/)).toHaveValue('3');
+    expect(screen.getByLabelText(/^Gesendete Nachrichten/)).toHaveValue('An');
     expect(screen.getAllByText('Gilt seit 20.10.2026')).toHaveLength(2);
     expect(screen.getByText('Gilt seit 28.10.2026')).toBeVisible();
     expect(screen.getByText('Standardwert, noch nie geändert')).toBeVisible();
@@ -120,9 +120,133 @@ it('labels the dashboard time windows in weeks and months (UserService#1544)', a
     );
     showCard();
 
-    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“: Zeitraum in Wochen/)).toHaveValue('12 Wochen');
-    expect(screen.getByLabelText(/^Häufigstes Thema: Zeitraum in Monaten/)).toHaveValue('4 Monate');
+    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“/)).toHaveValue('12 Wochen');
+    expect(screen.getByLabelText(/^Häufigstes Thema/)).toHaveValue('4 Monate');
     expect(screen.getByText('Gilt seit 01.11.2026')).toBeVisible();
+});
+
+const intervalOptions = ['LIVE', 'DAILY', 'WEEKLY'];
+const withStandFields: StatisticsSettings = {
+    ...initial,
+    settings: [
+        ...initial.settings,
+        {
+            key: 'agencySnapshotInterval',
+            value: 'DAILY',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-10-20T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'tenantSnapshotInterval',
+            value: 'WEEKLY',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-11-02T10:00',
+            changedBy: 'platform.admin',
+        },
+        {
+            key: 'platformSnapshotInterval',
+            value: 'LIVE',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-11-02T10:00',
+            changedBy: 'platform.admin',
+        },
+    ],
+};
+
+it('offers one labelled stand field each for centres, Träger and the platform (UserService#1547)', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    expect(await screen.findByLabelText(/^Beratungsstellen/)).toHaveValue('Täglich um 6 Uhr');
+    expect(screen.getByLabelText(/^Träger/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
+    expect(screen.getByLabelText(/^Plattform/)).toHaveValue('Live (bei jedem Laden)');
+    expect(screen.getAllByText('Gilt seit 02.11.2026')).toHaveLength(2);
+});
+
+it('groups the fields under clear headings', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const stand = await screen.findByRole('group', { name: /^Stand der Zahlen/ });
+    expect(within(stand).getByLabelText(/^Beratungsstellen/)).toBeVisible();
+    expect(within(stand).getByLabelText(/^Träger/)).toBeVisible();
+    expect(within(stand).getByLabelText(/^Plattform/)).toBeVisible();
+    expect(
+        within(screen.getByRole('group', { name: /^Mindestzahl Beratende/ })).getByLabelText(/^Je Träger/),
+    ).toBeVisible();
+});
+
+it('explains each section on its own', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const section = async (name: RegExp) => within(await screen.findByRole('group', { name }));
+    expect(
+        (await section(/^Mindestzahl Beratende/)).getByText(/Unter dieser Zahl zeigen wir keine Statistik/),
+    ).toBeVisible();
+    expect((await section(/^Stand der Zahlen/)).getByText(/Wie oft Admins neue Zahlen sehen/)).toBeVisible();
+    expect((await section(/^Zeiträume im Dashboard/)).getByText(/Wie weit das Dashboard zurückblickt/)).toBeVisible();
+    expect((await section(/^Erfassung/)).getByText(/Ob gesendete Nachrichten/)).toBeVisible();
+    expect((await section(/^Protokoll/)).getByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
+});
+
+it('explains the stand once, in plain words, and does not overpromise', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const help = await screen.findAllByRole('button', { name: 'Warum ein fester Stand?' });
+    expect(help).toHaveLength(1);
+
+    await userEvent.hover(help[0]);
+
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('von 23 auf 24, weiß man: Gerade hat jemand Hilfe gesucht');
+    expect(tooltip).toHaveTextContent('nur einmal am Tag oder einmal pro Woche');
+    expect(tooltip).toHaveTextContent('Bei „Live“ gilt dieser Schutz nicht');
+    expect(tooltip).toHaveTextContent('Beratende sehen ihre eigenen Zahlen immer sofort');
+});
+
+it('says what the change log holds and how to read a bold value', async () => {
+    showCard();
+
+    expect(await screen.findByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
+    expect(screen.getByText(/Eine Datei mit jeder Änderung: Einstellung, alter und neuer Wert/)).toBeVisible();
+    expect(screen.getByText('Fett in der Liste: der Standardwert.')).toBeVisible();
+});
+
+it('saves a chosen stand', async () => {
+    let received: { values?: Record<string, string> } | undefined;
+    server.use(
+        http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)),
+        http.put('*/useradmin/statistics/settings', async ({ request }) => {
+            received = (await request.json()) as { values?: Record<string, string> };
+            return HttpResponse.json({
+                ...withStandFields,
+                revision: withStandFields.revision + 1,
+                settings: withStandFields.settings.map((setting) =>
+                    setting.key === 'agencySnapshotInterval'
+                        ? { ...setting, value: 'WEEKLY', effectiveFrom: '2026-11-03T09:00' }
+                        : setting,
+                ),
+            });
+        }),
+    );
+    showCard();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByLabelText(/^Beratungsstellen/));
+    await userEvent.click(
+        within(await screen.findByRole('listbox')).getByRole('option', { name: 'Wöchentlich, Mo. 6 Uhr' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(received?.values?.agencySnapshotInterval).toBe('WEEKLY'));
+    expect(await screen.findByText('Gilt seit 03.11.2026')).toBeVisible();
+    expect(screen.getByLabelText(/^Beratungsstellen/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
 });
 
 it('saves the chosen values with the revision it read', async () => {
@@ -144,7 +268,7 @@ it('saves the chosen values with the revision it read', async () => {
     showCard();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-    await userEvent.click(screen.getByLabelText(/^Mindestzahl Beratende je Beratungsstelle/));
+    await userEvent.click(screen.getByLabelText(/^Je Beratungsstelle/));
     await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: '2' }));
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
@@ -186,7 +310,7 @@ it('downloads the change protocol as CSV', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     showCard();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Protokoll herunterladen (CSV)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Als CSV herunterladen' }));
 
     await waitFor(() => expect(click).toHaveBeenCalled());
     const csv = await new Promise<string>((resolve) => {

@@ -3,8 +3,10 @@ import { adminStatisticsDashboardEndpoint } from '../../appConfig';
 import { FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
 
 export interface AdminDashboardPeriodCounts {
-    today: number;
-    yesterday: number;
+    /** Null in a fixed stand: the running day is never part of it. */
+    today: number | null;
+    /** The newest full day of a stand; null in a weekly stand, which has no single days. */
+    yesterday: number | null;
     thisWeek: number;
     total: number;
     thisYear: number;
@@ -15,8 +17,14 @@ export interface AdminDashboardMetrics {
     enquiriesCurrentMonth: number;
     enquiriesPreviousMonth: number;
     activeCases: number;
-    activeConversationsToday: number;
+    /** Null in a fixed stand. */
+    activeConversationsToday: number | null;
     groupChatsTotal: number;
+}
+
+export interface AdminDashboardWeeklyCount {
+    weekStart: string;
+    count: number;
 }
 
 export interface AdminDashboardDailyCount {
@@ -45,14 +53,25 @@ export interface AdminDashboardTarget {
     suppressed: boolean;
     metrics: AdminDashboardMetrics | null;
     dailyNewSessions: AdminDashboardDailyCount[];
+    /** Filled instead of `dailyNewSessions` in a weekly stand. */
+    weeklyNewSessions?: AdminDashboardWeeklyCount[];
     monthlyTopTopics: AdminDashboardMonthlyTopic[];
     sessionCountsByPeriod: AdminDashboardPeriodCounts | null;
     groupChatCountsByPeriod: AdminDashboardPeriodCounts | null;
 }
 
+export type StatisticSnapshotInterval = 'LIVE' | 'DAILY' | 'WEEKLY';
+
 export interface AdminDashboardStatisticsResponse {
     generatedAt: string;
     scope: 'PLATFORM' | 'TENANT' | 'AGENCY';
+    /**
+     * How often this role gets a new stand (global statistics setting). A fixed stand keeps its
+     * numbers and its `generatedAt` until the next cutoff, whatever the client asks for.
+     */
+    snapshotInterval?: StatisticSnapshotInterval;
+    /** The newest full German day of a fixed stand (ISO date). Null or missing when live. */
+    dataUntil?: string | null;
     /**
      * True only when the backend skipped KDG small-cell suppression — possible in
      * non-production environments only (fail-closed on the prod profile).

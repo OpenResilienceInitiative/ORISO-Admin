@@ -7,9 +7,9 @@ import type {
 } from './types';
 
 export const defaultSelectedCaseDayByScope: Record<ScopeKey, string> = {
-    platform: 'Do',
-    tenant: 'Do',
-    agency: 'Do',
+    platform: '',
+    tenant: '',
+    agency: '',
 };
 
 export const defaultSelectedFilterTargetIdsByScope: SelectedFilterTargetIdsByScope = {

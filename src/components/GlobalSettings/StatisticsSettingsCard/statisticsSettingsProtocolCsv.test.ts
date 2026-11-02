@@ -36,6 +36,27 @@ describe('buildStatisticsSettingsProtocolCsv', () => {
         ]);
     });
 
+    it('writes a stand change as a protocol line with readable values (UserService#1547)', async () => {
+        await i18n.changeLanguage('de');
+        const csv = buildStatisticsSettingsProtocolCsv(
+            [
+                {
+                    key: 'platformSnapshotInterval',
+                    oldValue: 'DAILY',
+                    newValue: 'WEEKLY',
+                    changedById: 'admin-id',
+                    changedByName: 'platform.admin',
+                    effectiveFrom: '2026-11-02T10:00',
+                },
+            ],
+            i18n.t,
+        );
+
+        expect(csv).toContain(
+            'Stand für die Plattform;Täglich um 6 Uhr;Wöchentlich, Mo. 6 Uhr;platform.admin;2026-11-02T10:00',
+        );
+    });
+
     it('writes the dashboard time windows with their unit (UserService#1544)', async () => {
         await i18n.changeLanguage('de');
         const csv = buildStatisticsSettingsProtocolCsv(

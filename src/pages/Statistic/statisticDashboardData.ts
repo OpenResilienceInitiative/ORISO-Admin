@@ -2,7 +2,9 @@ import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
+    StatisticSnapshotInterval,
 } from '../../api/statistic/getDashboardStatistics';
+import { conversationPeriodOptions } from './statisticConstants';
 import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
 
 /**
@@ -69,6 +71,14 @@ export interface StatisticData {
     chartWeeks: number;
     /** Months of the top-topic ranking, the current month included (global statistics setting). */
     topicMonths: number;
+    /** When the backend calculated these numbers; null before they are loaded. */
+    generatedAt: string | null;
+    /** How often this role gets a new stand. */
+    snapshotInterval: StatisticSnapshotInterval;
+    /** The newest full day of a fixed stand (ISO date); null when live. */
+    dataUntil: string | null;
+    /** "Now" for weeks and months: a stand is read from its newest full day, live numbers from today. Null before loading. */
+    referenceDate: Date | null;
 }
 
 export interface StatisticNameLookups {
@@ -205,13 +215,14 @@ export const buildCaseWeekOverview = (caseCharts: number[][], now: Date): CaseCh
 /** German two-letter code of today's weekday, used as default-selected chart bar. */
 export const getTodayDayCode = (now: Date): string => caseChartDayCodes[(now.getDay() + 6) % 7];
 
-const buildCaseChartValues = (
-    dailyNewSessions: AdminDashboardTarget['dailyNewSessions'],
-    now: Date,
-    chartWeeks: number,
-): number[][] => {
+const buildCaseChartValues = (target: AdminDashboardTarget, now: Date, chartWeeks: number): number[][] => {
+    // A weekly stand has no single days: each week's count lies on its first slot, and only the week
+    // overview, which adds up a week, is offered.
     const countsByDate: Record<string, number> = {};
-    dailyNewSessions.forEach(({ date, count }) => {
+    [
+        ...target.dailyNewSessions,
+        ...(target.weeklyNewSessions ?? []).map(({ weekStart, count }) => ({ date: weekStart, count })),
+    ].forEach(({ date, count }) => {
         countsByDate[date] = (countsByDate[date] || 0) + count;
     });
 
@@ -304,7 +315,7 @@ const buildTargetStatistics = (
     return {
         suppressed: false,
         enquiriesPreviousMonth: target.metrics?.enquiriesPreviousMonth ?? null,
-        caseCharts: buildCaseChartValues(target.dailyNewSessions, now, windows.chartWeeks),
+        caseCharts: buildCaseChartValues(target, now, windows.chartWeeks),
         conversation: buildConversationValues(target.sessionCountsByPeriod, target.groupChatCountsByPeriod),
         metrics: {
             activeAgencies: target.targetType === 'AGENCY' ? 1 : agencyRowCount || null,
@@ -360,16 +371,61 @@ export const emptyStatisticData = (): StatisticData => ({
     suppressionDisabled: false,
     chartWeeks: DEFAULT_CHART_WEEKS,
     topicMonths: DEFAULT_TOPIC_MONTHS,
+    generatedAt: null,
+    snapshotInterval: 'LIVE',
+    dataUntil: null,
+    referenceDate: null,
 });
+
+/** The newest full day of a stand as a local date, so a browser elsewhere picks the same week and month. */
+const readStandDay = (dataUntil: string | null, fallback: Date): Date => {
+    const [year, month, day] = (dataUntil ?? '').split('-').map(Number);
+    return year && month && day ? new Date(year, month - 1, day) : fallback;
+};
+
+/** A stand's day, taken from the string itself so no time zone can move it to another day. */
+export const formatStandDay = (dataUntil: string, language: string): string => {
+    const [year, month, day] = dataUntil.split('-').map(Number);
+    if (!year || !month || !day) return dataUntil;
+    return new Intl.DateTimeFormat(language, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'UTC',
+    }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
+/**
+ * The periods of the conversation chart. A fixed stand has no "today", and its newest full day goes
+ * by its date, because "yesterday" is wrong on any later reading. A weekly stand has no single days.
+ */
+export const buildConversationPeriodOptions = (
+    snapshotInterval: StatisticSnapshotInterval,
+    dataUntil: string | null,
+    language: string,
+): Array<PeriodOption<ConversationPeriodKey>> => {
+    if (snapshotInterval === 'LIVE') return conversationPeriodOptions;
+    return conversationPeriodOptions
+        .filter(({ key }) => key !== 'today' && (key !== 'yesterday' || snapshotInterval === 'DAILY'))
+        .map((option) =>
+            option.key === 'yesterday' && dataUntil
+                ? { ...option, label: formatStandDay(dataUntil, language) }
+                : option,
+        );
+};
 
 export const buildStatisticData = (
     response: AdminDashboardStatisticsResponse | undefined,
     lookups: StatisticNameLookups,
-    now: Date = new Date(),
+    today: Date = new Date(),
 ): StatisticData => {
     if (!response) {
         return emptyStatisticData();
     }
+
+    const snapshotInterval = response.snapshotInterval ?? 'LIVE';
+    const dataUntil = snapshotInterval === 'LIVE' ? null : response.dataUntil ?? null;
+    const now = snapshotInterval === 'LIVE' ? today : readStandDay(dataUntil, today);
 
     const windows: TimeWindows = {
         chartWeeks: resolveWindow(response.chartWeeks, DEFAULT_CHART_WEEKS, MAX_CHART_WEEKS),
@@ -403,6 +459,7 @@ export const buildStatisticData = (
         .filter((target): target is FilterTarget => Boolean(target));
 
     const suppressionDisabled = Boolean(response.suppressionDisabled);
+    const standFields = { generatedAt: response.generatedAt, snapshotInterval, dataUntil, referenceDate: now };
 
     if (response.scope === 'PLATFORM') {
         // The backend's platform total is suppressed only when the platform itself is below its
@@ -420,6 +477,7 @@ export const buildStatisticData = (
         }
 
         return {
+            ...standFields,
             targetsByScope: { platform: tenantTargets, tenant: tenantTargets, agency: [] },
             fallbackIdsByScope: {
                 platform: platformRow ? [PLATFORM_TOTAL_TARGET_ID] : tenantTargets.map((target) => target.id),
@@ -436,6 +494,7 @@ export const buildStatisticData = (
         const tenantFallback = tenantTargets.length ? [tenantTargets[0].id] : agencyTargets.map((target) => target.id);
 
         return {
+            ...standFields,
             targetsByScope: { platform: [], tenant: agencyTargets, agency: agencyTargets },
             fallbackIdsByScope: {
                 platform: [],
@@ -449,6 +508,7 @@ export const buildStatisticData = (
     }
 
     return {
+        ...standFields,
         targetsByScope: { platform: [], tenant: [], agency: agencyTargets },
         fallbackIdsByScope: {
             platform: [],

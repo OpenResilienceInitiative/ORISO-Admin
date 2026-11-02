@@ -39,7 +39,7 @@ const fetchDataMock = vi.mocked(fetchData);
 const periodCounts = (total: number) => ({
     today: 0,
     yesterday: 0,
-    thisWeek: 1,
+    thisWeek: total ? 1 : 0,
     total,
     thisYear: total,
     lastYear: 0,
@@ -166,6 +166,135 @@ describe('Statistic page', () => {
 
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         expect(screen.queryByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeNull();
+    });
+
+    describe('fixed stand (UserService#1547)', () => {
+        const standOf = (snapshotInterval: 'DAILY' | 'WEEKLY', dataUntil: string) => ({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            dataUntil,
+            snapshotInterval,
+        });
+        const conversationPeriods = async () => {
+            fireEvent.click(await screen.findByRole('button', { name: 'Zeitraum für Gesprächstyp' }));
+            return screen.getAllByRole('menuitemradio').map((option) => option.textContent);
+        };
+
+        it('shows a stand without any case as zeros, with no empty-state hero', async () => {
+            const noCases = {
+                ...response.targets[0],
+                metrics: {
+                    enquiriesCurrentMonth: 0,
+                    enquiriesPreviousMonth: 0,
+                    activeCases: 0,
+                    activeConversationsToday: null,
+                    groupChatsTotal: 0,
+                },
+                sessionCountsByPeriod: periodCounts(0),
+                groupChatCountsByPeriod: periodCounts(0),
+            };
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [noCases] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+            expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+        });
+
+        it('keeps the empty-state hero on a level without any target, as there is nothing to count', async () => {
+            // The stand holds the Träger, but no Beratungsstelle: that tab has no zeros to state.
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [response.targets[0]] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+
+            fireEvent.click(screen.getByRole('tab', { name: 'Auf Beratungsstellenebene' }));
+
+            await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
+        });
+
+        it('says up to which day the numbers go and when new ones come', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            expect(
+                await screen.findByText('Zahlen bis einschließlich 03.11.2026. Neue Zahlen täglich um 6:00 Uhr.'),
+            ).toBeInTheDocument();
+        });
+
+        it('says the same in English for a weekly stand', async () => {
+            await i18n.changeLanguage('en');
+            dashboardMock.mockResolvedValue(standOf('WEEKLY', '2026-11-01'));
+
+            try {
+                renderStatistic();
+
+                expect(
+                    await screen.findByText(/^Figures up to and including .*2026\. New figures every Monday at 6:00/),
+                ).toBeInTheDocument();
+            } finally {
+                await i18n.changeLanguage('de');
+            }
+        });
+
+        it('offers the date of the newest full day, not today and not yesterday', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            const labels = await conversationPeriods();
+
+            expect(labels).toContain('03.11.2026');
+            expect(labels).not.toContain('heute');
+            expect(labels).not.toContain('gestern');
+        });
+
+        it('offers no single day at all in a weekly stand', async () => {
+            dashboardMock.mockResolvedValue(standOf('WEEKLY', '2026-11-01'));
+            renderStatistic();
+
+            const labels = await conversationPeriods();
+
+            expect(labels).toEqual(['diese Woche', 'gesamt', 'dieses Jahr', 'letztes Jahr']);
+        });
+
+        it('shows week bars and no day bars in a weekly stand', async () => {
+            dashboardMock.mockResolvedValue({ ...standOf('WEEKLY', '2026-11-01'), chartWeeks: 5 });
+            renderStatistic();
+
+            expect(await screen.findAllByRole('button', { name: /Beratungsfälle in KW \d+/ })).toHaveLength(5);
+            expect(screen.queryAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(0);
+        });
+
+        it('selects the newest full day in the day chart', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            expect(await screen.findByRole('button', { name: /Beratungsfälle am Di/, pressed: true })).toBeVisible();
+        });
+
+        it('drops the active-today metric from the card menu', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+            await screen.findByText('Anfragen gesamt');
+
+            fireEvent.click(screen.getAllByRole('button', { name: /Kennzahl in diesem Dashboard-Slot/ })[0]);
+
+            expect(screen.queryByText(/aktive Gespräche/i)).toBeNull();
+        });
+    });
+
+    it('keeps today and says "live" when the numbers are live', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            snapshotInterval: 'LIVE',
+        });
+
+        renderStatistic();
+
+        expect(await screen.findByText('Live-Zahlen')).toBeInTheDocument();
+        expect(screen.queryByText(/Neue Zahlen/)).toBeNull();
     });
 
     it('shows an error notice when the statistics endpoint fails', async () => {
