@@ -2802,7 +2802,7 @@
     "legal.dpa.deadline.blockedRenewal": "New counselling is blocked. Ongoing counselling and signing remain accessible.",
     "dpaBlocker.sign.staleVersion": "The contract has been renewed. Please reload and read the current contract before accepting it again.",
     "legal.dpa.deadline.grace": "New counselling is allowed during the renewal period. Please sign the new DPA version before the deadline.",
-    "tenants.appSettings.emailPreview.branding.textWordmark": "This preview uses the organisation name as a text wordmark instead of an image.",
+    "tenants.appSettings.emailPreview.branding.textWordmark": "This e-mail shows no logo, only the organisation name. With a logo set up, the e-mail shows logo and name together.",
     "tenants.appSettings.emailPreview.meta.organisation": "Organisation",
     "twoFactorSetup.method": "How would you like to receive your second factor?",
     "twoFactorSetup.email.description": "We will send a one-time code to the email address from your invitation.",
