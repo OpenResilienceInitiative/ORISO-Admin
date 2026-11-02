@@ -169,6 +169,40 @@ describe('statisticDashboardData', () => {
         expect(data.targetsByScope.platform[1].label).toBe('Träger 2');
     });
 
+    it('uses the platform total for the platform view, not the sum of unsuppressed Träger (OBP #93)', () => {
+        const response: AdminDashboardStatisticsResponse = {
+            generatedAt: '2026-07-11T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                agencyTarget({ targetType: 'PLATFORM', tenantId: null, agencyId: null, counselorCount: 12 }),
+                agencyTarget({
+                    targetType: 'TENANT',
+                    tenantId: 1,
+                    agencyId: null,
+                    counselorCount: 3,
+                    suppressed: true,
+                    metrics: null,
+                }),
+                agencyTarget({
+                    targetType: 'TENANT',
+                    tenantId: 2,
+                    agencyId: null,
+                    counselorCount: 4,
+                    suppressed: true,
+                    metrics: null,
+                }),
+            ],
+        };
+        const data = buildStatisticData(response, emptyLookups, now);
+
+        // the platform total is the default view; the Träger stay selectable one by one
+        expect(data.fallbackIdsByScope.platform).toEqual(['platform-total']);
+        expect(data.statisticsById['platform-total'].suppressed).toBe(false);
+        expect(data.statisticsById['platform-total'].metrics.cases).toBe(7);
+        expect(data.targetsByScope.platform.map((target) => target.id)).toEqual(['tenant-1', 'tenant-2']);
+        expect(data.fallbackIdsByScope.tenant).toEqual(['tenant-1', 'tenant-2']);
+    });
+
     it('passes the suppressionDisabled flag through from the backend', () => {
         const withFlag = { ...tenantScopeResponse([agencyTarget()]), suppressionDisabled: true };
 

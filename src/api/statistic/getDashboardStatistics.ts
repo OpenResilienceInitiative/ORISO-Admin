@@ -32,13 +32,15 @@ export interface AdminDashboardMonthlyTopic {
 }
 
 export interface AdminDashboardTarget {
-    targetType: 'TENANT' | 'AGENCY';
+    /** PLATFORM: the whole platform as one row, sent to platform admins only. */
+    targetType: 'PLATFORM' | 'TENANT' | 'AGENCY';
     tenantId: number | null;
     agencyId: number | null;
     counselorCount: number;
     /**
-     * KDG small-cell suppression: true when the target covers fewer than five counsellor
-     * accounts. All counselling metrics are omitted by the backend in that case.
+     * KDG small-cell suppression: true when the target covers fewer counsellor accounts than the
+     * minimum set for its level in the global statistics settings. All counselling metrics are
+     * omitted by the backend in that case.
      */
     suppressed: boolean;
     metrics: AdminDashboardMetrics | null;
