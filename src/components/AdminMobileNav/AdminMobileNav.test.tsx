@@ -167,12 +167,27 @@ describe('AdminMobileNav', () => {
         expect(onSectionSelect).toHaveBeenCalledWith('logout');
     });
 
-    it('closes on Escape', async () => {
+    it('closes on Escape and returns focus to the button that opened it', async () => {
         renderNav();
         await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
         await userEvent.keyboard('{Escape}');
 
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Mehr' })).toHaveFocus();
+    });
+
+    it('names a tab by its visible short label (WCAG 2.5.3)', () => {
+        render(
+            <MemoryRouter>
+                <AdminMobileNav
+                    sections={[{ ...sections[0], tabLabel: 'Optionen' }, ...sections.slice(1)]}
+                    activeSectionKey="settings"
+                    labels={labels}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(within(screen.getByRole('navigation')).getByRole('link', { name: 'Optionen' })).toBeInTheDocument();
     });
 
     it('global search: focuses the field, finds by keyword and opens the hit on Enter', async () => {

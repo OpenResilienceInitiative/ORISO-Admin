@@ -120,6 +120,7 @@ export const AdminMobileNav = ({
     const pageSearchRef = useRef<HTMLInputElement>(null);
     const globalSearchRef = useRef<HTMLInputElement>(null);
     const sheetRef = useRef<HTMLDivElement>(null);
+    const returnFocusRef = useRef<HTMLElement | null>(null);
     const sheetId = useId();
     const { expandedKey, toggle } = useRememberedExpansion(activeSectionKey);
 
@@ -142,6 +143,10 @@ export const AdminMobileNav = ({
             sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus();
         } else {
             setQuery('');
+            // Back to the button that opened the sheet, so keyboard and
+            // screen-reader users keep their place in the bar.
+            returnFocusRef.current?.focus();
+            returnFocusRef.current = null;
         }
     }, [sheet]);
 
@@ -168,7 +173,13 @@ export const AdminMobileNav = ({
     }, [sheet]);
 
     const close = () => setSheet(null);
-    const toggleSheet = (next: Exclude<Sheet, null>) => setSheet((current) => (current === next ? null : next));
+    const toggleSheet = (next: Exclude<Sheet, null>) => {
+        // Keep the first opener when switching from one sheet to the other.
+        if (sheet === null) {
+            returnFocusRef.current = document.activeElement as HTMLElement | null;
+        }
+        setSheet((current) => (current === next ? null : next));
+    };
 
     const renderLeaf = (item: AdminMobileNavItem, active: boolean) => {
         const content = (
@@ -413,7 +424,6 @@ export const AdminMobileNav = ({
                                 className={classNames(styles.tab, { [styles.tabActive]: active })}
                                 to={tab.to ?? '#'}
                                 aria-current={active ? 'page' : undefined}
-                                aria-label={tab.label}
                                 onClick={close}
                             >
                                 <span className={styles.tabIcon} aria-hidden>
