@@ -112,7 +112,7 @@ const getEffectiveIconTone = (icon: SvgIcon, tone?: IconTone) => {
 };
 
 export const AnimatedValue = ({ locale = 'de-DE', value }: { locale?: string; value: string }) => (
-    <>{useAnimatedDisplayValue(value, 2800, locale)}</>
+    <>{useAnimatedDisplayValue(value, 480, locale)}</>
 );
 
 const MetricIcon = ({ icon: Icon, tone }: { icon: SvgIcon; tone?: IconTone }) => (

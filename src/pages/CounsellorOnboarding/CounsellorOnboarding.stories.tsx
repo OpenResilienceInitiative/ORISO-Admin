@@ -172,7 +172,7 @@ export const NewAgencyChooseTopics: Story = {
         await expect(await canvas.findByRole('heading', { name: 'Ihre Beratungsstelle' })).toBeVisible();
         const submit = canvas.getByRole('button', { name: 'Konto erstellen' });
         await userEvent.type(canvas.getByLabelText('Benutzername'), 'lena_b');
-        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
+        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePassword1!');
         await userEvent.click(canvas.getByRole('button', { name: 'Thema hinzufügen' }));
         await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Suchtberatung' }));
         // Topics alone are not enough — the new agency needs its name.
@@ -423,7 +423,7 @@ export const AgencyAdminFoundingWithoutCounselling: Story = {
     play: async ({ canvasElement, userEvent }) => {
         const canvas = within(canvasElement);
         await userEvent.type(await canvas.findByLabelText('Benutzername'), 'oskar_b');
-        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePass1!');
+        await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePassword1!');
         await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), 'Suchtberatung Nord');
         await userEvent.click(await alsoCounsellorSwitch(canvasElement));
         await userEvent.click(await within(document.body).findByRole('button', { name: /Ja, nur Admin/ }));

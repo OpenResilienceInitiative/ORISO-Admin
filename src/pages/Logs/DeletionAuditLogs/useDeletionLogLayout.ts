@@ -7,10 +7,10 @@ import { useEffect, useState, type RefObject } from 'react';
 export type DeletionLogLayout = 'wide' | 'combined' | 'cards';
 
 // Measured fit (Chromium, de-DE, widest labels and ids; width of this list's container, i.e. after the
-// navigation rail and page gutters): the seven one-line columns need 1335px, the five combined columns
+// navigation rail and page gutters): the seven one-line columns need 1411px (with "Teilweise fehlgeschlagen", #1525), the five combined columns
 // need 645px (ids wrap inside them). Each bound is rounded up to the next 5-10px so a table never
 // overflows by a rounding error. Re-measure when columns change: DeletionAuditLogs.stories.tsx asserts both.
-export const WIDE_MIN = 1340;
+export const WIDE_MIN = 1420;
 export const COMBINED_MIN = 650;
 
 export const deletionLogLayoutFor = (width: number): DeletionLogLayout => {

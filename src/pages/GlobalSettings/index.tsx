@@ -36,6 +36,7 @@ import { CounsellorTutorialSettingsCardContainer } from '../../components/Global
 import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
+import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -152,6 +153,15 @@ export const GlobalLoginSettingsPage = () => {
                                         recoverySettings.save(settings, { onError: options?.onError })
                                     }
                                 />
+                            </ThemeProvider>
+                        </section>
+                    )}
+                    {/* OBP #93: global statistics settings with their change protocol. Platform
+                        admin only; the UserService enforces the same. */}
+                    {isSuperAdmin && (
+                        <section className={styles.globalConfigCardSlot}>
+                            <ThemeProvider theme={orisoMuiTheme}>
+                                <StatisticsSettingsCardContainer />
                             </ThemeProvider>
                         </section>
                     )}
