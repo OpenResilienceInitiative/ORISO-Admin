@@ -1,5 +1,7 @@
 import { acceptBaseUrlForRole, type CreateAccountInviteRequest } from '../../api/accountInvites/accountInvites';
 import type { IdFieldMode } from '../../components/IdAllocationField';
+import type { InviteSuggestion } from '../../components/OnboardingDesign/InviteSuggestionDialog';
+import { normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import type { InviteRole, InviteSendMode, InviteViewerScope, TopicPermission } from './inviteModel';
 import { allocationModeOf, fieldsForRole, type InviteTab } from './inviteRules';
 
@@ -20,9 +22,29 @@ export interface InviteDraft {
     alsoCounsellor: boolean;
     topicPermission: TopicPermission;
     templateId?: number;
+    /** Optional icon and display name the invitee starts with (#1274); counsellor tab only. */
+    suggestion?: InviteSuggestionFields;
 }
 
+/** Wire form of the suggestion; each field is left out when empty. */
+export type InviteSuggestionFields = Pick<CreateAccountInviteRequest, 'avatarKind' | 'avatarId' | 'displayName'>;
+
 /** One CSV row after the preview resolved its id, role and template. */
+export const NO_INVITE_SUGGESTION: InviteSuggestion = { avatar: {}, displayName: '' };
+
+const MAX_SUGGESTED_NAME_LENGTH = 100;
+
+/** The dialog's choice in wire form: a half-chosen icon becomes initials, empty parts are left out. */
+export const toSuggestionFields = ({ avatar, displayName }: InviteSuggestion): InviteSuggestionFields => {
+    const { avatarKind, avatarId } = normaliseAvatarValue(avatar);
+    const name = displayName.trim().slice(0, MAX_SUGGESTED_NAME_LENGTH);
+    return {
+        ...(avatarKind ? { avatarKind } : {}),
+        ...(avatarKind && avatarId ? { avatarId } : {}),
+        ...(name ? { displayName: name } : {}),
+    };
+};
+
 export interface InviteCsvCreateRow {
     recipientEmail: string;
     firstName?: string;
@@ -111,6 +133,7 @@ export const toCreateInviteRequest = (
     return {
         ...base,
         ...draftUnits(source, context),
+        ...(fields.agency ? source.suggestion : undefined),
         alsoCounsellor: fields.alsoCounsellor ? source.alsoCounsellor : undefined,
         topicPermission: fields.topics ? source.topicPermission : undefined,
         templateId: direct ? source.templateId : undefined,
