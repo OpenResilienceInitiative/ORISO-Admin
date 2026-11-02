@@ -1573,6 +1573,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+        await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
         // A refetch lands, saying somebody else is stored.
         mocks.counselorResult = {
@@ -1586,6 +1587,25 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         );
 
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper');
+    });
+
+    /**
+     * OBP 2.1 #107: a standing supervisor reads every case of this counsellor, so assigning the
+     * first one reminds the admin that supervision belongs in the privacy policy.
+     */
+    it('asks about the privacy policy before the first standing supervisor is assigned', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'supervision.privacyConfirm.cancel' }));
+
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', '');
+        expect(await submit(user)).not.toHaveProperty('assignedSupervisorId', SUPERVISOR_ID);
     });
 
     /**
@@ -1631,6 +1651,8 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+        // OBP 2.1 #107: the first standing supervisor is confirmed against the privacy policy.
+        await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
