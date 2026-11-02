@@ -13,6 +13,26 @@ const atWidth = (width: number) =>
             } as unknown as MediaQueryList),
     );
 
+/** Reports `width` on observe, or never fires when `width` is omitted (a slow runner). */
+const stubResizeObserver = (width?: number) =>
+    vi.stubGlobal(
+        'ResizeObserver',
+        class {
+            constructor(private callback: ResizeObserverCallback) {}
+
+            observe(target: Element) {
+                if (width == null) return;
+                this.callback(
+                    [{ target, contentRect: { width } } as ResizeObserverEntry],
+                    this as unknown as ResizeObserver,
+                );
+            }
+
+            // eslint-disable-next-line class-methods-use-this
+            disconnect() {}
+        },
+    );
+
 describe('useUserTableLayout', () => {
     afterEach(() => vi.restoreAllMocks());
 
@@ -46,22 +66,30 @@ describe('available Accounts container width', () => {
     ])('%ipx of content selects %s even in a wide desktop viewport', (width, layout) => {
         atWidth(1920);
         const container = { current: document.createElement('div') };
-        vi.stubGlobal(
-            'ResizeObserver',
-            class {
-                constructor(private callback: ResizeObserverCallback) {}
-
-                observe(target: Element) {
-                    this.callback(
-                        [{ target, contentRect: { width } } as ResizeObserverEntry],
-                        this as unknown as ResizeObserver,
-                    );
-                }
-
-                // eslint-disable-next-line class-methods-use-this
-                disconnect() {}
-            },
-        );
+        stubResizeObserver(width);
         expect(renderHook(() => useUserTableLayout(container)).result.current).toBe(layout);
+    });
+});
+
+describe('first committed layout', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('uses the measured container before ResizeObserver reports', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ width: 600 } as DOMRect);
+        // A slow runner: the observer has not delivered its first entry yet.
+        stubResizeObserver();
+        expect(renderHook(() => useUserTableLayout({ current: element })).result.current).toBe('tablet');
+    });
+
+    it('keeps the viewport layout while the container has no width yet', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        stubResizeObserver();
+        expect(renderHook(() => useUserTableLayout({ current: element })).result.current).toBe('wide');
     });
 });
