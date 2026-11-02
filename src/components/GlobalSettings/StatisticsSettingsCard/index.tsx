@@ -1,6 +1,9 @@
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import { Form } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +21,11 @@ import { M3Button } from '../../M3Button';
 import { MuiSelectField } from '../../mui/MuiSelectField';
 import { useStatisticsSettings } from '../../../hooks/useStatisticsSettings.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import { downloadStatisticsSettingsProtocol, statisticsSettingValueLabel } from './statisticsSettingsProtocolCsv';
+import {
+    downloadStatisticsSettingsProtocol,
+    isStandSetting,
+    statisticsSettingValueLabel,
+} from './statisticsSettingsProtocolCsv';
 import styles from './styles.module.scss';
 
 interface Props {
@@ -116,15 +123,33 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                     <div className={styles.fields}>
                         {data?.settings.map((setting) => (
                             <div key={setting.key} className={styles.setting}>
-                                <MuiSelectField
-                                    name={setting.key}
-                                    label={`globalSettings.statistics.setting.${setting.key}`}
-                                    options={setting.options.map((option) => ({
-                                        value: option,
-                                        label: statisticsSettingValueLabel(setting.key, option, t),
-                                    }))}
-                                    required
-                                />
+                                <div className={styles.field}>
+                                    <MuiSelectField
+                                        name={setting.key}
+                                        label={`globalSettings.statistics.setting.${setting.key}`}
+                                        options={setting.options.map((option) => ({
+                                            value: option,
+                                            label: statisticsSettingValueLabel(setting.key, option, t),
+                                        }))}
+                                        required
+                                    />
+                                    {isStandSetting(setting.key) && (
+                                        <Tooltip
+                                            describeChild
+                                            enterTouchDelay={0}
+                                            leaveTouchDelay={8000}
+                                            title={t('globalSettings.statistics.stand.help')}
+                                        >
+                                            <IconButton
+                                                aria-label={t('globalSettings.statistics.stand.helpLabel')}
+                                                className={styles.help}
+                                                size="small"
+                                            >
+                                                <InfoOutlinedIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </div>
                                 <p className={styles.since}>{sinceText(setting.effectiveFrom, t, i18n.language)}</p>
                             </div>
                         ))}

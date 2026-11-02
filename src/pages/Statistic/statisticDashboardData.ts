@@ -2,6 +2,7 @@ import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
+    StatisticSnapshotInterval,
 } from '../../api/statistic/getDashboardStatistics';
 import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
 
@@ -69,6 +70,12 @@ export interface StatisticData {
     chartWeeks: number;
     /** Months of the top-topic ranking, the current month included (global statistics setting). */
     topicMonths: number;
+    /** When the backend calculated these numbers; null before they are loaded. */
+    generatedAt: string | null;
+    /** How often this role gets a new stand. */
+    snapshotInterval: StatisticSnapshotInterval;
+    /** "Now" for weeks and months: a stand is read from its own time, live numbers from today. Null before loading. */
+    referenceDate: Date | null;
 }
 
 export interface StatisticNameLookups {
@@ -360,16 +367,22 @@ export const emptyStatisticData = (): StatisticData => ({
     suppressionDisabled: false,
     chartWeeks: DEFAULT_CHART_WEEKS,
     topicMonths: DEFAULT_TOPIC_MONTHS,
+    generatedAt: null,
+    snapshotInterval: 'LIVE',
+    referenceDate: null,
 });
 
 export const buildStatisticData = (
     response: AdminDashboardStatisticsResponse | undefined,
     lookups: StatisticNameLookups,
-    now: Date = new Date(),
+    today: Date = new Date(),
 ): StatisticData => {
     if (!response) {
         return emptyStatisticData();
     }
+
+    const snapshotInterval = response.snapshotInterval ?? 'LIVE';
+    const now = snapshotInterval === 'LIVE' ? today : new Date(response.generatedAt);
 
     const windows: TimeWindows = {
         chartWeeks: resolveWindow(response.chartWeeks, DEFAULT_CHART_WEEKS, MAX_CHART_WEEKS),
@@ -403,6 +416,7 @@ export const buildStatisticData = (
         .filter((target): target is FilterTarget => Boolean(target));
 
     const suppressionDisabled = Boolean(response.suppressionDisabled);
+    const standFields = { generatedAt: response.generatedAt, snapshotInterval, referenceDate: now };
 
     if (response.scope === 'PLATFORM') {
         // The backend's platform total is suppressed only when the platform itself is below its
@@ -420,6 +434,7 @@ export const buildStatisticData = (
         }
 
         return {
+            ...standFields,
             targetsByScope: { platform: tenantTargets, tenant: tenantTargets, agency: [] },
             fallbackIdsByScope: {
                 platform: platformRow ? [PLATFORM_TOTAL_TARGET_ID] : tenantTargets.map((target) => target.id),
@@ -436,6 +451,7 @@ export const buildStatisticData = (
         const tenantFallback = tenantTargets.length ? [tenantTargets[0].id] : agencyTargets.map((target) => target.id);
 
         return {
+            ...standFields,
             targetsByScope: { platform: [], tenant: agencyTargets, agency: agencyTargets },
             fallbackIdsByScope: {
                 platform: [],
@@ -449,6 +465,7 @@ export const buildStatisticData = (
     }
 
     return {
+        ...standFields,
         targetsByScope: { platform: [], tenant: [], agency: agencyTargets },
         fallbackIdsByScope: {
             platform: [],

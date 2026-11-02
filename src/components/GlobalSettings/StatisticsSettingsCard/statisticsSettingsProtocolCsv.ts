@@ -1,9 +1,13 @@
 import type { TFunction } from 'i18next';
 import type { StatisticsSettingChange, StatisticsSettingKey } from '../../../types/StatisticsSettings';
 
+/** The settings for how often an admin role gets a new statistics stand (UserService#1547). */
+export const isStandSetting = (key: StatisticsSettingKey) =>
+    key === 'agencySnapshotInterval' || key === 'tenantSnapshotInterval' || key === 'platformSnapshotInterval';
+
 /** Label of a stored value: thresholds are plain numbers, switches are translated, windows carry their unit. */
 export const statisticsSettingValueLabel = (key: StatisticsSettingKey, value: string, t: TFunction): string => {
-    if (key === 'messageCountTracking') return t(`globalSettings.statistics.value.${value}`);
+    if (key === 'messageCountTracking' || isStandSetting(key)) return t(`globalSettings.statistics.value.${value}`);
     if (key === 'requestChartWeeks') return t('globalSettings.statistics.value.weeks', { count: Number(value) });
     if (key === 'topicMonths') return t('globalSettings.statistics.value.months', { count: Number(value) });
     return value;

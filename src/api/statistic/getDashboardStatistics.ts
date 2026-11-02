@@ -50,9 +50,16 @@ export interface AdminDashboardTarget {
     groupChatCountsByPeriod: AdminDashboardPeriodCounts | null;
 }
 
+export type StatisticSnapshotInterval = 'LIVE' | 'DAILY' | 'WEEKLY';
+
 export interface AdminDashboardStatisticsResponse {
     generatedAt: string;
     scope: 'PLATFORM' | 'TENANT' | 'AGENCY';
+    /**
+     * How often this role gets a new stand (global statistics setting). A fixed stand keeps its
+     * numbers and its `generatedAt` until the next cutoff, whatever the client asks for.
+     */
+    snapshotInterval?: StatisticSnapshotInterval;
     /**
      * True only when the backend skipped KDG small-cell suppression — possible in
      * non-production environments only (fail-closed on the prod profile).

@@ -168,6 +168,50 @@ describe('Statistic page', () => {
         expect(screen.queryByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeNull();
     });
 
+    it('shows when the numbers were calculated and when new ones come (UserService#1547)', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            snapshotInterval: 'DAILY',
+        });
+
+        renderStatistic();
+
+        expect(await screen.findByText(/^Stand: 04\.11\.2026, 06:00/)).toBeInTheDocument();
+        expect(screen.getByText(/Neue Zahlen täglich um 6:00 Uhr/)).toBeInTheDocument();
+    });
+
+    it('shows the time of calculation in English too', async () => {
+        await i18n.changeLanguage('en');
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-02T05:00:00Z',
+            snapshotInterval: 'WEEKLY',
+        });
+
+        try {
+            renderStatistic();
+
+            expect(await screen.findByText(/^As of: .*2026.*6:00/)).toBeInTheDocument();
+            expect(screen.getByText(/New figures every Monday at 6:00/)).toBeInTheDocument();
+        } finally {
+            await i18n.changeLanguage('de');
+        }
+    });
+
+    it('promises no next stand when the numbers are live', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            snapshotInterval: 'LIVE',
+        });
+
+        renderStatistic();
+
+        expect(await screen.findByText(/^Stand: 04\.11\.2026, 06:00/)).toBeInTheDocument();
+        expect(screen.queryByText(/Neue Zahlen/)).toBeNull();
+    });
+
     it('shows an error notice when the statistics endpoint fails', async () => {
         dashboardMock.mockRejectedValue(new Error('boom'));
 

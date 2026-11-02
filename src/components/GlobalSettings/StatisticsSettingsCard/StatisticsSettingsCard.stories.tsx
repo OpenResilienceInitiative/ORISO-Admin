@@ -58,6 +58,30 @@ const settings: StatisticsSettings = {
             effectiveFrom: '2026-11-01T08:00',
             changedBy: null,
         },
+        {
+            key: 'agencySnapshotInterval',
+            value: 'DAILY',
+            defaultValue: 'DAILY',
+            options: ['LIVE', 'DAILY', 'WEEKLY'],
+            effectiveFrom: '2026-11-02T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'tenantSnapshotInterval',
+            value: 'DAILY',
+            defaultValue: 'DAILY',
+            options: ['LIVE', 'DAILY', 'WEEKLY'],
+            effectiveFrom: '2026-11-02T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'platformSnapshotInterval',
+            value: 'WEEKLY',
+            defaultValue: 'DAILY',
+            options: ['LIVE', 'DAILY', 'WEEKLY'],
+            effectiveFrom: '2026-11-02T10:00',
+            changedBy: 'platform.admin',
+        },
     ],
 };
 
@@ -92,5 +116,32 @@ export const Editable: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: /edit|bearbeiten/i }));
         await expect(canvas.getAllByRole('combobox')[0]).toBeEnabled();
+    },
+};
+
+/** Three separate stand fields, each with its explanation (UserService#1547). */
+export const StandFields: Story = {
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+
+        const help = await canvas.findAllByRole('button', { name: /fester Stand|fixed stand/i });
+        await expect(help).toHaveLength(3);
+        await userEvent.hover(help[0]);
+        await expect(await body.findByRole('tooltip')).toHaveTextContent(/24/);
+        await userEvent.unhover(help[0]);
+
+        await userEvent.click(canvas.getByRole('button', { name: /edit|bearbeiten/i }));
+        await userEvent.click(canvas.getByLabelText(/Beratungsstellen|counselling centres$/i));
+        await userEvent.click(await body.findByRole('option', { name: /Wöchentlich|Weekly/i }));
+        await userEvent.click(canvas.getByRole('button', { name: /save|speichern/i }));
+
+        await expect(args.onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+                values: expect.objectContaining({ agencySnapshotInterval: 'WEEKLY' }),
+                revision: 5,
+            }),
+            expect.anything(),
+        );
     },
 };

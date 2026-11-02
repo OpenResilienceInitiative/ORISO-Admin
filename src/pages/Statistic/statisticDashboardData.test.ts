@@ -215,6 +215,49 @@ describe('statisticDashboardData', () => {
         );
     });
 
+    describe('fixed stand (UserService#1547)', () => {
+        const standAt = '2026-10-26T05:00:00Z';
+        const readLater = new Date('2026-11-02T04:00:00Z');
+        const topicRow = agencyTarget({
+            monthlyTopTopics: [{ month: '2026-10', topicId: 100, sessionCount: 3, sharePercent: 75 }],
+        });
+
+        it('reads a stand from the time it was calculated, not from today', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [topicRow] },
+                { ...emptyLookups, topicNamesById: { '100': 'Schulden' } },
+                readLater,
+            );
+
+            expect(data.statisticsById['agency-11'].metrics.topicsByMonth[0].label).toBe('Schulden');
+            expect(data.referenceDate).toEqual(new Date(standAt));
+            expect(data.generatedAt).toBe(standAt);
+            expect(data.snapshotInterval).toBe('WEEKLY');
+        });
+
+        it('keeps reading live numbers from today', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', snapshotInterval: 'LIVE', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+
+        it('treats a backend without the field as live', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+    });
+
     it('computes week starts and day codes', () => {
         expect(getWeekStart(now).getDate()).toBe(6); // Monday, 6 July 2026
         expect(getTodayDayCode(now)).toBe('Sa');

@@ -66,6 +66,7 @@ import type {
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
+import { StatisticStandNotice } from './Statistic/StatisticStandNotice';
 import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
@@ -2048,8 +2049,9 @@ export const Statistic = () => {
         isLoading: isStatisticLoading,
     } = useStatisticDashboardData();
     const navigate = useNavigate();
-    const chartNow = useMemo(() => new Date(), []);
-    const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
+    // A fixed stand is read from its own time: its "this week" must not slide with today.
+    const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
+    const todayDayCode = useMemo(() => getTodayDayCode(chartNow), [chartNow]);
     const dashboard = dashboardByScope[activeScope];
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
@@ -2312,6 +2314,13 @@ export const Statistic = () => {
                                             'Statistikdaten konnten nicht geladen werden.',
                                         )}
                                     </p>
+                                )}
+                                {statisticData.generatedAt && !hasStatisticLoadError && (
+                                    <StatisticStandNotice
+                                        className="statisticDashboard__notice statisticDashboard__notice--info"
+                                        generatedAt={statisticData.generatedAt}
+                                        snapshotInterval={statisticData.snapshotInterval}
+                                    />
                                 )}
                                 {statisticData.suppressionDisabled && (
                                     <p

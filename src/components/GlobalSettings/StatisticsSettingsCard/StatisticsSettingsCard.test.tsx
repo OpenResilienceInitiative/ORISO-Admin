@@ -125,6 +125,84 @@ it('labels the dashboard time windows in weeks and months (UserService#1544)', a
     expect(screen.getByText('Gilt seit 01.11.2026')).toBeVisible();
 });
 
+const intervalOptions = ['LIVE', 'DAILY', 'WEEKLY'];
+const withStandFields: StatisticsSettings = {
+    ...initial,
+    settings: [
+        ...initial.settings,
+        {
+            key: 'agencySnapshotInterval',
+            value: 'DAILY',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-10-20T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'tenantSnapshotInterval',
+            value: 'WEEKLY',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-11-02T10:00',
+            changedBy: 'platform.admin',
+        },
+        {
+            key: 'platformSnapshotInterval',
+            value: 'LIVE',
+            defaultValue: 'DAILY',
+            options: intervalOptions,
+            effectiveFrom: '2026-11-02T10:00',
+            changedBy: 'platform.admin',
+        },
+    ],
+};
+
+it('offers one labelled stand field each for centres, Träger and the platform (UserService#1547)', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    expect(await screen.findByLabelText(/^Statistik-Stand für Beratungsstellen/)).toHaveValue('Täglich um 6:00 Uhr');
+    expect(screen.getByLabelText(/^Statistik-Stand für Träger/)).toHaveValue('Wöchentlich, montags um 6:00 Uhr');
+    expect(screen.getByLabelText(/^Statistik-Stand für die Plattform/)).toHaveValue('Live (bei jedem Laden)');
+    expect(screen.getAllByText('Gilt seit 02.11.2026')).toHaveLength(2);
+});
+
+it('explains the stand fields in a tooltip, with an example and the counsellor exception', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const help = await screen.findAllByRole('button', { name: 'Warum ein fester Stand?' });
+    expect(help).toHaveLength(3);
+
+    await userEvent.hover(help[0]);
+
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('um 10:05 Uhr „24“');
+    expect(tooltip).toHaveTextContent('Je seltener, desto besser der Datenschutz');
+    expect(tooltip).toHaveTextContent('Beratende sehen ihre eigenen Zahlen weiterhin sofort');
+});
+
+it('saves a chosen stand', async () => {
+    let received: { values?: Record<string, string> } | undefined;
+    server.use(
+        http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)),
+        http.put('*/useradmin/statistics/settings', async ({ request }) => {
+            received = (await request.json()) as { values?: Record<string, string> };
+            return HttpResponse.json(withStandFields);
+        }),
+    );
+    showCard();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByLabelText(/^Statistik-Stand für Beratungsstellen/));
+    await userEvent.click(
+        within(await screen.findByRole('listbox')).getByRole('option', { name: 'Wöchentlich, montags um 6:00 Uhr' }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(received?.values?.agencySnapshotInterval).toBe('WEEKLY'));
+});
+
 it('saves the chosen values with the revision it read', async () => {
     let received: unknown;
     server.use(
