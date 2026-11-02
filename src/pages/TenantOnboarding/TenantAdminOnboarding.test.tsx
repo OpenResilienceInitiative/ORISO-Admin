@@ -229,6 +229,30 @@ describe('TenantAdminOnboarding', () => {
         expect(client.registerTenantAdmin).not.toHaveBeenCalled();
     });
 
+    it('shows why the server refused a password equal to the one-time password (Admin#1207)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockRejectedValueOnce(
+            new Response(JSON.stringify({ message: 'Choose a password different from the initial password' }), {
+                status: 400,
+            }),
+        );
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
+        expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
+
+        // The link stays usable: a different password on the same page completes the setup.
+        mocks.fetchData.mockResolvedValueOnce({ phase: 'COMPLETED' });
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' })).toBeInTheDocument();
+    });
+
     it('clears the previous setup password and error when another account link is opened', async () => {
         const client = createClient({
             getOnboardingInvite: vi.fn(async (token: string) => ({

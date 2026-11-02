@@ -10,6 +10,8 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 
 type SetupRole = 'TENANT_ADMIN' | 'COUNSELLOR' | 'AGENCY_ADMIN';
 
+const ONE_TIME_PASSWORD = 'OneTimePass1!';
+
 const tokenFor = (role: SetupRole) => `fixture-setup-${role.toLowerCase()}`;
 
 // Exercise the production HTTP clients, not a setup-only stub. The endpoint
@@ -32,6 +34,13 @@ const handlersFor = (role: SetupRole) => {
         ),
         http.post(`${root}/setup`, async ({ request }) => {
             const data = await request.json();
+            // ExistingAccountSetupService answers this when the one-time password is reused (Admin#1207).
+            if (data && typeof data === 'object' && 'password' in data && data.password === ONE_TIME_PASSWORD) {
+                return HttpResponse.json(
+                    { message: 'Choose a password different from the initial password' },
+                    { status: 400 },
+                );
+            }
             if (
                 !data ||
                 typeof data !== 'object' ||
@@ -103,4 +112,39 @@ export const AgencyAdmin: Story = {
     args: { role: 'AGENCY_ADMIN' },
     parameters: { msw: { handlers: handlersFor('AGENCY_ADMIN') } },
     play: completePasswordSetup,
+};
+
+// Admin#1207: reusing the one-time password shows why, not a system fault; the link stays usable.
+const reuseOneTimePassword: NonNullable<Story['play']> = async (context) => {
+    const canvas = within(context.canvasElement);
+    const password = await canvas.findByLabelText(/^(Passwort|Password)$/);
+    const repeat = canvas.getByLabelText(/^(Passwort wiederholen|Repeat password)$/);
+    await userEvent.type(password, ONE_TIME_PASSWORD);
+    await userEvent.type(repeat, ONE_TIME_PASSWORD);
+    await userEvent.click(canvas.getByRole('button', { name: /Passwort speichern|Save password/ }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+        /vom Einmalpasswort unterscheidet|differs from the one-time password/,
+    );
+    await expect(canvas.queryByText(/kein erfolgreicher Abschluss|Successful completion/)).not.toBeInTheDocument();
+    await userEvent.clear(password);
+    await userEvent.clear(repeat);
+    await completePasswordSetup(context);
+};
+
+export const TenantAdminReusesOneTimePassword: Story = {
+    args: { role: 'TENANT_ADMIN' },
+    parameters: { msw: { handlers: handlersFor('TENANT_ADMIN') } },
+    play: reuseOneTimePassword,
+};
+
+export const CounsellorReusesOneTimePassword: Story = {
+    args: { role: 'COUNSELLOR' },
+    parameters: { msw: { handlers: handlersFor('COUNSELLOR') } },
+    play: reuseOneTimePassword,
+};
+
+export const AgencyAdminReusesOneTimePassword: Story = {
+    args: { role: 'AGENCY_ADMIN' },
+    parameters: { msw: { handlers: handlersFor('AGENCY_ADMIN') } },
+    play: reuseOneTimePassword,
 };
