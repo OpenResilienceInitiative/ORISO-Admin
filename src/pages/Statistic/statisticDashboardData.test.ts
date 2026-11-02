@@ -14,6 +14,7 @@ import {
     getWeekStart,
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
+    formatStandDay,
 } from './statisticDashboardData';
 
 // Saturday, 11 July 2026 (local time)
