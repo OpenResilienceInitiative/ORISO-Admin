@@ -37,5 +37,7 @@ describe('computeOrisoPalette — contrast on the light brand container', () => 
         expect(tokens['--admin-field-selected-text']).toBe('#930008');
         expect(tokens['--admin-accent-on-container']).toBe('#a5000a');
         expect(tokens['--m3-primary']).toBe('#a5000a');
+        // The whole default palette, so no other token can drift unnoticed.
+        expect(tokens).toMatchSnapshot();
     });
 });
