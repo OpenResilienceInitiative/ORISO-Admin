@@ -285,52 +285,76 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
-const currentMasterButton = () => {
+// Every query below stays inside the master row. jsdom recomputes the whole style cascade on
+// each getComputedStyle call, and role queries call it for every candidate and its ancestors.
+// A page-wide getByRole over the ~45-60 buttons of the policy page cost 3.6-13 s per lookup
+// (the antd/emotion rules other tests leave in <head> make it grow through the file), so the
+// master flows hit the 30 s test timeout under CI load (ORISO-Admin#1307).
+const masterRow = () => {
     const card = screen.getByTestId('case-handover-card');
     const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
     if (!row) throw new Error('Case handover master policy is missing');
-    return within(row).getByRole('button', { name: /Open policy choices/i });
+    return row;
 };
 
-const masterButton = () => waitFor(currentMasterButton);
+const currentMasterButton = () => within(masterRow()).getByRole('button', { name: /Open policy choices/i });
+
+const masterOption = (key: string) =>
+    within(masterRow()).getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) });
+
+// Mounting the full policy page (three requests, then one synchronous render of the whole page)
+// blocks the event loop for 0.9-2 s in jsdom on an idle machine: measured, the wait sees one miss,
+// then nothing for ~900 ms, then the row. The default 1 s waitFor budget is below that idle cost,
+// so under CI load it ran out before React committed. Waits that need the page to (re-)render
+// get a bounded budget instead; a missing control still fails well inside the test timeout.
+const PAGE_RENDER = { timeout: 10_000 };
+
+const masterButton = () => waitFor(currentMasterButton, PAGE_RENDER);
+
+// The OFF -> ON -> fresh mount flow renders the whole page three times and re-renders it after
+// two writes. In jsdom the first getComputedStyle after each DOM change recomputes the cascade
+// for the element and all its ancestors against every antd rule in <head> (~840 by this point
+// in the file): measured 1.1-1.3 s for one call on a contended core. The flow therefore took
+// 15-28 s with one shared core, close to the 30 s default; it is long, not stuck.
+const ROUND_TRIP_TIMEOUT = 60_000;
 
 const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
     await user.click(await masterButton());
-    await user.click(
-        screen.getByRole('button', {
-            name: i18n.t(`tenants.permissions.policy.${enabled ? 'activationSuggested' : 'deactivationSuggested'}`),
-        }),
-    );
+    await user.click(masterOption(enabled ? 'activationSuggested' : 'deactivationSuggested'));
 };
 
 // The real policy containers, card, hooks and fetchData run together at this HTTP seam.
 describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (level) => {
-    it('keeps mixed individual reason choices through master OFF, ON and a fresh mount', async () => {
-        access.isSuperAdmin = level === 'platform';
-        const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
-        server.store.set('7', mixed);
-        const view = mountPolicyPage(level);
+    it(
+        'keeps mixed individual reason choices through master OFF, ON and a fresh mount',
+        async () => {
+            access.isSuperAdmin = level === 'platform';
+            const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+            server.store.set('7', mixed);
+            const view = mountPolicyPage(level);
 
-        await chooseMaster(false);
-        await waitFor(() => expect(server.master.value).toBe(false));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
-        await chooseMaster(true);
-        await waitFor(() => expect(server.master.value).toBe(true));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+            await chooseMaster(false);
+            await waitFor(() => expect(server.master.value).toBe(false));
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
+            await chooseMaster(true);
+            await waitFor(() => expect(server.master.value).toBe(true));
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
 
-        expect(server.canonicalWrites).toHaveLength(2);
-        expect(
-            server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
-        ).toEqual([]);
-        expect(server.store.get('7')).toEqual(mixed);
-        view.unmount();
-        mountPolicyPage(level);
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
-        expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
-    });
+            expect(server.canonicalWrites).toHaveLength(2);
+            expect(
+                server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
+            ).toEqual([]);
+            expect(server.store.get('7')).toEqual(mixed);
+            view.unmount();
+            mountPolicyPage(level);
+            expect(await masterButton()).toHaveAccessibleName(
+                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
+            );
+            expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
+        },
+        ROUND_TRIP_TIMEOUT,
+    );
 
     it('rolls back a failed master write without any reason-policy writes', async () => {
         access.isSuperAdmin = level === 'platform';
@@ -341,10 +365,12 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
-        await waitFor(async () =>
-            expect(await masterButton()).toHaveAccessibleName(
-                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-            ),
+        await waitFor(
+            () =>
+                expect(currentMasterButton()).toHaveAccessibleName(
+                    expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
+                ),
+            PAGE_RENDER,
         );
         expect(
             server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
@@ -443,9 +469,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
             mountPolicyPage('tenant');
             await screen.findByTestId('case-handover-card-error');
             await userEvent.setup().click(await masterButton());
-            await userEvent
-                .setup()
-                .click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
+            await userEvent.setup().click(masterOption(key));
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
             expect(server.master).toMatchObject({ value, mode });
             expect(
