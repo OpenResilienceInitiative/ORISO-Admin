@@ -10,7 +10,7 @@ import { TenantAdminOnboarding } from './TenantAdminOnboarding';
 
 type SetupRole = 'TENANT_ADMIN' | 'COUNSELLOR' | 'AGENCY_ADMIN';
 
-const ONE_TIME_PASSWORD = 'OneTimePass1!';
+const ONE_TIME_PASSWORD = 'OneTimePassword1!';
 
 const tokenFor = (role: SetupRole) => `fixture-setup-${role.toLowerCase()}`;
 
