@@ -12,7 +12,9 @@
     --nav-sheet: var(--m3-surface, #fcf9f9);
     --nav-hover: var(--m3-surface-container, #f0edee);
     --nav-tile: var(--m3-primary-container, #ffe2de);
-    --nav-tile-icon: var(--m3-primary, #a5000a);
+    // Contrast-guarded brand tone for content on the container (#1322), with
+    // the plain primary as fallback until that token ships.
+    --nav-tile-icon: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
     --nav-selected: var(--admin-field-selected-surface, #ffe2de);
     --nav-selected-text: var(--admin-field-selected-text, #930008);
     --nav-accent: var(--admin-control-selected, #a5000a);
