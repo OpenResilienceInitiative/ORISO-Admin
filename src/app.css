@@ -239,6 +239,7 @@
     --admin-field-surface-hover: #f6f3f3;
     --admin-field-selected-surface: #ffe2de;
     --admin-field-selected-text: #930008;
+
     /* Brand-tinted text/icons on --m3-primary-container, contrast-guarded per seed (#1322). */
     --admin-accent-on-container: #a5000a;
 
