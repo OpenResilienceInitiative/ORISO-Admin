@@ -241,6 +241,27 @@ describe('statisticDashboardData', () => {
             expect(data.snapshotInterval).toBe('WEEKLY');
         });
 
+        it('puts the chart on the week of the stand, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { statisticsById } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-03T05:00:00Z',
+                        dataUntil: '2026-11-02',
+                        scope: 'TENANT',
+                        snapshotInterval: 'DAILY',
+                        targets: [agencyTarget({ dailyNewSessions: [{ date: '2026-11-02', count: 7 }] })],
+                    },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(statisticsById['agency-11'].caseCharts[0][0]).toBe(7);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
         it('reads a stand from its newest full day, wherever the browser is', () => {
             vi.stubEnv('TZ', 'America/Los_Angeles');
             try {
