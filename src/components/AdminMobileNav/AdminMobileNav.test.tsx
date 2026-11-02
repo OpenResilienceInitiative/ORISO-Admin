@@ -1,112 +1,201 @@
-import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminMobileNav, type AdminMobileNavSection } from './AdminMobileNav';
+import type { NavSearchEntry } from './navSearch';
+import { EXPANDED_SECTION_STORAGE_KEY } from './useRememberedExpansion';
 
 const sections: AdminMobileNavSection[] = [
     {
         key: 'settings',
         label: 'Einstellungen',
+        description: 'Erscheinungsbild, Rechtliches',
+        to: '/settings/legal',
         subsections: [
-            { key: 'globalConfig', label: 'Globale Konfigurationen' },
-            { key: 'legal', label: 'Rechtliches' },
+            { key: 'settings:legal', label: 'Rechtliches', to: '/settings/legal' },
+            { key: 'settings:smtp', label: 'Email Server', to: '/settings/smtp' },
         ],
     },
-    { key: 'tenants', label: 'Träger' },
+    { key: 'tenants', label: 'Träger', to: '/tenants' },
+    {
+        key: 'users',
+        label: 'Konten',
+        to: '/users/admins',
+        subsections: [
+            { key: 'users:admins', label: 'Admins', to: '/users/admins' },
+            { key: 'users:counsellors', label: 'Beratende', to: '/users/counsellors' },
+        ],
+    },
+    { key: 'logs', label: 'Logs', to: '/logs' },
 ];
 
-const Harness = () => {
-    const [sectionKey, setSectionKey] = useState('settings');
-    const [subsectionKey, setSubsectionKey] = useState<string | undefined>('globalConfig');
+const searchEntries: NavSearchEntry[] = [
+    {
+        id: 'settings:smtp',
+        label: 'Email Server',
+        to: '/settings/smtp',
+        sectionLabel: 'Einstellungen',
+        terms: ['smtp'],
+    },
+    { id: 'tenants', label: 'Träger', to: '/tenants', terms: ['tenant'] },
+];
 
-    return (
-        <MemoryRouter>
-            <AdminMobileNav
-                sections={sections}
-                activeSectionKey={sectionKey}
-                activeSubsectionKey={subsectionKey}
-                onSectionSelect={(key) => {
-                    setSectionKey(key);
-                    setSubsectionKey(sections.find((s) => s.key === key)?.subsections?.[0]?.key);
-                }}
-                onSubsectionSelect={setSubsectionKey}
-                onSearch={() => undefined}
-                searchLabel="Suchen"
-                onAdd={() => undefined}
-                addLabel="Neu anlegen"
-                openLabel="Menü öffnen"
-                closeLabel="Menü schließen"
-            />
-        </MemoryRouter>
-    );
+const labels = {
+    navigation: 'Navigation',
+    more: 'Mehr',
+    globalSearch: 'Überall suchen',
+    globalSearchPlaceholder: 'Wohin?',
+    globalSearchHint: 'Suchen Sie nach Bereichen',
+    globalSearchEmpty: 'Nichts gefunden.',
+    close: 'Schließen',
+    back: 'Zurück',
 };
 
-describe('AdminMobileNav', () => {
-    it('shows the subsections of the section you are in', () => {
-        render(<Harness />);
+const Location = () => <span data-testid="path">{useLocation().pathname}</span>;
 
-        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-            'Globale Konfigurationen',
-            'Rechtliches',
-        ]);
-        expect(screen.getByRole('tab', { name: 'Globale Konfigurationen' })).toHaveAttribute('aria-selected', 'true');
-    });
-
-    // The whole point of the redesign: the menu is the sidebar, so switching
-    // section has to reload the row next to the FAB.
-    it('swaps the row for the new section when a destination is picked', async () => {
-        render(<Harness />);
-
-        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Träger' }));
-
-        expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    });
-
-    // The search row is fixed furniture: it must be there on a section with
-    // subsections and on one without, or the menu's anchor would jump every
-    // time you switch section (Frank, 2026-08-07).
-    it('keeps the search row in place across sections', async () => {
-        render(<Harness />);
-
-        expect(screen.getByRole('button', { name: 'Suchen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Neu anlegen' })).toBeInTheDocument();
-
-        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Träger' }));
-
-        expect(screen.getByRole('button', { name: 'Suchen' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Neu anlegen' })).toBeInTheDocument();
-    });
-
-    it('keeps the subsections visible while the menu is open', async () => {
-        render(<Harness />);
-
-        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
-
-        expect(screen.getAllByRole('tab')).toHaveLength(2);
-    });
-
-    it('renders the back button only when there is somewhere to go back to', () => {
-        const { rerender } = render(<Harness />);
-
-        expect(screen.queryByRole('button', { name: 'Zurück' })).not.toBeInTheDocument();
-
-        rerender(
-            <MemoryRouter>
-                <AdminMobileNav
-                    sections={sections}
-                    activeSectionKey="tenants"
-                    onBack={() => undefined}
-                    backLabel="Zurück"
-                    openLabel="Menü öffnen"
-                    closeLabel="Menü schließen"
+const renderNav = (path = '/settings/legal', onSectionSelect = vi.fn()) =>
+    render(
+        <MemoryRouter initialEntries={[path]}>
+            <Routes>
+                <Route
+                    path="*"
+                    element={
+                        <>
+                            <AdminMobileNav
+                                sections={sections}
+                                accountItems={[{ key: 'logout', label: 'Verlassen' }]}
+                                activeSectionKey={path.startsWith('/settings') ? 'settings' : 'tenants'}
+                                activeSubsectionKey={path}
+                                searchEntries={searchEntries}
+                                onSectionSelect={onSectionSelect}
+                                labels={labels}
+                            />
+                            <Location />
+                        </>
+                    }
                 />
-            </MemoryRouter>,
-        );
+            </Routes>
+        </MemoryRouter>,
+    );
 
-        expect(screen.getByRole('button', { name: 'Zurück' })).toBeInTheDocument();
+describe('AdminMobileNav', () => {
+    beforeEach(() => window.localStorage.clear());
+
+    it('shows three sections as tabs plus "Mehr" and a separate search button, like Slack', () => {
+        renderNav();
+
+        const bar = screen.getByRole('navigation', { name: 'Navigation' });
+
+        expect(
+            within(bar)
+                .getAllByRole('link')
+                .map((link) => link.textContent),
+        ).toEqual(['Einstellungen', 'Träger', 'Konten']);
+        expect(within(bar).getByRole('button', { name: 'Mehr' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Überall suchen' })).toBeInTheDocument();
+        expect(within(bar).getByRole('link', { name: 'Einstellungen' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('opens the menu as a card, not a page, with every section and the account entries', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+
+        const menu = screen.getByRole('dialog', { name: 'Mehr' });
+
+        expect(within(menu).getByText('Erscheinungsbild, Rechtliches')).toBeInTheDocument();
+        expect(within(menu).getByRole('link', { name: 'Logs' })).toBeInTheDocument();
+        expect(within(menu).getByRole('button', { name: 'Verlassen' })).toBeInTheDocument();
+    });
+
+    it('expands the section you are on the first time and marks the current subsection', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+
+        const menu = screen.getByRole('dialog', { name: 'Mehr' });
+
+        expect(within(menu).getByRole('button', { name: /Einstellungen/ })).toHaveAttribute('aria-expanded', 'true');
+        expect(within(menu).getByRole('link', { name: 'Rechtliches' })).toHaveAttribute('aria-current', 'page');
+        expect(within(menu).getByRole('button', { name: /Konten/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('remembers the category the user expanded last, across a remount', async () => {
+        const { unmount } = renderNav();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        await userEvent.click(screen.getByRole('button', { name: /Konten/ }));
+        expect(screen.getByRole('link', { name: 'Beratende' })).toBeInTheDocument();
+        expect(window.localStorage.getItem(EXPANDED_SECTION_STORAGE_KEY)).toBe('users');
+        unmount();
+
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+
+        expect(screen.getByRole('button', { name: /Konten/ })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('button', { name: /Einstellungen/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('remembers "everything collapsed" too', async () => {
+        const { unmount } = renderNav();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        await userEvent.click(screen.getByRole('button', { name: /Einstellungen/ }));
+        unmount();
+
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+
+        expect(screen.getByRole('button', { name: /Einstellungen/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('navigates from a subsection and closes the card', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        await userEvent.click(screen.getByRole('link', { name: 'Email Server' }));
+
+        expect(screen.getByTestId('path')).toHaveTextContent('/settings/smtp');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('logs out through onSectionSelect', async () => {
+        const onSectionSelect = vi.fn();
+
+        renderNav('/settings/legal', onSectionSelect);
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Verlassen' }));
+
+        expect(onSectionSelect).toHaveBeenCalledWith('logout');
+    });
+
+    it('closes on Escape', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        await userEvent.keyboard('{Escape}');
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('global search: focuses the field, finds by keyword and opens the hit on Enter', async () => {
+        renderNav('/tenants');
+        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
+
+        const field = screen.getByRole('searchbox', { name: 'Überall suchen' });
+
+        expect(field).toHaveFocus();
+        expect(screen.getByText('Suchen Sie nach Bereichen')).toBeInTheDocument();
+
+        await userEvent.type(field, 'smpt');
+        expect(screen.getByRole('link', { name: /Email Server/ })).toBeInTheDocument();
+
+        await userEvent.keyboard('{Enter}');
+        expect(screen.getByTestId('path')).toHaveTextContent('/settings/smtp');
+    });
+
+    it('global search: says so when nothing matches', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
+        await userEvent.type(screen.getByRole('searchbox', { name: 'Überall suchen' }), 'xqzvw');
+
+        expect(screen.getByRole('status')).toHaveTextContent('Nichts gefunden.');
     });
 });

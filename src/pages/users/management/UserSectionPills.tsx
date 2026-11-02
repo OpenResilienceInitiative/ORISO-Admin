@@ -1,12 +1,10 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import routePathNames from '../../../appConfig';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../../components/AdminMobileNav/MobileNavContext';
 import { TabScroller } from '../../../components/UserTable/TabScroller';
-import { PermissionAction } from '../../../enums/PermissionAction';
-import { Resource } from '../../../enums/Resource';
+import { getUserSections } from '../../../constants/userSections';
 import { useIsDesktopLayout } from '../../../hooks/useIsDesktopLayout.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -28,43 +26,7 @@ export const UserSectionPills = () => {
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
 
-    const pills = useMemo(() => {
-        const visible: SectionPill[] = [];
-
-        if (isSuperAdmin) {
-            visible.push({
-                id: 'platform-admins',
-                labelKey: 'users.sectionPills.platformAdmins',
-                to: routePathNames.platformAdmins,
-            });
-        }
-
-        if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
-            visible.push({
-                id: 'tenant-admins',
-                labelKey: 'users.sectionPills.tenantAdmins',
-                to: routePathNames.tenantAdmins,
-            });
-        }
-
-        if (can(PermissionAction.Read, Resource.AgencyAdminUser)) {
-            visible.push({
-                id: 'agency-admins',
-                labelKey: 'users.sectionPills.counsellorAdmins',
-                to: routePathNames.agencyAdmins,
-            });
-        }
-
-        if (can(PermissionAction.Read, Resource.Consultant)) {
-            visible.push({
-                id: 'counsellors',
-                labelKey: 'users.sectionPills.counsellors',
-                to: routePathNames.consultants,
-            });
-        }
-
-        return visible;
-    }, [can, isSuperAdmin]);
+    const pills = useMemo<SectionPill[]>(() => getUserSections({ isSuperAdmin, can }), [can, isSuperAdmin]);
 
     const navigablePills = useMemo(
         () => pills.filter((pill): pill is SectionPill & { to: string } => Boolean(pill.to) && !pill.disabled),
