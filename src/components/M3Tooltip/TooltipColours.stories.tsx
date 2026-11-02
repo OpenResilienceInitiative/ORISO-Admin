@@ -40,7 +40,9 @@ export const AntdTooltip: Story = {
 export const StatusIconTooltip: Story = {
     render: () => <StatusIcons status="ERROR" />,
     play: async ({ canvasElement }) => {
-        await userEvent.hover(within(canvasElement).getByRole('img'));
+        const icon = within(canvasElement).getByRole('img');
+        await expect(getComputedStyle(icon).color).toBe('rgb(204, 0, 0)');
+        await userEvent.hover(icon);
         await expectSolidBlack(await openedAntdBubble(canvasElement));
     },
 };
