@@ -252,7 +252,7 @@ export const JoinExistingTraeger: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText(/Träger beitreten|Join a tenant/)).toBeInTheDocument();
-        await expect(canvas.getByText(/Schritt 1 von 2|Step 1 of 2/)).toBeInTheDocument();
+        await expect(canvas.getByRole('status', { name: /Schritt 1 von 2|Step 1 of 2/ })).toBeInTheDocument();
         await expect(canvas.getByText('paula.zweite@example.org')).toBeInTheDocument();
         await expect(canvas.queryByTestId('organisation-master-data-title')).toBeNull();
         await expect(canvas.queryByRole('button', { name: /Zurück|Back/ })).toBeNull();

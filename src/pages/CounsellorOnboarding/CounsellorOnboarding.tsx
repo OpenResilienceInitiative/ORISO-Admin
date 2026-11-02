@@ -224,9 +224,6 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     if (existingAccountSetup) {
         return (
             <div className={styles.wizard}>
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('accountSetup.title')}
-                </Typography>
                 <AccountStep
                     invite={invite}
                     busy={busy}
@@ -234,7 +231,6 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     passwordRejection={passwordRejection}
                     existingAccountSetup
                     passwordRules={passwordFormRules(t)}
-                    passwordHintKey="cards.advisorAccount.passwordHint"
                     onSubmit={submitAccountSetup}
                 />
             </div>
