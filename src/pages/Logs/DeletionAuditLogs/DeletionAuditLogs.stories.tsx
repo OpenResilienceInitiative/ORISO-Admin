@@ -311,3 +311,23 @@ export const KeyboardFocusInNarrowContainer: Story = {
         await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     },
 };
+
+/** #1525: the only explanation that a login may remain opens on keyboard focus, not on hover alone. */
+export const PartialFailureHintOnKeyboardFocus: Story = {
+    globals: desktop,
+    parameters: handlers(),
+    decorators: [inContainer(1440)],
+    play: async ({ canvasElement, userEvent: user }) => {
+        await expectLayout(canvasElement, 'wide');
+        const tag = within(canvasElement).getByText('Teilweise fehlgeschlagen');
+        const doc = canvasElement.ownerDocument;
+        for (let step = 0; step < 20 && doc.activeElement !== tag; step += 1) {
+            // eslint-disable-next-line no-await-in-loop
+            await user.tab();
+        }
+        await expect(doc.activeElement).toBe(tag);
+        const tooltip = await within(doc.body).findByRole('tooltip');
+        await expect(tooltip).toHaveTextContent('Anmeldung oder Chat-Konto können noch bestehen');
+        await expect(tag).toHaveAttribute('aria-describedby', tooltip.id);
+    },
+};

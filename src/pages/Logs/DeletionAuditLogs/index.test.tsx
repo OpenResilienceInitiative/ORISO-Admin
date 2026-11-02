@@ -133,12 +133,18 @@ describe('DeletionAuditLogsPage', () => {
     });
 
     // #1525: the row is gone, but Keycloak or Matrix failed, so "Ausgeführt" would claim too much.
-    it('shows a partly failed purge as its own outcome and explains it on hover', () => {
+    it('shows a partly failed purge as its own outcome and explains it on keyboard focus', () => {
         render(<DeletionAuditLogsPage />);
 
         const tag = screen.getByText('deletionAudit.outcome.PARTIAL_FAILURE');
-        expect(tag.closest('[title]')).toHaveAttribute('title', 'deletionAudit.outcome.PARTIAL_FAILURE_hint');
-        expect(screen.getByText('deletionAudit.outcome.EXECUTED').closest('[title]')).toBeNull();
+        expect(tag).toHaveAttribute('tabindex', '0');
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+
+        fireEvent.focus(tag);
+        expect(screen.getByRole('tooltip')).toHaveTextContent('deletionAudit.outcome.PARTIAL_FAILURE_hint');
+        expect(tag).toHaveAttribute('aria-describedby', screen.getByRole('tooltip').id);
+        // The other outcomes say all there is to say and stay out of the tab order.
+        expect(screen.getByText('deletionAudit.outcome.EXECUTED')).not.toHaveAttribute('tabindex');
     });
 
     it('offers the partly failed outcome as a filter', () => {
