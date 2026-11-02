@@ -40,7 +40,9 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
-import routePathNames from '../../../appConfig';
+import routePathNames, { appURL } from '../../../appConfig';
+import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
+import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from '../../../utils/publicContactLink';
 import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { CentreTopicPickers } from './CentreTopicPickers';
@@ -661,6 +663,19 @@ export const UserEditOrAdd = () => {
 
         return [...excluded];
     }, [isConsultantForm, canManageAdminRemarks, isEditing, typeOfUsers]);
+    // Once the detail record has loaded it is the only source, even when it cleared the name; the
+    // search-list row is a fallback until then and may be stale.
+    const storedPublicSlug = consultantById
+        ? {
+              publicSlug: consultantById.publicSlug || '',
+              pendingPublicSlug: consultantById.pendingPublicSlug || '',
+              publicSlugStatus: consultantById.publicSlugStatus || '',
+          }
+        : {
+              publicSlug: singleData?.publicSlug || '',
+              pendingPublicSlug: singleData?.pendingPublicSlug || '',
+              publicSlugStatus: singleData?.publicSlugStatus || '',
+          };
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
@@ -676,6 +691,9 @@ export const UserEditOrAdd = () => {
         publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
+
+    // The saved, live name only: a name still being typed (or awaiting approval) does not open yet.
+    const publicContactLinkUrl = buildPublicContactLinkUrl(storedPublicSlug.publicSlug, appURL);
 
     const approvePendingPublicSlug = () => {
         form.setFieldsValue({
@@ -769,9 +787,7 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         assignedSupervisorId: storedSupervisorId || undefined,
-                        publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
-                        pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
-                        publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
+                        ...storedPublicSlug,
                         rejectPendingPublicSlug: false,
                         tenantId:
                             singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
@@ -855,13 +871,36 @@ export const UserEditOrAdd = () => {
                                             name="publicSlug"
                                             label={t('counselor.publicSlug')}
                                             placeholder={t('placeholder.publicSlug')}
+                                            helpText={t('counselor.publicSlug.hint', { max: PUBLIC_SLUG_MAX_LENGTH })}
                                             rules={[
                                                 {
-                                                    pattern: /^[a-z]+(-[a-z]+)*$/,
-                                                    message: t('message.error.publicSlug.format'),
+                                                    // Same rule as the UserService, including the
+                                                    // id-shaped names it rejects (ORISO-UserService#1534).
+                                                    validator: (_, value?: string) => {
+                                                        if (!value || isValidPublicSlug(value)) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        // Pasting bypasses maxLength; say why it is refused.
+                                                        const reason =
+                                                            value.length > PUBLIC_SLUG_MAX_LENGTH
+                                                                ? t('message.error.publicSlug.maxLength', {
+                                                                      max: PUBLIC_SLUG_MAX_LENGTH,
+                                                                  })
+                                                                : t('message.error.publicSlug.format');
+                                                        return Promise.reject(new Error(reason));
+                                                    },
                                                 },
                                             ]}
+                                            inputProps={{ maxLength: PUBLIC_SLUG_MAX_LENGTH }}
                                         />
+                                        {isEditing && publicContactLinkUrl && (
+                                            <CopyLinkRow
+                                                value={publicContactLinkUrl}
+                                                labelKey="counselor.publicSlug.url"
+                                                copyKey="counselor.publicSlug.copy"
+                                                copiedKey="counselor.publicSlug.copied"
+                                            />
+                                        )}
                                         <Form.Item name="pendingPublicSlug" hidden>
                                             <input />
                                         </Form.Item>

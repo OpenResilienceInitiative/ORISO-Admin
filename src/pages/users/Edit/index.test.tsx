@@ -8,6 +8,7 @@ import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { appURL } from '../../../appConfig';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -101,6 +102,13 @@ const translations: Record<string, string> = {
     'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
     'counselor.topicsLostByMove.addedButNotSaved':
         'Thema bei {{agency}} ergänzt, Person nicht gespeichert. Es bleibt bei {{agency}}.',
+    'counselor.publicSlug': 'Name des öffentlichen Kontakt-Links',
+    'counselor.publicSlug.url': 'Öffentlicher Kontakt-Link',
+    'counselor.publicSlug.copy': 'Kontakt-Link kopieren',
+    'counselor.publicSlug.copied': 'Kontakt-Link kopiert',
+    'message.error.publicSlug.format': 'Ungültiger Link-Name',
+    'message.error.publicSlug.maxLength': 'Höchstens {{max}} Zeichen',
+    'counselor.publicSlug.hint': 'Kleinbuchstaben und Ziffern, bis {{max}} Zeichen',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -457,6 +465,105 @@ describe('counsellor avatar (#1046)', () => {
         // The field is registered, so the key exists — it must carry no choice.
         const submitted = await submit(user);
         expect(submitted.avatarKind).toBeUndefined();
+    });
+});
+
+describe('public contact link (ORISO-UserService#1534)', () => {
+    it('accepts digits in the link name', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        setField('Name des öffentlichen Kontakt-Links', 'qa-shazia-2810');
+
+        expect(await submit(user)).toMatchObject({ publicSlug: 'qa-shazia-2810' });
+    });
+
+    it.each(['-qa', 'qa-', 'qa--2810', 'QA-2810', 'qa shazia'])(
+        'rejects "%s" with the format message',
+        async (slug) => {
+            const user = userEvent.setup();
+            renderForm();
+            await fillMandatoryFields();
+
+            setField('Name des öffentlichen Kontakt-Links', slug);
+            await user.click(pageButton('Speichern'));
+
+            expect(await screen.findByText('Ungültiger Link-Name')).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        },
+    );
+
+    // ORISO-UserService#1543
+    it('limits typing to 50 characters', () => {
+        renderForm();
+
+        expect(screen.getByLabelText('Name des öffentlichen Kontakt-Links')).toHaveAttribute('maxLength', '50');
+    });
+
+    it('rejects a pasted name longer than 50 characters with the length message', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        setField('Name des öffentlichen Kontakt-Links', 'a'.repeat(51));
+        await user.click(pageButton('Speichern'));
+
+        expect(await screen.findByText('Höchstens 50 Zeichen')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('shows the full public link of the active link name with a copy button', async () => {
+        const user = userEvent.setup();
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', publicSlug: 'qa-shazia-2810', publicSlugStatus: 'APPROVED' },
+            isLoading: false,
+        };
+        renderForm();
+
+        const expected = `${appURL.replace(/\/$/, '')}/registration?cid=qa-shazia-2810`;
+        expect(await screen.findByLabelText('Öffentlicher Kontakt-Link')).toHaveValue(expected);
+
+        await user.click(screen.getByRole('button', { name: 'Kontakt-Link kopieren' }));
+
+        await screen.findByRole('button', { name: 'Kontakt-Link kopiert' });
+        await expect(navigator.clipboard.readText()).resolves.toBe(expected);
+    });
+
+    it('names the 50-character limit next to the field', () => {
+        renderForm();
+
+        expect(screen.getByText('Kleinbuchstaben und Ziffern, bis 50 Zeichen')).toBeInTheDocument();
+    });
+
+    it('trusts the loaded detail record over a stale list row when the name was cleared', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: { data: [{ id: 'consultant-1', publicSlug: 'old-name', publicSlugStatus: 'APPROVED' }] },
+            isLoading: false,
+        };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', publicSlug: null, publicSlugStatus: null },
+            isLoading: false,
+        };
+        renderForm();
+
+        expect(await screen.findByLabelText('Name des öffentlichen Kontakt-Links')).toHaveValue('');
+        expect(screen.queryByLabelText('Öffentlicher Kontakt-Link')).not.toBeInTheDocument();
+    });
+
+    it('shows no link while no link name is active', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', pendingPublicSlug: 'team-2', publicSlugStatus: 'PENDING' },
+            isLoading: false,
+        };
+        renderForm();
+
+        expect(await screen.findByLabelText('Name des öffentlichen Kontakt-Links')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Öffentlicher Kontakt-Link')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Kontakt-Link kopieren' })).not.toBeInTheDocument();
     });
 });
 
