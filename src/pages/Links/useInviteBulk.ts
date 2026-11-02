@@ -1,5 +1,5 @@
 import { message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     acceptBaseUrlForRole,
@@ -14,6 +14,8 @@ import { isBulkSelectable } from './inviteRules';
 
 interface UseInviteBulkOptions {
     invites: AccountInviteDTO[];
+    /** Query/tab/phase identity for paged lists; changing it clears hidden action targets. */
+    selectionScope?: string;
     reload: () => Promise<void>;
     explain: (
         error: unknown,
@@ -24,23 +26,48 @@ interface UseInviteBulkOptions {
 }
 
 /** The checked rows and what can be done with them: send and revoke, one request per row. */
-export const useInviteBulk = ({ invites, reload, explain, rememberGeneratedLink }: UseInviteBulkOptions) => {
+export const useInviteBulk = ({
+    invites,
+    selectionScope,
+    reload,
+    explain,
+    rememberGeneratedLink,
+}: UseInviteBulkOptions) => {
     const { t } = useTranslation();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false);
     const [running, setRunning] = useState(false);
+    const previousScope = useRef(selectionScope);
+    const remembered = useRef(new Map<number, AccountInviteDTO>());
 
     // A reload drops ids that are no longer listed or selectable, so a bulk action never hits a stale row.
     useEffect(() => {
-        setSelectedIds((current) =>
-            current.filter((id) => invites.some((invite) => invite.id === id && isBulkSelectable(invite))),
-        );
-    }, [invites]);
+        const changedScope = previousScope.current !== selectionScope;
+        previousScope.current = selectionScope;
+        const currentRows = new Map(invites.map((invite) => [invite.id, invite]));
+        const selected = new Set(changedScope ? [] : selectedIds);
+        // Retain only action targets from older pages, rather than accumulating the whole list.
+        remembered.current = new Map([...[...remembered.current].filter(([id]) => selected.has(id)), ...currentRows]);
+        setSelectedIds((current) => {
+            const next = changedScope
+                ? []
+                : current.filter((id) => {
+                      const row =
+                          currentRows.get(id) ??
+                          (selectionScope === undefined ? undefined : remembered.current.get(id));
+                      return row != null && isBulkSelectable(row);
+                  });
+            return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+        });
+    }, [invites, selectionScope, selectedIds]);
 
-    const selectedInvites = useMemo(
-        () => invites.filter((invite) => selectedIds.includes(invite.id) && isBulkSelectable(invite)),
-        [invites, selectedIds],
-    );
+    const selectedInvites = useMemo(() => {
+        if (previousScope.current !== selectionScope) return [];
+        const currentRows = new Map(invites.map((invite) => [invite.id, invite]));
+        return selectedIds
+            .map((id) => currentRows.get(id) ?? (selectionScope === undefined ? undefined : remembered.current.get(id)))
+            .filter((invite): invite is AccountInviteDTO => invite != null && isBulkSelectable(invite));
+    }, [invites, selectedIds, selectionScope]);
 
     const requiresTemplate = selectedInvites.some((invite) => invite.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP');
 

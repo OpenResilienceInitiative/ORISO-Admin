@@ -2,8 +2,6 @@ import { useRef, type ChangeEvent, type ReactNode } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
 import { message, type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { GlobalSearchMenu } from '../../components/GlobalSearch';
@@ -237,39 +235,4 @@ export const useInviteBulkSend = ({ tab, bulk, selectedTemplate, submitting, ful
             />
         ) : null;
     return { active, button, hint };
-};
-
-interface InviteSearchFieldProps {
-    query: string;
-    onChange: (query: string) => void;
-    placeholder?: string;
-}
-
-/** The table card's search: a pill that filters as you type (the list is client-side). */
-export const InviteSearchField = ({ query, onChange, placeholder }: InviteSearchFieldProps) => {
-    const { t } = useTranslation();
-    const label = placeholder ?? t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen');
-    return (
-        <div className={styles.searchField}>
-            <SearchIcon aria-hidden className={styles.searchIcon} />
-            <input
-                aria-label={label}
-                className={styles.searchInput}
-                placeholder={label}
-                type="search"
-                value={query}
-                onChange={(event) => onChange(event.target.value)}
-            />
-            {query && (
-                <button
-                    aria-label={t('links.inviteProgress.searchClear', 'Suche leeren')}
-                    className={styles.searchClear}
-                    type="button"
-                    onClick={() => onChange('')}
-                >
-                    <CloseIcon aria-hidden />
-                </button>
-            )}
-        </div>
-    );
 };

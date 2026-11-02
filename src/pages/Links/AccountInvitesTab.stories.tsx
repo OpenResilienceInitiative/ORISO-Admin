@@ -497,3 +497,56 @@ export const PhoneToolbar: Story = {
         );
     },
 };
+
+/** Explicit server pages exercise query reset, totals and clearing in the real tab. */
+export const ServerSearchAndPaging: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, ({ request }) => {
+                    const params = new URL(request.url).searchParams;
+                    const query = params.get('query');
+                    const page = Number(params.get('page') ?? 0);
+                    const lisa = {
+                        ...INVITES[0],
+                        id: 88,
+                        firstName: 'Lisa',
+                        lastName: 'Simpson',
+                        recipientEmail: 'lisa.simpson@example.org',
+                    };
+                    if (query)
+                        return HttpResponse.json({
+                            content: query === 'Lisa Simpson' ? [lisa] : [],
+                            totalElements: query === 'Lisa Simpson' ? 1 : 0,
+                            totalPages: 1,
+                            page: 0,
+                            size: 20,
+                        });
+                    return HttpResponse.json({
+                        content: page === 0 ? [INVITES[0]] : [lisa],
+                        totalElements: 21,
+                        totalPages: 2,
+                        page,
+                        size: 20,
+                    });
+                }),
+                templatesByKind,
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Nächste Seite|Next page/ }));
+        await canvas.findByText('lisa.simpson@example.org');
+        await expect(canvas.getByText(/21–21/)).toBeInTheDocument();
+        await userEvent.type(canvas.getByRole('searchbox'), 'Lisa Simpson');
+        await canvas.findByText(/1–1/);
+        await expect(canvas.getByText('Lisa Simpson')).toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: /Suche leeren|Clear search/ }));
+        await canvas.findByText('muenchen@example.org');
+        await expect(canvas.getByText(/1–20/)).toBeInTheDocument();
+    },
+};

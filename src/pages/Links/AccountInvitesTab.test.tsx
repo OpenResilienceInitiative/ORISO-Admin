@@ -1503,6 +1503,45 @@ describe('CSV import payload per tab', () => {
         expect(agencyHint).toHaveTextContent('Berät auch');
     });
 
+    it('keeps omitted CSV tenant IDs AUTO after a query hides reserved IDs on another page', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }], total: 1 });
+        // ID 2 is reserved outside this visible page. Allocation must stay authoritative.
+        mocks.listAccountInvites.mockResolvedValue({ ...invitesPage([]), totalElements: 40, totalPages: 2 });
+        mocks.createAccountInvite.mockImplementation(
+            async (body: { tenantIdAllocationMode?: string; tenantId?: number }) => {
+                expect(body.tenantIdAllocationMode).toBe('AUTO');
+                expect(body.tenantId).toBeUndefined();
+                return { ...invite(91, 3, 'EMAIL_SENT'), recipientEmail: 'auto@example.org' };
+            },
+        );
+        renderTenantTab();
+        const user = userEvent.setup();
+        const nextPage = await screen.findByRole('button', { name: 'Nächste Seite' });
+        await waitFor(() => expect(nextPage).toBeEnabled());
+        await user.click(nextPage);
+        await waitFor(() =>
+            expect(mocks.listAccountInvites).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })),
+        );
+        await user.type(await screen.findByRole('searchbox'), 'hidden');
+        await waitFor(
+            () =>
+                expect(mocks.listAccountInvites).toHaveBeenLastCalledWith(
+                    expect.objectContaining({ query: 'hidden', page: 0 }),
+                ),
+            { timeout: 10_000 },
+        );
+        await importCsv(user, 'E-Mail;Vorname;Name;Träger-ID\r\nauto@example.org;Anna;Beispiel;\r\n');
+        await user.click(await screen.findByRole('button', { name: '1 Empfänger anlegen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            tenantIdAllocationMode: 'AUTO',
+            tenantId: undefined,
+        });
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         renderTenantTab();
