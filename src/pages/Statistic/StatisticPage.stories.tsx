@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, within } from 'storybook/test';
+import { expect, within, waitFor } from 'storybook/test';
 import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
@@ -200,7 +200,8 @@ export const WeeklyStand: Story = {
         const canvas = within(canvasElement);
         await expect(await canvas.findAllByRole('button', { name: /Beratungsfälle in KW/ })).toHaveLength(CHART_WEEKS);
         const notice = canvas.getByText(/^Zahlen bis einschließlich 01\.11\.2026\./);
-        await expect(notice).toBeVisible();
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
         await expect(getComputedStyle(notice).marginBottom).toBe('16px');
         // The newest week is the tallest bar: its tooltip must stay clear of the period menu above it.
         const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
