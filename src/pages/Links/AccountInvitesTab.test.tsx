@@ -15,6 +15,14 @@ import userEvent from '@testing-library/user-event';
 // import moves that cost into the file's (untimed) collection phase.
 import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
+// These tests drive the whole invite composer through user-event. Measured
+// locally (ORISO-Admin#1327), every step (typing a field, opening a select,
+// clicking send) re-renders the full form and costs 1–3.6 s; single tests run
+// 10–21 s, and on loaded CI runners they crossed the default 30 s limit at
+// random. The limit is raised for this file only; what the tests assert is
+// unchanged. The lasting fix is a lighter composer test harness (see #1327).
+vi.setConfig({ testTimeout: 60_000 });
+
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
 window.matchMedia ??= ((query: string) => ({
