@@ -89,10 +89,10 @@ import type {
 import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 
 const conversationSegmentBlueprint = [
-    { label: 'Mail', color: '#bd000d' },
-    { label: 'Live', color: '#ffaaa3' },
-    { label: 'Gesprächskreise', displayLabel: 'Gesprächs\nkreise', color: '#ffd8d5' },
-    { label: 'Interna', color: '#c10072' },
+    { label: 'Mail', color: 'var(--statistic-series-mail)' },
+    { label: 'Live', color: 'var(--statistic-series-live)' },
+    { label: 'Gesprächskreise', displayLabel: 'Gesprächs\nkreise', color: 'var(--statistic-series-groups)' },
+    { label: 'Interna', color: 'var(--statistic-series-internal)' },
 ];
 
 const createConversationSegments = (values: [number, number, number, number]) =>
@@ -2272,7 +2272,7 @@ export const Statistic = () => {
                     onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
                 />
             </Page.Title>
-            <div className="statisticDashboardPage">
+            <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
                 <div className="statisticDashboard">
                     {activeScope !== 'agency' && (
                         <StatisticFilterBar
