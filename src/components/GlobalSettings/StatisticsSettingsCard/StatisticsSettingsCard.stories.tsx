@@ -127,6 +127,8 @@ export const StandFields: Story = {
 
         const help = await canvas.findAllByRole('button', { name: /fester Stand|fixed snapshot/i });
         await expect(help).toHaveLength(1);
+        // The names stand above the fields, not squeezed into the select's border.
+        await expect(canvasElement.querySelectorAll('.MuiInputLabel-root')).toHaveLength(0);
         await userEvent.hover(help[0]);
         const tooltip = await body.findByRole('tooltip');
         await expect(tooltip).toHaveTextContent(/24/);

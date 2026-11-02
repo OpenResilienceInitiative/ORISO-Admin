@@ -180,6 +180,20 @@ it('groups the fields under clear headings', async () => {
     ).toBeVisible();
 });
 
+it('explains each section on its own', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const section = async (name: RegExp) => within(await screen.findByRole('group', { name }));
+    expect(
+        (await section(/^Mindestzahl Beratende/)).getByText(/Unter dieser Zahl zeigen wir keine Statistik/),
+    ).toBeVisible();
+    expect((await section(/^Stand der Zahlen/)).getByText(/Wie oft Admins neue Zahlen sehen/)).toBeVisible();
+    expect((await section(/^Zeiträume im Dashboard/)).getByText(/Wie weit das Dashboard zurückblickt/)).toBeVisible();
+    expect((await section(/^Erfassung/)).getByText(/Ob gesendete Nachrichten/)).toBeVisible();
+    expect((await section(/^Protokoll/)).getByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
+});
+
 it('explains the stand once, in plain words, and does not overpromise', async () => {
     server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
     showCard();
@@ -199,8 +213,8 @@ it('explains the stand once, in plain words, and does not overpromise', async ()
 it('says what the change log holds and how to read a bold value', async () => {
     showCard();
 
-    expect(await screen.findByRole('button', { name: 'Protokoll herunterladen (CSV)' })).toBeVisible();
-    expect(screen.getByText(/Enthält jede Änderung: Einstellung, alter und neuer Wert/)).toBeVisible();
+    expect(await screen.findByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
+    expect(screen.getByText(/Eine Datei mit jeder Änderung: Einstellung, alter und neuer Wert/)).toBeVisible();
     expect(screen.getByText('Fett in der Liste: der Standardwert.')).toBeVisible();
 });
 
@@ -296,7 +310,7 @@ it('downloads the change protocol as CSV', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     showCard();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Protokoll herunterladen (CSV)' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Als CSV herunterladen' }));
 
     await waitFor(() => expect(click).toHaveBeenCalled());
     const csv = await new Promise<string>((resolve) => {

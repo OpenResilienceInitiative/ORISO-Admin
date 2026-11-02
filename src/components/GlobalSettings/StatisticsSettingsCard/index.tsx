@@ -137,7 +137,8 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
                     {Boolean(error) && <Alert severity="error">{t('globalSettings.statistics.error.load')}</Alert>}
-                    <div className={styles.fields}>
+                    <p className={styles.note}>{t('globalSettings.statistics.defaultNotice')}</p>
+                    <div className={styles.sections}>
                         {data &&
                             SECTIONS.map((section) => (
                                 <section
@@ -171,13 +172,18 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                                             </Tooltip>
                                         )}
                                     </div>
+                                    <p className={styles.note}>
+                                        {t(`globalSettings.statistics.section.${section.key}Help`)}
+                                    </p>
                                     {data.settings
                                         .filter((setting) => section.settings.includes(setting.key))
                                         .map((setting) => (
-                                            <div key={setting.key}>
+                                            <div key={setting.key} className={styles.field}>
+                                                <label htmlFor={setting.key}>
+                                                    {t(`globalSettings.statistics.field.${setting.key}`)}
+                                                </label>
                                                 <MuiSelectField
                                                     name={setting.key}
-                                                    label={`globalSettings.statistics.field.${setting.key}`}
                                                     help={sinceText(setting.effectiveFrom, t, i18n.language)}
                                                     required
                                                 >
@@ -197,27 +203,41 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                                                 </MuiSelectField>
                                             </div>
                                         ))}
+                                    {section.key === 'minimum' && (
+                                        <p className={styles.note}>
+                                            {t('globalSettings.statistics.ownStatisticsNotice')}
+                                        </p>
+                                    )}
                                 </section>
                             ))}
-                    </div>
-                    <p className={styles.scope}>{t('globalSettings.statistics.defaultNotice')}</p>
-                    <p className={styles.scope}>{t('globalSettings.statistics.ownStatisticsNotice')}</p>
-                    {data && (
-                        <div className={styles.protocol}>
-                            <M3Button
-                                variant="outlined"
-                                icon={<FileDownloadOutlinedIcon />}
-                                loading={isDownloading}
-                                onClick={handleDownload}
+                        {data && (
+                            <section
+                                role="group"
+                                aria-labelledby="statistics-section-protocol"
+                                className={styles.section}
                             >
-                                {t('globalSettings.statistics.protocol.download')}
-                            </M3Button>
-                            <p className={styles.since}>{t('globalSettings.statistics.protocol.hint')}</p>
-                            {protocolError && (
-                                <Alert severity="error">{t('globalSettings.statistics.protocol.error')}</Alert>
-                            )}
-                        </div>
-                    )}
+                                <div className={styles.sectionHeading}>
+                                    <h3 id="statistics-section-protocol">
+                                        {t('globalSettings.statistics.section.protocol')}
+                                    </h3>
+                                </div>
+                                <p className={styles.note}>{t('globalSettings.statistics.protocol.hint')}</p>
+                                <div className={styles.protocol}>
+                                    <M3Button
+                                        variant="outlined"
+                                        icon={<FileDownloadOutlinedIcon />}
+                                        loading={isDownloading}
+                                        onClick={handleDownload}
+                                    >
+                                        {t('globalSettings.statistics.protocol.download')}
+                                    </M3Button>
+                                    {protocolError && (
+                                        <Alert severity="error">{t('globalSettings.statistics.protocol.error')}</Alert>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+                    </div>
                 </>
             )}
         </CardEditable>
