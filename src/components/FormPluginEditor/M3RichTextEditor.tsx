@@ -190,6 +190,13 @@ export type M3RichTextEditorProps = {
      * accessible name of the reading region.
      */
     hideHeader?: boolean;
+    /**
+     * Plain-text mode for fields whose reader cannot show formatting (the Erstantwort chat bubble
+     * prints text only): no formatting bar and no fullscreen control, pasted content is reduced to
+     * its plain text (line breaks kept as paragraphs), and the bold/italic/underline shortcuts are
+     * off. The value is still `<p>…</p>` HTML. Default `false` keeps every other editor unchanged.
+     */
+    plainText?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
     /**
@@ -286,6 +293,60 @@ export type M3RichTextEditorProps = {
     onPublish?: (html: string) => void;
     /** Return false when storage failed; the edited draft then stays saveable. */
     onSaveDraft?: (html: string) => void | boolean | Promise<void | boolean>;
+};
+
+/** Plain-text mode: paste as text (blank-line-free paragraphs), no formatting shortcuts. */
+const plainTextEditorHandlers = (getEditor: () => Editor | null) => ({
+    // Dropping rich content is deliberately rejected; normal paste inserts text.
+    handleDOMEvents: {
+        drop: (_view: unknown, event: DragEvent) => {
+            event.preventDefault();
+            return true;
+        },
+    },
+    handlePaste: (_view: unknown, event: ClipboardEvent) => {
+        const text = event.clipboardData?.getData('text/plain');
+        const target = getEditor();
+        if (text === undefined || !target) return false;
+        const lines = text
+            .replace(/\r\n?/g, '\n')
+            .split('\n')
+            .filter((line) => line.trim() !== '');
+        if (lines.length === 0) return true;
+        target
+            .chain()
+            .focus()
+            .insertContent(
+                lines.length === 1
+                    ? { type: 'text', text: lines[0] }
+                    : lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line }] })),
+            )
+            .run();
+        return true;
+    },
+    handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+        if (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+            return getEditor()?.chain().focus().splitBlock().run() ?? false;
+        }
+        return (event.metaKey || event.ctrlKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase());
+    },
+});
+
+/** Preserve existing line separation when a plain-text value predates the paragraph-only schema. */
+const normalizePlainTextBreaks = (html: string): string => {
+    if (!/<br\b/i.test(html)) return html;
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    document.body.querySelectorAll('p').forEach((paragraph) => {
+        if (!paragraph.querySelector('br')) return;
+        paragraph.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
+        const lines = (paragraph.textContent ?? '').split('\n').map((line) => {
+            const replacement = document.createElement('p');
+            replacement.textContent = line;
+            return replacement;
+        });
+        paragraph.replaceWith(...lines);
+    });
+    return document.body.innerHTML;
 };
 
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
@@ -815,6 +876,7 @@ export const M3RichTextEditor = ({
     fluid,
     contentLanguage,
     hideHeader,
+    plainText = false,
     languageSlot,
     consentSlot,
     topicSlot,
@@ -920,14 +982,14 @@ export const M3RichTextEditor = ({
     const editorEditable = !readOnly && !viewingVersion && (!onSaveDraft || editing || canSaveDraft);
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
-    const anchorsEnabled = enableAnchors && !editorSlot;
+    const anchorsEnabled = enableAnchors && !editorSlot && !plainText;
     // Published before chapter navigation existed, many legal documents have
     // headings without ids. Editing may persist ids on change; a reader must
     // stay non-mutating, so stamp them only into the display copy.
-    const editorContent = useMemo(
-        () => (!editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(displayedContent) : displayedContent),
-        [anchorsEnabled, displayedContent, editorEditable],
-    );
+    const editorContent = useMemo(() => {
+        const content = plainText ? normalizePlainTextBreaks(displayedContent ?? '') : displayedContent;
+        return !editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(content) : content;
+    }, [anchorsEnabled, displayedContent, editorEditable, plainText]);
 
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
@@ -938,35 +1000,59 @@ export const M3RichTextEditor = ({
     const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
     uploadAndInsertRef.current = imageUpload.uploadAndInsert;
 
+    const buildEditorProps = () => ({
+        attributes: editorSurfaceAttributes(!editorEditable, title),
+        ...(plainText
+            ? plainTextEditorHandlers(() => editorRef.current)
+            : createImageDropPasteHandlers((files) => {
+                  if (editorRef.current?.isEditable) {
+                      uploadAndInsertRef.current(files);
+                  }
+              })),
+    });
+
     const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Underline,
-            Link.configure({ openOnClick: false, autolink: false }),
-            ResolvingImage,
-            Highlight.configure({ multicolor: true }),
-            TaskList,
-            TaskItem.configure({ nested: true }),
-            Subscript,
-            Superscript,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder }),
-            // Word contract: empty space below a final heading belongs to a
-            // body paragraph — created on demand, never in the read-only
-            // reader (see trailingParagraph.ts).
-            TrailingParagraph,
-            ...(anchorsEnabled ? [HeadingAnchors] : []),
-        ],
+        enableInputRules: !plainText,
+        enablePasteRules: !plainText,
+        extensions: plainText
+            ? [
+                  StarterKit.configure({
+                      bold: false,
+                      italic: false,
+                      strike: false,
+                      code: false,
+                      codeBlock: false,
+                      heading: false,
+                      bulletList: false,
+                      orderedList: false,
+                      listItem: false,
+                      blockquote: false,
+                      horizontalRule: false,
+                      hardBreak: false,
+                  }),
+                  Placeholder.configure({ placeholder }),
+              ]
+            : [
+                  StarterKit,
+                  Underline,
+                  Link.configure({ openOnClick: false, autolink: false }),
+                  ResolvingImage,
+                  Highlight.configure({ multicolor: true }),
+                  TaskList,
+                  TaskItem.configure({ nested: true }),
+                  Subscript,
+                  Superscript,
+                  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+                  Placeholder.configure({ placeholder }),
+                  // Word contract: empty space below a final heading belongs to a
+                  // body paragraph — created on demand, never in the read-only
+                  // reader (see trailingParagraph.ts).
+                  TrailingParagraph,
+                  ...(anchorsEnabled ? [HeadingAnchors] : []),
+              ],
         content: editorContent,
         editable: editorEditable,
-        editorProps: {
-            attributes: editorSurfaceAttributes(!editorEditable, title),
-            ...createImageDropPasteHandlers((files) => {
-                if (editorRef.current?.isEditable) {
-                    uploadAndInsertRef.current(files);
-                }
-            }),
-        },
+        editorProps: buildEditorProps(),
         onUpdate: ({ editor: e }) => {
             if (e.isEditable && !syncingContentRef.current) {
                 if (dirty === undefined && onSaveDraft) setLocalDirty(true);
@@ -995,14 +1081,7 @@ export const M3RichTextEditor = ({
         // Keep the drop/paste image handlers when re-pinning the label — setOptions
         // replaces editorProps wholesale.
         editor?.setOptions({
-            editorProps: {
-                attributes: editorSurfaceAttributes(!editorEditable, title),
-                ...createImageDropPasteHandlers((files) => {
-                    if (editorRef.current?.isEditable) {
-                        uploadAndInsertRef.current(files);
-                    }
-                }),
-            },
+            editorProps: buildEditorProps(),
         });
     }, [editor, title, editorEditable]);
 
@@ -1263,7 +1342,7 @@ export const M3RichTextEditor = ({
 
             {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
-            {showToolbar ? (
+            {!plainText && showToolbar && (
                 <Toolbar
                     editor={editor}
                     disabled={!editorEditable}
@@ -1276,9 +1355,8 @@ export const M3RichTextEditor = ({
                     onInsertImage={imageUpload.openImagePicker}
                     imageUploading={imageUpload.uploading}
                 />
-            ) : (
-                <div className={styles.toolbar}>{maximizeButton}</div>
             )}
+            {!plainText && !showToolbar && <div className={styles.toolbar}>{maximizeButton}</div>}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 

@@ -3,6 +3,7 @@ import {
     AppsOutlined,
     BalanceOutlined,
     CategoryOutlined,
+    ChatOutlined,
     ChevronLeft,
     EmailOutlined,
     ManageAccountsOutlined,
@@ -64,15 +65,23 @@ export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) =>
     );
 };
 
+/** A deck whose cards do not all fit — the content the arrows must keep reachable. */
+const deckCanScroll = (deckNav: CardDeckNavRegistration | null) =>
+    Boolean(deckNav && (deckNav.canScrollBackward || deckNav.canScrollForward));
+
 /**
- * Overflowing tabs own both header arrows; otherwise retain card navigation.
- * Keep the same target at both ends so reversing direction never moves cards.
+ * The header arrows drive the card deck whenever its cards do not all fit; only
+ * then is it the content that is otherwise out of reach, because the deck hides
+ * its scrollbar (#1248: zoomed in, overflowing tabs took the arrows and the cards
+ * right of the fold could not be reached with a mouse). Overflowing tabs get the
+ * arrows when there is no deck to scroll (#193), and the mouse wheel otherwise.
+ * The owner does not change at the deck's ends, so reversing never jumps targets.
  * With nothing to scroll the arrows stay visible and disabled.
  */
 const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) => {
     const { t } = useTranslation();
     const deckNav = useCardDeckNav();
-    const nav = tabsNav ?? deckNav;
+    const nav = deckCanScroll(deckNav) ? deckNav : tabsNav ?? deckNav;
 
     return (
         <div className={styles.deckNavRail} data-admin-page-deck-nav>
@@ -99,6 +108,7 @@ const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) =
 export const tabIcons: Record<string, SvgIconComponent> = {
     appearance: CategoryOutlined,
     email_server: EmailOutlined,
+    erstantwort: ChatOutlined,
     functionalities: AppsOutlined,
     functionality_access: AdminPanelSettingsOutlined,
     global_config: SettingsOutlined,
@@ -114,6 +124,10 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
     const { pathname } = useLocation();
     const tabsId = useId();
     const [tabScroll, setTabScroll] = useState({ overflow: false, backward: false, forward: false });
+    // When the deck owns the arrows the wheel is the mouse's way along an overflowing tab row.
+    const deckOwnsArrows = deckCanScroll(useCardDeckNav());
+    const deckOwnsArrowsRef = useRef(deckOwnsArrows);
+    deckOwnsArrowsRef.current = deckOwnsArrows;
 
     useEffect(() => {
         const container = tabsContainerRef.current;
@@ -133,15 +147,27 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
                     : next,
             );
         };
+        // A vertical wheel pans the row only while it can still move that way, so
+        // at either end the page underneath scrolls as usual.
+        const panWithWheel = (event: WheelEvent) => {
+            if (!deckOwnsArrowsRef.current || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+            const max = container.scrollWidth - container.clientWidth;
+            const canMove = event.deltaY > 0 ? container.scrollLeft < max - 1 : container.scrollLeft > 1;
+            if (!canMove) return;
+            event.preventDefault();
+            container.scrollLeft += event.deltaY;
+        };
         const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : undefined;
         observer?.observe(container);
         Array.from(container.children).forEach((child) => observer?.observe(child));
         container.addEventListener('scroll', update, { passive: true });
+        container.addEventListener('wheel', panWithWheel, { passive: false });
         window.addEventListener('resize', update);
         update();
         return () => {
             observer?.disconnect();
             container.removeEventListener('scroll', update);
+            container.removeEventListener('wheel', panWithWheel);
             window.removeEventListener('resize', update);
         };
     }, [tabs, isDesktopLayout]);

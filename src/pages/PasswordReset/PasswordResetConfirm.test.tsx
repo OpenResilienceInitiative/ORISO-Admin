@@ -27,12 +27,12 @@ describe('PasswordResetConfirmForm', () => {
             </MemoryRouter>,
         );
 
-        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
 
         await waitFor(() => {
-            expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'SecurePass1!');
+            expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'SecurePassword1!');
         });
         expect(await screen.findByRole('heading', { name: 'passwordReset.successTitle' })).toBeInTheDocument();
         expect(screen.getByText('passwordReset.successDescription.counsellorHint')).toBeInTheDocument();
@@ -47,13 +47,50 @@ describe('PasswordResetConfirmForm', () => {
             </MemoryRouter>,
         );
 
-        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent('passwordReset.confirmError');
         expect(screen.getByLabelText('passwordReset.newPassword')).toBeInTheDocument();
         expect(screen.getByLabelText('passwordReset.repeatPassword')).toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'passwordReset.invalidTitle' })).not.toBeInTheDocument();
+    });
+
+    it('rejects a 15-character password with the rule chip still open, and accepts 16', async () => {
+        vi.mocked(confirmAdminPasswordReset).mockResolvedValue(new Response(null, { status: 204 }));
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/admin/password-reset/confirm?token=one-time-token']}>
+                <PasswordResetConfirmForm />
+            </MemoryRouter>,
+        );
+
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), 'Abcdefghij1234!');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), 'Abcdefghij1234!');
+        expect(screen.getByLabelText('onboarding.password.rule.length: onboarding.password.open')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
+        expect(await screen.findByText('passwordReset.passwordInvalid')).toBeInTheDocument();
+        expect(confirmAdminPasswordReset).not.toHaveBeenCalled();
+
+        await user.type(screen.getByLabelText('passwordReset.newPassword'), '5');
+        await user.type(screen.getByLabelText('passwordReset.repeatPassword'), '5');
+        expect(screen.getByLabelText('onboarding.password.rule.length: onboarding.password.met')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'passwordReset.setPassword' }));
+        await waitFor(() =>
+            expect(confirmAdminPasswordReset).toHaveBeenCalledWith('one-time-token', 'Abcdefghij1234!5'),
+        );
+    });
+
+    it('shows one heading and no raw criteria paragraph — the chips carry the rules', () => {
+        render(
+            <MemoryRouter initialEntries={['/admin/password-reset/confirm?token=one-time-token']}>
+                <PasswordResetConfirmForm />
+            </MemoryRouter>,
+        );
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+        expect(screen.queryByText('passwordReset.passwordCriteria')).not.toBeInTheDocument();
+        expect(screen.getAllByRole('listitem')).toHaveLength(5);
     });
 });

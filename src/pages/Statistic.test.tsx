@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { AdminDashboardStatisticsResponse } from '../api/statistic/getDashboardStatistics';
@@ -39,7 +39,7 @@ const fetchDataMock = vi.mocked(fetchData);
 const periodCounts = (total: number) => ({
     today: 0,
     yesterday: 0,
-    thisWeek: 1,
+    thisWeek: total ? 1 : 0,
     total,
     thisYear: total,
     lastYear: 0,
@@ -168,6 +168,135 @@ describe('Statistic page', () => {
         expect(screen.queryByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeNull();
     });
 
+    describe('fixed stand (UserService#1547)', () => {
+        const standOf = (snapshotInterval: 'DAILY' | 'WEEKLY', dataUntil: string) => ({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            dataUntil,
+            snapshotInterval,
+        });
+        const conversationPeriods = async () => {
+            fireEvent.click(await screen.findByRole('button', { name: 'Zeitraum für Gesprächstyp' }));
+            return screen.getAllByRole('menuitemradio').map((option) => option.textContent);
+        };
+
+        it('shows a stand without any case as zeros, with no empty-state hero', async () => {
+            const noCases = {
+                ...response.targets[0],
+                metrics: {
+                    enquiriesCurrentMonth: 0,
+                    enquiriesPreviousMonth: 0,
+                    activeCases: 0,
+                    activeConversationsToday: null,
+                    groupChatsTotal: 0,
+                },
+                sessionCountsByPeriod: periodCounts(0),
+                groupChatCountsByPeriod: periodCounts(0),
+            };
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [noCases] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+            expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+        });
+
+        it('keeps the empty-state hero on a level without any target, as there is nothing to count', async () => {
+            // The stand holds the Träger, but no Beratungsstelle: that tab has no zeros to state.
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [response.targets[0]] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+
+            fireEvent.click(screen.getByRole('tab', { name: 'Auf Beratungsstellenebene' }));
+
+            await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
+        });
+
+        it('says up to which day the numbers go and when new ones come', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            expect(
+                await screen.findByText('Zahlen bis einschließlich 03.11.2026. Neue Zahlen täglich um 6:00 Uhr.'),
+            ).toBeInTheDocument();
+        });
+
+        it('says the same in English for a weekly stand', async () => {
+            await i18n.changeLanguage('en');
+            dashboardMock.mockResolvedValue(standOf('WEEKLY', '2026-11-01'));
+
+            try {
+                renderStatistic();
+
+                expect(
+                    await screen.findByText(/^Figures up to and including .*2026\. New figures every Monday at 6:00/),
+                ).toBeInTheDocument();
+            } finally {
+                await i18n.changeLanguage('de');
+            }
+        });
+
+        it('offers the date of the newest full day, not today and not yesterday', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            const labels = await conversationPeriods();
+
+            expect(labels).toContain('03.11.2026');
+            expect(labels).not.toContain('heute');
+            expect(labels).not.toContain('gestern');
+        });
+
+        it('offers no single day at all in a weekly stand', async () => {
+            dashboardMock.mockResolvedValue(standOf('WEEKLY', '2026-11-01'));
+            renderStatistic();
+
+            const labels = await conversationPeriods();
+
+            expect(labels).toEqual(['diese Woche', 'gesamt', 'dieses Jahr', 'letztes Jahr']);
+        });
+
+        it('shows week bars and no day bars in a weekly stand', async () => {
+            dashboardMock.mockResolvedValue({ ...standOf('WEEKLY', '2026-11-01'), chartWeeks: 5 });
+            renderStatistic();
+
+            expect(await screen.findAllByRole('button', { name: /Beratungsfälle in KW \d+/ })).toHaveLength(5);
+            expect(screen.queryAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(0);
+        });
+
+        it('selects the newest full day in the day chart', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+
+            expect(await screen.findByRole('button', { name: /Beratungsfälle am Di/, pressed: true })).toBeVisible();
+        });
+
+        it('drops the active-today metric from the card menu', async () => {
+            dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
+            renderStatistic();
+            await screen.findByText('Anfragen gesamt');
+
+            fireEvent.click(screen.getAllByRole('button', { name: /Kennzahl in diesem Dashboard-Slot/ })[0]);
+
+            expect(screen.queryByText(/aktive Gespräche/i)).toBeNull();
+        });
+    });
+
+    it('keeps today and says "live" when the numbers are live', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-04T05:00:00Z',
+            snapshotInterval: 'LIVE',
+        });
+
+        renderStatistic();
+
+        expect(await screen.findByText('Live-Zahlen')).toBeInTheDocument();
+        expect(screen.queryByText(/Neue Zahlen/)).toBeNull();
+    });
+
     it('shows an error notice when the statistics endpoint fails', async () => {
         dashboardMock.mockRejectedValue(new Error('boom'));
 
@@ -294,5 +423,94 @@ describe('Statistic page', () => {
 
         await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
         expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+    });
+
+    describe('configurable time windows (UserService#1544)', () => {
+        const openCasePeriodSelect = async () => {
+            fireEvent.click(await screen.findByRole('button', { name: 'Zeitraum für Beratungsfälle' }));
+            return screen.getAllByRole('menuitemradio');
+        };
+
+        it('offers one requests-chart period per configured week plus a week overview', async () => {
+            dashboardMock.mockResolvedValue({ ...response, chartWeeks: 8 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            const options = await openCasePeriodSelect();
+
+            expect(options.map((option) => option.textContent)).toEqual([
+                'diese Woche',
+                'letzte Woche',
+                'vor zwei Wochen',
+                'vor drei Wochen',
+                'vor vier Wochen',
+                'vor 5 Wochen',
+                'vor 6 Wochen',
+                'vor 7 Wochen',
+                '8 Wochen im Überblick',
+            ]);
+        });
+
+        it("keeps today's five weeks when the backend does not report a window", async () => {
+            dashboardMock.mockResolvedValue(response);
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            const options = await openCasePeriodSelect();
+
+            expect(options).toHaveLength(6);
+            expect(options[4]).toHaveTextContent('vor vier Wochen');
+            expect(options[5]).toHaveTextContent('5 Wochen im Überblick');
+        });
+
+        it('shows one bar per configured week in the week overview', async () => {
+            dashboardMock.mockResolvedValue({ ...response, chartWeeks: 12 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            expect(screen.getAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(7);
+
+            fireEvent.click((await openCasePeriodSelect()).at(-1) as HTMLElement);
+
+            expect(screen.queryAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(0);
+            expect(screen.getAllByRole('button', { name: /Beratungsfälle in KW \d+/ })).toHaveLength(12);
+        });
+
+        it('lists one top-topic month per configured month in the metric menu', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 6 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+            expect(labels.filter((label) => label.includes('Thema vor 5 Monaten'))).toHaveLength(1);
+            expect(labels.filter((label) => /Thema vor 6 Monaten/.test(label))).toHaveLength(0);
+        });
+
+        it('describes an older topic month without calling it this month', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 6 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const older = screen
+                .getAllByRole('menuitemradio')
+                .find((option) => (option.textContent ?? '').includes('Thema vor 5 Monaten'));
+            expect(older).toBeDefined();
+            expect(older).not.toHaveTextContent('in diesem Monat');
+        });
+
+        it('drops topic months beyond a shorter configured window', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 3 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+            expect(labels.some((label) => label.includes('Thema vor 2 Monaten'))).toBe(true);
+            expect(labels.some((label) => label.includes('Thema vor 3 Monaten'))).toBe(false);
+        });
     });
 });
