@@ -360,6 +360,71 @@ describe('CounsellorOnboarding', () => {
         );
     });
 
+    describe('icon and name suggested by the inviting admin (#1274)', () => {
+        const suggested = { avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' };
+
+        it('opens with the suggested icon and name filled in, and registers them unchanged', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...suggested }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'maria_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
+            expect(screen.getByLabelText('cards.avatarName.publicName')).toHaveValue('Maria B.');
+            expect(screen.getByRole('button', { name: 'counsellorOnboarding.avatar.change' })).toBeInTheDocument();
+            await user.click(submit());
+
+            await waitFor(() =>
+                expect(client.registerCounsellor).toHaveBeenCalledWith(
+                    'raw-token',
+                    expect.objectContaining({
+                        avatar: { kind: 'ICON', id: 'owl' },
+                        names: expect.objectContaining({ publicName: 'Maria B.' }),
+                    }),
+                ),
+            );
+        });
+
+        it('"Ändern" opens the popup; "Abbrechen" keeps the suggestion, "Übernehmen" replaces it', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...suggested }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.click(await screen.findByRole('button', { name: 'counsellorOnboarding.avatar.change' }));
+            await user.click((await screen.findAllByRole('radio', { name: 'counselor.avatar.motif' }))[1]);
+            await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.avatar.cancel' }));
+            await waitFor(() =>
+                expect(
+                    screen.queryByRole('button', { name: 'counsellorOnboarding.avatar.cancel' }),
+                ).not.toBeInTheDocument(),
+            );
+
+            await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'maria_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
+            await user.click(submit());
+            await waitFor(() =>
+                expect(client.registerCounsellor).toHaveBeenCalledWith(
+                    'raw-token',
+                    expect.objectContaining({ avatar: { kind: 'ICON', id: 'owl' } }),
+                ),
+            );
+        });
+
+        it('shows the open picker and empty name as before when nothing was suggested', async () => {
+            renderFlow(createClient());
+
+            expect(await screen.findByLabelText('cards.avatarName.publicName')).toHaveValue('');
+            expect(
+                screen.queryByRole('button', { name: 'counsellorOnboarding.avatar.change' }),
+            ).not.toBeInTheDocument();
+            expect(screen.getAllByRole('radio', { name: 'counselor.avatar.motif' }).length).toBeGreaterThan(0);
+        });
+    });
+
     it('omits the avatar entirely when the invitee picks nothing', async () => {
         const client = createClient();
         const user = userEvent.setup();
