@@ -1,0 +1,250 @@
+// Home (ORISO-Admin#1323). Same token family as the mobile menu.
+.page {
+    display: flex;
+    max-width: 1200px;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 32px var(--admin-content-inset, 24px) 48px;
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: 32px;
+
+    @media (max-width: 767px) {
+        padding: 20px 16px 24px;
+        gap: 24px;
+    }
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 36px;
+}
+
+.intro {
+    max-width: 720px;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.sectionTitle {
+    margin: 0 0 12px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 24px;
+}
+
+.checklist {
+    max-width: 720px;
+    padding: 20px;
+    border-radius: 24px;
+    background: var(--m3-primary-container, #ffe2de);
+}
+
+.checklistHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.progress {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+}
+
+.steps {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+    list-style: none;
+}
+
+.step {
+    display: flex;
+    min-height: 48px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 14px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: 12px;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--m3-on-surface, #1b1b1c);
+        outline: 2px solid var(--admin-control-selected, #a5000a);
+        outline-offset: -2px;
+    }
+}
+
+.stepIcon {
+    flex: 0 0 24px;
+    color: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
+}
+
+.step[data-state='done'] .stepLabel {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.step[data-state='unknown'] .stepIcon {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.stepLabel {
+    flex: 1 1 auto;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.chevron {
+    flex: 0 0 24px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.tiles {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    list-style: none;
+}
+
+.tileItem {
+    display: flex;
+}
+
+.tile {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 16px;
+    border-radius: 24px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%));
+    gap: 8px;
+}
+
+.tileLink {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: 16px;
+    margin: -4px;
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: 12px;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        background: var(--m3-surface-container, #f0edee);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-control-selected, #a5000a);
+        outline-offset: 0;
+    }
+}
+
+.tileIcon {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
+}
+
+.tileTitle {
+    flex: 1 1 auto;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.tileText {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.facts {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 0;
+    gap: 6px;
+    list-style: none;
+
+    li {
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: var(--m3-surface-container, #f0edee);
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 20px;
+    }
+}
+
+.settingsGroups {
+    display: grid;
+    margin: 0;
+    gap: 8px 16px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+
+    dt {
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+
+    dd {
+        margin: 0;
+        font-size: 14px;
+        line-height: 22px;
+    }
+
+    a {
+        color: var(--m3-on-surface, #1b1b1c);
+        text-decoration: underline;
+        text-decoration-color: var(--m3-outline-variant, #c4c7c8);
+        text-underline-offset: 3px;
+    }
+}
+
+.settingsGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

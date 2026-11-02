@@ -103,8 +103,15 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
  */
 export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
     {
+        key: 'home',
+        label: 'Home',
+        description: 'Überblick und nächste Schritte',
+        icon: <NavGlyph name="home" />,
+    },
+    {
         key: 'settings',
         label: 'Einstellungen',
+        tabLabel: 'Einstellen',
         description: 'Erscheinungsbild, Rechtliches, Email Server',
         icon: <NavGlyph name="displaySettings" />,
         subsections: [
@@ -149,8 +156,8 @@ export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
     },
     {
         key: 'links',
-        label: 'Links',
-        description: 'Einladungen und Zugangslinks',
+        label: 'Einladen',
+        description: 'Personen per E-Mail einladen, Fortschritt sehen',
         icon: <NavGlyph name="links" />,
         subsections: [
             { key: 'tenants', label: 'Träger-Invites' },

@@ -75,6 +75,11 @@ export interface AdminMobileNavProps {
     labels: AdminMobileNavLabels;
     /** How many sections get their own tab before "More" (Slack shows three). */
     tabCount?: number;
+    /**
+     * Sections that get a tab first, in this order; missing ones are skipped
+     * and the rest fills up in sidebar order (ORISO-Admin#1323).
+     */
+    tabKeys?: string[];
     className?: string;
 }
 
@@ -112,6 +117,7 @@ export const AdminMobileNav = ({
     searchPlaceholder,
     sections,
     tabCount = 3,
+    tabKeys = [],
 }: AdminMobileNavProps) => {
     const navigate = useNavigate();
     const [sheet, setSheet] = useState<Sheet>(null);
@@ -124,7 +130,8 @@ export const AdminMobileNav = ({
     const sheetId = useId();
     const { expandedKey, toggle } = useRememberedExpansion(activeSectionKey);
 
-    const tabs = sections.slice(0, tabCount);
+    const preferred = tabKeys.flatMap((key) => sections.filter((section) => section.key === key));
+    const tabs = [...preferred, ...sections.filter((section) => !preferred.includes(section))].slice(0, tabCount);
     const moreIsActive = !tabs.some((tab) => tab.key === activeSectionKey);
     const results = useMemo(() => searchNav(searchEntries, query), [searchEntries, query]);
 

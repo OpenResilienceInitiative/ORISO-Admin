@@ -108,6 +108,8 @@ export const XHRheader = { AcceptLanguage: 'de' };
  */
 const routePathNames = {
     root: '/admin',
+    /** Start page for every role (ORISO-Admin#1323). */
+    home: '/admin/home',
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',

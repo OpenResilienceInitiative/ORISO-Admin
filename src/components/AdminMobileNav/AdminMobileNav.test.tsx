@@ -176,6 +176,26 @@ describe('AdminMobileNav', () => {
         expect(screen.getByRole('button', { name: 'Mehr' })).toHaveFocus();
     });
 
+    // ORISO-Admin#1323: Home · Einstellen · Einladen · Mehr, whatever the sidebar order.
+    it('fills the tabs with the preferred sections first, then in sidebar order', () => {
+        render(
+            <MemoryRouter>
+                <AdminMobileNav
+                    sections={sections}
+                    tabKeys={['logs', 'settings', 'missing']}
+                    activeSectionKey="settings"
+                    labels={labels}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(
+            within(screen.getByRole('navigation'))
+                .getAllByRole('link')
+                .map((link) => link.textContent),
+        ).toEqual(['Logs', 'Einstellungen', 'Träger']);
+    });
+
     it('names a tab by its visible short label (WCAG 2.5.3)', () => {
         render(
             <MemoryRouter>

@@ -2,6 +2,9 @@ import { useLocation } from 'react-router-dom';
 import { cloneElement, useState, type JSX } from 'react';
 import routePathNames from '../../appConfig';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
+import { ReactComponent as HomeActiveIcon } from '../../resources/img/svg/navbar/home_active.svg';
+import { ReactComponent as HomeHoverIcon } from '../../resources/img/svg/navbar/home_hover.svg';
+import { ReactComponent as HomeInactiveIcon } from '../../resources/img/svg/navbar/home_inactive.svg';
 import { ReactComponent as DisplaySettingsActiveIcon } from '../../resources/img/svg/navbar/display_settings_active.svg';
 import { ReactComponent as DisplaySettingsHoverIcon } from '../../resources/img/svg/navbar/display_settings_hover.svg';
 import { ReactComponent as DisplaySettingsInactiveIcon } from '../../resources/img/svg/navbar/display_settings_inactive.svg';
@@ -67,6 +70,12 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const iconState = getIconState(isActivePath && isDesktopSidebar, hover);
 
     switch (path) {
+        case routePathNames.home:
+            return selectIcon(iconState, {
+                active: <HomeActiveIcon />,
+                hover: <HomeHoverIcon />,
+                inactive: <HomeInactiveIcon />,
+            });
         case routePathNames.themeSettings:
             return selectIcon(iconState, {
                 active: <DisplaySettingsActiveIcon />,

@@ -56,7 +56,8 @@ const SEARCH_ENTRIES: NavSearchEntry[] = SECTIONS.flatMap((section) => [
 const PhoneFrame = ({ withBack = false }: { withBack?: boolean }) => {
     const { pathname } = useLocation();
     const navigate = useNavigate();
-    const [, sectionKey = 'settings', subsectionKey] = pathname.split('/');
+    const [, firstSegment, subsectionKey] = pathname.split('/');
+    const sectionKey = firstSegment || 'home';
     const caps = capabilitiesFor(sectionKey, subsectionKey);
     const activeSubsection = useMemo(() => (subsectionKey ? pathname : undefined), [pathname, subsectionKey]);
 
@@ -85,6 +86,7 @@ const PhoneFrame = ({ withBack = false }: { withBack?: boolean }) => {
                     activeSectionKey={sectionKey}
                     activeSubsectionKey={activeSubsection}
                     searchEntries={SEARCH_ENTRIES}
+                    tabKeys={['home', 'settings', 'links']}
                     onSectionSelect={() => navigate('/settings/globalConfig')}
                     onBack={withBack ? () => navigate(-1) : undefined}
                     onSearch={caps.search ? () => undefined : undefined}
