@@ -6,19 +6,31 @@
 
 .fields {
     display: grid;
-    gap: mui.$mui-unit;
+    gap: mui.$mui-unit * 3;
 }
 
-.setting {
-    display: flex;
-    flex-direction: column;
+.section {
+    display: grid;
+    gap: mui.$mui-unit * 2;
 }
 
-.sinceRow {
+.sectionHeading {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: mui.$mui-unit;
+    min-height: 32px;
+    gap: mui.$mui-unit * 0.5;
+
+    h3 {
+        margin: 0;
+        color: var(--m3-on-surface, #1c1b1f);
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 20px;
+    }
+}
+
+.defaultOption {
+    font-weight: 700;
 }
 
 .since {
@@ -39,6 +51,6 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    margin-top: mui.$mui-unit * 2;
+    margin: mui.$mui-unit * 2 0;
     gap: mui.$mui-unit;
 }

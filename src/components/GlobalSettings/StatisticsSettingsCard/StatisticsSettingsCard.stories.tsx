@@ -126,13 +126,21 @@ export const StandFields: Story = {
         const body = within(canvasElement.ownerDocument.body);
 
         const help = await canvas.findAllByRole('button', { name: /fester Stand|fixed snapshot/i });
-        await expect(help).toHaveLength(3);
+        await expect(help).toHaveLength(1);
         await userEvent.hover(help[0]);
-        await expect(await body.findByRole('tooltip')).toHaveTextContent(/24/);
+        const tooltip = await body.findByRole('tooltip');
+        await expect(tooltip).toHaveTextContent(/24/);
+        await expect(getComputedStyle(tooltip.querySelector('.MuiTooltip-tooltip') as Element).backgroundColor).toBe(
+            'rgb(0, 0, 0)',
+        );
         await userEvent.unhover(help[0]);
 
         await userEvent.click(canvas.getByRole('button', { name: /edit|bearbeiten/i }));
-        await userEvent.click(canvas.getByLabelText(/Beratungsstellen|counselling centres$/i));
+        await userEvent.click(canvas.getByLabelText(/^(Beratungsstellen|Counselling centres)/));
+        const weight = async (name: RegExp) =>
+            Number(getComputedStyle(await body.findByRole('option', { name })).fontWeight);
+        await expect(await weight(/Täglich|Daily/)).toBeGreaterThanOrEqual(600);
+        await expect(await weight(/Live/)).toBeLessThan(600);
         await userEvent.click(await body.findByRole('option', { name: /Wöchentlich|Weekly/i }));
         await userEvent.click(canvas.getByRole('button', { name: /save|speichern/i }));
 

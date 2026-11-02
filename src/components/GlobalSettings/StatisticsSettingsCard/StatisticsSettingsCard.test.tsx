@@ -81,10 +81,10 @@ const showCard = () =>
 it('lists every setting one after another with its value and since when it applies', async () => {
     showCard();
 
-    expect(await screen.findByLabelText(/^Mindestzahl Beratende je Beratungsstelle/)).toHaveValue('5');
-    expect(screen.getByLabelText(/^Mindestzahl Beratende je Träger/)).toHaveValue('5');
-    expect(screen.getByLabelText(/^Mindestzahl Beratende für die gesamte Plattform/)).toHaveValue('3');
-    expect(screen.getByLabelText(/^Gesendete Nachrichten der Beratenden zählen/)).toHaveValue('An');
+    expect(await screen.findByLabelText(/^Je Beratungsstelle/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Je Träger/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Gesamte Plattform/)).toHaveValue('3');
+    expect(screen.getByLabelText(/^Gesendete Nachrichten/)).toHaveValue('An');
     expect(screen.getAllByText('Gilt seit 20.10.2026')).toHaveLength(2);
     expect(screen.getByText('Gilt seit 28.10.2026')).toBeVisible();
     expect(screen.getByText('Standardwert, noch nie geändert')).toBeVisible();
@@ -120,8 +120,8 @@ it('labels the dashboard time windows in weeks and months (UserService#1544)', a
     );
     showCard();
 
-    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“: Zeitraum in Wochen/)).toHaveValue('12 Wochen');
-    expect(screen.getByLabelText(/^Häufigstes Thema: Zeitraum in Monaten/)).toHaveValue('4 Monate');
+    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“/)).toHaveValue('12 Wochen');
+    expect(screen.getByLabelText(/^Häufigstes Thema/)).toHaveValue('4 Monate');
     expect(screen.getByText('Gilt seit 01.11.2026')).toBeVisible();
 });
 
@@ -161,36 +161,47 @@ it('offers one labelled stand field each for centres, Träger and the platform (
     server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
     showCard();
 
-    expect(await screen.findByLabelText(/^Stand für Beratungsstellen/)).toHaveValue('Täglich um 6 Uhr');
-    expect(screen.getByLabelText(/^Stand für Träger/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
-    expect(screen.getByLabelText(/^Stand für die Plattform/)).toHaveValue('Live (bei jedem Laden)');
+    expect(await screen.findByLabelText(/^Beratungsstellen/)).toHaveValue('Täglich um 6 Uhr');
+    expect(screen.getByLabelText(/^Träger/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
+    expect(screen.getByLabelText(/^Plattform/)).toHaveValue('Live (bei jedem Laden)');
     expect(screen.getAllByText('Gilt seit 02.11.2026')).toHaveLength(2);
 });
 
-it('explains the stand fields in a tooltip, with an example and the counsellor exception', async () => {
+it('groups the fields under clear headings', async () => {
+    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+    showCard();
+
+    const stand = await screen.findByRole('group', { name: /^Stand der Zahlen/ });
+    expect(within(stand).getByLabelText(/^Beratungsstellen/)).toBeVisible();
+    expect(within(stand).getByLabelText(/^Träger/)).toBeVisible();
+    expect(within(stand).getByLabelText(/^Plattform/)).toBeVisible();
+    expect(
+        within(screen.getByRole('group', { name: /^Mindestzahl Beratende/ })).getByLabelText(/^Je Träger/),
+    ).toBeVisible();
+});
+
+it('explains the stand once, in plain words, and does not overpromise', async () => {
     server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
     showCard();
 
     const help = await screen.findAllByRole('button', { name: 'Warum ein fester Stand?' });
-    expect(help).toHaveLength(3);
+    expect(help).toHaveLength(1);
 
     await userEvent.hover(help[0]);
 
     const tooltip = await screen.findByRole('tooltip');
-    expect(tooltip).toHaveTextContent('um 10:05 Uhr „24“');
-    expect(tooltip).toHaveTextContent('Je seltener, desto besser der Datenschutz');
-    expect(tooltip).toHaveTextContent('Beratende sehen ihre eigenen Zahlen weiterhin sofort');
+    expect(tooltip).toHaveTextContent('von 23 auf 24, weiß man: Gerade hat jemand Hilfe gesucht');
+    expect(tooltip).toHaveTextContent('nur einmal am Tag oder einmal pro Woche');
+    expect(tooltip).toHaveTextContent('Bei „Live“ gilt dieser Schutz nicht');
+    expect(tooltip).toHaveTextContent('Beratende sehen ihre eigenen Zahlen immer sofort');
 });
 
-it('does not promise more protection than the stand gives', async () => {
-    server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
+it('says what the change log holds and how to read a bold value', async () => {
     showCard();
 
-    await userEvent.hover((await screen.findAllByRole('button', { name: 'Warum ein fester Stand?' }))[0]);
-
-    const tooltip = await screen.findByRole('tooltip');
-    expect(tooltip).toHaveTextContent('„Live“ die aktuellen Zahlen');
-    expect(tooltip).toHaveTextContent('schließt es aber nicht ganz aus');
+    expect(await screen.findByRole('button', { name: 'Protokoll herunterladen (CSV)' })).toBeVisible();
+    expect(screen.getByText(/Enthält jede Änderung: Einstellung, alter und neuer Wert/)).toBeVisible();
+    expect(screen.getByText('Fett in der Liste: der Standardwert.')).toBeVisible();
 });
 
 it('saves a chosen stand', async () => {
@@ -213,7 +224,7 @@ it('saves a chosen stand', async () => {
     showCard();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-    await userEvent.click(screen.getByLabelText(/^Stand für Beratungsstellen/));
+    await userEvent.click(screen.getByLabelText(/^Beratungsstellen/));
     await userEvent.click(
         within(await screen.findByRole('listbox')).getByRole('option', { name: 'Wöchentlich, Mo. 6 Uhr' }),
     );
@@ -221,7 +232,7 @@ it('saves a chosen stand', async () => {
 
     await waitFor(() => expect(received?.values?.agencySnapshotInterval).toBe('WEEKLY'));
     expect(await screen.findByText('Gilt seit 03.11.2026')).toBeVisible();
-    expect(screen.getByLabelText(/^Stand für Beratungsstellen/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
+    expect(screen.getByLabelText(/^Beratungsstellen/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
 });
 
 it('saves the chosen values with the revision it read', async () => {
@@ -243,7 +254,7 @@ it('saves the chosen values with the revision it read', async () => {
     showCard();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-    await userEvent.click(screen.getByLabelText(/^Mindestzahl Beratende je Beratungsstelle/));
+    await userEvent.click(screen.getByLabelText(/^Je Beratungsstelle/));
     await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: '2' }));
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
