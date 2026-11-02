@@ -42,6 +42,22 @@ const settings: StatisticsSettings = {
             effectiveFrom: null,
             changedBy: null,
         },
+        {
+            key: 'requestChartWeeks',
+            value: '12',
+            defaultValue: '5',
+            options: ['5', '8', '12', '16', '20', '26'],
+            effectiveFrom: '2026-11-01T10:00',
+            changedBy: 'platform.admin',
+        },
+        {
+            key: 'topicMonths',
+            value: '4',
+            defaultValue: '4',
+            options: ['3', '4', '6', '12'],
+            effectiveFrom: '2026-11-01T08:00',
+            changedBy: null,
+        },
     ],
 };
 

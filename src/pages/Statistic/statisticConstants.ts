@@ -1,6 +1,5 @@
 import type {
     CardMenuKey,
-    CasePeriodKey,
     ConversationPeriodKey,
     PeriodOption,
     ScopeKey,
@@ -20,14 +19,6 @@ export const defaultSelectedFilterTargetIdsByScope: SelectedFilterTargetIdsBySco
 };
 
 export const scopeOrder: ScopeKey[] = ['platform', 'tenant', 'agency'];
-
-export const casePeriodOptions: Array<PeriodOption<CasePeriodKey>> = [
-    { key: 'thisWeek', label: 'diese Woche' },
-    { key: 'lastWeek', label: 'letzte Woche' },
-    { key: 'twoWeeksAgo', label: 'vor zwei Wochen' },
-    { key: 'threeWeeksAgo', label: 'vor drei Wochen' },
-    { key: 'fourWeeksAgo', label: 'vor vier Wochen' },
-];
 
 export const conversationPeriodOptions: Array<PeriodOption<ConversationPeriodKey>> = [
     { key: 'today', label: 'heute' },
