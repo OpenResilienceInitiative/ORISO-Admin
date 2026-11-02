@@ -199,7 +199,13 @@ export const WeeklyStand: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findAllByRole('button', { name: /Beratungsfälle in KW/ })).toHaveLength(CHART_WEEKS);
-        await expect(canvas.getByText(/^Zahlen bis einschließlich 01\.11\.2026\./)).toBeVisible();
+        const notice = canvas.getByText(/^Zahlen bis einschließlich 01\.11\.2026\./);
+        await expect(notice).toBeVisible();
+        await expect(getComputedStyle(notice).marginBottom).toBe('16px');
+        // The newest week is the tallest bar: its tooltip must stay clear of the period menu above it.
+        const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
+        const menu = canvas.getByText('5 Wochen im Überblick');
+        await expect(tooltip.getBoundingClientRect().top).toBeGreaterThanOrEqual(menu.getBoundingClientRect().bottom);
     },
 };
 export const Live: Story = { parameters: { msw: { handlers: fixedStand('LIVE') } } };
@@ -217,6 +223,40 @@ export const WithSuppressedCentre: Story = {
                 ),
             ),
         },
+    },
+};
+const withoutCases = (row: AdminDashboardTarget): AdminDashboardTarget => ({
+    ...row,
+    metrics: {
+        enquiriesCurrentMonth: 0,
+        enquiriesPreviousMonth: 0,
+        activeCases: 0,
+        activeConversationsToday: 0,
+        groupChatsTotal: 0,
+    },
+    dailyNewSessions: [],
+    monthlyTopTopics: [],
+    sessionCountsByPeriod: periods(0),
+    groupChatCountsByPeriod: periods(0),
+});
+export const StandWithoutCases: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json(
+                    statistics('DAILY', [
+                        withoutCases(target('PLATFORM', null, null, 4)),
+                        withoutCases(target('TENANT', 2, null, 2)),
+                        withoutCases(target('AGENCY', 2, 11, 1)),
+                    ]),
+                ),
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect((await canvas.findAllByText('0')).length).toBeGreaterThan(0);
+        await expect(canvas.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
     },
 };
 export const NoData: Story = {

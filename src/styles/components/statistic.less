@@ -222,7 +222,7 @@
     transform-origin: top center;
 }
 
-.statisticDashboard__notice {
+.statisticDashboardPage .statisticDashboard__notice {
     padding: 10px 14px;
     margin: 0 0 16px;
     border-radius: 12px;
@@ -925,7 +925,7 @@
 .statisticDashboard__barTooltip {
     position: absolute;
     z-index: 3;
-    bottom: var(--statistic-dashboard-tooltip-bottom, 0);
+    bottom: min(var(--statistic-dashboard-tooltip-bottom, 0), calc(100% - 90px));
     left: 50%;
     display: grid;
     width: 118px;
