@@ -12,6 +12,17 @@ const ENDPOINT = '*/service/users/deletion-audit-logs';
 
 const ENTRIES: DeletionAuditLogEntry[] = [
     {
+        // #1525: purged, but the Keycloak or Matrix step failed.
+        id: 5,
+        actorId: null,
+        actorRole: 'SYSTEM',
+        targetType: 'CONSULTANT',
+        targetId: '7c3b9e21-0d4f-4a86-b5e2-93f1a6c8d017',
+        tenantId: 1,
+        outcome: 'PARTIAL_FAILURE',
+        createDate: '2026-10-04T02:00:00.000Z',
+    },
+    {
         id: 4,
         actorId: null,
         actorRole: 'SYSTEM',
@@ -104,7 +115,7 @@ export const Error: Story = {
 
 // ---- Responsive presentation (docs/responsive-tables.md): the layout follows the width of the list
 // container, not the viewport. Measured in Chromium with the widest labels and ids of ENTRIES-like rows
-// (de-DE): seven columns need 1335px -> WIDE_MIN 1340; the five combined columns need 645px ->
+// (de-DE): seven columns need 1411px -> WIDE_MIN 1420; the five combined columns need 645px ->
 // COMBINED_MIN 650; below that every row is a card. The container is the story's wrapper, the viewport
 // stays a 1440px desktop so a narrow container proves it is the container that decides.
 

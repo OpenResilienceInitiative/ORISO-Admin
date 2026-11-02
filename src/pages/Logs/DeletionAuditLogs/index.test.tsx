@@ -80,8 +80,18 @@ vi.mock('../../../hooks/useDeletionAuditLogsData', () => ({
                               outcome: 'EXECUTED',
                               createDate: '2026-10-03T10:00:00Z',
                           },
+                          {
+                              id: 3,
+                              actorId: null,
+                              actorRole: 'SYSTEM',
+                              targetType: 'CONSULTANT',
+                              targetId: 'consultant-7',
+                              tenantId: 4,
+                              outcome: 'PARTIAL_FAILURE',
+                              createDate: '2026-10-04T10:00:00Z',
+                          },
                       ],
-                      total: 2,
+                      total: 3,
                       page: 1,
                       perPage: 20,
                   },
@@ -118,8 +128,26 @@ describe('DeletionAuditLogsPage', () => {
     it('names the scheduler as actor role and shows no id for it', () => {
         render(<DeletionAuditLogsPage />);
 
-        expect(screen.getByText('deletionAudit.actor.SYSTEM')).toBeInTheDocument();
-        expect(screen.getByText('-')).toBeInTheDocument();
+        expect(screen.getAllByText('deletionAudit.actor.SYSTEM')).toHaveLength(2);
+        expect(screen.getAllByText('-')).toHaveLength(2);
+    });
+
+    // #1525: the row is gone, but Keycloak or Matrix failed, so "Ausgeführt" would claim too much.
+    it('shows a partly failed purge as its own outcome and explains it on hover', () => {
+        render(<DeletionAuditLogsPage />);
+
+        const tag = screen.getByText('deletionAudit.outcome.PARTIAL_FAILURE');
+        expect(tag.closest('[title]')).toHaveAttribute('title', 'deletionAudit.outcome.PARTIAL_FAILURE_hint');
+        expect(screen.getByText('deletionAudit.outcome.EXECUTED').closest('[title]')).toBeNull();
+    });
+
+    it('offers the partly failed outcome as a filter', () => {
+        render(<DeletionAuditLogsPage />);
+
+        fireEvent.change(screen.getByLabelText('deletionAudit.filters.outcome'), {
+            target: { value: 'PARTIAL_FAILURE' },
+        });
+        expect(mocks.params[mocks.params.length - 1]).toMatchObject({ outcome: 'PARTIAL_FAILURE', page: 1 });
     });
 
     describe('by container width', () => {

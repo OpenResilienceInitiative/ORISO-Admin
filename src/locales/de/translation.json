@@ -1258,6 +1258,8 @@
     "deletionAudit.table.actor": "Akteur",
     "deletionAudit.outcome.SCHEDULED": "Geplant",
     "deletionAudit.outcome.EXECUTED": "Ausgeführt",
+    "deletionAudit.outcome.PARTIAL_FAILURE": "Teilweise fehlgeschlagen",
+    "deletionAudit.outcome.PARTIAL_FAILURE_hint": "Die Daten sind gelöscht, aber ein Schritt ist fehlgeschlagen. Anmeldung oder Chat-Konto können noch bestehen.",
     "deletionAudit.outcome.CANCELLED": "Abgebrochen",
     "deletionAudit.targetType.CONSULTANT": "Berater:in",
     "deletionAudit.targetType.AGENCY_ADMIN": "Beratungsstellen-Admin",

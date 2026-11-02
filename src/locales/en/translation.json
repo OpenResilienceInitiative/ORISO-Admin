@@ -413,6 +413,8 @@
     "deletionAudit.table.actor": "Actor",
     "deletionAudit.outcome.SCHEDULED": "Scheduled",
     "deletionAudit.outcome.EXECUTED": "Executed",
+    "deletionAudit.outcome.PARTIAL_FAILURE": "Partly failed",
+    "deletionAudit.outcome.PARTIAL_FAILURE_hint": "The record is deleted, but a step failed. The login or chat account may still exist.",
     "deletionAudit.outcome.CANCELLED": "Cancelled",
     "deletionAudit.targetType.CONSULTANT": "Counsellor",
     "deletionAudit.targetType.AGENCY_ADMIN": "Agency admin",

@@ -18,12 +18,13 @@ import { useDeletionLogLayout } from './useDeletionLogLayout';
 import styles from './deletionAuditLogs.module.scss';
 
 const TARGET_TYPES = ['CONSULTANT', 'AGENCY_ADMIN', 'TENANT_ADMIN', 'AGENCY', 'TENANT'];
-const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'CANCELLED'];
+const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'PARTIAL_FAILURE', 'CANCELLED'];
 
 // Outcome is also spelled out in the tag text, so colour is never the only signal.
 const outcomeColor: Record<string, string> = {
     SCHEDULED: 'gold',
     EXECUTED: 'red',
+    PARTIAL_FAILURE: 'magenta',
     CANCELLED: 'green',
 };
 
@@ -85,7 +86,14 @@ export const DeletionAuditLogsPage = () => {
                 );
             case 'outcome':
                 return (
-                    <Tag color={outcomeColor[row.outcome] ?? 'default'}>
+                    <Tag
+                        color={outcomeColor[row.outcome] ?? 'default'}
+                        title={
+                            row.outcome === 'PARTIAL_FAILURE'
+                                ? t('deletionAudit.outcome.PARTIAL_FAILURE_hint')
+                                : undefined
+                        }
+                    >
                         {t(`deletionAudit.outcome.${row.outcome}`, { defaultValue: row.outcome })}
                     </Tag>
                 );
