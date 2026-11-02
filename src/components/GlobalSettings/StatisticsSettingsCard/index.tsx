@@ -23,7 +23,6 @@ import { useStatisticsSettings } from '../../../hooks/useStatisticsSettings.hook
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import {
     downloadStatisticsSettingsProtocol,
-    isStandSetting,
     statisticsSettingValueLabel,
 } from './statisticsSettingsProtocolCsv';
 import styles from './styles.module.scss';
