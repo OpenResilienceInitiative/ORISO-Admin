@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
 import { expect, within } from 'storybook/test';
@@ -85,6 +86,27 @@ const suppressedTarget = (agencyId: number): AdminDashboardTarget => ({
     groupChatCountsByPeriod: null,
 });
 
+// What the server leaves out of a fixed stand: no "today", and no single days in a weekly one.
+const asStand = (row: AdminDashboardTarget, snapshotInterval: StatisticSnapshotInterval): AdminDashboardTarget => {
+    if (snapshotInterval === 'LIVE' || row.suppressed || !row.metrics) return row;
+    const weekly = snapshotInterval === 'WEEKLY';
+    const counts = (period: AdminDashboardPeriodCounts | null) =>
+        period && { ...period, today: null, yesterday: weekly ? null : period.yesterday };
+    return {
+        ...row,
+        metrics: { ...row.metrics, activeConversationsToday: null },
+        dailyNewSessions: weekly ? [] : row.dailyNewSessions,
+        weeklyNewSessions: weekly
+            ? [-2, 5, 12, 19, 26].map((offset, index) => ({
+                  weekStart: new Date(Date.UTC(2026, 9, offset)).toISOString().slice(0, 10),
+                  count: Math.round(row.counselorCount * (index + 2)),
+              }))
+            : [],
+        sessionCountsByPeriod: counts(row.sessionCountsByPeriod),
+        groupChatCountsByPeriod: counts(row.groupChatCountsByPeriod),
+    };
+};
+
 const statistics = (
     snapshotInterval: StatisticSnapshotInterval,
     targets: AdminDashboardTarget[] = [
@@ -96,12 +118,13 @@ const statistics = (
         target('AGENCY', 3, 13, 0.75),
     ],
 ): AdminDashboardStatisticsResponse => ({
-    generatedAt: GENERATED_AT,
+    generatedAt: snapshotInterval === 'WEEKLY' ? '2026-11-02T05:00:00Z' : GENERATED_AT,
+    dataUntil: { LIVE: null, DAILY: '2026-11-05', WEEKLY: '2026-11-01' }[snapshotInterval],
     scope: 'PLATFORM',
     snapshotInterval,
     chartWeeks: CHART_WEEKS,
     topicMonths: TOPIC_MONTHS,
-    targets,
+    targets: targets.map((row) => asStand(row, snapshotInterval)),
 });
 
 const named = (rows: { id: number; name: string }[]) => HttpResponse.json({ total: rows.length, _embedded: rows });
@@ -140,6 +163,15 @@ const meta = {
     title: 'Pages/Statistic',
     component: Statistic,
     parameters: { layout: 'fullscreen', msw: { handlers: fixedStand('DAILY') } },
+    // Its own cache per story: the page keeps its data for a minute, so the shared client of the
+    // preview would show the previous story's numbers.
+    decorators: [
+        (Story, { id }) => (
+            <QueryClientProvider key={id} client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <Story />
+            </QueryClientProvider>
+        ),
+    ],
     beforeEach: () => {
         const previousAccess = getSessionAccessToken();
         const previousRefresh = getSessionRefreshToken();
@@ -162,7 +194,14 @@ export const DailyStand: Story = {
         await expect(getComputedStyle(tooltip).backgroundColor).toBe('rgb(27, 27, 28)');
     },
 };
-export const WeeklyStand: Story = { parameters: { msw: { handlers: fixedStand('WEEKLY') } } };
+export const WeeklyStand: Story = {
+    parameters: { msw: { handlers: fixedStand('WEEKLY') } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findAllByRole('button', { name: /Beratungsfälle in KW/ })).toHaveLength(CHART_WEEKS);
+        await expect(canvas.getByText(/^Zahlen bis einschließlich 01\.11\.2026\./)).toBeVisible();
+    },
+};
 export const Live: Story = { parameters: { msw: { handlers: fixedStand('LIVE') } } };
 export const WithSuppressedCentre: Story = {
     parameters: {
