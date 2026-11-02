@@ -358,6 +358,20 @@ describe('Statistic page', () => {
             expect(labels.filter((label) => /Thema vor 6 Monaten/.test(label))).toHaveLength(0);
         });
 
+        it('describes an older topic month without calling it this month', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 6 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const older = screen
+                .getAllByRole('menuitemradio')
+                .find((option) => (option.textContent ?? '').includes('Thema vor 5 Monaten'));
+            expect(older).toBeDefined();
+            expect(older).not.toHaveTextContent('in diesem Monat');
+        });
+
         it('drops topic months beyond a shorter configured window', async () => {
             dashboardMock.mockResolvedValue({ ...response, topicMonths: 3 });
             renderStatistic();

@@ -844,7 +844,7 @@ const withMetricMenuDescription = (option: CardMenuOption): CardMenuOption => ({
     description:
         option.description ||
         metricMenuDescriptionByKey[option.key] ||
-        'Zeigt, welches Thema in diesem Monat die Beratung geprägt hat.',
+        'Zeigt, welches Thema in diesem Zeitraum die Beratung geprägt hat.',
 });
 
 const formatIntegerMetric = (value: number) => value.toLocaleString('de-DE');
