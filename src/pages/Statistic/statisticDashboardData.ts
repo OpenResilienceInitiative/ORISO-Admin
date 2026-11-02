@@ -4,6 +4,7 @@ import type {
     AdminDashboardTarget,
     StatisticSnapshotInterval,
 } from '../../api/statistic/getDashboardStatistics';
+import { conversationPeriodOptions } from './statisticConstants';
 import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
 
 /**
@@ -74,7 +75,9 @@ export interface StatisticData {
     generatedAt: string | null;
     /** How often this role gets a new stand. */
     snapshotInterval: StatisticSnapshotInterval;
-    /** "Now" for weeks and months: a stand is read from its own time, live numbers from today. Null before loading. */
+    /** The newest full day of a fixed stand (ISO date); null when live. */
+    dataUntil: string | null;
+    /** "Now" for weeks and months: a stand is read from its newest full day, live numbers from today. Null before loading. */
     referenceDate: Date | null;
 }
 
@@ -212,13 +215,14 @@ export const buildCaseWeekOverview = (caseCharts: number[][], now: Date): CaseCh
 /** German two-letter code of today's weekday, used as default-selected chart bar. */
 export const getTodayDayCode = (now: Date): string => caseChartDayCodes[(now.getDay() + 6) % 7];
 
-const buildCaseChartValues = (
-    dailyNewSessions: AdminDashboardTarget['dailyNewSessions'],
-    now: Date,
-    chartWeeks: number,
-): number[][] => {
+const buildCaseChartValues = (target: AdminDashboardTarget, now: Date, chartWeeks: number): number[][] => {
+    // A weekly stand has no single days: each week's count lies on its first slot, and only the week
+    // overview, which adds up a week, is offered.
     const countsByDate: Record<string, number> = {};
-    dailyNewSessions.forEach(({ date, count }) => {
+    [
+        ...target.dailyNewSessions,
+        ...(target.weeklyNewSessions ?? []).map(({ weekStart, count }) => ({ date: weekStart, count })),
+    ].forEach(({ date, count }) => {
         countsByDate[date] = (countsByDate[date] || 0) + count;
     });
 
@@ -311,7 +315,7 @@ const buildTargetStatistics = (
     return {
         suppressed: false,
         enquiriesPreviousMonth: target.metrics?.enquiriesPreviousMonth ?? null,
-        caseCharts: buildCaseChartValues(target.dailyNewSessions, now, windows.chartWeeks),
+        caseCharts: buildCaseChartValues(target, now, windows.chartWeeks),
         conversation: buildConversationValues(target.sessionCountsByPeriod, target.groupChatCountsByPeriod),
         metrics: {
             activeAgencies: target.targetType === 'AGENCY' ? 1 : agencyRowCount || null,
@@ -369,29 +373,44 @@ export const emptyStatisticData = (): StatisticData => ({
     topicMonths: DEFAULT_TOPIC_MONTHS,
     generatedAt: null,
     snapshotInterval: 'LIVE',
+    dataUntil: null,
     referenceDate: null,
 });
 
-/**
- * The time of a stand as a local date with the fields of German time, the zone of its cutoff, so a
- * browser elsewhere still picks the same week and month as the "Stand" line shows.
- */
-const readStandTime = (generatedAt: string, fallback: Date): Date => {
-    const standTime = new Date(generatedAt);
-    if (Number.isNaN(standTime.getTime())) return fallback;
+/** The newest full day of a stand as a local date, so a browser elsewhere picks the same week and month. */
+const readStandDay = (dataUntil: string | null, fallback: Date): Date => {
+    const [year, month, day] = (dataUntil ?? '').split('-').map(Number);
+    return year && month && day ? new Date(year, month - 1, day) : fallback;
+};
 
-    const parts = new Intl.DateTimeFormat('en-US', {
+/** A stand's day, taken from the string itself so no time zone can move it to another day. */
+export const formatStandDay = (dataUntil: string, language: string): string => {
+    const [year, month, day] = dataUntil.split('-').map(Number);
+    return new Intl.DateTimeFormat(language, {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-        hourCycle: 'h23',
-        timeZone: 'Europe/Berlin',
-    }).formatToParts(standTime);
-    const field = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+        timeZone: 'UTC',
+    }).format(new Date(Date.UTC(year, month - 1, day)));
+};
 
-    return new Date(field('year'), field('month') - 1, field('day'), field('hour'), field('minute'));
+/**
+ * The periods of the conversation chart. A fixed stand has no "today", and its newest full day goes
+ * by its date, because "yesterday" is wrong on any later reading. A weekly stand has no single days.
+ */
+export const buildConversationPeriodOptions = (
+    snapshotInterval: StatisticSnapshotInterval,
+    dataUntil: string | null,
+    language: string,
+): Array<PeriodOption<ConversationPeriodKey>> => {
+    if (snapshotInterval === 'LIVE') return conversationPeriodOptions;
+    return conversationPeriodOptions
+        .filter(({ key }) => key !== 'today' && (key !== 'yesterday' || snapshotInterval === 'DAILY'))
+        .map((option) =>
+            option.key === 'yesterday' && dataUntil
+                ? { ...option, label: formatStandDay(dataUntil, language) }
+                : option,
+        );
 };
 
 export const buildStatisticData = (
@@ -404,7 +423,8 @@ export const buildStatisticData = (
     }
 
     const snapshotInterval = response.snapshotInterval ?? 'LIVE';
-    const now = snapshotInterval === 'LIVE' ? today : readStandTime(response.generatedAt, today);
+    const dataUntil = snapshotInterval === 'LIVE' ? null : response.dataUntil ?? null;
+    const now = snapshotInterval === 'LIVE' ? today : readStandDay(dataUntil, today);
 
     const windows: TimeWindows = {
         chartWeeks: resolveWindow(response.chartWeeks, DEFAULT_CHART_WEEKS, MAX_CHART_WEEKS),
@@ -438,7 +458,7 @@ export const buildStatisticData = (
         .filter((target): target is FilterTarget => Boolean(target));
 
     const suppressionDisabled = Boolean(response.suppressionDisabled);
-    const standFields = { generatedAt: response.generatedAt, snapshotInterval, referenceDate: now };
+    const standFields = { generatedAt: response.generatedAt, snapshotInterval, dataUntil, referenceDate: now };
 
     if (response.scope === 'PLATFORM') {
         // The backend's platform total is suppressed only when the platform itself is below its

@@ -43,6 +43,7 @@ import {
 import {
     buildCaseChartDateLabels,
     buildCasePeriodOptions,
+    buildConversationPeriodOptions,
     buildCaseWeekOverview,
     CASE_WEEK_OVERVIEW_KEY,
     caseChartDayCodes,
@@ -1226,6 +1227,7 @@ const getPersonalizedMetricCard = (
     activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
     topicMonths: number,
+    isFixedStand: boolean,
 ): StatisticCardDefinition => {
     const displayCard = getDisplayMetricCard(card, metricOverrides);
 
@@ -1236,7 +1238,21 @@ const getPersonalizedMetricCard = (
         menuLabel: 'Meine Kennzahl',
         menuOptions: [...dashboardMetricOptionsByScope[activeScope], ...buildTopicMetricOptions(topicMonths)]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
+            .filter((option) => !isFixedStand || option.key !== 'activeConversations')
             .map((option) => withMetricMenuDescription(applyMenuOptionOverride(option, metricOverrides, option.key))),
+    };
+};
+
+/** A fixed stand holds no "active today", so its menus do not offer it. */
+const withoutActiveToday = (dashboard: ScopeDashboardBlueprint): ScopeDashboardBlueprint => {
+    const withoutOption = (card: StatisticCardBlueprint): StatisticCardBlueprint => ({
+        ...card,
+        menuOptions: card.menuOptions?.filter((option) => option.key !== 'activeConversations'),
+    });
+    return {
+        ...dashboard,
+        topCards: dashboard.topCards.map(withoutOption),
+        communicationCards: dashboard.communicationCards.map(withoutOption),
     };
 };
 
@@ -2052,7 +2068,12 @@ export const Statistic = () => {
     // A fixed stand is read from its own time: its "this week" must not slide with today.
     const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
     const todayDayCode = useMemo(() => getTodayDayCode(chartNow), [chartNow]);
-    const dashboard = dashboardByScope[activeScope];
+    const isFixedStand = statisticData.snapshotInterval !== 'LIVE';
+    const isWeeklyStand = statisticData.snapshotInterval === 'WEEKLY';
+    const dashboard = useMemo(
+        () => (isFixedStand ? withoutActiveToday(dashboardByScope[activeScope]) : dashboardByScope[activeScope]),
+        [activeScope, isFixedStand],
+    );
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
     const filterSearch = filterSearchByScope[activeScope];
@@ -2095,7 +2116,13 @@ export const Statistic = () => {
         () => [
             ...dashboard.topCards.map((card) => {
                 const localized = localizeStatisticCard(
-                    getPersonalizedMetricCard(card, activeScope, metricOverrides, statisticData.topicMonths),
+                    getPersonalizedMetricCard(
+                        card,
+                        activeScope,
+                        metricOverrides,
+                        statisticData.topicMonths,
+                        isFixedStand,
+                    ),
                     translate,
                     locale,
                 );
@@ -2116,12 +2143,24 @@ export const Statistic = () => {
         () => buildConversationByPeriodFromFilterStats(filteredStats),
         [filteredStats],
     );
-    // a period beyond a shortened window falls back to this week
-    const selectedCasePeriod = filteredCaseCharts[selectedCasePeriodByScope[activeScope]]
-        ? selectedCasePeriodByScope[activeScope]
-        : casePeriodKeyForWeek(0);
+    // a period beyond a shortened window falls back to this week; a weekly stand has only week bars
+    let selectedCasePeriod = casePeriodKeyForWeek(0);
+    if (isWeeklyStand) {
+        selectedCasePeriod = CASE_WEEK_OVERVIEW_KEY;
+    } else if (filteredCaseCharts[selectedCasePeriodByScope[activeScope]]) {
+        selectedCasePeriod = selectedCasePeriodByScope[activeScope];
+    }
     const isWeekOverview = selectedCasePeriod === CASE_WEEK_OVERVIEW_KEY;
-    const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
+    const conversationPeriods = useMemo(
+        () => buildConversationPeriodOptions(statisticData.snapshotInterval, statisticData.dataUntil, locale),
+        [locale, statisticData.dataUntil, statisticData.snapshotInterval],
+    );
+    // a period the current stand does not hold falls back to its newest one
+    const selectedConversationPeriod = conversationPeriods.some(
+        ({ key }) => key === selectedConversationPeriodByScope[activeScope],
+    )
+        ? selectedConversationPeriodByScope[activeScope]
+        : conversationPeriods[0].key;
     const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
     const caseChart = filteredCaseCharts[selectedCasePeriod] ?? [];
     const conversationData = filteredConversationByPeriod[selectedConversationPeriod];
@@ -2139,12 +2178,19 @@ export const Statistic = () => {
     const caseAxisMax = useMemo(() => getCaseAxisMax(maxCaseValue), [maxCaseValue]);
     const yAxisLabels = useMemo(() => getCaseAxisLabels(maxCaseValue, locale), [locale, maxCaseValue]);
     const localizedCasePeriodOptions = useMemo(
-        () => localizePeriodOptions(buildCasePeriodOptions(chartWeeks), translate, locale),
-        [chartWeeks, locale, translate],
+        () =>
+            localizePeriodOptions(
+                buildCasePeriodOptions(chartWeeks).filter(
+                    ({ key }) => !isWeeklyStand || key === CASE_WEEK_OVERVIEW_KEY,
+                ),
+                translate,
+                locale,
+            ),
+        [chartWeeks, isWeeklyStand, locale, translate],
     );
     const localizedConversationPeriodOptions = useMemo(
-        () => localizePeriodOptions(conversationPeriodOptions, translate, locale),
-        [locale, translate],
+        () => localizePeriodOptions(conversationPeriods, translate, locale),
+        [conversationPeriods, locale, translate],
     );
     const chartAnimationKey = `${activeScope}-${selectedCasePeriod}-${effectiveStatisticTargetIds.join('-')}`;
     const donutAnimationKey = `${activeScope}-${selectedConversationPeriod}-${effectiveStatisticTargetIds.join('-')}`;
@@ -2318,7 +2364,7 @@ export const Statistic = () => {
                                 {statisticData.generatedAt && !hasStatisticLoadError && (
                                     <StatisticStandNotice
                                         className="statisticDashboard__notice statisticDashboard__notice--info"
-                                        generatedAt={statisticData.generatedAt}
+                                        dataUntil={statisticData.dataUntil}
                                         snapshotInterval={statisticData.snapshotInterval}
                                     />
                                 )}
@@ -2418,6 +2464,7 @@ export const Statistic = () => {
                                                     activeScope,
                                                     metricOverrides,
                                                     statisticData.topicMonths,
+                                                    isFixedStand,
                                                 ),
                                                 translate,
                                                 locale,

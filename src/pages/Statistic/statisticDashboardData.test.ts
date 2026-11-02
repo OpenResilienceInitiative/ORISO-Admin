@@ -224,7 +224,13 @@ describe('statisticDashboardData', () => {
 
         it('reads a stand from the time it was calculated, not from today', () => {
             const data = buildStatisticData(
-                { generatedAt: standAt, scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [topicRow] },
+                {
+                    generatedAt: standAt,
+                    dataUntil: standAt.slice(0, 10),
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [topicRow],
+                },
                 { ...emptyLookups, topicNamesById: { '100': 'Schulden' } },
                 readLater,
             );
@@ -234,26 +240,67 @@ describe('statisticDashboardData', () => {
             expect(data.snapshotInterval).toBe('WEEKLY');
         });
 
-        it('reads a stand in German time, wherever the browser is', () => {
+        it('reads a stand from its newest full day, wherever the browser is', () => {
             vi.stubEnv('TZ', 'America/Los_Angeles');
             try {
-                const { referenceDate } = buildStatisticData(
-                    { generatedAt: '2026-11-02T05:00:00Z', scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [] },
+                const { referenceDate, dataUntil } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-02T05:00:00Z',
+                        dataUntil: '2026-11-01',
+                        scope: 'TENANT',
+                        snapshotInterval: 'WEEKLY',
+                        targets: [],
+                    },
                     emptyLookups,
                     readLater,
                 );
 
-                expect(new Date('2026-11-02T05:00:00Z').getDate()).toBe(1);
-                expect(referenceDate?.getDate()).toBe(2);
-                expect(referenceDate?.getHours()).toBe(6);
+                expect(dataUntil).toBe('2026-11-01');
+                expect(referenceDate?.getFullYear()).toBe(2026);
+                expect(referenceDate?.getMonth()).toBe(10);
+                expect(referenceDate?.getDate()).toBe(1);
             } finally {
                 vi.unstubAllEnvs();
             }
         });
 
+        it('puts the weeks of a weekly stand into the week overview', () => {
+            const { statisticsById, referenceDate } = buildStatisticData(
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: '2026-11-01',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    chartWeeks: 2,
+                    targets: [
+                        {
+                            ...topicRow,
+                            dailyNewSessions: [],
+                            weeklyNewSessions: [
+                                { weekStart: '2026-10-19', count: 4 },
+                                { weekStart: '2026-10-26', count: 9 },
+                            ],
+                        },
+                    ],
+                },
+                emptyLookups,
+                readLater,
+            );
+
+            const bars = buildCaseWeekOverview(statisticsById['agency-11'].caseCharts, referenceDate as Date);
+            expect(bars.map((bar) => bar.value)).toEqual([4, 9]);
+            expect(bars[1].isDefaultSelected).toBe(true);
+        });
+
         it('falls back to today when a stand has no readable time', () => {
             const { referenceDate } = buildStatisticData(
-                { generatedAt: 'not a date', scope: 'TENANT', snapshotInterval: 'WEEKLY', targets: [] },
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: 'not a date',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [],
+                },
                 emptyLookups,
                 readLater,
             );
