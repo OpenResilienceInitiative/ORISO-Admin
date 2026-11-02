@@ -2111,7 +2111,14 @@ export const Statistic = () => {
         [allTargetsSuppressed, filteredStats],
     );
     const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
-    const showEmptyHero = isDashboardEmpty && !isStatisticLoading && !hasStatisticLoadError && !allTargetsSuppressed;
+    const hasTargets = Object.keys(statisticData.statisticsById).length > 0;
+    // A stand with zeros is a real statement, so it shows them like any other value.
+    const showEmptyHero =
+        isDashboardEmpty &&
+        !(isFixedStand && hasTargets) &&
+        !isStatisticLoading &&
+        !hasStatisticLoadError &&
+        !allTargetsSuppressed;
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
