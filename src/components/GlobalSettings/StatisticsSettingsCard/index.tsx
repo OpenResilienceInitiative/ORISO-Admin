@@ -123,16 +123,17 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                     <div className={styles.fields}>
                         {data?.settings.map((setting) => (
                             <div key={setting.key} className={styles.setting}>
-                                <div className={styles.field}>
-                                    <MuiSelectField
-                                        name={setting.key}
-                                        label={`globalSettings.statistics.setting.${setting.key}`}
-                                        options={setting.options.map((option) => ({
-                                            value: option,
-                                            label: statisticsSettingValueLabel(setting.key, option, t),
-                                        }))}
-                                        required
-                                    />
+                                <MuiSelectField
+                                    name={setting.key}
+                                    label={`globalSettings.statistics.setting.${setting.key}`}
+                                    options={setting.options.map((option) => ({
+                                        value: option,
+                                        label: statisticsSettingValueLabel(setting.key, option, t),
+                                    }))}
+                                    required
+                                />
+                                <div className={styles.sinceRow}>
+                                    <p className={styles.since}>{sinceText(setting.effectiveFrom, t, i18n.language)}</p>
                                     {isStandSetting(setting.key) && (
                                         <Tooltip
                                             describeChild
@@ -142,7 +143,6 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                                         >
                                             <IconButton
                                                 aria-label={t('globalSettings.statistics.stand.helpLabel')}
-                                                className={styles.help}
                                                 size="small"
                                             >
                                                 <InfoOutlinedIcon fontSize="small" />
@@ -150,7 +150,6 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                                         </Tooltip>
                                     )}
                                 </div>
-                                <p className={styles.since}>{sinceText(setting.effectiveFrom, t, i18n.language)}</p>
                             </div>
                         ))}
                     </div>

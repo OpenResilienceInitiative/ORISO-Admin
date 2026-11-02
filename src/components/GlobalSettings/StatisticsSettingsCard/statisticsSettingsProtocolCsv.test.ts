@@ -53,7 +53,7 @@ describe('buildStatisticsSettingsProtocolCsv', () => {
         );
 
         expect(csv).toContain(
-            'Statistik-Stand für die Plattform;Täglich um 6:00 Uhr;Wöchentlich, montags um 6:00 Uhr;platform.admin;2026-11-02T10:00',
+            'Stand für die Plattform;Täglich um 6 Uhr;Wöchentlich, Mo. 6 Uhr;platform.admin;2026-11-02T10:00',
         );
     });
 

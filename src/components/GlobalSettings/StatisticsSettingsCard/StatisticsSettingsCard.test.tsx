@@ -161,9 +161,9 @@ it('offers one labelled stand field each for centres, Träger and the platform (
     server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
     showCard();
 
-    expect(await screen.findByLabelText(/^Statistik-Stand für Beratungsstellen/)).toHaveValue('Täglich um 6:00 Uhr');
-    expect(screen.getByLabelText(/^Statistik-Stand für Träger/)).toHaveValue('Wöchentlich, montags um 6:00 Uhr');
-    expect(screen.getByLabelText(/^Statistik-Stand für die Plattform/)).toHaveValue('Live (bei jedem Laden)');
+    expect(await screen.findByLabelText(/^Stand für Beratungsstellen/)).toHaveValue('Täglich um 6 Uhr');
+    expect(screen.getByLabelText(/^Stand für Träger/)).toHaveValue('Wöchentlich, Mo. 6 Uhr');
+    expect(screen.getByLabelText(/^Stand für die Plattform/)).toHaveValue('Live (bei jedem Laden)');
     expect(screen.getAllByText('Gilt seit 02.11.2026')).toHaveLength(2);
 });
 
@@ -194,9 +194,9 @@ it('saves a chosen stand', async () => {
     showCard();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
-    await userEvent.click(screen.getByLabelText(/^Statistik-Stand für Beratungsstellen/));
+    await userEvent.click(screen.getByLabelText(/^Stand für Beratungsstellen/));
     await userEvent.click(
-        within(await screen.findByRole('listbox')).getByRole('option', { name: 'Wöchentlich, montags um 6:00 Uhr' }),
+        within(await screen.findByRole('listbox')).getByRole('option', { name: 'Wöchentlich, Mo. 6 Uhr' }),
     );
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 

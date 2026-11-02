@@ -14,20 +14,11 @@
     flex-direction: column;
 }
 
-.field {
+.sinceRow {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: space-between;
     gap: mui.$mui-unit;
-
-    > :first-child {
-        min-width: 0;
-        flex: 1;
-    }
-}
-
-.help {
-    flex: none;
-    margin-top: mui.$mui-unit;
 }
 
 .since {
