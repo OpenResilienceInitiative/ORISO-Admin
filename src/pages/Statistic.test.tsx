@@ -39,7 +39,7 @@ const fetchDataMock = vi.mocked(fetchData);
 const periodCounts = (total: number) => ({
     today: 0,
     yesterday: 0,
-    thisWeek: 1,
+    thisWeek: total ? 1 : 0,
     total,
     thisYear: total,
     lastYear: 0,
@@ -179,6 +179,27 @@ describe('Statistic page', () => {
             fireEvent.click(await screen.findByRole('button', { name: 'Zeitraum für Gesprächstyp' }));
             return screen.getAllByRole('menuitemradio').map((option) => option.textContent);
         };
+
+        it('shows a stand without any case as zeros, with no empty-state hero', async () => {
+            const noCases = {
+                ...response.targets[0],
+                metrics: {
+                    enquiriesCurrentMonth: 0,
+                    enquiriesPreviousMonth: 0,
+                    activeCases: 0,
+                    activeConversationsToday: null,
+                    groupChatsTotal: 0,
+                },
+                sessionCountsByPeriod: periodCounts(0),
+                groupChatCountsByPeriod: periodCounts(0),
+            };
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [noCases] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+            expect(screen.getAllByText('0').length).toBeGreaterThan(0);
+        });
 
         it('says up to which day the numbers go and when new ones come', async () => {
             dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
