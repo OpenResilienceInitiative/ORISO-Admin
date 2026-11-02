@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({ useAgencyData: vi.fn(), mutate: vi.fn() }));
 
 vi.mock('../../../../hooks/useAgencyData', () => ({ useAgencyData: mocks.useAgencyData }));
 vi.mock('../../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate }),
+    useAgencyUpdate: () => ({ mutateAsync: mocks.mutate }),
 }));
 
 import { AgencyPermissionsSettings } from './AgencyPermissionsSettings';
@@ -32,6 +32,10 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
     beforeEach(() => {
         mocks.useAgencyData.mockReset();
         mocks.mutate.mockReset();
+        mocks.mutate.mockImplementation(async (patch) => ({
+            ...mocks.useAgencyData().data,
+            settings: { ...mocks.useAgencyData().data.settings, ...patch.settings },
+        }));
     });
 
     it('derives an independent deactivate suggestion from the stored agency value', async () => {
@@ -61,7 +65,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('saves an agency suggestion and reapplies tenant constraints to the payload', async () => {
+    it('saves only the changed agency feature without replaying sibling values', async () => {
         const user = userEvent.setup();
         mocks.useAgencyData.mockReturnValue(
             agency({
@@ -77,15 +81,19 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
             within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
         );
 
-        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         const payload = mocks.mutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings.featureThreadsOneOnOneEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBe(false);
+        expect(payload.settings.featureVideoCallsEnabled).toBeUndefined();
+        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBeUndefined();
         expect(payload.settings.agencyAdminControls).toBeUndefined();
-        expect(
-            within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }),
-        ).toBeDisabled();
+        await waitFor(() =>
+            expect(
+                within(control).getByRole('button', {
+                    name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i,
+                }),
+            ).toBeEnabled(),
+        );
     });
 
     it('projects tenant-enforced-on values as locked active controls', () => {

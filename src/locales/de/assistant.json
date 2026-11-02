@@ -31,5 +31,11 @@
     "tenants.permissions.asker.channels.browserSelfHelp": "Browser für Selbsthilfegruppen",
     "settings.assistant.inherit": "Standardeinstellung verwenden",
     "settings.assistant.inheritedIcon": "Übernommenes Symbol",
-    "settings.assistant.loadError": "Die Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    "settings.assistant.loadError": "Die Einstellungen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "tenants.permissions.asker.collection.title": "Wo eine E-Mail-Adresse hinterlassen werden darf",
+    "tenants.permissions.asker.collection.agencyCounselling": "E-Mail-Adresse bei Beratung",
+    "tenants.permissions.asker.collection.liveChat": "E-Mail-Adresse im Live-Chat",
+    "tenants.permissions.asker.collection.selfHelp": "E-Mail-Adresse in Selbsthilfegruppen",
+    "tenants.permissions.asker.collection.masterOff": "Zuerst E-Mail-Adressen für das Konto erlauben. Diese Auswahl bleibt erhalten.",
+    "tenants.permissions.asker.collection.description": "Diese Einstellungen erlauben die Erfassung. Sie machen eine Adresse nicht verpflichtend und ändern keine Benachrichtigungen."
 }
