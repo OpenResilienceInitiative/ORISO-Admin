@@ -1,16 +1,13 @@
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
-import { useTranslation } from 'react-i18next';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardGrid } from '../../CardGrid';
-import { CardEditable } from '../../CardEditable';
-import { FormSwitchField } from '../../FormSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { EditingRightsCard } from './components/EditingRightsCard';
 import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
@@ -52,7 +49,6 @@ const setStoredAppearanceAllowed = (value: boolean) => {
 };
 
 export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsProps) => {
-    const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = resolveTenantId(tenantId, data?.id);
     const { can } = useUserPermissions();
@@ -66,13 +62,6 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
         data?.settings?.tenantAdminControls?.allowedPermissionToggles?.appearance ??
         getStoredAppearanceAllowed();
     const appearanceEditable = appearanceAllowed !== false;
-    const tenantAdminControlsInitialValues = {
-        tenantAdminControls: {
-            allowedPermissionToggles: {
-                appearance: appearanceEditable,
-            },
-        },
-    };
     const onSaveTenantAdminControls = (
         formData: Partial<AppConfigInterface>,
         options?: Parameters<typeof updateSettings>[1],
@@ -117,37 +106,11 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                 )}
                 {showMasterData && (
                     <CardGrid.Item>
-                        <CardEditable
-                            key={`tenant-master-data-editable-${appearanceEditable}`}
+                        <EditingRightsCard
                             allowEdit={isSuperAdmin}
-                            initialValues={tenantAdminControlsInitialValues}
-                            titleKey="settings.masterData.editable.title"
-                            subTitle={t<string>('settings.masterData.editable.subtitle')}
+                            editable={appearanceEditable}
                             onSave={onSaveTenantAdminControls}
-                            variant="dialog"
-                            editButtonPlacement="footer"
-                            headerIcon={<ManageAccountsOutlinedIcon />}
-                        >
-                            <FormSwitchField
-                                label={
-                                    <span className={styles.masterDataToggleCopy}>
-                                        <span className={styles.masterDataToggleTitle}>
-                                            {t('settings.masterData.editable.toggle')}
-                                        </span>
-                                        <span className={styles.masterDataToggleDescription}>
-                                            {t('settings.masterData.editable.toggle.description')}
-                                        </span>
-                                    </span>
-                                }
-                                name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
-                                inline
-                                disableLabels
-                                disabled={!isSuperAdmin}
-                                className={styles.masterDataToggle}
-                                switchLabel={t('settings.masterData.editable.toggle')}
-                                switchVariant="m3"
-                            />
-                        </CardEditable>
+                        />
                     </CardGrid.Item>
                 )}
             </CardGrid>

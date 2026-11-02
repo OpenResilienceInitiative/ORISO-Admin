@@ -1,5 +1,26 @@
 .checkGroup {
     margin-bottom: 16px;
+
+    /* In a panel the switch lines up at the panel's edge instead of following the label's length. */
+    :global(.ant-form-item-label) {
+        flex: 1 1 auto;
+    }
+
+    :global(.ant-form-item-control) {
+        flex: 0 0 auto;
+        width: auto;
+    }
+}
+
+.column {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 16px;
+
+    > section:last-child {
+        flex: 1 1 auto;
+    }
 }
 
 .checkInfo {

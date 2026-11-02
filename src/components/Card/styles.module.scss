@@ -11,10 +11,18 @@
    mirrors the still-shadowed .chatTypeCard so both card systems read the same. */
 
 .card {
+    position: relative;
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
     border-radius: 28px;
     box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+}
+
+.fillContainer {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
 }
 
 .contentClassName {

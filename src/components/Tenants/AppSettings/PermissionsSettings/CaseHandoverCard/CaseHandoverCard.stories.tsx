@@ -174,7 +174,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         const canvas = within(canvasElement);
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))/i,
+                name: /(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))/i,
             }),
         ).toBeVisible();
         await expect(canvas.getByDisplayValue(/1 h 30 min/)).toBeVisible();
@@ -182,7 +182,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         await userEvent.click(canvas.getByRole('tab', { name: 'Geplant verhindert' }));
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))/i,
+                name: /(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))/i,
             }),
         ).toBeVisible();
     },
@@ -212,7 +212,7 @@ export const RetiredCodesFromTenantService: Story = {
         await expect(
             canvas
                 .getByRole('button', {
-                    name: /(Beratende Person|advising person).*(Weitere Informationen|More information)/i,
+                    name: /(beratenden Person|the counsellor).*(Weitere Informationen|More information)/i,
                 })
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
@@ -234,7 +234,7 @@ export const ReadOnly: Story = {
         );
         await expect(
             canvas.getByRole('button', {
-                name: /(Zustimmung Ratsuchende Person|Consent from advice seeker).*(Policy-Auswahl öffnen|Open policy choices)/i,
+                name: /(Zustimmung der ratsuchenden Person|Consent from the advice seeker).*(Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices)/i,
             }),
         ).toBeDisabled();
     },
@@ -335,16 +335,24 @@ export const PolicyMenuOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
+            canvas.getByRole('button', {
+                name: /^(On \(requirement, cannot be changed\)|An \(Vorgabe, nicht änderbar\))$/i,
+            }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
+            canvas.getByRole('button', {
+                name: /^(Off \(requirement, cannot be changed\)|Aus \(Vorgabe, nicht änderbar\))$/i,
+            }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Activation \(adjustable\)|Aktivierung \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(On \(recommendation, can be changed\)|An \(Empfehlung, änderbar\))$/i,
+            }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Off \(recommendation, can be changed\)|Aus \(Empfehlung, änderbar\))$/i,
+            }),
         ).toBeVisible();
         await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
     },
@@ -369,11 +377,11 @@ export const AdviceSeekerConsentMenuOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const expectedLabels = [
-            /^(Consent opt-in \(enforced\)|Zustimmung Opt-In \(Vorgabe\))$/i,
-            /^(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))$/i,
-            /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i,
-            /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i,
-            /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
+            /^(Only after consent \(requirement\)|Erst nach Zustimmung \(Vorgabe\))$/i,
+            /^(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))$/i,
+            /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
             /^(More information|Weitere Informationen)$/i,
         ];
 
@@ -406,18 +414,20 @@ export const ConsentMenuWithClientImpact: Story = {
     },
     play: async ({ canvas }) => {
         const optOut = canvas.getByRole('button', {
-            name: /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
+            name: /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
         });
-        await expect(optOut).toHaveAccessibleDescription(
-            /(Stillschweigend.*sofort.*widersprechen|Silent.*immediately.*object)/i,
-        );
+        await expect(optOut).toHaveAccessibleDescription(/(sofort.*widersprechen|immediately.*object)/i);
         await expect(
-            canvas.getByRole('button', { name: /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            }),
         ).toHaveAccessibleDescription(/(vorher gefragt|asked first)/i);
         await expect(
-            canvas.getByRole('button', { name: /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            }),
         ).toHaveAccessibleDescription(/(nicht gefragt|not asked)/i);
-        await expect(canvas.getAllByText(/(Stillschweigend|Silent):/)[0]).toBeVisible();
+        await expect(canvas.getAllByText(/(Der Zugriff beginnt sofort|Access starts immediately)/)[0]).toBeVisible();
     },
 };
 
@@ -485,15 +495,25 @@ export const TenantReasonLoadFailed: Story = {
             .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
         await expect(row).not.toBeNull();
         if (!row) throw new Error('Loaded canonical master missing');
-        await userEvent.click(within(row).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/ }));
+        await userEvent.click(
+            within(row).getByRole('button', {
+                name: /Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices/,
+            }),
+        );
         await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
+            canvas.getByRole('button', {
+                name: /^(On \(requirement, cannot be changed\)|An \(Vorgabe, nicht änderbar\))$/i,
+            }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
+            canvas.getByRole('button', {
+                name: /^(Off \(requirement, cannot be changed\)|Aus \(Vorgabe, nicht änderbar\))$/i,
+            }),
         ).toBeVisible();
         await userEvent.click(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Off \(recommendation, can be changed\)|Aus \(Empfehlung, änderbar\))$/i,
+            }),
         );
         await expect(args.onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
             value: false,

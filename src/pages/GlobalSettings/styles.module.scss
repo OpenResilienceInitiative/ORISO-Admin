@@ -3,26 +3,6 @@
 /* ORISO-Admin#735: the document master data card has four field groups, so it takes the
    full width of the grid rather than sharing a row. */
 
-.loginFunctionCard {
-    width: 100%;
-    min-height: 0;
-}
-
-.checkGroup {
-    margin-top: 0;
-    margin-bottom: 0;
-
-    :global(.MuiFormControlLabel-label) {
-        color: #1b1b1c;
-        font-family: var(--m3-body-font-family);
-        font-size: 18px;
-        font-weight: 400;
-        letter-spacing: 0;
-        line-height: 28px;
-        white-space: normal;
-    }
-}
-
 .checkInfo {
     width: calc(100% - 71px);
     margin-top: 4px;

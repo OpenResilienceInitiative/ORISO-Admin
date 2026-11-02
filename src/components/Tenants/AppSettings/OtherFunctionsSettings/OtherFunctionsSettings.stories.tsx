@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { OtherFunctionsSettings } from './index';
@@ -45,4 +46,9 @@ type Story = StoryObj<typeof meta>;
 /** Träger admin view: "Allow group chat" followed by the Supervision block (master + seven feature switches). */
 export const TenantView: Story = {
     parameters: { msw: { handlers: handlers({ featureGroupChatV2Enabled: true, featureSupervisionEnabled: true }) } },
+};
+
+export const HelpSlideshow: Story = {
+    ...TenantView,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

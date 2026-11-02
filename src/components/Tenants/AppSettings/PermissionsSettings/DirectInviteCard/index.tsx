@@ -4,6 +4,7 @@ import { Card } from '../../../../Card';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
+import { directInviteHelp } from '../help';
 import styles from './styles.module.scss';
 
 /**
@@ -107,7 +108,7 @@ export const DirectInviteCard = ({
     };
 
     return (
-        <Card titleKey="tenants.permissions.directInvite.title" dataTestId="direct-invite-card">
+        <Card titleKey="tenants.permissions.directInvite.title" dataTestId="direct-invite-card" help={directInviteHelp}>
             <p className={styles.intro}>{t('tenants.permissions.directInvite.description')}</p>
             {rows()}
             <p className={styles.callsNote}>{t('tenants.permissions.directInvite.callsNote')}</p>

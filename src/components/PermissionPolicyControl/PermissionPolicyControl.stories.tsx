@@ -67,10 +67,12 @@ const expectActionTones = async (canvasElement: HTMLElement, currentValue: boole
     // The menu focuses its first pill on open; the focus state layer is a
     // color-mix on top of the tone, so drop focus before reading the tone.
     (document.activeElement as HTMLElement | null)?.blur();
-    const activate = canvas.getAllByRole('button', { name: /^(?:Activation|Aktivierung)\b/i });
-    const deactivate = canvas.getAllByRole('button', { name: /^(?:Deactivation|Deaktivierung)\b/i });
+    const activate = canvas.getAllByRole('button', { name: /^(?:On|An)\b/i });
+    const deactivate = canvas.getAllByRole('button', { name: /^(?:Off|Aus)\b/i });
     const info = canvas.getByRole('button', { name: /More information|Weitere Informationen/i });
-    const closeAction = canvas.getByRole('button', { name: /Close policy choices|Policy-Auswahl schließen/i });
+    const closeAction = canvas.getByRole('button', {
+        name: /Close requirement or recommendation choices|Auswahl „Vorgabe oder Empfehlung“ schließen/i,
+    });
 
     await expect(activate.length).toBeGreaterThan(0);
     await expect(deactivate.length).toBe(activate.length);

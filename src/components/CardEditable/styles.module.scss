@@ -142,3 +142,8 @@
     order: 2;
     margin: auto -24px -24px;
 }
+
+/* A pinned note already takes the free space above the action row. */
+:global([data-admin-tile-note]) ~ .dialogFooterActions {
+    margin-top: 0;
+}

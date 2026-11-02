@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { legalTextHelp } from './help';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import { LegalText } from './index';
@@ -152,4 +154,11 @@ export const InformAdviceSeekersQuestion: Story = {
         await expect(within(dialog).getByRole('button', { name: 'Ja' })).toBeVisible();
         await expect(within(dialog).getByRole('button', { name: 'Nein' })).toBeVisible();
     },
+};
+
+/** The explanation behind the info button in the editor's title row. */
+export const HelpSlideshow: Story = {
+    args: { tileHelp: legalTextHelp },
+    parameters: { msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };
