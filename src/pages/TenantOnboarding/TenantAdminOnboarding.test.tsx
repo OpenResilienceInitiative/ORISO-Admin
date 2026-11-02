@@ -240,8 +240,8 @@ describe('TenantAdminOnboarding', () => {
         );
         const user = userEvent.setup();
         renderFlow(client);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
