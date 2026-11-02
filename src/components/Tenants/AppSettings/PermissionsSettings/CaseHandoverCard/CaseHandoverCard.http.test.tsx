@@ -285,6 +285,13 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
+/**
+ * Queries scoped to the card. These tests mount the whole permissions page; a
+ * `screen.getByRole` there computes the accessible name of every control on it,
+ * which made single tests take 10–23 s locally and time out on loaded CI runners.
+ */
+const withinCard = () => within(screen.getByTestId('case-handover-card'));
+
 const currentMasterButton = () => {
     const card = screen.getByTestId('case-handover-card');
     const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
@@ -298,7 +305,7 @@ const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
     await user.click(await masterButton());
     await user.click(
-        screen.getByRole('button', {
+        withinCard().getByRole('button', {
             name: i18n.t(`tenants.permissions.policy.${enabled ? 'activationSuggested' : 'deactivationSuggested'}`),
         }),
     );
@@ -445,7 +452,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
             await userEvent.setup().click(await masterButton());
             await userEvent
                 .setup()
-                .click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
+                .click(withinCard().getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
             expect(server.master).toMatchObject({ value, mode });
             expect(
