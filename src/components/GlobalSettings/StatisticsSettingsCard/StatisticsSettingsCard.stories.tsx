@@ -125,7 +125,7 @@ export const StandFields: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
 
-        const help = await canvas.findAllByRole('button', { name: /fester Stand|fixed stand/i });
+        const help = await canvas.findAllByRole('button', { name: /fester Stand|fixed snapshot/i });
         await expect(help).toHaveLength(3);
         await userEvent.hover(help[0]);
         await expect(await body.findByRole('tooltip')).toHaveTextContent(/24/);
