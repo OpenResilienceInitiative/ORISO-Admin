@@ -38,6 +38,10 @@ describe('statistics page design tokens', () => {
         expect(rule('.statisticDashboard__barTooltip')).not.toContain('--m3-on-primary');
     });
 
+    it('never uses the raw tenant accent as a text colour', () => {
+        expect(styles.match(/(^|\s)color: var\(--m3-primary\)/g) ?? []).toEqual([]);
+    });
+
     it('keeps every animation and transition short', () => {
         const motion = styles.split('\n').filter((line) => /^\s*(animation|transition)\b/.test(line));
         const tooLong = motion.filter((line) =>
