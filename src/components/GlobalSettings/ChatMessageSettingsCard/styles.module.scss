@@ -1,0 +1,34 @@
+.card {
+    width: 100%;
+}
+
+.section {
+    margin-bottom: 24px;
+}
+
+.sectionTitle {
+    margin: 0 0 4px;
+    color: var(--m3-on-surface, #1b1b1f);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sectionHelp {
+    margin: 0 0 12px;
+    color: var(--m3-on-surface-variant, #44474f);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.groupTitle {
+    margin: 12px 0 8px;
+    color: var(--m3-on-surface-variant, #44474f);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.formats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}

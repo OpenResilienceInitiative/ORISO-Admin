@@ -45,6 +45,12 @@ export interface AppConfigInterface {
     furtherCounsellingPostcodeMode?: FurtherCounsellingPostcodeMode;
     /** ORISO-Frontend#1876: reaction to two accepted conversations on the same topic. */
     topicDuplicateMode?: TopicDuplicateMode;
+    /** Formats the chat composer does not offer on this platform: comma-separated keys, empty = all offered. */
+    chatComposerDisabledFormats?: string | string[];
+    /** Widest chat message on desktop, in pixels. */
+    chatMessageMaxWidthDesktop?: string | number;
+    /** Characters above which a chat message collapses behind "show more"; 0 = never. */
+    chatMessageCollapseThreshold?: string | number;
     globalSmtpEnabled?: boolean;
     globalSmtpHost?: string;
     globalSmtpPort?: string;

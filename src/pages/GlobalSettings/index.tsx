@@ -32,6 +32,7 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
 import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettings/SupportEmailSettingsCard';
+import { ChatMessageSettingsCardContainer } from '../../components/GlobalSettings/ChatMessageSettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
 import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
@@ -117,6 +118,11 @@ export const GlobalLoginSettingsPage = () => {
                     <section className={styles.globalConfigCardSlot}>
                         <ThemeProvider theme={orisoMuiTheme}>
                             <TopicDuplicateSettingsCardContainer />
+                        </ThemeProvider>
+                    </section>
+                    <section className={styles.globalConfigCardSlot}>
+                        <ThemeProvider theme={orisoMuiTheme}>
+                            <ChatMessageSettingsCardContainer />
                         </ThemeProvider>
                     </section>
                     <section className={styles.globalConfigCardSlot}>
