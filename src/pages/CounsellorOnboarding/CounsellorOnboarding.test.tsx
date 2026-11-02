@@ -188,8 +188,8 @@ describe('CounsellorOnboarding', () => {
         );
         const user = userEvent.setup();
         renderFlow(client);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
         expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
