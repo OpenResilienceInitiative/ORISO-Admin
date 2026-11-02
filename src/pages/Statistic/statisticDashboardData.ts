@@ -386,6 +386,7 @@ const readStandDay = (dataUntil: string | null, fallback: Date): Date => {
 /** A stand's day, taken from the string itself so no time zone can move it to another day. */
 export const formatStandDay = (dataUntil: string, language: string): string => {
     const [year, month, day] = dataUntil.split('-').map(Number);
+    if (!year || !month || !day) return dataUntil;
     return new Intl.DateTimeFormat(language, {
         day: '2-digit',
         month: '2-digit',

@@ -331,6 +331,11 @@ describe('statisticDashboardData', () => {
         });
     });
 
+    it('shows an unreadable stand day as it came, instead of crashing the page', () => {
+        expect(formatStandDay('not a date', 'de')).toBe('not a date');
+        expect(formatStandDay('2026-11-01', 'de')).toBe('01.11.2026');
+    });
+
     it('computes week starts and day codes', () => {
         expect(getWeekStart(now).getDate()).toBe(6); // Monday, 6 July 2026
         expect(getTodayDayCode(now)).toBe('Sa');
