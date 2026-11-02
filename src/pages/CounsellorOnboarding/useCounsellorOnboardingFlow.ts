@@ -89,6 +89,24 @@ export const effectiveTopicPermission = (
     invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole' | 'topicPermission'>,
 ): CounsellorTopicPermission => (invite.targetRole === 'AGENCY_ADMIN' ? 'CREATE' : invite.topicPermission ?? 'CREATE');
 
+/**
+ * What the inviting admin suggested (#1274). A missing or unknown kind means no
+ * suggestion; `PICTURE` is not offered by the wizard yet, so it is not adopted.
+ */
+export const suggestionFromInvite = (
+    invite: Pick<CounsellorOnboardingInviteDTO, 'avatarKind' | 'avatarId' | 'displayName'>,
+): { avatar: CounsellorAvatarValue; displayName: string } => {
+    const displayName = (invite.displayName ?? '').trim();
+    const { avatarKind, avatarId } = invite;
+    if (avatarKind === 'ICON' && avatarId?.trim()) {
+        return { avatar: { avatarKind: 'ICON', avatarId: avatarId.trim() }, displayName };
+    }
+    if (avatarKind === 'INITIALS' || avatarKind === 'ICON') {
+        return { avatar: { avatarKind: 'INITIALS', avatarId: '' }, displayName };
+    }
+    return { avatar: {}, displayName };
+};
+
 /** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
 export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
     const coverage = invite.topics.map((topic) => topic.id);
@@ -192,8 +210,12 @@ export const useCounsellorOnboardingFlow = (
                 // The invite's coverage arrives preselected (owner decision
                 // 2026-09-17): the invitee removes chips or adds further tenant
                 // topics instead of starting from an empty selection.
+                const suggestion = suggestionFromInvite(loaded);
                 setData({
                     ...EMPTY_DATA,
+                    // The inviting admin's icon and name (#1274); null = as before, initials and empty name.
+                    avatar: suggestion.avatar,
+                    names: { ...EMPTY_DATA.names, publicName: suggestion.displayName },
                     topicIds: initialTopicSelection(loaded),
                     // The inviter's proposal; the backend default is "also counsels".
                     alsoCounsellor: loaded.alsoCounsellor ?? true,

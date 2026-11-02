@@ -37,7 +37,7 @@ const fillCreateForm = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.type(screen.getByLabelText(/tenants\.add\.form\.name\.placeholder/), 'Caritas Test');
     await user.type(screen.getByLabelText(/tenants\.add\.form\.allowedConsultantsLicense\.placeholder/), '5');
     await user.type(screen.getByLabelText(/tenantAdmins\.form\.username/), 'traeger-admin');
-    await user.type(screen.getByLabelText(/tenantAdmins\.form\.password/), 'SecurePass1!x');
+    await user.type(screen.getByLabelText(/tenantAdmins\.form\.password/), 'SecurePassword1!x');
     await user.type(screen.getByLabelText(/^email/), 'admin@example.org');
     await user.type(screen.getByLabelText(/^firstname/), 'Ada');
     await user.type(screen.getByLabelText(/^lastname/), 'Admin');
