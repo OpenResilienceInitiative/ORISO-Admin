@@ -16,7 +16,7 @@ export const walkThroughTileHelp = async (canvasElement: HTMLElement, totalSlide
             }
             await body.findByRole('dialog');
             for (let slide = 2; slide <= totalSlides; slide += 1) {
-                const next = body.queryByRole('button', { name: /weiter|next/i });
+                const next = body.queryByRole('button', { name: /^(weiter|next)$/i });
                 // eslint-disable-next-line no-await-in-loop -- the slides follow one another.
                 if (next) await userEvent.click(next);
             }

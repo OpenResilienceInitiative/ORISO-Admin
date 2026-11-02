@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -131,6 +132,11 @@ export const Editable: Story = {
         }, Promise.resolve());
         await userEvent.click(languageTabs[0]);
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...Editable,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };
 
 /** The shape GET /service/users/case-handover/reason-policies really answers:
