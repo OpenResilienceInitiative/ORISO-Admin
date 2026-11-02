@@ -28,11 +28,8 @@ const ENGLISH: Record<string, string[]> = {
 };
 
 /** The fixture with routes, so the rows can navigate inside Storybook's router. */
-const TAB_LABELS: Record<string, string> = { settings: 'Optionen', agencies: 'Stellen' };
-
 const SECTIONS: AdminMobileNavSection[] = ADMIN_SECTIONS.map((section) => ({
     ...section,
-    tabLabel: TAB_LABELS[section.key],
     to: `/${section.key}${section.subsections?.length ? `/${section.subsections[0].key}` : ''}`,
     subsections: section.subsections?.map((subsection) => ({
         ...subsection,
