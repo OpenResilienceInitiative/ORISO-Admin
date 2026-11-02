@@ -42,7 +42,7 @@ const formatDisplayNumber = (value: number, decimals: number, suffix: string, lo
     return `${formattedValue}${suffix}`;
 };
 
-export const useAnimatedDisplayValue = (value: string, duration = 2800, locale = 'de-DE') => {
+export const useAnimatedDisplayValue = (value: string, duration = 480, locale = 'de-DE') => {
     const [displayValue, setDisplayValue] = useState(value);
 
     useEffect(() => {
