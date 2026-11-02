@@ -201,6 +201,19 @@ describe('Statistic page', () => {
             expect(screen.getAllByText('0').length).toBeGreaterThan(0);
         });
 
+        it('keeps the empty-state hero on a level without any target, as there is nothing to count', async () => {
+            // The stand holds the Träger, but no Beratungsstelle: that tab has no zeros to state.
+            dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [response.targets[0]] });
+            renderStatistic();
+
+            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
+
+            fireEvent.click(screen.getByRole('tab', { name: 'Auf Beratungsstellenebene' }));
+
+            await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
+        });
+
         it('says up to which day the numbers go and when new ones come', async () => {
             dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
             renderStatistic();

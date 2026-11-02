@@ -2111,11 +2111,11 @@ export const Statistic = () => {
         [allTargetsSuppressed, filteredStats],
     );
     const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
-    const hasTargets = Object.keys(statisticData.statisticsById).length > 0;
-    // A stand with zeros is a real statement, so it shows them like any other value.
+    // A stand with zeros is a real statement, so it shows them like any other value. A level without
+    // any target has nothing to state, even when the stand holds numbers for another level.
     const showEmptyHero =
         isDashboardEmpty &&
-        !(isFixedStand && hasTargets) &&
+        !(isFixedStand && effectiveStatisticTargetIds.length > 0) &&
         !isStatisticLoading &&
         !hasStatisticLoadError &&
         !allTargetsSuppressed;
