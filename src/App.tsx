@@ -55,6 +55,7 @@ import {
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
+    LazyTenantErstantwortSettings,
     LazyTenantEditOrAdd,
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
@@ -409,6 +410,10 @@ export const App = () => {
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/legal-settings`}
                                                 element={<LazySingleLegalSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/erstantwort`}
+                                                element={<LazyTenantErstantwortSettings />}
                                             />
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/app-settings`}

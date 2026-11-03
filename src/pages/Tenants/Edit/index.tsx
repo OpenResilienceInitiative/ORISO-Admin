@@ -57,6 +57,11 @@ export const TenantEditOrAdd = () => {
                             iconName: 'legal',
                         },
                         {
+                            to: `/admin/tenants/${id}/erstantwort`,
+                            titleKey: 'settings.subhead.erstantwort',
+                            iconName: 'erstantwort',
+                        },
+                        {
                             to: `/admin/tenants/${id}/app-settings`,
                             titleKey: 'settings.subhead.smtp',
                             iconName: 'email_server',

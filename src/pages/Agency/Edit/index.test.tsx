@@ -60,6 +60,7 @@ const mocks = vi.hoisted(() => ({
         }),
     },
     agencyLegalProps: undefined as any,
+    agencyTabs: undefined as Array<{ to: string; titleKey: string } | false | null> | undefined,
 }));
 
 beforeEach(() => {
@@ -136,10 +137,13 @@ vi.mock('../../../components/Page', () => {
     Page.BackWithActions = function PageBackWithActions({
         children,
         title,
+        tabs,
     }: {
         children: React.ReactNode;
         title?: React.ReactNode;
+        tabs?: typeof mocks.agencyTabs;
     }) {
+        mocks.agencyTabs = tabs;
         return (
             <div>
                 <h1>{title}</h1>
@@ -1187,5 +1191,44 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         notificationSpy.mockRestore();
+    });
+});
+
+// ORISO-Admin#1312: every Beratungsstelle view carries the section menu, whoever opens it. The tab
+// list has no role condition, so the roles that reach this page must all see the same sections.
+describe('AgencyPageEdit section menu', () => {
+    const roles = {
+        'platform admin': { isSuperAdmin: true, isTenantScopedAdmin: false },
+        'Träger admin': { isSuperAdmin: false, isTenantScopedAdmin: true },
+        'Beratungsstelle admin': { isSuperAdmin: false, isTenantScopedAdmin: false },
+    };
+    const tabTargets = () => (mocks.agencyTabs || []).filter(Boolean).map((tab) => (tab as { to: string }).to);
+
+    beforeEach(() => {
+        mocks.agencyTabs = undefined;
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
+    });
+
+    it.each(Object.entries(roles))('offers Stammdaten, Rechtliches and Funktionszugang to the %s', (_name, flags) => {
+        mocks.userRoles = { ...mocks.userRoles, ...flags, tenantId: flags.isTenantScopedAdmin ? 84 : 0 };
+        mocks.routeId = '282';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual([
+            '/admin/agency/282/general',
+            '/admin/agency/282/legal-settings',
+            '/admin/agency/282/functionalities',
+        ]);
+    });
+
+    it('offers only Stammdaten while the Beratungsstelle is being created (the other sections need a saved one)', () => {
+        mocks.userRoles = { ...mocks.userRoles, ...roles['platform admin'], tenantId: 0 };
+        mocks.routeId = 'add';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual(['/admin/agency/add/general']);
     });
 });

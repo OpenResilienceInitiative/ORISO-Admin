@@ -56,4 +56,21 @@ describe('Träger edit page tabs (#134)', () => {
 
         expect(tabTargets().slice(0, 2)).toEqual(['/admin/tenants/7/general', '/admin/tenants/7/theme-settings']);
     });
+
+    // ORISO-Admin#1312: the Erstantwort tile lived only under the Träger admin's own settings, so a
+    // platform admin editing a Träger had no way to reach it. Same place as in the settings menu:
+    // after Rechtliches, before the mail server.
+    it('offers the Erstantwort texts between Rechtliches and Email Server', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
+        expect(tabTargets()).toEqual([
+            '/admin/tenants/7/general',
+            '/admin/tenants/7/theme-settings',
+            '/admin/tenants/7/legal-settings',
+            '/admin/tenants/7/erstantwort',
+            '/admin/tenants/7/app-settings',
+            '/admin/tenants/7/global-settings',
+        ]);
+    });
 });
