@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, within, waitFor } from 'storybook/test';
+import { expect, fireEvent, within, waitFor } from 'storybook/test';
 import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
@@ -224,6 +224,35 @@ export const WithSuppressedCentre: Story = {
                 ),
             ),
         },
+    },
+};
+// A Träger admin sees the rows of the own centres, one of them hidden next to a shown one.
+export const HiddenRowNextToShownRow: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json({
+                    ...statistics('DAILY', [
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                        suppressedTarget(12),
+                    ]),
+                    scope: 'TENANT',
+                }),
+            ),
+        },
+    },
+    beforeEach: () => {
+        const claims = { tenantId: 2, realm_access: { roles: ['tenant-admin'] } };
+        setSessionTokens(`${btoa('{}')}.${btoa(JSON.stringify(claims))}.fixture`, 'storybook-refresh-fixture');
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        fireEvent.click(await canvas.findByText('Auf Beratungsstellenebene'));
+        const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.queryByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/)).toBeNull();
+        await expect(canvas.getByText('Statistik als CSV herunterladen')).toBeVisible();
     },
 };
 // The total itself is hidden (UserService#1567): it would reveal a small row, or rests on too few people.
