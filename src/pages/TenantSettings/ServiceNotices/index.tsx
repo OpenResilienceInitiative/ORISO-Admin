@@ -13,6 +13,7 @@ import { EmailPreviewFrame } from '../../../components/EmailPreview/EmailPreview
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useServiceNoticeDraft } from '../../../hooks/useServiceNoticeDraft.hook';
 import { ServiceNoticeSend } from './ServiceNoticeSend';
+import { serviceNoticesHelp } from './help';
 import {
     SERVICE_NOTICE_VARIANTS,
     serviceNoticeErrorKey,
@@ -69,7 +70,12 @@ export const ServiceNoticesPage = () => {
 
     return (
         <Stack spacing={2}>
-            <Card titleKey="serviceNotices.title" subTitleKey="serviceNotices.description" autoHeight>
+            <Card
+                titleKey="serviceNotices.title"
+                subTitleKey="serviceNotices.description"
+                autoHeight
+                help={serviceNoticesHelp}
+            >
                 <Stack spacing={2}>
                     <Alert severity="info">{t('serviceNotices.draftOnly')}</Alert>
                     {operationError && <Alert severity="error">{t(operationError)}</Alert>}

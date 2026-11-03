@@ -1,33 +1,20 @@
-@use '../../../styles/muiSpacing' as mui;
-
 .card {
     width: 100%;
 }
 
-.group {
+/* The names stand above the fields: in a narrow panel they would be cut off in the border. */
+.field {
     display: grid;
-    gap: mui.$mui-unit;
-    margin: 0 0 mui.$mui-unit * 2;
+    gap: 4px;
+
+    label {
+        color: var(--m3-on-surface, #1b1b1b);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+    }
 }
 
-.groupTitle {
-    margin: 0;
-    color: var(--m3-on-surface);
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-}
-
-.groupHint {
-    margin: 0;
-    color: var(--m3-on-surface-variant);
-    font-size: 14px;
-    line-height: 20px;
-}
-
-.scope {
-    margin: mui.$mui-unit 0 0;
-    color: var(--m3-on-surface-variant);
-    font-size: 14px;
-    line-height: 20px;
+.requiredMark {
+    color: var(--m3-on-surface-variant, inherit);
 }

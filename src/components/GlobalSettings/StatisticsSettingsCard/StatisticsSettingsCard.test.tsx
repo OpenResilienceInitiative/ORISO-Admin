@@ -171,7 +171,7 @@ it('groups the fields under clear headings', async () => {
     server.use(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(withStandFields)));
     showCard();
 
-    const stand = await screen.findByRole('group', { name: /^Stand der Zahlen/ });
+    const stand = await screen.findByRole('group', { name: /^Aktualisierung der Zahlen/ });
     expect(within(stand).getByLabelText(/^Beratungsstellen/)).toBeVisible();
     expect(within(stand).getByLabelText(/^Träger/)).toBeVisible();
     expect(within(stand).getByLabelText(/^Plattform/)).toBeVisible();
@@ -186,14 +186,14 @@ it('explains each section on its own', async () => {
 
     const section = async (name: RegExp) => within(await screen.findByRole('group', { name }));
     expect((await section(/^Mindestzahl Beratende/)).getByText(/weniger Beratende als diese Zahl/)).toBeVisible();
-    expect((await section(/^Stand der Zahlen/)).getByText(/Wie oft Admins neue Zahlen sehen/)).toBeVisible();
+    expect((await section(/^Aktualisierung der Zahlen/)).getByText(/Wie oft Admins neue Zahlen sehen/)).toBeVisible();
     expect(
         (await section(/^Zeiträume im Dashboard/)).getByText(
             /Wie weit das Diagramm und das häufigste Thema zurückblicken/,
         ),
     ).toBeVisible();
     expect((await section(/^Erfassung/)).getByText(/Ob gesendete Nachrichten/)).toBeVisible();
-    expect((await section(/^Protokoll/)).getByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
+    expect((await section(/^Änderungsprotokoll/)).getByRole('button', { name: 'Als CSV herunterladen' })).toBeVisible();
 });
 
 it('explains the stand once, in plain words, and does not overpromise', async () => {

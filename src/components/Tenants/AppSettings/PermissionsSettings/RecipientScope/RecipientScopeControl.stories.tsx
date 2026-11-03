@@ -90,7 +90,7 @@ export const BackendFieldMissing: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
-        await expect(canvas.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeVisible();
+        await expect(canvas.getByText('Diese Einstellung ist noch nicht verfügbar.')).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Speichern' })).toBeNull();
     },
 };

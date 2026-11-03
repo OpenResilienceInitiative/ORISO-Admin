@@ -1,5 +1,6 @@
 import type { TileHelpTopic } from '../../../TileHelp';
 import type { ChatTypeCardKey } from './types';
+import { caseHandoverHelp, circleHelp, internalHelp, liveChatHelp, oneOnOneHelp, askerAccountHelp } from './help';
 
 const switchedOff = (key: string) => ({
     id: 'switchedOff',
@@ -23,6 +24,7 @@ const conversationTopic = (key: ChatTypeCardKey, extraSlides: TileHelpTopic['sli
 /** The explanation behind the info button of each conversation-type tile. */
 export const CONVERSATION_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
     oneOnOne: conversationTopic('oneOnOne', [
+        ...oneOnOneHelp.slides,
         {
             id: 'directInvite',
             titleKey: 'tenants.permissions.directInvite.title',
@@ -31,6 +33,7 @@ export const CONVERSATION_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
         emailSlide,
     ]),
     liveChat: conversationTopic('liveChat', [
+        ...liveChatHelp.slides.filter(({ id }) => id !== 'notify'),
         {
             id: 'links',
             titleKey: 'liveChatLinks.title',
@@ -42,11 +45,12 @@ export const CONVERSATION_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
             bodyKey: 'tileHelp.permissions.liveChat.noEmail',
         },
     ]),
-    group: conversationTopic('group', [emailSlide]),
-    groupInternal: conversationTopic('groupInternal'),
+    group: conversationTopic('group', [...circleHelp.slides, emailSlide]),
+    groupInternal: conversationTopic('groupInternal', internalHelp.slides),
 };
 
 export const ASKER_HELP: TileHelpTopic = {
+    ...askerAccountHelp,
     id: 'asker',
     titleKey: 'tenants.permissions.asker.title',
     essenceKey: 'tenants.permissions.asker.description',
@@ -55,6 +59,7 @@ export const ASKER_HELP: TileHelpTopic = {
             id: 'displayName',
             titleKey: 'tenants.permissions.asker.displayName.label',
             bodyKey: 'tenants.permissions.asker.displayName.description',
+            visual: askerAccountHelp.slides[0].visual,
         },
         {
             id: 'email',
@@ -65,8 +70,8 @@ export const ASKER_HELP: TileHelpTopic = {
 };
 
 export const CASE_HANDOVER_HELP: TileHelpTopic = {
+    ...caseHandoverHelp,
     id: 'caseHandover',
     titleKey: 'tenants.permissions.card.caseHandover.title',
     essenceKey: 'tenants.permissions.card.caseHandover.description',
-    slides: [],
 };

@@ -3,9 +3,11 @@ import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../Card';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
+import { TileSections } from '../../TileSections';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { tutorialsHelp } from './help';
 import styles from './styles.module.scss';
 
 interface Props {
@@ -47,12 +49,12 @@ export const CounsellorTutorialSettingsCard = ({
             autoHeight
             dialogContentPadding
             headerIcon={<ExploreOutlinedIcon />}
+            help={tutorialsHelp}
             titleKey="globalSettings.tutorials.title"
             subTitleKey="globalSettings.tutorials.description"
         >
-            <div className={styles.content}>
-                <section aria-label={t('globalSettings.tutorials.current')}>
-                    <h6 className={styles.heading}>{t('globalSettings.tutorials.current')}</h6>
+            <TileSections>
+                <TileSections.Section id="tutorials-current" title={t('globalSettings.tutorials.current')}>
                     <dl className={styles.availability}>
                         <div>
                             <dt>{t('globalSettings.tutorials.tours')}</dt>
@@ -78,11 +80,13 @@ export const CounsellorTutorialSettingsCard = ({
                             helpText={t('globalSettings.tutorials.showToursHelp')}
                         />
                     </Form>
-                </section>
-                <section aria-label={t('globalSettings.tutorials.planned')}>
-                    <h6 className={styles.heading}>{t('globalSettings.tutorials.planned')}</h6>
+                </TileSections.Section>
+                <TileSections.Section
+                    id="tutorials-planned"
+                    title={t('globalSettings.tutorials.planned')}
+                    note={t('globalSettings.tutorials.previewHelp')}
+                >
                     <p className={styles.notice}>{t('globalSettings.tutorials.comingSoon')}</p>
-                    <p className={styles.description}>{t('globalSettings.tutorials.previewHelp')}</p>
                     <Form
                         layout="vertical"
                         disabled
@@ -112,8 +116,8 @@ export const CounsellorTutorialSettingsCard = ({
                             unavailable
                         />
                     </Form>
-                </section>
-            </div>
+                </TileSections.Section>
+            </TileSections>
         </Card>
     );
 };
