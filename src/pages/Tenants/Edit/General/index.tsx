@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,13 @@ export const GeneralTenantSettings = () => {
     const { settings } = useAppConfigContext();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
+    // Name & Slogan edits the same name in the neighbouring tile. Without this, saving this card would
+    // send the name it loaded with and undo the rename.
+    useEffect(() => {
+        if (isEditing && data?.name !== undefined) {
+            form.setFieldValue('name', data.name);
+        }
+    }, [isEditing, data?.name, form]);
     const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
     // Creating a Träger is two requests (tenant, then its first admin). A second Save while they run
     // would create a second tenant whose admin call fails with "e-mail already taken" (Admin#1206).
