@@ -1028,7 +1028,7 @@
     "agency.list.details.show": "Details zu {{name}} anzeigen",
     "agency.list.details.hide": "Details zu {{name}} ausblenden",
     "agency.list.noDetails": "Keine weiteren Angaben",
-    "agency.list.searchPlaceholder": "Suche nach Name oder Stadt",
+    "agency.list.searchPlaceholder": "Suche nach Name, PLZ oder Stadt",
     "agency.topics.collapse": "Themen einklappen",
     "agency.topics.expand": "Themen ausklappen",
     "agencyAdmins.title": "Agentur-Admins",
