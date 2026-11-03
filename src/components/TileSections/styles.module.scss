@@ -7,15 +7,15 @@
 }
 
 .section {
-    --admin-form-field-surface: var(--m3-surface-container-lowest, #fff);
-    --input-label-bg: var(--m3-surface-container-lowest, #fff);
+    --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
+    --input-label-bg: var(--m3-surface-container-lowest, #ffffff);
 
     display: flex;
     min-width: 0;
     flex: 1 1 auto;
     flex-direction: column;
     padding: 16px;
-    background: var(--m3-surface-container-lowest, #fff);
+    background: var(--m3-surface-container-lowest, #ffffff);
     border-radius: 16px;
 }
 
