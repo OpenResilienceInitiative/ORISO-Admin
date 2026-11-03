@@ -5,6 +5,9 @@ import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { TilePicture } from '../../../components/TileFill';
+import recoveryPicture from '../../../resources/img/tile-help/recovery.webp';
+import { ReactComponent as LockIcon } from '../../../resources/img/svg/lock.svg';
 import { validatePasswordCriteria } from '../../../utils/validateInputValue';
 import { PasswordChangeCounsellorNotice } from './PasswordChangeCounsellorNotice';
 import styles from './styles.module.scss';
@@ -45,6 +48,8 @@ export const PasswordChange = () => {
     return (
         <CardEditable
             titleKey="profile.passwordChange.title"
+            headerIcon={<LockIcon />}
+            picture={<TilePicture src={recoveryPicture} />}
             subTitleKey="profile.passwordChange.info"
             saveKey="profile.passwordChange.save"
             onSave={(data, opts) => updateData(data as any, opts)}

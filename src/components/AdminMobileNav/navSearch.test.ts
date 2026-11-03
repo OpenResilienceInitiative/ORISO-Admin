@@ -76,6 +76,8 @@ describe('searchNav — the examples from ORISO-Admin#1319', () => {
         ['handover', 'logs:case-handover'],
         ['Fallübergabe', 'logs:case-handover'],
         ['permissions', 'settings:permissions'],
+        ['Live-Chat-Links', 'settings:permissions'],
+        ['inbound', 'settings:permissions'],
         ['Beratungsstele', 'agency'],
     ])('"%s" → %s', (query, expected) => {
         expect(top(query)).toBe(expected);

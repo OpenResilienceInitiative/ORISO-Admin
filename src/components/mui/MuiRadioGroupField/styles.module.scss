@@ -21,6 +21,37 @@
 }
 
 .disabled {
-    opacity: 0.5;
+    opacity: var(--admin-field-disabled-opacity, 0.5);
     cursor: not-allowed;
+
+    :global(.MuiFormLabel-root.Mui-disabled) {
+        color: var(--label-color);
+    }
+
+    :global(.MuiFormHelperText-root.Mui-disabled) {
+        color: var(--admin-form-muted-text);
+    }
+
+    .option :global(.MuiFormControlLabel-label.Mui-disabled) {
+        color: var(--admin-form-field-text);
+    }
+
+    .option :global(.MuiRadio-root.Mui-disabled) {
+        color: var(--admin-form-muted-text);
+    }
+
+    .option :global(.MuiRadio-root.Mui-checked.Mui-disabled) {
+        color: var(--admin-control-selected, var(--m3-primary, #a5000a));
+    }
+}
+
+/* An option that does not exist yet: the text stays readable, the control itself looks
+   unavailable, also while the card is being edited. */
+
+.root .optionUnavailable {
+    cursor: not-allowed;
+
+    :global(.MuiRadio-root.Mui-disabled) {
+        opacity: 0.4;
+    }
 }

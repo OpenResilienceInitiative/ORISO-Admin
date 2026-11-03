@@ -55,19 +55,21 @@ export const DataTablePagination = ({
                     <span className={styles.pageSizeLabel}>
                         {t('dataTable.pagination.rowsPerPage', 'Zeilen pro Seite')}
                     </span>
-                    <select
-                        id={selectId}
-                        className={styles.pageSizeSelect}
-                        value={pageSize}
-                        disabled={disabled}
-                        onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                    >
-                        {pageSizeOptions.map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
-                        ))}
-                    </select>
+                    <span className={styles.selectFrame}>
+                        <select
+                            id={selectId}
+                            className={styles.pageSizeSelect}
+                            value={pageSize}
+                            disabled={disabled}
+                            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                        >
+                            {pageSizeOptions.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </span>
                 </label>
             )}
             <span className={styles.range} aria-live="polite">

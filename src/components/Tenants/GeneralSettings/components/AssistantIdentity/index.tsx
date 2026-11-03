@@ -3,6 +3,7 @@ import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DefaultRobot } from '../../../../../resources/img/assistant/default.svg';
 import { CardEditable } from '../../../../CardEditable';
+import { assistantHelp } from './help';
 import { FormInputField } from '../../../../FormInputField';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
@@ -109,6 +110,7 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             variant="dialog"
             editButtonPlacement="footer"
             headerIcon={<SmartToyOutlinedIcon />}
+            help={assistantHelp}
         >
             {isError && <Alert type="error" message={t('settings.assistant.loadError')} showIcon />}
             <FormInputField

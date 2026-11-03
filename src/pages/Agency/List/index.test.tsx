@@ -5,6 +5,9 @@ import { AgencyList } from './index';
 
 const mocks = vi.hoisted(() => ({
     agencies: [] as any[],
+    // Optional server pages by page number, with their total, for the phone "load more" flow.
+    agencyPages: undefined as Record<number, any[]> | undefined,
+    agencyTotal: undefined as number | undefined,
     navigate: vi.fn(),
     refetch: vi.fn(),
     // Arguments of the latest agencies query (sort, page, search).
@@ -21,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 const translations: Record<string, string> = {
     agency: 'Agency',
-    'agency.list.searchPlaceholder': 'Search by name or city',
+    'agency.list.searchPlaceholder': 'Search by name, postcode or city',
     'agency.noTopics': 'No topics assigned',
     'agency.status.online': 'Visible',
     'agency.status.offline': 'Hidden',
@@ -87,16 +90,17 @@ vi.mock('../../../components/GlobalSearch', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
-    useAgenciesData: (query: { search?: string }) => {
+    useAgenciesData: (query: { search?: string; current?: number }) => {
         mocks.lastQuery = query;
         const { search } = query;
-        const agencies = search
+        const matching = search
             ? mocks.agencies.filter((agency) =>
                   `${agency.name} ${agency.city}`.toLowerCase().includes(search.toLowerCase()),
               )
             : mocks.agencies;
+        const agencies = mocks.agencyPages ? mocks.agencyPages[query.current ?? 1] ?? [] : matching;
         return {
-            data: mocks.isError ? undefined : { total: agencies.length, data: agencies },
+            data: mocks.isError ? undefined : { total: mocks.agencyTotal ?? agencies.length, data: agencies },
             isLoading: mocks.isLoading,
             isError: mocks.isError,
             refetch: mocks.refetch,
@@ -185,6 +189,8 @@ const withDesktopLayout = () => {
 
 const resetMocks = () => {
     mocks.agencies = [];
+    mocks.agencyPages = undefined;
+    mocks.agencyTotal = undefined;
     mocks.isLoading = false;
     mocks.isError = false;
     mocks.lastQuery = undefined;
@@ -390,6 +396,30 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         expect(within(south).getByText('Hidden')).toBeInTheDocument();
         expect(within(south).getByRole('button', { name: 'Edit South centre' })).toBeInTheDocument();
         expect(screen.getByRole('article', { name: 'North centre' })).toBeInTheDocument();
+    });
+
+    // CodeRabbit on #1285: the phone list appends the next page and never shows a centre twice when
+    // the server order shifts between two page requests.
+    it('appends the next page on a phone without showing a centre twice', () => {
+        setWidth(390);
+        mocks.agencyTotal = 4;
+        mocks.agencyPages = {
+            1: [buildAgency([], { id: 1, name: 'North centre' }), buildAgency([], { id: 2, name: 'South centre' })],
+            2: [buildAgency([], { id: 2, name: 'South centre' }), buildAgency([], { id: 3, name: 'West centre' })],
+        };
+
+        const { rerender } = render(<AgencyList />);
+        expect(screen.getAllByRole('article')).toHaveLength(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Weitere laden' }));
+        expect(mocks.lastQuery).toMatchObject({ current: 2 });
+        rerender(<AgencyList />);
+
+        expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual([
+            'North centre',
+            'South centre',
+            'West centre',
+        ]);
     });
 
     // #240: a failed agencies load must degrade to an error message, never hang on the spinner.

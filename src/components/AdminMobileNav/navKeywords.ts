@@ -165,6 +165,15 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'roles',
         'rights',
         'features',
+        // Live-chat links live on the live chat tile here (#1321).
+        'live-chat-links',
+        'chat links',
+        'externe links',
+        'direktlink',
+        'external inbound',
+        'inbound',
+        'entry link',
+        'direct link',
     ],
     'settings:erstantwort': [
         'erstantwort',
@@ -234,16 +243,6 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
     // Links
     'links:tenants': ['träger einladung', 'träger invite', 'tenant invite', 'organisation invite'],
     'links:counsellor': ['berater einladung', 'berater invite', 'counsellor invite', 'consultant invite'],
-    'links:external-inbounds': [
-        'externe links',
-        'eingang',
-        'zugang',
-        'direktlink',
-        'external inbound',
-        'inbound',
-        'entry link',
-        'direct link',
-    ],
 };
 
 export const keywordsFor = (id: string): string[] => NAV_KEYWORDS[id] ?? [];

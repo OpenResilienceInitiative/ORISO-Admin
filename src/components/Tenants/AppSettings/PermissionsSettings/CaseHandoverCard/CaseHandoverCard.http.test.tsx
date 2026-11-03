@@ -111,7 +111,8 @@ const mountCard = (tenantId?: number) =>
         </QueryClientProvider>,
     );
 
-const clientConsentButton = () => screen.findByRole('button', { name: /Advice seeker.*Open policy choices/i });
+const clientConsentButton = () =>
+    screen.findByRole('button', { name: /Advice seeker.*Open requirement or recommendation choices/i });
 
 const chooseClientConsent = async (reasonTab: RegExp, option: RegExp) => {
     const user = userEvent.setup();
@@ -146,7 +147,7 @@ afterEach(() => {
 describe('CaseHandoverCard against the reason-policy endpoint', () => {
     it('saves a changed rule for the named Träger and shows it again after a reload', async () => {
         const { unmount } = mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         await waitFor(() => expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
         expect(server.store.get('8')?.[1]).toMatchObject({ clientConsent: 'NONE' });
@@ -158,25 +159,25 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await screen.findByRole('tab', { name: /Planned/i });
         await userEvent.setup().click(screen.getByRole('tab', { name: /Planned/i }));
-        expect(await clientConsentButton()).toHaveAccessibleName(/Consent opt-out \(adjustable\)/i);
+        expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.requests.at(-1)?.url).toMatch(/reason-policies\?tenantId=7$/);
     });
 
     it('shows an error and keeps the edit visible when saving fails', async () => {
         server.putStatus = 500;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent(/not saved/i);
-        expect(await clientConsentButton()).toHaveAccessibleName(/Consent opt-out \(adjustable\)/i);
+        expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'NONE' });
     });
 
     it('says when the Träger may not be changed by this admin', async () => {
         server.putStatus = 403;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         expect(await screen.findByRole('alert')).toHaveTextContent(/not allowed/i);
     });
@@ -184,7 +185,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
     it('retries the failed save from the error message', async () => {
         server.putStatus = 500;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
         const alert = await screen.findByRole('alert');
 
         server.putStatus = 200;
@@ -208,7 +209,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         access.isSuperAdmin = true;
         access.tenantUpdate = false;
         mountCard(8);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         await waitFor(() => expect(server.store.get('8')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
         expect(screen.queryByText(/Träger administration sets these rules/i)).not.toBeInTheDocument();
@@ -250,19 +251,19 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         await userEvent.setup().click(await clientConsentButton());
 
         const option = (name: RegExp) => screen.getByRole('button', { name });
-        expect(option(/^No consent \(adjustable\)$/i)).toHaveAccessibleDescription(/not asked.*immediately/i);
-        expect(option(/^Consent opt-in \(adjustable\)$/i)).toHaveAccessibleDescription(/asked first.*agrees/i);
-        expect(option(/^Consent opt-out \(adjustable\)$/i)).toHaveAccessibleDescription(
-            /silent.*immediately.*informed.*object/i,
+        expect(option(/^Without asking \(recommendation\)$/i)).toHaveAccessibleDescription(/not asked.*immediately/i);
+        expect(option(/^Only after consent \(recommendation\)$/i)).toHaveAccessibleDescription(/asked first.*agrees/i);
+        expect(option(/^Immediately, can object \(recommendation\)$/i)).toHaveAccessibleDescription(
+            /immediately.*informed.*object/i,
         );
-        expect(option(/^Consent opt-out \(enforced\)$/i)).toHaveAccessibleDescription(/silent/i);
+        expect(option(/^Immediately, can object \(requirement\)$/i)).toHaveAccessibleDescription(/immediately/i);
         // Shown as text in the menu, not only to screen readers.
-        expect(screen.getAllByText(/Silent: access starts immediately/i)[0]).toBeVisible();
+        expect(screen.getAllByText(/access starts immediately; the advice seeker is informed/i)[0]).toBeVisible();
     });
 
     it('has the consent explanations in German as well', () => {
         const de = i18n.getFixedT('de');
-        expect(de('tenants.permissions.consent.effect.OPT_OUT')).toMatch(/Stillschweigend.*sofort.*widersprechen/);
+        expect(de('tenants.permissions.consent.effect.OPT_OUT')).toMatch(/sofort.*widersprechen/);
         expect(de('tenants.permissions.consent.effect.OPT_IN')).toMatch(/vorher gefragt/);
         expect(de('tenants.permissions.consent.effect.NONE')).toMatch(/nicht gefragt/);
     });
@@ -285,24 +286,38 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
-const currentMasterButton = () => {
+const masterRow = () => {
     const card = screen.getByTestId('case-handover-card');
     const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
     if (!row) throw new Error('Case handover master policy is missing');
-    return within(row).getByRole('button', { name: /Open policy choices/i });
+    return within(row);
 };
 
-const masterButton = () => waitFor(currentMasterButton);
+/** The round on/off button of the master. */
+const currentMasterButton = () => masterRow().getByRole('button', { name: /: (Active|Inactive)/ });
+/** The requirement lock of the master; absent where this level may not set one. */
+const currentMasterLock = () => masterRow().getByRole('button', { name: /Make it (a requirement|adjustable)/ });
 
+// The policy page can take several seconds to render under jsdom CI load.
+const PAGE_RENDER = { timeout: 10_000 };
+
+const masterButton = () => waitFor(currentMasterButton, PAGE_RENDER);
+const masterLock = () => waitFor(currentMasterLock, PAGE_RENDER);
+
+/** One click on the round button; it flips whatever the master currently is. */
 const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
-    await user.click(await masterButton());
-    await user.click(
-        screen.getByRole('button', {
-            name: i18n.t(`tenants.permissions.policy.${enabled ? 'activationSuggested' : 'deactivationSuggested'}`),
-        }),
-    );
+    const button = await masterButton();
+    expect(button).toHaveAttribute('aria-pressed', String(!enabled));
+    await user.click(button);
 };
+/** One click on the lock; it flips whatever mode the master currently has. */
+const toggleMasterMode = async () => {
+    const user = userEvent.setup();
+    await user.click(await masterLock());
+};
+const activatedText = (value: boolean) =>
+    `: ${i18n.t(`tenants.permissions.policy.${value ? 'activated' : 'deactivated'}`)}`;
 
 // The real policy containers, card, hooks and fetchData run together at this HTTP seam.
 describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (level) => {
@@ -314,10 +329,10 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.master.value).toBe(false));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
         await chooseMaster(true);
         await waitFor(() => expect(server.master.value).toBe(true));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
 
         expect(server.canonicalWrites).toHaveLength(2);
         expect(
@@ -326,11 +341,9 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
         expect(server.store.get('7')).toEqual(mixed);
         view.unmount();
         mountPolicyPage(level);
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
-    });
+    }, 60_000);
 
     it('rolls back a failed master write without any reason-policy writes', async () => {
         access.isSuperAdmin = level === 'platform';
@@ -341,10 +354,9 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
-        await waitFor(async () =>
-            expect(await masterButton()).toHaveAccessibleName(
-                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-            ),
+        await waitFor(
+            () => expect(currentMasterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true))),
+            PAGE_RENDER,
         );
         expect(
             server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
@@ -367,7 +379,6 @@ describe('agency handover master HTTP boundary', () => {
                         tenantId={7}
                         policyLevel="agency"
                         permissionPolicies={{ caseHandoverEnabled: { value, mode: 'SUGGESTED', inherited: true } }}
-                        openPolicyMenu="caseHandoverEnabled"
                         onFeaturePolicyChange={onFeaturePolicyChange}
                     />
                 </QueryClientProvider>,
@@ -375,15 +386,10 @@ describe('agency handover master HTTP boundary', () => {
 
             const master = await masterButton();
             expect(master).toBeDisabled();
-            expect(master).toHaveAccessibleName(
-                expect.stringContaining(
-                    i18n.t(`tenants.permissions.policy.${value ? 'activationSuggested' : 'deactivationSuggested'}`),
-                ),
-            );
+            expect(master).toHaveAccessibleName(expect.stringContaining(activatedText(value)));
+            // A Beratungsstelle only sees the parent's suggestion: no lock to turn it into a requirement.
+            expect(masterRow().queryByRole('button', { name: /Make it (a requirement|adjustable)/ })).toBeNull();
             expect(await screen.findByText(/Träger administration sets these rules/i)).toBeVisible();
-            expect(
-                screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-            ).toBeNull();
             await userEvent.setup().click(master);
             expect(await clientConsentButton()).toBeDisabled();
             expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
@@ -412,9 +418,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
                 </QueryClientProvider>,
             );
         const alert = await screen.findByTestId('case-handover-card-error');
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         if (level === 'agency') {
             expect(await masterButton()).toBeDisabled();
             expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
@@ -430,23 +434,28 @@ describe('independent master while reason HTTP authority is unavailable', () => 
         expect(onFeaturePolicyChange).not.toHaveBeenCalled();
     });
     it.each([
-        { value: true, mode: 'ENFORCED', key: 'activationEnforced' },
-        { value: false, mode: 'ENFORCED', key: 'deactivationEnforced' },
-        { value: true, mode: 'SUGGESTED', key: 'activationSuggested' },
-        { value: false, mode: 'SUGGESTED', key: 'deactivationSuggested' },
+        { value: true, mode: 'ENFORCED' },
+        { value: false, mode: 'ENFORCED' },
+        { value: true, mode: 'SUGGESTED' },
+        { value: false, mode: 'SUGGESTED' },
     ] as const)(
-        'saves canonical $key without reason writes during reason GET failure',
-        async ({ value, mode, key }) => {
+        'saves canonical $value / $mode through the round button and the lock without reason writes during reason GET failure',
+        async ({ value, mode }) => {
             server.reasonGetStatus = 500;
+            // Start from the opposite of both decisions, so reaching the target takes both buttons.
+            server.master = { value: !value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED', inherited: false };
             const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
             server.store.set('7', mixed);
             mountPolicyPage('tenant');
             await screen.findByTestId('case-handover-card-error');
-            await userEvent.setup().click(await masterButton());
-            await userEvent
-                .setup()
-                .click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
+
+            await chooseMaster(value);
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
+            expect(server.master).toMatchObject({ value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED' });
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
+
+            await toggleMasterMode();
+            await waitFor(() => expect(server.canonicalWrites).toHaveLength(2));
             expect(server.master).toMatchObject({ value, mode });
             expect(
                 server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),

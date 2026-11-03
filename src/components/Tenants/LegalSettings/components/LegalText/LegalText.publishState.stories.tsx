@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { legalTextHelp, privacyHelp } from './help';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import { LegalText } from './index';
@@ -152,4 +154,24 @@ export const InformAdviceSeekersQuestion: Story = {
         await expect(within(dialog).getByRole('button', { name: 'Ja' })).toBeVisible();
         await expect(within(dialog).getByRole('button', { name: 'Nein' })).toBeVisible();
     },
+};
+
+/** The explanation behind the info button in the editor's title row. */
+export const HelpSlideshow: Story = {
+    args: { tileHelp: legalTextHelp },
+    parameters: { msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
+};
+
+/** The privacy notice's own explanation, which links on to the shared one about drafts and templates. */
+export const PrivacyHelpSlideshow: Story = {
+    args: {
+        tileHelp: privacyHelp,
+        fieldName: ['content', 'privacy'],
+        titleKey: 'privacy.title',
+        legalType: 'privacy',
+        placeHolderKey: 'settings.privacy.placeholder',
+    },
+    parameters: { msw: { handlers: handlers() } },
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 2),
 };

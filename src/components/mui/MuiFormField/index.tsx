@@ -133,7 +133,7 @@ const MuiControl = ({
                 fontFamily: 'var(--m3-body-font-family)',
                 ...(isDisabled
                     ? {
-                          opacity: 0.5,
+                          opacity: 'var(--admin-field-disabled-opacity, 0.5)',
                           cursor: 'not-allowed',
                           pointerEvents: 'auto',
                           '&:hover': { cursor: 'not-allowed' },
@@ -277,6 +277,9 @@ const MuiControl = ({
                     color: 'var(--admin-form-muted-text)',
                     fontFamily: 'var(--m3-body-font-family)',
                     overflowWrap: 'anywhere',
+                },
+                '& .MuiFormHelperText-root.Mui-disabled': {
+                    color: 'var(--admin-form-muted-text)',
                 },
                 '& .MuiFormHelperText-root.Mui-error': {
                     color: 'var(--form-error, #cc0000)',

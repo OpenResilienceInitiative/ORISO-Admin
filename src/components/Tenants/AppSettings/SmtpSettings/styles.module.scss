@@ -1,16 +1,6 @@
 /* #903: same card layout as the platform SMTP card (pages/GlobalSettings/styles.module.scss),
    copied rather than imported so the two pages can evolve without reaching across routes. */
 
-.smtpPage {
-    --card-deck-gap: 24px;
-    --card-deck-item-width: 425px;
-    --card-deck-item-max-width: 425px;
-}
-
-.smtpCardSlot {
-    display: flex;
-}
-
 .smtpCard {
     width: 100%;
 
@@ -114,17 +104,7 @@
     }
 }
 
-@media only screen and (max-width: 1000px) {
-    .smtpPage {
-        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
-    }
-}
-
 @media only screen and (max-width: 640px) {
-    .smtpPage {
-        max-width: 100%;
-    }
-
     .smtpCard {
         --dialog-card-height: auto;
     }
