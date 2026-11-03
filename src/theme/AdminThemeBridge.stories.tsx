@@ -1,7 +1,8 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Button, Card, ConfigProvider, Input, Select, Space, Switch, Table, Tag, Tabs, type ThemeConfig } from 'antd';
+import { Button, Card, ConfigProvider, Input, Space, Switch, Table, Tag, Tabs, type ThemeConfig } from 'antd';
 
+import { M3Select } from '../components/M3Select';
 import { buildAdminAntdTheme } from './antdM3Theme';
 
 /**
@@ -35,7 +36,7 @@ const Sampler = () => (
             <Button type="primary">Speichern</Button>
             <Button>Abbrechen</Button>
         </Space>
-        <Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
+        <M3Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
         <Input placeholder="Suche…" />
         <Space>
             <Switch defaultChecked />

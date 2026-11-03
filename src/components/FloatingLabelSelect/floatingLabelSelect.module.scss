@@ -62,6 +62,9 @@
 }
 
 .select {
+    --m3-select-icon-size: 24px;
+    --m3-select-icon-inset: 12px;
+
     width: 100%;
 
     /*
@@ -112,55 +115,6 @@
 
     :global(.ant-select-selection-placeholder) {
         color: var(--m3-on-surface-variant, #444748);
-    }
-
-    :global(.ant-select-arrow),
-    :global(.ant-select-clear) {
-        color: var(--m3-on-surface-variant, #444748);
-    }
-
-    /* M3 trailing icon: 24px glyph, 12px from the edge. antd's own is a 12px chevron. */
-    &:global(.ant-select) :global(.ant-select-arrow) {
-        width: 24px;
-        height: 24px;
-        justify-content: center;
-        margin-top: -12px;
-        font-size: 24px;
-        inset-inline-end: 12px;
-    }
-
-    &:global(.ant-select) :global(.ant-select-arrow-loading) {
-        font-size: 18px;
-    }
-
-    /* Replaces the arrow on hover, so it sits in the same 24px slot. */
-    &:global(.ant-select) :global(.ant-select-clear) {
-        width: 18px;
-        height: 18px;
-        margin-top: -9px;
-        background: transparent;
-        font-size: 18px;
-        inset-inline-end: 15px;
-    }
-
-    /* antd hides the arrow behind the clear icon's opaque background; ours is transparent
-       because this field sits on tinted tiles. */
-
-    &:global(.ant-select):hover:has(:global(.ant-select-clear)) :global(.ant-select-arrow) {
-        opacity: 0;
-    }
-
-    &:global(.ant-select-show-arrow) :global(.ant-select-selection-item),
-    &:global(.ant-select-show-arrow) :global(.ant-select-selection-placeholder) {
-        padding-inline-end: 24px;
-    }
-
-    .chevron {
-        transition: transform 160ms ease;
-    }
-
-    &:global(.ant-select-open) .chevron {
-        transform: rotate(180deg);
     }
 
     /* Multi-select: grow with the selected tags instead of clipping them at a
