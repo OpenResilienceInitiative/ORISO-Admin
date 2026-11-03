@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import routePathNames from '../../appConfig';
+import i18n from '../../i18n';
+import { searchNav } from '../AdminMobileNav/navSearch';
+import { buildNavSearchEntries } from './AdminMobileNavBar';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
@@ -71,6 +75,27 @@ describe('buildAdminNavTree', () => {
 
         expect(ids(tree, 'logs')).not.toContain('logs:inactive');
         expect(ids(tree, 'logs')).not.toContain('logs:deletions');
+    });
+
+    it('lets search reach the single settings tab an agency admin may open', () => {
+        const tree = buildAdminNavTree({
+            ...base,
+            shouldShowThemeSettings: false,
+            isSuperAdmin: false,
+            hasRole: (role) => [role].flat().includes(UserRole.AgencyAdmin),
+            can: (action, resource) => resource === Resource.LegalText && action === PermissionAction.Read,
+        });
+        const entries = buildNavSearchEntries(
+            i18n.getFixedT('de'),
+            ['de', 'en'].map((language) => i18n.getFixedT(language)),
+            [{ key: 'theme', label: 'Einstellungen' }],
+            tree,
+        );
+
+        const [hit] = searchNav(entries, 'Datenschutz');
+
+        expect(hit?.entry.id).toBe('settings:legal');
+        expect(hit?.entry.to).toBe(`${routePathNames.themeSettings}/legal`);
     });
 
     it('returns empty lists for an admin without permissions', () => {
