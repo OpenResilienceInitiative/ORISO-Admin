@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
+import { MuiSelectChevron } from '../../../components/M3Select/MuiSelectChevron';
 import { Card } from '../../../components/Card';
 import { M3Button } from '../../../components/M3Button';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
@@ -165,6 +166,7 @@ export const ServiceNoticesPage = () => {
                         </Typography>
                         <TextField
                             select
+                            slotProps={{ select: { IconComponent: MuiSelectChevron } }}
                             label={t('serviceNotices.variant')}
                             value={variant}
                             onChange={(event) => setVariant(event.target.value as ServiceNoticeVariant)}

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Form } from 'antd';
 import { FloatingLabelSelect } from './index';
+import arrowStyles from '../M3Select/m3Select.module.scss';
 import styles from './floatingLabelSelect.module.scss';
 
 const options = [
@@ -17,16 +18,16 @@ describe('FloatingLabelSelect', () => {
         const user = userEvent.setup();
         const { container } = render(<FloatingLabelSelect label="Stadt" showSearch options={options} />);
 
-        expect(container.querySelector(`.ant-select-arrow .${styles.chevron}`)).toBeInTheDocument();
+        expect(container.querySelector(`.ant-select-arrow .${arrowStyles.chevron}`)).toBeInTheDocument();
 
         await user.click(screen.getByLabelText('Stadt'));
-        expect(container.querySelector(`.ant-select-arrow .${styles.chevron}`)).toBeInTheDocument();
+        expect(container.querySelector(`.ant-select-arrow .${arrowStyles.chevron}`)).toBeInTheDocument();
     });
 
     it('leaves the arrow slot to the loading spinner while loading', () => {
         const { container } = render(<FloatingLabelSelect label="Stadt" loading options={options} />);
 
-        expect(container.querySelector(`.${styles.chevron}`)).not.toBeInTheDocument();
+        expect(container.querySelector(`.${arrowStyles.chevron}`)).not.toBeInTheDocument();
         expect(container.querySelector('.ant-select-arrow-loading')).toBeInTheDocument();
     });
 
@@ -35,7 +36,7 @@ describe('FloatingLabelSelect', () => {
             <FloatingLabelSelect label="Stadt" suffixIcon={<i data-testid="own" />} options={options} />,
         );
         expect(screen.getByTestId('own')).toBeInTheDocument();
-        expect(container.querySelector(`.${styles.chevron}`)).not.toBeInTheDocument();
+        expect(container.querySelector(`.${arrowStyles.chevron}`)).not.toBeInTheDocument();
 
         rerender(<FloatingLabelSelect label="Stadt" suffixIcon={null} options={options} />);
         expect(container.querySelector('.ant-select-arrow')).not.toBeInTheDocument();
