@@ -21,6 +21,12 @@ export interface CardGridProps {
      * `maxColumns` do not apply.
      */
     raster?: boolean;
+    /**
+     * Pinterest-style flow: cards stack top to bottom inside each column, so cards of
+     * different heights leave no gaps and nothing scrolls sideways. The reading order
+     * runs column by column, not row by row.
+     */
+    masonry?: boolean;
     className?: string;
 }
 
@@ -143,13 +149,20 @@ const CardGridRaster = ({ children, className }: Pick<CardGridProps, 'children' 
  *
  * Inside each card, FieldGrid applies the same rule to the fields.
  */
-const CardGridRoot = ({ children, minCardWidth = 400, maxColumns = 3, raster, className }: CardGridProps) =>
+const CardGridRoot = ({
+    children,
+    minCardWidth = 400,
+    maxColumns = 3,
+    raster,
+    masonry = false,
+    className,
+}: CardGridProps) =>
     raster ? (
         <CardGridRaster className={className}>{children}</CardGridRaster>
     ) : (
         <div
             data-admin-card-grid
-            className={classNames(styles.cardGrid, className)}
+            className={classNames(styles.cardGrid, { [styles.masonry]: masonry }, className)}
             style={
                 {
                     '--field-grid-min': `${minCardWidth}px`,

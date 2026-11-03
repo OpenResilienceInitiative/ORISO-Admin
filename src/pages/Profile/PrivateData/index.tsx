@@ -4,6 +4,7 @@ import { CardEditable } from '../../../components/CardEditable';
 import { FormInputField } from '../../../components/FormInputField';
 import { useUpdateUserData } from '../../../hooks/useUpdateUserData.hook';
 import { useUserData } from '../../../hooks/useUserData.hook';
+import { ReactComponent as PersonIcon } from '../../../resources/img/svg/person.svg';
 
 export const PrivateData = () => {
     const { t } = useTranslation();
@@ -18,6 +19,7 @@ export const PrivateData = () => {
         <CardEditable
             isLoading={isLoading}
             titleKey="profile.privateData.title"
+            headerIcon={<PersonIcon />}
             initialValues={{ ...data, firstname: data?.firstName, lastname: data?.lastName }}
             onSave={updateData}
         >
