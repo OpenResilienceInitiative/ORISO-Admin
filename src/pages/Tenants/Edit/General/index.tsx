@@ -3,12 +3,14 @@ import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
 import { CardGrid } from '../../../../components/CardGrid';
+import { GeneralSettings } from '../../../../components/Tenants/GeneralSettings';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
@@ -167,65 +169,70 @@ export const GeneralTenantSettings = () => {
     if (isEditing) {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
-                <CardGrid raster>
-                    <CardGrid.Item>
-                        <CardEditable
-                            isLoading={isLoading}
-                            editMode={false}
-                            titleKey="tenants.add.mainTenantTitle"
-                            variant="dialog"
-                            editButtonPlacement="footer"
-                            initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
-                            formProp={form}
-                            onSave={handleSave}
-                            className={styles.tenantInfoCard}
-                        >
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="name"
-                                    label={t('tenants.add.form.name.placeholder')}
-                                    required
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            {shouldShowSubdomainField && (
+                <GeneralSettings
+                    tenantId={id}
+                    section="masterData"
+                    leadingTiles={
+                        <CardGrid.Item>
+                            <CardEditable
+                                isLoading={isLoading}
+                                editMode={false}
+                                titleKey="tenants.add.mainTenantTitle"
+                                headerIcon={<BusinessOutlinedIcon />}
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
+                                formProp={form}
+                                onSave={handleSave}
+                                className={styles.tenantInfoCard}
+                            >
                                 <div className={styles.fieldGroup}>
                                     <MuiFormField
-                                        name="subdomain"
-                                        label={t('tenants.add.form.subdomain.placeholder')}
-                                        disabled
-                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
+                                        name="name"
+                                        label={t('tenants.add.form.name.placeholder')}
+                                        required
+                                        rules={[requiredRule]}
                                     />
                                 </div>
-                            )}
-                            <div className={styles.fieldGroup}>
-                                <MuiNumberFormField
-                                    name={['licensing', 'allowedNumberOfUsers']}
-                                    label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
-                                    required
-                                    min={1}
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="address"
-                                    label={t('tenants.add.form.address.label')}
-                                    placeholder={t('tenants.add.form.address.placeholder')}
-                                />
-                            </div>
-                            <TraegerSenderFields wrapField={wrapInFieldGroup} />
-                            <div className={styles.fieldGroup}>
-                                <MuiMultilineFormField
-                                    name="description"
-                                    label={t('tenants.add.form.description.label')}
-                                    placeholder={t('tenants.add.form.description.placeholder')}
-                                />
-                            </div>
-                            <TraegerDpoFields wrapField={wrapInFieldGroup} />
-                        </CardEditable>
-                    </CardGrid.Item>
-                </CardGrid>
+                                {shouldShowSubdomainField && (
+                                    <div className={styles.fieldGroup}>
+                                        <MuiFormField
+                                            name="subdomain"
+                                            label={t('tenants.add.form.subdomain.placeholder')}
+                                            disabled
+                                            endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
+                                        />
+                                    </div>
+                                )}
+                                <div className={styles.fieldGroup}>
+                                    <MuiNumberFormField
+                                        name={['licensing', 'allowedNumberOfUsers']}
+                                        label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
+                                        required
+                                        min={1}
+                                        rules={[requiredRule]}
+                                    />
+                                </div>
+                                <div className={styles.fieldGroup}>
+                                    <MuiFormField
+                                        name="address"
+                                        label={t('tenants.add.form.address.label')}
+                                        placeholder={t('tenants.add.form.address.placeholder')}
+                                    />
+                                </div>
+                                <TraegerSenderFields wrapField={wrapInFieldGroup} />
+                                <div className={styles.fieldGroup}>
+                                    <MuiMultilineFormField
+                                        name="description"
+                                        label={t('tenants.add.form.description.label')}
+                                        placeholder={t('tenants.add.form.description.placeholder')}
+                                    />
+                                </div>
+                                <TraegerDpoFields wrapField={wrapInFieldGroup} />
+                            </CardEditable>
+                        </CardGrid.Item>
+                    }
+                />
             </ThemeProvider>
         );
     }

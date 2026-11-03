@@ -43,7 +43,7 @@ export const TenantEditOrAdd = () => {
                     canSeeConfigTabs && [
                         {
                             to: `/admin/tenants/${id}/general`,
-                            titleKey: 'tenants.edit.tabs.general',
+                            titleKey: 'settings.subhead.masterData',
                             iconName: 'master_data',
                         },
                         {

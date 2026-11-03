@@ -89,11 +89,12 @@ describe('Träger edit page tabs (#134)', () => {
         ]);
     });
 
-    it('labels the Email Server tab and the Funktionalitäten tab with their own keys', () => {
+    it('labels the tabs with the same keys as the Träger admin settings', () => {
         mocks.settings = { multitenancyWithSingleDomainEnabled: false };
         render(<TenantEditOrAdd />);
 
         const titleOf = (to: string) => (mocks.tabs || []).filter(Boolean).find((tab) => tab.to === to)?.titleKey;
+        expect(titleOf('/admin/tenants/7/general')).toBe('settings.subhead.masterData');
         expect(titleOf('/admin/tenants/7/smtp')).toBe('settings.subhead.smtp');
         expect(titleOf('/admin/tenants/7/functionalities')).toBe('tenants.edit.tabs.appSettings');
     });
