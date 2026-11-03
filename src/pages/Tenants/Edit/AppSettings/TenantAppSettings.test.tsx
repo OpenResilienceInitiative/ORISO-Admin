@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { UserRole } from '../../../../enums/UserRole';
 
 const mocks = vi.hoisted(() => ({
     roles: [] as string[],
@@ -46,6 +45,15 @@ describe('platform admin editing a Träger: Funktionalitäten page', () => {
         render(<TenantAppSettings />);
 
         expect(gridProps().hideSmtp).toBe(true);
+    });
+
+    // Under single domain the Träger admin sees the topics switch ("Themen nutzen"); the platform
+    // admin editing the same Träger must see it too.
+    it.each([false, true])('keeps the topics switch with multitenancyWithSingleDomainEnabled=%s', (enabled) => {
+        mocks.multitenancyWithSingleDomainEnabled = enabled;
+        render(<TenantAppSettings />);
+
+        expect(gridProps().hideTopicsToggle).toBeUndefined();
     });
 
     it('renders nothing for a user who is neither platform nor Träger admin', () => {
