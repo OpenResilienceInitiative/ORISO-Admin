@@ -4,6 +4,8 @@ import { CardEditable } from '../../../components/CardEditable';
 import { FormInputField } from '../../../components/FormInputField';
 import { useUpdateUserData } from '../../../hooks/useUpdateUserData.hook';
 import { useUserData } from '../../../hooks/useUserData.hook';
+import { TilePicture } from '../../../components/TileFill';
+import masterDataPicture from '../../../resources/img/tile-help/master-data.webp';
 import { ReactComponent as PersonIcon } from '../../../resources/img/svg/person.svg';
 
 export const PrivateData = () => {
@@ -20,6 +22,7 @@ export const PrivateData = () => {
             isLoading={isLoading}
             titleKey="profile.privateData.title"
             headerIcon={<PersonIcon />}
+            picture={<TilePicture src={masterDataPicture} />}
             initialValues={{ ...data, firstname: data?.firstName, lastname: data?.lastName }}
             onSave={updateData}
         >
