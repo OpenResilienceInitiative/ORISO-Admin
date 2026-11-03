@@ -376,7 +376,7 @@
     "agency.list.details.hide": "Hide details of {{name}}",
     "agency.list.noDetails": "No further details",
     "agency.list.createdDate": "Created date",
-    "agency.list.searchPlaceholder": "Search by name or city",
+    "agency.list.searchPlaceholder": "Search by name, postcode or city",
     "agency.topics.collapse": "Collapse topics",
     "agency.topics.expand": "Expand topics",
     "agency.modal.headline.delete": "Delete agency?",
