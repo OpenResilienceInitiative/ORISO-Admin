@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
     ReasonPolicySaveFailure,
@@ -15,17 +14,17 @@ import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../type
 import {
     applyClientConsentPolicy,
     applyMaxAccessDuration,
-    applyModuleEnabled,
     applyNotificationTemplate,
     isHandoverModuleEnabled,
     NotificationLanguage,
 } from './caseHandoverCardUtils';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 
-/** Container: wires the platform case-handover reason policies (UserService)
- *  into the permissions card. Policies are platform-scoped — tenant-level
- *  overrides are a backend follow-up, so non-privileged admins see the card
- *  read-only (disable, don't hide). */
+/**
+ * Wires the canonical handover master and Träger-owned reason policies.
+ * The platform master needs no selected Träger; individual reasons need a concrete Träger.
+ * The agency page shows both as read-only instead of writing another scope's configuration.
+ */
 export type CaseHandoverCardProps = {
     /** The Träger whose rules are shown and saved; undefined on the platform-wide page. */
     tenantId?: number;
@@ -52,9 +51,9 @@ export const CaseHandoverCard = ({
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
-    const canEdit = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
+    const canEdit = policyLevel !== 'agency' && canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
 
-    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData(tenantId);
+    const { data, isLoading, isError, refetch } = useCaseHandoverReasonPoliciesData(tenantId);
     const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation(tenantId);
 
     // Local mirror so toggles respond immediately; server refetch re-syncs it.
@@ -68,10 +67,14 @@ export const CaseHandoverCard = ({
     // A failed save keeps the edit on screen and says so; no silent rollback (FE#1725).
     const [saveFailure, setSaveFailure] = useState<ReasonPolicySaveFailure | null>(null);
 
-    const moduleEnabled = useMemo(() => isHandoverModuleEnabled(policies), [policies]);
+    const moduleEnabled = useMemo(
+        () => permissionPolicies?.caseHandoverEnabled?.value ?? isHandoverModuleEnabled(policies),
+        [permissionPolicies, policies],
+    );
 
     const persist = useCallback(
         (nextPolicies: CaseHandoverReasonPolicy[]) => {
+            if (!canEdit) return;
             setPolicies(nextPolicies);
             setSaveFailure(null);
             updateReasonPolicies.mutate(
@@ -84,15 +87,10 @@ export const CaseHandoverCard = ({
                 },
             );
         },
-        [updateReasonPolicies],
+        [canEdit, updateReasonPolicies],
     );
 
     const handleRetrySave = useCallback(() => persist(policies), [persist, policies]);
-
-    const handleModuleEnabledChange = useCallback(
-        (enabled: boolean) => persist(applyModuleEnabled(policies, enabled)),
-        [persist, policies],
-    );
 
     const handleClientConsentPolicyChange = useCallback(
         (code: string, clientConsent: CaseHandoverConsentPolicy) =>
@@ -111,13 +109,11 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
-    if (isError) {
-        return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
-    }
-
     return (
         <CaseHandoverCardView
             policies={policies}
+            loadError={isError ? t('error.loading') : null}
+            onRetryLoad={() => refetch()}
             isLoading={tenantPending || isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
@@ -125,12 +121,11 @@ export const CaseHandoverCard = ({
             saveError={saveFailure ? t(`tenants.permissions.card.caseHandover.saveFailed.${saveFailure}`) : null}
             onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}
-            onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentPolicyChange={handleClientConsentPolicyChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}
-            permissionPolicies={permissionPolicies}
+            permissionPolicies={tenantPending ? undefined : permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}

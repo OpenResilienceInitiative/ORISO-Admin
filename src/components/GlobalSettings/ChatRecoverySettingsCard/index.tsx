@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { ChatRecoverySettings } from '../../../types/ChatRecoverySettings';
 import { CardEditable } from '../../CardEditable';
 import { MuiSelectField } from '../../mui/MuiSelectField';
+import { chatRecoveryHelp } from './help';
 import styles from './styles.module.scss';
 
 interface Props {
@@ -47,6 +48,7 @@ export const ChatRecoverySettingsCard = ({ data, isLoading, isSaving, error, onS
             className={styles.card}
             variant="dialog"
             headerIcon={<KeyOutlinedIcon />}
+            help={chatRecoveryHelp}
             titleKey="globalSettings.chatRecovery.title"
             subTitleKey="globalSettings.chatRecovery.description"
             initialValues={data ? { ...data } : undefined}

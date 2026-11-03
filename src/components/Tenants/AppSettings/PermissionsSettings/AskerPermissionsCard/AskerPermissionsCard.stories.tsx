@@ -2,10 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
 import { AskerPermissionsCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 
+// The buttons write their decision back, so the story reacts to clicks like the real page.
 const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermissionsCard>) => {
-    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
-    return <AskerPermissionsCard {...args} openPolicyMenu={openPolicyMenu} onOpenPolicyMenu={setOpenPolicyMenu} />;
+    const [changes, setChanges] = useState<Record<string, PolicyValue<boolean>>>({});
+    return (
+        <AskerPermissionsCard
+            {...args}
+            permissionPolicies={{ ...args.permissionPolicies, ...changes }}
+            onPolicyChange={(field, policy) => setChanges((current) => ({ ...current, [field]: policy }))}
+        />
+    );
 };
 
 /**

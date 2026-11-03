@@ -1,13 +1,18 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantsList } from './index';
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
     deleteTenant: vi.fn(),
+    deleteOptions: undefined as { onSuccess?: () => void; onError?: () => void } | undefined,
     useTenantsData: vi.fn(),
-    lastTableProps: undefined as any,
+    settings: {
+        mainTenantSubdomainForSingleDomainMultitenancy: '',
+        multitenancyWithSingleDomainEnabled: true,
+    } as Record<string, unknown>,
+    can: (() => true) as (action: string, resource: string) => boolean,
 }));
 
 const translations: Record<string, string> = {
@@ -17,32 +22,29 @@ const translations: Record<string, string> = {
     'tenants.list.new': 'New',
     'tenants.list.subdomain': 'Subdomain',
     'tenants.list.tenantId': 'Tenant ID',
+    'tenants.list.adminEmails': 'Admin e-mail',
+    'tenants.list.created': 'Created',
+    'tenants.list.noAdmins': 'No admin',
+    'tenants.list.details.show': 'Show details of {{name}}',
+    'tenants.list.details.hide': 'Hide details of {{name}}',
+    'tenants.list.deleteMessage.success': 'Tenant deleted.',
+    'tenants.list.deleteMessage.error.title': 'Tenant could not be deleted.',
     'tenants.searchPlaceholder': 'Search by name or ID',
     'tenants.subTitle': 'Tenants',
     'tenants.title': 'Tenants',
+    'userTable.card.edit': 'Edit {{name}}',
+    'userTable.card.delete': 'Delete {{name}}',
+    'userTable.rowMenu.label': 'More actions for {{name}}',
+};
+
+const t = (key: string, fallback?: unknown, options?: Record<string, unknown>) => {
+    const values = (typeof fallback === 'object' ? fallback : options) as Record<string, unknown> | undefined;
+    const text = translations[key] ?? (typeof fallback === 'string' ? fallback : key);
+    return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(values?.[name] ?? ''));
 };
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({
-        t: (key: string) => translations[key] || key,
-    }),
-}));
-
-vi.mock('antd', () => ({
-    Button: ({ children, className, icon, onClick }: any) => (
-        <button type="button" className={className} onClick={onClick}>
-            {icon}
-            {children}
-        </button>
-    ),
-    notification: {
-        error: vi.fn(),
-        success: vi.fn(),
-    },
-}));
-
-vi.mock('@ant-design/icons', () => ({
-    PlusOutlined: () => <span aria-hidden="true">plus</span>,
+    useTranslation: () => ({ t, i18n: { language: 'en' } }),
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -60,48 +62,31 @@ vi.mock('../../../components/Page', () => {
     return { Page };
 });
 
-vi.mock('../../../components/ResizableTable', () => ({
-    ResizeTable: (props: any) => {
-        mocks.lastTableProps = props;
-
-        return (
-            <div>
-                <button
-                    type="button"
-                    onClick={() => props.onChange({ current: 1, pageSize: 10 }, {}, { field: 'id', order: 'ascend' })}
-                >
-                    sort tenant id
-                </button>
-            </div>
-        );
-    },
-}));
-
 vi.mock('../../../components/GlobalSearch', () => ({
     GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
         <div data-testid="global-search">{children}</div>
     ),
 }));
 
-vi.mock('../../../components/EditableTable/EditButtons', () => ({
-    EditButtons: () => <div data-testid="edit-buttons" />,
-}));
-
 vi.mock('../../../components/Modal', () => ({
-    Modal: () => <div data-testid="modal" />,
+    Modal: ({ onConfirm, titleKeyOptions }: { onConfirm: () => void; titleKeyOptions: { name: string } }) => (
+        <div role="dialog" aria-label={`Delete ${titleKeyOptions.name}?`}>
+            <button type="button" onClick={onConfirm}>
+                Confirm delete
+            </button>
+        </div>
+    ),
 }));
 
 vi.mock('../../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({
-        settings: {
-            mainTenantSubdomainForSingleDomainMultitenancy: '',
-            multitenancyWithSingleDomainEnabled: true,
-        },
-    }),
+    useAppConfigContext: () => ({ settings: mocks.settings }),
 }));
 
 vi.mock('../../../hooks/useDeleteTenant', () => ({
-    useDeleteTenant: () => ({ mutate: mocks.deleteTenant }),
+    useDeleteTenant: (options: typeof mocks.deleteOptions) => {
+        mocks.deleteOptions = options;
+        return { mutate: mocks.deleteTenant };
+    },
 }));
 
 vi.mock('../../../hooks/useReleasesToggle.hook', () => ({
@@ -113,42 +98,226 @@ vi.mock('../../../hooks/useTenantsData', () => ({
 }));
 
 vi.mock('../../../hooks/useUserPermission', () => ({
-    useUserPermissions: () => ({
-        can: () => true,
-    }),
+    useUserPermissions: () => ({ can: (action: string, resource: string) => mocks.can(action, resource) }),
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({
-        isSuperAdmin: true,
-    }),
+    useUserRoles: () => ({ isSuperAdmin: true }),
 }));
 
-describe('TenantsList', () => {
+const tenant = (overrides: Record<string, unknown> = {}) => ({
+    id: 21,
+    name: 'Caritas Nord',
+    subdomain: 'nord',
+    licensing: { allowedNumberOfUsers: 40 },
+    adminEmails: ['admin@nord.example', 'second@nord.example', 'third@nord.example'],
+    createDate: '2025-03-12T09:00:00Z',
+    updateDate: '2026-10-29T09:00:00Z',
+    ...overrides,
+});
+
+const withTenants = (rows: unknown[]) =>
+    mocks.useTenantsData.mockReturnValue({ data: { total: rows.length, data: rows }, isLoading: false });
+
+const setWidth = (width: number) => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+};
+
+// The toolbar is desktop-only — on a phone search and create move into the bottom navigation —
+// and the setup stub answers every media query with `matches: false`, i.e. mobile.
+const withDesktopLayout = () => {
+    const stub = window.matchMedia as unknown as ReturnType<typeof vi.fn>;
+    stub.mockImplementation((query: string) => ({
+        matches: query.includes('min-width: 768px'),
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+    }));
+};
+
+const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElement;
+
+describe('TenantsList in the accounts-table design (#1184)', () => {
     beforeEach(() => {
         mocks.navigate.mockReset();
         mocks.deleteTenant.mockReset();
         mocks.useTenantsData.mockReset();
-        mocks.lastTableProps = undefined;
-        mocks.useTenantsData.mockReturnValue({ data: { total: 0, data: [] }, isLoading: false });
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: '',
+            multitenancyWithSingleDomainEnabled: true,
+        };
+        mocks.can = () => true;
+        withTenants([]);
+        setWidth(1440);
+    });
+
+    afterEach(() => setWidth(1024));
+
+    it('shows the first admin e-mail, how many more there are, licences and both dates', () => {
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        const row = rowOf('Caritas Nord');
+        expect(within(row).getByText('21')).toBeInTheDocument();
+        expect(within(row).getByText('admin@nord.example')).toBeInTheDocument();
+        expect(within(row).getByText('+2')).toBeInTheDocument();
+        expect(within(row).getByText('40')).toBeInTheDocument();
+        expect(within(row).getByText('12/03/2025')).toBeInTheDocument();
+    });
+
+    it('says when a Träger has no admin yet', () => {
+        withTenants([tenant({ adminEmails: [] })]);
+
+        render(<TenantsList />);
+
+        expect(within(rowOf('Caritas Nord')).getByText('No admin')).toBeInTheDocument();
+    });
+
+    it('lists every admin in the expanded row', () => {
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+
+        expect(screen.getByRole('link', { name: 'third@nord.example' })).toHaveAttribute(
+            'href',
+            'mailto:third@nord.example',
+        );
     });
 
     it('shows sortable tenant columns and forwards the selected sort to tenant search', async () => {
+        withTenants([tenant()]);
+
         render(<TenantsList />);
 
-        const sortableColumns = mocks.lastTableProps.columns.filter((column: any) => column.sorter);
-
-        expect(sortableColumns.map((column: any) => column.dataIndex)).toEqual(['name', 'id', 'beraterCount']);
-
-        fireEvent.click(screen.getByRole('button', { name: 'sort tenant id' }));
-
+        fireEvent.click(screen.getByRole('button', { name: /^Tenant ID/ }));
         await waitFor(() =>
             expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
-                expect.objectContaining({
-                    dir: 'ASC',
-                    sort: 'ID',
-                }),
+                expect.objectContaining({ dir: 'ASC', sort: 'ID', page: 1 }),
             ),
         );
+
+        fireEvent.click(screen.getByRole('button', { name: /^Max. allowed consultants/ }));
+        await waitFor(() =>
+            expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
+                expect.objectContaining({ dir: 'ASC', sort: 'BERATERCOUNT' }),
+            ),
+        );
+        expect(screen.queryByRole('button', { name: /^Created/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the subdomain only when Träger have their own domain', () => {
+        withTenants([tenant()]);
+        const { unmount } = render(<TenantsList />);
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+        unmount();
+
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: '',
+            multitenancyWithSingleDomainEnabled: false,
+        };
+        render(<TenantsList />);
+        expect(screen.getByRole('columnheader', { name: /^Subdomain/ })).toBeInTheDocument();
+    });
+
+    it('opens a Träger for editing', () => {
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Edit Caritas Nord' }));
+
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/tenants/21');
+    });
+
+    it('asks before deleting and reports the result above the list', () => {
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Delete Caritas Nord' }));
+        fireEvent.click(
+            within(screen.getByRole('dialog', { name: 'Delete Caritas Nord?' })).getByText('Confirm delete'),
+        );
+
+        expect(mocks.deleteTenant).toHaveBeenCalledWith(21);
+        act(() => mocks.deleteOptions?.onError?.());
+        expect(screen.getByRole('alert')).toHaveTextContent('Tenant could not be deleted.');
+    });
+
+    it('keeps the main Träger of a single-domain installation from being deleted', () => {
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: 'nord',
+            multitenancyWithSingleDomainEnabled: true,
+        };
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        expect(screen.getByRole('button', { name: 'Delete Caritas Nord' })).toBeDisabled();
+    });
+
+    it('leaves out actions the admin may not use', () => {
+        withDesktopLayout();
+        mocks.can = () => false;
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('button', { name: 'Edit Caritas Nord' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Delete Caritas Nord' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+    });
+
+    it('starts the first Träger as the main Träger', () => {
+        withDesktopLayout();
+        render(<TenantsList />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'New' }));
+
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/tenants/add/general?main=true');
+    });
+
+    it('says that the first page is loading on a phone instead of showing an empty area', () => {
+        setWidth(390);
+        mocks.useTenantsData.mockReturnValue({ data: undefined, isLoading: true });
+
+        render(<TenantsList />);
+
+        expect(screen.getByRole('status')).toHaveTextContent('loading');
+    });
+
+    it('marks the server default order (name A–Z) and reverses it on the first click', async () => {
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        expect(screen.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'ascending');
+        fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
+        await waitFor(() =>
+            expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
+                expect.objectContaining({ sort: 'NAME', dir: 'DESC' }),
+            ),
+        );
+    });
+
+    it('shows one card per Träger on a phone', () => {
+        setWidth(390);
+        withTenants([tenant(), tenant({ id: 22, name: 'Caritas Süd' })]);
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('table')).not.toBeInTheDocument();
+        expect(screen.getByRole('article', { name: 'Caritas Süd' })).toBeInTheDocument();
+    });
+
+    it('shows the empty text when there are no Träger', () => {
+        render(<TenantsList />);
+
+        expect(screen.getByText('No tenants')).toBeInTheDocument();
     });
 });

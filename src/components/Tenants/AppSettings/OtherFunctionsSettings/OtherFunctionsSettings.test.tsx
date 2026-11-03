@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 vi.mock('react-i18next', () => {
     // react-i18next returns a hybrid: an array [t, i18n, ready] that also carries
@@ -82,5 +83,19 @@ describe('OtherFunctionsSettings', () => {
         // eslint-disable-next-line no-bitwise
         const supervisionFollowsGroupChat = comparison & Node.DOCUMENT_POSITION_FOLLOWING;
         expect(supervisionFollowsGroupChat).toBeTruthy();
+    });
+
+    // OBP 2.1 #107: a supervisor reads along, so switching supervision on for the Träger reminds
+    // the admin that it must be named in the privacy policy.
+    it('asks about the privacy policy before supervision is switched on', async () => {
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
+        await user.click(master);
+
+        expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
+        expect(master).not.toBeChecked();
     });
 });

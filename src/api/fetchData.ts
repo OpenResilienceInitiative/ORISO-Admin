@@ -45,6 +45,10 @@ export const FETCH_ERRORS = {
     EMPTY: 'EMPTY',
     FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
+    // Opt-in: reject a 503 locally so the caller can say "temporarily unavailable". The
+    // statistics dashboard answers 503 when its settings cannot be read (UserService#1568);
+    // without this code it was indistinguishable from any other failure.
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
     TIMEOUT: 'TIMEOUT',
     // The auth server refused because a limit was hit, not because the credentials
     // were wrong: Keycloak answers 429 both for "too many codes requested" and for
@@ -218,6 +222,11 @@ const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Pro
                         // (see BAD_GATEWAY_WITH_RESPONSE above). No toast here — the
                         // caller renders the specific one.
                         reject(response);
+                    } else if (
+                        response.status === 503 &&
+                        props.responseHandling.includes(FETCH_ERRORS.SERVICE_UNAVAILABLE)
+                    ) {
+                        reject(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or

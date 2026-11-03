@@ -1,15 +1,14 @@
 import { Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
-import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
-import { CardDeck } from '../../components/CardDeck';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
+import { CardGrid } from '../../components/CardGrid';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { useTenantData } from '../../hooks/useTenantData.hook';
@@ -24,15 +23,25 @@ import { useSmtpSyncStatus } from '../../hooks/useSmtpSyncStatus';
 import { SmtpSyncStatus } from '../../api/settings/getSmtpSyncStatus';
 import { TranslationApiKeysCardContainer } from '../../components/GlobalSettings/TranslationApiKeysCardContainer';
 import { DocumentMasterDataCardContainer } from '../../components/GlobalSettings/DocumentMasterDataCardContainer';
+import { platformSmtpHelp } from '../../components/Tenants/AppSettings/SmtpSettings/help';
+import { TilePicture } from '../../components/TileFill';
+import { TileSections } from '../../components/TileSections';
+import mailServerPicture from '../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
 import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import { LoginFunctionCard } from '../../components/GlobalSettings/LoginFunctionCard';
 import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { AccountInactivitySettingsCardContainer } from '../../components/GlobalSettings/AccountInactivitySettingsCard';
 import { OneTopicPerAgencySettingsCardContainer } from '../../components/GlobalSettings/OneTopicPerAgencySettingsCard';
+import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettings/SupportEmailSettingsCard';
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
+import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
+import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
+import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
+import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -42,7 +51,6 @@ const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
 };
 
 export const GlobalLoginSettingsPage = () => {
-    const { t } = useTranslation();
     const { data, isLoading } = useTenantData();
     const tenantId = resolveTenantId(undefined, data?.id);
     const seedTenantAdminData = useMemo(
@@ -60,84 +68,64 @@ export const GlobalLoginSettingsPage = () => {
     const recoverySettings = useChatRecoverySettings(isSuperAdmin);
 
     return (
-        <div className={styles.globalConfigViewport}>
-            <div className={styles.globalConfigGrid}>
-                <div className={styles.compactCardColumn}>
-                    <section className={styles.globalConfigCardSlot}>
-                        <ThemeProvider theme={orisoMuiTheme}>
-                            <CardEditable
-                                className={styles.loginFunctionCard}
-                                isLoading={isLoading}
-                                initialValues={initialValues}
-                                titleKey="tenants.globalSettings.anonymousChat.title"
-                                onSave={mutate}
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                headerIcon={<LoginOutlinedIcon />}
-                            >
-                                <div className={styles.checkGroup}>
-                                    <MuiSwitchField
-                                        label={t('tenants.permissions.anonymousChat.title')}
-                                        name={['settings', 'featureAnonymousChatEnabled']}
-                                    />
-                                    {/* ORISO-Admin#602: this switch used to carry no visible
-                                    description at all, while the string behind it promised
-                                    "wird auf der Login-Seite nicht angezeigt" — behaviour
-                                    nothing implements (`featureAnonymousChatEnabled` is read
-                                    by no consumer in Frontend or UserService). Rather than
-                                    invent the behaviour, the description now says what the
-                                    switch actually does, and it is rendered so an admin can
-                                    read it before deciding. */}
-                                    <p className={styles.settingDescription}>
-                                        {t('tenants.permissions.anonymousChat.description')}
-                                    </p>
-                                </div>
-                            </CardEditable>
-                        </ThemeProvider>
-                    </section>
-                    <section className={styles.globalConfigCardSlot}>
-                        <ThemeProvider theme={orisoMuiTheme}>
-                            <OneTopicPerAgencySettingsCardContainer />
-                        </ThemeProvider>
-                    </section>
-                    <section className={styles.globalConfigCardSlot}>
-                        <ThemeProvider theme={orisoMuiTheme}>
-                            <CounsellorTutorialSettingsCardContainer />
-                        </ThemeProvider>
-                    </section>
-                    <section className={styles.translationCardSlot}>
-                        <TranslationApiKeysCardContainer />
-                    </section>
-                    {isSuperAdmin && (
-                        <section className={styles.globalConfigCardSlot}>
-                            <ThemeProvider theme={orisoMuiTheme}>
-                                <AccountInactivitySettingsCardContainer />
-                            </ThemeProvider>
-                        </section>
-                    )}
-                    {isSuperAdmin && (
-                        <section className={styles.globalConfigCardSlot}>
-                            <ThemeProvider theme={orisoMuiTheme}>
-                                <ChatRecoverySettingsCard
-                                    data={recoverySettings.data}
-                                    isLoading={recoverySettings.isLoading}
-                                    isSaving={recoverySettings.isSaving}
-                                    error={recoverySettings.error}
-                                    onSave={(settings, options) =>
-                                        recoverySettings.save(settings, { onError: options?.onError })
-                                    }
-                                />
-                            </ThemeProvider>
-                        </section>
-                    )}
-                </div>
+        <ThemeProvider theme={orisoMuiTheme}>
+            <CardGrid raster>
+                <CardGrid.Item>
+                    <LoginFunctionCard isLoading={isLoading} initialValues={initialValues} onSave={mutate} />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <OneTopicPerAgencySettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <SupportEmailSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <FurtherCounsellingPostcodeSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <TopicDuplicateSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <CounsellorTutorialSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <TranslationApiKeysCardContainer />
+                </CardGrid.Item>
+                {isSuperAdmin && (
+                    <CardGrid.Item>
+                        <AccountInactivitySettingsCardContainer />
+                    </CardGrid.Item>
+                )}
+                {/* ORISO-Admin#1241: temporary guest accounts and their messages, next to the
+                    account-inactivity card. Platform admin only. */}
+                {isSuperAdmin && <TemporaryAccountSettingsCardsContainer />}
+                {isSuperAdmin && (
+                    <CardGrid.Item>
+                        <ChatRecoverySettingsCard
+                            data={recoverySettings.data}
+                            isLoading={recoverySettings.isLoading}
+                            isSaving={recoverySettings.isSaving}
+                            error={recoverySettings.error}
+                            onSave={(settings, options) =>
+                                recoverySettings.save(settings, { onError: options?.onError })
+                            }
+                        />
+                    </CardGrid.Item>
+                )}
+                {/* OBP #93: global statistics settings with their change protocol. Platform
+                    admin only; the UserService enforces the same. */}
+                {isSuperAdmin && (
+                    <CardGrid.Item span={3}>
+                        <StatisticsSettingsCardContainer />
+                    </CardGrid.Item>
+                )}
                 {/* ORISO-Admin#735: operator master data for the living DPIA and the other legal
-                    documents. The desktop grid keeps it beside the two compact configuration cards. */}
-                <section className={styles.documentMasterDataCardSlot}>
+                    documents. */}
+                <CardGrid.Item span={3}>
                     <DocumentMasterDataCardContainer />
-                </section>
-            </div>
-        </div>
+                </CardGrid.Item>
+            </CardGrid>
+        </ThemeProvider>
     );
 };
 
@@ -288,13 +276,8 @@ export const GlobalSmtpSettingsPage = () => {
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
-            <CardDeck
-                className={styles.smtpPage}
-                ariaLabel={t('globalSettings.smtp.cardDeck.ariaLabel')}
-                previousLabel={t('globalSettings.smtp.cardDeck.previous')}
-                nextLabel={t('globalSettings.smtp.cardDeck.next')}
-            >
-                <CardDeck.Item className={styles.smtpCardSlot}>
+            <CardGrid raster>
+                <CardGrid.Item span={2}>
                     <CardEditable
                         className={styles.smtpCard}
                         variant="dialog"
@@ -303,61 +286,75 @@ export const GlobalSmtpSettingsPage = () => {
                         allowEdit={!isPending}
                         initialValues={savedValues}
                         titleKey="globalSettings.smtp.title"
+                        help={platformSmtpHelp}
                         subTitleKey="globalSettings.smtp.description"
                         onSave={handleSave}
                         formProp={form}
                     >
-                        <div className={styles.fieldGrid}>
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'globalSettings.smtp.systemEmailToggle.title',
-                                    'globalSettings.smtp.systemEmailToggle.description',
-                                )}
-                                name={['globalFeatureSystemNotificationEmailsEnabled']}
-                                switchLabel={t('globalSettings.smtp.systemEmailToggle.title')}
-                            />
-
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'globalSettings.smtp.smtpToggle.title',
-                                    'globalSettings.smtp.smtpToggle.description',
-                                )}
-                                name={['globalSmtpEnabled']}
-                                switchLabel={t('globalSettings.smtp.smtpToggle.title')}
-                            />
-
-                            <MuiFormField label={t('globalSettings.smtp.host')} name={['globalSmtpHost']} />
-                            <MuiNumberFormField label={t('globalSettings.smtp.port')} name={['globalSmtpPort']} />
-                            <MuiFormField
-                                label={t('globalSettings.smtp.username')}
-                                name={['globalSmtpUsername']}
-                                placeholder={t('globalSettings.smtp.username.placeholder')}
-                                helpText={t('globalSettings.smtp.username.helpText')}
-                                autoComplete="off"
-                            />
-                            <MuiPasswordFormField
-                                label={t('globalSettings.smtp.password')}
-                                name={['globalSmtpPassword']}
-                                placeholder={t('globalSettings.smtp.password.placeholder')}
-                                helpText={t('globalSettings.smtp.password.helpText')}
-                                autoComplete="new-password"
-                            />
-                            <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'globalSettings.smtp.secure',
-                                    'globalSettings.smtp.secure.description',
-                                )}
-                                name={['globalSmtpSecure']}
-                                switchLabel={t('globalSettings.smtp.secure')}
-                            />
-                        </div>
+                        <TileSections>
+                            <TileSections.Section id="smtp-sending" title={t('tileHelp.mailPanels.sending')}>
+                                <div className={styles.fieldGrid}>
+                                    <MuiSwitchField
+                                        className={styles.smtpSwitch}
+                                        label={renderSwitchLabel(
+                                            'globalSettings.smtp.systemEmailToggle.title',
+                                            'globalSettings.smtp.systemEmailToggle.description',
+                                        )}
+                                        name={['globalFeatureSystemNotificationEmailsEnabled']}
+                                        switchLabel={t('globalSettings.smtp.systemEmailToggle.title')}
+                                    />
+                                    <MuiSwitchField
+                                        className={styles.smtpSwitch}
+                                        label={renderSwitchLabel(
+                                            'globalSettings.smtp.smtpToggle.title',
+                                            'globalSettings.smtp.smtpToggle.description',
+                                        )}
+                                        name={['globalSmtpEnabled']}
+                                        switchLabel={t('globalSettings.smtp.smtpToggle.title')}
+                                    />
+                                </div>
+                            </TileSections.Section>
+                            <TileSections.Section id="smtp-server" title={t('tileHelp.mailPanels.server')}>
+                                <div className={styles.fieldGrid}>
+                                    <MuiFormField label={t('globalSettings.smtp.host')} name={['globalSmtpHost']} />
+                                    <MuiNumberFormField
+                                        label={t('globalSettings.smtp.port')}
+                                        name={['globalSmtpPort']}
+                                    />
+                                    <MuiFormField label={t('globalSettings.smtp.from')} name={['globalSmtpFrom']} />
+                                    <MuiSwitchField
+                                        className={styles.smtpSwitch}
+                                        label={renderSwitchLabel(
+                                            'globalSettings.smtp.secure',
+                                            'globalSettings.smtp.secure.description',
+                                        )}
+                                        name={['globalSmtpSecure']}
+                                        switchLabel={t('globalSettings.smtp.secure')}
+                                    />
+                                </div>
+                            </TileSections.Section>
+                            <TileSections.Section id="smtp-credentials" title={t('tileHelp.mailPanels.credentials')}>
+                                <div className={styles.fieldGrid}>
+                                    <MuiFormField
+                                        label={t('globalSettings.smtp.username')}
+                                        name={['globalSmtpUsername']}
+                                        placeholder={t('globalSettings.smtp.username.placeholder')}
+                                        helpText={t('globalSettings.smtp.username.helpText')}
+                                        autoComplete="off"
+                                    />
+                                    <MuiPasswordFormField
+                                        label={t('globalSettings.smtp.password')}
+                                        name={['globalSmtpPassword']}
+                                        placeholder={t('globalSettings.smtp.password.placeholder')}
+                                        helpText={t('globalSettings.smtp.password.helpText')}
+                                        autoComplete="new-password"
+                                    />
+                                </div>
+                            </TileSections.Section>
+                        </TileSections>
                     </CardEditable>
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.smtpCardSlot}>
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <Card
                         className={styles.smtpCard}
                         variant="dialog"
@@ -436,13 +433,14 @@ export const GlobalSmtpSettingsPage = () => {
                             </p>
                         )}
                     </Card>
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.smtpCardSlot}>
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <Card
                         className={styles.smtpCard}
                         variant="dialog"
                         headerIcon={<SendOutlinedIcon />}
                         titleKey="globalSettings.smtp.test.title"
+                        picture={<TilePicture src={mailServerPicture} />}
                         subTitleKey="globalSettings.smtp.test.description"
                     >
                         <p className={styles.settingDescription}>{t('globalSettings.smtp.test.saveFirst')}</p>
@@ -470,8 +468,8 @@ export const GlobalSmtpSettingsPage = () => {
                             </div>
                         </Form>
                     </Card>
-                </CardDeck.Item>
-            </CardDeck>
+                </CardGrid.Item>
+            </CardGrid>
         </ThemeProvider>
     );
 };

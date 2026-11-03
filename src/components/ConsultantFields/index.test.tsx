@@ -41,7 +41,7 @@ const VALID_REQUIRED = {
     lastname: 'Lovelace',
     email: 'ada@example.org',
     username: 'ada',
-    password: 'Str0ng!pass',
+    password: 'Str0ng!passphrase',
 };
 
 const Harness = ({
@@ -252,5 +252,29 @@ describe('the shared consultant field set', () => {
         const [values] = submitted.mock.calls[0];
         expect(Object.keys(values)).not.toContain('adminRemarks');
         expect(Object.keys(values)).toEqual(expect.arrayContaining(['formalLanguage', 'isSupervisor']));
+    });
+});
+
+// OBP 2.1 #107: a supervisor reads along, so enabling the capability reminds the admin of the
+// privacy policy first.
+describe('the supervisor capability switch', () => {
+    it('asks about the privacy policy before a counsellor may become a supervisor', async () => {
+        const user = userEvent.setup();
+        render(<Harness initialValues={{ isSupervisor: false }} />);
+
+        await user.click(screen.getByRole('switch', { name: 'counselor.isSupervisor' }));
+
+        expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'counselor.isSupervisor' })).not.toBeChecked();
+    });
+
+    it('does not ask when the capability is taken away', async () => {
+        const user = userEvent.setup();
+        render(<Harness initialValues={{ isSupervisor: true }} />);
+
+        await user.click(screen.getByRole('switch', { name: 'counselor.isSupervisor' }));
+
+        expect(screen.getByRole('switch', { name: 'counselor.isSupervisor' })).not.toBeChecked();
+        expect(screen.queryByText('supervision.privacyConfirm.title')).not.toBeInTheDocument();
     });
 });

@@ -4,6 +4,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import { useTranslation } from 'react-i18next';
 import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
+import { coloursHelp } from './help';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
@@ -530,6 +531,7 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
                 variant="dialog"
                 editButtonPlacement="footer"
                 headerIcon={<PaletteOutlinedIcon />}
+                help={coloursHelp}
             >
                 <ThemeSummary seeds={effectiveSeeds} />
             </CardEditable>

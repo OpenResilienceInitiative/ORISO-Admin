@@ -35,6 +35,28 @@
         "import/prefer-default-export": "off",
         "react/jsx-props-no-spreading": "off",
         "prettier/prettier": "warn",
+        "no-restricted-imports": [
+            "error",
+            {
+                "paths": [
+                    {
+                        "name": "antd",
+                        "importNames": ["Select"],
+                        "message": "Use M3Select for a shared select arrow."
+                    },
+                    {
+                        "name": "antd/es/select",
+                        "importNames": ["default"],
+                        "message": "Use M3Select for a shared select arrow."
+                    },
+                    {
+                        "name": "antd/lib/select",
+                        "importNames": ["default"],
+                        "message": "Use M3Select for a shared select arrow."
+                    }
+                ]
+            }
+        ],
         "react/no-unused-prop-types": "off",
         "react/function-component-definition": [
             2,

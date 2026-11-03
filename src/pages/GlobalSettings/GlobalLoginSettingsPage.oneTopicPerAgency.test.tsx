@@ -25,8 +25,14 @@ vi.mock('../../components/GlobalSettings/DocumentMasterDataCardContainer', () =>
 vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => ({
     AccountInactivitySettingsCardContainer: () => <div data-testid="account-inactivity-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
+}));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
 }));
 
 const showPage = () =>
@@ -38,7 +44,7 @@ const showPage = () =>
 
 const oneTopicSwitch = () => screen.getByRole('switch', { name: /genau einen Fachbereich/ });
 // Every card sits in its own <section>; the login card next to it has its own edit button.
-const oneTopicCard = () => within(oneTopicSwitch().closest('section') as HTMLElement);
+const oneTopicCard = () => within(oneTopicSwitch().closest('[data-admin-card-grid-item]') as HTMLElement);
 
 describe('GlobalLoginSettingsPage one-topic-per-agency switch access', () => {
     beforeEach(async () => {

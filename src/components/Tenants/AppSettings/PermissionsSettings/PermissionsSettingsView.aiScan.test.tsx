@@ -1,11 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
-// CardDeck measures/scrolls on mount; jsdom has no scrollTo.
-beforeEach(() => {
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-});
-
 vi.mock('react-i18next', () => {
     const t = (key?: string) => key ?? '';
     return {
@@ -51,7 +46,10 @@ const labelsByField: Record<string, string> = {
 
 const policyButton = (field: string) => {
     const control = document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
-    return within(control).getByRole('button', { name: new RegExp(labelsByField[field]) });
+    // The round on/off button; the requirement lock is a second button with the same label.
+    return within(control).getByRole('button', {
+        name: new RegExp(`${labelsByField[field]}: tenants.permissions.policy.(activated|deactivated)`),
+    });
 };
 
 const aiScanControl = () => policyButton('featureMediaAiScanOneOnOneChatsEnabled');

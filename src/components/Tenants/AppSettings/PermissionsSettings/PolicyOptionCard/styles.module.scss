@@ -1,0 +1,28 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+.card {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: mui.$mui-unit * 1.5;
+    padding: mui.$mui-unit * 1.5;
+    border: 1px solid var(--m3-outline-variant, #c4c7c7);
+    border-radius: 12px;
+}
+
+.icon {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--m3-primary, #a5000a);
+    background: color-mix(in srgb, var(--m3-primary, #a5000a) 10%, transparent);
+}
+
+.glyph {
+    width: 20px;
+    height: 20px;
+}

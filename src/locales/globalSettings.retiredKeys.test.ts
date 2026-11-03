@@ -78,8 +78,8 @@ describe('secure-toggle description explains that OFF is mandatory STARTTLS, not
             expect(file[key]).toContain('587');
         });
         // The old copy implied OFF = unencrypted; the new copy must rule that out.
-        expect(de[key]).toContain('unverschlüsselter Versand');
-        expect(en[key]).toContain('Unencrypted sending');
+        expect(de[key]).toContain('Unverschlüsselt wird nie versendet');
+        expect(en[key]).toContain('never sent unencrypted');
     });
 });
 

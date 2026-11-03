@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { fn } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
@@ -117,5 +117,26 @@ export const PerFeaturePolicies: Story = {
             featureVoiceMessagesOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
         },
         initialValues: { settings: filledSettings },
+    },
+};
+
+/** The three name choices are independent; a Träger can enforce the generated option for one type. */
+export const NamePolicies: Story = {
+    args: {
+        initialValues: { settings: filledSettings },
+        permissionPolicies: {
+            featureDisplayNameEditableAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
+            featureDisplayNameEditableLiveChatEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+            featureDisplayNameEditableSelfHelpEnabled: { value: false, mode: 'SUGGESTED' },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const liveChat = within(canvas.getByTestId('chat-type-card-liveChat'));
+        const nameChoice = liveChat.getByRole('button', {
+            name: /Anmelde- und Anzeigenamen frei eingeben|Type a login and display name/,
+        });
+        await expect(nameChoice).toBeDisabled();
+        await expect(nameChoice).toHaveAttribute('aria-pressed', 'false');
     },
 };

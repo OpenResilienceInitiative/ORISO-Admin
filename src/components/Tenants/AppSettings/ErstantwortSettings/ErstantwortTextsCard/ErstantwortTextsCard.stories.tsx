@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { ErstantwortTextsCard, ErstantwortContentMap } from './index';
 import type { ErstantwortBausteinKey } from '../erstantwortBausteine';
 
@@ -12,7 +15,7 @@ import type { ErstantwortBausteinKey } from '../erstantwortBausteine';
  *   text or *derived*. A derived Baustein has no field on purpose — a typed claim
  *   about the system can contradict the configuration, a rendered one cannot. That
  *   is why the deadline **number** is editable and its **sentence** is not.
- * - **One German variant.** A formal tenant is asked for "Sie" only, an informal
+ * - **One German variant.** A formal tenant is asked for "Sie" only, an Informal
  *   one for "Du" only. Nobody writes both; only platform texts carry both axes.
  * - **No toggles.** The two safety-bearing Bausteine — "send us no personal data"
  *   and the emergency numbers — carry none at all (ADR-018 §6), so there is
@@ -91,4 +94,70 @@ export const InteractiveInformal: Story = {
 /** Read-only, e.g. for a role that may see but not change the Träger texts. */
 export const Disabled: Story = {
     args: { ...Empty.args, disabled: true },
+};
+
+/** The platform wording and the fixed emergency numbers shown read-only under the editor (sample data). */
+export const WithPlatformPreview: Story = {
+    args: {
+        ...Empty.args,
+        platformDefaults: {
+            texts: {
+                erstantwortGreeting: 'Schön, dass Sie sich gemeldet haben. Ihre Nachricht ist bei uns angekommen.',
+            },
+            emergencyNumbers:
+                'Bei einer akuten Notlage erreichen Sie rund um die Uhr die Telefonseelsorge unter 0800 111 0 111 oder 0800 111 0 222 und den Rettungsdienst unter 112.',
+        },
+    },
+};
+
+const GREETING_DEFAULT = 'Schön, dass Sie sich gemeldet haben. Ihre Nachricht ist bei uns angekommen.';
+
+const WithDefaults = () => {
+    const [content, setContent] = useState<ErstantwortContentMap>({});
+    return (
+        <ErstantwortTextsCard
+            contentByBaustein={content}
+            languageFormal
+            platformDefaults={{ texts: { erstantwortGreeting: GREETING_DEFAULT } }}
+            onChange={(key: ErstantwortBausteinKey, lng, html) =>
+                setContent((prev) => ({ ...prev, [key]: { ...(prev[key] ?? {}), [lng]: html } }))
+            }
+            onDeadlineChange={() => undefined}
+        />
+    );
+};
+
+/**
+ * The version menu offers "Standardtext laden". Picking it shows the platform text read-only;
+ * "Als neuen Entwurf übernehmen" copies it into the editor as the Träger's own draft.
+ */
+export const LoadPlatformDefault: Story = {
+    args: Empty.args,
+    render: () => <WithDefaults />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Versionsverlauf|Version history/i }));
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await body.findByText(/Standardtext laden/i));
+        await userEvent.click(
+            await body.findByRole('button', { name: /Als neuen Entwurf übernehmen|Use as new draft/i }),
+        );
+        await waitFor(() => expect(canvasElement.querySelector('.ProseMirror')).toHaveTextContent(GREETING_DEFAULT));
+    },
+};
+
+/** No platform text for this Baustein (or no source yet): the entry is shown disabled, with the reason. */
+export const PlatformDefaultNotAvailable: Story = {
+    args: Empty.args,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Versionsverlauf|Version history/i }));
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await body.findByText(/Standard kann hier noch nicht geladen werden/i)).toBeInTheDocument();
+    },
+};
+
+export const HelpSlideshow: Story = {
+    ...Empty,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };

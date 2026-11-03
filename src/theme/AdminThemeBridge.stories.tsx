@@ -5,7 +5,6 @@ import {
     Card,
     ConfigProvider,
     Input,
-    Select,
     Space,
     Switch,
     Table,
@@ -18,6 +17,7 @@ import deDE from 'antd/es/locale/de_DE';
 import enGB from 'antd/es/locale/en_GB';
 import { useTranslation } from 'react-i18next';
 
+import { M3Select } from '../components/M3Select';
 import { buildAdminAntdTheme } from './antdM3Theme';
 import { AppliedTokenInspection } from './AppliedTokenInspector';
 import type { InspectionContext } from './appliedTokenInspection';
@@ -34,7 +34,7 @@ const Sampler = () => {
                 <Button type="primary">{t('save')}</Button>
                 <Button>{t('cancel')}</Button>
             </Space>
-            <Select
+            <M3Select
                 aria-label={t('tokenInspection.topic')}
                 defaultValue="illness"
                 options={[

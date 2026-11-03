@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { Form } from 'antd';
 import { FloatingLabelSelect } from './index';
+import arrowStyles from '../M3Select/m3Select.module.scss';
 import styles from './floatingLabelSelect.module.scss';
 
 const options = [
@@ -13,6 +14,34 @@ const options = [
 const getField = (container: HTMLElement): HTMLElement => container.firstElementChild as HTMLElement;
 
 describe('FloatingLabelSelect', () => {
+    it('draws its own chevron, and keeps it while the popup is open', async () => {
+        const user = userEvent.setup();
+        const { container } = render(<FloatingLabelSelect label="Stadt" showSearch options={options} />);
+
+        expect(container.querySelector(`.ant-select-arrow .${arrowStyles.chevron}`)).toBeInTheDocument();
+
+        await user.click(screen.getByLabelText('Stadt'));
+        expect(container.querySelector(`.ant-select-arrow .${arrowStyles.chevron}`)).toBeInTheDocument();
+    });
+
+    it('leaves the arrow slot to the loading spinner while loading', () => {
+        const { container } = render(<FloatingLabelSelect label="Stadt" loading options={options} />);
+
+        expect(container.querySelector(`.${arrowStyles.chevron}`)).not.toBeInTheDocument();
+        expect(container.querySelector('.ant-select-arrow-loading')).toBeInTheDocument();
+    });
+
+    it('lets a caller replace or remove the arrow', () => {
+        const { container, rerender } = render(
+            <FloatingLabelSelect label="Stadt" suffixIcon={<i data-testid="own" />} options={options} />,
+        );
+        expect(screen.getByTestId('own')).toBeInTheDocument();
+        expect(container.querySelector(`.${arrowStyles.chevron}`)).not.toBeInTheDocument();
+
+        rerender(<FloatingLabelSelect label="Stadt" suffixIcon={null} options={options} />);
+        expect(container.querySelector('.ant-select-arrow')).not.toBeInTheDocument();
+    });
+
     it('renders standalone without useStatus context warnings', () => {
         const error = vi.spyOn(console, 'error');
         try {
@@ -22,6 +51,7 @@ describe('FloatingLabelSelect', () => {
             error.mockRestore();
         }
     });
+
     it('floats the label on focus and rests it again on blur while empty', async () => {
         const user = userEvent.setup();
         const { container } = render(<FloatingLabelSelect label="Stadt" options={options} />);

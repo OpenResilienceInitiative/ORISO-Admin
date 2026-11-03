@@ -6,7 +6,7 @@ import type { UserScopeFiltersProps } from './UserScopeFilters';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from './UserManagementTable';
 
-const state = vi.hoisted(() => ({ section: 'tenant-admins', isSuperAdmin: false, navigate: vi.fn() }));
+const state = vi.hoisted(() => ({ section: 'tenant-admins', isSuperAdmin: false, canManage: true, navigate: vi.fn() }));
 vi.mock('react-router-dom', async (original) => ({
     ...(await original<typeof import('react-router-dom')>()),
     useParams: () => ({ typeOfUsers: state.section }),
@@ -16,13 +16,31 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin, hasRole: () => true }),
 }));
-vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => true }) }));
+vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => state.canManage }) }));
 vi.mock('../../../hooks/useTenantData.hook', () => ({ useTenantData: () => ({ data: { id: 2, licensing: {} } }) }));
 vi.mock('../../../hooks/useReleasesToggle.hook', () => ({ useReleasesToggle: () => ({ isEnabled: () => true }) }));
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: true } }),
 }));
-vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({ useConsultantsOrAdminsData: () => ({}) }));
+vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
+    useConsultantsOrAdminsData: () => ({
+        data: {
+            data: [
+                {
+                    id: '7',
+                    status: 'IN_DELETION',
+                    firstname: 'Dana',
+                    lastname: 'Deleting',
+                    email: 'dana@example.test',
+                    username: 'dana',
+                    agencies: [],
+                },
+            ],
+            total: 1,
+        },
+        refetch: vi.fn(),
+    }),
+}));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
     useTenantAdminsData: () => ({
@@ -91,6 +109,7 @@ describe('UserManagementTable section authorization', () => {
     beforeEach(() => {
         state.section = TypeOfUser.TenantAdmins;
         state.isSuperAdmin = false;
+        state.canManage = true;
         state.navigate.mockClear();
     });
     const show = () =>
@@ -144,5 +163,32 @@ describe('UserManagementTable section authorization', () => {
         const row = within(screen.getByRole('table'));
         expect(row.getByRole('button', { name: 'userTable.card.edit', exact: true })).toBeInTheDocument();
         expect(row.getByRole('button', { name: 'userTable.card.delete', exact: true })).toBeInTheDocument();
+    });
+
+    describe('ending a running deletion', () => {
+        const cancelAction = () => screen.queryAllByRole('button', { name: 'deletionWindow.cancel.action' });
+        const pauseAction = () => screen.queryAllByRole('button', { name: 'deletionWindow.pause.action' });
+
+        it('offers cancel and pause for a consultant in deletion', () => {
+            state.section = TypeOfUser.Consultants;
+            show();
+            expect(cancelAction()).toHaveLength(1);
+            expect(pauseAction()).toHaveLength(1);
+        });
+
+        it('offers nothing outside the consultants section', () => {
+            state.section = TypeOfUser.AgencyAdmins;
+            show();
+            expect(cancelAction()).toHaveLength(0);
+            expect(pauseAction()).toHaveLength(0);
+        });
+
+        it('offers nothing when the management permission is denied', () => {
+            state.section = TypeOfUser.Consultants;
+            state.canManage = false;
+            show();
+            expect(cancelAction()).toHaveLength(0);
+            expect(pauseAction()).toHaveLength(0);
+        });
     });
 });

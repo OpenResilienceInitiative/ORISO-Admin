@@ -36,15 +36,15 @@ const showSettings = () =>
 it('loads the three confirmed periods and explains deletion, suspension and new-person scope', async () => {
     showSettings();
     expect(await screen.findByLabelText('Ratsuchende (Monate)')).toHaveValue(24);
-    expect(screen.getByLabelText('Berater (Monate)')).toHaveValue(24);
+    expect(screen.getByLabelText('Beratende (Monate)')).toHaveValue(24);
     expect(screen.getByLabelText('Sonstige Personen (Monate)')).toHaveValue(24);
-    expect(screen.getByText(/einschließlich Admins und Support/)).toBeVisible();
+    expect(screen.getByText(/auch Admins und Support/)).toBeVisible();
     expect(
         screen.getByText(
             'Änderungen gelten nur für neu angelegte Personen. Bestehende Personen behalten ihre bisherige Frist.',
         ),
     ).toBeVisible();
-    expect(screen.getByText(/Ratsuchende werden gelöscht/)).toBeVisible();
+    expect(screen.getByText(/werden Ratsuchende gelöscht/)).toBeVisible();
 });
 
 it('saves all three periods with revision zero and reads the confirmed values after remounting', async () => {

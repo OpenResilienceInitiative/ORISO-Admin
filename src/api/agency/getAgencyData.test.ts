@@ -66,4 +66,16 @@ describe('getAgencyData', () => {
             ],
         });
     });
+
+    it('sends a postcode as the search term, which the AgencyService matches next to name and city', async () => {
+        fetchMock.mockResolvedValue({ total: 0, _embedded: [] });
+
+        await getAgencyData({ current: 1, pageSize: 10, search: '10115' });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                url: 'https://api.test/service/agencyadmin/agencies?q=10115&page=1&perPage=10&order=ASC&field=NAME',
+            }),
+        );
+    });
 });

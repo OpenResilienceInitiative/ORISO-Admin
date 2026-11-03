@@ -51,6 +51,18 @@ describe('select loading accessibility', () => {
 });
 
 describe('MuiSelectField data parity', () => {
+    it('uses the shared chevron as its popup icon', () => {
+        render(
+            <Form>
+                <MuiSelectField name="field" label="Feld" options={OPTIONS} />
+            </Form>,
+        );
+
+        const popup = screen.getByRole('button', { name: /open/i });
+        expect(popup.querySelector('[data-testid="ArrowDropDownIcon"]')).not.toBeInTheDocument();
+        expect(popup.querySelector('svg path')?.getAttribute('d') ?? '').not.toBe('M7 10l5 5 5-5z');
+    });
+
     it('reads: initialValue is displayed', () => {
         render(<Harness onValues={() => undefined} initialValues={{ topic: 'a' }} />);
         expect(screen.getByRole('combobox')).toHaveValue('Alpha');

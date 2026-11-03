@@ -33,14 +33,18 @@ const translations: Record<string, string> = {
     'statistic.tutorials.surface.admin': 'Verwaltung',
     'statistic.tutorials.audience.consultant': 'Beratende',
     'statistic.tutorials.tour.consultant-walkthrough': 'Beraterrundgang',
+    'statistic.tutorials.hidden': 'Ausgeblendet: weniger als {{minimum}} Personen.',
+    'statistic.tutorials.hiddenNoMinimum': 'Ausgeblendet: zu wenige Personen.',
 };
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key: string | string[], options?: { defaultValue?: string }) => {
+        t: (key: string | string[], options?: { defaultValue?: string; minimum?: number }) => {
             const keys = Array.isArray(key) ? key : [key];
             const match = keys.find((candidate) => translations[candidate]);
-            return match ? translations[match] : options?.defaultValue ?? keys[keys.length - 1];
+            return match
+                ? translations[match].replace('{{minimum}}', `${options?.minimum}`)
+                : options?.defaultValue ?? keys[keys.length - 1];
         },
         i18n: { language: 'de', resolvedLanguage: 'de' },
     }),
@@ -125,5 +129,44 @@ describe('TutorialStatisticsSection', () => {
 
         await waitFor(() => expect(screen.getByText('Beraterrundgang')).toBeTruthy());
         expect(container.textContent).not.toMatch(/user|nutzerkennung/i);
+    });
+
+    describe('hidden groups', () => {
+        const hiddenResponse: TutorialStatisticsResponse = {
+            generatedAt: '2026-07-19T10:00:00Z',
+            scope: 'TENANT',
+            smallCellMinimum: 5,
+            tenants: [
+                {
+                    tenantId: 2,
+                    counts: [
+                        {
+                            surface: 'frontend',
+                            tourId: 'consultant-walkthrough',
+                            tourVersion: 1,
+                            status: null,
+                            total: 0,
+                            suppressed: true,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        it('shows a notice with the minimum instead of zeros and a percentage', async () => {
+            const { container } = renderSection(() => Promise.resolve(hiddenResponse));
+
+            await waitFor(() => expect(screen.getByText('Ausgeblendet: weniger als 5 Personen.')).toBeTruthy());
+            expect(screen.getByText('Beraterrundgang')).toBeTruthy();
+            const body = container.querySelector('tbody') as HTMLElement;
+            expect(body.textContent).not.toMatch(/0%/);
+            expect(body.textContent).not.toMatch(/\b0\b/);
+        });
+
+        it('still names a hidden group when the backend sends no minimum', async () => {
+            renderSection(() => Promise.resolve({ ...hiddenResponse, smallCellMinimum: undefined }));
+
+            await waitFor(() => expect(screen.getByText('Ausgeblendet: zu wenige Personen.')).toBeTruthy());
+        });
     });
 });

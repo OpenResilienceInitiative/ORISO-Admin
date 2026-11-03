@@ -81,3 +81,30 @@ describe('buildTenantRequestBody — Träger DPO (Admin#1067)', () => {
         expect(body.dataProtectionOfficer).toEqual(dpo);
     });
 });
+
+describe('buildTenantRequestBody — stored settings', () => {
+    const stored = {
+        ...STORED,
+        settings: { featureStatisticsEnabled: true, smtp: { enabled: true } },
+    } as unknown as TenantAdminData;
+    const formWithoutSettings = {
+        name: 'Caritas Musterstadt',
+        licensing: { allowedNumberOfUsers: 5 },
+    } as TenantAdminData;
+
+    it('keeps the stored settings when the saving form has no settings fields', () => {
+        const body = buildTenantRequestBody(stored, formWithoutSettings, 'musterstadt');
+
+        expect(body.settings).toEqual(stored.settings);
+    });
+
+    it('lets the settings a form does carry win over the stored ones', () => {
+        const body = buildTenantRequestBody(
+            stored,
+            form({ settings: { featureStatisticsEnabled: false } }),
+            'musterstadt',
+        );
+
+        expect(body.settings).toEqual({ featureStatisticsEnabled: false, smtp: { enabled: true } });
+    });
+});

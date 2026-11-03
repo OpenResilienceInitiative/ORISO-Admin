@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { InviteComposer, type InviteComposerProps } from './InviteComposer';
 import { invitePanelStorageKey, useInvitePanelCollapsed } from './InvitePanel';
@@ -23,8 +24,10 @@ window.matchMedia ??= ((query: string) => ({
 })) as typeof window.matchMedia;
 
 // Fallback text with `{{x}}` filled in, like the real `t` does with the German defaults.
-const t = (_key: string, fallback?: string, options?: Record<string, unknown>) =>
-    (fallback ?? _key).replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? ''));
+const t = (_key: string, fallback?: string | Record<string, unknown>, options?: Record<string, unknown>) =>
+    (typeof fallback === 'string' ? fallback : _key).replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+        String(options?.[name] ?? ''),
+    );
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t }) }));
 
@@ -100,6 +103,27 @@ describe('InvitePanel stepper (#1127)', () => {
 
         await screen.findByTestId('invite-panel-summary');
         expect(screen.getByRole('button', { name: /einladen/i })).toBeDisabled();
+    });
+});
+
+describe('invite suggestion button (#1274)', () => {
+    it('offers "Name und Icon vorschlagen" for a counsellor invite and turns into "Vorschlag ändern" once set', async () => {
+        const user = userEvent.setup();
+        renderPanel();
+
+        await user.click(await screen.findByRole('button', { name: 'Name und Icon vorschlagen' }));
+        await user.type(await screen.findByLabelText('Anzeigename'), 'Maria B.');
+        await user.click(screen.getByRole('button', { name: 'Übernehmen' }));
+
+        expect(await screen.findByRole('button', { name: 'Vorschlag ändern' })).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByLabelText('Anzeigename')).not.toBeInTheDocument());
+    });
+
+    it('does not offer it for a Träger admin invite', async () => {
+        renderPanel({ tab: 'tenant' });
+
+        await screen.findByTestId('invite-panel-summary');
+        expect(screen.queryByRole('button', { name: 'Name und Icon vorschlagen' })).not.toBeInTheDocument();
     });
 });
 

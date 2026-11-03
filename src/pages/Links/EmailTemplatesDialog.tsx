@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Select, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import {
     type InviteEmailTemplateValues,
     type PlaceholderTemplateDefinition,
 } from '../../components/PlaceholderTemplate';
+import { M3Select } from '../../components/M3Select';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { canEditSharedTemplates, resolveVisibleTemplateKinds } from '../../constants/linksAccess';
 import { useTenantsData } from '../../hooks/useTenantsData';
@@ -620,7 +621,7 @@ export const EmailTemplatesDialog = ({
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
                                 {t('links.templates.field.kind', 'Kind')}
                             </label>
-                            <Select
+                            <M3Select
                                 id={`${fieldId}-kind`}
                                 options={visibleKinds.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
                                 value={draftMeta.kind}
@@ -672,7 +673,7 @@ export const EmailTemplatesDialog = ({
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-preview-tenant`}>
                                 {t('links.templates.previewTenant', 'Vorschau für')}
                             </label>
-                            <Select
+                            <M3Select
                                 id={`${fieldId}-preview-tenant`}
                                 value={previewTenant}
                                 onChange={setPreviewTenant}

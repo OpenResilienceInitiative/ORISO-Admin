@@ -6,11 +6,6 @@ const roleState = vi.hoisted(() => ({ isSuperAdmin: false, isTenantScopedAdmin: 
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../CustomIcons/LegalIcons', () => ({ GdprIcon: () => null, ImprintIcon: () => null }));
-vi.mock('../../CardDeck', () => {
-    const CardDeck = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-    CardDeck.Item = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-    return { CardDeck };
-});
 vi.mock('../../CardEditable', () => ({ CardEditable: () => null }));
 vi.mock('../../FormSwitchField', () => ({ FormSwitchField: () => null }));
 vi.mock('../../../context/useAppConfig', () => ({ useAppConfigContext: () => ({ settings: {} }) }));

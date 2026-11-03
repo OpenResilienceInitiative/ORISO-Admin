@@ -44,8 +44,14 @@ vi.mock('../../components/GlobalSettings/TranslationApiKeysCardContainer', () =>
 vi.mock('../../components/GlobalSettings/DocumentMasterDataCardContainer', () => ({
     DocumentMasterDataCardContainer: () => <div data-testid="document-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
+}));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
 }));
 
 describe('GlobalLoginSettingsPage chat recovery access', () => {
@@ -68,6 +74,7 @@ describe('GlobalLoginSettingsPage chat recovery access', () => {
 
         expect(state.useChatRecoverySettings).toHaveBeenCalledWith(true);
         expect(screen.getByTestId('chat-recovery-card')).toBeVisible();
+        expect(screen.getByTestId('statistics-settings-card')).toBeVisible();
         await waitFor(() => expect(inactivityReads).toBe(1));
     });
 
@@ -77,5 +84,6 @@ describe('GlobalLoginSettingsPage chat recovery access', () => {
 
         expect(state.useChatRecoverySettings).toHaveBeenCalledWith(false);
         expect(screen.queryByTestId('chat-recovery-card')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('statistics-settings-card')).not.toBeInTheDocument();
     });
 });

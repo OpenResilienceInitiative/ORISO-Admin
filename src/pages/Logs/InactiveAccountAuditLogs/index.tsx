@@ -1,7 +1,8 @@
-import { Button, Select, Space, Tag } from 'antd';
+import { Button, Space, Tag } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../../../components/M3Select';
 import { ListingTable } from '../../../components/ListingTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
@@ -96,7 +97,7 @@ export const InactiveAccountAuditLogsPage = () => {
     return (
         <>
             <Space style={{ marginBottom: 16 }} wrap>
-                <Select
+                <M3Select
                     allowClear
                     placeholder={t('inactiveAudit.filters.role')}
                     style={{ width: 180 }}

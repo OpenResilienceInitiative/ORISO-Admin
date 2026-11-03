@@ -22,11 +22,16 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { resolveVisibleLinksTabs } from './constants/linksAccess';
 import { UserRole } from './enums/UserRole';
-import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
+import {
+    canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
+    canSeeSupervisorLogs,
+} from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
+import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
     LazyAgencyList,
     LazyAgencySetupPage,
@@ -34,10 +39,11 @@ import {
     LazyAppSettingsPage,
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
-    LazyExternalInboundsTab,
+    LazyErstantwortSettingsPage,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
+    LazyDeletionAuditLogsPage,
     LazyInactiveAccountAuditLogsPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
@@ -49,6 +55,8 @@ import {
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
+    LazyTenantSmtpSettings,
+    LazyTenantErstantwortSettings,
     LazyTenantEditOrAdd,
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
@@ -153,6 +161,8 @@ export const App = () => {
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
+    // Platform admins only — the backend answers 403 to every other role.
+    const canSeeDeletionAuditLogs = canSeeDeletionAuditLogsFor(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
         isTechnicalAccount,
@@ -236,6 +246,12 @@ export const App = () => {
                                                 element={<LazyLegalSettingsPage />}
                                             />
                                         )}
+                                        {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
+                                            <Route
+                                                path={`${routePathNames.themeSettings}/erstantwort`}
+                                                element={<LazyErstantwortSettingsPage />}
+                                            />
+                                        )}
                                         {can(PermissionAction.Read, Resource.Tenant) && (
                                             <Route
                                                 path={`${routePathNames.themeSettings}/app-settings`}
@@ -315,6 +331,7 @@ export const App = () => {
                                             showSupervisor={showSupervisorLogs}
                                             showCaseHandover={showCaseHandoverLogs}
                                             showInactive={isSuperAdmin}
+                                            showDeletion={canSeeDeletionAuditLogs}
                                         />
                                     }
                                 >
@@ -332,6 +349,12 @@ export const App = () => {
                                         <Route
                                             path={routePathNames.inactiveAccountAuditLogs}
                                             element={<LazyInactiveAccountAuditLogsPage />}
+                                        />
+                                    )}
+                                    {canSeeDeletionAuditLogs && (
+                                        <Route
+                                            path={routePathNames.deletionAuditLogs}
+                                            element={<LazyDeletionAuditLogsPage />}
                                         />
                                     )}
                                     {showCaseHandoverLogs && (
@@ -390,8 +413,20 @@ export const App = () => {
                                                 element={<LazySingleLegalSettings />}
                                             />
                                             <Route
-                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                path={`${routePathNames.tenants}/:id/erstantwort`}
+                                                element={<LazyTenantErstantwortSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/smtp`}
+                                                element={<LazyTenantSmtpSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/functionalities`}
                                                 element={<LazyTenantAppSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                element={<LegacyAppSettingsRedirect />}
                                             />
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/global-settings`}
@@ -414,9 +449,14 @@ export const App = () => {
                                         {visibleLinksTabs.includes('counsellor') && (
                                             <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                                         )}
-                                        {visibleLinksTabs.includes('external-inbounds') && (
-                                            <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
-                                        )}
+                                        {/* Live-chat links moved to Funktionszugriff (ORISO-Admin#1321);
+                                            the old address keeps working for bookmarks. */}
+                                        <Route
+                                            path="external-inbounds"
+                                            element={
+                                                <Navigate to={`${routePathNames.themeSettings}/permissions`} replace />
+                                            }
+                                        />
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}

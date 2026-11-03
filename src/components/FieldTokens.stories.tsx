@@ -1,10 +1,11 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ConfigProvider, Input, InputNumber, Select, theme as antdTheme } from 'antd';
+import { ConfigProvider, Input, InputNumber, theme as antdTheme } from 'antd';
 import deDE from 'antd/es/locale/de_DE';
 import enGB from 'antd/es/locale/en_GB';
 import { useTranslation } from 'react-i18next';
 
+import { M3Select } from './M3Select';
 import { buildAdminAntdTheme } from '../theme/antdM3Theme';
 import { AppliedTokenInspection } from '../theme/AppliedTokenInspector';
 import type { InspectionContext } from '../theme/appliedTokenInspection';
@@ -84,7 +85,7 @@ const Fields = ({ context, tonal = false }: { context: InspectionContext; tonal?
             <Workspace context={context}>
                 <Row title={t('tokenInspection.tonal')}>
                     <div style={{ width: 260, maxWidth: '100%' }}>
-                        <Select
+                        <M3Select
                             aria-label={t('tokenInspection.topic')}
                             open
                             defaultValue="advice"
@@ -119,7 +120,7 @@ const Fields = ({ context, tonal = false }: { context: InspectionContext; tonal?
             </Row>
             <Row title="Select">
                 <Cell label={t('tokenInspection.default')}>
-                    <Select
+                    <M3Select
                         aria-label={t('tokenInspection.topic')}
                         placeholder={t('tokenInspection.topic')}
                         options={options}
@@ -127,7 +128,7 @@ const Fields = ({ context, tonal = false }: { context: InspectionContext; tonal?
                     />
                 </Cell>
                 <Cell label={t('tokenInspection.filled')}>
-                    <Select
+                    <M3Select
                         aria-label={t('tokenInspection.selectedTopic')}
                         defaultValue="illness"
                         options={options}
@@ -135,7 +136,7 @@ const Fields = ({ context, tonal = false }: { context: InspectionContext; tonal?
                     />
                 </Cell>
                 <Cell label={t('tokenInspection.disabled')}>
-                    <Select
+                    <M3Select
                         aria-label={t('tokenInspection.disabledTopic')}
                         aria-disabled
                         disabled

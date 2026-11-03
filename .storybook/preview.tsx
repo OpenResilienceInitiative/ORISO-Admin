@@ -78,7 +78,34 @@ const preview: Preview = {
             },
         },
         options: {
-            storySort: { order: ['Atoms', 'Molecules', 'Organisms', '*'] },
+            // Pages/Profile follows the tiles of Mein Account from top to bottom.
+            storySort: {
+                order: [
+                    'Atoms',
+                    'Molecules',
+                    'Organisms',
+                    'Pages',
+                    [
+                        'Profile',
+                        [
+                            'UserProfile',
+                            'PrivateData',
+                            'RolesAndAssignment',
+                            'SelfConsultantIdentity',
+                            'PasswordChange',
+                            'PasswordChangeCounsellorNotice',
+                            'TwoFactorCard',
+                            'LanguageSettings',
+                            'Absence',
+                            'TourOverviewSection',
+                            'Documentation',
+                            '*',
+                        ],
+                        '*',
+                    ],
+                    '*',
+                ],
+            },
         },
     },
     loaders: [mswLoader],
