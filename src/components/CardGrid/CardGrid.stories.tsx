@@ -114,3 +114,29 @@ export const ThreeCardsWrap: StoryObj = {
         </ConfigProvider>
     ),
 };
+
+/**
+ * Masonry flow for settings pages such as the profile: cards of different heights stack
+ * top to bottom inside each column, so there are no gaps and no sideways scrolling.
+ */
+export const MasonryUnevenHeights: StoryObj = {
+    render: () => (
+        <ConfigProvider theme={buildAdminAntdTheme()}>
+            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+                <Stage width={1200} label="1200px container, 5 cards of uneven height → 3 columns, no gaps">
+                    <CardGrid masonry minCardWidth={380}>
+                        <TenantCard />
+                        <Card titleKey="Kurz" headerIcon={<PersonIcon />}>
+                            Eine kurze Karte.
+                        </Card>
+                        <AdminCard />
+                        <Card titleKey="Kurz" headerIcon={<TenantIcon />}>
+                            Noch eine kurze Karte.
+                        </Card>
+                        <TenantCard />
+                    </CardGrid>
+                </Stage>
+            </div>
+        </ConfigProvider>
+    ),
+};
