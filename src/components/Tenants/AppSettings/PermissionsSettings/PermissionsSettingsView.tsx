@@ -1,10 +1,12 @@
+import classNames from 'classnames';
 import { Form, Skeleton, type FormInstance } from 'antd';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
-import { CardDeck } from '../../../CardDeck';
+import { CardGrid } from '../../../CardGrid';
 import { CardEditable } from '../../../CardEditable';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { CHAT_TYPE_HELP } from './help';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { DirectInviteCard } from './DirectInviteCard';
@@ -208,17 +210,22 @@ export const PermissionsSettingsView = ({
         >
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
-                    <CardDeck
-                        ariaLabel={t('tenants.permissions.title')}
-                        className={styles.permissionsCardDeck}
-                        deckClassName={styles.cardGrid}
-                        previousLabel={t('permissions.cardDeck.previous')}
-                        nextLabel={t('permissions.cardDeck.next')}
-                    >
-                        {/* ORISO-Admin#602: first card under Berechtigungen. These two
-                            settings govern the advice seeker's own account, so they come
-                            before the per-chat-type feature cards. */}
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
+                    <CardGrid raster>
+                        {/* ORISO-Admin#602: these two settings govern the account and the handover, so they
+                            come before the per-chat-type feature cards. */}
+                        <CardGrid.Item span={2}>
+                            <CaseHandoverCard
+                                tenantId={caseHandoverTenantId}
+                                tenantPending={caseHandoverTenantPending}
+                                policyLevel={policyLevel}
+                                permissionPolicies={permissionPolicies}
+                                pendingPolicyFields={pendingPolicyFields}
+                                openPolicyMenu={openPolicyMenu}
+                                onOpenPolicyMenu={setOpenPolicyMenu}
+                                onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                            />
+                        </CardGrid.Item>
+                        <CardGrid.Item>
                             <AskerPermissionsCard
                                 restrictedFields={restrictedFields}
                                 policyLevel={policyLevel}
@@ -230,21 +237,9 @@ export const PermissionsSettingsView = ({
                                 onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                                 channelToggles={hiddenTileChannelToggles}
                             />
-                        </CardDeck.Item>
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <CaseHandoverCard
-                                tenantId={caseHandoverTenantId}
-                                tenantPending={caseHandoverTenantPending}
-                                policyLevel={policyLevel}
-                                permissionPolicies={permissionPolicies}
-                                pendingPolicyFields={pendingPolicyFields}
-                                openPolicyMenu={openPolicyMenu}
-                                onOpenPolicyMenu={setOpenPolicyMenu}
-                                onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
-                            />
-                        </CardDeck.Item>
+                        </CardGrid.Item>
                         {cardsToRender.map((card) => (
-                            <CardDeck.Item key={card.key} className={styles.chatTypeCardSlot}>
+                            <CardGrid.Item key={card.key} span={card.key === 'oneOnOne' ? 3 : 1}>
                                 <Form.Item
                                     noStyle
                                     shouldUpdate={(prev, curr) => {
@@ -264,6 +259,7 @@ export const PermissionsSettingsView = ({
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
                                                 dataTestId={`chat-type-card-${card.key}`}
+                                                help={CHAT_TYPE_HELP[card.key]}
                                             >
                                                 <p className={styles.cardDescription}>
                                                     <InfoIcon
@@ -331,7 +327,11 @@ export const PermissionsSettingsView = ({
                                                     </>
                                                 )}
 
-                                                <div className={styles.togglesList}>
+                                                <div
+                                                    className={classNames(styles.togglesList, {
+                                                        [styles.togglesListWide]: card.key === 'oneOnOne',
+                                                    })}
+                                                >
                                                     {card.toggles.map((toggle) => {
                                                         const unavailableHintKey = unavailableCapabilityHintKey(
                                                             toggle.requiresCapability,
@@ -385,10 +385,10 @@ export const PermissionsSettingsView = ({
                                         );
                                     }}
                                 </Form.Item>
-                            </CardDeck.Item>
+                            </CardGrid.Item>
                         ))}
                         {/* ORISO-Admin#1242: direct links per chat type, after the conversation types they open. */}
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
+                        <CardGrid.Item>
                             <DirectInviteCard
                                 restrictedFields={restrictedFields}
                                 policyLevel={policyLevel}
@@ -401,8 +401,8 @@ export const PermissionsSettingsView = ({
                                 onOpenPolicyMenu={setOpenPolicyMenu}
                                 onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                             />
-                        </CardDeck.Item>
-                    </CardDeck>
+                        </CardGrid.Item>
+                    </CardGrid>
                 </div>
             )}
         </CardEditable>

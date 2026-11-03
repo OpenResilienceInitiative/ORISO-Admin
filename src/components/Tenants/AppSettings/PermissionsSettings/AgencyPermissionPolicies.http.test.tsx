@@ -50,7 +50,9 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             const card = await screen.findByTestId('chat-type-card-oneOnOne');
             const control = card.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`)!;
             expect(within(control).getByRole('button', { name: /more information/i })).toBeInTheDocument();
-            expect(within(control).queryByRole('button', { name: /open policy choices/i })).not.toBeInTheDocument();
+            expect(
+                within(control).queryByRole('button', { name: /open requirement or recommendation choices/i }),
+            ).not.toBeInTheDocument();
             expect(within(control).getByTestId(value ? 'CheckIcon' : 'BlockIcon')).toBeInTheDocument();
         },
     );
@@ -97,7 +99,7 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             ].map(async ([key, action, icon]) => {
                 await waitFor(() => expect(document.querySelector(`[data-feature-policy="${key}"]`)).not.toBeNull());
                 const row = within(document.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`)!);
-                const button = row.getByRole('button', { name: /open policy choices/i });
+                const button = row.getByRole('button', { name: /open requirement or recommendation choices/i });
                 expect(button).toBeDisabled();
                 expect(button.getAttribute('aria-label')).toContain(i18n.t(`tenants.permissions.policy.${action}`));
                 expect(row.getByTestId(icon)).toBeInTheDocument();
@@ -162,7 +164,7 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             const card = await screen.findByTestId('chat-type-card-oneOnOne');
             const row = card.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`);
             if (!row) throw new Error('Permission row missing');
-            return within(row).getByRole('button', { name: /open policy choices/i });
+            return within(row).getByRole('button', { name: /open requirement or recommendation choices/i });
         };
         const switchOff = async (key: string) => {
             await user.click(await trigger(key));

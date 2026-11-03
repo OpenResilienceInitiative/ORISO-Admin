@@ -1,0 +1,75 @@
+.button:global(.MuiIconButton-root) {
+    position: absolute;
+    z-index: 1;
+    top: 12px;
+    right: 12px;
+    width: 48px;
+    height: 48px;
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+/* Tall enough for the longest slide, so Next stays under the pointer while clicking through. */
+.slide {
+    display: flex;
+    min-height: min(60vh, 500px);
+    flex-direction: column;
+    gap: 12px;
+}
+
+.visual {
+    height: clamp(180px, 34vh, 300px);
+}
+
+.example {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 16px;
+    margin: 4px 0 0;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    border-radius: 16px;
+    gap: 8px;
+
+    figcaption {
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 16px;
+    }
+}
+
+.slideTitle {
+    margin: 4px 0 0;
+    color: var(--m3-on-surface, #1b1b1b);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 26px;
+}
+
+.slideBody {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1b);
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.related {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    gap: 8px;
+}
+
+.controls {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.progress {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}

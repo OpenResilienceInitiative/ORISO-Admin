@@ -75,7 +75,7 @@ describe('channel switch round trip', () => {
         await waitFor(() => expect(server.puts.at(-1)?.policies[field]).toEqual({ value: true, mode: 'ENFORCED' }));
         await waitFor(async () =>
             expect(await trigger(field)).toHaveAccessibleName(
-                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced')),
+                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced').replace(/[()]/g, '\\$&')),
             ),
         );
 
@@ -83,7 +83,7 @@ describe('channel switch round trip', () => {
         mount();
         await waitFor(async () =>
             expect(await trigger(field)).toHaveAccessibleName(
-                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced')),
+                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced').replace(/[()]/g, '\\$&')),
             ),
         );
     });

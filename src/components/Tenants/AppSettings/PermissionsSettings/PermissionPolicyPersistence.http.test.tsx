@@ -70,12 +70,16 @@ describe.each(['platform', 'tenant'] as const)('%s four-state permission HTTP pe
                 );
             const view = mount();
             const user = userEvent.setup();
-            await user.click((await control()).getByRole('button', { name: /open policy choices/i }));
+            await user.click(
+                (await control()).getByRole('button', { name: /open requirement or recommendation choices/i }),
+            );
             await user.click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${action}`) }));
 
             await waitFor(() => expect(puts.at(-1)?.[field]).toMatchObject({ value, mode }));
             await waitFor(async () =>
-                expect((await control()).getByRole('button', { name: /open policy choices/i })).toHaveAccessibleName(
+                expect(
+                    (await control()).getByRole('button', { name: /open requirement or recommendation choices/i }),
+                ).toHaveAccessibleName(
                     `${i18n.t('tenants.permissions.feature.videoCalls')}: ${i18n.t(
                         'tenants.permissions.policy.openMenu',
                     )} – ${i18n.t(`tenants.permissions.policy.${action}`)}`,
@@ -84,7 +88,9 @@ describe.each(['platform', 'tenant'] as const)('%s four-state permission HTTP pe
             view.unmount();
             mount();
             await waitFor(async () =>
-                expect((await control()).getByRole('button', { name: /open policy choices/i })).toHaveAccessibleName(
+                expect(
+                    (await control()).getByRole('button', { name: /open requirement or recommendation choices/i }),
+                ).toHaveAccessibleName(
                     `${i18n.t('tenants.permissions.feature.videoCalls')}: ${i18n.t(
                         'tenants.permissions.policy.openMenu',
                     )} – ${i18n.t(`tenants.permissions.policy.${action}`)}`,
@@ -113,7 +119,8 @@ const currentCollectionRow = (key: string) => {
     if (!row) throw new Error(`Account collection policy is missing: ${key}`);
     return within(row);
 };
-const policyButton = (key: string) => currentCollectionRow(key).getByRole('button', { name: /open policy choices/i });
+const policyButton = (key: string) =>
+    currentCollectionRow(key).getByRole('button', { name: /open requirement or recommendation choices/i });
 const mountCollectionPage = (level: 'platform' | 'tenant') =>
     render(
         <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>

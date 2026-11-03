@@ -33,7 +33,7 @@
     "settings.assistant.inheritedIcon": "Devralınan simge",
     "settings.assistant.loadError": "Ayarlar yüklenemedi. Lütfen tekrar deneyin.",
     "tenants.permissions.asker.collection.title": "E-posta adresinin bırakılabileceği yerler",
-    "tenants.permissions.asker.collection.agencyCounselling": "Danışmanlıkta e-posta adresi",
+    "tenants.permissions.asker.collection.agencyCounselling": "1:1 danışmanlıkta e-posta adresi",
     "tenants.permissions.asker.collection.liveChat": "Canlı sohbette e-posta adresi",
     "tenants.permissions.asker.collection.selfHelp": "Öz yardım gruplarında e-posta adresi",
     "tenants.permissions.asker.collection.masterOff": "Önce hesap için e-posta adreslerine izin verin. Bu seçimler korunur.",

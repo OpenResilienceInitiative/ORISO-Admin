@@ -38,18 +38,6 @@
     font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.permissionsCardDeck {
-    --card-deck-min-height: max(0px, calc(100dvh - 255px));
-}
-
-.cardGrid {
-    --card-deck-gap: 48px;
-    --card-deck-padding: 8px 4px 18px;
-    --card-deck-item-min-width: 425px;
-    --card-deck-item-width: 425px;
-    --card-deck-item-max-width: 425px;
-}
-
 .chatTypeCard {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
@@ -244,21 +232,7 @@
     flex: 0 0 auto;
 }
 
-.chatTypeCardSlot {
-    display: flex;
-}
-
 @media screen and (max-width: 767px) {
-    .permissionsCardDeck {
-        --card-deck-min-height: max(0px, calc(100dvh - 220px));
-    }
-
-    .cardGrid {
-        --card-deck-gap: 24px;
-        --card-deck-mobile-gap: 24px;
-        --card-deck-mobile-padding: 0 6px;
-    }
-
     .chatTypeCard {
         width: 100%;
         min-width: 0;
@@ -269,4 +243,10 @@
         padding-left: 24px;
         scrollbar-gutter: auto;
     }
+}
+
+.togglesList.togglesListWide {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    column-gap: 32px;
 }

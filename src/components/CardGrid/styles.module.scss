@@ -11,6 +11,64 @@
     align-items: stretch;
 }
 
+/* The settings raster. The column count follows the room the grid itself has, so
+   it holds beside the sidebar, in a dialog and on a story canvas alike. */
+
+.rasterHost {
+    width: 100%;
+    min-width: 0;
+    container-type: inline-size;
+}
+
+.raster {
+    display: grid;
+    align-items: stretch;
+    gap: 24px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.filler {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+}
+
+.item {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+
+    > * {
+        width: 100%;
+        flex: 1 1 auto;
+    }
+}
+
+.span2 {
+    grid-column: span 2;
+}
+
+.span3 {
+    grid-column: 1 / -1;
+}
+
+@container (max-width: 1019px) {
+    .raster {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@container (max-width: 659px) {
+    .raster {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .span2,
+    .span3 {
+        grid-column: auto;
+    }
+}
+
 /* Masonry: CSS columns instead of the grid. Each child is one unbreakable card; the gap
    below it replaces the grid's row gap. Column count follows the same floor and cap. */
 

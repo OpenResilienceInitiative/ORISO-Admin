@@ -20,6 +20,7 @@ import {
     resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
+import { caseHandoverHelp } from '../help';
 import styles from './styles.module.scss';
 
 /*
@@ -134,6 +135,7 @@ export const CaseHandoverCardView = ({
     return (
         <Card
             dataTestId="case-handover-card"
+            help={caseHandoverHelp}
             headerIcon={<CaseHandoverIcon width={40} height={40} />}
             titleKey="tenants.permissions.card.caseHandover.title"
         >

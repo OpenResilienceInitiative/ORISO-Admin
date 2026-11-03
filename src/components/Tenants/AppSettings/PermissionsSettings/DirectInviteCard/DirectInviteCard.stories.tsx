@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, type ComponentProps } from 'react';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { DirectInviteCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
@@ -57,6 +58,11 @@ type Story = StoryObj<typeof meta>;
 
 /** Platform default: all three allowed, every Träger may decide for itself. */
 export const PlatformDefault: Story = {};
+
+export const HelpSlideshow: Story = {
+    ...PlatformDefault,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 2),
+};
 
 /** Platform forces video off and chat on: no Träger can change either. */
 export const PlatformForced: Story = {

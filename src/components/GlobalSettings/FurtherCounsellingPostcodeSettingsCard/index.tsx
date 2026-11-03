@@ -3,6 +3,8 @@ import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../CardEditable';
 import { MuiRadioGroupField } from '../../mui/MuiRadioGroupField';
+import { TilePicture } from '../../TileFill';
+import postcodePicture from '../../../resources/img/tile-help/postcode.webp';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -33,6 +35,7 @@ export const FurtherCounsellingPostcodeSettingsCard = ({ mode = 'SMART', isLoadi
             allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
+            picture={<TilePicture src={postcodePicture} />}
             onSave={(values: { furtherCounsellingPostcodeMode?: FurtherCounsellingPostcodeMode }, options) =>
                 onSave(values.furtherCounsellingPostcodeMode ?? 'SMART', options)
             }
