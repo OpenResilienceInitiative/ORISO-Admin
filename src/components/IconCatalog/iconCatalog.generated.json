@@ -1122,7 +1122,12 @@
         "fileName": "keyboard-arrow-down.svg",
         "sourcePath": "src/resources/img/svg/keyboard-arrow-down.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CounsellorAvatarField/index.tsx", "src/components/CustomIcons/EditorIcons.tsx"],
+        "usageFiles": [
+            "src/components/CounsellorAvatarField/index.tsx",
+            "src/components/CustomIcons/EditorIcons.tsx",
+            "src/components/M3Select/MuiSelectChevron.tsx",
+            "src/styles/_nativeSelectChevron.scss"
+        ],
         "usage": "app-used"
     },
     {
