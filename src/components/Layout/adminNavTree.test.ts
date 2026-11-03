@@ -61,6 +61,18 @@ describe('buildAdminNavTree', () => {
         expect(ids(tree, 'logs')).not.toContain('logs:inactive');
     });
 
+    it('hides the inactive-account audit from a super admin without Update Tenant, like the sidebar', () => {
+        const tree = buildAdminNavTree({
+            ...base,
+            isSuperAdmin: true,
+            hasRole: () => false,
+            can: (action, resource) => !(action === PermissionAction.Update && resource === Resource.Tenant),
+        });
+
+        expect(ids(tree, 'logs')).not.toContain('logs:inactive');
+        expect(ids(tree, 'logs')).not.toContain('logs:deletions');
+    });
+
     it('returns empty lists for an admin without permissions', () => {
         const tree = buildAdminNavTree({ ...base, isSuperAdmin: false, hasRole: () => false, can: () => false });
 

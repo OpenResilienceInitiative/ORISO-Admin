@@ -3,6 +3,7 @@ import { canOpenTenantLegalSettings } from '../../constants/agencyAdminLanding';
 import {
     canReadCaseHandoverAdmin,
     canSeeDeletionAuditLogsFor,
+    canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
     type CanFn,
     type HasRoleFn,
@@ -96,7 +97,7 @@ export const buildAdminNavItems = ({
         can(PermissionAction.Read, Resource.Tenant) ||
         canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
-    const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
+    const canSeeInactiveAuditLogs = canSeeInactiveAuditLogsFor(isSuperAdmin, can);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const logsPage = resolveLogsPage(
         canSeeCounsellorLogs,

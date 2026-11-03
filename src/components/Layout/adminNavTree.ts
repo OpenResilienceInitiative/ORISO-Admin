@@ -2,6 +2,7 @@ import routePathNames from '../../appConfig';
 import {
     canReadCaseHandoverAdmin,
     canSeeDeletionAuditLogsFor,
+    canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
     type CanFn,
     type HasRoleFn,
@@ -90,7 +91,7 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
             fallbackKey: 'caseHandoverLogs.title',
         });
     }
-    if (isSuperAdmin) {
+    if (canSeeInactiveAuditLogsFor(isSuperAdmin, can)) {
         logs.push({
             id: 'logs:inactive',
             to: routePathNames.inactiveAccountAuditLogs,
