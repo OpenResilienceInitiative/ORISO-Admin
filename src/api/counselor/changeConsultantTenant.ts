@@ -32,7 +32,7 @@ export const CHANGE_TENANT_ERRORS = {
     IDENTITY_PROVIDER_UNAVAILABLE: 'IDENTITY_PROVIDER_UNAVAILABLE',
     /** 401 after the token refresh also failed. */
     SESSION_EXPIRED: 'SESSION_EXPIRED',
-    /** No answer at all: offline or timed out. The move may or may not have happened. */
+    /** No answer from the server: offline, timed out or a gateway error. The move may or may not have happened. */
     NETWORK: 'NETWORK',
     UNKNOWN: 'UNKNOWN',
 } as const;
@@ -145,6 +145,9 @@ const classify = async (failure: unknown): Promise<ChangeTenantErrorCode> => {
                 return classifyConflict(failure.headers.get(FETCH_ERRORS.X_REASON), await readMessage(failure));
             case 503:
                 return CHANGE_TENANT_ERRORS.IDENTITY_PROVIDER_UNAVAILABLE;
+            case 502:
+            case 504:
+                return CHANGE_TENANT_ERRORS.NETWORK;
             default:
                 return CHANGE_TENANT_ERRORS.UNKNOWN;
         }

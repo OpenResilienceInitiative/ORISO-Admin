@@ -127,6 +127,8 @@ describe('changeConsultantTenant', () => {
             ['409 without a recognisable reason', refusal(409, ''), 'CONFLICT'],
             ['503 identity provider refused', refusal(503), 'IDENTITY_PROVIDER_UNAVAILABLE'],
             ['500', refusal(500), 'UNKNOWN'],
+            ['502 from the gateway', refusal(502), 'NETWORK'],
+            ['504 from the gateway', refusal(504), 'NETWORK'],
         ])('%s', async (_label, response, code) => {
             expect(await failureOf(response)).toBe(code);
         });

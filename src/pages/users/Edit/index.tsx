@@ -342,12 +342,13 @@ export const UserEditOrAdd = () => {
      * centre offering a topic. Refuses a selection that would come back different, and says where.
      */
     const refuseFlatListMismatch = useCallback(
-        (centreIds: string[], byCentre: TopicsByCentre) => {
+        (centreIds: string[], byCentre: TopicsByCentre, alwaysSentFlat = false) => {
             const initial = initialCentresRef.current;
             if (
                 !isConsultantForm ||
-                serverStoresTopicsPerCentre ||
-                (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))
+                (!alwaysSentFlat &&
+                    (serverStoresTopicsPerCentre ||
+                        (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))))
             ) {
                 return false;
             }
@@ -592,6 +593,10 @@ export const UserEditOrAdd = () => {
         (data) => {
             const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // The move only takes a flat topic list, whatever the server stores for an ordinary save.
+            if (showTopicPickers && refuseFlatListMismatch(centreIds, byCentre, true)) {
+                return;
+            }
             const nameOf = (tenantId: string | number) =>
                 tenantsData.find((tenant) => String(tenant.id) === String(tenantId))?.name ?? `#${tenantId}`;
             setTenantMove({
@@ -609,7 +614,7 @@ export const UserEditOrAdd = () => {
                 }),
             });
         },
-        [form, tenantsData, showTopicPickers, editedTenantId, filteredAgencies],
+        [form, tenantsData, showTopicPickers, editedTenantId, filteredAgencies, refuseFlatListMismatch],
     );
 
     const confirmTenantMove = async () => {

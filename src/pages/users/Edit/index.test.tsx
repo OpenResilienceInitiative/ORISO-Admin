@@ -2028,6 +2028,24 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
             });
         });
 
+        it('refuses a topic picked at only one of two new centres that offer it', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+            await chooseOption(user, 'Beratungsstelle', '24103 Küste Kiel');
+            // The list stays open for a further centre.
+            await user.click(await screen.findByRole('option', { name: '30159 Mitte Hannover' }));
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+
+            // Küste pre-selects Familie, Mitte offers it too but has nothing picked.
+            expect(await screen.findByText(/Gilt für alle Stellen gemeinsam.*Familie/)).toBeInTheDocument();
+            expect(screen.queryByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ })).not.toBeInTheDocument();
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+        });
+
         it('does not carry the topics of the old Träger along', async () => {
             editAs('platform');
             const user = setup();
