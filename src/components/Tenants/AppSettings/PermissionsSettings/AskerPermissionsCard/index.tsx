@@ -1,24 +1,20 @@
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
+import { ReactComponent as AskerAccountIcon } from '../../../../../resources/img/svg/permissions/asker_account.svg';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
+import { ASKER_HELP } from '../tileHelpTopics';
 import styles from './styles.module.scss';
 
 /**
  * ORISO-Admin#602 — the two permissions an advice seeker's own account depends on.
  *
- * <h3>Switch 1: Anzeigename</h3>
+ * <h3>Switch 1: Login and display names</h3>
  *
- * Whether the person may **type** their own display name, or may only re-roll the generated one.
- * It is labelled **Anzeigename** and never "Nutzername", and that is not pedantry: the
- * **Anmeldename** (`userName`) is a different, immutable thing, and a Träger admin reading
- * "Nutzername" would believe they are deciding about the login credential. A test asserts the word
- * does not appear on this card.
- *
- * Why forbidding free entry is a real option rather than paternalism: a self-typed nickname is the
- * most common way anonymity is lost, because people reuse a handle that is searchable elsewhere.
- * The dice stays re-rollable without limit, so nothing is taken away.
+ * The account-wide limit for freely choosing a login name during registration or a display name
+ * in a conversation. Each conversation type can restrict free entry further; a generated choice
+ * remains available. Existing login names are never changed.
  *
  * <h3>Switch 2: E-Mail hinterlassen</h3>
  *
@@ -39,8 +35,6 @@ export type AskerPermissionsCardProps = {
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     fallbackValues?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
-    openPolicyMenu?: string | null;
-    onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
     /** Channel switches whose conversation-type tile is not shown on this page. */
     channelToggles?: Array<{ field: string; labelKey: string; defaultValue?: boolean }>;
@@ -52,8 +46,6 @@ export const AskerPermissionsCard = ({
     permissionPolicies,
     fallbackValues,
     pendingPolicyFields,
-    openPolicyMenu,
-    onOpenPolicyMenu,
     onPolicyChange,
     channelToggles = [],
 }: AskerPermissionsCardProps) => {
@@ -70,18 +62,22 @@ export const AskerPermissionsCard = ({
             restrictedFields,
         );
 
-    const policyControl = (field: string, labelKey: string) => (
-        <PermissionPolicyControl
-            featureKey={field}
-            label={t(labelKey)}
-            level={policyLevel}
-            policy={policyFor(field)}
-            open={openPolicyMenu === field}
-            pending={pendingPolicyFields?.has(field)}
-            onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
-            onChange={(next) => onPolicyChange?.(field, next)}
-        />
-    );
+    const policyControl = (field: string, labelKey: string) => {
+        const accountSetting = field === 'featureDisplayNameEditable' || field === 'featureAskerEmailEnabled';
+        const setOnTraeger = policyLevel === 'agency' && accountSetting;
+        return (
+            <PermissionPolicyControl
+                featureKey={field}
+                label={t(labelKey)}
+                level={policyLevel}
+                policy={policyFor(field)}
+                pending={pendingPolicyFields?.has(field)}
+                disabled={setOnTraeger}
+                supportingText={setOnTraeger ? t('tenants.permissions.card.notifications.setOnTraeger') : undefined}
+                onChange={(next) => !setOnTraeger && onPolicyChange?.(field, next)}
+            />
+        );
+    };
 
     const restrictedNote = (field: string) =>
         restrictedFields.has(field) ? (
@@ -89,31 +85,35 @@ export const AskerPermissionsCard = ({
         ) : null;
 
     return (
-        <Card titleKey="tenants.permissions.asker.title">
-            <p className={styles.intro}>
-                <Trans i18nKey="tenants.permissions.asker.description" components={{ strong: <strong /> }} />
-            </p>
-
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
+        <Card
+            headerIcon={<AskerAccountIcon width={40} height={40} />}
+            titleKey="tenants.permissions.asker.title"
+            help={ASKER_HELP}
+        >
+            <div className={styles.columns}>
+                <div className={styles.setting}>
+                    <div className={styles.settingHeader}>
+                        {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
+                    </div>
+                    <p className={styles.settingDescription}>
+                        {t('tenants.permissions.asker.displayName.description')}
+                    </p>
+                    {restrictedNote('featureDisplayNameEditable')}
                 </div>
-                <p className={styles.settingDescription}>{t('tenants.permissions.asker.displayName.description')}</p>
-                {restrictedNote('featureDisplayNameEditable')}
-            </div>
 
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
+                <div className={styles.setting}>
+                    <div className={styles.settingHeader}>
+                        {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
+                    </div>
+                    <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
+                    {restrictedNote('featureAskerEmailEnabled')}
                 </div>
-                <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
-                {restrictedNote('featureAskerEmailEnabled')}
             </div>
             {/* FE#1725: channel switches live on the conversation-type tiles. Only switches of a
                 tile hidden on this page land here, so no setting becomes unreachable. */}
             {channelToggles.length > 0 && (
                 <>
-                    <h3>{t('tenants.permissions.asker.channels.title')}</h3>
+                    <h3 className={styles.sectionTitle}>{t('tenants.permissions.asker.channels.title')}</h3>
                     {channelToggles.map(({ field, labelKey }) => (
                         <div key={field} className={styles.setting}>
                             <div className={styles.settingHeader}>{policyControl(field, labelKey)}</div>

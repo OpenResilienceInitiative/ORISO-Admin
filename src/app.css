@@ -109,6 +109,7 @@
        hardcoded the value (editor help icon, success glyph — #594.11). Static
        now, so nothing has to. */
     --m3-secondary: #4c555f;
+    --m3-on-secondary: #ffffff;
 
     /* Static defaults for two roles that until now only existed at runtime
        (applyAdminTheme writes the OrisoScheme light values as inline
@@ -187,10 +188,10 @@
        card's left edge sits 84px right of the sidebar. Vertically the header is
        236px: a 144px tab band (24 + 96 + 24) plus a 92px search row. */
     --admin-sidebar-width: 128px;
-    --admin-page-gutter: 60px;
+    --admin-page-gutter: 0px;
     --admin-content-inset: 24px;
     --admin-header-pad: 24px;
-    --admin-tab-height: 96px;
+    --admin-tab-height: 76px;
     --admin-card-gap: 48px;
     --admin-dialog-card-width: 360px;
     --admin-panel-card-width: 800px;

@@ -12,8 +12,9 @@ const createDefaultCardMenuSelection = (): SelectedCardMenuByScope => ({
     agency: {},
 });
 
+// topicMonthsAgo<n>: top topic n months back when the topic window is longer than four months
 const isCardMenuKey = (value: unknown): value is CardMenuKey =>
-    typeof value === 'string' && cardMenuKeys.includes(value as CardMenuKey);
+    typeof value === 'string' && (cardMenuKeys.includes(value as CardMenuKey) || /^topicMonthsAgo\d+$/.test(value));
 
 const getStatisticPreferenceStorageKey = (baseKey = statisticPreferenceStorageBaseKey) => {
     const authInfo = parseUserAuthInfo() as {

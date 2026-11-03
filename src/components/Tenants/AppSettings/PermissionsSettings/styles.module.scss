@@ -38,18 +38,6 @@
     font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.permissionsCardDeck {
-    --card-deck-min-height: max(0px, calc(100dvh - 255px));
-}
-
-.cardGrid {
-    --card-deck-gap: 48px;
-    --card-deck-padding: 8px 4px 18px;
-    --card-deck-item-min-width: 425px;
-    --card-deck-item-width: 425px;
-    --card-deck-item-max-width: 425px;
-}
-
 .chatTypeCard {
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid var(--admin-card-outline, transparent);
@@ -139,31 +127,6 @@
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
 }
 
-.cardDescription {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 500;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    margin: 18px 0 28px;
-    min-height: 124px;
-    text-align: left;
-    letter-spacing: 0.15px;
-
-    strong {
-        color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-        font-weight: 700;
-    }
-}
-
-.cardDescriptionInfo {
-    width: 16px;
-    height: 16px;
-    margin: 4px 8px 2px 0;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    fill: currentcolor;
-    float: left;
-}
-
 .cardDescriptionSecondary {
     display: block;
     margin-top: 14px;
@@ -190,11 +153,29 @@
     text-align: center;
 }
 
+.tileBody {
+    display: contents;
+}
+
+// Live-chat tile: switch and links first, so the links never end up below every other setting.
+.tileColumns {
+    display: grid;
+    align-items: start;
+    gap: 16px 40px;
+    grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr);
+}
+
+@container (max-width: 759px) {
+    .tileColumns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .togglesList {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: 24px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    margin-bottom: 8px;
 }
 
 .toggleRow {
@@ -238,21 +219,7 @@
     flex: 0 0 auto;
 }
 
-.chatTypeCardSlot {
-    display: flex;
-}
-
 @media screen and (max-width: 767px) {
-    .permissionsCardDeck {
-        --card-deck-min-height: max(0px, calc(100dvh - 220px));
-    }
-
-    .cardGrid {
-        --card-deck-gap: 24px;
-        --card-deck-mobile-gap: 24px;
-        --card-deck-mobile-padding: 0 6px;
-    }
-
     .chatTypeCard {
         width: 100%;
         min-width: 0;

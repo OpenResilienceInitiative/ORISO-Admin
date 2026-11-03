@@ -218,8 +218,14 @@
     justify-content: flex-end;
     padding: 0 24px 0 8px;
     border-top: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 14%, transparent);
-    margin: auto -32px 0;
+    margin: auto -16px 0;
     gap: 8px;
+
+    /* Reaches the card's edge: the Box padding is 16px on a phone, 24px from 600px. */
+    @media only screen and (min-width: 600px) {
+        margin-right: -24px;
+        margin-left: -24px;
+    }
 }
 
 .footerTextButton {

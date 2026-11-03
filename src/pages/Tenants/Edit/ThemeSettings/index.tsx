@@ -4,5 +4,5 @@ import { GeneralSettings } from '../../../../components/Tenants/GeneralSettings'
 export const TenantThemeSettings = () => {
     const { id } = useParams();
 
-    return <GeneralSettings tenantId={id} />;
+    return <GeneralSettings tenantId={id} section="appearance" />;
 };
