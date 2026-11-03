@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
+import { expect, within } from 'storybook/test';
 import { TutorialStatisticsSection } from './TutorialStatisticsSection';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
@@ -117,5 +119,38 @@ export const Unauthorized: Story = {
 export const LoadError: Story = {
     args: {
         loadStatistics: () => Promise.reject(new Error('API call error: 500')),
+    },
+};
+
+export const HiddenGroup: Story = {
+    args: {
+        loadStatistics: () =>
+            Promise.resolve({
+                ...tenantResponse,
+                smallCellMinimum: 5,
+                tenants: [
+                    {
+                        tenantId: 2,
+                        counts: [
+                            {
+                                surface: 'frontend',
+                                tourId: 'consultant-walkthrough',
+                                tourVersion: 1,
+                                status: null,
+                                total: 0,
+                                suppressed: true,
+                            },
+                            ...tenantResponse.tenants[0].counts.filter((count) => count.surface === 'admin'),
+                        ],
+                    },
+                ],
+            }),
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Ausgeblendet: weniger als 5 Personen/)).toBeVisible();
+        // the shown group keeps its figures, the hidden one has no zero and no percentage
+        await expect(canvas.getAllByText('100%')).toHaveLength(1);
+        await expect(canvas.queryByText('0%')).toBeNull();
     },
 };

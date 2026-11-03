@@ -28,7 +28,7 @@ vi.mock('../hooks/useUserRoles.hook', () => ({
     }),
 }));
 
-import { fetchData } from '../api/fetchData';
+import { FETCH_ERRORS, fetchData } from '../api/fetchData';
 import getDashboardStatistics from '../api/statistic/getDashboardStatistics';
 import i18n from '../i18n';
 import { Statistic } from './Statistic';
@@ -70,9 +70,7 @@ const response: AdminDashboardStatisticsResponse = {
     ],
 };
 
-const renderStatistic = () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
+const renderStatistic = (client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
     return render(
         <QueryClientProvider client={client}>
             <MemoryRouter>
@@ -423,6 +421,91 @@ describe('Statistic page', () => {
 
         await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
         expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+    });
+
+    describe('hidden rows, hidden totals and the unavailable state (ORISO-Admin#1337)', () => {
+        const hiddenRow = {
+            ...response.targets[0],
+            counselorCount: 0,
+            suppressed: true,
+            metrics: null,
+            sessionCountsByPeriod: null,
+            groupChatCountsByPeriod: null,
+        };
+
+        it('shows no counsellor count for a hidden row and says it can also hide a larger row', async () => {
+            dashboardMock.mockResolvedValue({ ...response, targets: [hiddenRow] });
+
+            renderStatistic();
+
+            await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
+            // the zero a hidden row carries must never be shown as a count
+            const cards = document.querySelector('.statisticDashboard__summaryGrid') as HTMLElement;
+            expect(cards.textContent).not.toMatch(/(^|\D)0(\D|$)/);
+            expect(screen.getByText(/kann auch einen größeren Bereich treffen/)).toBeInTheDocument();
+        });
+
+        it('says so when the total itself is hidden', async () => {
+            dashboardMock.mockResolvedValue({ ...response, targets: [hiddenRow] });
+
+            renderStatistic();
+
+            await waitFor(() =>
+                expect(
+                    screen.getByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/),
+                ).toBeInTheDocument(),
+            );
+            // a chart of zeros would read as "nothing happened"
+            expect(document.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        });
+
+        it('does not call the counsellor count "on duty": it counts active counsellors', async () => {
+            dashboardMock.mockResolvedValue(response);
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+            expect(labels.some((label) => label.includes('aktive Beratende'))).toBe(true);
+            expect(labels.some((label) => label.includes('im Dienst'))).toBe(false);
+        });
+
+        it('shows "temporarily unavailable" and no figures when the dashboard answers 503', async () => {
+            dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
+
+            renderStatistic();
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('vorübergehend nicht verfügbar');
+            expect(screen.queryByText('Statistikdaten konnten nicht geladen werden.')).toBeNull();
+            expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();
+            expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+            expect(screen.queryByText('noch keine Daten')).toBeNull();
+            expect(document.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+        });
+
+        it('keeps the generic load error for other failures', async () => {
+            dashboardMock.mockRejectedValue(new Error('API call error: 500 Internal Server Error'));
+
+            renderStatistic();
+
+            expect(await screen.findByText('Statistikdaten konnten nicht geladen werden.')).toBeInTheDocument();
+            expect(screen.queryByText(/vorübergehend nicht verfügbar/)).toBeNull();
+        });
+
+        it('drops figures that were already loaded when a later refresh answers 503', async () => {
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            dashboardMock.mockResolvedValue(response);
+            renderStatistic(client);
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
+            await client.invalidateQueries({ queryKey: ['ADMIN_STATISTICS_DASHBOARD'] });
+
+            expect(await screen.findByText(/vorübergehend nicht verfügbar/)).toBeInTheDocument();
+            expect(screen.queryByText('12')).toBeNull();
+            expect(document.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+        });
     });
 
     describe('configurable time windows (UserService#1544)', () => {
