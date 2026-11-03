@@ -8,6 +8,7 @@ import styles from './styles.module.scss';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 
+import { useSupervisionPrivacyConfirm } from '../../../SupervisionPrivacyConfirm';
 /**
  * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
  * conversation type of its own. It used to be wired as the master of the "groupInternal" chat-type
@@ -49,6 +50,8 @@ export const OtherFunctionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+    // OBP 2.1 #107: a supervisor reads along — ask about the privacy policy first.
+    const confirmSupervision = useSupervisionPrivacyConfirm();
     const extraI18nTopicKey = settings.multitenancyWithSingleDomainEnabled ? '.mtsd' : '';
     return (
         <CardEditable
@@ -98,8 +101,10 @@ export const OtherFunctionsSettings = ({
                     name={['settings', 'featureSupervisionEnabled']}
                     inline
                     disableLabels
+                    confirmEnable={confirmSupervision.confirmEnable}
                 />
                 <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.supervision.description')}</p>
+                {confirmSupervision.dialog}
             </div>
             <>
                 {SUPERVISION_FEATURE_TOGGLES.map(({ labelKey, field }) => {

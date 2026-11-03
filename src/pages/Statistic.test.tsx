@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { AdminDashboardStatisticsResponse } from '../api/statistic/getDashboardStatistics';
@@ -294,5 +294,94 @@ describe('Statistic page', () => {
 
         await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
         expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+    });
+
+    describe('configurable time windows (UserService#1544)', () => {
+        const openCasePeriodSelect = async () => {
+            fireEvent.click(await screen.findByRole('button', { name: 'Zeitraum für Beratungsfälle' }));
+            return screen.getAllByRole('menuitemradio');
+        };
+
+        it('offers one requests-chart period per configured week plus a week overview', async () => {
+            dashboardMock.mockResolvedValue({ ...response, chartWeeks: 8 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            const options = await openCasePeriodSelect();
+
+            expect(options.map((option) => option.textContent)).toEqual([
+                'diese Woche',
+                'letzte Woche',
+                'vor zwei Wochen',
+                'vor drei Wochen',
+                'vor vier Wochen',
+                'vor 5 Wochen',
+                'vor 6 Wochen',
+                'vor 7 Wochen',
+                '8 Wochen im Überblick',
+            ]);
+        });
+
+        it("keeps today's five weeks when the backend does not report a window", async () => {
+            dashboardMock.mockResolvedValue(response);
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            const options = await openCasePeriodSelect();
+
+            expect(options).toHaveLength(6);
+            expect(options[4]).toHaveTextContent('vor vier Wochen');
+            expect(options[5]).toHaveTextContent('5 Wochen im Überblick');
+        });
+
+        it('shows one bar per configured week in the week overview', async () => {
+            dashboardMock.mockResolvedValue({ ...response, chartWeeks: 12 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            expect(screen.getAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(7);
+
+            fireEvent.click((await openCasePeriodSelect()).at(-1) as HTMLElement);
+
+            expect(screen.queryAllByRole('button', { name: /Beratungsfälle am/ })).toHaveLength(0);
+            expect(screen.getAllByRole('button', { name: /Beratungsfälle in KW \d+/ })).toHaveLength(12);
+        });
+
+        it('lists one top-topic month per configured month in the metric menu', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 6 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+            expect(labels.filter((label) => label.includes('Thema vor 5 Monaten'))).toHaveLength(1);
+            expect(labels.filter((label) => /Thema vor 6 Monaten/.test(label))).toHaveLength(0);
+        });
+
+        it('describes an older topic month without calling it this month', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 6 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const older = screen
+                .getAllByRole('menuitemradio')
+                .find((option) => (option.textContent ?? '').includes('Thema vor 5 Monaten'));
+            expect(older).toBeDefined();
+            expect(older).not.toHaveTextContent('in diesem Monat');
+        });
+
+        it('drops topic months beyond a shorter configured window', async () => {
+            dashboardMock.mockResolvedValue({ ...response, topicMonths: 3 });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.click(screen.getAllByRole('button', { name: 'Kennzahl in diesem Dashboard-Slot auswählen' })[0]);
+
+            const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+            expect(labels.some((label) => label.includes('Thema vor 2 Monaten'))).toBe(true);
+            expect(labels.some((label) => label.includes('Thema vor 3 Monaten'))).toBe(false);
+        });
     });
 });

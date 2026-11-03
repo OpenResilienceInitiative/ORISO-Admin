@@ -1,0 +1,205 @@
+import '@ant-design/v5-patch-for-react-19';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import i18n from '../../../i18n';
+import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
+import type { StatisticsSettings } from '../../../types/StatisticsSettings';
+import { StatisticsSettingsCardContainer } from '.';
+
+const thresholds = ['2', '3', '4', '5', '6', '7', '8', '9', '10'];
+const initial: StatisticsSettings = {
+    revision: 4,
+    settings: [
+        {
+            key: 'agencyMinimumCounsellors',
+            value: '5',
+            defaultValue: '5',
+            options: thresholds,
+            effectiveFrom: '2026-10-20T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'tenantMinimumCounsellors',
+            value: '5',
+            defaultValue: '5',
+            options: thresholds,
+            effectiveFrom: '2026-10-20T08:00',
+            changedBy: null,
+        },
+        {
+            key: 'platformMinimumCounsellors',
+            value: '3',
+            defaultValue: '5',
+            options: thresholds,
+            effectiveFrom: '2026-10-28T14:00',
+            changedBy: 'platform.admin',
+        },
+        {
+            key: 'messageCountTracking',
+            value: 'ENABLED',
+            defaultValue: 'ENABLED',
+            options: ['ENABLED', 'DISABLED'],
+            effectiveFrom: null,
+            changedBy: null,
+        },
+    ],
+};
+
+const server = setupServer(http.get('*/useradmin/statistics/settings', () => HttpResponse.json(initial)));
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterAll(() => server.close());
+afterEach(() => {
+    server.resetHandlers();
+    clearSessionTokens();
+    vi.restoreAllMocks();
+});
+
+const signIn = (tenantId: number) =>
+    setSessionTokens(
+        `header.${btoa(
+            JSON.stringify({ realm_access: { roles: ['agency-admin', 'tenant-admin'] }, tenantId }),
+        )}.signature`,
+        null,
+    );
+
+beforeEach(async () => {
+    signIn(0);
+    await i18n.changeLanguage('de');
+});
+
+const showCard = () =>
+    render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <StatisticsSettingsCardContainer />
+        </QueryClientProvider>,
+    );
+
+it('lists every setting one after another with its value and since when it applies', async () => {
+    showCard();
+
+    expect(await screen.findByLabelText(/^Mindestzahl Beratende je Beratungsstelle/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Mindestzahl Beratende je Träger/)).toHaveValue('5');
+    expect(screen.getByLabelText(/^Mindestzahl Beratende für die gesamte Plattform/)).toHaveValue('3');
+    expect(screen.getByLabelText(/^Gesendete Nachrichten der Beratenden zählen/)).toHaveValue('An');
+    expect(screen.getAllByText('Gilt seit 20.10.2026')).toHaveLength(2);
+    expect(screen.getByText('Gilt seit 28.10.2026')).toBeVisible();
+    expect(screen.getByText('Standardwert, noch nie geändert')).toBeVisible();
+    expect(screen.getByText(/Beratende sehen ihre eigenen Zahlen immer vollständig/)).toBeVisible();
+});
+
+it('labels the dashboard time windows in weeks and months (UserService#1544)', async () => {
+    server.use(
+        http.get('*/useradmin/statistics/settings', () =>
+            HttpResponse.json({
+                ...initial,
+                settings: [
+                    ...initial.settings,
+                    {
+                        key: 'requestChartWeeks',
+                        value: '12',
+                        defaultValue: '5',
+                        options: ['5', '8', '12', '16', '20', '26'],
+                        effectiveFrom: '2026-11-01T10:00',
+                        changedBy: 'platform.admin',
+                    },
+                    {
+                        key: 'topicMonths',
+                        value: '4',
+                        defaultValue: '4',
+                        options: ['3', '4', '6', '12'],
+                        effectiveFrom: '2026-10-20T08:00',
+                        changedBy: null,
+                    },
+                ],
+            }),
+        ),
+    );
+    showCard();
+
+    expect(await screen.findByLabelText(/^Diagramm „Beratungsfälle“: Zeitraum in Wochen/)).toHaveValue('12 Wochen');
+    expect(screen.getByLabelText(/^Häufigstes Thema: Zeitraum in Monaten/)).toHaveValue('4 Monate');
+    expect(screen.getByText('Gilt seit 01.11.2026')).toBeVisible();
+});
+
+it('saves the chosen values with the revision it read', async () => {
+    let received: unknown;
+    server.use(
+        http.put('*/useradmin/statistics/settings', async ({ request }) => {
+            received = await request.json();
+            return HttpResponse.json({
+                ...initial,
+                revision: 5,
+                settings: initial.settings.map((setting) =>
+                    setting.key === 'agencyMinimumCounsellors'
+                        ? { ...setting, value: '2', effectiveFrom: '2026-11-01T09:30', changedBy: 'platform.admin' }
+                        : setting,
+                ),
+            });
+        }),
+    );
+    showCard();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+    await userEvent.click(screen.getByLabelText(/^Mindestzahl Beratende je Beratungsstelle/));
+    await userEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: '2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() =>
+        expect(received).toEqual({
+            values: {
+                agencyMinimumCounsellors: '2',
+                tenantMinimumCounsellors: '5',
+                platformMinimumCounsellors: '3',
+                messageCountTracking: 'ENABLED',
+            },
+            revision: 4,
+        }),
+    );
+    expect(await screen.findByText('Gilt seit 01.11.2026')).toBeVisible();
+});
+
+it('downloads the change protocol as CSV', async () => {
+    server.use(
+        http.get('*/useradmin/statistics/settings/history', () =>
+            HttpResponse.json([
+                {
+                    key: 'platformMinimumCounsellors',
+                    oldValue: '5',
+                    newValue: '3',
+                    changedById: 'id',
+                    changedByName: 'platform.admin',
+                    effectiveFrom: '2026-10-28T14:00',
+                },
+            ]),
+        ),
+    );
+    const blobs: Blob[] = [];
+    const createObjectURL = vi.fn((blob: Blob) => {
+        blobs.push(blob);
+        return 'blob:protocol';
+    });
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    showCard();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Protokoll herunterladen (CSV)' }));
+
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    const csv = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsText(blobs[0]);
+    });
+    expect(csv).toContain('Mindestzahl Beratende für die gesamte Plattform;5;3;platform.admin;2026-10-28T14:00');
+});
+
+it('shows nothing and asks for nothing when the admin is not a platform admin', () => {
+    signIn(7);
+    const { container } = showCard();
+
+    expect(container).toBeEmptyDOMElement();
+});

@@ -6,4 +6,5 @@ export enum UserRole {
     UserAdmin = 'user-admin',
     AgencyAdmin = 'agency-admin',
     RestrictedAgencyAdmin = 'restricted-agency-admin',
+    Consultant = 'consultant',
 }

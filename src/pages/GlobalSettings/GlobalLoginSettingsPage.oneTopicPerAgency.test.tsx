@@ -25,8 +25,14 @@ vi.mock('../../components/GlobalSettings/DocumentMasterDataCardContainer', () =>
 vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => ({
     AccountInactivitySettingsCardContainer: () => <div data-testid="account-inactivity-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
+}));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
 }));
 
 const showPage = () =>

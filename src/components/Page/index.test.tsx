@@ -44,8 +44,8 @@ beforeEach(() => {
     Element.prototype.scrollBy = vi.fn();
 });
 
-it('keeps card navigation when tabs fit, but gives overflowing tabs priority', () => {
-    const { container } = render(
+const renderTabsWithDeck = (Deck: () => null) =>
+    render(
         <MemoryRouter>
             <Page>
                 <Page.Title
@@ -54,19 +54,62 @@ it('keeps card navigation when tabs fit, but gives overflowing tabs priority', (
                         { to: '/two', titleKey: 'Two' },
                     ]}
                 />
-                <CardNav />
+                <Deck />
             </Page>
         </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
-    expect(scrollCards).toHaveBeenCalledWith(1);
-    scrollCards.mockClear();
+
+const overflowTabs = (container: HTMLElement) => {
     const row = container.querySelector('[data-admin-page-tabs]') as HTMLElement;
     Object.defineProperty(row, 'clientWidth', { configurable: true, value: 500 });
     Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 1200 });
     fireEvent.resize(window);
+    return row;
+};
+
+// #1248: zoomed in, the tabs overflowed and took the arrows, and the deck hides its scrollbar,
+// so the cards beyond the fold could not be reached with a mouse.
+it('keeps the arrows on a deck that can scroll, even when the tabs overflow', () => {
+    const { container } = renderTabsWithDeck(CardNav);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(scrollCards).toHaveBeenCalledWith(1);
+    scrollCards.mockClear();
+
+    overflowTabs(container);
+    expect(screen.queryByRole('button', { name: 'page.tabs.next' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
+    expect(scrollCards).toHaveBeenCalledWith(1);
+});
+
+it('gives overflowing tabs the arrows when every card fits (#193)', () => {
+    // Stable like the real deck's memoised registration: a fresh object per render re-registers,
+    // re-renders this context consumer and loops until the worker runs out of memory.
+    const fittingNav = { ...cardNav, canScrollForward: false };
+    const FittingDeck = () => {
+        useRegisterCardDeckNav('cards', fittingNav);
+        return null;
+    };
+    const { container } = renderTabsWithDeck(FittingDeck);
+    const row = overflowTabs(container);
+
     fireEvent.click(screen.getByRole('button', { name: 'page.tabs.next' }));
+    expect(row.scrollBy).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
     expect(scrollCards).not.toHaveBeenCalled();
+});
+
+it('pans overflowing tabs with the mouse wheel while the deck owns the arrows', () => {
+    const { container } = renderTabsWithDeck(CardNav);
+    const row = overflowTabs(container);
+
+    fireEvent.wheel(row, { deltaY: 120 });
+    expect(row.scrollLeft).toBe(120);
+
+    // At the end the wheel is left to the page.
+    row.scrollLeft = 700;
+    const atEnd = fireEvent.wheel(row, { deltaY: 120 });
+    expect(atEnd).toBe(true);
+    expect(row.scrollLeft).toBe(700);
 });
 
 it.each(['title', 'back'])('scrolls overflowing tabs and disables arrows at the edges (%s)', (header) => {

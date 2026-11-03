@@ -272,8 +272,8 @@ export const JoinExistingTraegerDone: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const password = await canvas.findByLabelText(/^(Passwort|Password)$/);
-        await userEvent.type(password, 'SecurePass1!');
-        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePass1!');
+        await userEvent.type(password, 'SecurePassword1!');
+        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePassword1!');
         await userEvent.click(canvas.getByRole('button', { name: /Konto erstellen|Create account/ }));
         await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
@@ -355,6 +355,31 @@ export const AccountStepStory: StoryObj = {
             onSubmit={() => {}}
         />
     ),
+};
+
+/** Admin#1207: the server refused the one-time password — the reason sits under the password field. */
+export const AccountStepPasswordUnchanged: StoryObj = {
+    render: () => (
+        <AccountStep
+            invite={STUB_INVITE_PROPS}
+            busy={false}
+            showRegistrationError={false}
+            passwordRejection="UNCHANGED"
+            existingAccountSetup
+            onSubmit={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByRole('alert')).toHaveTextContent(
+            /vom Einmalpasswort unterscheidet|differs from the one-time password/,
+        );
+    },
+};
+
+/** The same hint on a phone — the text wraps and stays fully visible. */
+export const AccountStepPasswordUnchangedMobile: StoryObj = {
+    ...AccountStepPasswordUnchanged,
+    ...PHONE_390,
 };
 
 /**

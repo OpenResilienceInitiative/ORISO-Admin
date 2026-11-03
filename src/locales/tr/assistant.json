@@ -31,5 +31,11 @@
     "tenants.permissions.asker.channels.browserSelfHelp": "Öz yardım grupları için tarayıcı",
     "settings.assistant.inherit": "Devralınan ayarı kullan",
     "settings.assistant.inheritedIcon": "Devralınan simge",
-    "settings.assistant.loadError": "Ayarlar yüklenemedi. Lütfen tekrar deneyin."
+    "settings.assistant.loadError": "Ayarlar yüklenemedi. Lütfen tekrar deneyin.",
+    "tenants.permissions.asker.collection.title": "E-posta adresinin bırakılabileceği yerler",
+    "tenants.permissions.asker.collection.agencyCounselling": "Danışmanlıkta e-posta adresi",
+    "tenants.permissions.asker.collection.liveChat": "Canlı sohbette e-posta adresi",
+    "tenants.permissions.asker.collection.selfHelp": "Öz yardım gruplarında e-posta adresi",
+    "tenants.permissions.asker.collection.masterOff": "Önce hesap için e-posta adreslerine izin verin. Bu seçimler korunur.",
+    "tenants.permissions.asker.collection.description": "Bu ayarlar adres toplanmasına izin verir. Adresi zorunlu kılmaz ve bildirimlerin gönderilmesini değiştirmez."
 }

@@ -22,7 +22,11 @@ import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { resolveVisibleLinksTabs } from './constants/linksAccess';
 import { UserRole } from './enums/UserRole';
-import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
+import {
+    canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
+    canSeeSupervisorLogs,
+} from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -38,6 +42,7 @@ import {
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
+    LazyDeletionAuditLogsPage,
     LazyInactiveAccountAuditLogsPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
@@ -153,6 +158,8 @@ export const App = () => {
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
+    // Platform admins only — the backend answers 403 to every other role.
+    const canSeeDeletionAuditLogs = canSeeDeletionAuditLogsFor(isSuperAdmin, can);
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
         isTechnicalAccount,
@@ -315,6 +322,7 @@ export const App = () => {
                                             showSupervisor={showSupervisorLogs}
                                             showCaseHandover={showCaseHandoverLogs}
                                             showInactive={isSuperAdmin}
+                                            showDeletion={canSeeDeletionAuditLogs}
                                         />
                                     }
                                 >
@@ -332,6 +340,12 @@ export const App = () => {
                                         <Route
                                             path={routePathNames.inactiveAccountAuditLogs}
                                             element={<LazyInactiveAccountAuditLogsPage />}
+                                        />
+                                    )}
+                                    {canSeeDeletionAuditLogs && (
+                                        <Route
+                                            path={routePathNames.deletionAuditLogs}
+                                            element={<LazyDeletionAuditLogsPage />}
                                         />
                                     )}
                                     {showCaseHandoverLogs && (

@@ -28,6 +28,30 @@ describe('useAgencyUpdate sequential card saves', () => {
         mocks.updateAgencyData.mockClear();
     });
 
+    it('uses the server-normalized agency as the base for the next card save', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        mocks.updateAgencyData.mockImplementationOnce(async () => ({
+            ...mocks.agency,
+            name: 'Normalized name',
+            settings: { featureVideoCallsOneOnOneChatsEnabled: false },
+        }));
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ name: 'Submitted name' });
+        await result.current.mutateAsync({ description: 'Second card' });
+
+        expect(mocks.updateAgencyData.mock.calls[1][1]).toMatchObject({
+            name: 'Normalized name',
+            settings: { featureVideoCallsOneOnOneChatsEnabled: false },
+            description: 'Second card',
+        });
+    });
+
     it('does not replay geographic coverage from a previous card while the refetch is pending', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
@@ -163,8 +187,8 @@ describe('useAgencyUpdate sequential card saves', () => {
         queryClient.setQueryData(['AGENCY', '282'], { ...mocks.agency, description: 'Old' });
         vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
         mocks.updateAgencyData
-            .mockImplementationOnce(async (_stored, _update, onMainWritten?: () => void) => {
-                onMainWritten?.();
+            .mockImplementationOnce(async (_stored, update, onMainWritten?: (saved: unknown) => void) => {
+                onMainWritten?.(update);
                 throw new Error('postcode range rejected');
             })
             .mockImplementationOnce(async (_stored, update) => update);

@@ -4,15 +4,21 @@ import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { ReactComponent as LockIcon } from '../../../resources/img/svg/lock.svg';
 import { validatePasswordCriteria } from '../../../utils/validateInputValue';
+import { PasswordChangeCounsellorNotice } from './PasswordChangeCounsellorNotice';
 import styles from './styles.module.scss';
 
 export const PasswordChange = () => {
     const { t } = useTranslation();
+    const { isCounsellor } = useUserRoles();
     const { mutate: updateData } = useUpdateUserPassword({
         onSuccess: () => {
-            notification.success({ message: t('profile.passwordChange.success') });
+            notification.success({
+                message: t('profile.passwordChange.success'),
+                description: isCounsellor ? t('profile.passwordChange.success.counsellor') : undefined,
+            });
         },
         onError: () => {
             notification.error({ message: t('profile.passwordChange.error') });
@@ -49,6 +55,7 @@ export const PasswordChange = () => {
             {({ editing }) =>
                 editing && (
                     <>
+                        {isCounsellor && <PasswordChangeCounsellorNotice />}
                         <Row gutter={[16, 16]}>
                             <Col span={12} sm={6}>
                                 <FormInputPasswordField

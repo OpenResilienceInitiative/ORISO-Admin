@@ -54,6 +54,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         dpaForward,
         dpaConfirmed,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         markDpaForwarded,
@@ -151,6 +152,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
+                    passwordRejection={passwordRejection}
                     existingAccountSetup={existingAccountSetup}
                     onBack={joins || existingAccountSetup ? undefined : goBackToOrganisation}
                     onSubmit={submitAccount}

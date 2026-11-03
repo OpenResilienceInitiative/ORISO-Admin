@@ -901,7 +901,7 @@
         "fileName": "clock-arrow-down.svg",
         "sourcePath": "src/resources/img/svg/clock-arrow-down.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx"],
+        "usageFiles": ["src/components/CustomIcons/EditorIcons.tsx", "src/pages/Profile/Absence/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -953,8 +953,8 @@
         "fileName": "delete.svg",
         "sourcePath": "src/resources/img/svg/delete.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Logs/LogsTabsLayout.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:download:base",
@@ -1113,7 +1113,7 @@
         "fileName": "info.svg",
         "sourcePath": "src/resources/img/svg/info.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CustomIcons/Info.tsx"],
+        "usageFiles": ["src/components/CustomIcons/Info.tsx", "src/pages/Profile/Documentation/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -1141,7 +1141,8 @@
         "exportNames": [],
         "usageFiles": [
             "src/components/CustomIcons/Lock.tsx",
-            "src/components/TwoFactorSetup/ProfileTwoFactorSetup.tsx"
+            "src/components/TwoFactorSetup/ProfileTwoFactorSetup.tsx",
+            "src/pages/Profile/PassswordChange/index.tsx"
         ],
         "usage": "app-used"
     },
@@ -1220,7 +1221,7 @@
         "fileName": "display_settings.svg",
         "sourcePath": "src/resources/img/svg/nav-glyphs/display_settings.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usageFiles": ["src/components/NavGlyph/index.tsx", "src/pages/Profile/LanguageSettings/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -1787,6 +1788,71 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:onboarding:pw-length:base",
+        "family": "pw-length",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-length.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-length.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-lower:base",
+        "family": "pw-lower",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-lower.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-lower.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-number:base",
+        "family": "pw-number",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-number.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-number.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-special:base",
+        "family": "pw-special",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-special.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-special.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-upper:base",
+        "family": "pw-upper",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-upper.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-upper.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:oriso:arrow-menu-open:base",
         "family": "arrow-menu-open",
         "state": "base",
@@ -2242,8 +2308,8 @@
         "fileName": "functionality_access.svg",
         "sourcePath": "src/resources/img/svg/permissions/functionality_access.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Profile/RolesAndAssignment/index.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "permission-icon:permissions:global-config:base",
@@ -2372,7 +2438,7 @@
         "fileName": "person_search_filled.svg",
         "sourcePath": "src/resources/img/svg/person_search_filled.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Logs/LogsTabsLayout.tsx"],
+        "usageFiles": ["src/pages/Logs/LogsTabsLayout.tsx", "src/pages/Profile/SelfConsultantIdentity/index.tsx"],
         "usage": "app-used"
     },
     {
@@ -2385,7 +2451,11 @@
         "fileName": "person.svg",
         "sourcePath": "src/resources/img/svg/person.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/cards/AvatarNameCard/index.tsx", "src/components/CustomIcons/Person.tsx"],
+        "usageFiles": [
+            "src/components/cards/AvatarNameCard/index.tsx",
+            "src/components/CustomIcons/Person.tsx",
+            "src/pages/Profile/PrivateData/index.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2660,6 +2730,7 @@
         "exportNames": [],
         "usageFiles": [
             "src/components/CustomIcons/LegalIcons.tsx",
+            "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
             "src/pages/Links/InvitePanel.tsx",
             "src/pages/Statistic.tsx"
@@ -2847,6 +2918,7 @@
         "exportNames": [],
         "usageFiles": [
             "src/components/CustomIcons/LegalIcons.tsx",
+            "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
             "src/pages/Links/InvitePanel.tsx",
             "src/pages/Statistic.tsx"
@@ -2919,7 +2991,8 @@
             "src/components/cards/AdvisorAccountCard/index.tsx",
             "src/components/cards/FocusTopicsCard/index.tsx",
             "src/components/cards/PersonalInfoCard/index.tsx",
-            "src/components/CustomIcons/Verified.tsx"
+            "src/components/CustomIcons/Verified.tsx",
+            "src/pages/Profile/UserProfile.tsx"
         ],
         "usage": "app-used"
     },

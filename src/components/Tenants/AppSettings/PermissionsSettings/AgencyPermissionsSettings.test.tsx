@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({ useAgencyData: vi.fn(), mutate: vi.fn() }));
 
 vi.mock('../../../../hooks/useAgencyData', () => ({ useAgencyData: mocks.useAgencyData }));
 vi.mock('../../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate }),
+    useAgencyUpdate: () => ({ mutateAsync: mocks.mutate }),
 }));
 
 import { AgencyPermissionsSettings } from './AgencyPermissionsSettings';
@@ -32,6 +32,10 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
     beforeEach(() => {
         mocks.useAgencyData.mockReset();
         mocks.mutate.mockReset();
+        mocks.mutate.mockImplementation(async (patch) => ({
+            ...mocks.useAgencyData().data,
+            settings: { ...mocks.useAgencyData().data.settings, ...patch.settings },
+        }));
     });
 
     it('derives an independent deactivate suggestion from the stored agency value', async () => {
@@ -61,7 +65,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('saves an agency suggestion and reapplies tenant constraints to the payload', async () => {
+    it('saves only the changed agency feature without replaying sibling values', async () => {
         const user = userEvent.setup();
         mocks.useAgencyData.mockReturnValue(
             agency({
@@ -77,15 +81,19 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
             within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
         );
 
-        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         const payload = mocks.mutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings.featureThreadsOneOnOneEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBe(false);
+        expect(payload.settings.featureVideoCallsEnabled).toBeUndefined();
+        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBeUndefined();
         expect(payload.settings.agencyAdminControls).toBeUndefined();
-        expect(
-            within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }),
-        ).toBeDisabled();
+        await waitFor(() =>
+            expect(
+                within(control).getByRole('button', {
+                    name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i,
+                }),
+            ).toBeEnabled(),
+        );
     });
 
     it('projects tenant-enforced-on values as locked active controls', () => {
@@ -199,6 +207,71 @@ describe('AgencyPermissionsSettings notification channels', () => {
                 0,
             );
             expect(policy('featureAskerEmailLiveChatEnabled')).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});
+
+// ORISO-Admin#1242: a Träger "off" for direct invitations locks the centre's row; an unset centre value follows it.
+describe('AgencyPermissionsSettings direct invitations', () => {
+    it("locks a chat type the Träger switched off and saves the centre's own choice", async () => {
+        const user = userEvent.setup();
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? Response.json({
+                      tenantId: 2,
+                      policies: {
+                          featureDirectInviteVideoEnabled: { value: false, mode: 'SUGGESTED', inherited: false },
+                          featureDirectInviteChatEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+                      },
+                  })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            await waitFor(() =>
+                expect(
+                    within(policy('featureDirectInviteVideoEnabled')).getByRole('button', {
+                        name: /Weitere Informationen|more information/i,
+                    }),
+                ).toBeTruthy(),
+            );
+            expect(
+                screen.getByText(/Ihr Träger hat das ausgeschaltet|Your Träger has switched this off/i),
+            ).toBeTruthy();
+
+            const chat = policy('featureDirectInviteChatEnabled');
+            await user.click(within(chat).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
+            await user.click(
+                within(chat).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
+            );
+            const payload = mocks.mutate.mock.calls.at(-1)?.[0] as { settings: Record<string, unknown> };
+            expect(payload.settings.featureDirectInviteChatEnabled).toBe(false);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+    it('shows no editable direct-invite rows when the Träger policies cannot be read', async () => {
+        const fetchStub = vi.fn(async (request: Request) =>
+            new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
+                ? new Response(null, { status: 403 })
+                : Response.json([]),
+        );
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            expect(
+                await screen.findByText(
+                    /Einstellung des Trägers konnte nicht geladen|Träger's setting could not be loaded/i,
+                ),
+            ).toBeTruthy();
+            expect(policy('featureDirectInviteChatEnabled')).toBeNull();
         } finally {
             vi.unstubAllGlobals();
         }

@@ -29,6 +29,11 @@ describe('resolveLogsPage', () => {
         expect(resolveLogsPage(false, false, true)).toBe(routePathNames.inactiveAccountAuditLogs);
     });
 
+    it('lands on the deletion log when it is the only view the admin may read', () => {
+        expect(resolveLogsPage(false, false, false, true)).toBe(routePathNames.deletionAuditLogs);
+        expect(resolveLogsPage(false, false, true, true)).toBe(routePathNames.inactiveAccountAuditLogs);
+    });
+
     it('returns null when the admin may read no log view', () => {
         expect(resolveLogsPage(false, false, false)).toBeNull();
     });
@@ -104,6 +109,7 @@ describe('buildAdminNavItems', () => {
         expect(logs?.activeMatch).toEqual({ paths: [routePathNames.logs], mode: 'startsWith' });
         expect(routePathNames.caseHandoverLogs.startsWith(routePathNames.logs)).toBe(true);
         expect(routePathNames.inactiveAccountAuditLogs.startsWith(routePathNames.logs)).toBe(true);
+        expect(routePathNames.deletionAuditLogs.startsWith(routePathNames.logs)).toBe(true);
     });
 
     it('shows the Beratungsstellen entry to a Beratungsstellen-Admin (restricted-agency-admin + user-admin)', () => {

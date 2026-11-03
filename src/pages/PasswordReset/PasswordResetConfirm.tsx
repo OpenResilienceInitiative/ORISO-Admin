@@ -54,7 +54,8 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                     {t('passwordReset.successTitle')}
                 </Typography>
-                <Typography sx={{ mb: 4 }}>{t('passwordReset.successDescription')}</Typography>
+                <Typography sx={{ mb: 2 }}>{t('passwordReset.successDescription')}</Typography>
+                <Typography sx={{ mb: 4 }}>{t('passwordReset.successDescription.counsellorHint')}</Typography>
                 <Link to={routePathNames.login} className="forgotPW">
                     {t('passwordReset.backToLogin')}
                 </Link>
