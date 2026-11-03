@@ -3,7 +3,7 @@ import Title from 'antd/lib/typography/Title';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Box } from '../Box';
-import { TileFill } from '../TileFill';
+import { TileFill, TileNote } from '../TileFill';
 import { TileHelpButton, type TileHelpTopic } from '../TileHelp';
 import { Tooltip } from '../tooltip/Tooltip';
 import { ReactComponent as InfoIcon } from '../../resources/img/svg/i.svg';
@@ -31,6 +31,10 @@ interface CardProps {
     footer?: React.ReactNode;
     /** Adds the info button that opens the explanation of this tile. */
     help?: TileHelpTopic;
+    /** The picture for the free space of a tile; without it the first slide of `help` is used. */
+    picture?: React.ReactNode;
+    /** A short note with an icon, pinned to the bottom of the tile. */
+    note?: { icon: React.ReactNode; text: React.ReactNode };
     /** Forwarded to the card root as `data-testid` (preserves existing test anchors). */
     dataTestId?: string;
 }
@@ -51,11 +55,14 @@ export const Card = ({
     headerIcon,
     footer,
     help,
+    picture,
+    note,
     dataTestId,
     children,
 }: CardProps) => {
     const { t } = useTranslation();
     const isDialog = variant === 'dialog';
+    const fillVisual = picture ?? help?.slides[0]?.visual;
 
     return (
         <Box
@@ -98,11 +105,13 @@ export const Card = ({
                     [styles.isLoading]: isLoading,
                     [styles.dialogContainer]: isDialog,
                     [styles.dialogContentPadding]: isDialog && dialogContentPadding,
+                    [styles.fillContainer]: !isDialog && fillVisual,
                 })}
             >
                 {isLoading && <Spin />}
                 {!isLoading && children}
-                {isDialog && !isLoading && help?.slides[0]?.visual && <TileFill visual={help.slides[0].visual} />}
+                {!isLoading && note && <TileNote icon={note.icon}>{note.text}</TileNote>}
+                {!isLoading && fillVisual && <TileFill visual={fillVisual} />}
             </div>
             {footer && <div className={styles.footer}>{footer}</div>}
         </Box>

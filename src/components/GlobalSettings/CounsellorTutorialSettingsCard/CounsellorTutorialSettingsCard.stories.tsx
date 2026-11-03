@@ -4,6 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { useState } from 'react';
 import { message } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard } from '.';
@@ -32,7 +33,7 @@ const meta = {
         const controls = canvas.getAllByRole('switch');
         await expect(controls).toHaveLength(4);
         controls.forEach((control) => expect(control).toBeDisabled());
-        await expect(canvas.queryByRole('button')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
         await expect(canvas.getByText(/^(Kommt bald|Coming soon)$/)).toBeVisible();
     },
 } satisfies Meta<typeof CounsellorTutorialSettingsCard>;
@@ -53,11 +54,11 @@ export const On: Story = {
         await userEvent.keyboard(' {Enter}');
         await expect(tours).not.toHaveFocus();
         await expect(tours).toBeChecked();
-        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeChecked();
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
         await expect(
             canvas.getByRole('switch', { name: 'Einführung bei neuen Beraterkonten automatisch starten' }),
         ).not.toBeChecked();
-        await expect(canvas.queryByRole('button')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };
 
@@ -86,7 +87,7 @@ export const PlatformAdmin: Story = {
         await expect(args.onToursChange).toHaveBeenCalledWith(true);
         await expect(tours).toBeChecked();
         await expect(canvas.getAllByText('Verfügbar')).toHaveLength(2);
-        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeDisabled();
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeDisabled();
     },
 };
 
@@ -139,10 +140,10 @@ export const PracticeRequiresTours: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getAllByText('Ausgeschaltet')).toHaveLength(2);
-        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeChecked();
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
         await expect(
             canvas.getByText(
-                'Zeigt die aktuelle Freigabe für Übungen. Übungen benötigen zusätzlich die Freigabe der Rundgänge.',
+                'Noch nicht einstellbar. Die aktuelle Freigabe sehen Sie oben. Übungen brauchen zusätzlich die Freigabe der Rundgänge.',
             ),
         ).toBeVisible();
     },
@@ -187,4 +188,8 @@ export const English: Story = {
         ).toBeDisabled();
         await expect(canvas.getByText(/Existing preferences are retained/)).toBeVisible();
     },
+};
+
+export const HelpSlideshow: Story = {
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

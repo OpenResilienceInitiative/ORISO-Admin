@@ -1,3 +1,4 @@
+import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined';
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import Alert from '@mui/material/Alert';
@@ -11,13 +12,14 @@ import {
 } from '../../../types/TemporaryAccountSettings';
 import { CardGrid } from '../../CardGrid';
 import { FETCH_ERRORS } from '../../../api/fetchData';
-import { FieldGrid } from '../../FieldGrid';
 import { CardEditable } from '../../CardEditable';
+import { TileSections } from '../../TileSections';
 import { MuiNumberFormField } from '../../mui/MuiFormField';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
 import { MuiRadioGroupField } from '../../mui/MuiRadioGroupField';
 import { useTemporaryAccountSettings } from '../../../hooks/useTemporaryAccountSettings.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { guestAccountsHelp, temporaryMessagesHelp } from './help';
 import styles from './styles.module.scss';
 
 type SaveOptions = { onError?: () => void };
@@ -60,22 +62,30 @@ const LifetimeField = ({ name }: { name: NumberField }) => {
     const { t } = useTranslation();
     const { min, max } = TEMPORARY_ACCOUNT_LIMITS[name];
     return (
-        <MuiNumberFormField
-            name={name}
-            label={t(`globalSettings.temporaryAccounts.${name}`)}
-            required
-            min={min}
-            inputProps={{ step: 1, max }}
-            rules={[
-                {
-                    required: true,
-                    type: 'integer',
-                    min,
-                    max,
-                    message: t('globalSettings.temporaryAccounts.validation', { min, max }),
-                },
-            ]}
-        />
+        <div className={styles.field}>
+            <label htmlFor={name}>
+                {t(`globalSettings.temporaryAccounts.${name}`)}
+                <span className={styles.requiredMark} aria-hidden="true">
+                    {' *'}
+                </span>
+            </label>
+            <MuiNumberFormField
+                name={name}
+                id={name}
+                required
+                min={min}
+                inputProps={{ step: 1, max, 'aria-required': true }}
+                rules={[
+                    {
+                        required: true,
+                        type: 'integer',
+                        min,
+                        max,
+                        message: t('globalSettings.temporaryAccounts.validation', { min, max }),
+                    },
+                ]}
+            />
+        </div>
     );
 };
 
@@ -99,6 +109,8 @@ export const TemporaryGuestAccountsSettingsCard = ({
             className={styles.card}
             variant="dialog"
             headerIcon={<HourglassEmptyOutlinedIcon />}
+            help={guestAccountsHelp}
+            note={{ icon: <GroupAddOutlinedIcon />, text: t('globalSettings.temporaryAccounts.newPeopleNotice') }}
             titleKey="globalSettings.temporaryAccounts.title"
             subTitleKey="globalSettings.temporaryAccounts.description"
             initialValues={data ? { ...data } : undefined}
@@ -139,26 +151,26 @@ export const TemporaryGuestAccountsSettingsCard = ({
                     {Boolean(error) && (
                         <Alert severity="error">{t('globalSettings.temporaryAccounts.error.load')}</Alert>
                     )}
-                    <section className={styles.group}>
-                        <h4 className={styles.groupTitle}>{t('globalSettings.temporaryAccounts.call.title')}</h4>
-                        <FieldGrid>
+                    <TileSections>
+                        <TileSections.Section id="guest-call" title={t('globalSettings.temporaryAccounts.call.title')}>
                             <LifetimeField name="callDeleteAfterMinutes" />
                             <LifetimeField name="callMaxLifetimeHours" />
-                        </FieldGrid>
-                    </section>
-                    <section className={styles.group}>
-                        <h4 className={styles.groupTitle}>{t('globalSettings.temporaryAccounts.chat.title')}</h4>
-                        <p className={styles.groupHint}>{t('globalSettings.temporaryAccounts.chat.hint')}</p>
-                        <FieldGrid>
+                        </TileSections.Section>
+                        <TileSections.Section
+                            id="guest-chat"
+                            title={t('globalSettings.temporaryAccounts.chat.title')}
+                            note={t('globalSettings.temporaryAccounts.chat.hint')}
+                        >
                             <LifetimeField name="chatInactivityDays" />
-                        </FieldGrid>
-                    </section>
-                    <MuiSwitchField
-                        name="hidePasswordField"
-                        label={t('globalSettings.temporaryAccounts.hidePasswordField')}
-                        helpText={t('globalSettings.temporaryAccounts.hidePasswordFieldHelp')}
-                    />
-                    <p className={styles.scope}>{t('globalSettings.temporaryAccounts.newPeopleNotice')}</p>
+                        </TileSections.Section>
+                        <TileSections.Section id="guest-password" title={t('tileHelp.guestAccounts.password.title')}>
+                            <MuiSwitchField
+                                name="hidePasswordField"
+                                label={t('globalSettings.temporaryAccounts.hidePasswordField')}
+                                helpText={t('globalSettings.temporaryAccounts.hidePasswordFieldHelp')}
+                            />
+                        </TileSections.Section>
+                    </TileSections>
                 </>
             )}
         </CardEditable>
@@ -182,6 +194,8 @@ export const TemporaryMessagesSettingsCard = ({
             className={styles.card}
             variant="dialog"
             headerIcon={<ForumOutlinedIcon />}
+            help={temporaryMessagesHelp}
+            note={{ icon: <GroupAddOutlinedIcon />, text: t('globalSettings.temporaryAccounts.newPeopleNotice') }}
             titleKey="globalSettings.temporaryMessages.title"
             subTitleKey="globalSettings.temporaryMessages.description"
             initialValues={data ? { ...data } : undefined}
@@ -225,7 +239,6 @@ export const TemporaryMessagesSettingsCard = ({
                             </MuiRadioGroupField.Radio>
                         ))}
                     </MuiRadioGroupField>
-                    <p className={styles.scope}>{t('globalSettings.temporaryAccounts.newPeopleNotice')}</p>
                 </>
             )}
         </CardEditable>

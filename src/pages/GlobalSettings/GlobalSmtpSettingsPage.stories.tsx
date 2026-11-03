@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../context/useAppConfig';
@@ -116,12 +117,12 @@ export const Configured: Story = {
         ).toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Abbrechen' }));
 
-        const password = canvas.getByLabelText('SMTP Passwort');
-        const helpText = canvasElement.ownerDocument.getElementById(password.getAttribute('aria-describedby') || '');
-        if (!helpText) throw new Error('The write-only password explanation must be associated with its field.');
-        const senderLabel = canvas.getByText('Absender E-Mail', { selector: 'label' });
+        const username = canvas.getByLabelText('SMTP Benutzername');
+        const helpText = canvasElement.ownerDocument.getElementById(username.getAttribute('aria-describedby') || '');
+        if (!helpText) throw new Error('The write-only username explanation must be associated with its field.');
+        const passwordLabel = canvas.getByText('SMTP Passwort', { selector: 'label' });
         await expect(helpText.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-            senderLabel.getBoundingClientRect().top,
+            passwordLabel.getBoundingClientRect().top,
         );
     },
 };
@@ -161,11 +162,16 @@ export const PendingAfterSave: Story = {
         ).toBeInTheDocument();
         await expect(
             await canvas.findByText(
-                /applied to Keycloak mail within about 5 minutes|innerhalb von etwa 5 Minuten für Keycloak/,
+                /sign-in system.*within about 5 minutes|Anmeldesystem übernimmt.*innerhalb von etwa 5 Minuten/,
             ),
         ).toBeInTheDocument();
         await waitFor(() =>
             expect(canvas.getByRole('button', { name: /Test-E-Mail senden|Send test email/ })).toBeEnabled(),
         );
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...Configured,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };

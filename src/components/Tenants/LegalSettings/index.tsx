@@ -1,16 +1,14 @@
-import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../CustomIcons/LegalIcons';
 import { CardGrid } from '../../CardGrid';
-import { CardEditable } from '../../CardEditable';
-import { FormSwitchField } from '../../FormSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
+import { LegalManagementCard } from './components/LegalManagementCard';
 import { LegalText } from './components/LegalText';
+import { legalTextHelp, privacyHelp } from './components/LegalText/help';
 import { TraegerLegalText } from './components/LegalText/TraegerLegalText';
 import { DataProcessingAgreementContainer } from './components/DataProcessingAgreementContainer';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import styles from './styles.module.scss';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
 
 interface LegalSettingsProps {
@@ -21,7 +19,6 @@ interface LegalSettingsProps {
 
 export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) => {
     const { data } = useTenantData();
-    const { t } = useTranslation();
     const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const finalTenantId = resolveTenantId(tenantId, data.id);
     const { settings } = useAppConfigContext();
@@ -37,6 +34,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
             fieldName={['content', 'privacy']}
             icon={GdprIcon}
             titleKey="privacy.title"
+            tileHelp={privacyHelp}
             legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
             showConfirmationModal={{
@@ -57,28 +55,11 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
         <CardGrid raster>
             {settings?.multitenancyWithSingleDomainEnabled && (
                 <CardGrid.Item span={3}>
-                    <CardEditable
-                        key={`legal-toggle-${settings.legalContentChangesBySingleTenantAdminsAllowed}`}
+                    <LegalManagementCard
                         allowEdit={isSuperAdmin}
-                        initialValues={{ ...settings }}
-                        titleKey="tenants.legal.singleTenantsManageLegal.title"
-                        variant="dialog"
-                        editButtonPlacement="footer"
+                        allowed={settings.legalContentChangesBySingleTenantAdminsAllowed}
                         onSave={mutate}
-                    >
-                        <div className={styles.checkGroup}>
-                            <p className={styles.checkInfo}>
-                                {t('tenants.legal.singleTenantsManageLegal.setting.description')}
-                            </p>
-                            <FormSwitchField
-                                labelKey="tenants.legal.singleTenantsManageLegal.setting.title"
-                                name={['legalContentChangesBySingleTenantAdminsAllowed']}
-                                inline
-                                disableLabels
-                                disabled={!isSuperAdmin}
-                            />
-                        </div>
-                    </CardEditable>
+                    />
                 </CardGrid.Item>
             )}
             <CardGrid.Item span={3}>
@@ -90,6 +71,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                     draftTenantId={draftTenantId}
                     fieldName={['content', 'impressum']}
                     titleKey="imprint.title"
+                    tileHelp={legalTextHelp}
                     legalType="imprint"
                     icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"

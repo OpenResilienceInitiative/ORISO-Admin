@@ -88,7 +88,7 @@ describe('backend without the field', () => {
             setup({ level, policy: undefined });
             screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
             expect(radio(/Counselling centre only/)).toBeChecked();
-            expect(screen.getByText('Available after the next backend update.')).toBeInTheDocument();
+            expect(screen.getByText('This setting is not available yet.')).toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'Requirement' })).not.toBeInTheDocument();
             expect(screen.queryByText('Inherited from the platform')).not.toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('backend without the field', () => {
         await i18n.changeLanguage('de');
         try {
             setup({ policy: undefined });
-            expect(screen.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeInTheDocument();
+            expect(screen.getByText('Diese Einstellung ist noch nicht verfügbar.')).toBeInTheDocument();
         } finally {
             await i18n.changeLanguage('en');
         }

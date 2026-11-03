@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { AssistantIdentity } from './index';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { TENANT_DATA_KEY } from '../../../../../hooks/useTenantData.hook';
 import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../appConfig';
 
@@ -75,3 +76,7 @@ export const SaveAndReload: Story = {
     },
 };
 export const ReadOnly: Story = { args: { readOnly: true } };
+
+export const HelpSlideshow: Story = {
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
+};
