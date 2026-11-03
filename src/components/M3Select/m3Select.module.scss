@@ -38,7 +38,7 @@
         );
     }
 
-    &:hover:has(:global(.ant-select-clear)) :global(.ant-select-arrow:not(.ant-select-arrow-loading)) {
+    &:hover:has(:global(.ant-select-clear)) :global(.ant-select-arrow) {
         opacity: 0;
     }
 

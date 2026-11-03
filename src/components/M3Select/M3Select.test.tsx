@@ -25,11 +25,15 @@ describe('M3Select', () => {
         expect(onChange).toHaveBeenCalledWith('de', options[0]);
     });
 
-    it('keeps the spinner while loading and respects an explicit hidden chevron when ready', () => {
-        const { container, rerender } = render(<M3Select options={options} loading suffixIcon={null} />);
+    it('reserves the trailing slot for loading, then restores clearing and honors a hidden chevron', () => {
+        const { container, rerender } = render(
+            <M3Select options={options} defaultValue="de" allowClear loading suffixIcon={null} />,
+        );
         expect(container.querySelector('.ant-select-arrow-loading .anticon-loading')).toBeInTheDocument();
+        expect(container.querySelector('.ant-select-clear')).not.toBeInTheDocument();
 
-        rerender(<M3Select options={options} suffixIcon={null} />);
+        rerender(<M3Select options={options} defaultValue="de" allowClear suffixIcon={null} />);
         expect(container.querySelector('.ant-select-arrow')).not.toBeInTheDocument();
+        expect(container.querySelector('.ant-select-clear')).toBeInTheDocument();
     });
 });

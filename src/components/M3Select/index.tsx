@@ -8,6 +8,7 @@ import styles from './m3Select.module.scss';
 /** Shared trailing control for AntD selects while preserving their field and menu APIs. */
 export const M3Select = <ValueType = any, OptionType extends BaseOptionType = DefaultOptionType>({
     className,
+    allowClear,
     loading,
     suffixIcon = <KeyboardArrowDownIcon className={styles.chevron} />,
     ...props
@@ -16,7 +17,8 @@ export const M3Select = <ValueType = any, OptionType extends BaseOptionType = De
         {...props}
         className={classNames(styles.select, className)}
         loading={loading}
-        // AntD renders the spinner only when it owns the suffix.
+        // The spinner and clear action share the trailing slot.
+        allowClear={loading ? false : allowClear}
         suffixIcon={loading ? undefined : suffixIcon}
     />
 );

@@ -58,8 +58,11 @@ export const Compact: Story = {
 };
 
 export const Loading: Story = {
-    args: { loading: true },
+    args: { loading: true, allowClear: true },
     play: async ({ canvasElement }) => {
+        const select = within(canvasElement).getByRole('combobox', { name: 'Language' });
+        await userEvent.hover(select);
         await expect(canvasElement.querySelector('.ant-select-arrow-loading .anticon-loading')).toBeVisible();
+        await expect(canvasElement.querySelector('.ant-select-clear')).not.toBeInTheDocument();
     },
 };
