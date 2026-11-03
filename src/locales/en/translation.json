@@ -1879,6 +1879,7 @@
     "placeholder.subdomain": "organization",
     "profile.privateData.email": "Email address",
     "required.info": "*Mandatory fields",
+    "settings.masterData.editable.saveError": "The setting could not be saved. The previous value is still in effect.",
     "settings.masterData.editable.subtitle": "Decide whether tenant admins may maintain their organization's master data and appearance themselves.",
     "settings.masterData.editable.title": "Editing rights for master data and appearance",
     "settings.masterData.editable.toggle": "Allow editing by tenant admins",
