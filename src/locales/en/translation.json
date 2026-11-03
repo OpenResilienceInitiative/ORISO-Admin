@@ -3021,6 +3021,7 @@
     "counselor.changeTenant.back": "Back to editing",
     "counselor.changeTenant.confirm": "Change Träger",
     "counselor.changeTenant.retry": "Try again",
+    "counselor.changeTenant.checkList": "Check the list",
     "counselor.changeTenant.done.title": "Träger changed",
     "counselor.changeTenant.done.description": "{{name}} now belongs to “{{to}}”.",
     "counselor.changeTenant.done.chats_one": "Access to {{count}} chat room of the previous Träger is being removed in the background.",

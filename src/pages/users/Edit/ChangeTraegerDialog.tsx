@@ -12,7 +12,6 @@ import styles from './styles.module.scss';
 /** A second try can succeed; for the others the admin has to change something first. */
 const RETRYABLE: ChangeTenantErrorCode[] = [
     CHANGE_TENANT_ERRORS.IDENTITY_PROVIDER_UNAVAILABLE,
-    CHANGE_TENANT_ERRORS.NETWORK,
     CHANGE_TENANT_ERRORS.UNKNOWN,
 ];
 
@@ -36,6 +35,7 @@ export interface ChangeTraegerDialogProps {
     onConfirm: () => void;
     /** Back to the form, nothing saved. */
     onCancel: () => void;
+    /** Re-reads the data and shows the list: after a move, or when its outcome is unknown. */
     onDone: () => void;
 }
 
@@ -115,6 +115,12 @@ export const ChangeTraegerDialog = ({
                     <DialogButton onClick={onCancel} disabled={saving}>
                         {t('counselor.changeTenant.back')}
                     </DialogButton>
+                    {/* No answer: the move may have committed, so a resubmit could only be refused. */}
+                    {error === CHANGE_TENANT_ERRORS.NETWORK && (
+                        <DialogButton primary onClick={onDone}>
+                            {t('counselor.changeTenant.checkList')}
+                        </DialogButton>
+                    )}
                     {(!error || RETRYABLE.includes(error)) && (
                         <DialogButton primary onClick={onConfirm} loading={saving} disabled={saving}>
                             {t(error ? 'counselor.changeTenant.retry' : 'counselor.changeTenant.confirm')}

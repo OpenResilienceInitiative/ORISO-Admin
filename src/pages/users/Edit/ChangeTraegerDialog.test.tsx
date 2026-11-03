@@ -130,15 +130,23 @@ describe('ChangeTraegerDialog', () => {
             expect(props.onCancel).toHaveBeenCalledTimes(1);
         });
 
-        it.each([
-            CHANGE_TENANT_ERRORS.IDENTITY_PROVIDER_UNAVAILABLE,
-            CHANGE_TENANT_ERRORS.NETWORK,
-            CHANGE_TENANT_ERRORS.UNKNOWN,
-        ])('%s can be tried again', async (error) => {
-            const props = renderDialog({ error });
+        it.each([CHANGE_TENANT_ERRORS.IDENTITY_PROVIDER_UNAVAILABLE, CHANGE_TENANT_ERRORS.UNKNOWN])(
+            '%s can be tried again',
+            async (error) => {
+                const props = renderDialog({ error });
 
-            await userEvent.click(within(dialog()).getByRole('button', { name: 'Erneut versuchen' }));
-            expect(props.onConfirm).toHaveBeenCalledTimes(1);
+                await userEvent.click(within(dialog()).getByRole('button', { name: 'Erneut versuchen' }));
+                expect(props.onConfirm).toHaveBeenCalledTimes(1);
+            },
+        );
+
+        it('NETWORK offers to check the list instead of resubmitting a move that may have gone through', async () => {
+            const props = renderDialog({ error: CHANGE_TENANT_ERRORS.NETWORK });
+
+            expect(within(dialog()).queryByRole('button', { name: 'Erneut versuchen' })).not.toBeInTheDocument();
+            await userEvent.click(within(dialog()).getByRole('button', { name: 'Liste prüfen' }));
+            expect(props.onDone).toHaveBeenCalledTimes(1);
+            expect(props.onConfirm).not.toHaveBeenCalled();
         });
 
         it.each([

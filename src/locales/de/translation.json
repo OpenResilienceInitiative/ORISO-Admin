@@ -3021,6 +3021,7 @@
     "counselor.changeTenant.back": "Zurück zum Bearbeiten",
     "counselor.changeTenant.confirm": "Träger wechseln",
     "counselor.changeTenant.retry": "Erneut versuchen",
+    "counselor.changeTenant.checkList": "Liste prüfen",
     "counselor.changeTenant.done.title": "Träger gewechselt",
     "counselor.changeTenant.done.description": "{{name}} gehört jetzt zu „{{to}}“.",
     "counselor.changeTenant.done.chats_one": "Der Zugriff auf {{count}} Chatraum des bisherigen Trägers wird im Hintergrund entzogen.",

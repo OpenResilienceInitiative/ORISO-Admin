@@ -162,7 +162,15 @@ export const ErrorIdentityProviderRefused = refused(
     true,
 );
 export const ErrorSessionExpired = refused(CHANGE_TENANT_ERRORS.SESSION_EXPIRED, /Sitzung ist abgelaufen/, false);
-export const ErrorNoAnswer = refused(CHANGE_TENANT_ERRORS.NETWORK, /Keine Antwort vom Server/, true);
+export const ErrorNoAnswer: Story = {
+    args: { error: CHANGE_TENANT_ERRORS.NETWORK },
+    play: async () => {
+        const dialog = await openDialog();
+        await expect(dialog.getByRole('alert')).toHaveTextContent(/Keine Antwort vom Server/);
+        await expect(dialog.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull();
+        await expect(dialog.getByRole('button', { name: 'Liste prüfen' })).toBeEnabled();
+    },
+};
 export const ErrorUnknown = refused(CHANGE_TENANT_ERRORS.UNKNOWN, /Wechsel ist fehlgeschlagen/, true);
 
 export const Phone390: Story = {
