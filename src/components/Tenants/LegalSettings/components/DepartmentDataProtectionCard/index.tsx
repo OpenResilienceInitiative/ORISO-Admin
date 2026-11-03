@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor, M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { TileHelpButton } from '../../../../TileHelp';
+import { legalTextHelp, privacyHelp } from '../LegalText/help';
 import { isSameDraftContent } from '../../utils/draftComparison';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
@@ -354,6 +356,12 @@ export const DepartmentDataProtectionCard = ({
                 comparison={comparison}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
+                headerAction={
+                    <TileHelpButton
+                        topic={documentType === 'imprint' ? legalTextHelp : privacyHelp}
+                        tileTitle={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                    />
+                }
                 value={currentContent}
                 dirty={
                     !isSameDraftContent(

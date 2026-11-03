@@ -473,18 +473,20 @@ export const InviteTrackingProposal = ({
                                     <div className={styles.actionControls}>
                                         <label className={styles.role} htmlFor={`role-${fixture.id}`}>
                                             {c.role}
-                                            <select
-                                                id={`role-${fixture.id}`}
-                                                value={roles[fixture.id] ?? 'counsellor'}
-                                                onChange={(event) => {
-                                                    setRoles({ ...roles, [fixture.id]: event.target.value });
-                                                    setNotice(c.roleSaved);
-                                                }}
-                                                disabled={fixture.status === 'done'}
-                                            >
-                                                <option value="counsellor">{c.counsellor}</option>
-                                                <option value="admin">{c.admin}</option>
-                                            </select>
+                                            <span className={styles.selectFrame}>
+                                                <select
+                                                    id={`role-${fixture.id}`}
+                                                    value={roles[fixture.id] ?? 'counsellor'}
+                                                    onChange={(event) => {
+                                                        setRoles({ ...roles, [fixture.id]: event.target.value });
+                                                        setNotice(c.roleSaved);
+                                                    }}
+                                                    disabled={fixture.status === 'done'}
+                                                >
+                                                    <option value="counsellor">{c.counsellor}</option>
+                                                    <option value="admin">{c.admin}</option>
+                                                </select>
+                                            </span>
                                         </label>
                                         {fixture.status === 'assignmentPending' && (
                                             <M3Button

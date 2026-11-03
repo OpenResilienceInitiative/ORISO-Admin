@@ -22,6 +22,9 @@ const SENDER_FIELDS = ['legalName', 'contactEmail', 'contactPhone', 'dataProtect
  * The sender fields are copied only when the form carries them. A form that does not render them
  * must not blank what is stored — "absent" is not "empty" (the Admin#715 trap). An emptied field
  * arrives as `''`, which TenantService stores as "not entered".
+ *
+ * The settings are laid over the stored ones for the same reason: TenantService replaces all of them
+ * when any block arrives, and the Träger card has no settings fields.
  */
 export const buildTenantRequestBody = (
     stored: TenantAdminData | undefined,
@@ -43,7 +46,7 @@ export const buildTenantRequestBody = (
         licensing: {
             ...formData.licensing,
         },
-        settings: { ...formData.settings },
+        settings: { ...stored?.settings, ...formData.settings },
     };
 };
 

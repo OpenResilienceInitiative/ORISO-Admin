@@ -1,4 +1,5 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../CardEditable';
@@ -38,15 +39,12 @@ export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSa
             allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
+            note={{ icon: <InfoOutlinedIcon />, text: t('globalSettings.oneTopicPerAgency.help') }}
             onSave={(values: { oneTopicPerAgencyEnabled?: boolean }, options) =>
                 onSave(values.oneTopicPerAgencyEnabled === true, options)
             }
         >
-            <MuiSwitchField
-                name="oneTopicPerAgencyEnabled"
-                label={t('globalSettings.oneTopicPerAgency.switch')}
-                helpText={t('globalSettings.oneTopicPerAgency.help')}
-            />
+            <MuiSwitchField name="oneTopicPerAgencyEnabled" label={t('globalSettings.oneTopicPerAgency.switch')} />
         </CardEditable>
     );
 };

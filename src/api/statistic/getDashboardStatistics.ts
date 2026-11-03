@@ -1,6 +1,6 @@
 import { adminStatisticsDashboardEndpoint } from '../../appConfig';
 
-import { FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData, FETCH_SUCCESS } from '../fetchData';
 
 export interface AdminDashboardPeriodCounts {
     /** Null in a fixed stand: the running day is never part of it. */
@@ -44,11 +44,16 @@ export interface AdminDashboardTarget {
     targetType: 'PLATFORM' | 'TENANT' | 'AGENCY';
     tenantId: number | null;
     agencyId: number | null;
+    /**
+     * Active counsellors (UserService#1567; before: registered accounts). 0 on a hidden row, so
+     * the number is never shown for one.
+     */
     counselorCount: number;
     /**
-     * KDG small-cell suppression: true when the target covers fewer counsellor accounts than the
-     * minimum set for its level in the global statistics settings. All counselling metrics are
-     * omitted by the backend in that case.
+     * KDG small-cell suppression: true when the target covers fewer active counsellors than the
+     * minimum set for its level in the global statistics settings, or when showing it would let
+     * a hidden row be worked out from a total. A tenant or platform total can be hidden as well.
+     * All counselling metrics are omitted by the backend in that case.
      */
     suppressed: boolean;
     metrics: AdminDashboardMetrics | null;
@@ -90,14 +95,15 @@ export interface AdminDashboardStatisticsResponse {
 /**
  * Retrieves real counselling statistics for the admin dashboard, scoped to the caller
  * (platform admin, tenant admin or agency admin). Served by the UserService from the
- * application-layer database only.
+ * application-layer database only. A 503 means the settings could not be read: it rejects with
+ * {@link FETCH_ERRORS.SERVICE_UNAVAILABLE}, and the page shows no figures.
  */
 const getDashboardStatistics = (): Promise<AdminDashboardStatisticsResponse> => {
     return fetchData({
         url: adminStatisticsDashboardEndpoint,
         method: FETCH_METHODS.GET,
         skipAuth: false,
-        responseHandling: [FETCH_SUCCESS.CONTENT],
+        responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
     });
 };
 
