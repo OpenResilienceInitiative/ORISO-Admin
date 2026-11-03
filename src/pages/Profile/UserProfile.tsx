@@ -11,9 +11,7 @@ import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
 import { RolesAndAssignment } from './RolesAndAssignment';
 import { SelfConsultantIdentity } from './SelfConsultantIdentity';
-import { Card } from '../../components/Card';
-import { ReactComponent as VerifiedIcon } from '../../resources/img/svg/verified.svg';
-import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
+import { TwoFactorCard } from './TwoFactorCard';
 
 export const UserProfile = () => {
     const { settings } = useAppConfigContext();
@@ -23,19 +21,37 @@ export const UserProfile = () => {
         <Page>
             <Page.Title titleKey="profile.title" subTitleKey="profile.title.text" />
 
-            {/* Masonry: cards of different heights stack in columns, nothing scrolls sideways. */}
-            <CardGrid masonry minCardWidth={380} maxColumns={3}>
-                {!hasRole(UserRole.TenantAdmin) && <PrivateData />}
-                <RolesAndAssignment />
+            {/* The settings raster: tiles share the rows, nothing scrolls sideways. */}
+            <CardGrid raster>
+                {!hasRole(UserRole.TenantAdmin) && (
+                    <CardGrid.Item>
+                        <PrivateData />
+                    </CardGrid.Item>
+                )}
+                <CardGrid.Item>
+                    <RolesAndAssignment />
+                </CardGrid.Item>
                 <SelfConsultantIdentity />
-                <PasswordChange />
-                <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle" headerIcon={<VerifiedIcon />}>
-                    <TwoFactorSetup context="profile" />
-                </Card>
-                <LanguageSettings />
-                <Absence />
-                <TourOverviewSection />
-                {settings.documentationEnabled && <Documentation />}
+                <CardGrid.Item>
+                    <PasswordChange />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <TwoFactorCard />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <LanguageSettings />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <Absence />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <TourOverviewSection />
+                </CardGrid.Item>
+                {settings.documentationEnabled && (
+                    <CardGrid.Item>
+                        <Documentation />
+                    </CardGrid.Item>
+                )}
             </CardGrid>
         </Page>
     );

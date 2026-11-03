@@ -3,6 +3,8 @@ import { Card } from '../../../components/Card';
 import { FieldGrid } from '../../../components/FieldGrid';
 import { FloatingLabelInput } from '../../../components/FloatingLabelInput';
 import { ToggleRow } from '../../../components/ToggleRow';
+import { TilePicture } from '../../../components/TileFill';
+import inactivePicture from '../../../resources/img/tile-help/inactive.webp';
 import { ReactComponent as ClockIcon } from '../../../resources/img/svg/clock-arrow-down.svg';
 import styles from './styles.module.scss';
 
@@ -18,6 +20,7 @@ export const Absence = () => {
             titleKey="profile.absence.title"
             subTitleKey="profile.absence.subtitle"
             headerIcon={<ClockIcon />}
+            picture={<TilePicture src={inactivePicture} />}
             dataTestId="profile-absence-card"
             cardTitleChildren={<span className={styles.soon}>{t('profile.absence.soon')}</span>}
         >

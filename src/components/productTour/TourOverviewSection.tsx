@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Card } from '../Card';
+import { TilePicture } from '../TileFill';
+import tutorialsPicture from '../../resources/img/tile-help/tutorials.webp';
 import { ReactComponent as TopicIcon } from '../../resources/img/svg/topic.svg';
 import { ProductTourAdapter } from './ProductTourAdapter';
 import { ProductTourTooltip } from './ProductTourTooltip';
@@ -51,6 +53,7 @@ export const TourOverviewSection = () => {
             titleKey="productTour.overview.title"
             subTitleKey="productTour.overview.subtitle"
             headerIcon={<TopicIcon />}
+            picture={<TilePicture src={tutorialsPicture} />}
         >
             <TourOverviewCarousel
                 tours={adminTours}

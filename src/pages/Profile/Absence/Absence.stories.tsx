@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { ConfigProvider } from 'antd';
 import { buildAdminAntdTheme } from '../../../theme/antdM3Theme';
+import { inTheRaster } from '../profileStory.matrix';
 import { Absence } from './index';
 
 const meta = {
@@ -28,4 +29,11 @@ export const ComingSoon: StoryObj<typeof meta> = {
         await expect(canvas.getByRole('switch')).toBeDisabled();
         await expect(canvas.getByLabelText('Von')).toBeDisabled();
     },
+};
+
+/** As it sits on the page; narrow the viewport to 390 px to see it stack. */
+export const InTheRaster: StoryObj<typeof meta> = {
+    parameters: { tileWidth: 'none' },
+    decorators: [(Story) => <div style={{ maxWidth: 'none' }}>{Story()}</div>],
+    render: () => inTheRaster(() => <Absence />),
 };
