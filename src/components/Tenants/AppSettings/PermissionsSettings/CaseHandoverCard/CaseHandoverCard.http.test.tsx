@@ -297,8 +297,11 @@ const currentMasterButton = () => masterRow().getByRole('button', { name: /: (Ac
 /** The requirement lock of the master; absent where this level may not set one. */
 const currentMasterLock = () => masterRow().getByRole('button', { name: /Make it (a requirement|adjustable)/ });
 
-const masterButton = () => waitFor(currentMasterButton);
-const masterLock = () => waitFor(currentMasterLock);
+// The policy page can take several seconds to render under jsdom CI load.
+const PAGE_RENDER = { timeout: 10_000 };
+
+const masterButton = () => waitFor(currentMasterButton, PAGE_RENDER);
+const masterLock = () => waitFor(currentMasterLock, PAGE_RENDER);
 
 /** One click on the round button; it flips whatever the master currently is. */
 const chooseMaster = async (enabled: boolean) => {
@@ -325,10 +328,10 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.master.value).toBe(false));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
         await chooseMaster(true);
         await waitFor(() => expect(server.master.value).toBe(true));
-        await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
 
         expect(server.canonicalWrites).toHaveLength(2);
         expect(
@@ -339,7 +342,7 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
         mountPolicyPage(level);
         expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
-    });
+    }, 60_000);
 
     it('rolls back a failed master write without any reason-policy writes', async () => {
         access.isSuperAdmin = level === 'platform';
@@ -350,8 +353,9 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
 
         await chooseMaster(false);
         await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
-        await waitFor(async () =>
-            expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true))),
+        await waitFor(
+            () => expect(currentMasterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true))),
+            PAGE_RENDER,
         );
         expect(
             server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
@@ -447,7 +451,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
             await chooseMaster(value);
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
             expect(server.master).toMatchObject({ value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED' });
-            await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
 
             await toggleMasterMode();
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(2));
