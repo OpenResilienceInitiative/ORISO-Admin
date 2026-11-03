@@ -53,9 +53,10 @@ describe('buildAdminNavTree', () => {
                 (resource === Resource.LegalText && action === PermissionAction.Read),
         });
 
-        // One settings tab and one account list are plain pages, not categories.
-        expect(tree.theme).toEqual([]);
-        expect(tree.counselors).toEqual([]);
+        // A single permitted tab stays in the tree so search still finds it
+        // ("Datenschutz" → Rechtliches); the menu renders it as a plain link.
+        expect(ids(tree, 'theme')).toEqual(['settings:legal']);
+        expect(ids(tree, 'counselors')).toEqual(['users:counsellors']);
         expect(ids(tree, 'links')).toEqual(['links:tenants', 'links:counsellor']);
         expect(ids(tree, 'logs')).not.toContain('logs:inactive');
     });
