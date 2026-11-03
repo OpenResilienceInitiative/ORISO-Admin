@@ -51,7 +51,10 @@ const fetchStub = vi.fn(async (request: Request) => {
             server.puts.push(body);
             store(body);
         }
-        return answer({ tenantId: 7, policies: {} });
+        return answer({
+            tenantId: 7,
+            policies: { featureCallsEnabled: { value: true, mode: 'SUGGESTED', inherited: true } },
+        });
     }
     if (pathname.endsWith('/tenantadmin/controls')) {
         if (isPut) {
@@ -130,9 +133,11 @@ describe('Träger admin', () => {
         await waitFor(() =>
             expect(server.puts.at(-1)).toMatchObject({
                 tenantId: 7,
+                policies: {},
                 internalGroupChat: { recipientScope: { value: 'TENANT', mode: 'SUGGESTED' } },
             }),
         );
+        expect(server.puts.at(-1)?.policies).toEqual({});
         expect(server.puts.at(-1)?.internalGroupChat?.recipientScope).not.toHaveProperty('inherited');
         await waitFor(() =>
             expect(notification.success).toHaveBeenCalledWith(

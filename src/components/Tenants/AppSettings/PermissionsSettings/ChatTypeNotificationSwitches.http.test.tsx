@@ -24,7 +24,7 @@ const fetchStub = vi.fn(async (request: Request) => {
         if (request.method === 'PUT') {
             const body = (await request.json()) as { tenantId: number; policies: Record<string, Policy> };
             server.puts.push(body);
-            server.policies = body.policies;
+            server.policies = { ...server.policies, ...body.policies };
         }
         return Response.json({ tenantId: 7, policies: server.policies });
     }

@@ -61,8 +61,9 @@ describe.each(['platform', 'tenant'] as const)('%s four-state permission HTTP pe
                     if (pathname.endsWith('/controls') || pathname.endsWith('/permission-policies')) {
                         if (request.method === 'PUT') {
                             const body = await request.json();
-                            policies = level === 'platform' ? body.permissionPolicies : body.policies;
-                            puts.push(policies);
+                            const submitted = level === 'platform' ? body.permissionPolicies : body.policies;
+                            puts.push(submitted);
+                            policies = level === 'platform' ? submitted : { ...policies, ...submitted };
                         }
                         return Response.json(
                             level === 'platform'
@@ -173,12 +174,15 @@ const collectionServer = (level: 'platform' | 'tenant') => {
                             fixture.releaseFirst = () => resolve(Response.json({}, { status: 503 }));
                         });
                     }
-                    fixture.policies = Object.fromEntries(
-                        Object.entries(submitted as Record<string, PolicyValue<boolean>>).map(([key, policy]) => [
-                            key,
-                            { ...policy, inherited: false },
-                        ]),
-                    );
+                    fixture.policies = {
+                        ...(platform ? {} : fixture.policies),
+                        ...Object.fromEntries(
+                            Object.entries(submitted as Record<string, PolicyValue<boolean>>).map(([key, policy]) => [
+                                key,
+                                { ...policy, inherited: false },
+                            ]),
+                        ),
+                    };
                     fixture.policies = fixture.normalize(fixture.policies);
                 }
                 return Response.json(
@@ -259,7 +263,9 @@ describe.each(['platform', 'tenant'] as const)('%s collection permission HTTP bo
         await waitFor(() => expect(fixture.writes).toHaveLength(2));
         expect(fixture.writes[1][emailMaster]).toMatchObject({ value: true, mode: 'SUGGESTED' });
         fixture.writes.forEach((write) => {
-            [...collectionFields, liveDelivery].forEach((key) => expect(write[key]).toEqual(initial[key]));
+            [...collectionFields, liveDelivery].forEach((key) =>
+                expect(write[key]).toEqual(level === 'tenant' ? undefined : initial[key]),
+            );
         });
         view.unmount();
         mountCollectionPage(level);
@@ -296,7 +302,8 @@ describe.each(['platform', 'tenant'] as const)('%s collection permission HTTP bo
         expect(fixture.writes).toHaveLength(1);
         await act(async () => fixture.releaseFirst());
         await waitFor(() => expect(fixture.writes).toHaveLength(2));
-        expect(fixture.writes[1][first]).toMatchObject({ value: true, mode: 'SUGGESTED' });
+        if (level === 'tenant') expect(fixture.writes[1][first]).toBeUndefined();
+        else expect(fixture.writes[1][first]).toMatchObject({ value: true, mode: 'SUGGESTED' });
         // The round button only moves the value: the stored requirement of the second row stays.
         expect(fixture.writes[1][second]).toMatchObject({ value: false, mode: 'ENFORCED' });
         await waitFor(() => expect(policyButton(second)).toBeEnabled());
