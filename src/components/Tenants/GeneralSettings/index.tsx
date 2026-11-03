@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
@@ -29,9 +30,15 @@ interface AppearanceSwitchFormData {
 interface GeneralSettingsProps {
     tenantId?: string;
     section?: GeneralSettingsSection;
+    /**
+     * Tiles the embedding page puts first in the master data raster (`CardGrid.Item`s). The
+     * platform admin's Träger edit page adds its Trägerinformationen card this way, so it sits in
+     * the same raster as the tiles next to it instead of in a grid of its own.
+     */
+    leadingTiles?: ReactNode;
 }
 
-export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsProps) => {
+export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: GeneralSettingsProps) => {
     const { data } = useTenantData();
     const finalTenantId = resolveTenantId(tenantId, data?.id);
     const { can } = useUserPermissions();
@@ -70,6 +77,7 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                         <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
                     </CardGrid.Item>
                 )}
+                {showMasterData && leadingTiles}
                 {showMasterData && (
                     <CardGrid.Item>
                         <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />

@@ -2023,7 +2023,7 @@
     "settings.subhead.functionAccess": "Funktionszugriff",
     "settings.masterData.editable.title": "Bearbeitungsrechte für Stammdaten und Erscheinungsbild",
     "settings.masterData.editable.saveError": "Die Einstellung konnte nicht gespeichert werden. Der bisherige Wert gilt weiter.",
-    "settings.masterData.editable.subtitle": "Legen Sie fest, ob Träger-Admins die Stammdaten und das Erscheinungsbild ihrer Organisation selbst pflegen dürfen.",
+    "settings.masterData.editable.subtitle": "Legen Sie fest, ob Träger-Admins die Stammdaten und das Erscheinungsbild ihrer Organisation selbst pflegen dürfen. Die Einstellung gilt für alle Träger.",
     "settings.masterData.editable.toggle": "Bearbeitung durch Träger-Admins erlauben",
     "settings.masterData.editable.toggle.description": "Träger-Admins dürfen Name und Slogan, Bilder, Sprachen und Farben ändern. Ist die Option aus, dürfen das nur Plattform-Admins.",
     "settings.images.title": "Individuelle Bilder",

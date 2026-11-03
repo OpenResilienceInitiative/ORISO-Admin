@@ -20,6 +20,11 @@ export const LazyTenantEditOrAdd = lazyNamed(() => import('./Tenants/Edit'), 'Te
 export const LazyTenantAdminEditOrAdd = lazyNamed(() => import('./users/TenantAdminEdit'), 'TenantAdminEditOrAdd');
 export const LazyGeneralTenantSettings = lazyNamed(() => import('./Tenants/Edit/General'), 'GeneralTenantSettings');
 export const LazyTenantThemeSettings = lazyNamed(() => import('./Tenants/Edit/ThemeSettings'), 'TenantThemeSettings');
+export const LazyTenantErstantwortSettings = lazyNamed(
+    () => import('./Tenants/Edit/ErstantwortSettings'),
+    'TenantErstantwortSettings',
+);
+export const LazyTenantSmtpSettings = lazyNamed(() => import('./Tenants/Edit/SmtpSettings'), 'TenantSmtpSettings');
 export const LazyTenantAppSettings = lazyNamed(() => import('./Tenants/Edit/AppSettings'), 'TenantAppSettings');
 export const LazyTenantGlobalSettings = lazyNamed(
     () => import('./Tenants/Edit/GlobalSettings'),

@@ -1856,7 +1856,7 @@
     "profile.privateData.email": "Email address",
     "required.info": "*Mandatory fields",
     "settings.masterData.editable.saveError": "The setting could not be saved. The previous value is still in effect.",
-    "settings.masterData.editable.subtitle": "Decide whether tenant admins may maintain their organization's master data and appearance themselves.",
+    "settings.masterData.editable.subtitle": "Decide whether tenant admins may maintain their organization's master data and appearance themselves. This applies to all tenants.",
     "settings.masterData.editable.title": "Editing rights for master data and appearance",
     "settings.masterData.editable.toggle": "Allow editing by tenant admins",
     "settings.masterData.editable.toggle.description": "Organisation admins may change name and slogan, images, languages and colours. When off, only platform admins may do so.",
