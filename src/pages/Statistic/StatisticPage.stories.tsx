@@ -249,6 +249,7 @@ export const HiddenTotal: Story = {
         await expect(canvas.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0);
         // a chart of zeros would read as "nothing happened"
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
     },
 };
 const withoutCases = (row: AdminDashboardTarget): AdminDashboardTarget => ({
