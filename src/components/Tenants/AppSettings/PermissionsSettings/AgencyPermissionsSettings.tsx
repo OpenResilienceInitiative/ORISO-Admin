@@ -116,6 +116,7 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             channelsSetOnTraeger
             traegerChannelPolicies={traegerPolicies?.policies}
             traegerChannelPoliciesStatus={traegerPoliciesStatus}
+            traegerDirectInvitePolicies={traegerPolicies?.policies}
             excludeCardKeys={excludeCardKeys}
             isLoading={isLoading}
             initialValues={initialValues}

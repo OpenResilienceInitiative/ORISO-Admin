@@ -41,6 +41,15 @@ const mocks = vi.hoisted(() => ({
     tenantTopics: [] as Array<{ id: number; name: string; status: string }>,
     consultants: [] as Array<{ id: number; firstname: string; lastname: string; email: string }>,
     hasConsultants: false,
+    consultantSearchFilters: [] as Array<unknown>,
+    consultantSearchCalls: [] as Array<{ filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }>,
+    consultantSearchFailed: false,
+    // Per Träger (the `tenantId` filter of the request): its search has not answered yet or failed.
+    consultantSearchByTenant: {} as Record<string, 'pending' | 'failed'>,
+    consultantSearchRefetch: vi.fn(),
+    // Mounted copies of the mocked search hook, so a test can make a retry re-render them.
+    consultantSearchListeners: new Set<() => void>(),
+    authTenantId: 0,
     cardSaveOnError: vi.fn(),
     legalForm: {
         setFields: vi.fn(),
@@ -48,6 +57,15 @@ const mocks = vi.hoisted(() => ({
     },
     agencyLegalProps: undefined as any,
 }));
+
+beforeEach(() => {
+    mocks.consultantSearchFilters = [];
+    mocks.consultantSearchCalls = [];
+    mocks.consultantSearchFailed = false;
+    mocks.consultantSearchByTenant = {};
+    mocks.consultantSearchRefetch.mockReset();
+    mocks.authTenantId = 0;
+});
 
 const translations: Record<string, string> = {
     'agency.edit.general.headline': 'Zur Übersicht',
@@ -65,6 +83,12 @@ const translations: Record<string, string> = {
     'agency.form.registrationSettings.onlineWarning': 'Beratungsstelle sichtbar machen',
     'agency.form.registrationSettings.onlineDescription': 'Sichtbar stellen',
     'agency.form.registrationSettings.consultants.label': 'Berater:innen hinzufügen',
+    'agency.form.registrationSettings.consultants.selectTenantFirst':
+        'Wählen Sie zuerst die Trägerzuordnung, dann können Sie Berater:innen dieses Trägers zuweisen.',
+    'agency.form.registrationSettings.consultants.loadError': 'Die Berater:innen konnten nicht geladen werden.',
+    'agency.form.registrationSettings.consultants.retry': 'Erneut laden',
+    'agency.form.registrationSettings.consultants.noneInTenant':
+        'In diesem Träger gibt es keine weiteren Berater:innen zur Auswahl.',
     'agency.form.registrationSettings.onlineNeedsConsultant':
         'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.',
     'agency.form.registrationSettings.noTopicConfirm.title': 'Kein Thema ausgewählt',
@@ -240,7 +264,31 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
-    useConsultantsOrAdminsData: () => ({ data: { data: mocks.consultants }, isLoading: false }),
+    useConsultantsOrAdminsData: (props: { filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }) => {
+        const [, rerender] = React.useReducer((count: number) => count + 1, 0);
+        React.useEffect(() => {
+            mocks.consultantSearchListeners.add(rerender);
+            return () => {
+                mocks.consultantSearchListeners.delete(rerender);
+            };
+        }, []);
+        mocks.consultantSearchFilters.push(props.filters);
+        mocks.consultantSearchCalls.push(props);
+        const tenantKey = String((props.filters as { tenantId?: string } | undefined)?.tenantId);
+        const byTenant = props.enabled !== false ? mocks.consultantSearchByTenant[tenantKey] : undefined;
+        if (byTenant === 'pending') {
+            return { data: undefined, isLoading: true, isError: false, refetch: mocks.consultantSearchRefetch };
+        }
+        // A disabled query has no data; a failed one (rethrowOnFailure) has none either.
+        const failed = byTenant === 'failed' || (mocks.consultantSearchFailed && props.rethrowOnFailure);
+        const hasData = props.enabled !== false && !failed;
+        return {
+            data: hasData ? { data: mocks.consultants } : undefined,
+            isLoading: false,
+            isError: props.enabled !== false && (byTenant === 'failed' || mocks.consultantSearchFailed),
+            refetch: mocks.consultantSearchRefetch,
+        };
+    },
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
@@ -286,7 +334,7 @@ beforeAll(() => {
 });
 
 vi.mock('../../../utils/parseUserAuthInfo', () => ({
-    parseUserAuthInfo: () => ({ tenantId: 0 }),
+    parseUserAuthInfo: () => ({ tenantId: mocks.authTenantId }),
 }));
 
 describe('AgencyPageEdit create flow', () => {
@@ -626,6 +674,11 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.tenantTopics = [];
         mocks.consultants = [];
         mocks.hasConsultants = false;
+        mocks.consultantSearchFilters = [];
+        mocks.consultantSearchCalls = [];
+        mocks.consultantSearchFailed = false;
+        mocks.consultantSearchRefetch.mockReset();
+        mocks.authTenantId = 0;
         mocks.cardSaveOnError.mockReset();
     });
 
@@ -878,26 +931,169 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
     });
 
-    it('drops a counsellor picked before the tenant was chosen', async () => {
+    it('offers no counsellor to a platform admin until the Träger is chosen', async () => {
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        renderWithClient(<AgencyPageEdit />);
+
+        // Every Träger's counsellors came back here before; nobody may be picked blind.
+        expect(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' })).toBeDisabled();
+        expect(screen.getByText(/Wählen Sie zuerst die Trägerzuordnung/)).toBeInTheDocument();
+    });
+
+    it('asks the backend for the chosen Träger only and offers just its counsellors', async () => {
         const user = setupUser();
         mocks.routeId = 'add';
         mocks.tenantTopics = [TOPIC];
         mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
         mocks.hasConsultants = false;
-        // No tenant is picked yet, so the picker deliberately offers every tenant's counsellors.
         renderWithClient(<AgencyPageEdit />);
 
-        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
-        await user.click(await screen.findByRole('option', { name: /Fremd Mandant/ }));
-
-        // Choosing tenant 7 narrows the options. The select keeps values it cannot resolve, so
-        // without pruning the foreign id would still be submitted and then assigned.
         await fillRequiredCreateFields(user);
-        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        const saved = mocks.mutate.mock.calls[0][0] as { consultantIds?: unknown[] };
-        expect(saved.consultantIds ?? []).toEqual([]);
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+        expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '7' });
+    });
+
+    it('does not ask the server for counsellors until the Träger is chosen', async () => {
+        mocks.routeId = 'add';
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        renderWithClient(<AgencyPageEdit />);
+
+        await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' });
+        expect(mocks.consultantSearchCalls.length).toBeGreaterThan(0);
+        expect(mocks.consultantSearchCalls.every(({ enabled }) => enabled === false)).toBe(true);
+    });
+
+    it('offers a Träger admin only their own counsellors from the start on a new centre', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.authTenantId = 7;
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: false,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: true,
+            roles: [],
+            tenantId: 7,
+        };
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        renderWithClient(<AgencyPageEdit />);
+
+        const picker = await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' });
+        expect(picker).toBeEnabled();
+        await user.click(picker);
+
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+        expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '7' });
+    });
+
+    it('shows an error with a retry, not the empty hint, when the counsellor search fails', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.consultantSearchFailed = true;
+        // The retry succeeds: the hook stops failing and answers with the Träger's counsellors.
+        mocks.consultantSearchRefetch.mockImplementation(() => {
+            mocks.consultantSearchFailed = false;
+            mocks.consultantSearchListeners.forEach((rerender) => rerender());
+        });
+        renderWithClient(<AgencyPageEdit />);
+
+        await fillRequiredCreateFields(user);
+
+        expect(await screen.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        expect(screen.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
+        expect(mocks.consultantSearchCalls.at(-1)?.rethrowOnFailure).toBe(true);
+
+        await user.click(screen.getByRole('button', { name: 'Erneut laden' }));
+        expect(mocks.consultantSearchRefetch).toHaveBeenCalledTimes(1);
+        await waitFor(() =>
+            expect(screen.queryByText('Die Berater:innen konnten nicht geladen werden.')).not.toBeInTheDocument(),
+        );
+        await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+    });
+
+    it.each(['pending', 'failed'] as const)(
+        'drops the counsellor of the old Träger as soon as the Träger changes, while the new search is %s',
+        async (newTenantSearch) => {
+            const user = setupUser();
+            mocks.routeId = 'add';
+            mocks.tenantTopics = [TOPIC];
+            mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+            mocks.hasConsultants = false;
+            mocks.searchTenantData.mockResolvedValue({
+                data: [
+                    { id: 7, name: 'Caritas Augsburg' },
+                    { id: 8, name: 'Caritas Berlin' },
+                ],
+            });
+            // Träger 8 has not answered (or cannot): the old pick must not wait for that answer to go.
+            mocks.consultantSearchByTenant = { '8': newTenantSearch };
+            renderWithClient(<AgencyPageEdit />);
+
+            await fillRequiredCreateFields(user);
+            await assignConsultant(user);
+            await user.keyboard('{Escape}');
+            await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+            expect(screen.getByText(CONSULTANT_LABEL)).toBeInTheDocument();
+
+            await user.click(screen.getByRole('combobox', { name: /Trägerzuordnung/ }));
+            await user.click(await screen.findByRole('option', { name: 'Caritas Berlin' }));
+
+            await waitFor(() => expect(screen.queryByText(CONSULTANT_LABEL)).not.toBeInTheDocument());
+            expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '8' });
+
+            fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            const saved = mocks.mutate.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
+            expect(JSON.stringify(saved.tenantId)).toContain('8');
+            // Nothing of Träger 7 may reach addAgencyData -> assignAgencyToConsultants for Träger 8.
+            expect(saved.consultantIds ?? []).toEqual([]);
+        },
+    );
+
+    it('keeps a stored counsellor when the search fails', async () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [];
+        mocks.consultantSearchFailed = true;
+        mocks.hasConsultants = true;
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+            consultantIds: [{ value: '1', label: CONSULTANT_LABEL }],
+        };
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(await screen.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        expect(screen.getByText(CONSULTANT_LABEL)).toBeInTheDocument();
+    });
+
+    it('says so when the chosen Träger has no counsellor left to offer', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        renderWithClient(<AgencyPageEdit />);
+
+        await fillRequiredCreateFields(user);
+
+        expect(
+            await screen.findByText('In diesem Träger gibt es keine weiteren Berater:innen zur Auswahl.'),
+        ).toBeInTheDocument();
     });
 
     it('does not offer a counsellor from another tenant', async () => {

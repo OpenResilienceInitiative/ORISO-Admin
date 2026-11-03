@@ -1,12 +1,13 @@
 import { Alert, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFeatureContext } from '../../../../../context/FeatureContext';
 import { FeatureFlag } from '../../../../../enums/FeatureFlag';
 import { Gender } from '../../../../../enums/Gender';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
+import { M3Button } from '../../../../../components/M3Button';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
@@ -46,6 +47,7 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
     const { isSuperAdmin } = useUserRoles();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
+    const [tenantsFailed, setTenantsFailed] = useState(false);
     const { data: topics, isLoading: isLoadingTopics } = useTenantTopics(true);
     // ADR-014 amendment 2026-09-25: with the global switch on, the picker is single-select. An agency
     // that already holds several topics keeps showing them and may shed some, but cannot gain one.
@@ -61,15 +63,21 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
         (relation) => !counsellingRelations.find(({ value }) => value === `${relation}`),
     );
 
+    const loadTenants = useCallback(() => {
+        setTenantsFailed(false);
+        searchTenantData({ perPage: 1000 })
+            .then(({ data }) => setTenantsData(data))
+            .catch(() => {
+                setTenantsData([]);
+                setTenantsFailed(true);
+            });
+    }, []);
+
     useEffect(() => {
         if (isSuperAdmin) {
-            searchTenantData({ perPage: 1000 })
-                .then(({ data }) => setTenantsData(data))
-                .catch(() => {
-                    setTenantsData([]);
-                });
+            loadTenants();
         }
-    }, [isSuperAdmin]);
+    }, [isSuperAdmin, loadTenants]);
 
     const fields = (
         <>
@@ -94,6 +102,18 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                     options={convertToOptions(tenantsData, 'name', 'id')}
                     disabled={isEditMode}
                     required
+                />
+            )}
+            {isSuperAdmin && tenantsFailed && (
+                <Alert
+                    className={styles.warning}
+                    type="error"
+                    description={t('agency.edit.general.more_settings.tenant.loadError')}
+                    action={
+                        <M3Button variant="text" onClick={loadTenants}>
+                            {t('agency.edit.general.more_settings.tenant.retry')}
+                        </M3Button>
+                    }
                 />
             )}
 
