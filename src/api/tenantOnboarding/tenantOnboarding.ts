@@ -26,7 +26,7 @@ import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { AccountOperationActions } from '../../utils/accountOperationIntent';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
-import { AccountSetupPasswordError, AccountSetupPasswordRejection } from './AccountSetupPasswordError';
+import { AccountSetupPasswordError, type AccountSetupPasswordRejection } from './AccountSetupPasswordError';
 
 /**
  * Why an invite link cannot (or can no longer) be used. Mirrors the backend's
