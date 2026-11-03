@@ -25,6 +25,7 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
     const rows = useMemo(() => buildTutorialStatisticRows(response), [response]);
     const isLoaded = !isLoading && !isForbidden && !isError;
     const isPlatformScope = response?.scope === 'PLATFORM';
+    const smallCellMinimum = response?.smallCellMinimum;
 
     const columns = useMemo(() => {
         const tenantColumn: ColumnType<TutorialStatisticRow>[] = isPlatformScope
@@ -38,15 +39,29 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
               ]
             : [];
 
+        // A hidden group has no figures: its first figure cell spans all five and holds the notice.
+        const figureColumnCount = 5;
+        const hiddenCell = (isFirstFigure: boolean) => (row: TutorialStatisticRow) =>
+            row.suppressed
+                ? { colSpan: isFirstFigure ? figureColumnCount : 0, style: { textAlign: 'left' as const } }
+                : {};
+        const hiddenNotice =
+            typeof smallCellMinimum === 'number'
+                ? t('statistic.tutorials.hidden', { minimum: smallCellMinimum })
+                : t('statistic.tutorials.hiddenNoMinimum');
+
         const countColumn = (
             titleKey: string,
             field: 'notStarted' | 'inProgress' | 'completed' | 'skipped',
+            isFirstFigure = false,
         ): ColumnType<TutorialStatisticRow> => ({
             title: t(titleKey),
             dataIndex: field,
             key: field,
             align: 'right',
             width: 130,
+            onCell: hiddenCell(isFirstFigure),
+            render: (value: number | null, row) => (row.suppressed ? hiddenNotice : value),
         });
 
         return [
@@ -83,7 +98,7 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                               .join(', ')
                         : '–',
             },
-            countColumn('statistic.tutorials.table.notStarted', 'notStarted'),
+            countColumn('statistic.tutorials.table.notStarted', 'notStarted', true),
             countColumn('statistic.tutorials.table.inProgress', 'inProgress'),
             countColumn('statistic.tutorials.table.completed', 'completed'),
             countColumn('statistic.tutorials.table.skipped', 'skipped'),
@@ -92,10 +107,11 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                 key: 'completionPercent',
                 align: 'right',
                 width: 140,
-                render: (unusedValue, row) => `${row.completionPercent}%`,
+                onCell: hiddenCell(false),
+                render: (unusedValue, row) => (row.completionPercent === null ? null : `${row.completionPercent}%`),
             },
         ] as ColumnType<TutorialStatisticRow>[];
-    }, [isPlatformScope, t]);
+    }, [isPlatformScope, smallCellMinimum, t]);
 
     return (
         <section className="tutorialStatistics" aria-label={t('statistic.tutorials.title')} aria-busy={isLoading}>
