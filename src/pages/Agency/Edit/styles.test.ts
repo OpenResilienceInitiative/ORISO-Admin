@@ -17,7 +17,11 @@ describe('Agency Edit legal raster', () => {
     });
 
     it('keeps the short tiles in one column', () => {
-        expect(findItem('<ResponsibleSettings')?.[1] ?? '').not.toContain('span');
-        expect(findItem('<ContactSettings')?.[1] ?? '').not.toContain('span');
+        const responsible = findItem('<ResponsibleSettings');
+        const contact = findItem('<ContactSettings');
+        expect(responsible).toBeDefined();
+        expect(contact).toBeDefined();
+        expect(responsible?.[1]).not.toContain('span');
+        expect(contact?.[1]).not.toContain('span');
     });
 });
