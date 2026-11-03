@@ -184,6 +184,19 @@
     margin-bottom: 8px;
 }
 
+.toggleRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    gap: 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
 .toggleLabel {
     min-width: 0;
     flex: 1;
