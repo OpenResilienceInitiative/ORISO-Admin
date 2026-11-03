@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ConfigProvider } from 'antd';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect, waitFor } from 'storybook/test';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { Card } from '../Card';
 import { FieldGrid } from '../FieldGrid';
@@ -113,4 +115,31 @@ export const ThreeCardsWrap: StoryObj = {
             </div>
         </ConfigProvider>
     ),
+};
+
+/** A filler in a column the raster has just lost must go, not hold that column open (#1329). */
+export const RasterDropsFillersWhenItShrinks: StoryObj = {
+    render: () => (
+        <div data-testid="raster-host" style={{ width: 1200 }}>
+            <CardGrid raster>
+                <CardGrid.Item>
+                    <Card titleKey="Eins">Inhalt</Card>
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <Card titleKey="Zwei">Inhalt</Card>
+                </CardGrid.Item>
+            </CardGrid>
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const host = canvasElement.querySelector('[data-testid="raster-host"]') as HTMLElement;
+        const grid = host.querySelector('[data-admin-card-grid]') as HTMLElement;
+        const fillers = () => grid.querySelectorAll('[data-admin-card-grid-filler]');
+        await waitFor(() => expect(fillers()).toHaveLength(1));
+
+        host.style.width = '800px';
+
+        await waitFor(() => expect(fillers()).toHaveLength(0));
+        await expect(getComputedStyle(grid).gridTemplateColumns.split(' ')).toHaveLength(2);
+    },
 };

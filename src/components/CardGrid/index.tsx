@@ -50,7 +50,7 @@ interface FreeCells {
  * The cells no tile takes. Which tiles a role sees and how many columns fit decides where
  * they are, so they are measured instead of written into every page.
  */
-const measureFreeCells = (grid: HTMLElement): FreeCells[] => {
+const readFreeCells = (grid: HTMLElement): FreeCells[] => {
     const { columnGap, gridTemplateColumns } = getComputedStyle(grid);
     const columns = gridTemplateColumns.split(' ').filter(Boolean);
     if (columns.length < 2) return [];
@@ -79,6 +79,15 @@ const measureFreeCells = (grid: HTMLElement): FreeCells[] => {
                 }
             }
         });
+    return free;
+};
+
+const measureFreeCells = (grid: HTMLElement): FreeCells[] => {
+    // A filler left in a column the raster has just lost would keep that column alive as an implicit track.
+    const fillers = grid.querySelectorAll<HTMLElement>(':scope > [data-admin-card-grid-filler]');
+    fillers.forEach((filler) => filler.style.setProperty('display', 'none'));
+    const free = readFreeCells(grid);
+    fillers.forEach((filler) => filler.style.removeProperty('display'));
     return free;
 };
 
@@ -114,6 +123,7 @@ const CardGridRaster = ({ children, className }: Pick<CardGridProps, 'children' 
                     <div
                         key={`${row}-${column}`}
                         className={styles.filler}
+                        data-admin-card-grid-filler
                         style={{ gridRow: row, gridColumn: `${column} / span ${span}` }}
                     >
                         <TileFill visual={<TilePicture src={conversationPicture} />} />

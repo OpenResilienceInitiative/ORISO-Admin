@@ -11,6 +11,7 @@
    mirrors the still-shadowed .chatTypeCard so both card systems read the same. */
 
 .card {
+    position: relative;
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
     border-radius: 28px;
@@ -34,8 +35,6 @@
 }
 
 .dialogCard {
-    position: relative;
-
     /* A card that is not being edited shows its values at full strength (ORISO-Admin#1313). */
     --admin-field-disabled-opacity: 1;
     --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);
