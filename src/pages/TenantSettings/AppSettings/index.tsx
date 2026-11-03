@@ -27,5 +27,5 @@ export const AppSettingsPage = () => {
         );
     }
 
-    return <FunctionalitiesGrid tenantId={resolvedTenantId} hideGroupChatToggle />;
+    return <FunctionalitiesGrid tenantId={resolvedTenantId} hideSmtp hideGroupChatToggle />;
 };

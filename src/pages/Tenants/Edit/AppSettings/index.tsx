@@ -14,5 +14,11 @@ export const TenantAppSettings = () => {
         return null;
     }
 
-    return <FunctionalitiesGrid tenantId={id ?? ''} hideTopicsToggle={settings.multitenancyWithSingleDomainEnabled} />;
+    return (
+        <FunctionalitiesGrid
+            tenantId={id ?? ''}
+            hideSmtp
+            hideTopicsToggle={settings.multitenancyWithSingleDomainEnabled}
+        />
+    );
 };

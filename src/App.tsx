@@ -31,6 +31,7 @@ import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
+import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
     LazyAgencyList,
     LazyAgencySetupPage,
@@ -55,6 +56,7 @@ import {
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
+    LazyTenantSmtpSettings,
     LazyTenantErstantwortSettings,
     LazyTenantEditOrAdd,
     LazyTenantGlobalSettings,
@@ -416,8 +418,16 @@ export const App = () => {
                                                 element={<LazyTenantErstantwortSettings />}
                                             />
                                             <Route
-                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                path={`${routePathNames.tenants}/:id/smtp`}
+                                                element={<LazyTenantSmtpSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/functionalities`}
                                                 element={<LazyTenantAppSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                element={<LegacyAppSettingsRedirect />}
                                             />
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/global-settings`}

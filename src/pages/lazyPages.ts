@@ -24,6 +24,7 @@ export const LazyTenantErstantwortSettings = lazyNamed(
     () => import('./Tenants/Edit/ErstantwortSettings'),
     'TenantErstantwortSettings',
 );
+export const LazyTenantSmtpSettings = lazyNamed(() => import('./Tenants/Edit/SmtpSettings'), 'TenantSmtpSettings');
 export const LazyTenantAppSettings = lazyNamed(() => import('./Tenants/Edit/AppSettings'), 'TenantAppSettings');
 export const LazyTenantGlobalSettings = lazyNamed(
     () => import('./Tenants/Edit/GlobalSettings'),

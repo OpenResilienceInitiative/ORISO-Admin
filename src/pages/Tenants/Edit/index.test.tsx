@@ -64,13 +64,37 @@ describe('Träger edit page tabs (#134)', () => {
         mocks.settings = { multitenancyWithSingleDomainEnabled: false };
         render(<TenantEditOrAdd />);
 
+        expect(tabTargets().slice(2, 5)).toEqual([
+            '/admin/tenants/7/legal-settings',
+            '/admin/tenants/7/erstantwort',
+            '/admin/tenants/7/smtp',
+        ]);
+    });
+
+    // Same tab structure as the Träger admin's own settings (settingsTabs.ts): Stammdaten,
+    // Erscheinungsbild, Rechtliches, Erstantwort, Email Server, Funktionszugriff, Funktionalitäten.
+    // The tab labelled "Email Server" used to open a page that also held the functionality tiles.
+    it('lists the tabs in the order of the Träger admin settings, Email Server and Funktionalitäten apart', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
         expect(tabTargets()).toEqual([
             '/admin/tenants/7/general',
             '/admin/tenants/7/theme-settings',
             '/admin/tenants/7/legal-settings',
             '/admin/tenants/7/erstantwort',
-            '/admin/tenants/7/app-settings',
+            '/admin/tenants/7/smtp',
             '/admin/tenants/7/global-settings',
+            '/admin/tenants/7/functionalities',
         ]);
+    });
+
+    it('labels the Email Server tab and the Funktionalitäten tab with their own keys', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
+        const titleOf = (to: string) => (mocks.tabs || []).filter(Boolean).find((tab) => tab.to === to)?.titleKey;
+        expect(titleOf('/admin/tenants/7/smtp')).toBe('settings.subhead.smtp');
+        expect(titleOf('/admin/tenants/7/functionalities')).toBe('tenants.edit.tabs.appSettings');
     });
 });

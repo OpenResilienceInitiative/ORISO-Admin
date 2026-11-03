@@ -42,6 +42,12 @@ describe('platform admin editing a Träger: Funktionalitäten page', () => {
         expect(gridProps().tenantId).toBe('7');
     });
 
+    it('leaves the SMTP tile to the Email Server tab', () => {
+        render(<TenantAppSettings />);
+
+        expect(gridProps().hideSmtp).toBe(true);
+    });
+
     it('renders nothing for a user who is neither platform nor Träger admin', () => {
         mocks.isSuperAdmin = false;
         render(<TenantAppSettings />);

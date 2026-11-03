@@ -62,7 +62,7 @@ export const TenantEditOrAdd = () => {
                             iconName: 'erstantwort',
                         },
                         {
-                            to: `/admin/tenants/${id}/app-settings`,
+                            to: `/admin/tenants/${id}/smtp`,
                             titleKey: 'settings.subhead.smtp',
                             iconName: 'email_server',
                         },
@@ -70,6 +70,11 @@ export const TenantEditOrAdd = () => {
                             to: `/admin/tenants/${id}/global-settings`,
                             titleKey: 'settings.subhead.functionAccess',
                             iconName: 'functionality_access',
+                        },
+                        {
+                            to: `/admin/tenants/${id}/functionalities`,
+                            titleKey: 'tenants.edit.tabs.appSettings',
+                            iconName: 'functionalities',
                         },
                     ]
                 }
