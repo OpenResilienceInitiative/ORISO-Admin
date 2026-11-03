@@ -41,6 +41,8 @@ import pageStyles from '../../../components/Page/styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { LiveChatLinks } from '../../../components/LiveChatLinks';
+import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
@@ -96,7 +98,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
-    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId, hasRole } = useUserRoles();
+    const showLiveChatLinks =
+        resolveAgencyLiveChatLinksAccess({ isSuperAdmin, isTenantScopedAdmin, hasRole }) === 'read';
     const {
         data: dpaGate,
         isLoading: isDpaGateLoading,
@@ -521,7 +525,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         <>
             <h3 className={pageStyles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
-            <AgencyPermissionsSettings agencyId={id} />
+            <AgencyPermissionsSettings
+                agencyId={id}
+                liveChatLinks={showLiveChatLinks ? <LiveChatLinks mode="read" /> : undefined}
+            />
         </>
     );
 
