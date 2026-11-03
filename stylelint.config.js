@@ -50,6 +50,9 @@ module.exports = {
     "declaration-property-value-no-unknown": null,
     "media-query-no-invalid": null,
     "at-rule-descriptor-value-no-unknown": null,
+    // Since stylelint 17.16 this also parses SCSS preludes as CSS and rejects
+    // a `@mixin name($arg)` signature.
+    "at-rule-prelude-no-invalid": null,
 
     // Keep the notations the codebase already uses. Range syntax in
     // particular does not survive the Less breakpoint mixins, which

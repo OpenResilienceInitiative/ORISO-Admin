@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../../../i18n';
@@ -9,12 +9,20 @@ const state = vi.hoisted(() => ({
     settings: {} as Record<string, unknown>,
     mutateSettings: vi.fn(),
     setManualSettings: vi.fn(),
+    isSuperAdmin: true,
+    mutation: { isPending: false, variables: undefined as unknown },
+    messageError: vi.fn(),
 }));
+vi.mock('antd', async () => {
+    const actual = await vi.importActual<typeof import('antd')>('antd');
+    return { ...actual, message: { ...actual.message, error: state.messageError } };
+});
+vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin }) }));
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: state.settings, setManualSettings: state.setManualSettings }),
 }));
 vi.mock('../../../hooks/useSettingsAdminMutation.hook', () => ({
-    useSettingsAdminMutation: () => ({ mutate: state.mutateSettings, isPending: false }),
+    useSettingsAdminMutation: () => ({ mutate: state.mutateSettings, ...state.mutation }),
 }));
 const status = (label: string) => within(screen.getByText(label).closest('div')!).getByRole('definition');
 
@@ -22,6 +30,9 @@ beforeEach(async () => {
     state.settings = {};
     state.mutateSettings.mockClear();
     state.setManualSettings.mockClear();
+    state.messageError.mockClear();
+    state.isSuperAdmin = true;
+    state.mutation = { isPending: false, variables: undefined };
     await i18n.changeLanguage('de');
 });
 
@@ -85,19 +96,75 @@ describe('Counsellor tutorial settings preview', () => {
     it('does not mutate server or local settings when the unavailable controls are clicked or used by keyboard', async () => {
         state.settings = { enableWalkthrough: true, releaseToggles: { enablePracticeArea: true } };
         render(<CounsellorTutorialSettingsCardContainer />);
-        const controls = screen.getAllByRole('switch');
+        const controls = screen
+            .getAllByRole('switch')
+            .filter((control) => control !== screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' }));
+        expect(controls).toHaveLength(3);
         const before = controls.map((control) => (control as HTMLInputElement).checked);
         controls.forEach((control) => expect(control).toBeDisabled());
-        const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
-        await userEvent.click(tours.closest('label')!);
-        tours.focus();
+        const practice = screen.getByRole('switch', { name: 'Übungsbereich anbieten' });
+        await userEvent.click(practice.closest('label')!);
+        practice.focus();
         await userEvent.keyboard(' {Enter}');
-        expect(tours).not.toHaveFocus();
+        expect(practice).not.toHaveFocus();
         expect(controls.map((control) => (control as HTMLInputElement).checked)).toEqual(before);
         expect(state.mutateSettings).not.toHaveBeenCalled();
         expect(state.setManualSettings).not.toHaveBeenCalled();
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
         expect(screen.getByText('Kommt bald')).toBeVisible();
+    });
+
+    it.each([
+        [true, false],
+        [false, true],
+    ])('lets the platform admin switch tours from %s to %s (Admin#1205)', async (stored, next) => {
+        state.settings = { enableWalkthrough: stored };
+        render(<CounsellorTutorialSettingsCardContainer />);
+        const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        expect(tours).toBeEnabled();
+        expect(tours).toHaveProperty('checked', stored);
+
+        await userEvent.click(tours);
+
+        expect(state.mutateSettings).toHaveBeenCalledTimes(1);
+        expect(state.mutateSettings.mock.calls[0][0]).toEqual({ enableWalkthrough: next });
+    });
+
+    it('shows the requested value and blocks a second toggle while the save runs', () => {
+        state.settings = { enableWalkthrough: true };
+        state.mutation = { isPending: true, variables: { enableWalkthrough: false } };
+        render(<CounsellorTutorialSettingsCardContainer />);
+        const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        expect(tours).not.toBeChecked();
+        expect(tours).toBeDisabled();
+        expect(status('Rundgänge')).toHaveTextContent('Ausgeschaltet');
+    });
+
+    it('reports a failed save and shows the stored value again', async () => {
+        state.settings = { enableWalkthrough: true };
+        state.mutateSettings.mockImplementation((_data, options?: { onError?: () => void }) => options?.onError?.());
+        const { rerender } = render(<CounsellorTutorialSettingsCardContainer />);
+        await userEvent.click(screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' }));
+
+        expect(state.messageError).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content:
+                    'Die Einstellung für Rundgänge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+            }),
+        );
+        rerender(<CounsellorTutorialSettingsCardContainer />);
+        await waitFor(() => expect(screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' })).toBeChecked());
+    });
+
+    it('shows the tours switch read-only to admins who may not change it', async () => {
+        state.isSuperAdmin = false;
+        state.settings = { enableWalkthrough: true };
+        render(<CounsellorTutorialSettingsCardContainer />);
+        const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        expect(tours).toBeChecked();
+        expect(tours).toBeDisabled();
+        await userEvent.click(tours.closest('label')!);
+        expect(state.mutateSettings).not.toHaveBeenCalled();
     });
 
     it.each([

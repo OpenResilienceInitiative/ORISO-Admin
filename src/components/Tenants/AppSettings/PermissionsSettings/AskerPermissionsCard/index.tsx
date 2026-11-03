@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
@@ -32,6 +33,13 @@ import styles from './styles.module.scss';
  * an absent one, so a Träger admin can see that the choice exists and who holds it.
  */
 
+const EMAIL_COLLECTION_SETTINGS = [
+    { field: 'featureAskerEmailCollectionAgencyCounsellingEnabled', label: 'agencyCounselling' },
+    { field: 'featureAskerEmailCollectionLiveChatEnabled', label: 'liveChat' },
+    { field: 'featureAskerEmailCollectionSelfHelpEnabled', label: 'selfHelp' },
+] as const;
+const emailCollectionFields = new Set<string>(EMAIL_COLLECTION_SETTINGS.map(({ field }) => field));
+
 export type AskerPermissionsCardProps = {
     /** Field keys the current role may not change — rendered disabled, never hidden. */
     restrictedFields: Set<string>;
@@ -42,6 +50,8 @@ export type AskerPermissionsCardProps = {
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Channel switches whose conversation-type tile is not shown on this page. */
+    channelToggles?: Array<{ field: string; labelKey: string; defaultValue?: boolean }>;
 };
 
 export const AskerPermissionsCard = ({
@@ -53,6 +63,7 @@ export const AskerPermissionsCard = ({
     openPolicyMenu,
     onOpenPolicyMenu,
     onPolicyChange,
+    channelToggles = [],
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
 
@@ -63,22 +74,41 @@ export const AskerPermissionsCard = ({
         resolvePermissionPolicy(
             permissionPolicies,
             field,
-            fallbackValues?.[field] ?? (field === 'featureAskerEmailLiveChatEnabled' ? false : undefined),
+            fallbackValues?.[field] ?? channelToggles.find((toggle) => toggle.field === field)?.defaultValue,
             restrictedFields,
         );
 
-    const policyControl = (field: string, labelKey: string) => (
-        <PermissionPolicyControl
-            featureKey={field}
-            label={t(labelKey)}
-            level={policyLevel}
-            policy={policyFor(field)}
-            open={openPolicyMenu === field}
-            pending={pendingPolicyFields?.has(field)}
-            onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
-            onChange={(next) => onPolicyChange?.(field, next)}
-        />
-    );
+    const emailMasterOff = policyFor('featureAskerEmailEnabled').value === false;
+    useEffect(() => {
+        if (emailMasterOff && openPolicyMenu && emailCollectionFields.has(openPolicyMenu)) {
+            onOpenPolicyMenu?.(null);
+        }
+    }, [emailMasterOff, openPolicyMenu, onOpenPolicyMenu]);
+
+    const policyControl = (field: string, labelKey: string) => {
+        const collectionSetting = emailCollectionFields.has(field);
+        const accountSetting = field === 'featureDisplayNameEditable' || field === 'featureAskerEmailEnabled';
+        const setOnTraeger = policyLevel === 'agency' && (accountSetting || collectionSetting);
+        const blockedByMaster = collectionSetting && emailMasterOff;
+        const disabled = setOnTraeger || blockedByMaster;
+        let supportingText;
+        if (setOnTraeger) supportingText = t('tenants.permissions.card.notifications.setOnTraeger');
+        else if (blockedByMaster) supportingText = t('tenants.permissions.asker.collection.masterOff');
+        return (
+            <PermissionPolicyControl
+                featureKey={field}
+                label={t(labelKey)}
+                level={policyLevel}
+                policy={policyFor(field)}
+                open={!disabled && openPolicyMenu === field}
+                pending={pendingPolicyFields?.has(field)}
+                disabled={disabled}
+                supportingText={supportingText}
+                onOpenChange={(open) => !disabled && onOpenPolicyMenu?.(open ? field : null)}
+                onChange={(next) => !disabled && onPolicyChange?.(field, next)}
+            />
+        );
+    };
 
     const restrictedNote = (field: string) =>
         restrictedFields.has(field) ? (
@@ -106,61 +136,31 @@ export const AskerPermissionsCard = ({
                 <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
                 {restrictedNote('featureAskerEmailEnabled')}
             </div>
-            <h3>{t('tenants.permissions.asker.channels.title')}</h3>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailAgencyCounsellingEnabled',
-                        'tenants.permissions.asker.channels.emailAgencyCounselling',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailAgencyCounsellingEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailLiveChatEnabled',
-                        'tenants.permissions.asker.channels.emailLiveChat',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailLiveChatEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerEmailSelfHelpEnabled',
-                        'tenants.permissions.asker.channels.emailSelfHelp',
-                    )}
-                </div>
-                {restrictedNote('featureAskerEmailSelfHelpEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserAgencyCounsellingEnabled',
-                        'tenants.permissions.asker.channels.browserAgencyCounselling',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserAgencyCounsellingEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserLiveChatEnabled',
-                        'tenants.permissions.asker.channels.browserLiveChat',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserLiveChatEnabled')}
-            </div>
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl(
-                        'featureAskerBrowserSelfHelpEnabled',
-                        'tenants.permissions.asker.channels.browserSelfHelp',
-                    )}
-                </div>
-                {restrictedNote('featureAskerBrowserSelfHelpEnabled')}
-            </div>
+            <h3>{t('tenants.permissions.asker.collection.title')}</h3>
+            <p className={styles.settingDescription}>{t('tenants.permissions.asker.collection.description')}</p>
+            <>
+                {EMAIL_COLLECTION_SETTINGS.map(({ field, label }) => (
+                    <div key={field} className={styles.setting}>
+                        <div className={styles.settingHeader}>
+                            {policyControl(field, `tenants.permissions.asker.collection.${label}`)}
+                        </div>
+                        {restrictedNote(field)}
+                    </div>
+                ))}
+            </>
+            {/* FE#1725: channel switches live on the conversation-type tiles. Only switches of a
+                tile hidden on this page land here, so no setting becomes unreachable. */}
+            {channelToggles.length > 0 && (
+                <>
+                    <h3>{t('tenants.permissions.asker.channels.title')}</h3>
+                    {channelToggles.map(({ field, labelKey }) => (
+                        <div key={field} className={styles.setting}>
+                            <div className={styles.settingHeader}>{policyControl(field, labelKey)}</div>
+                            {restrictedNote(field)}
+                        </div>
+                    ))}
+                </>
+            )}
         </Card>
     );
 };

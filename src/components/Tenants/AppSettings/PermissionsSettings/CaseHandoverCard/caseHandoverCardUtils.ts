@@ -68,6 +68,7 @@ export type DisplayReason = {
 export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): DisplayReason[] => {
     // OTHER_EMERGENCY remains readable for historical requests but is no longer
     // offered as a configurable reason (Frank, Figma follow-up 2026-08-17).
+    // Open product question (FE#1725): the master switch still enables this hidden default.
     const sorted = sortPoliciesByDisplayOrder(policies).filter(
         (policy) => policy.code !== 'OTHER_EMERGENCY' && !isSupersededPolicy(policy, policies),
     );
@@ -87,9 +88,14 @@ export const isHandoverModuleEnabled = (policies: CaseHandoverReasonPolicy[]) =>
     policies.some((policy) => policy.enabled);
 
 /** Master toggle writes `enabled` on every reason — module off = no handover possible.
- *  Superseded rows are never switched on, but always off, else the hidden row keeps the module on. */
+ *  Hidden rows (superseded, OTHER_EMERGENCY) are never switched on, but always off, else a hidden
+ *  row keeps the module on or runs with an unseen consent default. */
 export const applyModuleEnabled = (policies: CaseHandoverReasonPolicy[], enabled: boolean) =>
-    policies.map((policy) => (isSupersededPolicy(policy, policies) && enabled ? policy : { ...policy, enabled }));
+    policies.map((policy) =>
+        enabled && (isSupersededPolicy(policy, policies) || policy.code === 'OTHER_EMERGENCY')
+            ? policy
+            : { ...policy, enabled },
+    );
 
 export const applyClientConsent = (
     policies: CaseHandoverReasonPolicy[],

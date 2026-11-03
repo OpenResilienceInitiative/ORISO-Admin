@@ -86,6 +86,7 @@ interface MuiSelectControlProps {
     helpText?: string;
     validateStatus?: ValidateStatus;
     className?: string;
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -110,6 +111,7 @@ const MuiSelectControl = ({
     helpText,
     validateStatus,
     className,
+    confirmEnable,
 }: MuiSelectControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
@@ -162,7 +164,13 @@ const MuiSelectControl = ({
             onChange?.(((next as ResolvedOption[]) ?? []).map(emit));
             return;
         }
-        onChange?.(next ? emit(next as ResolvedOption) : undefined);
+        const nextValue = next ? emit(next as ResolvedOption) : undefined;
+        // Only the first pick asks: replacing or clearing a value never does.
+        if (nextValue !== undefined && !selected && confirmEnable) {
+            confirmEnable(() => onChange?.(nextValue));
+            return;
+        }
+        onChange?.(nextValue);
     };
 
     return (
@@ -247,6 +255,12 @@ export interface MuiSelectFieldProps {
     initialValue?: string | string[];
     rules?: Rule[];
     className?: string;
+    /**
+     * Single select: asked before an EMPTY field gets its first value; the value changes only
+     * when it calls `proceed` (e.g. assigning a standing supervisor). Replacing or clearing a
+     * value never asks.
+     */
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -278,6 +292,7 @@ export const MuiSelectField = ({
     initialValue,
     rules = [],
     className,
+    confirmEnable,
 }: MuiSelectFieldProps) => {
     const [t] = useTranslation();
     const requiredMessage = errorMessage || t(`form.errors.required${isMulti ? '.multiSelect' : ''}`);
@@ -314,6 +329,7 @@ export const MuiSelectField = ({
                 required={required}
                 validateStatus={validateStatus}
                 className={className}
+                confirmEnable={isMulti ? undefined : confirmEnable}
             />
         </Form.Item>
     );

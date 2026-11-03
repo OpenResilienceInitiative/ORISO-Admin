@@ -953,8 +953,8 @@
         "fileName": "delete.svg",
         "sourcePath": "src/resources/img/svg/delete.svg",
         "exportNames": [],
-        "usageFiles": [],
-        "usage": "catalogued-only"
+        "usageFiles": ["src/pages/Logs/LogsTabsLayout.tsx"],
+        "usage": "app-used"
     },
     {
         "id": "ui-icon:download:base",
@@ -1784,6 +1784,71 @@
         "sourcePath": "src/resources/img/svg/new-window.svg",
         "exportNames": [],
         "usageFiles": ["src/pages/Profile/Documentation/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-length:base",
+        "family": "pw-length",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-length.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-length.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-lower:base",
+        "family": "pw-lower",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-lower.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-lower.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-number:base",
+        "family": "pw-number",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-number.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-number.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-special:base",
+        "family": "pw-special",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-special.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-special.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "ui-icon:onboarding:pw-upper:base",
+        "family": "pw-upper",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "pw-upper.svg",
+        "sourcePath": "src/resources/img/svg/onboarding/pw-upper.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/OnboardingDesign/PasswordRuleChips.tsx"],
         "usage": "app-used"
     },
     {
@@ -2780,8 +2845,8 @@
         "fileName": "row_expand_200.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_200.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:table-actions:row-expand:400",
@@ -2793,8 +2858,8 @@
         "fileName": "row_expand_400.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_400.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:table-actions:row-expand:filled",
@@ -2806,8 +2871,8 @@
         "fileName": "row_expand_filled.svg",
         "sourcePath": "src/resources/img/svg/table-actions/row_expand_filled.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Agency/List/index.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:tenanticon:base",

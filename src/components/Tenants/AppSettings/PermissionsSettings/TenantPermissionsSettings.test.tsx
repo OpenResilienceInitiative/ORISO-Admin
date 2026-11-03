@@ -1,11 +1,13 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TenantPermissionsSettings } from './TenantPermissionsSettings';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
     useTenantPermissionPolicies,
     useTenantPermissionPoliciesMutation,
+    useTenantRecipientScopeMutation,
 } from '../../../../hooks/useTenantPermissionPolicies';
 
 vi.mock('../../../../hooks/useSingleTenantData');
@@ -13,8 +15,25 @@ vi.mock('../../../../hooks/useTenantAdminDataMutation.hook');
 vi.mock('../../../../hooks/useTenantPermissionPolicies');
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('./PermissionsSettingsView', () => ({
-    PermissionsSettingsView: ({ onPolicyChange }: { onPolicyChange: (field: string, value: unknown) => void }) => (
+    PermissionsSettingsView: ({
+        onPolicyChange,
+        permissionPolicies,
+        recipientScope,
+    }: {
+        onPolicyChange: (field: string, value: unknown) => void;
+        permissionPolicies?: Record<string, PolicyValue<boolean>>;
+        recipientScope?: { onSave: (value: { value: string; mode: string }) => Promise<void> };
+    }) => (
         <>
+            <button
+                type="button"
+                onClick={() => {
+                    recipientScope?.onSave({ value: 'TENANT', mode: 'SUGGESTED' }).catch(() => undefined);
+                }}
+            >
+                scope
+            </button>
+            <output data-testid="first-value">{String(permissionPolicies?.first?.value)}</output>
             <button type="button" onClick={() => onPolicyChange('first', { value: true, mode: 'SUGGESTED' })}>
                 first
             </button>
@@ -227,5 +246,81 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
             await tenantSevenRequest;
         });
         expect(mutateTenantEight).toHaveBeenCalledTimes(1);
+    });
+
+    it('discards old tenant callbacks and queued edits after navigating away and back', async () => {
+        const tenantEightPolicies = { ...basePolicies, tenantId: 8 };
+        vi.mocked(useTenantPermissionPolicies).mockImplementation(
+            (tenantId) =>
+                ({
+                    data: tenantId === '8' ? tenantEightPolicies : basePolicies,
+                    isLoading: false,
+                    isError: false,
+                } as ReturnType<typeof useTenantPermissionPolicies>),
+        );
+        let resolveOldSave: (value: typeof basePolicies) => void = () => undefined;
+        const oldSave = new Promise<typeof basePolicies>((resolve) => {
+            resolveOldSave = resolve;
+        });
+        const mutateAsync = vi
+            .fn()
+            .mockReturnValueOnce(oldSave)
+            .mockImplementation(async (value) => value);
+        vi.mocked(useTenantPermissionPoliciesMutation).mockReturnValue({ mutateAsync } as ReturnType<
+            typeof useTenantPermissionPoliciesMutation
+        >);
+        const view = render(<TenantPermissionsSettings tenantId="7" />);
+        fireEvent.click(screen.getByRole('button', { name: 'first' }));
+        fireEvent.click(screen.getByRole('button', { name: 'second' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        view.rerender(<TenantPermissionsSettings tenantId="8" />);
+        view.rerender(<TenantPermissionsSettings tenantId="7" />);
+        await act(async () => {
+            resolveOldSave({
+                ...basePolicies,
+                policies: {
+                    ...basePolicies.policies,
+                    first: { value: true, mode: 'SUGGESTED' },
+                },
+            });
+            await oldSave;
+        });
+        expect(mutateAsync).toHaveBeenCalledTimes(1);
+        expect(screen.getByTestId('first-value')).toHaveTextContent('false');
+    });
+
+    it('does not send an old queued recipient-scope save after navigating away and back', async () => {
+        const tenantEightPolicies = { ...basePolicies, tenantId: 8 };
+        vi.mocked(useTenantPermissionPolicies).mockImplementation(
+            (tenantId) =>
+                ({
+                    data: tenantId === '8' ? tenantEightPolicies : basePolicies,
+                    isLoading: false,
+                    isError: false,
+                } as ReturnType<typeof useTenantPermissionPolicies>),
+        );
+        let resolveOldSave: (value: typeof basePolicies) => void = () => undefined;
+        const oldSave = new Promise<typeof basePolicies>((resolve) => {
+            resolveOldSave = resolve;
+        });
+        const mutateAsync = vi.fn().mockReturnValue(oldSave);
+        const saveScope = vi.fn();
+        vi.mocked(useTenantPermissionPoliciesMutation).mockReturnValue({ mutateAsync } as ReturnType<
+            typeof useTenantPermissionPoliciesMutation
+        >);
+        vi.mocked(useTenantRecipientScopeMutation).mockReturnValue({ mutateAsync: saveScope } as ReturnType<
+            typeof useTenantRecipientScopeMutation
+        >);
+        const view = render(<TenantPermissionsSettings tenantId="7" />);
+        fireEvent.click(screen.getByRole('button', { name: 'first' }));
+        fireEvent.click(screen.getByRole('button', { name: 'scope' }));
+        await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
+        view.rerender(<TenantPermissionsSettings tenantId="8" />);
+        view.rerender(<TenantPermissionsSettings tenantId="7" />);
+        await act(async () => {
+            resolveOldSave(basePolicies);
+            await oldSave;
+        });
+        expect(saveScope).not.toHaveBeenCalled();
     });
 });

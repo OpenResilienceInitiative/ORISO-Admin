@@ -27,6 +27,10 @@ export const LazyTenantGlobalSettings = lazyNamed(
 );
 export const LazySingleLegalSettings = lazyNamed(() => import('./Tenants/Edit/LegalSettings'), 'SingleLegalSettings');
 export const LazyAppSettingsPage = lazyNamed(() => import('./TenantSettings/AppSettings'), 'AppSettingsPage');
+export const LazyErstantwortSettingsPage = lazyNamed(
+    () => import('./TenantSettings/ErstantwortSettings'),
+    'ErstantwortSettingsPage',
+);
 export const LazyPermissionsSettingsPage = lazyNamed(
     () => import('./TenantSettings/PermissionsSettings'),
     'PermissionsSettingsPage',
@@ -42,6 +46,7 @@ export const LazyInactiveAccountAuditLogsPage = lazyNamed(
     () => import('./Logs/InactiveAccountAuditLogs'),
     'InactiveAccountAuditLogsPage',
 );
+export const LazyDeletionAuditLogsPage = lazyNamed(() => import('./Logs/DeletionAuditLogs'), 'DeletionAuditLogsPage');
 export const LazyLinksPage = lazyNamed(() => import('./Links'), 'LinksPage');
 export const LazyLinksIndexRedirect = lazyNamed(() => import('./Links'), 'LinksIndexRedirect');
 export const LazyTenantInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'TenantInvitesTab');

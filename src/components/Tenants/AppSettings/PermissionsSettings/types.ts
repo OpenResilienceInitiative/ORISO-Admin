@@ -24,6 +24,19 @@ export type PermissionsSettingsCommonArgs = {
  */
 export type PermissionToggleCapability = 'mediaAiScan';
 
+/** Notification channel switch on a conversation-type tile (FE#1725 story 38). */
+export type ChatTypeNotificationToggle = {
+    labelKey: string;
+    /** Key inside `settings`, e.g. `featureAskerEmailLiveChatEnabled`. */
+    setting: string;
+    /** Label naming the type, used when the tile is hidden and the advice-seeker card shows it. */
+    fallbackLabelKey?: string;
+    /** Value when the backend sends none (mirrors TenantService `default`). */
+    defaultValue?: boolean;
+    /** Stored but without effect yet: shown disabled with a note (open product question). */
+    notYetEffective?: boolean;
+};
+
 export type ChatTypeCardDef = {
     key: ChatTypeCardKey;
     titleKey: string;
@@ -40,4 +53,9 @@ export type ChatTypeCardDef = {
          */
         requiresCapability?: PermissionToggleCapability;
     }>;
+    /** Email/browser switches for this type; not master children, so a master-off never resets them. */
+    notifications?: {
+        audience: 'asker' | 'consultant';
+        toggles: ChatTypeNotificationToggle[];
+    };
 };

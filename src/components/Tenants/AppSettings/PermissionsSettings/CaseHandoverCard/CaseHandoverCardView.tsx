@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Skeleton, Tooltip } from 'antd';
+import { Alert, Button, Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { Card } from '../../../../Card';
 import { M3DurationField } from '../../../../M3NumberField';
@@ -35,10 +35,17 @@ export type CaseHandoverCardViewProps = {
     policies: CaseHandoverReasonPolicy[];
     isLoading: boolean;
     isSaving?: boolean;
-    /** false = user may not edit platform reason policies → everything read-only. */
+    /** A reason-query failure never replaces independently loaded canonical master authority. */
+    loadError?: string | null;
+    onRetryLoad?: () => void;
+    /** false = user may not edit this Träger's rules → everything read-only. */
     canEdit: boolean;
+    /** Why the last save failed; the unsaved edit stays visible meanwhile. */
+    saveError?: string | null;
+    onRetrySave?: () => void;
+    /** No Träger in scope (platform-wide page): explain where the rules are set instead. */
+    noTenant?: boolean;
     moduleEnabled: boolean;
-    onModuleEnabledChange: (enabled: boolean) => void;
     onClientConsentPolicyChange: (code: string, clientConsent: CaseHandoverConsentPolicy) => void;
     onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
     onMaxAccessDurationChange: (code: string, minutes: number) => void;
@@ -63,9 +70,13 @@ export const CaseHandoverCardView = ({
     policies,
     isLoading,
     isSaving = false,
-    canEdit,
+    loadError = null,
+    onRetryLoad,
+    canEdit: canEditTenantPolicies,
+    saveError = null,
+    onRetrySave,
+    noTenant = false,
     moduleEnabled,
-    onModuleEnabledChange,
     onClientConsentPolicyChange,
     onNotificationTemplateChange,
     onMaxAccessDurationChange,
@@ -103,6 +114,22 @@ export const CaseHandoverCardView = ({
     };
 
     const comingSoon = t('tenants.permissions.card.caseHandover.comingSoon');
+    const masterSetOnTraeger = policyLevel === 'agency';
+    const canEdit = canEditTenantPolicies && !masterSetOnTraeger;
+    const canEditMaster = canEdit && Boolean(onFeaturePolicyChange);
+    const suppliedMaster = permissionPolicies?.caseHandoverEnabled;
+    const canonicalMaster =
+        typeof suppliedMaster?.value === 'boolean' &&
+        (suppliedMaster.mode === 'ENFORCED' || suppliedMaster.mode === 'SUGGESTED')
+            ? suppliedMaster
+            : undefined;
+    // Legacy reason-derived display is unavailable when those reasons failed to load.
+    // Malformed supplied authority must never become an invented default policy.
+    const masterPolicy =
+        canonicalMaster ??
+        (!loadError && suppliedMaster === undefined
+            ? { value: moduleEnabled, mode: 'SUGGESTED' as const, inherited: true }
+            : undefined);
 
     return (
         <Card
@@ -110,34 +137,73 @@ export const CaseHandoverCardView = ({
             headerIcon={<CaseHandoverIcon width={40} height={40} />}
             titleKey="tenants.permissions.card.caseHandover.title"
         >
-            {isLoading ? (
-                <Skeleton active paragraph={{ rows: 6 }} />
-            ) : (
-                <>
-                    <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
+            <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
+            {masterPolicy && (Boolean(canonicalMaster) || !isLoading || noTenant) && (
+                <div className={styles.featureRow}>
+                    <PermissionPolicyControl
+                        featureKey="caseHandoverEnabled"
+                        label={t('tenants.permissions.card.caseHandover.enabled')}
+                        level={policyLevel}
+                        policy={masterPolicy}
+                        open={canEditMaster && currentOpenPolicyMenu === 'caseHandoverEnabled'}
+                        pending={pendingPolicyFields?.has('caseHandoverEnabled')}
+                        disabled={isSaving || !canEditMaster}
+                        onOpenChange={(open) => canEditMaster && setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
+                        onChange={(next) => {
+                            if (!canEditMaster) return;
+                            onFeaturePolicyChange?.('caseHandoverEnabled', next);
+                        }}
+                    />
+                </div>
+            )}
+            {noTenant && <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.noTenant')}</p>}
+            {!noTenant && !canEdit && (!isLoading || loadError) && (
+                <p className={styles.readOnlyNote} data-testid="case-handover-read-only-note">
+                    {t('tenants.permissions.card.caseHandover.readOnlyNote')}
+                </p>
+            )}
+            {!noTenant && loadError && (
+                <Alert
+                    type="error"
+                    showIcon
+                    role="alert"
+                    className={styles.saveError}
+                    data-testid="case-handover-card-error"
+                    message={loadError}
+                    action={
+                        onRetryLoad && (
+                            <Button size="small" onClick={onRetryLoad} disabled={isLoading}>
+                                {t('tenants.permissions.card.caseHandover.saveFailed.retry')}
+                            </Button>
+                        )
+                    }
+                />
+            )}
 
-                    <div className={styles.featureRow}>
-                        <PermissionPolicyControl
-                            featureKey="caseHandoverEnabled"
-                            label={t('tenants.permissions.card.caseHandover.enabled')}
-                            level={policyLevel}
-                            policy={
-                                permissionPolicies?.caseHandoverEnabled ?? {
-                                    value: moduleEnabled,
-                                    mode: canEdit ? 'SUGGESTED' : 'ENFORCED',
-                                    inherited: !canEdit,
-                                }
+            {!noTenant && !loadError && isLoading && (
+                <div data-testid="case-handover-card-loading">
+                    <Skeleton active paragraph={{ rows: 6 }} />
+                </div>
+            )}
+            {!noTenant && !loadError && !isLoading && (
+                <>
+                    {saveError && (
+                        <Alert
+                            type="error"
+                            showIcon
+                            role="alert"
+                            className={styles.saveError}
+                            data-testid="case-handover-save-error"
+                            message={saveError}
+                            action={
+                                onRetrySave && (
+                                    <Button size="small" onClick={onRetrySave} disabled={isSaving}>
+                                        {t('tenants.permissions.card.caseHandover.saveFailed.retry')}
+                                    </Button>
+                                )
                             }
-                            open={currentOpenPolicyMenu === 'caseHandoverEnabled'}
-                            pending={pendingPolicyFields?.has('caseHandoverEnabled')}
-                            disabled={isSaving}
-                            onOpenChange={(open) => setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
-                            onChange={(next) => {
-                                onFeaturePolicyChange?.('caseHandoverEnabled', next);
-                                onModuleEnabledChange(next.value);
-                            }}
                         />
-                    </div>
+                    )}
 
                     <div
                         className={styles.reasonTabs}

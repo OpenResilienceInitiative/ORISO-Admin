@@ -1,0 +1,14 @@
+.recoveryActions {
+    width: 100%;
+
+    > div {
+        min-width: 0;
+        max-width: 100%;
+    }
+}
+
+.recoveryButton {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+}

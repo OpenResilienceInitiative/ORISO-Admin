@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect, userEvent, waitFor } from 'storybook/test';
 import { Card } from '../Card';
 import { CardDeck } from '../CardDeck';
 import { Page } from './index';
@@ -113,4 +115,80 @@ export const WithTabs: Story = {
             <SampleContent />
         </Page>
     ),
+};
+
+/** Issue #193: the header must reveal the final tab even without a card deck. */
+export const OverflowingSettingsTabs: Story = {
+    render: () => (
+        <Page>
+            <Page.Title
+                tabs={[
+                    {
+                        to: '/admin/theme-settings/global-config',
+                        titleKey: 'Global Configs',
+                        iconName: 'global_config',
+                    },
+                    { to: '/admin/theme-settings/master-data', titleKey: 'Master Data', iconName: 'master_data' },
+                    { to: '/admin/theme-settings/general', titleKey: 'Appearance', iconName: 'appearance' },
+                    { to: '/admin/theme-settings/legal', titleKey: 'Legal', iconName: 'legal' },
+                    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
+                    { to: '/admin/theme-settings/notices', titleKey: 'System notices' },
+                ]}
+            />
+            <SampleContent />
+        </Page>
+    ),
+};
+
+const SETTINGS_TABS = [
+    { to: '/admin/theme-settings/global-config', titleKey: 'Global Configs', iconName: 'global_config' },
+    { to: '/admin/theme-settings/master-data', titleKey: 'Master Data', iconName: 'master_data' },
+    { to: '/admin/theme-settings/general', titleKey: 'Appearance', iconName: 'appearance' },
+    { to: '/admin/theme-settings/legal', titleKey: 'Legal', iconName: 'legal' },
+    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
+    { to: '/admin/theme-settings/notices', titleKey: 'System notices' },
+];
+
+/**
+ * Issue #1248: zoomed in, neither the tab row nor the cards fit. The header arrows used to switch
+ * to the tabs, and the deck hides its scrollbar, so the cards right of the fold could not be
+ * reached with a mouse at all. The arrows keep driving the cards; the tab row scrolls with the
+ * mouse wheel.
+ */
+export const ZoomedInTabsAndCards: Story = {
+    render: () => (
+        <Page>
+            <Page.Title tabs={SETTINGS_TABS} />
+            <CardDeck
+                ariaLabel="Rechtliches"
+                previousLabel="Vorherige Karte anzeigen"
+                nextLabel="Weitere Karte anzeigen"
+            >
+                {['Impressum', 'Datenschutzerklärung', 'Vertragsunterlagen', 'Einwilligung', 'Kontakt'].map((title) => (
+                    <CardDeck.Item key={title}>
+                        <Card titleKey={title}>Karteninhalt.</Card>
+                    </CardDeck.Item>
+                ))}
+            </CardDeck>
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const tabs = canvasElement.querySelector<HTMLElement>('[data-admin-page-tabs]');
+        const deck = canvasElement.querySelector<HTMLElement>('[data-admin-card-deck-scroll]');
+        await expect(tabs).not.toBeNull();
+        await expect(deck).not.toBeNull();
+        // The zoomed-in state: both rows overflow their container.
+        await expect(tabs!.scrollWidth).toBeGreaterThan(tabs!.clientWidth);
+        await expect(deck!.scrollWidth).toBeGreaterThan(deck!.clientWidth);
+
+        const forward = canvasElement.querySelector<HTMLButtonElement>(
+            '[data-admin-page-deck-nav] button:last-of-type',
+        );
+        await waitFor(() => expect(forward).toBeEnabled());
+        await userEvent.click(forward!);
+        await waitFor(() => expect(deck!.scrollLeft).toBeGreaterThan(0));
+
+        tabs!.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true }));
+        await waitFor(() => expect(tabs!.scrollLeft).toBeGreaterThan(0));
+    },
 };

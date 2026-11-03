@@ -16,6 +16,7 @@ import { DoneStep } from './DoneStep';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
 import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
+import type { OnboardingFlowProps } from '../../components/OnboardingDesign/OnboardingFlow';
 import styles from './styles.module.scss';
 
 interface TenantAdminOnboardingProps {
@@ -54,6 +55,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
         dpaForward,
         dpaConfirmed,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         markDpaForwarded,
@@ -123,15 +125,42 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
     // Joining an existing Träger is two steps: account and 2FA.
     const step = joins ? JOIN_STEP_ORDER[state.phase as keyof typeof JOIN_STEP_ORDER] : STEP_ORDER[state.phase];
 
+    // The account step carries its own header (#1273): the flow indicator for the
+    // multi-step invites, the lead graphic for the single-step account setup.
+    const accountStepOwnsHeader = state.phase === 'account';
+    const total = joins ? 2 : 3;
+    const accountEtaMinutes = joins ? 2 : 3;
+    const accountFlow: OnboardingFlowProps | undefined =
+        existingAccountSetup || state.phase !== 'account'
+            ? undefined
+            : {
+                  steps: [
+                      ...(joins ? [] : [{ label: t('onboarding.flow.organisation'), state: 'done' as const }]),
+                      { label: t('onboarding.flow.account'), state: 'current' as const },
+                      { label: t('onboarding.flow.twoFactor'), state: 'upcoming' as const },
+                  ],
+                  eta: t('onboarding.flow.eta', { minutes: accountEtaMinutes }),
+                  summary: t('onboarding.flow.summary', {
+                      current: step,
+                      total,
+                      label: t('onboarding.flow.account'),
+                      minutes: accountEtaMinutes,
+                  }),
+              };
+
     return (
         <Sheet>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
-                {t(titleKey)}
-            </Typography>
-            {!existingAccountSetup && (
-                <Typography color="text.secondary" sx={{ mb: 3 }}>
-                    {t('tenantOnboarding.stepIndicator', { current: step, total: joins ? 2 : 3 })}
-                </Typography>
+            {!accountStepOwnsHeader && (
+                <>
+                    <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+                        {t(titleKey)}
+                    </Typography>
+                    {!existingAccountSetup && (
+                        <Typography color="text.secondary" sx={{ mb: 3 }}>
+                            {t('tenantOnboarding.stepIndicator', { current: step, total })}
+                        </Typography>
+                    )}
+                </>
             )}
             {state.phase === 'organisation' && invite && (
                 <OrganisationDpaStep
@@ -151,7 +180,9 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
+                    passwordRejection={passwordRejection}
                     existingAccountSetup={existingAccountSetup}
+                    flow={accountFlow}
                     onBack={joins || existingAccountSetup ? undefined : goBackToOrganisation}
                     onSubmit={submitAccount}
                 />

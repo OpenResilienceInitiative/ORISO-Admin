@@ -290,5 +290,31 @@ describe('caseHandoverCardUtils', () => {
             ]);
             expect(isHandoverModuleEnabled(next)).toBe(false);
         });
+
+        // Hidden reason: never switched on by the master, so it cannot run with an unseen default.
+        it('module on leaves the hidden OTHER_EMERGENCY row disabled', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: false }),
+                    policy({ code: 'OTHER_EMERGENCY', enabled: false }),
+                ],
+                true,
+            );
+            expect(next.map((p) => [p.code, p.enabled])).toEqual([
+                ['UNPLANNED_ABSENCE', true],
+                ['OTHER_EMERGENCY', false],
+            ]);
+        });
+
+        it('module off also disables an enabled OTHER_EMERGENCY row', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: true }),
+                    policy({ code: 'OTHER_EMERGENCY', enabled: true }),
+                ],
+                false,
+            );
+            expect(next.map((p) => p.enabled)).toEqual([false, false]);
+        });
     });
 });

@@ -211,3 +211,47 @@ export const ActionTonesFollowTheActionWhileOff: Story = {
         await expect(window.getComputedStyle(fab).backgroundColor).toBe('rgb(76, 85, 95)');
     },
 };
+
+const consentItems: M3FabMenuItem[] = [
+    {
+        key: 'opt-in',
+        label: 'Zustimmung Opt-In (anpassbar)',
+        description: 'Die ratsuchende Person wird vorher gefragt. Der Zugriff beginnt erst mit ihrer Zustimmung.',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'primary',
+    },
+    {
+        key: 'opt-out',
+        label: 'Zustimmung Opt-Out (anpassbar)',
+        description:
+            'Stillschweigend: Der Zugriff beginnt sofort, die ratsuchende Person wird informiert und kann widersprechen.',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'neutral',
+    },
+    { key: 'info', label: 'Weitere Informationen', icon: <InfoIcon />, tone: 'neutral' },
+];
+
+/** FE#1725: pills with a supporting sentence (case-handover consent); the sentence is the description. */
+export const ActionWithDescriptions: Story = {
+    args: { open: true },
+    render: () => (
+        <PhoneFrame
+            variant="action"
+            items={consentItems}
+            activeKey="opt-in"
+            open
+            openLabel="Policy-Auswahl öffnen"
+            closeLabel="Policy-Auswahl schließen"
+            onOpenChange={() => undefined}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const optOut = await canvas.findByRole('button', { name: 'Zustimmung Opt-Out (anpassbar)' });
+        await expect(optOut).toHaveAccessibleDescription(/sofort.*widersprechen/);
+        await expect(canvas.getByText(/sofort, die ratsuchende Person/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Weitere Informationen' })).not.toHaveAttribute(
+            'aria-describedby',
+        );
+    },
+};

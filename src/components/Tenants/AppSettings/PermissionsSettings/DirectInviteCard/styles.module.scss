@@ -1,0 +1,24 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* ORISO-Admin#1242 — same row rhythm as the advice-seeker card (AskerPermissionsCard). */
+.intro {
+    margin: mui.$mui-unit * 1.5 0 mui.$mui-unit * 2.5;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    letter-spacing: 0.15px;
+}
+
+.setting {
+    padding: mui.$mui-unit * 2 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+}
+
+.callsNote {
+    margin: mui.$mui-unit * 2 0 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: 0.3px;
+}

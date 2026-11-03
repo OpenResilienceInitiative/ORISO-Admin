@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export is not resolved by ESLint 7.
+import { expect, within } from 'storybook/test';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import type { AgencySettings } from '../../../../types/agency';
@@ -11,6 +13,7 @@ const AGENCY_BY_ID = '*/service/agencyadmin/agencies/:id';
 const TENANT_PUBLIC = '*/service/tenant/public/*';
 const TENANT_BY_ID = '*/service/tenant/:id';
 const HANDOVER_REASON_POLICIES = '*/service/users/case-handover/reason-policies';
+const TRAEGER_POLICIES = '*/service/tenantadmin/:id/permission-policies';
 
 const agency = (settings: AgencySettings) => ({
     _embedded: {
@@ -21,7 +24,11 @@ const agency = (settings: AgencySettings) => ({
     },
 });
 
-const handlers = (settings: AgencySettings) => [
+const handlers = (
+    settings: AgencySettings,
+    traegerPolicies = () => HttpResponse.json({ tenantId: 2, policies: {} }),
+) => [
+    http.get(TRAEGER_POLICIES, traegerPolicies),
     http.get(AGENCY_BY_ID, () => HttpResponse.json(agency(settings))),
     http.put(AGENCY_BY_ID, () => HttpResponse.json(agency(settings))),
     http.get(TENANT_PUBLIC, () => HttpResponse.json({ id: 2, settings: {} })),
@@ -81,5 +88,24 @@ export const PlatformEnforcedVoiceMessagesOn: Story = {
                 agencyAdminControls: { enforcedPermissionToggles: { voiceMessages: true } },
             }),
         },
+    },
+};
+
+/** The Träger's channel switches cannot be read (403 for a centre-only admin): the tiles say so
+ *  instead of showing defaults as the Träger's values. */
+export const TraegerPoliciesFailed: Story = {
+    parameters: {
+        msw: { handlers: handlers({}, () => new HttpResponse(null, { status: 403 })) },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(
+            (
+                await canvas.findAllByText(/Träger.*(nicht geladen|could not be loaded)/i)
+            ).length,
+        ).toBeGreaterThan(0);
+        await expect(
+            canvasElement.querySelector('[data-feature-policy="featureAskerEmailLiveChatEnabled"]'),
+        ).toBeNull();
     },
 };

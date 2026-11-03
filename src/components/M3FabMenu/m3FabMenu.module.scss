@@ -93,6 +93,32 @@
     }
 }
 
+// Pill with a supporting sentence: grows to two or three lines instead of one.
+.itemWithDescription {
+    height: auto;
+    // Fixed width: the absolute stack would otherwise shrink-wrap the pill to a word column.
+    width: min(320px, calc(100vw - 12px));
+    min-height: 56px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    // No shape token exists in this repo; 20px keeps a multi-line pill visibly a pill.
+    border-radius: 20px;
+    text-align: left;
+    white-space: normal;
+}
+
+.itemText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+// Type comes from the global M3 scale class `m3-body-medium` (app.css); nothing to set here.
+.itemDescription {
+    display: block;
+}
+
 .itemActive {
     background: var(--admin-nav-indicator-surface, #410001);
     color: var(--m3-primary-container, #ffe2de);
