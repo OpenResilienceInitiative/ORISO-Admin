@@ -43,7 +43,7 @@ import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettin
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
-import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 
@@ -305,10 +305,16 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onError: async (error) => {
                     options?.onError?.();
                     const validationError = await parseAgencyFieldValidationError(error);
-                    if (validationError && options?.form) {
+                    if (validationError) {
                         const message = t(validationError.translationKey);
-                        options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
-                        options.form.scrollToField(validationError.fieldName, { focus: true });
+                        if (options?.form && isFieldMounted(options.form, validationError.fieldName)) {
+                            options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
+                            options.form.scrollToField(validationError.fieldName, { focus: true });
+                            return;
+                        }
+                        // The field lives on another card (the visibility switch is rejected for
+                        // an incomplete data protection contact): say what is missing instead.
+                        notification.error({ message, duration: 8 });
                         return;
                     }
 
