@@ -2,11 +2,18 @@ import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/pe
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
-import type { ChatTypeCardDef } from './types';
+import type { ChatTypeCardDef, ChatTypeParticipantToggle } from './types';
+
+const askerNamePolicy = (setting: string): ChatTypeParticipantToggle => ({
+    setting,
+    labelKey: 'tenants.permissions.asker.displayName.conversationLabel',
+    requiresAskerNameEditing: true,
+});
 
 export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'oneOnOne',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableAgencyCounsellingEnabled'),
         titleKey: 'tenants.permissions.card.oneOnOne.title',
         Icon: OneOnOneIcon,
         masterField: ['settings', 'featureCallsEnabled'],
@@ -70,6 +77,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     },
     {
         key: 'liveChat',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableLiveChatEnabled'),
         titleKey: 'tenants.permissions.card.liveChat.title',
         Icon: LiveChatIcon,
         masterField: ['settings', 'featureAnonymousChatEnabled'],
@@ -123,6 +131,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     },
     {
         key: 'group',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableSelfHelpEnabled'),
         titleKey: 'tenants.permissions.card.group.title',
         Icon: GroupIcon,
         // ORISO-Admin#988 / Frank 2026-09-16: this card is the conversation-circle format

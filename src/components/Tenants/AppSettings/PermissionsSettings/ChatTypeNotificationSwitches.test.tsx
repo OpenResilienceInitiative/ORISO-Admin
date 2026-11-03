@@ -63,6 +63,87 @@ const TILES = [
     ['group', 'featureAskerEmailSelfHelpEnabled', 'featureAskerBrowserSelfHelpEnabled'],
 ] as const;
 
+const NAME_TILES = [
+    ['oneOnOne', 'featureDisplayNameEditableAgencyCounsellingEnabled'],
+    ['liveChat', 'featureDisplayNameEditableLiveChatEnabled'],
+    ['group', 'featureDisplayNameEditableSelfHelpEnabled'],
+] as const;
+
+describe('login and display name permissions per conversation type', () => {
+    it.each(NAME_TILES)('%s writes its own value and inheritance mode', async (tile, field) => {
+        const user = userEvent.setup();
+        const onPolicyChange = vi.fn();
+        const { rerender } = render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    onPolicyChange,
+                    permissionPolicies: { [field]: { value: false, mode: 'SUGGESTED' } },
+                })}
+            />,
+        );
+        const card = screen.getByTestId(`chat-type-card-${tile}`);
+        await user.click(control(card, field));
+        expect(onPolicyChange).toHaveBeenLastCalledWith(field, { value: true, mode: 'SUGGESTED' });
+
+        rerender(
+            <PermissionsSettingsView
+                {...baseProps({
+                    onPolicyChange,
+                    permissionPolicies: { [field]: { value: true, mode: 'SUGGESTED' } },
+                })}
+            />,
+        );
+        await user.click(lock(card, field));
+        expect(onPolicyChange).toHaveBeenLastCalledWith(field, { value: true, mode: 'ENFORCED' });
+    });
+
+    it('shows the Träger values as read-only, including an adjustable choice', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    policyLevel: 'agency',
+                    channelsSetOnTraeger: true,
+                    traegerChannelPolicies: {
+                        [NAME_TILES[0][1]]: { value: false, mode: 'SUGGESTED', inherited: true },
+                        [NAME_TILES[1][1]]: { value: true, mode: 'ENFORCED', inherited: true },
+                        [NAME_TILES[2][1]]: { value: false, mode: 'ENFORCED', inherited: true },
+                    },
+                })}
+            />,
+        );
+
+        NAME_TILES.forEach(([tile, field]) => {
+            const card = screen.getByTestId(`chat-type-card-${tile}`);
+            expect(control(card, field)).toBeDisabled();
+            expect(control(card, field)).toHaveAttribute('aria-pressed', String(tile === 'liveChat'));
+            expect(lockOrNull(card, field)).toBeNull();
+        });
+        expect(
+            screen
+                .getByTestId('chat-type-card-groupInternal')
+                .querySelector('[data-feature-policy^="featureDisplayNameEditable"]'),
+        ).toBeNull();
+    });
+
+    it('keeps each choice visible without letting it bypass the account-wide restriction', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    permissionPolicies: {
+                        featureDisplayNameEditable: { value: false, mode: 'ENFORCED', inherited: true },
+                        [NAME_TILES[0][1]]: { value: true, mode: 'SUGGESTED' },
+                    },
+                })}
+            />,
+        );
+        const card = screen.getByTestId('chat-type-card-oneOnOne');
+
+        expect(control(card, NAME_TILES[0][1])).toHaveAttribute('aria-pressed', 'true');
+        expect(control(card, NAME_TILES[0][1])).toBeDisabled();
+        expect(within(card).getByText('tenants.permissions.asker.displayName.masterOff')).toBeVisible();
+    });
+});
+
 const INTERNAL_EMAIL = 'featureConsultantEmailInternalGroupEnabled';
 const INTERNAL_BROWSER = 'featureConsultantBrowserInternalGroupEnabled';
 

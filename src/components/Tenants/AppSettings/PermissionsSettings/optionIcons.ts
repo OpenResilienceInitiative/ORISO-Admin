@@ -2,6 +2,7 @@ import CallOutlinedIcon from '@mui/icons-material/CallOutlined';
 import AlternateEmailOutlinedIcon from '@mui/icons-material/AlternateEmailOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import ImageSearchOutlinedIcon from '@mui/icons-material/ImageSearchOutlined';
+import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
 import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
@@ -21,6 +22,7 @@ export const OPTION_ICONS: Record<string, ComponentType<{ className?: string }>>
     'tenants.permissions.feature.mediaUpload': UploadFileOutlinedIcon,
     'tenants.permissions.feature.mediaInlineDisplay': ImageOutlinedIcon,
     'tenants.permissions.feature.mediaAiScan': ImageSearchOutlinedIcon,
+    'tenants.permissions.asker.displayName.conversationLabel': PersonOutlineOutlinedIcon,
     'tenants.permissions.card.notifications.askForEmail': AlternateEmailOutlinedIcon,
     'tenants.permissions.card.notifications.email': MailOutlinedIcon,
     'tenants.permissions.card.notifications.browser': NotificationsNoneOutlinedIcon,

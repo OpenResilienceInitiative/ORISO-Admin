@@ -10,17 +10,11 @@ import styles from './styles.module.scss';
 /**
  * ORISO-Admin#602 — the two permissions an advice seeker's own account depends on.
  *
- * <h3>Switch 1: Anzeigename</h3>
+ * <h3>Switch 1: Login and display names</h3>
  *
- * Whether the person may **type** their own display name, or may only re-roll the generated one.
- * It is labelled **Anzeigename** and never "Nutzername", and that is not pedantry: the
- * **Anmeldename** (`userName`) is a different, immutable thing, and a Träger admin reading
- * "Nutzername" would believe they are deciding about the login credential. A test asserts the word
- * does not appear on this card.
- *
- * Why forbidding free entry is a real option rather than paternalism: a self-typed nickname is the
- * most common way anonymity is lost, because people reuse a handle that is searchable elsewhere.
- * The dice stays re-rollable without limit, so nothing is taken away.
+ * The account-wide limit for freely choosing a login name during registration or a display name
+ * in a conversation. Each conversation type can restrict free entry further; a generated choice
+ * remains available. Existing login names are never changed.
  *
  * <h3>Switch 2: E-Mail hinterlassen</h3>
  *

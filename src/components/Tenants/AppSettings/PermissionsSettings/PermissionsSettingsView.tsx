@@ -17,8 +17,9 @@ import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSetti
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type {
+    ChatTypeCardDef,
     ChatTypeCardKey,
-    ChatTypeNotificationToggle,
+    ChatTypeParticipantToggle,
     PermissionToggleCapability,
     ToggleAfterChangeHandler,
 } from './types';
@@ -161,16 +162,21 @@ export const PermissionsSettingsView = ({
         />
     );
 
-    const channelRow = (
+    const participantRow = (
         form: FormInstance,
-        toggle: ChatTypeNotificationToggle,
+        toggle: ChatTypeParticipantToggle,
         getFieldValue: FormInstance['getFieldValue'],
     ) => {
         const isOn = (setting: string) => policyFor(setting, getFieldValue(['settings', setting])).value !== false;
         const accountEmailOff = Boolean(toggle.requiresAskerEmail) && !isOn('featureAskerEmailEnabled');
-        const deliveryOff = Boolean(toggle.worksWithDelivery) && !isOn(toggle.worksWithDelivery as string);
+        const deliveryOff = toggle.worksWithDelivery && !isOn(toggle.worksWithDelivery);
+        const nameEditingAllowed = channelsSetOnTraeger
+            ? traegerChannelPolicies?.featureDisplayNameEditable?.value !== false
+            : isOn('featureDisplayNameEditable');
+        const accountNameEditingOff = toggle.requiresAskerNameEditing && !nameEditingAllowed;
         let note;
         if (toggle.notYetEffective) note = t('tenants.permissions.card.notifications.notYetEffective');
+        else if (accountNameEditingOff) note = t('tenants.permissions.asker.displayName.masterOff');
         else if (accountEmailOff) note = t('tenants.permissions.asker.collection.masterOff');
         else if (deliveryOff) note = t('tenants.permissions.card.notifications.askNeedsDelivery');
         return toggleRow(form, {
@@ -182,16 +188,16 @@ export const PermissionsSettingsView = ({
                       mode: 'SUGGESTED',
                   }
                 : policyFor(toggle.setting, getFieldValue(['settings', toggle.setting]) ?? toggle.defaultValue),
-            disabled: channelsSetOnTraeger || toggle.notYetEffective || accountEmailOff,
+            disabled: channelsSetOnTraeger || toggle.notYetEffective || accountEmailOff || accountNameEditingOff,
             note,
         });
     };
 
     // Centre page: until the Träger's values are read, show a loader or say they are unavailable,
     // never defaults passed off as the Träger's.
-    const channelSwitches = (
+    const participantSwitches = (
         form: FormInstance,
-        toggles: Array<ChatTypeNotificationToggle>,
+        card: ChatTypeCardDef,
         getFieldValue: FormInstance['getFieldValue'],
     ) => {
         if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'pending') {
@@ -208,8 +214,12 @@ export const PermissionsSettingsView = ({
                 </p>
             );
         }
+        const namePolicy = card.askerNamePolicy;
         return (
-            <div className={styles.togglesList}>{toggles.map((toggle) => channelRow(form, toggle, getFieldValue))}</div>
+            <div className={styles.togglesList}>
+                {namePolicy && participantRow(form, namePolicy, getFieldValue)}
+                {card.notifications?.toggles.map((toggle) => participantRow(form, toggle, getFieldValue))}
+            </div>
         );
     };
 
@@ -432,11 +442,7 @@ export const PermissionsSettingsView = ({
                                                                         )}
                                                                     </p>
                                                                 )}
-                                                                {channelSwitches(
-                                                                    form,
-                                                                    card.notifications.toggles,
-                                                                    getFieldValue,
-                                                                )}
+                                                                {participantSwitches(form, card, getFieldValue)}
                                                             </>
                                                         )}
                                                     </div>
