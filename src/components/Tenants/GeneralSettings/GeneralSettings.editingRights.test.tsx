@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { notification } from 'antd';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,8 +28,9 @@ vi.mock('../../../api/tenant/tenantPermissionPolicies');
 vi.mock('../../../hooks/useSettingsAdminMutation.hook');
 vi.mock('../../../hooks/useUserRoles.hook');
 vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => true }) }));
+const ownTenant = vi.hoisted(() => ({ id: 7 as number | undefined }));
 vi.mock('../../../hooks/useTenantData.hook', () => ({
-    useTenantData: () => ({ data: { id: 7, settings: {} } }),
+    useTenantData: () => ({ data: { id: ownTenant.id, settings: {} } }),
 }));
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: {}, setManualSettings: vi.fn(), setServerSettings: vi.fn() }),
@@ -80,12 +81,12 @@ const tenantPolicies = (appearance?: { value: boolean; mode: 'ENFORCED' | 'SUGGE
     policies: appearance ? { appearance } : {},
 });
 
-const renderPage = (section: 'masterData' | 'appearance' = 'masterData') => {
+const renderPage = (section: 'masterData' | 'appearance' = 'masterData', tenantId = '7') => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-    return render(<GeneralSettings tenantId="7" section={section} />, { wrapper });
+    return render(<GeneralSettings tenantId={tenantId} section={section} />, { wrapper });
 };
 
 const switchLabel = 'settings.masterData.editable.toggle';
@@ -96,6 +97,7 @@ describe('GeneralSettings editing-rights switch (ORISO-Admin#1339)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        ownTenant.id = 7;
         localStorageWrites = [];
         const realSetItem = Storage.prototype.setItem;
         vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(
@@ -181,14 +183,119 @@ describe('GeneralSettings editing-rights switch (ORISO-Admin#1339)', () => {
         await waitFor(() => expect(toggle).not.toBeChecked());
     });
 
+    /** Waits for the tenant service's answer and lets React apply it, so the result is not the loading state. */
+    const settledAfterPolicies = async () => {
+        await waitFor(() => expect(getTenantPermissionPolicies).toHaveBeenCalledWith('7', { silent: true }));
+        await Promise.allSettled(vi.mocked(getTenantPermissionPolicies).mock.results.map((result) => result.value));
+        await act(async () => {});
+    };
+
     it('shows the cards read-only to an organisation admin once the tenant service says locked', async () => {
         vi.mocked(useUserRoles).mockReturnValue(ORGANISATION_ADMIN_ROLES);
         vi.mocked(getTenantPermissionPolicies).mockResolvedValue(tenantPolicies({ value: false, mode: 'ENFORCED' }));
         renderPage();
 
-        await waitFor(() => expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true'));
+        await settledAfterPolicies();
+
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
         expect(screen.getByTestId('language-type')).toHaveAttribute('data-readonly', 'true');
         expect(getTenantAdminControls).not.toHaveBeenCalled();
+    });
+
+    it('makes the cards editable for an organisation admin only once the tenant service says allowed', async () => {
+        vi.mocked(useUserRoles).mockReturnValue(ORGANISATION_ADMIN_ROLES);
+        vi.mocked(getTenantPermissionPolicies).mockResolvedValue(tenantPolicies({ value: true, mode: 'ENFORCED' }));
+        renderPage();
+
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
+        await settledAfterPolicies();
+
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'false');
+    });
+
+    it('keeps the cards read-only when the tenant service cannot be read', async () => {
+        vi.mocked(useUserRoles).mockReturnValue(ORGANISATION_ADMIN_ROLES);
+        vi.mocked(getTenantPermissionPolicies).mockRejectedValue(new Error('503'));
+        renderPage();
+
+        await settledAfterPolicies();
+
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
+        expect(screen.getByTestId('language-type')).toHaveAttribute('data-readonly', 'true');
+    });
+
+    it('keeps the cards read-only when the tenant service sends no value for the switch', async () => {
+        vi.mocked(useUserRoles).mockReturnValue(ORGANISATION_ADMIN_ROLES);
+        vi.mocked(getTenantPermissionPolicies).mockResolvedValue(tenantPolicies());
+        renderPage();
+
+        await settledAfterPolicies();
+
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
+    });
+
+    it('keeps the cards read-only and asks nothing when the organisation is unknown', async () => {
+        vi.mocked(useUserRoles).mockReturnValue(ORGANISATION_ADMIN_ROLES);
+        ownTenant.id = undefined;
+        renderPage('masterData', '');
+
+        await act(async () => {});
+
+        expect(getTenantPermissionPolicies).not.toHaveBeenCalled();
+        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
+    });
+
+    it('shows the platform value, not the old toggle, when the two disagree', async () => {
+        vi.mocked(getTenantAdminControls).mockResolvedValue({
+            ...unlockedControls,
+            allowedPermissionToggles: { appearance: true },
+            permissionPolicies: { appearance: { value: false, mode: 'ENFORCED' } },
+        });
+        const { unmount } = renderPage();
+        await waitFor(() => expect(screen.getByRole('switch', { name: switchLabel })).not.toBeChecked());
+        unmount();
+
+        vi.mocked(getTenantAdminControls).mockResolvedValue({
+            ...unlockedControls,
+            allowedPermissionToggles: { appearance: false },
+            permissionPolicies: { appearance: { value: true, mode: 'ENFORCED' } },
+        });
+        renderPage();
+        await waitFor(() => expect(screen.getByRole('switch', { name: switchLabel })).toBeChecked());
+    });
+
+    it('does not show the switch as on, nor let it be edited, when the platform controls cannot be read', async () => {
+        vi.mocked(getTenantAdminControls).mockRejectedValue(new Error('503'));
+        renderPage();
+
+        await waitFor(() => expect(getTenantAdminControls).toHaveBeenCalled());
+        await act(async () => {});
+
+        expect(screen.getByRole('switch', { name: switchLabel })).not.toBeChecked();
+        expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
+    });
+
+    it('does not send an inherited group-chat scope back as an override, but keeps a stored one', async () => {
+        vi.mocked(getTenantAdminControls).mockResolvedValue({
+            ...unlockedControls,
+            internalGroupChat: { recipientScope: { value: 'TENANT', mode: 'SUGGESTED', inherited: true } },
+        });
+        const { unmount } = renderPage();
+        await toggleAndSave();
+        await waitFor(() => expect(updateTenantAdminControls).toHaveBeenCalledTimes(1));
+        expect(vi.mocked(updateTenantAdminControls).mock.calls[0][0]).not.toHaveProperty('internalGroupChat');
+        unmount();
+
+        vi.mocked(getTenantAdminControls).mockResolvedValue({
+            ...unlockedControls,
+            internalGroupChat: { recipientScope: { value: 'PLATFORM', mode: 'ENFORCED', inherited: false } },
+        });
+        renderPage();
+        await toggleAndSave();
+        await waitFor(() => expect(updateTenantAdminControls).toHaveBeenCalledTimes(2));
+        expect(vi.mocked(updateTenantAdminControls).mock.calls[1][0].internalGroupChat).toEqual({
+            recipientScope: { value: 'PLATFORM', mode: 'ENFORCED' },
+        });
     });
 
     it('does not hand the platform admin a read-only card, even when locked', async () => {
@@ -213,5 +320,17 @@ describe('GeneralSettings editing-rights switch (ORISO-Admin#1339)', () => {
         expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
         expect(updateSettings).not.toHaveBeenCalled();
         expect(window.localStorage.getItem('oriso:tenantAdminControls.allowedPermissionToggles.appearance')).toBeNull();
+    });
+
+    it('shows one error, not two, when the request helper has already reported the failure', async () => {
+        vi.mocked(updateTenantAdminControls).mockRejectedValue(new Error('CATCH_ALL'));
+        const showError = vi.spyOn(notification, 'error').mockImplementation(() => undefined);
+        renderPage();
+
+        await toggleAndSave();
+
+        await waitFor(() => expect(updateTenantAdminControls).toHaveBeenCalledTimes(1));
+        expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
+        expect(showError).not.toHaveBeenCalled();
     });
 });

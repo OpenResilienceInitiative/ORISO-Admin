@@ -42,12 +42,13 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     const { isSuperAdmin } = useUserRoles();
     const showAppearance = section === 'all' || section === 'appearance';
     const showMasterData = section === 'all' || section === 'masterData';
-    const { editable, isLoading: rightsLoading, loadFailed, save } = useAppearanceEditingRights(finalTenantId);
-    // An organisation admin gets read-only cards until the tenant service has said whether they may edit.
-    const readOnly = !isSuperAdmin && (rightsLoading || !editable);
+    const { editable, isLoading: rightsLoading, save } = useAppearanceEditingRights(finalTenantId);
+    // An organisation admin edits only once the tenant service has said so: unknown counts as locked.
+    const readOnly = !isSuperAdmin && editable !== true;
     const tenantAdminControlsInitialValues = {
         tenantAdminControls: {
             allowedPermissionToggles: {
+                // Unknown stays unset, so the switch is not shown as on when the read failed.
                 appearance: editable,
             },
         },
@@ -101,7 +102,7 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
                         <CardEditable
                             key={`tenant-master-data-editable-${editable}`}
                             isLoading={rightsLoading}
-                            allowEdit={isSuperAdmin && !loadFailed}
+                            allowEdit={isSuperAdmin && editable !== undefined}
                             initialValues={tenantAdminControlsInitialValues}
                             titleKey="settings.masterData.editable.title"
                             subTitle={t<string>('settings.masterData.editable.subtitle')}

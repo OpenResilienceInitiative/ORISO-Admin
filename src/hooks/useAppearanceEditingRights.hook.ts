@@ -2,6 +2,7 @@ import { notification } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { FETCH_ERRORS } from '../api/fetchData';
 import { useTenantAdminControls } from './useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from './useTenantAdminControlsMutation.hook';
 import { useTenantData } from './useTenantData.hook';
@@ -27,24 +28,31 @@ export const useAppearanceEditingRights = (tenantId: string) => {
     const controls = useTenantAdminControls(isSuperAdmin);
     const tenantPolicies = useTenantPermissionPolicies(tenantId, !isSuperAdmin, { silent: true });
     const mutation = useTenantAdminControlsMutation({
-        onError: () => notification.error({ message: t('settings.masterData.editable.saveError') }),
+        // The request helper already toasted an HTTP error; a second message would only repeat it.
+        onError: (error) => {
+            if (error instanceof Error && error.message === FETCH_ERRORS.CATCH_ALL) return;
+            notification.error({ message: t('settings.masterData.editable.saveError') });
+        },
         // Organisations read their own copy: do not let it show the old value until the next refetch.
         onSuccess: () => queryClient.invalidateQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) }),
     });
 
-    const platformValue =
-        controls.data?.permissionPolicies?.[APPEARANCE_POLICY_KEY]?.value ??
-        controls.data?.allowedPermissionToggles?.appearance;
+    // `undefined` means "not known": still loading, or the read failed. It is never shown or treated
+    // as "editable" for an organisation admin, and a platform admin is not shown a switch position.
+    const platformValue = controls.data
+        ? controls.data.permissionPolicies?.[APPEARANCE_POLICY_KEY]?.value ??
+          controls.data.allowedPermissionToggles?.appearance ??
+          true
+        : undefined;
     const organisationValue =
-        tenantPolicies.data?.policies?.[APPEARANCE_POLICY_KEY]?.value ??
-        ownTenantData?.settings?.tenantAdminControls?.allowedPermissionToggles?.appearance;
-    const value = isSuperAdmin ? platformValue : organisationValue;
-
-    const isLoading = isSuperAdmin ? controls.isLoading : tenantPolicies.isLoading;
-    // An unknown value only counts as "editable" for a platform admin who cannot read it; the
-    // server still decides on every save. An organisation admin gets no editable cards while loading.
-    const editable = value !== false;
-    const loadFailed = isSuperAdmin && controls.isError;
+        tenantId && !tenantPolicies.isError
+            ? tenantPolicies.data?.policies?.[APPEARANCE_POLICY_KEY]?.value ??
+              (tenantPolicies.data
+                  ? ownTenantData?.settings?.tenantAdminControls?.allowedPermissionToggles?.appearance
+                  : undefined)
+            : undefined;
+    const editable = isSuperAdmin ? platformValue : organisationValue;
+    const isLoading = isSuperAdmin ? controls.isLoading : Boolean(tenantId) && tenantPolicies.isLoading;
 
     const save = useCallback(
         (nextEditable: boolean, options?: { onError?: () => void }) => {
@@ -70,5 +78,5 @@ export const useAppearanceEditingRights = (tenantId: string) => {
         [controls.data, mutation, t],
     );
 
-    return { editable, isLoading, loadFailed, save };
+    return { editable, isLoading, save };
 };
