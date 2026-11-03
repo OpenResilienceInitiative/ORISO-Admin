@@ -107,13 +107,7 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
         });
     }
 
-    // A section with a single destination is a plain page: nothing to expand.
-    const onlyIfSeveral = (list: AdminNavSubsection[]) => (list.length > 1 ? list : []);
-
-    return {
-        theme: onlyIfSeveral(settings),
-        counselors: onlyIfSeveral(users),
-        links: onlyIfSeveral(links),
-        logs: onlyIfSeveral(logs),
-    };
+    // Single destinations stay in: search indexes them, and the menu already
+    // renders a section with fewer than two subsections as a plain link.
+    return { theme: settings, counselors: users, links, logs };
 };
