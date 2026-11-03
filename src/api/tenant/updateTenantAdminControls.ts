@@ -8,5 +8,5 @@ export const updateTenantAdminControls = (body: TenantAdminControls) =>
         method: FETCH_METHODS.PUT,
         skipAuth: false,
         bodyData: JSON.stringify(body),
-        responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CATCH_ALL],
+        responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL],
     }) as Promise<TenantAdminControls>;
