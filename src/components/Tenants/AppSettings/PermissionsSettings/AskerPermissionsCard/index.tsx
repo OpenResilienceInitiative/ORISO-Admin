@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../Card';
+import { ReactComponent as AskerAccountIcon } from '../../../../../resources/img/svg/permissions/asker_account.svg';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
+import { ASKER_HELP } from '../tileHelpTopics';
 import styles from './styles.module.scss';
 
 /**
@@ -33,13 +34,6 @@ import styles from './styles.module.scss';
  * an absent one, so a Träger admin can see that the choice exists and who holds it.
  */
 
-const EMAIL_COLLECTION_SETTINGS = [
-    { field: 'featureAskerEmailCollectionAgencyCounsellingEnabled', label: 'agencyCounselling' },
-    { field: 'featureAskerEmailCollectionLiveChatEnabled', label: 'liveChat' },
-    { field: 'featureAskerEmailCollectionSelfHelpEnabled', label: 'selfHelp' },
-] as const;
-const emailCollectionFields = new Set<string>(EMAIL_COLLECTION_SETTINGS.map(({ field }) => field));
-
 export type AskerPermissionsCardProps = {
     /** Field keys the current role may not change — rendered disabled, never hidden. */
     restrictedFields: Set<string>;
@@ -47,8 +41,6 @@ export type AskerPermissionsCardProps = {
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     fallbackValues?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
-    openPolicyMenu?: string | null;
-    onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
     /** Channel switches whose conversation-type tile is not shown on this page. */
     channelToggles?: Array<{ field: string; labelKey: string; defaultValue?: boolean }>;
@@ -60,8 +52,6 @@ export const AskerPermissionsCard = ({
     permissionPolicies,
     fallbackValues,
     pendingPolicyFields,
-    openPolicyMenu,
-    onOpenPolicyMenu,
     onPolicyChange,
     channelToggles = [],
 }: AskerPermissionsCardProps) => {
@@ -78,34 +68,19 @@ export const AskerPermissionsCard = ({
             restrictedFields,
         );
 
-    const emailMasterOff = policyFor('featureAskerEmailEnabled').value === false;
-    useEffect(() => {
-        if (emailMasterOff && openPolicyMenu && emailCollectionFields.has(openPolicyMenu)) {
-            onOpenPolicyMenu?.(null);
-        }
-    }, [emailMasterOff, openPolicyMenu, onOpenPolicyMenu]);
-
     const policyControl = (field: string, labelKey: string) => {
-        const collectionSetting = emailCollectionFields.has(field);
         const accountSetting = field === 'featureDisplayNameEditable' || field === 'featureAskerEmailEnabled';
-        const setOnTraeger = policyLevel === 'agency' && (accountSetting || collectionSetting);
-        const blockedByMaster = collectionSetting && emailMasterOff;
-        const disabled = setOnTraeger || blockedByMaster;
-        let supportingText;
-        if (setOnTraeger) supportingText = t('tenants.permissions.card.notifications.setOnTraeger');
-        else if (blockedByMaster) supportingText = t('tenants.permissions.asker.collection.masterOff');
+        const setOnTraeger = policyLevel === 'agency' && accountSetting;
         return (
             <PermissionPolicyControl
                 featureKey={field}
                 label={t(labelKey)}
                 level={policyLevel}
                 policy={policyFor(field)}
-                open={!disabled && openPolicyMenu === field}
                 pending={pendingPolicyFields?.has(field)}
-                disabled={disabled}
-                supportingText={supportingText}
-                onOpenChange={(open) => !disabled && onOpenPolicyMenu?.(open ? field : null)}
-                onChange={(next) => !disabled && onPolicyChange?.(field, next)}
+                disabled={setOnTraeger}
+                supportingText={setOnTraeger ? t('tenants.permissions.card.notifications.setOnTraeger') : undefined}
+                onChange={(next) => !setOnTraeger && onPolicyChange?.(field, next)}
             />
         );
     };
@@ -116,43 +91,35 @@ export const AskerPermissionsCard = ({
         ) : null;
 
     return (
-        <Card titleKey="tenants.permissions.asker.title">
-            <p className={styles.intro}>
-                <Trans i18nKey="tenants.permissions.asker.description" components={{ strong: <strong /> }} />
-            </p>
-
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
-                </div>
-                <p className={styles.settingDescription}>{t('tenants.permissions.asker.displayName.description')}</p>
-                {restrictedNote('featureDisplayNameEditable')}
-            </div>
-
-            <div className={styles.setting}>
-                <div className={styles.settingHeader}>
-                    {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
-                </div>
-                <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
-                {restrictedNote('featureAskerEmailEnabled')}
-            </div>
-            <h3>{t('tenants.permissions.asker.collection.title')}</h3>
-            <p className={styles.settingDescription}>{t('tenants.permissions.asker.collection.description')}</p>
-            <>
-                {EMAIL_COLLECTION_SETTINGS.map(({ field, label }) => (
-                    <div key={field} className={styles.setting}>
-                        <div className={styles.settingHeader}>
-                            {policyControl(field, `tenants.permissions.asker.collection.${label}`)}
-                        </div>
-                        {restrictedNote(field)}
+        <Card
+            headerIcon={<AskerAccountIcon width={40} height={40} />}
+            titleKey="tenants.permissions.asker.title"
+            help={ASKER_HELP}
+        >
+            <div className={styles.columns}>
+                <div className={styles.setting}>
+                    <div className={styles.settingHeader}>
+                        {policyControl('featureDisplayNameEditable', 'tenants.permissions.asker.displayName.label')}
                     </div>
-                ))}
-            </>
+                    <p className={styles.settingDescription}>
+                        {t('tenants.permissions.asker.displayName.description')}
+                    </p>
+                    {restrictedNote('featureDisplayNameEditable')}
+                </div>
+
+                <div className={styles.setting}>
+                    <div className={styles.settingHeader}>
+                        {policyControl('featureAskerEmailEnabled', 'tenants.permissions.asker.email.label')}
+                    </div>
+                    <p className={styles.settingDescription}>{t('tenants.permissions.asker.email.description')}</p>
+                    {restrictedNote('featureAskerEmailEnabled')}
+                </div>
+            </div>
             {/* FE#1725: channel switches live on the conversation-type tiles. Only switches of a
                 tile hidden on this page land here, so no setting becomes unreachable. */}
             {channelToggles.length > 0 && (
                 <>
-                    <h3>{t('tenants.permissions.asker.channels.title')}</h3>
+                    <h3 className={styles.sectionTitle}>{t('tenants.permissions.asker.channels.title')}</h3>
                     {channelToggles.map(({ field, labelKey }) => (
                         <div key={field} className={styles.setting}>
                             <div className={styles.settingHeader}>{policyControl(field, labelKey)}</div>

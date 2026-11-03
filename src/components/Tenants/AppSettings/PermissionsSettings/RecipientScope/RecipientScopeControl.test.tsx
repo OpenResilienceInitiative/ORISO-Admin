@@ -6,7 +6,7 @@ import type { RecipientScopePolicy } from '../../../../../types/permissionPolicy
 import { RecipientScopeControl } from './RecipientScopeControl';
 
 // Seam 2: what an admin sees and can do on the "Internal group chats" tile — the three options with
-// their sentence, the Requirement/Recommendation switch (platform only), the locked Träger view,
+// their sentence, the Requirement/Adjustable switch (platform only), the locked Träger view,
 // and a failed save that keeps the edit. Strings are asserted as literals (DE + EN).
 
 afterEach(cleanup);
@@ -108,18 +108,18 @@ describe('backend without the field', () => {
 });
 
 describe('platform admin', () => {
-    it('saves the picked scope with the recommendation mode by default', async () => {
+    it('saves the picked scope with the adjustable mode by default', async () => {
         const { user, onSave } = setup();
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
         expect(onSave).toHaveBeenCalledWith({ value: 'PLATFORM', mode: 'SUGGESTED' });
     });
 
-    it('can make the scope a requirement through the Requirement/Recommendation switch', async () => {
+    it('can make the scope a requirement through the Requirement/Adjustable switch', async () => {
         const { user, onSave } = setup({ policy: { value: 'TENANT', mode: 'SUGGESTED', inherited: false } });
-        const recommendation = screen.getByRole('button', { name: 'Recommendation' });
+        const adjustable = screen.getByRole('button', { name: 'Adjustable' });
         const requirement = screen.getByRole('button', { name: 'Requirement' });
-        expect(recommendation).toHaveAttribute('aria-pressed', 'true');
+        expect(adjustable).toHaveAttribute('aria-pressed', 'true');
         await user.click(requirement);
         expect(requirement).toHaveAttribute('aria-pressed', 'true');
         await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -133,7 +133,7 @@ describe('platform admin', () => {
 });
 
 describe('Träger admin', () => {
-    it('has no Requirement/Recommendation switch and saves as a recommendation', async () => {
+    it('has no Requirement/Adjustable switch and saves as adjustable', async () => {
         const { user, onSave } = setup({
             level: 'tenant',
             policy: { value: 'AGENCY', mode: 'SUGGESTED', inherited: true },
@@ -202,7 +202,7 @@ describe('saving', () => {
 
         screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(screen.getByRole('button', { name: 'Requirement' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Recommendation' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Adjustable' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
         expect(radio(/Träger-wide/)).toBeChecked();
         expect(onSave).toHaveBeenCalledTimes(1);

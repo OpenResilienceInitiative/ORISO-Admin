@@ -88,6 +88,22 @@ const LeadingIconDemo = () => {
 };
 export const WithLeadingIcon: StoryObj = { render: () => <LeadingIconDemo /> };
 
+/** Tags wrap onto further rows and must stop before the arrow. */
+export const MultiSelect: StoryObj = {
+    render: () => (
+        <OnCard>
+            <div style={{ width: 360 }}>
+                <FloatingLabelSelect
+                    label="Salutation"
+                    mode="multiple"
+                    options={SALUTATIONS}
+                    defaultValue={SALUTATIONS.map((option) => option.value)}
+                />
+            </div>
+        </OnCard>
+    ),
+};
+
 /** Open menu with the selected option as a tonal pill + leading checkmark (Figma 1-34809). */
 export const Open: StoryObj = {
     render: () => <Demo initial="not_specified" />,

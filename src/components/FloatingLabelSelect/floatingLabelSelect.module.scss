@@ -77,6 +77,13 @@
     height: 100%;
     align-self: stretch;
 
+    /* antd's `.ant-select-single.ant-select-lg` pins the root to 50px and outranks the
+       line above, which left the text and the arrow 2px above the middle line. */
+
+    &:global(.ant-select.ant-select-single) {
+        height: 100%;
+    }
+
     :global(.ant-select-selector) {
         display: flex !important;
         height: 100% !important;
@@ -112,6 +119,50 @@
         color: var(--m3-on-surface-variant, #444748);
     }
 
+    /* M3 trailing icon: 24px glyph, 12px from the edge. antd's own is a 12px chevron. */
+    &:global(.ant-select) :global(.ant-select-arrow) {
+        width: 24px;
+        height: 24px;
+        justify-content: center;
+        margin-top: -12px;
+        font-size: 24px;
+        inset-inline-end: 12px;
+    }
+
+    &:global(.ant-select) :global(.ant-select-arrow-loading) {
+        font-size: 18px;
+    }
+
+    /* Replaces the arrow on hover, so it sits in the same 24px slot. */
+    &:global(.ant-select) :global(.ant-select-clear) {
+        width: 18px;
+        height: 18px;
+        margin-top: -9px;
+        background: transparent;
+        font-size: 18px;
+        inset-inline-end: 15px;
+    }
+
+    /* antd hides the arrow behind the clear icon's opaque background; ours is transparent
+       because this field sits on tinted tiles. */
+
+    &:global(.ant-select):hover:has(:global(.ant-select-clear)) :global(.ant-select-arrow) {
+        opacity: 0;
+    }
+
+    &:global(.ant-select-show-arrow) :global(.ant-select-selection-item),
+    &:global(.ant-select-show-arrow) :global(.ant-select-selection-placeholder) {
+        padding-inline-end: 24px;
+    }
+
+    .chevron {
+        transition: transform 160ms ease;
+    }
+
+    &:global(.ant-select-open) .chevron {
+        transform: rotate(180deg);
+    }
+
     /* Multi-select: grow with the selected tags instead of clipping them at a
        fixed height. Only reachable once a value exists, at which point the
        label is already floated — no "resting label on a tall field" case.
@@ -122,6 +173,7 @@
         height: auto !important;
         min-height: 100%;
         padding-top: 6px !important;
+        padding-right: 44px !important;
         padding-bottom: 6px !important;
     }
 

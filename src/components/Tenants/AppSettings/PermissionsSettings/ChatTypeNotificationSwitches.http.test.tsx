@@ -42,12 +42,20 @@ const mount = () =>
         </QueryClientProvider>,
     );
 
-const trigger = async (field: string) => {
+const wrapperOf = async (field: string) => {
     const card = await screen.findByTestId('chat-type-card-groupInternal');
     await waitFor(() => expect(card.querySelector(`[data-feature-policy="${field}"]`)).not.toBeNull());
-    const wrapper = card.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`) as HTMLElement;
-    return within(wrapper).getByRole('button', { name: new RegExp(i18n.t('tenants.permissions.policy.openMenu')) });
+    return card.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`) as HTMLElement;
 };
+/** The requirement lock of one switch. */
+const lockOf = async (field: string) =>
+    within(await wrapperOf(field)).getByRole('button', {
+        name: new RegExp(
+            `${i18n.t('tenants.permissions.policy.makeRequired')}|${i18n.t(
+                'tenants.permissions.policy.makeAdjustable',
+            )}`,
+        ),
+    });
 
 beforeAll(async () => {
     await i18n.changeLanguage('en');
@@ -69,22 +77,16 @@ describe('channel switch round trip', () => {
         const field = 'featureConsultantEmailInternalGroupEnabled';
         const view = mount();
 
-        await user.click(await trigger(field));
-        await user.click(screen.getByRole('button', { name: i18n.t('tenants.permissions.policy.activationEnforced') }));
+        await user.click(await lockOf(field));
 
         await waitFor(() => expect(server.puts.at(-1)?.policies[field]).toEqual({ value: true, mode: 'ENFORCED' }));
-        await waitFor(async () =>
-            expect(await trigger(field)).toHaveAccessibleName(
-                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced')),
-            ),
-        );
+        const enforcedLock = new RegExp(i18n.t('tenants.permissions.policy.makeAdjustable'));
+        await waitFor(async () => expect(await lockOf(field)).toHaveAccessibleName(enforcedLock));
+        expect(await lockOf(field)).toHaveAttribute('aria-pressed', 'true');
 
         view.unmount();
         mount();
-        await waitFor(async () =>
-            expect(await trigger(field)).toHaveAccessibleName(
-                new RegExp(i18n.t('tenants.permissions.policy.activationEnforced')),
-            ),
-        );
+        await waitFor(async () => expect(await lockOf(field)).toHaveAccessibleName(enforcedLock));
+        expect(await lockOf(field)).toHaveAttribute('aria-pressed', 'true');
     });
 });

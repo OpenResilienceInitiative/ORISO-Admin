@@ -133,31 +133,6 @@
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
 }
 
-.cardDescription {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 500;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    margin: 18px 0 28px;
-    min-height: 124px;
-    text-align: left;
-    letter-spacing: 0.15px;
-
-    strong {
-        color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-        font-weight: 700;
-    }
-}
-
-.cardDescriptionInfo {
-    width: 16px;
-    height: 16px;
-    margin: 4px 8px 2px 0;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    fill: currentcolor;
-    float: left;
-}
-
 .cardDescriptionSecondary {
     display: block;
     margin-top: 14px;
@@ -184,24 +159,29 @@
     text-align: center;
 }
 
-.togglesList {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: 24px;
+.tileBody {
+    display: contents;
 }
 
-.toggleRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
-    gap: 12px;
-    border-bottom: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+// Live-chat tile: switch and links first, so the links never end up below every other setting.
+.tileColumns {
+    display: grid;
+    align-items: start;
+    gap: 16px 40px;
+    grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr);
+}
 
-    &:last-child {
-        border-bottom: 0;
+@container (max-width: 759px) {
+    .tileColumns {
+        grid-template-columns: minmax(0, 1fr);
     }
+}
+
+.togglesList {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    margin-bottom: 8px;
 }
 
 .toggleLabel {

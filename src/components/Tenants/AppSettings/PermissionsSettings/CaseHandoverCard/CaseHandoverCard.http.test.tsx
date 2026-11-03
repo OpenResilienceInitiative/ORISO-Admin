@@ -285,24 +285,35 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
-const currentMasterButton = () => {
+const masterRow = () => {
     const card = screen.getByTestId('case-handover-card');
     const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
     if (!row) throw new Error('Case handover master policy is missing');
-    return within(row).getByRole('button', { name: /Open policy choices/i });
+    return within(row);
 };
+
+/** The round on/off button of the master. */
+const currentMasterButton = () => masterRow().getByRole('button', { name: /: (Active|Inactive)/ });
+/** The requirement lock of the master; absent where this level may not set one. */
+const currentMasterLock = () => masterRow().getByRole('button', { name: /Make it (a requirement|adjustable)/ });
 
 const masterButton = () => waitFor(currentMasterButton);
+const masterLock = () => waitFor(currentMasterLock);
 
+/** One click on the round button; it flips whatever the master currently is. */
 const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
-    await user.click(await masterButton());
-    await user.click(
-        screen.getByRole('button', {
-            name: i18n.t(`tenants.permissions.policy.${enabled ? 'activationSuggested' : 'deactivationSuggested'}`),
-        }),
-    );
+    const button = await masterButton();
+    expect(button).toHaveAttribute('aria-pressed', String(!enabled));
+    await user.click(button);
 };
+/** One click on the lock; it flips whatever mode the master currently has. */
+const toggleMasterMode = async () => {
+    const user = userEvent.setup();
+    await user.click(await masterLock());
+};
+const activatedText = (value: boolean) =>
+    `: ${i18n.t(`tenants.permissions.policy.${value ? 'activated' : 'deactivated'}`)}`;
 
 // The real policy containers, card, hooks and fetchData run together at this HTTP seam.
 describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (level) => {
@@ -326,9 +337,7 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
         expect(server.store.get('7')).toEqual(mixed);
         view.unmount();
         mountPolicyPage(level);
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
     });
 
@@ -342,9 +351,7 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
         await chooseMaster(false);
         await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
         await waitFor(async () =>
-            expect(await masterButton()).toHaveAccessibleName(
-                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-            ),
+            expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true))),
         );
         expect(
             server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
@@ -367,7 +374,6 @@ describe('agency handover master HTTP boundary', () => {
                         tenantId={7}
                         policyLevel="agency"
                         permissionPolicies={{ caseHandoverEnabled: { value, mode: 'SUGGESTED', inherited: true } }}
-                        openPolicyMenu="caseHandoverEnabled"
                         onFeaturePolicyChange={onFeaturePolicyChange}
                     />
                 </QueryClientProvider>,
@@ -375,15 +381,10 @@ describe('agency handover master HTTP boundary', () => {
 
             const master = await masterButton();
             expect(master).toBeDisabled();
-            expect(master).toHaveAccessibleName(
-                expect.stringContaining(
-                    i18n.t(`tenants.permissions.policy.${value ? 'activationSuggested' : 'deactivationSuggested'}`),
-                ),
-            );
+            expect(master).toHaveAccessibleName(expect.stringContaining(activatedText(value)));
+            // A Beratungsstelle only sees the parent's suggestion: no lock to turn it into a requirement.
+            expect(masterRow().queryByRole('button', { name: /Make it (a requirement|adjustable)/ })).toBeNull();
             expect(await screen.findByText(/Träger administration sets these rules/i)).toBeVisible();
-            expect(
-                screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-            ).toBeNull();
             await userEvent.setup().click(master);
             expect(await clientConsentButton()).toBeDisabled();
             expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
@@ -412,9 +413,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
                 </QueryClientProvider>,
             );
         const alert = await screen.findByTestId('case-handover-card-error');
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         if (level === 'agency') {
             expect(await masterButton()).toBeDisabled();
             expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
@@ -430,23 +429,28 @@ describe('independent master while reason HTTP authority is unavailable', () => 
         expect(onFeaturePolicyChange).not.toHaveBeenCalled();
     });
     it.each([
-        { value: true, mode: 'ENFORCED', key: 'activationEnforced' },
-        { value: false, mode: 'ENFORCED', key: 'deactivationEnforced' },
-        { value: true, mode: 'SUGGESTED', key: 'activationSuggested' },
-        { value: false, mode: 'SUGGESTED', key: 'deactivationSuggested' },
+        { value: true, mode: 'ENFORCED' },
+        { value: false, mode: 'ENFORCED' },
+        { value: true, mode: 'SUGGESTED' },
+        { value: false, mode: 'SUGGESTED' },
     ] as const)(
-        'saves canonical $key without reason writes during reason GET failure',
-        async ({ value, mode, key }) => {
+        'saves canonical $value / $mode through the round button and the lock without reason writes during reason GET failure',
+        async ({ value, mode }) => {
             server.reasonGetStatus = 500;
+            // Start from the opposite of both decisions, so reaching the target takes both buttons.
+            server.master = { value: !value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED', inherited: false };
             const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
             server.store.set('7', mixed);
             mountPolicyPage('tenant');
             await screen.findByTestId('case-handover-card-error');
-            await userEvent.setup().click(await masterButton());
-            await userEvent
-                .setup()
-                .click(screen.getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) }));
+
+            await chooseMaster(value);
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
+            expect(server.master).toMatchObject({ value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED' });
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled());
+
+            await toggleMasterMode();
+            await waitFor(() => expect(server.canonicalWrites).toHaveLength(2));
             expect(server.master).toMatchObject({ value, mode });
             expect(
                 server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),

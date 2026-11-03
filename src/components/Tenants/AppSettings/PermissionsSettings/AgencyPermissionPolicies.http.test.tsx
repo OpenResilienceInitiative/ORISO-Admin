@@ -49,8 +49,11 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
 
             const card = await screen.findByTestId('chat-type-card-oneOnOne');
             const control = card.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`)!;
-            expect(within(control).getByRole('button', { name: /more information/i })).toBeInTheDocument();
-            expect(within(control).queryByRole('button', { name: /open policy choices/i })).not.toBeInTheDocument();
+            // One disabled round button that only states the value; neither a lock nor a dialog to change it.
+            const state = within(control).getByRole('button', { name: /: (Active|Inactive)$/ });
+            expect(state).toBeDisabled();
+            expect(state).toHaveAttribute('aria-pressed', String(value));
+            expect(within(control).queryByRole('button', { name: /make it/i })).not.toBeInTheDocument();
             expect(within(control).getByTestId(value ? 'CheckIcon' : 'BlockIcon')).toBeInTheDocument();
         },
     );
@@ -61,7 +64,6 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             featureDisplayNameEditable: { value: false, mode: 'SUGGESTED', inherited: true },
             featureAskerEmailEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
             featureAskerEmailCollectionAgencyCounsellingEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
-            featureAskerEmailCollectionLiveChatEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
             featureAskerEmailCollectionSelfHelpEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
         };
         vi.stubGlobal(
@@ -89,28 +91,25 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
         const user = userEvent.setup();
         await Promise.all(
             [
-                ['featureDisplayNameEditable', 'deactivationSuggested', 'BlockIcon'],
-                ['featureAskerEmailEnabled', 'activationSuggested', 'CheckIcon'],
-                ['featureAskerEmailCollectionAgencyCounsellingEnabled', 'deactivationSuggested', 'BlockIcon'],
-                ['featureAskerEmailCollectionLiveChatEnabled', 'activationSuggested', 'CheckIcon'],
-                ['featureAskerEmailCollectionSelfHelpEnabled', 'deactivationSuggested', 'BlockIcon'],
+                ['featureDisplayNameEditable', 'deactivated', 'BlockIcon'],
+                ['featureAskerEmailEnabled', 'activated', 'CheckIcon'],
+                ['featureAskerEmailCollectionAgencyCounsellingEnabled', 'deactivated', 'BlockIcon'],
+                ['featureAskerEmailCollectionSelfHelpEnabled', 'deactivated', 'BlockIcon'],
             ].map(async ([key, action, icon]) => {
                 await waitFor(() => expect(document.querySelector(`[data-feature-policy="${key}"]`)).not.toBeNull());
                 const row = within(document.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`)!);
-                const button = row.getByRole('button', { name: /open policy choices/i });
+                const button = row.getByRole('button', { name: /: (Active|Inactive)$/ });
                 expect(button).toBeDisabled();
                 expect(button.getAttribute('aria-label')).toContain(i18n.t(`tenants.permissions.policy.${action}`));
                 expect(row.getByTestId(icon)).toBeInTheDocument();
-                expect(
-                    row.getByText(i18n.t('tenants.permissions.card.notifications.setOnTraeger')),
-                ).toBeInTheDocument();
+                expect(row.queryByRole('button', { name: /make it/i })).not.toBeInTheDocument();
                 await user.click(button);
             }),
         );
-        expect(puts).not.toHaveBeenCalled();
         expect(
-            screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.activationSuggested') }),
-        ).not.toBeInTheDocument();
+            screen.getAllByText(i18n.t('tenants.permissions.card.notifications.setOnTraeger')).length,
+        ).toBeGreaterThan(2);
+        expect(puts).not.toHaveBeenCalled();
     });
 
     it('rolls back a failed feature without replaying it in the next queued save, then reloads confirmed values', async () => {
@@ -162,16 +161,12 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
             const card = await screen.findByTestId('chat-type-card-oneOnOne');
             const row = card.querySelector<HTMLElement>(`[data-feature-policy="${key}"]`);
             if (!row) throw new Error('Permission row missing');
-            return within(row).getByRole('button', { name: /open policy choices/i });
+            return within(row).getByRole('button', { name: /: (Active|Inactive)/ });
         };
         const switchOff = async (key: string) => {
+            // A Beratungsstelle can only suggest: there is no lock that could write a requirement.
+            expect(screen.queryByRole('button', { name: /make it a requirement/i })).not.toBeInTheDocument();
             await user.click(await trigger(key));
-            expect(
-                screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationEnforced') }),
-            ).not.toBeInTheDocument();
-            await user.click(
-                screen.getByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-            );
         };
 
         await switchOff(field);
@@ -192,10 +187,10 @@ describe('agency resolved permission policies at the HTTP boundary', () => {
         mount();
         await waitFor(async () => {
             expect((await trigger(field)).getAttribute('aria-label')).toContain(
-                i18n.t('tenants.permissions.policy.activationSuggested'),
+                `: ${i18n.t('tenants.permissions.policy.activated')}`,
             );
             expect((await trigger(sibling)).getAttribute('aria-label')).toContain(
-                i18n.t('tenants.permissions.policy.deactivationSuggested'),
+                `: ${i18n.t('tenants.permissions.policy.deactivated')}`,
             );
         });
     });

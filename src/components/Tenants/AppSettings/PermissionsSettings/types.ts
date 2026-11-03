@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type ToggleAfterChangeHandler = (
     fieldPath: string | string[],
     value: boolean,
@@ -13,6 +15,8 @@ export type PermissionsSettingsCommonArgs = {
     tenantId: string;
     /** Hide chat-type cards by key (e.g. liveChat on super-admin settings — managed under Global Configs). */
     excludeCardKeys?: Array<ChatTypeCardKey>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
 };
 
 /**
@@ -35,12 +39,15 @@ export type ChatTypeNotificationToggle = {
     defaultValue?: boolean;
     /** Stored but without effect yet: shown disabled with a note (open product question). */
     notYetEffective?: boolean;
+    /** Only meaningful while the account-level "E-Mail-Adresse darf hinterlassen werden" is on. */
+    requiresAskerEmail?: boolean;
+    /** The chat only asks while this delivery setting is on (emailCollectionSetupPolicy). */
+    worksWithDelivery?: string;
 };
 
 export type ChatTypeCardDef = {
     key: ChatTypeCardKey;
     titleKey: string;
-    descriptionKey: string;
     Icon: import('react').FunctionComponent<import('react').SVGProps<SVGSVGElement>>;
     masterField?: string[];
     toggles: Array<{

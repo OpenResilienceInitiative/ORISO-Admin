@@ -46,7 +46,10 @@ const labelsByField: Record<string, string> = {
 
 const policyButton = (field: string) => {
     const control = document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
-    return within(control).getByRole('button', { name: new RegExp(labelsByField[field]) });
+    // The round on/off button; the requirement lock is a second button with the same label.
+    return within(control).getByRole('button', {
+        name: new RegExp(`${labelsByField[field]}: tenants.permissions.policy.(activated|deactivated)`),
+    });
 };
 
 const aiScanControl = () => policyButton('featureMediaAiScanOneOnOneChatsEnabled');

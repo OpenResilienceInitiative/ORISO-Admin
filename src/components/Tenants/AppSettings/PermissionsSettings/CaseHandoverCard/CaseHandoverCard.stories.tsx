@@ -212,7 +212,7 @@ export const RetiredCodesFromTenantService: Story = {
         await expect(
             canvas
                 .getByRole('button', {
-                    name: /(Beratende Person|advising person).*(Weitere Informationen|More information)/i,
+                    name: /(Beratende Person|advising person).*(Zustimmung Opt-In|Consent opt-in).*(Vorgabe|enforced)/i,
                 })
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
@@ -322,36 +322,44 @@ export const AllPlatformReasons: Story = {
     },
 };
 
-/** Figma 1789:11645 — clicking the master policy FAB reveals the four
- * policy states and the information action. Kept open for visual review. */
-export const PolicyMenuOpen: Story = {
+/** Figma 1789:11645 — the master is two buttons: the round one switches the module on or off,
+ * the lock makes it a requirement or leaves it adjustable. There is no menu and no info entry. */
+export const MasterPolicyButtons: Story = {
     args: {
         policies,
         isLoading: false,
         canEdit: true,
         moduleEnabled: true,
-        openPolicyMenu: 'caseHandoverEnabled',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+        onFeaturePolicyChange: fn(),
     },
-    play: async ({ canvasElement }) => {
+    play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation \(adjustable\)|Aktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
+        const round = canvas.getByRole('button', {
+            name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/,
+        });
+        const lock = canvas.getByRole('button', {
+            name: /(Adjustable|Anpassbar) – (Make it a requirement|Als Vorgabe festlegen)$/,
+        });
+        await expect(round).toHaveAttribute('aria-pressed', 'true');
+        await expect(lock).toHaveAttribute('aria-pressed', 'false');
+
+        await userEvent.click(round);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        await userEvent.click(lock);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: true,
+            mode: 'ENFORCED',
+        });
+        await expect(canvas.queryByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeNull();
     },
 };
 
-/** Figma 1812:12416 — the advice-seeker consent row reuses the FAB menu core,
- * but exposes the five consent-specific states and the information action. */
+/** Figma 1812:12416 — the advice-seeker consent row keeps the FAB menu, with the five
+ * consent-specific states. */
 export const AdviceSeekerConsentMenuOpen: Story = {
     parameters: {
         design: {
@@ -374,7 +382,6 @@ export const AdviceSeekerConsentMenuOpen: Story = {
             /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i,
             /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i,
             /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
-            /^(More information|Weitere Informationen)$/i,
         ];
 
         await Promise.all(
@@ -383,7 +390,7 @@ export const AdviceSeekerConsentMenuOpen: Story = {
             }),
         );
         await Promise.all(
-            canvas.getAllByText(/^(Recommendation|Empfehlung)$/i).map(async (status) => {
+            canvas.getAllByText(/^(Adjustable|Anpassbar)$/i).map(async (status) => {
                 await expect(status).toBeVisible();
             }),
         );
@@ -485,15 +492,8 @@ export const TenantReasonLoadFailed: Story = {
             .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
         await expect(row).not.toBeNull();
         if (!row) throw new Error('Loaded canonical master missing');
-        await userEvent.click(within(row).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/ }));
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
-        ).toBeVisible();
         await userEvent.click(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
+            within(row).getByRole('button', { name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/ }),
         );
         await expect(args.onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
             value: false,

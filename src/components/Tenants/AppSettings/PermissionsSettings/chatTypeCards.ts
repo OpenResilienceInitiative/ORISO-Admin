@@ -8,7 +8,6 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'oneOnOne',
         titleKey: 'tenants.permissions.card.oneOnOne.title',
-        descriptionKey: 'tenants.permissions.card.oneOnOne.description',
         Icon: OneOnOneIcon,
         masterField: ['settings', 'featureCallsEnabled'],
         toggles: [
@@ -50,6 +49,13 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             audience: 'asker',
             toggles: [
                 {
+                    labelKey: 'tenants.permissions.card.notifications.askForEmail',
+                    setting: 'featureAskerEmailCollectionAgencyCounsellingEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.collection.agencyCounselling',
+                    requiresAskerEmail: true,
+                    worksWithDelivery: 'featureAskerEmailAgencyCounsellingEnabled',
+                },
+                {
                     labelKey: 'tenants.permissions.card.notifications.email',
                     setting: 'featureAskerEmailAgencyCounsellingEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.emailAgencyCounselling',
@@ -65,7 +71,6 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'liveChat',
         titleKey: 'tenants.permissions.card.liveChat.title',
-        descriptionKey: 'tenants.permissions.card.liveChat.description',
         Icon: LiveChatIcon,
         masterField: ['settings', 'featureAnonymousChatEnabled'],
         toggles: [
@@ -103,15 +108,11 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 requiresCapability: 'mediaAiScan',
             },
         ],
+        // Frank 2026-11-03: live chat stays temporary and anonymous for now, so it has no address to
+        // ask for or to mail to. E-mail switches return here once a permanent account path exists.
         notifications: {
             audience: 'asker',
             toggles: [
-                {
-                    labelKey: 'tenants.permissions.card.notifications.email',
-                    setting: 'featureAskerEmailLiveChatEnabled',
-                    fallbackLabelKey: 'tenants.permissions.asker.channels.emailLiveChat',
-                    defaultValue: false,
-                },
                 {
                     labelKey: 'tenants.permissions.card.notifications.browser',
                     setting: 'featureAskerBrowserLiveChatEnabled',
@@ -123,7 +124,6 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'group',
         titleKey: 'tenants.permissions.card.group.title',
-        descriptionKey: 'tenants.permissions.card.group.description',
         Icon: GroupIcon,
         // ORISO-Admin#988 / Frank 2026-09-16: this card is the conversation-circle format
         // ("Gesprächskreis", advice seekers + counsellors) — its own switch, not the old
@@ -165,6 +165,13 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             audience: 'asker',
             toggles: [
                 {
+                    labelKey: 'tenants.permissions.card.notifications.askForEmail',
+                    setting: 'featureAskerEmailCollectionSelfHelpEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.collection.selfHelp',
+                    requiresAskerEmail: true,
+                    worksWithDelivery: 'featureAskerEmailSelfHelpEnabled',
+                },
+                {
                     labelKey: 'tenants.permissions.card.notifications.email',
                     setting: 'featureAskerEmailSelfHelpEnabled',
                     fallbackLabelKey: 'tenants.permissions.asker.channels.emailSelfHelp',
@@ -180,7 +187,6 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'groupInternal',
         titleKey: 'tenants.permissions.card.groupInternal.title',
-        descriptionKey: 'tenants.permissions.card.groupInternal.description',
         Icon: GroupInternalIcon,
         // ORISO-Admin#988 / Frank 2026-09-16: internal group chats (counsellors only) are their
         // own conversation type, switched independently of the conversation-circle `group` card.

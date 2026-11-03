@@ -80,8 +80,7 @@ const findRow = async (field: string) => {
 const switchOff = async (field: string) => {
     const user = userEvent.setup();
     const control = await findRow(field);
-    await user.click(within(control).getByRole('button', { name: /Open policy choices/i }));
-    await user.click(within(control).getByRole('button', { name: /Deactivation \(adjustable\)/i }));
+    await user.click(within(control).getByRole('button', { name: /: Active – Deactivate$/ }));
 };
 
 const lastBody = (method: string, suffix: string) => {
@@ -97,8 +96,12 @@ const expectNoSupervisionFieldRendered = () => {
 const expectReadOnly = (field: string) => {
     const control = row(field) as HTMLElement;
     expect(control).not.toBeNull();
-    expect(within(control).queryByRole('button', { name: /Open policy choices/i })).toBeNull();
-    expect(within(control).getByRole('button', { name: /More information/i })).toBeInTheDocument();
+    // Locked from above: one disabled round button that only states the value, and no lock to change it.
+    const buttons = within(control).getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toBeDisabled();
+    expect(buttons[0]).toHaveAccessibleName(/: Inactive$/);
+    expect(within(control).queryByRole('button', { name: /Make it/i })).toBeNull();
     expect(within(control).getByTestId('BlockIcon')).toBeInTheDocument();
 };
 
@@ -231,7 +234,7 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await findRow(CIRCLES);
         expectReadOnly(CIRCLES);
         expect(
-            within(row(INTERNAL) as HTMLElement).getByRole('button', { name: /Open policy choices/i }),
+            within(row(INTERNAL) as HTMLElement).getByRole('button', { name: /: Active – Deactivate$/ }),
         ).toBeEnabled();
     });
 });

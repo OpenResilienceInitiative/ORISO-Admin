@@ -2,6 +2,7 @@ import { FocusEvent, useId, useState } from 'react';
 import { ConfigProvider, Form, Select } from 'antd';
 import type { BaseOptionType, DefaultOptionType, SelectProps } from 'antd/es/select';
 import classNames from 'classnames';
+import { KeyboardArrowDownIcon } from '../CustomIcons/EditorIcons';
 import styles from './floatingLabelSelect.module.scss';
 
 export interface FloatingLabelSelectProps<
@@ -42,6 +43,8 @@ export const FloatingLabelSelect = <
     placeholder,
     leadingIcon,
     mode,
+    loading,
+    suffixIcon,
     onBlur,
     onFocus,
     onChange,
@@ -64,6 +67,9 @@ export const FloatingLabelSelect = <
     const floating = focused || hasValue;
     const hasError = error ?? status === 'error';
     const isDisabled = disabled ?? componentDisabled ?? false;
+    // antd only draws its loading spinner while `suffixIcon` is undefined.
+    const mergedSuffixIcon =
+        suffixIcon !== undefined || loading ? suffixIcon : <KeyboardArrowDownIcon className={styles.chevron} />;
 
     const handleFocus = (event: FocusEvent<HTMLElement>) => {
         setFocused(true);
@@ -112,6 +118,8 @@ export const FloatingLabelSelect = <
                     classNames={{ popup: { root: styles.dropdown } }}
                     variant="borderless"
                     mode={mode}
+                    loading={loading}
+                    suffixIcon={mergedSuffixIcon}
                     value={currentValue}
                     disabled={isDisabled}
                     placeholder={focused ? placeholder : undefined}

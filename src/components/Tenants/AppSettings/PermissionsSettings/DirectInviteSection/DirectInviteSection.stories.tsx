@@ -1,12 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState, type ComponentProps } from 'react';
-import { DirectInviteCard } from './index';
+import { DirectInviteSection } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 
-const ControlledDirectInviteCard = (args: ComponentProps<typeof DirectInviteCard>) => {
-    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
-    return <DirectInviteCard {...args} openPolicyMenu={openPolicyMenu} onOpenPolicyMenu={setOpenPolicyMenu} />;
+// Buttons write their decision back, so the story reacts to clicks like the real page.
+const ControlledDirectInviteSection = (args: ComponentProps<typeof DirectInviteSection>) => {
+    const [changes, setChanges] = useState<Record<string, PolicyValue<boolean>>>({});
+    return (
+        <DirectInviteSection
+            {...args}
+            permissionPolicies={{ ...args.permissionPolicies, ...changes }}
+            onPolicyChange={(field, policy) => setChanges((current) => ({ ...current, [field]: policy }))}
+        />
+    );
 };
 
 const policies = (
@@ -29,9 +36,9 @@ const allowed: PolicyValue<boolean> = { value: true, mode: 'SUGGESTED', inherite
  * ORISO-TenantService#332 (`permissionPolicies`) and ORISO-AgencyService#347 (centre `settings`).
  */
 const meta = {
-    title: 'Tenants/Permissions/DirectInviteCard',
-    component: DirectInviteCard,
-    render: (args) => <ControlledDirectInviteCard {...args} />,
+    title: 'Tenants/Permissions/DirectInviteSection',
+    component: DirectInviteSection,
+    render: (args) => <ControlledDirectInviteSection {...args} />,
     tags: ['autodocs'],
     parameters: { layout: 'padded' },
     decorators: [
@@ -50,7 +57,7 @@ const meta = {
             { value: true, mode: 'SUGGESTED' },
         ),
     },
-} satisfies Meta<typeof DirectInviteCard>;
+} satisfies Meta<typeof DirectInviteSection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

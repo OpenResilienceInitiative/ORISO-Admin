@@ -19,7 +19,11 @@ import { toRecipientScopeWrite, withoutInternalGroupChat } from './RecipientScop
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 
-export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+export const TenantPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    liveChatLinks,
+}: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const {
@@ -230,6 +234,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             tenantId={tenantId}
             caseHandoverTenantId={Number(tenantId) || undefined}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}
