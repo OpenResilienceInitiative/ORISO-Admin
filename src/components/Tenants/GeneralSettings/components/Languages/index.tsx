@@ -7,6 +7,7 @@ import { supportedLanguages } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { Modal } from '../../../../Modal';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
+import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
 
 const ensureDefaultLanguage = (languages: string[]) => {
@@ -23,11 +24,29 @@ const hasAddedLanguage = (previousLanguages: string[], nextLanguages: string[]) 
     return nextLanguages.some((language) => !previousLanguageSet.has(language));
 };
 
+// #910: the more dangerous direction — hides the interface from advice seekers
+// currently using that language and orphans its translated legal texts/topics.
+const hasRemovedLanguage = (previousLanguages: string[], nextLanguages: string[]) => {
+    const nextLanguageSet = new Set(nextLanguages);
+
+    return previousLanguages.some((language) => !nextLanguageSet.has(language));
+};
+
 export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [modal, setModal] = useState(false);
+    // #910: a removal is gated on confirmation *before* it is saved, unlike the
+    // add case's after-the-fact notice — holds the pending values/options
+    // (CardEditable already closed the edit card optimistically by the time
+    // onSave runs) so `commitSave` can run on confirm, or `options.onError`
+    // can reopen the card unsaved on cancel.
+    const [pendingRemoval, setPendingRemoval] = useState<{
+        values: Record<string, unknown>;
+        options?: { onError?: () => void };
+    } | null>(null);
     const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
+    const { isSuperAdmin } = useUserRoles();
     const options = supportedLanguages.map((language) => ({ value: language, label: t(`language.${language}`) }));
     const activeLanguages = data?.settings?.activeLanguages?.length ? data.settings.activeLanguages : ['de'];
     const initialValues = {
@@ -37,7 +56,7 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
             activeLanguages,
         },
     };
-    const onSave = (values) => {
+    const commitSave = (values, saveOptions?: { onError?: () => void }) => {
         const selectedLanguages = values?.settings?.activeLanguages || activeLanguages;
         const nextActiveLanguages = ensureDefaultLanguage(selectedLanguages);
         const languageWasAdded = hasAddedLanguage(activeLanguages, nextActiveLanguages);
@@ -56,8 +75,21 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
                         setModal(true);
                     }
                 },
+                onError: saveOptions?.onError,
             },
         );
+    };
+    const onSave = (values, saveOptions?: { onError?: () => void }) => {
+        const selectedLanguages = values?.settings?.activeLanguages || activeLanguages;
+        const nextActiveLanguages = ensureDefaultLanguage(selectedLanguages);
+        const languageWasRemoved = hasRemovedLanguage(activeLanguages, nextActiveLanguages);
+
+        if (languageWasRemoved) {
+            setPendingRemoval({ values, options: saveOptions });
+            return;
+        }
+
+        commitSave(values, saveOptions);
     };
 
     return (
@@ -110,10 +142,36 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
                 <Modal
                     titleKey="organisations.languageModalTitle"
                     icon={<InfoOutlinedIcon />}
-                    contentKey="organisations.languageModalContent"
+                    contentKey={
+                        isSuperAdmin
+                            ? 'organisations.languageModalContentPlatformAdmin'
+                            : 'organisations.languageModalContent'
+                    }
                     okLabelKey="organisations.languageModalConfirm"
                     onConfirm={() => setModal(false)}
                     onClose={() => setModal(false)}
+                />
+            )}
+            {pendingRemoval && (
+                <Modal
+                    titleKey="organisations.languageRemovalModalTitle"
+                    icon={<InfoOutlinedIcon />}
+                    contentKey={
+                        isSuperAdmin
+                            ? 'organisations.languageRemovalModalContentPlatformAdmin'
+                            : 'organisations.languageRemovalModalContent'
+                    }
+                    cancelLabelKey="organisations.languageRemovalModalCancel"
+                    okLabelKey="organisations.languageRemovalModalConfirm"
+                    onConfirm={() => {
+                        const { values, options: saveOptions } = pendingRemoval;
+                        setPendingRemoval(null);
+                        commitSave(values, saveOptions);
+                    }}
+                    onClose={() => {
+                        pendingRemoval.options?.onError?.();
+                        setPendingRemoval(null);
+                    }}
                 />
             )}
         </>
