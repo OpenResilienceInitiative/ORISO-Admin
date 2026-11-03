@@ -12,7 +12,12 @@
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
     border: 1px solid var(--admin-card-outline, transparent);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%));
+    box-shadow: var(
+        --admin-card-elevation,
+        0 6px 16px rgb(0 0 0 / 8%),
+        0 3px 6px -4px rgb(0 0 0 / 12%),
+        0 9px 28px 8px rgb(0 0 0 / 5%)
+    );
 }
 
 .fillContainer {
@@ -52,7 +57,12 @@
     padding: 0;
     background: var(--m3-surface-container-high);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%));
+    box-shadow: var(
+        --admin-card-elevation,
+        0 6px 16px rgb(0 0 0 / 8%),
+        0 3px 6px -4px rgb(0 0 0 / 12%),
+        0 9px 28px 8px rgb(0 0 0 / 5%)
+    );
     font-family: var(--m3-body-font-family);
     -moz-osx-font-smoothing: auto;
     -webkit-font-smoothing: subpixel-antialiased;
