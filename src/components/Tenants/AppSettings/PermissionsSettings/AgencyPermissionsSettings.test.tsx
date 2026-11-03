@@ -44,9 +44,15 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
 
         const control = policy('featureAnonymousChatEnabled');
-        await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
+        await user.click(
+            within(control).getByRole('button', {
+                name: /Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices/i,
+            }),
+        );
         expect(
-            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
+            within(control).getByRole('button', {
+                name: /Aus \(Empfehlung, änderbar\)|off \(recommendation, can be changed\)/i,
+            }),
         ).toHaveAttribute('aria-current', 'page');
     });
 
@@ -61,7 +67,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         await user.click(within(control).getByRole('button', { name: /Weitere Informationen|more information/i }));
         expect(screen.getByRole('dialog')).toBeInTheDocument();
         expect(
-            within(control).queryByText(/Aktivierung \(anpassbar\)|activation \(adjustable\)/i),
+            within(control).queryByText(/An \(Empfehlung, änderbar\)|on \(recommendation, can be changed\)/i),
         ).not.toBeInTheDocument();
     });
 
@@ -76,9 +82,15 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
 
         const control = policy('featureThreadsOneOnOneEnabled');
-        await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
         await user.click(
-            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
+            within(control).getByRole('button', {
+                name: /Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices/i,
+            }),
+        );
+        await user.click(
+            within(control).getByRole('button', {
+                name: /Aus \(Empfehlung, änderbar\)|off \(recommendation, can be changed\)/i,
+            }),
         );
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
@@ -90,7 +102,7 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         await waitFor(() =>
             expect(
                 within(control).getByRole('button', {
-                    name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i,
+                    name: /Aus \(Empfehlung, änderbar\)|off \(recommendation, can be changed\)/i,
                 }),
             ).toBeEnabled(),
         );
@@ -184,9 +196,15 @@ describe('AgencyPermissionsSettings notification channels', () => {
                 expect(found).not.toBeNull();
                 return found;
             });
-            const trigger = within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i });
+            const trigger = within(control).getByRole('button', {
+                name: /Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices/i,
+            });
             expect(trigger).toBeDisabled();
-            await waitFor(() => expect(trigger).toHaveAccessibleName(/Aktivierung erzwungen|Activation enforced/i));
+            await waitFor(() =>
+                expect(trigger).toHaveAccessibleName(
+                    /An \(Vorgabe, nicht änderbar\)|On \(requirement, cannot be changed\)/i,
+                ),
+            );
         } finally {
             vi.unstubAllGlobals();
         }
@@ -245,9 +263,15 @@ describe('AgencyPermissionsSettings direct invitations', () => {
             ).toBeTruthy();
 
             const chat = policy('featureDirectInviteChatEnabled');
-            await user.click(within(chat).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
             await user.click(
-                within(chat).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
+                within(chat).getByRole('button', {
+                    name: /Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices/i,
+                }),
+            );
+            await user.click(
+                within(chat).getByRole('button', {
+                    name: /Aus \(Empfehlung, änderbar\)|off \(recommendation, can be changed\)/i,
+                }),
             );
             const payload = mocks.mutate.mock.calls.at(-1)?.[0] as { settings: Record<string, unknown> };
             expect(payload.settings.featureDirectInviteChatEnabled).toBe(false);

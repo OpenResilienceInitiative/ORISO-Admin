@@ -111,7 +111,8 @@ const mountCard = (tenantId?: number) =>
         </QueryClientProvider>,
     );
 
-const clientConsentButton = () => screen.findByRole('button', { name: /Advice seeker.*Open policy choices/i });
+const clientConsentButton = () =>
+    screen.findByRole('button', { name: /Advice seeker.*Open requirement or recommendation choices/i });
 
 const chooseClientConsent = async (reasonTab: RegExp, option: RegExp) => {
     const user = userEvent.setup();
@@ -146,7 +147,7 @@ afterEach(() => {
 describe('CaseHandoverCard against the reason-policy endpoint', () => {
     it('saves a changed rule for the named Träger and shows it again after a reload', async () => {
         const { unmount } = mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         await waitFor(() => expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
         expect(server.store.get('8')?.[1]).toMatchObject({ clientConsent: 'NONE' });
@@ -158,25 +159,25 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await screen.findByRole('tab', { name: /Planned/i });
         await userEvent.setup().click(screen.getByRole('tab', { name: /Planned/i }));
-        expect(await clientConsentButton()).toHaveAccessibleName(/Consent opt-out \(adjustable\)/i);
+        expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.requests.at(-1)?.url).toMatch(/reason-policies\?tenantId=7$/);
     });
 
     it('shows an error and keeps the edit visible when saving fails', async () => {
         server.putStatus = 500;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         const alert = await screen.findByRole('alert');
         expect(alert).toHaveTextContent(/not saved/i);
-        expect(await clientConsentButton()).toHaveAccessibleName(/Consent opt-out \(adjustable\)/i);
+        expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'NONE' });
     });
 
     it('says when the Träger may not be changed by this admin', async () => {
         server.putStatus = 403;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         expect(await screen.findByRole('alert')).toHaveTextContent(/not allowed/i);
     });
@@ -184,7 +185,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
     it('retries the failed save from the error message', async () => {
         server.putStatus = 500;
         mountCard(7);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
         const alert = await screen.findByRole('alert');
 
         server.putStatus = 200;
@@ -208,7 +209,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         access.isSuperAdmin = true;
         access.tenantUpdate = false;
         mountCard(8);
-        await chooseClientConsent(/Planned/i, /^Consent opt-out \(adjustable\)$/i);
+        await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         await waitFor(() => expect(server.store.get('8')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
         expect(screen.queryByText(/Träger administration sets these rules/i)).not.toBeInTheDocument();
@@ -250,19 +251,19 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         await userEvent.setup().click(await clientConsentButton());
 
         const option = (name: RegExp) => screen.getByRole('button', { name });
-        expect(option(/^No consent \(adjustable\)$/i)).toHaveAccessibleDescription(/not asked.*immediately/i);
-        expect(option(/^Consent opt-in \(adjustable\)$/i)).toHaveAccessibleDescription(/asked first.*agrees/i);
-        expect(option(/^Consent opt-out \(adjustable\)$/i)).toHaveAccessibleDescription(
-            /silent.*immediately.*informed.*object/i,
+        expect(option(/^Without asking \(recommendation\)$/i)).toHaveAccessibleDescription(/not asked.*immediately/i);
+        expect(option(/^Only after consent \(recommendation\)$/i)).toHaveAccessibleDescription(/asked first.*agrees/i);
+        expect(option(/^Immediately, can object \(recommendation\)$/i)).toHaveAccessibleDescription(
+            /immediately.*informed.*object/i,
         );
-        expect(option(/^Consent opt-out \(enforced\)$/i)).toHaveAccessibleDescription(/silent/i);
+        expect(option(/^Immediately, can object \(requirement\)$/i)).toHaveAccessibleDescription(/immediately/i);
         // Shown as text in the menu, not only to screen readers.
-        expect(screen.getAllByText(/Silent: access starts immediately/i)[0]).toBeVisible();
+        expect(screen.getAllByText(/access starts immediately; the advice seeker is informed/i)[0]).toBeVisible();
     });
 
     it('has the consent explanations in German as well', () => {
         const de = i18n.getFixedT('de');
-        expect(de('tenants.permissions.consent.effect.OPT_OUT')).toMatch(/Stillschweigend.*sofort.*widersprechen/);
+        expect(de('tenants.permissions.consent.effect.OPT_OUT')).toMatch(/sofort.*widersprechen/);
         expect(de('tenants.permissions.consent.effect.OPT_IN')).toMatch(/vorher gefragt/);
         expect(de('tenants.permissions.consent.effect.NONE')).toMatch(/nicht gefragt/);
     });
@@ -297,7 +298,8 @@ const masterRow = () => {
     return row;
 };
 
-const currentMasterButton = () => within(masterRow()).getByRole('button', { name: /Open policy choices/i });
+const currentMasterButton = () =>
+    within(masterRow()).getByRole('button', { name: /Open requirement or recommendation choices/i });
 
 const masterOption = (key: string) =>
     within(masterRow()).getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) });

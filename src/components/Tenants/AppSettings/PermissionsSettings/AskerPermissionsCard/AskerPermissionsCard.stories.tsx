@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState, type ComponentProps } from 'react';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for tsc/Vite
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import i18n from '../../../../../i18n';
 import { AskerPermissionsCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -54,6 +55,11 @@ type Story = StoryObj<typeof meta>;
 
 /** Both permissions granted — the default for every tenant, since both settings are opt-out. */
 export const BothEnabled: Story = {};
+
+export const HelpSlideshow: Story = {
+    ...BothEnabled,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
+};
 
 /**
  * **The U25 configuration.** Free name entry off and no e-mail invitation. Note what the e-mail

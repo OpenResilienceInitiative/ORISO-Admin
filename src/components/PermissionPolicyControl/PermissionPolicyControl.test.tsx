@@ -110,14 +110,14 @@ describe('PermissionPolicyControl', () => {
         {
             language: 'de',
             status: 'Empfehlung',
-            activation: 'Aktivierung (anpassbar)',
-            deactivation: 'Deaktivierung (anpassbar)',
+            activation: 'An (Empfehlung, änderbar)',
+            deactivation: 'Aus (Empfehlung, änderbar)',
         },
         {
             language: 'en',
             status: 'Recommendation',
-            activation: 'Activation (adjustable)',
-            deactivation: 'Deactivation (adjustable)',
+            activation: 'On (recommendation, can be changed)',
+            deactivation: 'Off (recommendation, can be changed)',
         },
     ])('presents suggested policies as recommendations in $language', async (copy) => {
         const i18n = createInstance().use(initReactI18next);

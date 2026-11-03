@@ -95,41 +95,41 @@ describe('conversation notification policy labels', () => {
 const collectionLabels = {
     de: [
         'Wo eine E-Mail-Adresse hinterlassen werden darf',
-        'E-Mail-Adresse bei Beratung',
+        'E-Mail-Adresse in der 1:1-Beratung',
         'E-Mail-Adresse im Live-Chat',
         'E-Mail-Adresse in Selbsthilfegruppen',
     ],
     'de@informal': [
         'Wo eine E-Mail-Adresse hinterlassen werden darf',
-        'E-Mail-Adresse bei Beratung',
+        'E-Mail-Adresse in der 1:1-Beratung',
         'E-Mail-Adresse im Live-Chat',
         'E-Mail-Adresse in Selbsthilfegruppen',
     ],
     en: [
         'Where an email address may be left',
-        'Email address in agency counselling',
+        'Email address in 1:1 counselling',
         'Email address in live chat',
         'Email address in self-help groups',
     ],
     fr: [
         'Où une adresse e-mail peut être communiquée',
-        'Adresse e-mail pour le conseil',
+        'Adresse e-mail dans le conseil 1:1',
         'Adresse e-mail dans le chat en direct',
         'Adresse e-mail dans les groupes d’entraide',
     ],
     ru: [
         'Где можно оставить адрес электронной почты',
-        'Адрес электронной почты при консультировании',
+        'Адрес электронной почты в консультации 1:1',
         'Адрес электронной почты в живом чате',
         'Адрес электронной почты в группах взаимопомощи',
     ],
     tr: [
         'E-posta adresinin bırakılabileceği yerler',
-        'Danışmanlıkta e-posta adresi',
+        '1:1 danışmanlıkta e-posta adresi',
         'Canlı sohbette e-posta adresi',
         'Öz yardım gruplarında e-posta adresi',
     ],
-    ti: ['ኣድራሻ ኢ-መይል ክግደፈሉ ዝኽእል ቦታ', 'ኣድራሻ ኢ-መይል ኣብ ምኽሪ', 'ኣድራሻ ኢ-መይል ኣብ ቀጥታ ዝርርብ', 'ኣድራሻ ኢ-መይል ኣብ ጉጅለታት ርእሰ-ሓገዝ'],
+    ti: ['ኣድራሻ ኢ-መይል ክግደፈሉ ዝኽእል ቦታ', 'ኣድራሻ ኢ-መይል ኣብ 1:1 ምኽሪ', 'ኣድራሻ ኢ-መይል ኣብ ቀጥታ ዝርርብ', 'ኣድራሻ ኢ-መይል ኣብ ጉጅለታት ርእሰ-ሓገዝ'],
 };
 
 it.each(Object.entries(collectionLabels))(

@@ -204,6 +204,8 @@ export type M3RichTextEditorProps = {
      * directly under the header, before the language row (Figma 1227-17235).
      */
     helpSlot?: React.ReactNode;
+    /** Control placed in the corner of the icon + title row, e.g. the tile's explanation button. */
+    headerAction?: React.ReactNode;
     /**
      * Dismissible functionality hint rendered below the editor surface. It is
      * deliberately kept in the document flow so it never obscures legal text.
@@ -883,6 +885,7 @@ export const M3RichTextEditor = ({
     onPublishTemplate,
     publishTemplateDisabledReason,
     helpSlot,
+    headerAction,
     snackbarSlot,
     comparison,
     aboveEditorSlot,
@@ -1329,6 +1332,7 @@ export const M3RichTextEditor = ({
                 <div className={styles.header}>
                     <IconComponent className={styles.headerIcon} />
                     <h2 className={styles.title}>{title}</h2>
+                    {headerAction}
                 </div>
             )}
 

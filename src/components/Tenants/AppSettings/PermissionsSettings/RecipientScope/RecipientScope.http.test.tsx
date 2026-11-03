@@ -112,7 +112,7 @@ describe('Träger admin', () => {
         server.scope = undefined;
         mountTenant();
         const control = await tile();
-        await waitFor(() => expect(control.getByText('Available after the next backend update.')).toBeInTheDocument());
+        await waitFor(() => expect(control.getByText('This setting is not available yet.')).toBeInTheDocument());
         control.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(control.getByRole('radio', { name: /Counselling centre only/ })).toBeChecked();
         expect(control.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();

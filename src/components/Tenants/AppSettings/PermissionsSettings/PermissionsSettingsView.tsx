@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import { Form, Skeleton, type FormInstance } from 'antd';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -5,6 +6,7 @@ import { Card } from '../../../Card';
 import { CardGrid } from '../../../CardGrid';
 import { CardEditable } from '../../../CardEditable';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { CHAT_TYPE_HELP } from './help';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { DirectInviteCard } from './DirectInviteCard';
@@ -257,6 +259,7 @@ export const PermissionsSettingsView = ({
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
                                                 dataTestId={`chat-type-card-${card.key}`}
+                                                help={CHAT_TYPE_HELP[card.key]}
                                             >
                                                 <p className={styles.cardDescription}>
                                                     <InfoIcon
@@ -324,7 +327,11 @@ export const PermissionsSettingsView = ({
                                                     </>
                                                 )}
 
-                                                <div className={styles.togglesList}>
+                                                <div
+                                                    className={classNames(styles.togglesList, {
+                                                        [styles.togglesListWide]: card.key === 'oneOnOne',
+                                                    })}
+                                                >
                                                     {card.toggles.map((toggle) => {
                                                         const unavailableHintKey = unavailableCapabilityHintKey(
                                                             toggle.requiresCapability,

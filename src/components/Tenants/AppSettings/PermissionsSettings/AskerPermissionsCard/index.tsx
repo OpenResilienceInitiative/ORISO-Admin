@@ -4,6 +4,7 @@ import { Card } from '../../../../Card';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
+import { askerAccountHelp } from '../help';
 import styles from './styles.module.scss';
 
 /**
@@ -116,7 +117,7 @@ export const AskerPermissionsCard = ({
         ) : null;
 
     return (
-        <Card titleKey="tenants.permissions.asker.title">
+        <Card titleKey="tenants.permissions.asker.title" help={askerAccountHelp}>
             <p className={styles.intro}>
                 <Trans i18nKey="tenants.permissions.asker.description" components={{ strong: <strong /> }} />
             </p>
