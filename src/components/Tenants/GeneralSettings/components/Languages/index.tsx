@@ -5,8 +5,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
+import { TilePicture } from '../../../../TileFill';
 import { Modal } from '../../../../Modal';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
+import translationPicture from '../../../../../resources/img/tile-help/translation.webp';
 import styles from './styles.module.scss';
 
 const ensureDefaultLanguage = (languages: string[]) => {
@@ -74,6 +76,7 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
                 variant="dialog"
                 editButtonPlacement="footer"
                 headerIcon={<LanguageOutlinedIcon />}
+                picture={<TilePicture src={translationPicture} />}
             >
                 {({ editing }) =>
                     editing ? (

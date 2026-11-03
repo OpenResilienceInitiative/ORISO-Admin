@@ -22,3 +22,15 @@ describe('legacy /admin/global-settings redirects (ORISO-Admin#678)', () => {
         );
     });
 });
+
+describe('old live-chat links address (ORISO-Admin#1321)', () => {
+    it('redirects /admin/links/external-inbounds to Funktionszugriff', () => {
+        expect(source).toMatch(
+            /path="external-inbounds"[\s\S]*?to=\{`\$\{routePathNames\.themeSettings\}\/permissions`\}/,
+        );
+    });
+
+    it('no longer renders a chat-links tab under Links', () => {
+        expect(source).not.toMatch(/LazyExternalInboundsTab/);
+    });
+});

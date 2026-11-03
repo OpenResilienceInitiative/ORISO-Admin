@@ -39,7 +39,7 @@ const answerSaveWith = (status: number) =>
         }),
     );
 
-const smartOption = () => screen.getByRole('radio', { name: /zuletzt eingegebene PLZ/ });
+const smartOption = () => screen.getByRole('radio', { name: /zuletzt eingegebene Postleitzahl/i });
 const alwaysEmptyOption = () => screen.getByRole('radio', { name: 'PLZ immer neu eingeben' });
 
 const chooseAlwaysEmptyAndSave = async () => {

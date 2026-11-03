@@ -10,9 +10,10 @@ import {
 } from './linksAccess';
 
 describe('linksAccess', () => {
-    it('platform admin sees every tab', () => {
+    // Live-chat links moved to Funktionszugriff (ORISO-Admin#1321); Links is invitations only.
+    it('platform admin sees both invitation tabs', () => {
         const context = { isSuperAdmin: true, hasRole: hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin) };
-        expect(resolveVisibleLinksTabs(context)).toEqual(['tenants', 'counsellor', 'external-inbounds']);
+        expect(resolveVisibleLinksTabs(context)).toEqual(['tenants', 'counsellor']);
         expect(canSeeLinksSection(context)).toBe(true);
     });
 

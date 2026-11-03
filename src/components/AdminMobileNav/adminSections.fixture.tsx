@@ -83,13 +83,6 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
         source: 'pages/Links/AccountInvitesTab.tsx + InviteComposer.tsx:382',
         note: 'The complex one: template picker, bulk actions, CSV import, composer with e-mail field.',
     },
-    'links/external-inbounds': {
-        search: false,
-        add: true,
-        filters: false,
-        source: 'pages/Links/ExternalInboundsTab.tsx:215',
-        note: '"Create link" only.',
-    },
 };
 
 /**
@@ -162,7 +155,6 @@ export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
         subsections: [
             { key: 'tenants', label: 'Träger-Invites' },
             { key: 'counsellor', label: 'Berater-Invites' },
-            { key: 'external-inbounds', label: 'Externe Inbounds' },
         ],
     },
     {
@@ -198,7 +190,7 @@ export const capabilitiesFor = (sectionKey: string, subsectionKey?: string): Sec
     }
 
     if (sectionKey === 'links') {
-        return SECOND_ROW_BY_PAGE[subsectionKey === 'external-inbounds' ? 'links/external-inbounds' : 'links/invites'];
+        return SECOND_ROW_BY_PAGE['links/invites'];
     }
 
     if (sectionKey === 'settings') {

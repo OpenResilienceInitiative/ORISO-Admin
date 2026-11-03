@@ -33,7 +33,6 @@ export interface AdminNavTreeContext {
 const LINK_TAB_ROUTES: Record<LinksTabKey, { to: string; labelKey: string }> = {
     tenants: { to: routePathNames.linksTenants, labelKey: 'links.tabs.tenants' },
     counsellor: { to: routePathNames.linksCounsellor, labelKey: 'links.tabs.counsellor' },
-    'external-inbounds': { to: routePathNames.linksExternalInbounds, labelKey: 'links.tabs.externalInbounds' },
 };
 
 /** `/admin/theme-settings/smtp` → `smtp`; the service notices route → `service-notices`. */

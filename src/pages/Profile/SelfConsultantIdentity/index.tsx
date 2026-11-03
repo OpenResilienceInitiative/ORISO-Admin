@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../../components/Card';
+import { CardGrid } from '../../../components/CardGrid';
 import { GrantConsultantIdentityModal } from '../../../components/GrantConsultantIdentityModal';
 import { UserRole } from '../../../enums/UserRole';
 import { useUserData } from '../../../hooks/useUserData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { ReactComponent as SearchPersonIcon } from '../../../resources/img/svg/person_search_filled.svg';
 import styles from './styles.module.scss';
 
 const CONSULTANT_ROLE = 'consultant';
@@ -18,7 +20,7 @@ const ADMIN_ROLES = [
 /**
  * Lets a Beratungsstellen-Admin or Träger-Admin make themselves a counsellor — the same grant the
  * admin edit page offers for other admins, pointed at the signed-in account. Platform admins stay
- * excluded, as on the edit pages.
+ * excluded, as on the edit pages. It brings its own raster cell, so a role that does not see it leaves no gap.
  */
 export const SelfConsultantIdentity = () => {
     const { t } = useTranslation();
@@ -38,22 +40,28 @@ export const SelfConsultantIdentity = () => {
     const mayGrant = hasRole(UserRole.UserAdmin);
 
     return (
-        <Card titleKey="grantConsultantIdentity.self.title" subTitleKey="grantConsultantIdentity.self.text">
-            {isConsultant ? (
-                <p className={styles.note}>{t('grantConsultantIdentity.self.already')}</p>
-            ) : (
-                <div className={styles.body}>
-                    <GrantConsultantIdentityModal
-                        adminId={userId}
-                        tenantId={tenantId ?? undefined}
-                        disabled={!mayGrant}
-                        buttonLabelKey="grantConsultantIdentity.self.button"
-                        successMessageKey="message.grantConsultantIdentity.selfSuccess"
-                        onSuccess={() => setGranted(true)}
-                    />
-                    {!mayGrant && <p className={styles.note}>{t('grantConsultantIdentity.self.noPermission')}</p>}
-                </div>
-            )}
-        </Card>
+        <CardGrid.Item>
+            <Card
+                titleKey="grantConsultantIdentity.self.title"
+                subTitleKey="grantConsultantIdentity.self.text"
+                headerIcon={<SearchPersonIcon />}
+            >
+                {isConsultant ? (
+                    <p className={styles.note}>{t('grantConsultantIdentity.self.already')}</p>
+                ) : (
+                    <div className={styles.body}>
+                        <GrantConsultantIdentityModal
+                            adminId={userId}
+                            tenantId={tenantId ?? undefined}
+                            disabled={!mayGrant}
+                            buttonLabelKey="grantConsultantIdentity.self.button"
+                            successMessageKey="message.grantConsultantIdentity.selfSuccess"
+                            onSuccess={() => setGranted(true)}
+                        />
+                        {!mayGrant && <p className={styles.note}>{t('grantConsultantIdentity.self.noPermission')}</p>}
+                    </div>
+                )}
+            </Card>
+        </CardGrid.Item>
     );
 };

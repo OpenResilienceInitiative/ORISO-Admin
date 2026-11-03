@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import type { StatisticsSettings } from '../../../types/StatisticsSettings';
+import { CardGrid } from '../../CardGrid';
 import { StatisticsSettingsCard } from '.';
 
 const thresholds = ['2', '3', '4', '5', '6', '7', '8', '9', '10'];
@@ -89,9 +90,9 @@ const meta = {
     title: 'Organisms/GlobalSettings/StatisticsSettingsCard',
     component: StatisticsSettingsCard,
     decorators: [
-        (Story) => (
+        (Story, { parameters }) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ maxWidth: 400 }}>
+                <div style={{ maxWidth: parameters.tileWidth ?? 400 }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -109,6 +110,32 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+/** ORISO-Admin#1315: as it sits on the page, the whole row wide. Narrow the viewport to see the columns adapt. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item span={3}>
+                <StatisticsSettingsCard {...args} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
+};
+
+/** The explanation behind the info button, one slide after the other. */
+export const HelpSlideshow: Story = {
+    ...InTheRaster,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: /erklärung öffnen|open explanation/i }));
+        const dialog = within(canvasElement.ownerDocument.body);
+        await waitFor(() => expect(dialog.getByRole('dialog')).toBeVisible());
+        await userEvent.click(dialog.getByRole('button', { name: /weiter|next/i }));
+        await waitFor(() => expect(dialog.getByText(/schritt 2 von 5|step 2 of 5/i)).toBeVisible());
+    },
+};
+
 export const Loading: Story = { args: { data: undefined, isLoading: true } };
 export const LoadError: Story = { args: { data: undefined, error: new Error('network') } };
 export const Editable: Story = {

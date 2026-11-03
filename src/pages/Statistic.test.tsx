@@ -17,18 +17,19 @@ vi.mock('../api/fetchData', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../api/fetchData')>();
     return { ...actual, fetchData: vi.fn() };
 });
+const roleState = vi.hoisted(() => ({ isSuperAdmin: false }));
 vi.mock('../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
         roles: [UserRole.TenantAdmin],
         hasRole: (role: UserRole | UserRole[]) => (Array.isArray(role) ? role : [role]).includes(UserRole.TenantAdmin),
-        isSuperAdmin: false,
+        isSuperAdmin: roleState.isSuperAdmin,
         isTechnicalAccount: false,
-        isTenantScopedAdmin: true,
+        isTenantScopedAdmin: !roleState.isSuperAdmin,
         tenantId: 5,
     }),
 }));
 
-import { fetchData } from '../api/fetchData';
+import { FETCH_ERRORS, fetchData } from '../api/fetchData';
 import getDashboardStatistics from '../api/statistic/getDashboardStatistics';
 import i18n from '../i18n';
 import { Statistic } from './Statistic';
@@ -70,9 +71,7 @@ const response: AdminDashboardStatisticsResponse = {
     ],
 };
 
-const renderStatistic = () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
+const renderStatistic = (client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
     return render(
         <QueryClientProvider client={client}>
             <MemoryRouter>
@@ -83,6 +82,7 @@ const renderStatistic = () => {
 };
 
 beforeEach(() => {
+    roleState.isSuperAdmin = false;
     dashboardMock.mockReset();
     fetchDataMock.mockReset();
     // default: all name lookups succeed with empty result sets
@@ -423,6 +423,223 @@ describe('Statistic page', () => {
 
         await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
         expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+    });
+
+    describe('hidden rows, hidden totals and the unavailable state (ORISO-Admin#1337)', () => {
+        const hiddenRow = {
+            ...response.targets[0],
+            counselorCount: 0,
+            suppressed: true,
+            metrics: null,
+            sessionCountsByPeriod: null,
+            groupChatCountsByPeriod: null,
+        };
+
+        it('shows no counsellor count for a hidden row', async () => {
+            dashboardMock.mockResolvedValue({ ...response, targets: [hiddenRow] });
+
+            renderStatistic();
+
+            await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
+            // the zero a hidden row carries must never be shown as a count
+            const cards = document.querySelector('.statisticDashboard__summaryGrid') as HTMLElement;
+            expect(cards.textContent).not.toMatch(/(^|\D)0(\D|$)/);
+        });
+
+        it('says so when the total itself is hidden', async () => {
+            dashboardMock.mockResolvedValue({ ...response, targets: [hiddenRow] });
+
+            renderStatistic();
+
+            await waitFor(() =>
+                expect(
+                    screen.getByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/),
+                ).toBeInTheDocument(),
+            );
+            // a chart of zeros would read as "nothing happened"
+            expect(document.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        });
+
+        const agencyRow = (
+            agencyId: number,
+            overrides: Partial<AdminDashboardStatisticsResponse['targets'][0]> = {},
+        ) => ({
+            ...response.targets[0],
+            targetType: 'AGENCY' as const,
+            agencyId,
+            counselorCount: 6,
+            ...overrides,
+        });
+        const hiddenAgency = (agencyId: number) =>
+            agencyRow(agencyId, {
+                counselorCount: 0,
+                suppressed: true,
+                metrics: null,
+                sessionCountsByPeriod: null,
+                groupChatCountsByPeriod: null,
+            });
+        const tenantResponse = (targets: AdminDashboardStatisticsResponse['targets']) => ({ ...response, targets });
+        const openAgencyLevel = () => fireEvent.click(screen.getByText('Auf Beratungsstellenebene'));
+        const rowNotice = /kann auch einen größeren Bereich treffen/;
+        const totalNotice = /Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/;
+
+        it('offers the active-counsellor count once per menu on the agency level, never as "on duty"', async () => {
+            dashboardMock.mockResolvedValue(tenantResponse([response.targets[0], agencyRow(11)]));
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            openAgencyLevel();
+
+            const menuButtons = await screen.findAllByRole('button', {
+                name: 'Kennzahl in diesem Dashboard-Slot auswählen',
+            });
+            const allLabels: string[] = [];
+            menuButtons.forEach((button) => {
+                fireEvent.click(button);
+                const labels = screen.getAllByRole('menuitemradio').map((option) => option.textContent ?? '');
+                expect(new Set(labels).size).toBe(labels.length);
+                allLabels.push(...labels);
+                fireEvent.click(button);
+            });
+
+            expect(allLabels.some((label) => label.includes('aktive Beratende'))).toBe(true);
+            expect(allLabels.some((label) => /im Dienst|insgesamt/.test(label))).toBe(false);
+        });
+
+        it('falls back to the active-counsellor count when an old stored choice was the removed duplicate', async () => {
+            window.localStorage.setItem(
+                'oriso.admin.statistics.metricPreferences.v1',
+                JSON.stringify({ agency: { 'active-counselors': 'counselors' } }),
+            );
+            dashboardMock.mockResolvedValue(tenantResponse([response.targets[0], agencyRow(11)]));
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            openAgencyLevel();
+
+            await waitFor(() => expect(screen.getAllByText('6').length).toBeGreaterThan(0));
+            expect(screen.getAllByText('aktive Beratende').length).toBeGreaterThan(0);
+        });
+
+        it('shows the row notice, not the total notice, for a hidden agency next to a shown one', async () => {
+            dashboardMock.mockResolvedValue(tenantResponse([response.targets[0], agencyRow(11), hiddenAgency(12)]));
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            openAgencyLevel();
+
+            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            expect(screen.queryByText(totalNotice)).toBeNull();
+            // a shown row remains: charts and the export stay
+            expect(screen.getByText('Statistik als CSV herunterladen')).toBeInTheDocument();
+            expect(document.querySelector('.statisticDashboard__chartGrid')).not.toBeNull();
+        });
+
+        it('shows only the total notice, and no CSV link, when the Träger total is hidden', async () => {
+            dashboardMock.mockResolvedValue(
+                tenantResponse([
+                    { ...hiddenAgency(0), targetType: 'TENANT', agencyId: null, tenantId: 5 },
+                    agencyRow(11),
+                ]),
+            );
+            renderStatistic();
+
+            expect(await screen.findByText(totalNotice)).toBeInTheDocument();
+            expect(screen.queryByText(rowNotice)).toBeNull();
+            expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();
+        });
+
+        it('does not show the total notice for a hidden agency picked in the picker', async () => {
+            dashboardMock.mockResolvedValue(tenantResponse([response.targets[0], agencyRow(11), hiddenAgency(12)]));
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            fireEvent.click(await screen.findByRole('option', { name: /Beratungsstelle 12/ }));
+
+            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            expect(screen.queryByText(totalNotice)).toBeNull();
+        });
+
+        it('on the platform level, shows the total notice for a hidden platform total and the row notice for a picked hidden Träger', async () => {
+            roleState.isSuperAdmin = true;
+            const platform = (suppressed: boolean) => ({
+                ...(suppressed ? hiddenAgency(0) : agencyRow(0)),
+                targetType: 'PLATFORM' as const,
+                tenantId: null,
+                agencyId: null,
+            });
+            const tenant = (tenantId: number, suppressed: boolean) => ({
+                ...(suppressed ? hiddenAgency(0) : agencyRow(0)),
+                targetType: 'TENANT' as const,
+                tenantId,
+                agencyId: null,
+            });
+            dashboardMock.mockResolvedValue({
+                ...response,
+                scope: 'PLATFORM',
+                targets: [platform(true), tenant(5, false), tenant(6, true)],
+            });
+            const { unmount } = renderStatistic();
+
+            expect(await screen.findByText(totalNotice)).toBeInTheDocument();
+            expect(screen.queryByText(rowNotice)).toBeNull();
+            unmount();
+
+            dashboardMock.mockResolvedValue({
+                ...response,
+                scope: 'PLATFORM',
+                targets: [platform(false), tenant(5, false), tenant(6, true)],
+            });
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            fireEvent.click(await screen.findByRole('option', { name: /Träger 6/ }));
+
+            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            expect(screen.queryByText(totalNotice)).toBeNull();
+        });
+
+        it('does not render the tutorial section while the dashboard is unavailable', async () => {
+            dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
+            renderStatistic();
+
+            await screen.findByText(/vorübergehend nicht verfügbar/);
+            expect(screen.queryByText('Tutorial-Abschlüsse')).toBeNull();
+        });
+
+        it('shows "temporarily unavailable" and no figures when the dashboard answers 503', async () => {
+            dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
+
+            renderStatistic();
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('vorübergehend nicht verfügbar');
+            expect(screen.queryByText('Statistikdaten konnten nicht geladen werden.')).toBeNull();
+            expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();
+            expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+            expect(screen.queryByText('noch keine Daten')).toBeNull();
+            expect(document.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+        });
+
+        it('keeps the generic load error for other failures', async () => {
+            dashboardMock.mockRejectedValue(new Error('API call error: 500 Internal Server Error'));
+
+            renderStatistic();
+
+            expect(await screen.findByText('Statistikdaten konnten nicht geladen werden.')).toBeInTheDocument();
+            expect(screen.queryByText(/vorübergehend nicht verfügbar/)).toBeNull();
+        });
+
+        it('drops figures that were already loaded when a later refresh answers 503', async () => {
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            dashboardMock.mockResolvedValue(response);
+            renderStatistic(client);
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
+            await client.invalidateQueries({ queryKey: ['ADMIN_STATISTICS_DASHBOARD'] });
+
+            expect(await screen.findByText(/vorübergehend nicht verfügbar/)).toBeInTheDocument();
+            expect(screen.queryByText('12')).toBeNull();
+            expect(document.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+        });
     });
 
     describe('configurable time windows (UserService#1544)', () => {

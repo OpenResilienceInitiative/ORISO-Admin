@@ -31,6 +31,7 @@ import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
+import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
     LazyAgencyList,
     LazyAgencySetupPage,
@@ -39,7 +40,6 @@ import {
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
     LazyErstantwortSettingsPage,
-    LazyExternalInboundsTab,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
@@ -56,6 +56,8 @@ import {
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
+    LazyTenantSmtpSettings,
+    LazyTenantErstantwortSettings,
     LazyTenantEditOrAdd,
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
@@ -390,8 +392,20 @@ export const App = () => {
                                                 element={<LazySingleLegalSettings />}
                                             />
                                             <Route
-                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                path={`${routePathNames.tenants}/:id/erstantwort`}
+                                                element={<LazyTenantErstantwortSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/smtp`}
+                                                element={<LazyTenantSmtpSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/functionalities`}
                                                 element={<LazyTenantAppSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                element={<LegacyAppSettingsRedirect />}
                                             />
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/global-settings`}
@@ -414,9 +428,14 @@ export const App = () => {
                                         {visibleLinksTabs.includes('counsellor') && (
                                             <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                                         )}
-                                        {visibleLinksTabs.includes('external-inbounds') && (
-                                            <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
-                                        )}
+                                        {/* Live-chat links moved to Funktionszugriff (ORISO-Admin#1321);
+                                            the old address keeps working for bookmarks. */}
+                                        <Route
+                                            path="external-inbounds"
+                                            element={
+                                                <Navigate to={`${routePathNames.themeSettings}/permissions`} replace />
+                                            }
+                                        />
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}

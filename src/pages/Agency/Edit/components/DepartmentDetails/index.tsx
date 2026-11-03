@@ -1,6 +1,7 @@
-import { Alert, Button, notification, Select, Skeleton } from 'antd';
+import { Alert, Button, notification, Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../../../../../components/M3Select';
 import { Card } from '../../../../../components/Card';
 import { M3Button } from '../../../../../components/M3Button';
 import { CardEditable } from '../../../../../components/CardEditable';
@@ -66,7 +67,7 @@ export const DepartmentDetailsCard = ({
     const { t } = useTranslation();
 
     const departmentSelect = (
-        <Select
+        <M3Select
             aria-label={t('agency.legal.department.choose', 'Fachbereich wählen')}
             options={departments.map(({ id, name }) => ({ value: id, label: name }))}
             value={selected}

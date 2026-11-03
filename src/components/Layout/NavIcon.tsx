@@ -128,7 +128,6 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
             });
         case routePathNames.linksTenants:
         case routePathNames.linksCounsellor:
-        case routePathNames.linksExternalInbounds:
             return selectIcon(iconState, {
                 active: <LinksActiveIcon />,
                 hover: <LinksHoverIcon />,
