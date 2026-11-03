@@ -133,6 +133,7 @@
 
 /* In the raster, rows stretch every tile to the tallest one. The content stays on top, the
    action row stays on the bottom and the calm graphic (TileFill) takes the space between. */
+
 :global([data-admin-card-raster]) .dialogForm {
     flex: 0 0 auto;
     padding: 0 0 16px;
