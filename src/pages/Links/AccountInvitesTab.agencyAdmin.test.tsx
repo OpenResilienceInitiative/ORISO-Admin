@@ -4,11 +4,14 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Static import on purpose — see the note in AccountInvitesTab.test.tsx.
 import { CounsellorInvitesTab } from './AccountInvitesTab';
 import { UserRole } from '../../enums/UserRole';
+
+// Each step re-renders the whole composer, so on CI one role query can outlast the default 1 s wait.
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.

@@ -1,3 +1,4 @@
+import { settlePendingRequests } from './pendingRequests';
 import { storyRenderCleanup } from './storyRenderCleanup';
 import * as React from 'react';
 // antd's static APIs (message/notification/Modal.confirm) are silent no-ops
@@ -120,6 +121,11 @@ const preview: Preview = {
             }
             try {
                 await clearStoryQueryClients();
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                await settlePendingRequests();
             } catch (error) {
                 errors.push(error);
             }
