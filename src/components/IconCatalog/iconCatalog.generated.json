@@ -2992,7 +2992,7 @@
             "src/components/cards/FocusTopicsCard/index.tsx",
             "src/components/cards/PersonalInfoCard/index.tsx",
             "src/components/CustomIcons/Verified.tsx",
-            "src/pages/Profile/UserProfile.tsx"
+            "src/pages/Profile/TwoFactorCard.tsx"
         ],
         "usage": "app-used"
     },
