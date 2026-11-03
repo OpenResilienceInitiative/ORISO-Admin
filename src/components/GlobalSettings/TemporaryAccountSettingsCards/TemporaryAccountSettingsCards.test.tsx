@@ -116,6 +116,21 @@ it('saves the retention mode with the lifetimes the server confirmed', async () 
     });
 });
 
+it('marks the three lifetime fields as required, visibly and for assistive technology', async () => {
+    showCards();
+    const card = await guestCard();
+    await userEvent.click(await card.findByRole('button', { name: 'Bearbeiten' }));
+    const fields = [
+        screen.getByLabelText(/Löschen nach dem Auflegen/),
+        screen.getByLabelText(/Spätestens löschen nach \(Stunden/),
+        screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/),
+    ];
+    fields.forEach((field) => {
+        expect(field).toHaveAttribute('aria-required', 'true');
+        expect(document.querySelector(`label[for="${field.id}"]`)).toHaveTextContent('*');
+    });
+});
+
 it.each([
     ['Löschen nach dem Auflegen', '0', 'Geben Sie eine ganze Zahl von 1 bis 1440 ein.'],
     [String.raw`Spätestens löschen nach \(Stunden`, '25', 'Geben Sie eine ganze Zahl von 1 bis 24 ein.'],

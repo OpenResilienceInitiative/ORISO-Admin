@@ -3156,7 +3156,7 @@
     "tileHelp.serviceNotices.draft.title": "Erst ein Entwurf",
     "tileHelp.serviceNotices.draft.body": "Ein Hinweis beginnt als Entwurf mit einer Referenz von 1 bis 80 Zeichen. Die Referenz schützt vor doppeltem Versand: Dieselbe Referenz mit denselben Angaben ändert nichts. Mit anderen Angaben brauchen Sie eine neue Referenz.",
     "tileHelp.serviceNotices.preview.title": "Die Vorschau",
-    "tileHelp.serviceNotices.preview.body": "Die Vorschau zeigt die tatsächliche E-Mail in den sieben festen Sprachen, bevor etwas hinausgeht.",
+    "tileHelp.serviceNotices.preview.body": "Die Vorschau zeigt die tatsächliche E-Mail in den sechs festen Sprachen, bevor etwas hinausgeht.",
     "tileHelp.serviceNotices.send.title": "Absenden",
     "tileHelp.serviceNotices.send.body": "Vor dem Senden sehen Sie, wie viele Personen den Hinweis bekommen. Hat sich die Zahl inzwischen geändert, wird der Versand abgelehnt und Sie prüfen neu. Das schützt davor, versehentlich an mehr Personen zu senden als erwartet.",
     "tileHelp.permissionLevels.title": "Vorgabe und Empfehlung",
@@ -3235,8 +3235,5 @@
     "tileHelp.communications.essence": "Dieser eine Schalter legt fest, ob Beratende aus dem Gespräch heraus einen Videoanruf starten können.",
     "tileHelp.mailPanels.sending": "Versand",
     "tileHelp.mailPanels.server": "Server",
-    "tileHelp.mailPanels.credentials": "Zugangsdaten",
-    "tenants.permissions.asker.collection.agencyCounselling": "E-Mail-Adresse in der 1:1-Beratung",
-    "settings.assistant.inherit": "Einstellung der übergeordneten Ebene verwenden",
-    "settings.assistant.formats": "SVG oder PNG, bis 512 KiB, am besten quadratisch (512 × 512 px). SVG-Dateien dürfen keine Skripte oder Animationen enthalten."
+    "tileHelp.mailPanels.credentials": "Zugangsdaten"
 }

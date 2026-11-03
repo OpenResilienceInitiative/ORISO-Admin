@@ -113,7 +113,10 @@ describe('Counsellor tutorial settings preview', () => {
         expect(controls.map((control) => (control as HTMLInputElement).checked)).toEqual(before);
         expect(state.mutateSettings).not.toHaveBeenCalled();
         expect(state.setManualSettings).not.toHaveBeenCalled();
-        expect(screen.queryByRole('button', { name: /edit|bearbeiten/i })).not.toBeInTheDocument();
+        // The info button is the only button: no edit, save or other control may appear.
+        const buttons = screen.getAllByRole('button');
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0]).toHaveAccessibleName(/Erklärung öffnen/);
         expect(screen.getByText('Kommt bald')).toBeVisible();
     });
 

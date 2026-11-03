@@ -63,13 +63,18 @@ const LifetimeField = ({ name }: { name: NumberField }) => {
     const { min, max } = TEMPORARY_ACCOUNT_LIMITS[name];
     return (
         <div className={styles.field}>
-            <label htmlFor={name}>{t(`globalSettings.temporaryAccounts.${name}`)}</label>
+            <label htmlFor={name}>
+                {t(`globalSettings.temporaryAccounts.${name}`)}
+                <span className={styles.requiredMark} aria-hidden="true">
+                    {' *'}
+                </span>
+            </label>
             <MuiNumberFormField
                 name={name}
                 id={name}
                 required
                 min={min}
-                inputProps={{ step: 1, max }}
+                inputProps={{ step: 1, max, 'aria-required': true }}
                 rules={[
                     {
                         required: true,
