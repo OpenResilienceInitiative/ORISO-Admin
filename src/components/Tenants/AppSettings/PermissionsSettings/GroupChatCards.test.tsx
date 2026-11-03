@@ -210,7 +210,8 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await waitFor(() => expect(lastBody('PUT', '/7/permission-policies')).toBeDefined());
         const body = lastBody('PUT', '/7/permission-policies');
         expect(body.policies[INTERNAL]).toEqual({ value: false, mode: 'SUGGESTED' });
-        expect(body.policies[CIRCLES]).toEqual({ value: true, mode: 'SUGGESTED' });
+        // Only the changed policy is sent; the sibling card is left alone on the server.
+        expect(body.policies[CIRCLES]).toBeUndefined();
     });
 
     it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
@@ -221,7 +222,7 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await waitFor(() => expect(lastBody('PUT', '/7/permission-policies')).toBeDefined());
         const body = lastBody('PUT', '/7/permission-policies');
         expect(body.policies[CIRCLES]).toEqual({ value: false, mode: 'SUGGESTED' });
-        expect(body.policies[INTERNAL]).toEqual({ value: true, mode: 'SUGGESTED' });
+        expect(body.policies[INTERNAL]).toBeUndefined();
     });
 
     it('shows a card the platform forced off as disabled, not hidden', async () => {
