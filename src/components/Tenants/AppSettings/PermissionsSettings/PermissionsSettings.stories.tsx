@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
-import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
 
@@ -119,21 +118,23 @@ export const PerFeaturePolicies: Story = {
     },
 };
 
-/** Every chat-type tile opens its own explanation; here all four, each through to its last slide. */
-export const ChatTypeHelpSlideshows: Story = {
-    ...TenantView,
+/** The three name choices are independent; a Träger can enforce the generated option for one type. */
+export const NamePolicies: Story = {
+    args: {
+        initialValues: { settings: filledSettings },
+        permissionPolicies: {
+            featureDisplayNameEditableAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
+            featureDisplayNameEditableLiveChatEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+            featureDisplayNameEditableSelfHelpEnabled: { value: false, mode: 'SUGGESTED' },
+        },
+    },
     play: async ({ canvasElement }) => {
-        const body = within(canvasElement.ownerDocument.body);
-        // eslint-disable-next-line no-restricted-syntax -- the dialogs must open one after the other.
-        for (const key of ['oneOnOne', 'liveChat', 'group', 'groupInternal']) {
-            // eslint-disable-next-line no-await-in-loop -- one dialog at a time.
-            const tile = await within(canvasElement).findByTestId(`chat-type-card-${key}`);
-            // eslint-disable-next-line no-await-in-loop -- one dialog at a time.
-            await walkThroughTileHelp(tile, 3);
-            // eslint-disable-next-line no-await-in-loop -- one dialog at a time.
-            await userEvent.click(body.getByRole('button', { name: /fertig|done/i }));
-            // eslint-disable-next-line no-await-in-loop -- one dialog at a time.
-            await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
-        }
+        const canvas = within(canvasElement);
+        const liveChat = within(canvas.getByTestId('chat-type-card-liveChat'));
+        const nameChoice = liveChat.getByRole('button', {
+            name: /Anmelde- und Anzeigenamen frei eingeben|Type a login and display name/,
+        });
+        await expect(nameChoice).toBeDisabled();
+        await expect(nameChoice).toHaveAttribute('aria-pressed', 'false');
     },
 };

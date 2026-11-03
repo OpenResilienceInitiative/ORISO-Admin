@@ -1083,11 +1083,7 @@
         "fileName": "i.svg",
         "sourcePath": "src/resources/img/svg/i.svg",
         "exportNames": [],
-        "usageFiles": [
-            "src/components/Card/index.tsx",
-            "src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx",
-            "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"
-        ],
+        "usageFiles": ["src/components/Card/index.tsx", "src/components/TwoFactorSetup/TwoFactorAuthTypeButtons.tsx"],
         "usage": "app-used"
     },
     {
@@ -2257,6 +2253,19 @@
         "usage": "catalogued-only"
     },
     {
+        "id": "permission-icon:permissions:asker-account:base",
+        "family": "asker-account",
+        "state": "base",
+        "role": "default",
+        "kind": "permission-icon",
+        "size": null,
+        "fileName": "asker_account.svg",
+        "sourcePath": "src/resources/img/svg/permissions/asker_account.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Tenants/AppSettings/PermissionsSettings/AskerPermissionsCard/index.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "permission-icon:permissions:case-handover:base",
         "family": "case-handover",
         "state": "base",
@@ -2426,6 +2435,19 @@
         "sourcePath": "src/resources/img/svg/permissions/tab_star.svg",
         "exportNames": [],
         "usageFiles": ["src/components/Page/index.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "permission-icon:permissions:thread:base",
+        "family": "thread",
+        "state": "base",
+        "role": "default",
+        "kind": "permission-icon",
+        "size": null,
+        "fileName": "thread.svg",
+        "sourcePath": "src/resources/img/svg/permissions/thread.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Tenants/AppSettings/PermissionsSettings/optionIcons.ts"],
         "usage": "app-used"
     },
     {

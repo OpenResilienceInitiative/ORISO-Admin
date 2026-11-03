@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { DirectInviteCard } from './index';
+import { DirectInviteSection } from './index';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
@@ -11,16 +11,25 @@ const CHAT = 'featureDirectInviteChatEnabled';
 const AUDIO = 'featureDirectInviteAudioEnabled';
 const VIDEO = 'featureDirectInviteVideoEnabled';
 
-const renderCard = (props: Partial<React.ComponentProps<typeof DirectInviteCard>> = {}) =>
-    render(<DirectInviteCard restrictedFields={new Set()} {...props} />);
+const renderCard = (props: Partial<React.ComponentProps<typeof DirectInviteSection>> = {}) =>
+    render(<DirectInviteSection restrictedFields={new Set()} {...props} />);
 
 const row = (field: string) => document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
+const P = 'tenants.permissions.policy';
+const LABEL = 'tenants.permissions.directInvite';
+// A locked row has a disabled round button whose name carries only the state, no action.
 const readOnlyButton = (labelKey: string) =>
-    screen.queryByRole('button', {
-        name: `tenants.permissions.directInvite.${labelKey}: tenants.permissions.policy.moreInformation`,
+    screen.queryByRole('button', { name: new RegExp(`^${LABEL}\\.${labelKey}: ${P}\\.(activated|deactivated)$`) });
+const roundButton = (labelKey: string, state: 'activated' | 'deactivated') =>
+    screen.getByRole('button', {
+        name: `${LABEL}.${labelKey}: ${P}.${state} – ${P}.${state === 'activated' ? 'deactivate' : 'activate'}`,
+    });
+const lockButton = (labelKey: string, mode: 'suggestion' | 'enforced') =>
+    screen.getByRole('button', {
+        name: `${LABEL}.${labelKey}: ${P}.${mode} – ${P}.${mode === 'suggestion' ? 'makeRequired' : 'makeAdjustable'}`,
     });
 
-describe('DirectInviteCard', () => {
+describe('DirectInviteSection', () => {
     it('renders one policy control per chat type, all allowed by default', () => {
         renderCard();
 
@@ -32,10 +41,21 @@ describe('DirectInviteCard', () => {
     it('offers force-allow and force-deny on the platform level', async () => {
         const user = userEvent.setup();
         const onPolicyChange = vi.fn();
-        renderCard({ policyLevel: 'platform', openPolicyMenu: VIDEO, onPolicyChange });
+        const { unmount } = renderCard({ policyLevel: 'platform', onPolicyChange });
 
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationEnforced' }));
-        expect(onPolicyChange).toHaveBeenCalledWith(VIDEO, { value: false, mode: 'ENFORCED' });
+        // Allowed by default: the lock turns that into a force-allow.
+        await user.click(lockButton('video', 'suggestion'));
+        expect(onPolicyChange).toHaveBeenLastCalledWith(VIDEO, { value: true, mode: 'ENFORCED' });
+        unmount();
+
+        // Switched off first: the lock turns that into a force-deny.
+        renderCard({
+            policyLevel: 'platform',
+            permissionPolicies: { [VIDEO]: { value: false, mode: 'SUGGESTED' } },
+            onPolicyChange,
+        });
+        await user.click(lockButton('video', 'suggestion'));
+        expect(onPolicyChange).toHaveBeenLastCalledWith(VIDEO, { value: false, mode: 'ENFORCED' });
     });
 
     it('locks a row on the Träger page when the platform forces it', () => {
@@ -51,9 +71,10 @@ describe('DirectInviteCard', () => {
     it('lets a Träger switch one chat type off for itself', async () => {
         const user = userEvent.setup();
         const onPolicyChange = vi.fn();
-        renderCard({ policyLevel: 'tenant', openPolicyMenu: AUDIO, onPolicyChange });
+        renderCard({ policyLevel: 'tenant', onPolicyChange });
 
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
+        await user.click(roundButton('audio', 'activated'));
+        expect(onPolicyChange).toHaveBeenCalledTimes(1);
         expect(onPolicyChange).toHaveBeenCalledWith(AUDIO, { value: false, mode: 'SUGGESTED' });
     });
 
@@ -90,12 +111,16 @@ describe('DirectInviteCard', () => {
         expect(readOnlyButton('chat')).toBeNull();
     });
 
-    it('limits the Beratungsstelle menu to suggestions', () => {
-        renderCard({ policyLevel: 'agency', openPolicyMenu: CHAT });
+    it('limits a Beratungsstelle to switching: no lock, only suggestions are written', async () => {
+        const user = userEvent.setup();
+        const onPolicyChange = vi.fn();
+        renderCard({ policyLevel: 'agency', onPolicyChange });
 
-        expect(screen.queryByText('tenants.permissions.policy.activationEnforced')).toBeNull();
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
+        await user.click(roundButton('chat', 'activated'));
+        expect(onPolicyChange).toHaveBeenCalledWith(CHAT, { value: false, mode: 'SUGGESTED' });
     });
+
     it('locks a Beratungsstelle row the Träger enforces on, so it cannot be restricted', () => {
         renderCard({
             policyLevel: 'agency',

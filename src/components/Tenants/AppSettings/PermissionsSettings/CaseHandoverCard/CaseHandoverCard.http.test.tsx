@@ -286,77 +286,64 @@ const mountPolicyPage = (level: 'platform' | 'tenant') =>
         </QueryClientProvider>,
     );
 
-// Every query below stays inside the master row. jsdom recomputes the whole style cascade on
-// each getComputedStyle call, and role queries call it for every candidate and its ancestors.
-// A page-wide getByRole over the ~45-60 buttons of the policy page cost 3.6-13 s per lookup
-// (the antd/emotion rules other tests leave in <head> make it grow through the file), so the
-// master flows hit the 30 s test timeout under CI load (ORISO-Admin#1307).
 const masterRow = () => {
     const card = screen.getByTestId('case-handover-card');
     const row = card.querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
     if (!row) throw new Error('Case handover master policy is missing');
-    return row;
+    return within(row);
 };
 
-const currentMasterButton = () =>
-    within(masterRow()).getByRole('button', { name: /Open requirement or recommendation choices/i });
+/** The round on/off button of the master. */
+const currentMasterButton = () => masterRow().getByRole('button', { name: /: (Active|Inactive)/ });
+/** The requirement lock of the master; absent where this level may not set one. */
+const currentMasterLock = () => masterRow().getByRole('button', { name: /Make it (a requirement|adjustable)/ });
 
-const masterOption = (key: string) =>
-    within(masterRow()).getByRole('button', { name: i18n.t(`tenants.permissions.policy.${key}`) });
-
-// Mounting the full policy page (three requests, then one synchronous render of the whole page)
-// blocks the event loop for 0.9-2 s in jsdom on an idle machine: measured, the wait sees one miss,
-// then nothing for ~900 ms, then the row. The default 1 s waitFor budget is below that idle cost,
-// so under CI load it ran out before React committed. Waits that need the page to (re-)render
-// get a bounded budget instead; a missing control still fails well inside the test timeout.
+// The policy page can take several seconds to render under jsdom CI load.
 const PAGE_RENDER = { timeout: 10_000 };
 
 const masterButton = () => waitFor(currentMasterButton, PAGE_RENDER);
+const masterLock = () => waitFor(currentMasterLock, PAGE_RENDER);
 
-// The OFF -> ON -> fresh mount flow renders the whole page three times and re-renders it after
-// two writes. In jsdom the first getComputedStyle after each DOM change recomputes the cascade
-// for the element and all its ancestors against every antd rule in <head> (~840 by this point
-// in the file): measured 1.1-1.3 s for one call on a contended core. The flow therefore took
-// 15-28 s with one shared core, close to the 30 s default; it is long, not stuck.
-const ROUND_TRIP_TIMEOUT = 60_000;
-
+/** One click on the round button; it flips whatever the master currently is. */
 const chooseMaster = async (enabled: boolean) => {
     const user = userEvent.setup();
-    await user.click(await masterButton());
-    await user.click(masterOption(enabled ? 'activationSuggested' : 'deactivationSuggested'));
+    const button = await masterButton();
+    expect(button).toHaveAttribute('aria-pressed', String(!enabled));
+    await user.click(button);
 };
+/** One click on the lock; it flips whatever mode the master currently has. */
+const toggleMasterMode = async () => {
+    const user = userEvent.setup();
+    await user.click(await masterLock());
+};
+const activatedText = (value: boolean) =>
+    `: ${i18n.t(`tenants.permissions.policy.${value ? 'activated' : 'deactivated'}`)}`;
 
 // The real policy containers, card, hooks and fetchData run together at this HTTP seam.
 describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (level) => {
-    it(
-        'keeps mixed individual reason choices through master OFF, ON and a fresh mount',
-        async () => {
-            access.isSuperAdmin = level === 'platform';
-            const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
-            server.store.set('7', mixed);
-            const view = mountPolicyPage(level);
+    it('keeps mixed individual reason choices through master OFF, ON and a fresh mount', async () => {
+        access.isSuperAdmin = level === 'platform';
+        const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
+        server.store.set('7', mixed);
+        const view = mountPolicyPage(level);
 
-            await chooseMaster(false);
-            await waitFor(() => expect(server.master.value).toBe(false));
-            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
-            await chooseMaster(true);
-            await waitFor(() => expect(server.master.value).toBe(true));
-            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
+        await chooseMaster(false);
+        await waitFor(() => expect(server.master.value).toBe(false));
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
+        await chooseMaster(true);
+        await waitFor(() => expect(server.master.value).toBe(true));
+        await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
 
-            expect(server.canonicalWrites).toHaveLength(2);
-            expect(
-                server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
-            ).toEqual([]);
-            expect(server.store.get('7')).toEqual(mixed);
-            view.unmount();
-            mountPolicyPage(level);
-            expect(await masterButton()).toHaveAccessibleName(
-                expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-            );
-            expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
-        },
-        ROUND_TRIP_TIMEOUT,
-    );
+        expect(server.canonicalWrites).toHaveLength(2);
+        expect(
+            server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),
+        ).toEqual([]);
+        expect(server.store.get('7')).toEqual(mixed);
+        view.unmount();
+        mountPolicyPage(level);
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
+        expect(server.store.get('7')?.map(({ enabled }) => enabled)).toEqual([true, false]);
+    }, 60_000);
 
     it('rolls back a failed master write without any reason-policy writes', async () => {
         access.isSuperAdmin = level === 'platform';
@@ -368,10 +355,7 @@ describe.each(['platform', 'tenant'] as const)('%s handover master ownership', (
         await chooseMaster(false);
         await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
         await waitFor(
-            () =>
-                expect(currentMasterButton()).toHaveAccessibleName(
-                    expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-                ),
+            () => expect(currentMasterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true))),
             PAGE_RENDER,
         );
         expect(
@@ -395,7 +379,6 @@ describe('agency handover master HTTP boundary', () => {
                         tenantId={7}
                         policyLevel="agency"
                         permissionPolicies={{ caseHandoverEnabled: { value, mode: 'SUGGESTED', inherited: true } }}
-                        openPolicyMenu="caseHandoverEnabled"
                         onFeaturePolicyChange={onFeaturePolicyChange}
                     />
                 </QueryClientProvider>,
@@ -403,15 +386,10 @@ describe('agency handover master HTTP boundary', () => {
 
             const master = await masterButton();
             expect(master).toBeDisabled();
-            expect(master).toHaveAccessibleName(
-                expect.stringContaining(
-                    i18n.t(`tenants.permissions.policy.${value ? 'activationSuggested' : 'deactivationSuggested'}`),
-                ),
-            );
+            expect(master).toHaveAccessibleName(expect.stringContaining(activatedText(value)));
+            // A Beratungsstelle only sees the parent's suggestion: no lock to turn it into a requirement.
+            expect(masterRow().queryByRole('button', { name: /Make it (a requirement|adjustable)/ })).toBeNull();
             expect(await screen.findByText(/Träger administration sets these rules/i)).toBeVisible();
-            expect(
-                screen.queryByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-            ).toBeNull();
             await userEvent.setup().click(master);
             expect(await clientConsentButton()).toBeDisabled();
             expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
@@ -440,9 +418,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
                 </QueryClientProvider>,
             );
         const alert = await screen.findByTestId('case-handover-card-error');
-        expect(await masterButton()).toHaveAccessibleName(
-            expect.stringContaining(i18n.t('tenants.permissions.policy.activationSuggested')),
-        );
+        expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         if (level === 'agency') {
             expect(await masterButton()).toBeDisabled();
             expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
@@ -458,21 +434,28 @@ describe('independent master while reason HTTP authority is unavailable', () => 
         expect(onFeaturePolicyChange).not.toHaveBeenCalled();
     });
     it.each([
-        { value: true, mode: 'ENFORCED', key: 'activationEnforced' },
-        { value: false, mode: 'ENFORCED', key: 'deactivationEnforced' },
-        { value: true, mode: 'SUGGESTED', key: 'activationSuggested' },
-        { value: false, mode: 'SUGGESTED', key: 'deactivationSuggested' },
+        { value: true, mode: 'ENFORCED' },
+        { value: false, mode: 'ENFORCED' },
+        { value: true, mode: 'SUGGESTED' },
+        { value: false, mode: 'SUGGESTED' },
     ] as const)(
-        'saves canonical $key without reason writes during reason GET failure',
-        async ({ value, mode, key }) => {
+        'saves canonical $value / $mode through the round button and the lock without reason writes during reason GET failure',
+        async ({ value, mode }) => {
             server.reasonGetStatus = 500;
+            // Start from the opposite of both decisions, so reaching the target takes both buttons.
+            server.master = { value: !value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED', inherited: false };
             const mixed = [storedPolicies()[0], { ...storedPolicies()[1], enabled: false }];
             server.store.set('7', mixed);
             mountPolicyPage('tenant');
             await screen.findByTestId('case-handover-card-error');
-            await userEvent.setup().click(await masterButton());
-            await userEvent.setup().click(masterOption(key));
+
+            await chooseMaster(value);
             await waitFor(() => expect(server.canonicalWrites).toHaveLength(1));
+            expect(server.master).toMatchObject({ value, mode: mode === 'ENFORCED' ? 'SUGGESTED' : 'ENFORCED' });
+            await waitFor(() => expect(currentMasterButton()).toBeEnabled(), PAGE_RENDER);
+
+            await toggleMasterMode();
+            await waitFor(() => expect(server.canonicalWrites).toHaveLength(2));
             expect(server.master).toMatchObject({ value, mode });
             expect(
                 server.requests.filter(({ method, url }) => method === 'PUT' && url.includes('/reason-policies')),

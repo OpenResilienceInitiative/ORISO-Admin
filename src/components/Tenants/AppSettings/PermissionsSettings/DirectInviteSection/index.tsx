@@ -1,25 +1,39 @@
+import CallOutlinedIcon from '@mui/icons-material/CallOutlined';
+import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import { Skeleton } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { Card } from '../../../../Card';
-import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
-import { directInviteHelp } from '../help';
+import { PolicyOptionCard } from '../PolicyOptionCard';
 import styles from './styles.module.scss';
 
 /**
  * ORISO-Admin#1242 — "Direkteinladung erlauben": may counsellors hand out direct links, per
- * chat type. Keys and inheritance come from ORISO-TenantService#332 (platform force-allow /
+ * chat type. Redeeming a link opens a normal 1:1 session, so this is a section of the one-on-one
+ * tile, but the switches do not depend on that tile's master switch. Keys and inheritance come from ORISO-TenantService#332 (platform force-allow /
  * force-deny → Träger) and ORISO-AgencyService#347 (Beratungsstelle may only restrict: a Träger
  * "off" wins, an unset centre value follows the Träger). Default on, like every conversation feature.
  */
 export const DIRECT_INVITE_FIELDS = [
-    { field: 'featureDirectInviteChatEnabled', labelKey: 'tenants.permissions.directInvite.chat' },
-    { field: 'featureDirectInviteAudioEnabled', labelKey: 'tenants.permissions.directInvite.audio' },
-    { field: 'featureDirectInviteVideoEnabled', labelKey: 'tenants.permissions.directInvite.video' },
+    {
+        field: 'featureDirectInviteChatEnabled',
+        labelKey: 'tenants.permissions.directInvite.chat',
+        Icon: ChatOutlinedIcon,
+    },
+    {
+        field: 'featureDirectInviteAudioEnabled',
+        labelKey: 'tenants.permissions.directInvite.audio',
+        Icon: CallOutlinedIcon,
+    },
+    {
+        field: 'featureDirectInviteVideoEnabled',
+        labelKey: 'tenants.permissions.directInvite.video',
+        Icon: VideocamOutlinedIcon,
+    },
 ] as const;
 
-export type DirectInviteCardProps = {
+export type DirectInviteSectionProps = {
     restrictedFields: Set<string>;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
@@ -29,12 +43,10 @@ export type DirectInviteCardProps = {
     /** Beratungsstelle page: until the Träger's policies are read, no row is editable. */
     traegerPoliciesStatus?: 'pending' | 'error' | 'success';
     pendingPolicyFields?: ReadonlySet<string>;
-    openPolicyMenu?: string | null;
-    onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
 
-export const DirectInviteCard = ({
+export const DirectInviteSection = ({
     restrictedFields,
     policyLevel = 'tenant',
     permissionPolicies,
@@ -42,10 +54,8 @@ export const DirectInviteCard = ({
     traegerPolicies,
     traegerPoliciesStatus = 'success',
     pendingPolicyFields,
-    openPolicyMenu,
-    onOpenPolicyMenu,
     onPolicyChange,
-}: DirectInviteCardProps) => {
+}: DirectInviteSectionProps) => {
     const { t } = useTranslation();
 
     const isAgency = policyLevel === 'agency';
@@ -87,31 +97,28 @@ export const DirectInviteCard = ({
             );
         }
         return (
-            <>
-                {DIRECT_INVITE_FIELDS.map(({ field, labelKey }) => (
-                    <div key={field} className={styles.setting}>
-                        <PermissionPolicyControl
-                            featureKey={field}
-                            label={t(labelKey)}
-                            level={policyLevel}
-                            policy={policyFor(field)}
-                            open={openPolicyMenu === field}
-                            pending={pendingPolicyFields?.has(field)}
-                            onOpenChange={(open) => onOpenPolicyMenu?.(open ? field : null)}
-                            onChange={(next) => onPolicyChange?.(field, next)}
-                            supportingText={lockedNote(field) ?? undefined}
-                        />
-                    </div>
+            <div className={styles.options}>
+                {DIRECT_INVITE_FIELDS.map(({ field, labelKey, Icon }) => (
+                    <PolicyOptionCard
+                        key={field}
+                        Icon={Icon}
+                        featureKey={field}
+                        label={t(labelKey)}
+                        level={policyLevel}
+                        policy={policyFor(field)}
+                        pending={pendingPolicyFields?.has(field)}
+                        onChange={(next) => onPolicyChange?.(field, next)}
+                        supportingText={lockedNote(field) ?? undefined}
+                    />
                 ))}
-            </>
+            </div>
         );
     };
 
     return (
-        <Card titleKey="tenants.permissions.directInvite.title" dataTestId="direct-invite-card" help={directInviteHelp}>
-            <p className={styles.intro}>{t('tenants.permissions.directInvite.description')}</p>
+        <div data-testid="direct-invite-section">
             {rows()}
             <p className={styles.callsNote}>{t('tenants.permissions.directInvite.callsNote')}</p>
-        </Card>
+        </div>
     );
 };

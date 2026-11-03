@@ -1,26 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
 import type { PolicyValue } from '../../types/permissionPolicy';
 
-const Preview = ({
-    initial,
-    level,
-    initialOpen = false,
-}: {
-    initial: PolicyValue<boolean>;
-    level: 'platform' | 'tenant' | 'agency';
-    initialOpen?: boolean;
-}) => {
+const Preview = ({ initial, level }: { initial: PolicyValue<boolean>; level: 'platform' | 'tenant' | 'agency' }) => {
     const [policy, setPolicy] = useState(initial);
-    const [open, setOpen] = useState(initialOpen);
     return (
         <div
             style={{
                 width: 360,
-                minHeight: 180,
+                minHeight: 120,
                 padding: 24,
                 background: 'var(--m3-surface-container-high, #eae7e8)',
                 borderRadius: 28,
@@ -31,21 +22,17 @@ const Preview = ({
                 label="Supervision"
                 level={level}
                 policy={policy}
-                open={open}
-                onOpenChange={setOpen}
                 onChange={setPolicy}
             />
         </div>
     );
 };
 
-// Default light palette: --m3-primary #a5000a, --m3-primary-container #ffe2de,
-// --m3-secondary #4c555f, --m3-on-secondary-container #e7effc. A Träger theme
+// Default light palette: --m3-primary #a5000a, --m3-secondary #4c555f. A Träger theme
 // re-seeds these; the fixed red #cc1e1c must never appear again (#992).
 const PRIMARY = 'rgb(165, 0, 10)';
-const ON_PRIMARY = 'rgb(255, 226, 222)';
 const NEUTRAL = 'rgb(76, 85, 95)';
-const ON_NEUTRAL = 'rgb(231, 239, 252)';
+const WHITE = 'rgb(255, 255, 255)';
 const HARD_CODED_RED = 'rgb(204, 30, 28)';
 
 const expectTone = (element: HTMLElement, backgroundColor: string, color: string) => {
@@ -57,30 +44,24 @@ const expectTone = (element: HTMLElement, backgroundColor: string, color: string
     expect(computed.outlineStyle).toBe('none');
 };
 
-/**
- * Tone follows the action, never the current value: every "activate" pill is
- * primary, every "deactivate" pill and "more information" are neutral. The
- * closed FAB alone still shows the current value.
- */
-const expectActionTones = async (canvasElement: HTMLElement, currentValue: boolean) => {
-    const canvas = within(canvasElement);
-    // The menu focuses its first pill on open; the focus state layer is a
-    // color-mix on top of the tone, so drop focus before reading the tone.
-    (document.activeElement as HTMLElement | null)?.blur();
-    const activate = canvas.getAllByRole('button', { name: /^(?:On|An)\b/i });
-    const deactivate = canvas.getAllByRole('button', { name: /^(?:Off|Aus)\b/i });
-    const info = canvas.getByRole('button', { name: /More information|Weitere Informationen/i });
-    const closeAction = canvas.getByRole('button', {
-        name: /Close requirement or recommendation choices|Auswahl „Vorgabe oder Empfehlung“ schließen/i,
+/** The round on/off button; its name is "<label>: <state>" plus " – <action>" while editable. */
+const roundButton = (canvas: ReturnType<typeof within>) =>
+    canvas.getByRole('button', { name: /^Supervision: (Active|Inactive|Aktiviert|Deaktiviert)/ });
+/** The requirement lock; only platform and Träger have one. */
+const lockButton = (canvas: ReturnType<typeof within>) =>
+    canvas.queryByRole('button', {
+        name: /(Make it a requirement|Make it adjustable|Als Vorgabe festlegen|Anpassbar machen)$/,
     });
 
-    await expect(activate.length).toBeGreaterThan(0);
-    await expect(deactivate.length).toBe(activate.length);
-    activate.forEach((button) => expectTone(button, PRIMARY, ON_PRIMARY));
-    deactivate.forEach((button) => expectTone(button, NEUTRAL, ON_NEUTRAL));
-    expectTone(info, NEUTRAL, ON_NEUTRAL);
-    expectTone(closeAction, currentValue ? PRIMARY : NEUTRAL, currentValue ? ON_PRIMARY : ON_NEUTRAL);
-    await expect(window.getComputedStyle(activate[0]).boxShadow).toBe('none');
+/**
+ * Tone follows the current value: an active round button is primary, an inactive one is neutral,
+ * never the old fixed red (#992). The lock carries no filled background of its own.
+ */
+const expectValueTone = (canvasElement: HTMLElement, active: boolean) => {
+    const round = roundButton(within(canvasElement));
+    // Drop focus first: the focus state layer is a color-mix on top of the tone.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expectTone(round, active ? PRIMARY : NEUTRAL, WHITE);
 };
 
 const meta = {
@@ -91,8 +72,6 @@ const meta = {
         label: 'Supervision',
         level: 'tenant',
         policy: { value: true, mode: 'SUGGESTED' },
-        open: false,
-        onOpenChange: () => undefined,
         onChange: () => undefined,
     },
 } satisfies Meta<typeof PermissionPolicyControl>;
@@ -104,7 +83,7 @@ export const SuggestedActive: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const title = canvas.getByText('Supervision');
-        const status = canvas.getByText(/Recommendation|Empfehlung/i);
+        const status = canvas.getByText(/Adjustable|Anpassbar/i);
         await expect(title.parentElement).toContainElement(status);
         await expect(canvas.getByTestId('CheckIcon')).toBeInTheDocument();
     },
@@ -114,61 +93,93 @@ export const EnforcedInactive: Story = {
 };
 export const InheritedReadOnly: Story = {
     render: () => <Preview initial={{ value: true, mode: 'ENFORCED', inherited: true }} level="tenant" />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // A requirement from above: one disabled button that only states the value, no lock, no dialog.
+        await expect(roundButton(canvas)).toBeDisabled();
+        await expect(lockButton(canvas)).toBeNull();
+        await expect(canvas.getAllByRole('button')).toHaveLength(1);
+    },
 };
 export const AgencyChoices: Story = {
     render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="agency" />,
 };
 
-/**
- * Figma 1789:11645 — Träger view, feature ON. Before #992 the whole menu was
- * red; now only "activate" is primary, "deactivate" is neutral.
- */
-export const TenantEnabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="tenant" initialOpen />,
+/** Figma 1789:11645 — Träger view, feature ON. The round button switches it off and back on. */
+export const TenantEnabled: Story = {
+    render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="tenant" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, true);
+        expectValueTone(canvasElement, true);
+        const canvas = within(canvasElement);
+        await expect(roundButton(canvas)).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.click(roundButton(canvas));
+        await expect(roundButton(canvas)).toHaveAttribute('aria-pressed', 'false');
+        (document.activeElement as HTMLElement | null)?.blur();
+        expectValueTone(canvasElement, false);
     },
 };
 
-/**
- * Figma 1793:15324 — Träger view, feature OFF. Before #992 the whole menu was
- * grey; "activate" is now primary even though the feature is off.
- */
-export const TenantDisabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: false, mode: 'SUGGESTED' }} level="tenant" initialOpen />,
+/** Figma 1793:15324 — Träger view, feature OFF. Switching it on makes the button primary. */
+export const TenantDisabled: Story = {
+    render: () => <Preview initial={{ value: false, mode: 'SUGGESTED' }} level="tenant" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, false);
+        expectValueTone(canvasElement, false);
+        const canvas = within(canvasElement);
+        await userEvent.click(roundButton(canvas));
+        await expect(roundButton(canvas)).toHaveAttribute('aria-pressed', 'true');
+        (document.activeElement as HTMLElement | null)?.blur();
+        expectValueTone(canvasElement, true);
     },
 };
 
-/** Platform view, feature ON — identical tones to the Träger view. */
-export const PlatformEnabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: true, mode: 'ENFORCED' }} level="platform" initialOpen />,
+/** Träger view: the lock turns an adjustable setting into a requirement and back, without touching the value. */
+export const TenantLockToggle: Story = {
+    render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="tenant" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, true);
+        const canvas = within(canvasElement);
+        await expect(lockButton(canvas)).toHaveAttribute('aria-pressed', 'false');
+        await userEvent.click(lockButton(canvas) as HTMLElement);
+        await expect(lockButton(canvas)).toHaveAttribute('aria-pressed', 'true');
+        await expect(canvas.getByText(/Requirement|Vorgabe/)).toBeInTheDocument();
+        await expect(roundButton(canvas)).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.click(lockButton(canvas) as HTMLElement);
+        await expect(lockButton(canvas)).toHaveAttribute('aria-pressed', 'false');
     },
 };
 
-/** Platform view, feature OFF (enforced) — "activate" stays primary. */
-export const PlatformDisabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: false, mode: 'ENFORCED' }} level="platform" initialOpen />,
+/** Platform view, feature ON, requirement — same tones as the Träger view. */
+export const PlatformEnabledRequirement: Story = {
+    render: () => <Preview initial={{ value: true, mode: 'ENFORCED' }} level="platform" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, false);
+        expectValueTone(canvasElement, true);
+        await expect(lockButton(within(canvasElement))).toHaveAttribute('aria-pressed', 'true');
     },
 };
 
-/** Agency view offers only the two adjustable actions; tones are the same. */
-export const AgencyEnabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="agency" initialOpen />,
+/** Platform view, feature OFF (requirement) — the round button stays neutral. */
+export const PlatformDisabledRequirement: Story = {
+    render: () => <Preview initial={{ value: false, mode: 'ENFORCED' }} level="platform" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, true);
+        expectValueTone(canvasElement, false);
+        await expect(lockButton(within(canvasElement))).toHaveAttribute('aria-pressed', 'true');
+    },
+};
+
+/** Agency view only switches: no lock exists, and the value tone is the same. */
+export const AgencyEnabled: Story = {
+    render: () => <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="agency" />,
+    play: async ({ canvasElement }) => {
+        expectValueTone(canvasElement, true);
+        await expect(lockButton(within(canvasElement))).toBeNull();
+        await expect(within(canvasElement).getAllByRole('button')).toHaveLength(1);
     },
 };
 
 /** Agency view, feature OFF. */
-export const AgencyDisabledMenuOpen: Story = {
-    render: () => <Preview initial={{ value: false, mode: 'SUGGESTED' }} level="agency" initialOpen />,
+export const AgencyDisabled: Story = {
+    render: () => <Preview initial={{ value: false, mode: 'SUGGESTED' }} level="agency" />,
     play: async ({ canvasElement }) => {
-        await expectActionTones(canvasElement, false);
+        expectValueTone(canvasElement, false);
+        await expect(lockButton(within(canvasElement))).toBeNull();
     },
 };

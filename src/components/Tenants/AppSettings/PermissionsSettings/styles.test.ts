@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const permissionsStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
+const caseHandoverCardView = readFileSync(resolve(__dirname, './CaseHandoverCard/CaseHandoverCardView.tsx'), 'utf8');
 
 describe('PermissionsSettings responsive card contract', () => {
     it('lets smartphone cards grow with their content instead of using internal card scrolling', () => {
@@ -14,12 +15,10 @@ describe('PermissionsSettings responsive card contract', () => {
         expect(permissionsStyles).toMatch(/@media screen and \(max-width:\s*767px\)[\s\S]*overflow:\s*visible;/);
     });
 
-    it('wraps the description around a neutral 16px leading info icon', () => {
-        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?width:\s*16px;/);
-        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?height:\s*16px;/);
-        expect(permissionsStyles).toMatch(/\.cardDescriptionInfo\s*\{[\s\S]*?float:\s*left;/);
-        expect(permissionsStyles).toMatch(
-            /\.cardDescriptionInfo\s*\{[\s\S]*?color:\s*var\(--admin-form-muted-text,\s*var\(--m3-on-surface-variant,\s*#444748\)\);/,
-        );
+    it('keeps a rule for every shared class the case-handover card uses', () => {
+        const classNames = [...caseHandoverCardView.matchAll(/cardStyles\.(\w+)/g)].map(([, name]) => name);
+
+        expect(classNames).toContain('toggleRow');
+        classNames.forEach((name) => expect(permissionsStyles).toMatch(new RegExp(`\\.${name}\\s*{`)));
     });
 });

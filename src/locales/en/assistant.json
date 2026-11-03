@@ -32,9 +32,7 @@
     "settings.assistant.inherit": "Use the setting from the level above",
     "settings.assistant.inheritedIcon": "Inherited icon",
     "settings.assistant.loadError": "The settings could not be loaded. Please try again.",
-    "tenants.permissions.asker.collection.title": "Where an email address may be left",
     "tenants.permissions.asker.collection.agencyCounselling": "Email address in 1:1 counselling",
-    "tenants.permissions.asker.collection.liveChat": "Email address in live chat",
     "tenants.permissions.asker.collection.selfHelp": "Email address in self-help groups",
     "tenants.permissions.asker.collection.masterOff": "First allow email addresses for the account. These choices are kept.",
     "tenants.permissions.asker.collection.description": "These controls allow collection. They do not make an address required or change notification delivery."

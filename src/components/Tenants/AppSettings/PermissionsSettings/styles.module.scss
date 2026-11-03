@@ -133,31 +133,6 @@
     color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
 }
 
-.cardDescription {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 500;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    margin: 18px 0 28px;
-    min-height: 124px;
-    text-align: left;
-    letter-spacing: 0.15px;
-
-    strong {
-        color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-        font-weight: 700;
-    }
-}
-
-.cardDescriptionInfo {
-    width: 16px;
-    height: 16px;
-    margin: 4px 8px 2px 0;
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    fill: currentcolor;
-    float: left;
-}
-
 .cardDescriptionSecondary {
     display: block;
     margin-top: 14px;
@@ -184,11 +159,29 @@
     text-align: center;
 }
 
+.tileBody {
+    display: contents;
+}
+
+// Live-chat tile: switch and links first, so the links never end up below every other setting.
+.tileColumns {
+    display: grid;
+    align-items: start;
+    gap: 16px 40px;
+    grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr);
+}
+
+@container (max-width: 759px) {
+    .tileColumns {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .togglesList {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: 24px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    margin-bottom: 8px;
 }
 
 .toggleRow {
@@ -243,10 +236,4 @@
         padding-left: 24px;
         scrollbar-gutter: auto;
     }
-}
-
-.togglesList.togglesListWide {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    column-gap: 32px;
 }

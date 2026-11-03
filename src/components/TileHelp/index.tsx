@@ -36,7 +36,8 @@ const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; 
     const topic = trail[trail.length - 1];
     const slide = topic.slides[index];
     const isFirst = index === 0;
-    const isLast = index === topic.slides.length - 1;
+    const isLast = index >= topic.slides.length - 1;
+    const hasSteps = topic.slides.length > 1;
 
     const openTopic = (next: TileHelpTopic[]) => {
         setTrail(next);
@@ -56,17 +57,21 @@ const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; 
             onClose={onClose}
             footer={
                 <div className={styles.controls}>
-                    <M3Button
-                        variant="text"
-                        icon={<ArrowBackIcon />}
-                        disabled={isFirst}
-                        onClick={() => setIndex(index - 1)}
-                    >
-                        {t('tileHelp.previous')}
-                    </M3Button>
-                    <span className={styles.progress} aria-live="polite">
-                        {t('tileHelp.progress', { current: index + 1, total: topic.slides.length })}
-                    </span>
+                    {hasSteps && (
+                        <>
+                            <M3Button
+                                variant="text"
+                                icon={<ArrowBackIcon />}
+                                disabled={isFirst}
+                                onClick={() => setIndex(index - 1)}
+                            >
+                                {t('tileHelp.previous')}
+                            </M3Button>
+                            <span className={styles.progress} aria-live="polite">
+                                {t('tileHelp.progress', { current: index + 1, total: topic.slides.length })}
+                            </span>
+                        </>
+                    )}
                     {isLast ? (
                         <M3Button variant="filled" onClick={onClose}>
                             {t('tileHelp.done')}
@@ -81,11 +86,11 @@ const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; 
         >
             {/* The arrow keys move through the slides while the focus is anywhere in here. */}
             {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-            <div className={styles.slide} onKeyDown={handleKeyDown} data-tile-help-slide={slide.id}>
-                {slide.visual && <div className={styles.visual}>{slide.visual}</div>}
-                <h3 className={styles.slideTitle}>{t(slide.titleKey)}</h3>
-                <p className={styles.slideBody}>{t(slide.bodyKey)}</p>
-                {slide.example && (
+            <div className={styles.slide} onKeyDown={handleKeyDown} data-tile-help-slide={slide?.id}>
+                {slide?.visual && <div className={styles.visual}>{slide.visual}</div>}
+                {slide && <h3 className={styles.slideTitle}>{t(slide.titleKey)}</h3>}
+                {slide && <p className={styles.slideBody}>{t(slide.bodyKey)}</p>}
+                {slide?.example && (
                     <figure className={styles.example}>
                         <figcaption>{t('tileHelp.example')}</figcaption>
                         <div inert>{slide.example}</div>

@@ -51,7 +51,10 @@ const fetchStub = vi.fn(async (request: Request) => {
             server.puts.push(body);
             store(body);
         }
-        return answer({ tenantId: 7, policies: {} });
+        return answer({
+            tenantId: 7,
+            policies: { featureCallsEnabled: { value: true, mode: 'SUGGESTED', inherited: true } },
+        });
     }
     if (pathname.endsWith('/tenantadmin/controls')) {
         if (isPut) {
@@ -130,9 +133,11 @@ describe('Träger admin', () => {
         await waitFor(() =>
             expect(server.puts.at(-1)).toMatchObject({
                 tenantId: 7,
+                policies: {},
                 internalGroupChat: { recipientScope: { value: 'TENANT', mode: 'SUGGESTED' } },
             }),
         );
+        expect(server.puts.at(-1)?.policies).toEqual({});
         expect(server.puts.at(-1)?.internalGroupChat?.recipientScope).not.toHaveProperty('inherited');
         await waitFor(() =>
             expect(notification.success).toHaveBeenCalledWith(
@@ -195,14 +200,7 @@ describe('Träger admin', () => {
             expect(found).not.toBeNull();
             return found as HTMLElement;
         });
-        await user.click(
-            within(emailSwitch).getByRole('button', {
-                name: new RegExp(i18n.t('tenants.permissions.policy.openMenu')),
-            }),
-        );
-        await user.click(
-            await screen.findByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-        );
+        await user.click(within(emailSwitch).getByRole('button', { name: /: (Active|Inactive) – / }));
 
         await waitFor(() => expect(server.puts).toHaveLength(1));
         // An echo would turn the inherited value into a Träger override that stops following the platform.
@@ -267,14 +265,7 @@ describe('platform admin', () => {
             expect(found).not.toBeNull();
             return found as HTMLElement;
         });
-        await user.click(
-            within(emailSwitch).getByRole('button', {
-                name: new RegExp(i18n.t('tenants.permissions.policy.openMenu')),
-            }),
-        );
-        await user.click(
-            await screen.findByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-        );
+        await user.click(within(emailSwitch).getByRole('button', { name: /: (Active|Inactive) – / }));
 
         await waitFor(() => expect(server.puts).toHaveLength(1));
         expect(server.puts[0].internalGroupChat).toEqual({ recipientScope: { value: 'TENANT', mode: 'ENFORCED' } });
@@ -291,14 +282,7 @@ describe('platform admin', () => {
             expect(found).not.toBeNull();
             return found as HTMLElement;
         });
-        await user.click(
-            within(emailSwitch).getByRole('button', {
-                name: new RegExp(i18n.t('tenants.permissions.policy.openMenu')),
-            }),
-        );
-        await user.click(
-            await screen.findByRole('button', { name: i18n.t('tenants.permissions.policy.deactivationSuggested') }),
-        );
+        await user.click(within(emailSwitch).getByRole('button', { name: /: (Active|Inactive) – / }));
 
         await waitFor(() => expect(server.puts).toHaveLength(1));
         expect(server.puts[0]).not.toHaveProperty('internalGroupChat');

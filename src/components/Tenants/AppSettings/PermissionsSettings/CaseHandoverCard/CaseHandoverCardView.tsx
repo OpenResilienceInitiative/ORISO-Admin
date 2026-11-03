@@ -20,7 +20,7 @@ import {
     resolvedClientConsentPolicy,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
-import { caseHandoverHelp } from '../help';
+import { CASE_HANDOVER_HELP } from '../tileHelpTopics';
 import styles from './styles.module.scss';
 
 /*
@@ -135,11 +135,10 @@ export const CaseHandoverCardView = ({
     return (
         <Card
             dataTestId="case-handover-card"
-            help={caseHandoverHelp}
             headerIcon={<CaseHandoverIcon width={40} height={40} />}
             titleKey="tenants.permissions.card.caseHandover.title"
+            help={CASE_HANDOVER_HELP}
         >
-            <p className={styles.helperText}>{t('tenants.permissions.card.caseHandover.description')}</p>
             {masterPolicy && (Boolean(canonicalMaster) || !isLoading || noTenant) && (
                 <div className={styles.featureRow}>
                     <PermissionPolicyControl
@@ -147,10 +146,8 @@ export const CaseHandoverCardView = ({
                         label={t('tenants.permissions.card.caseHandover.enabled')}
                         level={policyLevel}
                         policy={masterPolicy}
-                        open={canEditMaster && currentOpenPolicyMenu === 'caseHandoverEnabled'}
                         pending={pendingPolicyFields?.has('caseHandoverEnabled')}
                         disabled={isSaving || !canEditMaster}
-                        onOpenChange={(open) => canEditMaster && setOpenPolicyMenu(open ? 'caseHandoverEnabled' : null)}
                         onChange={(next) => {
                             if (!canEditMaster) return;
                             onFeaturePolicyChange?.('caseHandoverEnabled', next);

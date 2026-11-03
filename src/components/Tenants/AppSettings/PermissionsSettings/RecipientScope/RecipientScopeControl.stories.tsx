@@ -9,7 +9,7 @@ import { RecipientScopeControl } from './RecipientScopeControl';
 /**
  * ORISO-Admin#1215 — "Who can be picked" on the Internal group chats tile of Settings →
  * Functionality Access. Three scopes with one plain sentence each; the platform admin also chooses
- * Recommendation or Requirement (the same switch as elsewhere on the permissions pages); a Träger
+ * Adjustable or Requirement (the same switch as elsewhere on the permissions pages); a Träger
  * admin sees a requirement locked. Saving is explicit so a failed save can keep the edit.
  *
  * The stories run the presentational control inside a small harness that behaves like the server
@@ -128,13 +128,13 @@ export const OptionCentreOnly: Story = {
     },
 };
 
-/** The platform admin makes the scope binding: the Requirement/Recommendation switch. */
+/** The platform admin makes the scope binding: the Requirement/Adjustable switch. */
 export const PlatformRequirement: Story = {
     args: { initial: { value: 'TENANT', mode: 'ENFORCED', inherited: false } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getByRole('button', { name: 'Vorgabe' })).toHaveAttribute('aria-pressed', 'true');
-        await expect(canvas.getByRole('button', { name: 'Empfehlung' })).toHaveAttribute('aria-pressed', 'false');
+        await expect(canvas.getByRole('button', { name: 'Anpassbar' })).toHaveAttribute('aria-pressed', 'false');
         await expect(canvas.getByText('Vorgabe: Kein Träger kann sie ändern.')).toBeVisible();
     },
 };
@@ -154,7 +154,7 @@ export const PlatformSavesChoice: Story = {
 };
 
 /** Träger admin, platform only recommends: the value is inherited, and can be changed. */
-export const TraegerInheritedRecommendation: Story = {
+export const TraegerInheritedAdjustable: Story = {
     args: { level: 'tenant', initial: { value: 'TENANT', mode: 'SUGGESTED', inherited: true } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
@@ -209,7 +209,7 @@ export const Saving: Story = {
         await expect(canvas.getByRole('button', { name: 'Speichern' })).toHaveAttribute('aria-busy', 'true');
         canvas.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
         await expect(canvas.getByRole('button', { name: 'Vorgabe' })).toBeDisabled();
-        await expect(canvas.getByRole('button', { name: 'Empfehlung' })).toBeDisabled();
+        await expect(canvas.getByRole('button', { name: 'Anpassbar' })).toBeDisabled();
         await expect(option(canvas, /Trägerweit/)).toBeChecked();
     },
 };

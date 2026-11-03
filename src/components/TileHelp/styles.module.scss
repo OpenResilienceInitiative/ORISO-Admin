@@ -11,9 +11,12 @@
 /* Tall enough for the longest slide, so Next stays under the pointer while clicking through. */
 .slide {
     display: flex;
-    min-height: min(60vh, 500px);
     flex-direction: column;
     gap: 12px;
+
+    &:has(.visual) {
+        min-height: min(60vh, 500px);
+    }
 }
 
 .visual {
