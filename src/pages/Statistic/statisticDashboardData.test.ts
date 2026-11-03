@@ -111,8 +111,8 @@ describe('statisticDashboardData', () => {
 
     it('shows no count for a hidden row, whether the backend sends 0 (new) or the real number (old)', () => {
         const hiddenWithZero = agencyTarget({ agencyId: 12, counselorCount: 0, suppressed: true, metrics: null });
-        // enough counsellors, hidden because of a small neighbour (UserService#1567)
-        const hiddenBigRow = agencyTarget({ agencyId: 13, counselorCount: 0, suppressed: true, metrics: null });
+        // an old backend sends the real count of a row that is hidden because of a small neighbour
+        const hiddenBigRow = agencyTarget({ agencyId: 13, counselorCount: 12, suppressed: true, metrics: null });
 
         const data = buildStatisticData(tenantScopeResponse([hiddenWithZero, hiddenBigRow]), emptyLookups, now);
 
