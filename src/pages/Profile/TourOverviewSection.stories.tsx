@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
-import { inTheRaster, withRoles } from './profileStory';
+import { inTheRaster, withRoles } from './profileStory.matrix';
 
 const meta = {
     title: 'Pages/Profile/TourOverviewSection',

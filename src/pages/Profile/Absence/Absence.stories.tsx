@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { ConfigProvider } from 'antd';
 import { buildAdminAntdTheme } from '../../../theme/antdM3Theme';
-import { inTheRaster } from '../profileStory';
+import { inTheRaster } from '../profileStory.matrix';
 import { Absence } from './index';
 
 const meta = {

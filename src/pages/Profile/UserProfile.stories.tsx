@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, waitFor } from 'storybook/test';
 import { profileUserDataHandlers } from '../../test/profileUserData';
-import { withRoles } from './profileStory';
+import { withRoles } from './profileStory.matrix';
 import { UserProfile } from './UserProfile';
 
 /**

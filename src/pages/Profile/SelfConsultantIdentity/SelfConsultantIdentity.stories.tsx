@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { CardGrid } from '../../../components/CardGrid';
 import { profileUserDataHandlers } from '../../../test/profileUserData';
-import { withRoles } from '../profileStory';
+import { withRoles } from '../profileStory.matrix';
 import { SelfConsultantIdentity } from './index';
 
 const meta = {

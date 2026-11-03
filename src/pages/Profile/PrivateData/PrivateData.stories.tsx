@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { profileUserDataHandlers } from '../../../test/profileUserData';
-import { inTheRaster, withRoles } from '../profileStory';
+import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { PrivateData } from './index';
 
 const meta = {
