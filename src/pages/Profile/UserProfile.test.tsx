@@ -23,7 +23,7 @@ vi.mock('./Documentation', () => ({ Documentation: () => <div>tile-documentation
 vi.mock('../../components/productTour/TourOverviewSection', () => ({
     TourOverviewSection: () => <div>tile-tour</div>,
 }));
-// The real tile brings its own raster cell, as the settings cards do not need to know about the grid.
+// Only this tile knows about the grid: it can render nothing, so it brings its own raster cell.
 vi.mock('./SelfConsultantIdentity', async () => {
     const { CardGrid } = await import('../../components/CardGrid');
     return {
