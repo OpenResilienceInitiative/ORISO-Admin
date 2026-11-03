@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
 import styles from './styles.module.scss';
+import type { TileHelpTopic } from '../TileHelp';
 import { Card, CardVariant } from '../Card';
+import { TileNote } from '../TileFill';
 import { EditButton } from '../EditButton';
 
 interface CardEditableProps {
@@ -37,6 +39,13 @@ interface CardEditableProps {
     /** User changes or an explicit confirmed discard/reset. */
     onValuesChange?: () => void;
     tooltip?: string;
+    help?: TileHelpTopic;
+    /** The picture for the free space of a tile; without it the first slide of `help` is used. */
+    picture?: React.ReactNode;
+    /** Dialog variant: as tall as the content, for a wide tile that would otherwise show empty space. */
+    autoHeight?: boolean;
+    /** A short note with an icon, pinned to the bottom of the tile. */
+    note?: { icon: React.ReactNode; text: React.ReactNode };
     allowUnsavedChanges?: boolean;
     editButton?: React.ReactElement<any> | number | string;
     editButtonPlacement?: 'header' | 'footer';
@@ -64,6 +73,10 @@ export const CardEditable = ({
     onSave,
     formProp,
     tooltip,
+    help,
+    picture,
+    autoHeight,
+    note,
     fullHeight,
     editButton,
     editButtonPlacement,
@@ -139,6 +152,9 @@ export const CardEditable = ({
             subTitle={subTitle}
             subTitleKey={subTitleKey}
             tooltip={tooltip}
+            help={help}
+            picture={picture}
+            autoHeight={autoHeight}
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
@@ -162,11 +178,12 @@ export const CardEditable = ({
                 onFinish={onFormSubmit}
                 disabled={!editing}
                 initialValues={initialValues}
-                className={classNames({ [styles.dialogForm]: variant === 'dialog' })}
+                className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
             >
                 {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
             </Form>
 
+            {note && <TileNote icon={note.icon}>{note.text}</TileNote>}
             {canStartEditing && finalEditButtonPlacement === 'footer' && (
                 <div className={footerActionClassName}>
                     <EditButton icon={editButton} labelKey={editLabelKey} onClick={startEditing} />

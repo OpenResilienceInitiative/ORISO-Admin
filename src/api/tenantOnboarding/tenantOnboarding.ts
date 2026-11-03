@@ -26,6 +26,7 @@ import { publicAccountInvitesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 import { AccountOperationActions } from '../../utils/accountOperationIntent';
 import { TwoFactorCodeInvalidError } from './TwoFactorCodeInvalidError';
+import { AccountSetupPasswordError, AccountSetupPasswordRejection } from './AccountSetupPasswordError';
 
 /**
  * Why an invite link cannot (or can no longer) be used. Mirrors the backend's
@@ -69,6 +70,8 @@ export class InviteLinkError extends Error {
 }
 
 export { TwoFactorCodeInvalidError };
+export { AccountSetupPasswordError };
+export type { AccountSetupPasswordRejection };
 
 /**
  * Why `dpaContent` came back empty. The resolve endpoint cannot show the
@@ -232,6 +235,9 @@ export interface TenantAdminOnboardingClient {
 }
 
 /** Status → link-error mapping of the public onboarding endpoints (U3/U6). */
+// ExistingAccountSetupService: BadRequestException("Choose a password different from the initial password").
+const UNCHANGED_PASSWORD_MESSAGE = /different from the initial password/i;
+
 const LINK_ERROR_BY_STATUS: Record<number, InviteLinkErrorReason> = {
     404: 'INVALID',
     409: 'CONSUMED',
@@ -332,7 +338,19 @@ export const completeExistingAccountSetup = async (inviteToken: string, password
             throw new Error('ACCOUNT_SETUP_INCOMPLETE');
         }
     } catch (error) {
-        throw await toOnboardingError(error);
+        const mapped = await toOnboardingError(error);
+        if (error instanceof Response && error.status === 400 && !(mapped instanceof InviteLinkError)) {
+            let message: unknown;
+            try {
+                message = (await error.clone().json())?.message;
+            } catch {
+                // No JSON error body — still a refusal of this password, not a fault.
+            }
+            throw new AccountSetupPasswordError(
+                typeof message === 'string' && UNCHANGED_PASSWORD_MESSAGE.test(message) ? 'UNCHANGED' : 'REJECTED',
+            );
+        }
+        throw mapped;
     }
 };
 

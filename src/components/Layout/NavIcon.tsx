@@ -105,6 +105,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
         case routePathNames.logs:
         case routePathNames.caseHandoverLogs:
         case routePathNames.inactiveAccountAuditLogs:
+        case routePathNames.deletionAuditLogs:
             return selectIcon(iconState, {
                 active: <LogsActiveIcon />,
                 hover: <LogsHoverIcon />,
@@ -118,7 +119,6 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
             });
         case routePathNames.linksTenants:
         case routePathNames.linksCounsellor:
-        case routePathNames.linksExternalInbounds:
             return selectIcon(iconState, {
                 active: <LinksActiveIcon />,
                 hover: <LinksHoverIcon />,

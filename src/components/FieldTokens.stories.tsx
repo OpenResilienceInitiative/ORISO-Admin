@@ -1,7 +1,8 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ConfigProvider, Input, InputNumber, Select } from 'antd';
+import { ConfigProvider, Input, InputNumber } from 'antd';
 
+import { M3Select } from './M3Select';
 import { buildAdminAntdTheme } from '../theme/antdM3Theme';
 
 /**
@@ -91,13 +92,13 @@ export const FieldAnatomy: StoryObj = {
             </Row>
             <Row title="Select">
                 <Cell label="Default">
-                    <Select placeholder="Thema wählen…" options={selectOptions} style={{ width: '100%' }} />
+                    <M3Select placeholder="Thema wählen…" options={selectOptions} style={{ width: '100%' }} />
                 </Cell>
                 <Cell label="Filled">
-                    <Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
+                    <M3Select defaultValue="illness" options={selectOptions} style={{ width: '100%' }} />
                 </Cell>
                 <Cell label="Disabled">
-                    <Select disabled defaultValue="advice" options={selectOptions} style={{ width: '100%' }} />
+                    <M3Select disabled defaultValue="advice" options={selectOptions} style={{ width: '100%' }} />
                 </Cell>
             </Row>
             <Row title="InputNumber">
@@ -141,7 +142,7 @@ export const TonalSelection: StoryObj = {
         <Workspace>
             <Row title="Select — open, with tonal selected item">
                 <div style={{ width: 260 }}>
-                    <Select
+                    <M3Select
                         open
                         defaultValue="advice"
                         options={selectOptions}

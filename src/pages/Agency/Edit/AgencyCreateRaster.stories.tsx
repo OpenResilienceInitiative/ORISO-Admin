@@ -11,7 +11,7 @@ import { AgencySettings } from './components/AgencySettings';
 /**
  * #620: the agency create flow composes its three cards in the responsive
  * CardGrid (shared row width, wrap below the floor) instead of the fixed
- * 392px CardDeck. This story renders the real create composition so the
+ * 392px card row. This story renders the real create composition so the
  * raster can be reviewed at desktop/tablet/mobile without a backend.
  */
 const topics = [

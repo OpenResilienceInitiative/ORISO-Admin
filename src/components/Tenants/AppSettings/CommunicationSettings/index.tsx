@@ -1,3 +1,5 @@
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
+import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { FormSwitchField } from '../../../FormSwitchField';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
@@ -5,6 +7,7 @@ import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminData
 import styles from './styles.module.scss';
 
 export const CommunicationSettings = ({ tenantId }: { tenantId: string }) => {
+    const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id: tenantId });
     const { mutate } = useTenantAdminDataMutation({
         id: tenantId,
@@ -17,6 +20,10 @@ export const CommunicationSettings = ({ tenantId }: { tenantId: string }) => {
             initialValues={{ ...data }}
             titleKey="tenants.appSettings.communications.title"
             onSave={mutate}
+            variant="dialog"
+            editButtonPlacement="footer"
+            headerIcon={<VideocamOutlinedIcon />}
+            note={{ icon: <VideocamOutlinedIcon />, text: t('tileHelp.communications.essence') }}
         >
             <div className={styles.checkGroup}>
                 <FormSwitchField

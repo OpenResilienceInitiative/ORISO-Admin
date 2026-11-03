@@ -31,6 +31,7 @@ import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/use
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
 import { otherIdentityFromRow } from '../List/components/IdentityRemovalNotice';
+import { DeletionWindowModal, type DeletionWindowMode } from '../List/components/DeletionWindow';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
 import { mapSorterToApiField } from './useUserTableColumns';
 import { TenantTable } from './TenantTable';
@@ -75,6 +76,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const [search, setSearch] = useState('');
     const [deleteUser, setDeleteUser] = useState<CounselorData | null>(null);
+    const [deletionWindow, setDeletionWindow] = useState<{ mode: DeletionWindowMode; id: string } | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
 
@@ -192,6 +194,15 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         },
         [isTenantAdmins, isPlatformAdmins],
     );
+
+    // Ending a running deletion is a consultant-list action; agency admins are a different record.
+    const canEndDeletion = isConsultants && canEditOrDelete;
+    const onCancelDeletion = useCallback((record: CounselorData) => {
+        setDeletionWindow({ mode: 'cancel', id: record.id });
+    }, []);
+    const onPauseDeletion = useCallback((record: CounselorData) => {
+        setDeletionWindow({ mode: 'pause', id: record.id });
+    }, []);
 
     const onEditTenant = useCallback(
         (record: TenantData) => {
@@ -413,6 +424,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     onSortChange={onUserSortChange}
                     onEdit={onEditUser}
                     onDelete={onDeleteUser}
+                    onCancelDeletion={canEndDeletion ? onCancelDeletion : undefined}
+                    onPauseDeletion={canEndDeletion ? onPauseDeletion : undefined}
                     page={tableState.current}
                     pageSize={tableState.pageSize}
                     total={responseList?.total ?? 0}
@@ -453,6 +466,13 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     hasOtherIdentity={otherIdentityFromRow(deleteUser)}
                     onClose={onCloseDelete}
                     typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
+                />
+            )}
+            {deletionWindow && canEndDeletion && (
+                <DeletionWindowModal
+                    mode={deletionWindow.mode}
+                    consultantId={deletionWindow.id}
+                    onClose={() => setDeletionWindow(null)}
                 />
             )}
             {deleteTenantAdmin && can(PermissionAction.Delete, config.updateResource) && (

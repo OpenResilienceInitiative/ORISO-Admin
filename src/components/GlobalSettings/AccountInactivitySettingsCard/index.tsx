@@ -1,3 +1,4 @@
+import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
 import Alert from '@mui/material/Alert';
 import { Form } from 'antd';
@@ -10,6 +11,7 @@ import { CardEditable } from '../../CardEditable';
 import { MuiNumberFormField } from '../../mui/MuiFormField';
 import { useAccountInactivitySettings } from '../../../hooks/useAccountInactivitySettings.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { inactivityHelp } from './help';
 import styles from './styles.module.scss';
 
 interface Props {
@@ -40,6 +42,8 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
             className={styles.card}
             variant="dialog"
             headerIcon={<PersonOffOutlinedIcon />}
+            help={inactivityHelp}
+            note={{ icon: <EventRepeatOutlinedIcon />, text: t('globalSettings.accountInactivity.newPeopleNotice') }}
             titleKey="globalSettings.accountInactivity.title"
             subTitleKey="globalSettings.accountInactivity.description"
             initialValues={data ? { ...data } : undefined}
@@ -91,7 +95,6 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
                             />
                         ))}
                     </FieldGrid>
-                    <p className={styles.scope}>{t('globalSettings.accountInactivity.newPeopleNotice')}</p>
                 </>
             )}
         </CardEditable>
