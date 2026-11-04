@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout } from 'antd';
 import { useLocation, useSearchParams } from 'react-router-dom';
@@ -17,6 +17,7 @@ import AdminSidebar, { AdminSidebarNavItem } from './AdminSidebar';
 import AdminMobileNavBar from './AdminMobileNavBar';
 import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
 import { buildAdminNavItems } from './adminNavItems';
+import { buildAdminNavTree } from './adminNavTree';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { ReleaseToggle } from '../../enums/ReleaseToggle';
@@ -39,7 +40,7 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
     const { settings } = useAppConfigContext();
     const { can } = useUserPermissions();
     const { subdomain } = getLocationVariables();
-    const { hasRole, isSuperAdmin } = useUserRoles();
+    const { hasRole, isSuperAdmin, isTechnicalAccount, tokenUnreadable } = useUserRoles();
     const { data: tenantData } = useTenantData();
     const { t, i18n } = useTranslation();
     const location = useLocation();
@@ -127,6 +128,36 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
               settingsPath,
           });
 
+    // Subsections of every section for the mobile menu and its global search
+    // (#1319). Only built for the mobile layout; the sidebar has no use for it.
+    const isTenantSettingsEditEnabled = isReleaseEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT);
+    const mobileNavTree = useMemo(
+        () =>
+            restricted || isDesktopLayout
+                ? {}
+                : buildAdminNavTree({
+                      isSuperAdmin,
+                      hasRole,
+                      can,
+                      canManageServiceNotices: isSuperAdmin && !isTechnicalAccount && !tokenUnreadable,
+                      shouldShowThemeSettings,
+                      isTenantSettingsEditEnabled,
+                      multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
+                  }),
+        [
+            can,
+            hasRole,
+            isDesktopLayout,
+            isSuperAdmin,
+            isTechnicalAccount,
+            isTenantSettingsEditEnabled,
+            restricted,
+            settings.multitenancyWithSingleDomainEnabled,
+            shouldShowThemeSettings,
+            tokenUnreadable,
+        ],
+    );
+
     const accountNavItem: AdminSidebarNavItem | undefined = restricted
         ? undefined
         : {
@@ -153,6 +184,7 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
                 ) : (
                     <AdminMobileNavBar
                         items={upperNavItems}
+                        tree={mobileNavTree}
                         account={accountNavItem}
                         logout={{ label: navLabels.logout, onLogout: handleLogout }}
                         currentPath={location.pathname}
