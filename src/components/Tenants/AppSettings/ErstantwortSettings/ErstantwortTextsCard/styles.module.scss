@@ -65,7 +65,7 @@
 
     &:focus-visible {
         border-radius: mui.$mui-unit;
-        outline: 2px solid var(--m3-primary, #005cbb);
+        outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -90,8 +90,8 @@
 .mandatoryChip {
     padding: 2px mui.$mui-unit;
     border-radius: mui.$mui-unit * 1.5;
-    background: var(--m3-secondary-container, #dae2f9);
-    color: var(--m3-on-secondary-container, #131c2b);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
     font-size: 12px;
     font-weight: 500;
 }
