@@ -14,7 +14,10 @@ describe('M3FabMenu action colour roles', () => {
     it('binds the primary action roles to theme tokens instead of a hard-coded red (#992)', () => {
         expect(styles).not.toMatch(/#cc1e1c/i);
         expect(styles).not.toMatch(/--oriso-app-/);
-        expect(actionBlock).toMatch(/--m3-fab-menu-primary-container:\s*var\(--m3-primary,\s*#a5000a\)/i);
+        // The fill is the brand colour guarded against the rose label on it (#1322).
+        expect(actionBlock).toMatch(
+            /--m3-fab-menu-primary-container:\s*var\(--admin-accent-on-container,\s*var\(--m3-primary,\s*#a5000a\)\)/i,
+        );
         expect(actionBlock).toMatch(/--m3-fab-menu-on-primary-container:\s*var\(--m3-primary-container,\s*#ffe2de\)/i);
         expect(actionBlock).toMatch(/\.item\s*{[^}]*background:\s*var\(--m3-fab-menu-primary-container\)/is);
         expect(actionBlock).toMatch(/\.item\s*{[^}]*color:\s*var\(--m3-fab-menu-on-primary-container\)/is);
