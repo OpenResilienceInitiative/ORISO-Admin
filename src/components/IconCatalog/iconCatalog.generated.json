@@ -1226,6 +1226,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:nav-glyphs:home:base",
+        "family": "home",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "home.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/home.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:nav-glyphs:links:base",
         "family": "links",
         "state": "base",
@@ -1407,6 +1420,45 @@
         "size": null,
         "fileName": "display_settings_inactive.svg",
         "sourcePath": "src/resources/img/svg/navbar/display_settings_inactive.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:home:filled",
+        "family": "home",
+        "state": "filled",
+        "role": "selected",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "home_active.svg",
+        "sourcePath": "src/resources/img/svg/navbar/home_active.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:home:hover",
+        "family": "home",
+        "state": "hover",
+        "role": "hover",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "home_hover.svg",
+        "sourcePath": "src/resources/img/svg/navbar/home_hover.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:home:outline",
+        "family": "home",
+        "state": "outline",
+        "role": "default",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "home_inactive.svg",
+        "sourcePath": "src/resources/img/svg/navbar/home_inactive.svg",
         "exportNames": [],
         "usageFiles": ["src/components/Layout/NavIcon.tsx"],
         "usage": "app-used"

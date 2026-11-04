@@ -12,6 +12,18 @@
  */
 export const NAV_KEYWORDS: Record<string, string[]> = {
     // Sections
+    home: [
+        'start',
+        'startseite',
+        'übersicht',
+        'dashboard',
+        'anfang',
+        'erste schritte',
+        'home',
+        'overview',
+        'start page',
+        'getting started',
+    ],
     theme: ['einstellungen', 'konfiguration', 'optionen', 'settings', 'configuration', 'preferences', 'setup'],
     tenants: ['träger', 'organisation', 'mandant', 'mandanten', 'tenant', 'organisation', 'organization', 'provider'],
     agency: [
@@ -52,7 +64,21 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'dashboard',
         'metrics',
     ],
-    links: ['einladung', 'einladungen', 'invite', 'invites', 'invitation', 'link', 'url', 'registrierung', 'signup'],
+    links: [
+        'einladen',
+        'einladung',
+        'einladungen',
+        'konto anlegen',
+        'person hinzufügen',
+        'onboarding',
+        'invite',
+        'invites',
+        'invitation',
+        'link',
+        'url',
+        'registrierung',
+        'signup',
+    ],
     logs: ['protokoll', 'protokolle', 'verlauf', 'audit', 'logbuch', 'logs', 'history', 'journal'],
     account: [
         'mein konto',

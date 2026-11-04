@@ -7,7 +7,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 're
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
-import { canOpenTenantLegalSettings, isAgencyScopedAdmin } from './constants/agencyAdminLanding';
+import { canOpenTenantLegalSettings } from './constants/agencyAdminLanding';
 import { Initialization } from './components/Layout/Initialization';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
@@ -51,6 +51,7 @@ import {
     LazyPermissionsSettingsPage,
     LazySingleLegalSettings,
     LazyStatistic,
+    LazyHomePage,
     LazySupervisorLogsPage,
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
@@ -124,34 +125,10 @@ export const App = () => {
     });
 
     useEffect(() => {
+        // Every role starts at Home (ORISO-Admin#1323). It only links to areas the
+        // admin may open, so the per-role landing chain that lived here is gone.
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
-            if (can(PermissionAction.Create, Resource.Tenant)) {
-                navigate(routePathNames.tenants);
-                return;
-            }
-            if (
-                can(PermissionAction.Read, Resource.Tenant) ||
-                canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole)
-            ) {
-                navigate(defaultSettingsPath);
-                return;
-            }
-
-            if (isAgencyScopedAdmin(hasRole) && can(PermissionAction.Read, Resource.Agency)) {
-                // Beratungsstellen-Admin: own agency first (ORISO-Admin#917).
-                navigate(routePathNames.agency);
-                return;
-            }
-
-            let redirectPath = routePathNames.userProfile;
-            if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
-                redirectPath = routePathNames.tenantAdmins;
-            } else if (can(PermissionAction.Read, Resource.AgencyAdminUser)) {
-                redirectPath = routePathNames.agencyAdmins;
-            } else if (can(PermissionAction.Read, Resource.Consultant)) {
-                redirectPath = routePathNames.consultants;
-            }
-            navigate(redirectPath);
+            navigate(routePathNames.home);
         }
     }, []);
 
@@ -308,6 +285,8 @@ export const App = () => {
                                 {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                                     <Route path={`${routePathNames.topics}/:id`} element={<LazyTopicEditOrAdd />} />
                                 )}
+                                {/* Start page for every role (ORISO-Admin#1323). */}
+                                <Route path={routePathNames.home} element={<LazyHomePage />} />
                                 <Route
                                     path={routePathNames.statisticPreview}
                                     element={<Navigate to={routePathNames.statistic} replace />}

@@ -18,6 +18,7 @@ import styles from './adminMobileNavBar.module.scss';
  * the key does not.
  */
 const SECTION_GLYPHS: Record<string, NavGlyphName> = {
+    home: 'home',
     theme: 'displaySettings',
     tenants: 'tenants',
     agency: 'counseling',
@@ -46,8 +47,12 @@ export interface AdminMobileNavBarProps {
 
 const LOGOUT_KEY = 'logout';
 
+/** Bottom bar: Home · Einstellen · Einladen · Mehr (ORISO-Admin#1323). */
+const TAB_KEYS = ['home', 'theme', 'links'];
+
 /** The sidebar label key per section — the item itself only carries the resolved label. */
 const SECTION_LABEL_KEYS: Record<string, string> = {
+    home: 'sidebar.home',
     theme: 'sidebar.settings',
     tenants: 'sidebar.tenants',
     agency: 'sidebar.agency',
@@ -189,6 +194,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
             activeSectionKey={activeSectionKey}
             activeSubsectionKey={activeSubsectionKey}
             searchEntries={searchEntries}
+            tabKeys={TAB_KEYS}
             onSectionSelect={(key) => {
                 if (key === LOGOUT_KEY) {
                     logout.onLogout();
