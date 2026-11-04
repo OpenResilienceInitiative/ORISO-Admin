@@ -1,9 +1,15 @@
+import type { ReactNode } from 'react';
 import { GlobalSmtpSettingsPage } from '../../GlobalSettings';
 import { SmtpSettingsPage } from '../SmtpSettings';
 import { BrandedEmailPreview } from '../../../components/EmailPreview/BrandedEmailPreview';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import styles from './styles.module.scss';
+
+/** The Email Server page: the SMTP tile with the branded mail preview below it. */
+export const SmtpSurface = ({ children }: { children: ReactNode }) => (
+    <div className={styles.smtpSurface}>{children}</div>
+);
 
 export const UnifiedSmtpSettingsPage = () => {
     const { isSuperAdmin, tenantId } = useUserRoles();
@@ -21,9 +27,9 @@ export const UnifiedSmtpSettingsPage = () => {
     const canPreview = isSuperAdmin || resolvedTenantId != null;
 
     return (
-        <div className={styles.smtpSurface}>
+        <SmtpSurface>
             {isSuperAdmin ? <GlobalSmtpSettingsPage /> : <SmtpSettingsPage />}
             {canPreview && <BrandedEmailPreview tenantId={resolvedTenantId ?? undefined} />}
-        </div>
+        </SmtpSurface>
     );
 };

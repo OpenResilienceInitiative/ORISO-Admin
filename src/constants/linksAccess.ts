@@ -7,7 +7,6 @@ import type { InviteViewerScope } from '../pages/Links/inviteModel';
  * Which "Links" tabs an admin may see. The section hands out invite links, and each
  * tab creates something a level BELOW the admin who uses it:
  *
- * - "Externe Inbounds" configure platform-wide inbound links → platform admin only.
  * - "Träger-Invites" found whole tenants for the platform admin; a tenant admin
  *   sees the tab too but only invites further admins into their OWN Träger
  *   (the server refuses anything else). An agency admin sees it, the server
@@ -15,7 +14,8 @@ import type { InviteViewerScope } from '../pages/Links/inviteModel';
  * - "Berater-Invites" create counsellors inside the admin's own unit → platform
  *   admin, tenant admin and agency admin (counsellors into own agencies only).
  */
-export type LinksTabKey = 'tenants' | 'counsellor' | 'external-inbounds';
+// Live-chat links ("Externe Inbounds") moved to Funktionszugriff (ORISO-Admin#1321).
+export type LinksTabKey = 'tenants' | 'counsellor';
 
 export interface LinksAccessContext {
     isSuperAdmin: boolean;
@@ -26,7 +26,7 @@ const isAgencyAdmin = (hasRole: HasRoleFn): boolean => hasRole([UserRole.AgencyA
 
 export const resolveVisibleLinksTabs = ({ isSuperAdmin, hasRole }: LinksAccessContext): LinksTabKey[] => {
     if (isSuperAdmin) {
-        return ['tenants', 'counsellor', 'external-inbounds'];
+        return ['tenants', 'counsellor'];
     }
     if (hasRole(UserRole.TenantAdmin) || isAgencyAdmin(hasRole)) {
         return ['tenants', 'counsellor'];

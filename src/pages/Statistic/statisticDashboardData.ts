@@ -297,7 +297,9 @@ const buildTargetStatistics = (
                 activeConversations: null,
                 cases: null,
                 conversationsTotal: null,
-                counselors: target.counselorCount,
+                // a hidden row shows no count: an old backend sends the real one, a new one a 0 that
+                // would read as "no counsellors"
+                counselors: null,
                 groups: null,
                 liveChat: null,
                 messagesCounselors: null,

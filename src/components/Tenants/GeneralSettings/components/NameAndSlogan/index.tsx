@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
+import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import TitleOutlinedIcon from '@mui/icons-material/TitleOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormInputField } from '../../../../FormInputField';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
-import styles from './styles.module.scss';
 
 export const NameAndSlogan = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
     const { t } = useTranslation();
@@ -20,11 +20,11 @@ export const NameAndSlogan = ({ tenantId, readOnly = false }: { tenantId: string
             variant="dialog"
             editButtonPlacement="footer"
             headerIcon={<TitleOutlinedIcon />}
+            note={{
+                icon: <PublicOutlinedIcon />,
+                text: `${t('organisations.nameAndSlugTitleSubtitle')} ${t('settings.name.help')}`,
+            }}
         >
-            <p className={styles.description}>
-                {t('organisations.nameAndSlugTitleSubtitle')} {t('settings.name.help')}
-            </p>
-
             <FormInputField name="name" labelKey="organisation.name" placeholderKey="slogan" required />
 
             <FormInputField

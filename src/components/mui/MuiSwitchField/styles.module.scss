@@ -6,7 +6,7 @@
     width: 100%;
 }
 
-.formControlLabel {
+.formControlLabel.formControlLabel {
     width: 100%;
     margin: 0;
     justify-content: space-between;
@@ -34,7 +34,7 @@
         cursor: not-allowed;
     }
 
-    :global(.MuiFormControlLabel-label) {
+    &.formControlLabel :global(.MuiFormControlLabel-label.Mui-disabled) {
         color: var(--admin-form-field-text, var(--m3-on-surface, #1b1b1c));
         opacity: 1;
     }
@@ -149,8 +149,12 @@
     }
 }
 
+.switch.switchUnavailable {
+    opacity: 0.4;
+}
+
 .switchDisabled {
-    opacity: 0.5;
+    opacity: var(--admin-field-disabled-opacity, 0.5);
     cursor: not-allowed;
     pointer-events: auto;
 

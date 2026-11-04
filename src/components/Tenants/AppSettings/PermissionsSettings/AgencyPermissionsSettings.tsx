@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { notification } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,8 @@ import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 type AgencyPermissionsSettingsProps = {
     agencyId: string;
     excludeCardKeys?: Array<ChatTypeCardKey>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
 };
 
 /**
@@ -27,7 +30,11 @@ type AgencyPermissionsSettingsProps = {
  * response) only constrain the form — forced-off and enforced-on fields render disabled, never
  * hidden — and are stripped from every save payload at the API layer.
  */
-export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyPermissionsSettingsProps) => {
+export const AgencyPermissionsSettings = ({
+    agencyId,
+    excludeCardKeys,
+    liveChatLinks,
+}: AgencyPermissionsSettingsProps) => {
     const { t } = useTranslation();
     const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutateAsync: updateAgency } = useAgencyUpdate(agencyId);
@@ -111,6 +118,7 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             traegerChannelPoliciesStatus={traegerPoliciesStatus}
             traegerDirectInvitePolicies={traegerPolicies?.policies}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}

@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { KeyboardArrowDownIcon } from '../../CustomIcons/EditorIcons';
 import { muiFieldSx } from '../fieldSx';
 import { flattenChildren } from '../flattenChildren';
 
@@ -180,6 +181,7 @@ const MuiSelectControl = ({
             multiple={isMulti}
             disableCloseOnSelect={isMulti}
             options={resolvedOptions}
+            popupIcon={<KeyboardArrowDownIcon />}
             value={selected as any}
             onChange={handleChange}
             onBlur={onBlur}

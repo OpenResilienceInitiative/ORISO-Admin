@@ -1,7 +1,8 @@
 import { FocusEvent, useId, useState } from 'react';
-import { ConfigProvider, Form, Select } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { BaseOptionType, DefaultOptionType, SelectProps } from 'antd/es/select';
 import classNames from 'classnames';
+import { M3Select } from '../M3Select';
 import styles from './floatingLabelSelect.module.scss';
 
 export interface FloatingLabelSelectProps<
@@ -105,7 +106,7 @@ export const FloatingLabelSelect = <
                         {leadingIcon}
                     </span>
                 )}
-                <Select<ValueType, OptionType>
+                <M3Select<ValueType, OptionType>
                     {...selectProps}
                     id={fieldId}
                     className={styles.select}

@@ -12,6 +12,7 @@ import {
     ErstantwortBausteinKey,
     germanVariantFor,
 } from '../erstantwortBausteine';
+import { firstMessageHelp } from './help';
 import styles from './styles.module.scss';
 
 /**
@@ -158,6 +159,7 @@ export const ErstantwortTextsCard = ({
             className={styles.card}
             footer={footer}
             dataTestId="erstantwort-card"
+            help={firstMessageHelp}
         >
             <div className={styles.body}>
                 <section className={styles.section}>

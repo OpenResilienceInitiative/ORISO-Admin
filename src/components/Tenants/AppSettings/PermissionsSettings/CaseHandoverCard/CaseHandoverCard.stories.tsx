@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -133,6 +134,11 @@ export const Editable: Story = {
     },
 };
 
+export const HelpSlideshow: Story = {
+    ...Editable,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
 /** The shape GET /service/users/case-handover/reason-policies really answers:
  *  `clientConsent` as the bare enum string, the mode beside it in `clientConsentMode`
  *  (`CaseHandoverService.CaseHandoverReason`) — not the policy object the card writes.
@@ -174,7 +180,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         const canvas = within(canvasElement);
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))/i,
+                name: /(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))/i,
             }),
         ).toBeVisible();
         await expect(canvas.getByDisplayValue(/1 h 30 min/)).toBeVisible();
@@ -182,7 +188,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         await userEvent.click(canvas.getByRole('tab', { name: 'Geplant verhindert' }));
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))/i,
+                name: /(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))/i,
             }),
         ).toBeVisible();
     },
@@ -212,7 +218,7 @@ export const RetiredCodesFromTenantService: Story = {
         await expect(
             canvas
                 .getByRole('button', {
-                    name: /(Beratende Person|advising person).*(Weitere Informationen|More information)/i,
+                    name: /(beratenden Person|the counsellor).*(Erst nach Zustimmung|Only after consent).*(Vorgabe|requirement)/i,
                 })
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
@@ -234,7 +240,7 @@ export const ReadOnly: Story = {
         );
         await expect(
             canvas.getByRole('button', {
-                name: /(Zustimmung Ratsuchende Person|Consent from advice seeker).*(Policy-Auswahl öffnen|Open policy choices)/i,
+                name: /(Zustimmung der ratsuchenden Person|Consent from the advice seeker).*(Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices)/i,
             }),
         ).toBeDisabled();
     },
@@ -322,31 +328,39 @@ export const AllPlatformReasons: Story = {
     },
 };
 
-/** Figma 1789:11645 — clicking the master policy FAB reveals the four
- * policy states and the information action. Kept open for visual review. */
-export const PolicyMenuOpen: Story = {
+/** Figma 1789:11645 — the master is two buttons: the round one switches the module on or off,
+ * the lock makes it a requirement or leaves it adjustable. There is no menu and no info entry. */
+export const MasterPolicyButtons: Story = {
     args: {
         policies,
         isLoading: false,
         canEdit: true,
         moduleEnabled: true,
-        openPolicyMenu: 'caseHandoverEnabled',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+        onFeaturePolicyChange: fn(),
     },
-    play: async ({ canvasElement }) => {
+    play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation \(adjustable\)|Aktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
+        const round = canvas.getByRole('button', {
+            name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/,
+        });
+        const lock = canvas.getByRole('button', {
+            name: /(Adjustable|Anpassbar) – (Make it a requirement|Als Vorgabe festlegen)$/,
+        });
+        await expect(round).toHaveAttribute('aria-pressed', 'true');
+        await expect(lock).toHaveAttribute('aria-pressed', 'false');
+
+        await userEvent.click(round);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        await userEvent.click(lock);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: true,
+            mode: 'ENFORCED',
+        });
+        await expect(canvas.queryByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeNull();
     },
 };
 
@@ -369,12 +383,11 @@ export const AdviceSeekerConsentMenuOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const expectedLabels = [
-            /^(Consent opt-in \(enforced\)|Zustimmung Opt-In \(Vorgabe\))$/i,
-            /^(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))$/i,
-            /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i,
-            /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i,
-            /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
-            /^(More information|Weitere Informationen)$/i,
+            /^(Only after consent \(requirement\)|Erst nach Zustimmung \(Vorgabe\))$/i,
+            /^(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))$/i,
+            /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
         ];
 
         await Promise.all(
@@ -383,7 +396,7 @@ export const AdviceSeekerConsentMenuOpen: Story = {
             }),
         );
         await Promise.all(
-            canvas.getAllByText(/^(Recommendation|Empfehlung)$/i).map(async (status) => {
+            canvas.getAllByText(/^(Adjustable|Anpassbar)$/i).map(async (status) => {
                 await expect(status).toBeVisible();
             }),
         );
@@ -406,18 +419,20 @@ export const ConsentMenuWithClientImpact: Story = {
     },
     play: async ({ canvas }) => {
         const optOut = canvas.getByRole('button', {
-            name: /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
+            name: /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
         });
-        await expect(optOut).toHaveAccessibleDescription(
-            /(Stillschweigend.*sofort.*widersprechen|Silent.*immediately.*object)/i,
-        );
+        await expect(optOut).toHaveAccessibleDescription(/(sofort.*widersprechen|immediately.*object)/i);
         await expect(
-            canvas.getByRole('button', { name: /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            }),
         ).toHaveAccessibleDescription(/(vorher gefragt|asked first)/i);
         await expect(
-            canvas.getByRole('button', { name: /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i }),
+            canvas.getByRole('button', {
+                name: /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            }),
         ).toHaveAccessibleDescription(/(nicht gefragt|not asked)/i);
-        await expect(canvas.getAllByText(/(Stillschweigend|Silent):/)[0]).toBeVisible();
+        await expect(canvas.getAllByText(/(Der Zugriff beginnt sofort|Access starts immediately)/)[0]).toBeVisible();
     },
 };
 
@@ -485,15 +500,8 @@ export const TenantReasonLoadFailed: Story = {
             .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
         await expect(row).not.toBeNull();
         if (!row) throw new Error('Loaded canonical master missing');
-        await userEvent.click(within(row).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/ }));
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
-        ).toBeVisible();
         await userEvent.click(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
+            within(row).getByRole('button', { name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/ }),
         );
         await expect(args.onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
             value: false,

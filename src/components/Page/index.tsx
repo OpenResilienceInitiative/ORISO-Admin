@@ -13,14 +13,12 @@ import {
 import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, useState, useId, type JSX } from 'react';
+import React, { cloneElement, forwardRef, Ref, useMemo, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
-import { CardDeckNavProvider, useCardDeckNav, type CardDeckNavRegistration } from '../CardDeck/CardDeckNavContext';
 import { useRegisterMobileNav } from '../AdminMobileNav/MobileNavContext';
-import { SideScrollerButton } from '../SideScrollerFooter';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -52,55 +50,13 @@ interface PageBackProps {
 
 export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
-        <CardDeckNavProvider>
-            <div
-                className={classNames(styles.page, {
-                    [styles.loading]: isLoading,
-                    [styles.stickyHeaderPage]: stickyHeader,
-                })}
-            >
-                {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
-            </div>
-        </CardDeckNavProvider>
-    );
-};
-
-/** A deck whose cards do not all fit — the content the arrows must keep reachable. */
-const deckCanScroll = (deckNav: CardDeckNavRegistration | null) =>
-    Boolean(deckNav && (deckNav.canScrollBackward || deckNav.canScrollForward));
-
-/**
- * The header arrows drive the card deck whenever its cards do not all fit; only
- * then is it the content that is otherwise out of reach, because the deck hides
- * its scrollbar (#1248: zoomed in, overflowing tabs took the arrows and the cards
- * right of the fold could not be reached with a mouse). Overflowing tabs get the
- * arrows when there is no deck to scroll (#193), and the mouse wheel otherwise.
- * The owner does not change at the deck's ends, so reversing never jumps targets.
- * With nothing to scroll the arrows stay visible and disabled.
- */
-const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) => {
-    const { t } = useTranslation();
-    const deckNav = useCardDeckNav();
-    const nav = deckCanScroll(deckNav) ? deckNav : tabsNav ?? deckNav;
-
-    return (
-        <div className={styles.deckNavRail} data-admin-page-deck-nav>
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="backward"
-                edgeAnchored
-                enabled={nav?.canScrollBackward ?? false}
-                label={nav?.previousLabel ?? t('cardDeck.nav.previous')}
-                onClick={() => nav?.scroll(-1)}
-            />
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="forward"
-                edgeAnchored
-                enabled={nav?.canScrollForward ?? false}
-                label={nav?.nextLabel ?? t('cardDeck.nav.next')}
-                onClick={() => nav?.scroll(1)}
-            />
+        <div
+            className={classNames(styles.page, {
+                [styles.loading]: isLoading,
+                [styles.stickyHeaderPage]: stickyHeader,
+            })}
+        >
+            {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
         </div>
     );
 };
@@ -119,65 +75,7 @@ export const tabIcons: Record<string, SvgIconComponent> = {
 
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
-    const tabsContainerRef = useRef<HTMLDivElement>(null);
     const isDesktopLayout = useIsDesktopLayout();
-    const { pathname } = useLocation();
-    const tabsId = useId();
-    const [tabScroll, setTabScroll] = useState({ overflow: false, backward: false, forward: false });
-    // When the deck owns the arrows the wheel is the mouse's way along an overflowing tab row.
-    const deckOwnsArrows = deckCanScroll(useCardDeckNav());
-    const deckOwnsArrowsRef = useRef(deckOwnsArrows);
-    deckOwnsArrowsRef.current = deckOwnsArrows;
-
-    useEffect(() => {
-        const container = tabsContainerRef.current;
-        if (!container) return undefined;
-        const update = () => {
-            const max = container.scrollWidth - container.clientWidth;
-            const next = {
-                overflow: max > 1,
-                backward: container.scrollLeft > 1,
-                forward: container.scrollLeft < max - 1,
-            };
-            setTabScroll((current) =>
-                current.overflow === next.overflow &&
-                current.backward === next.backward &&
-                current.forward === next.forward
-                    ? current
-                    : next,
-            );
-        };
-        // A vertical wheel pans the row only while it can still move that way, so
-        // at either end the page underneath scrolls as usual.
-        const panWithWheel = (event: WheelEvent) => {
-            if (!deckOwnsArrowsRef.current || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-            const max = container.scrollWidth - container.clientWidth;
-            const canMove = event.deltaY > 0 ? container.scrollLeft < max - 1 : container.scrollLeft > 1;
-            if (!canMove) return;
-            event.preventDefault();
-            container.scrollLeft += event.deltaY;
-        };
-        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : undefined;
-        observer?.observe(container);
-        Array.from(container.children).forEach((child) => observer?.observe(child));
-        container.addEventListener('scroll', update, { passive: true });
-        container.addEventListener('wheel', panWithWheel, { passive: false });
-        window.addEventListener('resize', update);
-        update();
-        return () => {
-            observer?.disconnect();
-            container.removeEventListener('scroll', update);
-            container.removeEventListener('wheel', panWithWheel);
-            window.removeEventListener('resize', update);
-        };
-    }, [tabs, isDesktopLayout]);
-
-    useEffect(() => {
-        tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
-            block: 'nearest',
-            inline: 'nearest',
-        });
-    }, [tabs, pathname, isDesktopLayout]);
 
     /*
      * Mobile renders no tab row at all: the subsections moved into the bottom
@@ -190,27 +88,7 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
 
     return (
         <div className={styles.tabsRow}>
-            <PageDeckNav
-                tabsNav={
-                    tabScroll.overflow
-                        ? {
-                              controlsId: tabsId,
-                              canScrollBackward: tabScroll.backward,
-                              canScrollForward: tabScroll.forward,
-                              previousLabel: t('page.tabs.previous'),
-                              nextLabel: t('page.tabs.next'),
-                              scroll: (direction) => {
-                                  const container = tabsContainerRef.current;
-                                  container?.scrollBy({
-                                      left: direction * container.clientWidth * 0.8,
-                                      behavior: 'smooth',
-                                  });
-                              },
-                          }
-                        : null
-                }
-            />
-            <div id={tabsId} className={styles.tabsContainer} ref={tabsContainerRef} data-admin-page-tabs>
+            <div className={styles.tabsContainer} data-admin-page-tabs>
                 {tabs
                     ?.filter((tab) => tab && tab.to)
                     .map(({ icon, iconName, ...tab }) => {

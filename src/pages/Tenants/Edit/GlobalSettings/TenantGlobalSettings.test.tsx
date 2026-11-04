@@ -118,8 +118,7 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
         const user = userEvent.setup();
 
         const control = await findRow(CONVERSATION_CIRCLE);
-        await user.click(within(control).getByRole('button', { name: /Open policy choices/i }));
-        await user.click(within(control).getByRole('button', { name: /Deactivation \(adjustable\)/i }));
+        await user.click(within(control).getByRole('button', { name: /: Active – Deactivate$/ }));
 
         await waitFor(() => expect(requestsTo('/service/tenantadmin/7/permission-policies')).toHaveLength(2));
         const put = requestsTo('/service/tenantadmin/7/permission-policies').at(-1) as Request;
@@ -138,7 +137,8 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
         renderPage();
 
         const control = await findRow(GROUP_VIDEO);
-        expect(within(control).getByRole('button', { name: /Open policy choices/i })).toBeDisabled();
+        // Only the round button states the value; the dependent feature has no lock while its card is off.
+        expect(within(control).getByRole('button', { name: /: (Active|Inactive)$/ })).toBeDisabled();
         expect(within(control).getByText(/Available only while the card is activated/i)).toBeInTheDocument();
     });
 });
