@@ -72,7 +72,7 @@ export const BeratungsstellenAdmin: Story = {
     decorators: [
         (Story) => {
             setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 7);
-            return withSeededAdminProviders(Story, seedFacts({ agencies: 1, consultants: 4 }));
+            return withSeededAdminProviders(Story, seedFacts({ agencies: 1, consultants: 4, 'invites-unit': { INVITED: 2 } }));
         },
     ],
 };
