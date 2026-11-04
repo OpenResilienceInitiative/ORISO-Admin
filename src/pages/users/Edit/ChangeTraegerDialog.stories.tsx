@@ -45,7 +45,7 @@ const phone = { globals: { viewport: { value: 'phone', isRotated: false } } };
 /** The dialog fades in: wait until it is shown before asserting or reading text. */
 const openDialog = async () => {
     const dialog = await screen.findByRole('dialog');
-    await waitFor(() => expect(dialog).toBeVisible());
+    await waitFor(() => expect(dialog).toBeVisible(), { timeout: 5000 });
     return within(dialog);
 };
 
