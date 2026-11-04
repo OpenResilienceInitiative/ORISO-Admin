@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { toCreateInviteRequest, type InviteDraft, type InviteRequestContext } from './inviteRequest';
+import {
+    toCreateInviteRequest,
+    toSuggestionFields,
+    type InviteDraft,
+    type InviteRequestContext,
+} from './inviteRequest';
 
 vi.mock('../../api/accountInvites/accountInvites', () => ({
     acceptBaseUrlForRole: (role: string) => `https://admin.test/accept/${role}`,
@@ -153,5 +158,50 @@ describe('toCreateInviteRequest from a CSV row', () => {
 
     it('omits an empty topic cell so the server decides', () => {
         expect(toCreateInviteRequest(row, counsellorTab)).not.toHaveProperty('topicPermission', expect.anything());
+    });
+});
+
+describe('invite suggestion (#1274)', () => {
+    it('sends the suggested icon and display name with a counsellor invite', () => {
+        const request = toCreateInviteRequest(
+            draft({ suggestion: { avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' } }),
+            counsellorTab,
+        );
+        expect(request).toMatchObject({ avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' });
+    });
+
+    it('sends nothing when there is no suggestion, as before', () => {
+        const request = toCreateInviteRequest(
+            draft({ suggestion: toSuggestionFields({ avatar: {}, displayName: '  ' }) }),
+            counsellorTab,
+        );
+        expect(request).not.toHaveProperty('avatarKind');
+        expect(request).not.toHaveProperty('avatarId');
+        expect(request).not.toHaveProperty('displayName');
+    });
+
+    it('never sends it with a Träger admin invite', () => {
+        const request = toCreateInviteRequest(
+            draft({ role: 'TENANT_ADMIN', suggestion: { displayName: 'Maria B.' } }),
+            tenantTab,
+        );
+        expect(request).not.toHaveProperty('displayName');
+    });
+
+    it('turns an icon kind without a motif into initials and trims the name', () => {
+        expect(toSuggestionFields({ avatar: { avatarKind: 'ICON', avatarId: ' ' }, displayName: ' Maria ' })).toEqual({
+            avatarKind: 'INITIALS',
+            displayName: 'Maria',
+        });
+    });
+
+    it('keeps the motif only for the icon kind and caps the name at 100 characters', () => {
+        expect(
+            toSuggestionFields({ avatar: { avatarKind: 'ICON', avatarId: 'owl' }, displayName: 'x'.repeat(120) }),
+        ).toEqual({
+            avatarKind: 'ICON',
+            avatarId: 'owl',
+            displayName: 'x'.repeat(100),
+        });
     });
 });

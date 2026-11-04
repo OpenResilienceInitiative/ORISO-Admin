@@ -1,3 +1,5 @@
+@use '../../../../styles/nativeSelectChevron';
+
 .proposal {
     width: 100%;
     max-width: 1440px;
@@ -295,4 +297,8 @@
     .person .avatar {
         display: none;
     }
+}
+
+.selectFrame {
+    @include nativeSelectChevron.native-select-chevron(20px, 8px);
 }

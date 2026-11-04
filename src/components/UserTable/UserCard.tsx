@@ -15,7 +15,10 @@ export interface UserCardProps {
     name: string;
     email: string;
     username?: string;
-    status: DisplayStatus;
+    /** Account status; omit it when `badge` shows a different kind of state. */
+    status?: DisplayStatus;
+    /** Replaces the account status badge, e.g. a Beratungsstelle's visibility. */
+    badge?: ReactNode;
     /** Target of the „Eingeladen" link. */
     inviteTo?: string;
     /** Extra details shown when expanded (Träger, Stellen, …). */
@@ -37,6 +40,7 @@ export const UserCard = ({
     email,
     username,
     status,
+    badge,
     inviteTo,
     children,
     defaultExpanded = false,
@@ -58,7 +62,7 @@ export const UserCard = ({
                     <span className={styles.name} title={displayName}>
                         {displayName}
                     </span>
-                    <StatusBadge status={status} inviteTo={inviteTo} />
+                    {badge ?? (status !== undefined && <StatusBadge status={status} inviteTo={inviteTo} />)}
                 </div>
                 <div className={styles.actions}>
                     <IconButton

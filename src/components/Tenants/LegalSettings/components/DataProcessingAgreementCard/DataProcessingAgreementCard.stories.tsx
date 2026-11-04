@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { DataProcessingAgreementCard } from './index';
 
 const meta = {
@@ -130,4 +131,9 @@ export const WithStaleDraft: Story = {
         ...WithRestoredDraft.args,
         draftStale: true,
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...WithHistory,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };

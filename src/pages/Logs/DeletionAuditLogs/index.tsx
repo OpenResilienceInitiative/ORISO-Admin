@@ -1,7 +1,8 @@
-import { Alert, Button, Select, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
 import classNames from 'classnames';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../../../components/M3Select';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
     DataTable,
@@ -12,18 +13,20 @@ import {
     type DataTableColumn,
 } from '../../../components/DataTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
+import { M3Tooltip } from '../../../components/M3Tooltip';
 import { useDeletionAuditLogsData } from '../../../hooks/useDeletionAuditLogsData';
 import { DeletionAuditLogEntry } from '../../../types/deletionAuditLogs';
 import { useDeletionLogLayout } from './useDeletionLogLayout';
 import styles from './deletionAuditLogs.module.scss';
 
 const TARGET_TYPES = ['CONSULTANT', 'AGENCY_ADMIN', 'TENANT_ADMIN', 'AGENCY', 'TENANT'];
-const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'CANCELLED'];
+const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'PARTIAL_FAILURE', 'CANCELLED'];
 
 // Outcome is also spelled out in the tag text, so colour is never the only signal.
 const outcomeColor: Record<string, string> = {
     SCHEDULED: 'gold',
     EXECUTED: 'red',
+    PARTIAL_FAILURE: 'magenta',
     CANCELLED: 'green',
 };
 
@@ -83,12 +86,21 @@ export const DeletionAuditLogsPage = () => {
                         {row.createDate ? new Date(row.createDate).toLocaleString(i18n.language) : '-'}
                     </span>
                 );
-            case 'outcome':
+            case 'outcome': {
+                const label = t(`deletionAudit.outcome.${row.outcome}`, { defaultValue: row.outcome });
+                const color = outcomeColor[row.outcome] ?? 'default';
+                if (row.outcome !== 'PARTIAL_FAILURE') return <Tag color={color}>{label}</Tag>;
+                // The hint is the only place that says the login may still exist, so it opens on
+                // keyboard focus too (AGENTS.md), like InviteStatusChip.
                 return (
-                    <Tag color={outcomeColor[row.outcome] ?? 'default'}>
-                        {t(`deletionAudit.outcome.${row.outcome}`, { defaultValue: row.outcome })}
-                    </Tag>
+                    <M3Tooltip text={t('deletionAudit.outcome.PARTIAL_FAILURE_hint')} portal>
+                        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- see above */}
+                        <Tag color={color} tabIndex={0}>
+                            {label}
+                        </Tag>
+                    </M3Tooltip>
                 );
+            }
             case 'target':
                 return (
                     <span className={styles.pair}>
@@ -127,7 +139,7 @@ export const DeletionAuditLogsPage = () => {
                 className={styles.toolbar}
                 onFocus={(event) => event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
             >
-                <Select
+                <M3Select
                     allowClear
                     aria-label={t('deletionAudit.filters.targetType')}
                     placeholder={t('deletionAudit.filters.targetType')}
@@ -142,7 +154,7 @@ export const DeletionAuditLogsPage = () => {
                         label: t(`deletionAudit.targetType.${value}`),
                     }))}
                 />
-                <Select
+                <M3Select
                     allowClear
                     aria-label={t('deletionAudit.filters.outcome')}
                     placeholder={t('deletionAudit.filters.outcome')}

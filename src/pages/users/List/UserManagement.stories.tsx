@@ -11,6 +11,7 @@ import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { UsersList } from './index';
+import { SAVE_SORT_DELAY_MS } from '../../../hooks/useAdminListPreferences';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
 const CONSULTANTS_ENDPOINT = '*/service/users/consultants/search';
@@ -665,6 +666,16 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
+/** Keeps the table as narrow as these stories test it, whatever else the window has room for. */
+const withContentWidth =
+    (width: number): Decorator =>
+    (Story) =>
+        (
+            <div style={{ width, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        );
+
 export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
@@ -672,7 +683,7 @@ export const ConsultantsTabAt960: Story = {
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'tablet960', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -775,6 +786,7 @@ export const PlatformAdminsTabAt1280: Story = {
 export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
     globals: { viewport: { value: 'tablet960', isRotated: false } },
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -1183,10 +1195,17 @@ export const QuickSortChangesSaveOnce: Story = {
         await sortName();
         await sortName();
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
+        // Wait for the debounced save itself instead of a fixed 900 ms: on a loaded runner the two
+        // clicks, the 500 ms debounce and the request together took longer, and the check ran on [].
+        await waitFor(
+            () => expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]),
+            { timeout: 3000 },
+        );
+        // Then one more debounce window: a second save would have arrived by now.
         await new Promise((resolve) => {
-            setTimeout(resolve, 900);
+            setTimeout(resolve, SAVE_SORT_DELAY_MS + 200);
         });
-        await expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]);
+        await expect(savedBodies).toHaveLength(1);
     },
 };
 
@@ -1260,7 +1279,7 @@ export const AccountsInNarrowDesktopContainer: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => (
-            <div style={{ width: 767, maxWidth: '100%' }}>
+            <div style={{ width: 647, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1282,7 +1301,7 @@ export const AccountsAtCardBoundary: Story = {
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: 768, maxWidth: '100%' }}>
+            <div style={{ width: 648, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1302,14 +1321,14 @@ export const AccountsOnTablet834: Story = {
     ...AccountsInNarrowDesktopContainer,
     parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
     globals: { viewport: { value: 'tablet834', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(586), withSidebarRail],
 };
 
 const accountsBoundary = (width: number, columns: number): Story => ({
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: width + 168, maxWidth: '100%' }}>
+            <div style={{ width: width + 48, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),

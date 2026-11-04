@@ -87,7 +87,7 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
         search: false,
         add: true,
         filters: false,
-        source: 'pages/Links/ExternalInboundsTab.tsx:215',
+        source: 'components/LiveChatLinks/LiveChatLinks.tsx (moved to Funktionszugriff, #1321)',
         note: '"Create link" only.',
     },
 };

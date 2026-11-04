@@ -6,7 +6,8 @@ export type TrendDirection = 'up' | 'down' | 'upRight' | 'downRight';
 export type TrendScoreTone = 'critical' | 'bad' | 'good' | 'great';
 export type CardSize = 'large' | 'medium' | 'small';
 export type IconTone = 'plain' | 'muted' | 'coral' | 'danger';
-export type CasePeriodKey = 'thisWeek' | 'lastWeek' | 'twoWeeksAgo' | 'threeWeeksAgo' | 'fourWeeksAgo';
+/** One week of the requests chart (0 = this week), or one bar per week for the whole window. */
+export type CasePeriodKey = `weeksAgo${number}` | 'weekOverview';
 export type ConversationPeriodKey = 'today' | 'yesterday' | 'thisWeek' | 'total' | 'thisYear' | 'lastYear';
 export type CardMenuKey =
     | 'all'
@@ -25,6 +26,8 @@ export type CardMenuKey =
     | 'activeConversations'
     | 'phoneShare'
     | 'previousMonth'
+    /** Top topic n months back, beyond the four named month keys (topic window > 4 months). */
+    | `topicMonthsAgo${number}`
     | 'textMessagesTotal'
     | 'topTopic'
     | 'twoMonthsAgo'

@@ -17,6 +17,8 @@ import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
+import { TileHelpButton } from '../../../../TileHelp';
+import { contractHelp } from './help';
 import styles from './styles.module.scss';
 
 // "Nicht mehr anzeigen" on the editor snackbars persists across sessions; the X /
@@ -236,6 +238,9 @@ export const DataProcessingAgreementCard = ({
             )}
             <M3RichTextEditor
                 title={t('tenants.legal.dataProcessingAgreement.title')}
+                headerAction={
+                    <TileHelpButton topic={contractHelp} tileTitle={t('tenants.legal.dataProcessingAgreement.title')} />
+                }
                 icon={DpaIcon}
                 value={currentContent}
                 onChange={readOnly ? undefined : handleEditorChange}

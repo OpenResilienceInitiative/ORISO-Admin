@@ -36,6 +36,7 @@ export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
+export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
 // SigNoz via UserService's existing structured logger.
@@ -92,6 +93,7 @@ export const deletionAuditLogsEndpoint = `${userServiceURL}/service/users/deleti
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const adminListPreferencesEndpoint = `${userServiceURL}/service/useradmin/list-preferences`;
 export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
+export const adminStatisticsSettingsEndpoint = `${userServiceURL}/service/useradmin/statistics/settings`;
 export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
@@ -150,6 +152,7 @@ const routePathNames = {
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',
+    /** Old address of the live-chat links; redirects to Funktionszugriff (ORISO-Admin#1321). */
     linksExternalInbounds: '/admin/links/external-inbounds',
 };
 

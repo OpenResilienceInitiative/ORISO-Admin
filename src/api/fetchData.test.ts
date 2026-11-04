@@ -276,6 +276,34 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(messageError).toHaveBeenCalledTimes(1);
     });
 
+    // UserService#1568: the statistics dashboard answers 503 when its settings cannot be read.
+    // Callers that opt in get a code of their own, so the page can say "temporarily unavailable"
+    // instead of the generic load error (CLAUDE.md: unreachable, unauthorised and unavailable differ).
+    it('rejects with SERVICE_UNAVAILABLE on 503 when the caller asks for it, with no toast', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(503)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    it('does not mistake other failures for SERVICE_UNAVAILABLE', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(500)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.not.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+    });
+
     // Dead-session UX: when the refresh fails and we fall back to logout, the
     // admin must be TOLD the session expired instead of watching a spinner or a
     // silent redirect.

@@ -1,3 +1,4 @@
+import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -46,6 +47,7 @@ export const SupportEmailSettingsCard = ({ value = '', isLoading, onSave, disabl
             allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
+            note={{ icon: <PublicOutlinedIcon />, text: t('globalSettings.supportEmail.help') }}
             onSave={(values: { supportEmail?: string }, options) => onSave((values.supportEmail ?? '').trim(), options)}
         >
             <MuiFormField
@@ -53,7 +55,6 @@ export const SupportEmailSettingsCard = ({ value = '', isLoading, onSave, disabl
                 name="supportEmail"
                 type="email"
                 autoComplete="off"
-                helpText={t('globalSettings.supportEmail.help')}
                 rules={[{ type: 'email', whitespace: false, message: t('message.error.email.incorrect') }]}
                 inputProps={{ maxLength: SUPPORT_EMAIL_MAX_LENGTH }}
             />

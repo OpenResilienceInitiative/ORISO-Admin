@@ -51,9 +51,9 @@ it('lists the four modes in order, only the first one selectable', async () => {
 
     expect(options().map((option) => option.closest('label')?.textContent)).toEqual([
         'Bisherige Berater:in einmal informieren',
-        'Beide Beratungsstellen einmal informieren (soon)',
-        'Beide Beratungsstellen bei jeder Nachricht informieren (soon)',
-        'Themengleiche Beratung verbieten (soon)',
+        'Beide Beratungsstellen einmal informieren (kommt bald)',
+        'Beide Beratungsstellen bei jeder Nachricht informieren (kommt bald)',
+        'Zweite Beratung zum gleichen Thema verbieten (kommt bald)',
     ]);
     expect(informExisting()).toBeChecked();
     expect(informExisting()).toBeEnabled();

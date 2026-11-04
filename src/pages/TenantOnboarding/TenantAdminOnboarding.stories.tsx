@@ -252,7 +252,7 @@ export const JoinExistingTraeger: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText(/Träger beitreten|Join a tenant/)).toBeInTheDocument();
-        await expect(canvas.getByText(/Schritt 1 von 2|Step 1 of 2/)).toBeInTheDocument();
+        await expect(canvas.getByRole('status', { name: /Schritt 1 von 2|Step 1 of 2/ })).toBeInTheDocument();
         await expect(canvas.getByText('paula.zweite@example.org')).toBeInTheDocument();
         await expect(canvas.queryByTestId('organisation-master-data-title')).toBeNull();
         await expect(canvas.queryByRole('button', { name: /Zurück|Back/ })).toBeNull();
@@ -355,6 +355,31 @@ export const AccountStepStory: StoryObj = {
             onSubmit={() => {}}
         />
     ),
+};
+
+/** Admin#1207: the server refused the one-time password — the reason sits under the password field. */
+export const AccountStepPasswordUnchanged: StoryObj = {
+    render: () => (
+        <AccountStep
+            invite={STUB_INVITE_PROPS}
+            busy={false}
+            showRegistrationError={false}
+            passwordRejection="UNCHANGED"
+            existingAccountSetup
+            onSubmit={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByRole('alert')).toHaveTextContent(
+            /vom Einmalpasswort unterscheidet|differs from the one-time password/,
+        );
+    },
+};
+
+/** The same hint on a phone — the text wraps and stays fully visible. */
+export const AccountStepPasswordUnchangedMobile: StoryObj = {
+    ...AccountStepPasswordUnchanged,
+    ...PHONE_390,
 };
 
 /**

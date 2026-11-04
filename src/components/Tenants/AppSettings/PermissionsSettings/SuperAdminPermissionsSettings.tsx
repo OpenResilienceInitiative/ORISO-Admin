@@ -18,7 +18,11 @@ import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './
 import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
-export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+export const SuperAdminPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    liveChatLinks,
+}: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
@@ -159,6 +163,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         <PermissionsSettingsView
             tenantId={tenantId}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading}
             initialValues={initialValues}
             formStateKey="platform"
