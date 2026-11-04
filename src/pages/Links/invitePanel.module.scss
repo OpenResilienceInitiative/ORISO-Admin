@@ -38,7 +38,8 @@
     justify-content: center;
     background: var(--m3-primary-container, #ffe2de);
     border-radius: 20px;
-    color: var(--m3-primary, #a5000a);
+    // Guarded against the container for light Träger colours (#1322).
+    color: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
 }
 
 .titleBlock {
