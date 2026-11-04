@@ -187,7 +187,9 @@ type Story = StoryObj<typeof meta>;
 export const DailyStand: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Anfragen gesamt')).toBeVisible();
+        const heading = await canvas.findByText('Anfragen gesamt');
+        // The dashboard fades in, so the text is in the DOM before it is visible.
+        await waitFor(() => expect(heading).toBeVisible());
         const bar = canvasElement.querySelector('.statisticDashboard__bar') as HTMLElement;
         await expect(Number.parseFloat(getComputedStyle(bar).animationDuration)).toBeLessThanOrEqual(0.48);
         const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
