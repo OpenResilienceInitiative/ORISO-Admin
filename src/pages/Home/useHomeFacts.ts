@@ -1,0 +1,90 @@
+import { useQuery } from '@tanstack/react-query';
+import {
+    accountInvitesEndpoint,
+    agencyEndpointBase,
+    tenantAdminEndpoint,
+    usersConsultantsSearchEndpoint,
+} from '../../appConfig';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
+import type { AccountInviteListTab, PagedAccountInviteResponse } from '../../api/accountInvites/accountInvites';
+import { USER_TABLE_API_SAFE_SORT } from '../../constants/userTableSort';
+import type { HomeFacts, HomeRole } from './homeModel';
+
+/**
+ * The counts Home shows (ORISO-Admin#1323). One request per fact, page size 1,
+ * silent on failure: a count Home cannot load shows as unknown instead of
+ * raising a toast on the start page.
+ */
+const getTotal = async (url: string): Promise<number | undefined> => {
+    const result = await fetchData({
+        url,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
+
+    return typeof result?.total === 'number' ? result.total : undefined;
+};
+
+const getInvitePhases = async (tab: AccountInviteListTab) => {
+    const result: PagedAccountInviteResponse = await fetchData({
+        url: `${accountInvitesEndpoint}?page=0&size=1&tab=${tab}`,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
+
+    return result?.phaseCounts;
+};
+
+const OPEN_PHASES = ['PREPARED', 'INVITED', 'ACCOUNT_CREATED'] as const;
+
+const useFact = <T>(key: string, enabled: boolean, load: () => Promise<T>) =>
+    useQuery({
+        queryKey: ['HOME_FACT', key],
+        queryFn: load,
+        enabled,
+        retry: false,
+        refetchOnWindowFocus: false,
+        staleTime: 60_000,
+    }).data;
+
+export interface HomeFactAccess {
+    role: HomeRole;
+    canReadTenants: boolean;
+    canReadAgencies: boolean;
+    canReadConsultants: boolean;
+    canInviteTenants: boolean;
+    canInviteCounsellors: boolean;
+}
+
+export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
+    const tenants = useFact('tenants', access.role === 'platform' && access.canReadTenants, () =>
+        getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),
+    );
+    const agencies = useFact('agencies', access.canReadAgencies, () =>
+        getTotal(`${agencyEndpointBase}?q=*&page=1&perPage=1&order=ASC&field=NAME`),
+    );
+    const consultants = useFact('consultants', access.canReadConsultants, () =>
+        getTotal(
+            `${usersConsultantsSearchEndpoint}?query=*&page=1&perPage=1&order=ASC&field=${USER_TABLE_API_SAFE_SORT}`,
+        ),
+    );
+    const tenantInvites = useFact('invites-tenant', access.canInviteTenants, () => getInvitePhases('TENANT'));
+    const unitInvites = useFact('invites-unit', access.canInviteCounsellors, () => getInvitePhases('UNIT'));
+
+    const sum = (phases: Array<string>, ...counts: Array<Partial<Record<string, number>> | undefined>) =>
+        counts.every((count) => count === undefined)
+            ? undefined
+            : counts.reduce((total, count) => total + phases.reduce((part, p) => part + (count?.[p] ?? 0), 0), 0);
+
+    return {
+        tenants,
+        agencies,
+        consultants,
+        acceptedTenantInvites: tenantInvites ? tenantInvites.DONE ?? 0 : undefined,
+        acceptedCounsellorInvites: unitInvites ? unitInvites.DONE ?? 0 : undefined,
+        openInvites: sum([...OPEN_PHASES], tenantInvites, unitInvites),
+        needsActionInvites: sum(['NEEDS_ACTION'], tenantInvites, unitInvites),
+    };
+};
