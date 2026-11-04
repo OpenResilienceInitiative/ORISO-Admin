@@ -196,6 +196,36 @@ describe('AdminMobileNav', () => {
         ).toEqual(['Logs', 'Einstellungen', 'Träger']);
     });
 
+    it('keeps Tab and Shift+Tab inside the open menu card (aria-modal)', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        const dialog = screen.getByRole('dialog');
+        const focusable = dialog.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        expect(first).toHaveFocus();
+        await userEvent.tab({ shift: true });
+        expect(last).toHaveFocus();
+        await userEvent.tab();
+        expect(first).toHaveFocus();
+    });
+
+    it('keeps Tab inside the open search sheet too', async () => {
+        renderNav();
+        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
+        const field = screen.getByRole('searchbox', { name: 'Überall suchen' });
+        await userEvent.type(field, 'smtp');
+
+        await userEvent.tab();
+        await userEvent.tab();
+        await userEvent.tab();
+
+        const sheet = field.closest('[role="dialog"]');
+        expect(sheet).not.toBeNull();
+        expect(sheet?.contains(document.activeElement)).toBe(true);
+    });
+
     it('names a tab by its visible short label (WCAG 2.5.3)', () => {
         render(
             <MemoryRouter>

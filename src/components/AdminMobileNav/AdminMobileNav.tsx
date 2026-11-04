@@ -171,6 +171,33 @@ export const AdminMobileNav = ({
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 setSheet(null);
+                return;
+            }
+            // Both sheets are aria-modal, so Tab must not wander into the page
+            // behind them: wrap at either end, and pull focus back in if it is
+            // outside. Collapsed sections are not rendered, so every match is
+            // a visible control.
+            const container = sheetRef.current;
+            if (event.key !== 'Tab' || !container) {
+                return;
+            }
+            const focusable = Array.from(
+                container.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                ),
+            );
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement;
+            const outside = !container.contains(active);
+            if (!first || !last) {
+                event.preventDefault();
+            } else if (event.shiftKey && (active === first || outside)) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (active === last || outside)) {
+                event.preventDefault();
+                first.focus();
             }
         };
 
@@ -310,6 +337,7 @@ export const AdminMobileNav = ({
             {sheet === 'search' && (
                 <div
                     className={classNames(styles.sheet, styles.searchSheet)}
+                    ref={sheetRef}
                     role="dialog"
                     aria-modal="true"
                     aria-label={labels.globalSearch}
