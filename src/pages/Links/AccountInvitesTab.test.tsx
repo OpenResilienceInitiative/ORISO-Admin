@@ -4,7 +4,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
@@ -15,6 +15,18 @@ import userEvent from '@testing-library/user-event';
 // timed out in CI while every other test in this file stayed under 4s. A static
 // import moves that cost into the file's (untimed) collection phase.
 import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
+
+// These tests drive the whole invite composer through user-event. Measured
+// locally (ORISO-Admin#1327), every step (typing a field, opening a select,
+// clicking send) re-renders the full form and costs 1–3.6 s; single tests run
+// 10–21 s, and on loaded CI runners they crossed the default 30 s limit at
+// random. The limit is raised for this file only; what the tests assert is
+// unchanged. The lasting fix is a lighter composer test harness (see #1327).
+vi.setConfig({ testTimeout: 60_000 });
+// The same slow steps also outlast findBy*'s 1 s default wait for an element
+// to appear (a select option on a loaded runner, ORISO-Admin#1328). Match the
+// sibling composer tests (InviteComposer.test.tsx, AccountInvitesBulk.test.tsx).
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.

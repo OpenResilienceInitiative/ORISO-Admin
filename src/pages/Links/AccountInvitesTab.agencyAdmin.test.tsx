@@ -10,7 +10,16 @@ import userEvent from '@testing-library/user-event';
 import { CounsellorInvitesTab } from './AccountInvitesTab';
 import { UserRole } from '../../enums/UserRole';
 
-// Each step re-renders the whole composer, so on CI one role query can outlast the default 1 s wait.
+// These tests drive the whole invite composer through user-event. Measured
+// locally (ORISO-Admin#1327), every step (typing a field, opening a select,
+// clicking send) re-renders the full form and costs 1–3.6 s; single tests run
+// 10–21 s, and on loaded CI runners they crossed the default 30 s limit at
+// random. The limit is raised for this file only; what the tests assert is
+// unchanged. The lasting fix is a lighter composer test harness (see #1327).
+vi.setConfig({ testTimeout: 60_000 });
+// The same slow steps also outlast findBy*'s 1 s default wait for an element
+// to appear (a select option on a loaded runner, ORISO-Admin#1328). Match the
+// sibling composer tests (InviteComposer.test.tsx, AccountInvitesBulk.test.tsx).
 configure({ asyncUtilTimeout: 10_000 });
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
