@@ -28,7 +28,7 @@ exports[`computeOrisoPalette — contrast on the light brand container > leaves 
   "--admin-table-row-hover-surface": "#f0edee",
   "--admin-table-surface": "#f6f3f3",
   "--admin-table-text": "#444748",
-  "--admin-workspace-background": "#e4e2e2",
+  "--admin-workspace-background": "#fcf9f9",
   "--m3-error": "#b1005e",
   "--m3-on-background": "#281715",
   "--m3-on-error": "#ffffff",

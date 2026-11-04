@@ -370,7 +370,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #b90013);
+        outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: 2px;
     }
 
@@ -408,7 +408,7 @@
         padding: 8px 0;
         margin-right: 16px;
         border-radius: 12px;
-        background: var(--m3-surface-container, #f0eded);
+        background: var(--m3-surface-container, #f0edee);
     }
 
     :global(.ant-dropdown-menu-item) {
@@ -563,7 +563,7 @@
     width: 18px;
     height: 18px;
     box-sizing: border-box;
-    border: 2px solid var(--m3-surface-container-highest, #dcd9d9);
+    border: 2px solid var(--m3-surface-container-highest, #e4e2e2);
     border-radius: 2px;
 }
 
