@@ -1,7 +1,8 @@
-import { Alert, Button, Select, Tag } from 'antd';
+import { Alert, Button, Tag } from 'antd';
 import classNames from 'classnames';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../../../components/M3Select';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
     DataTable,
@@ -138,7 +139,7 @@ export const DeletionAuditLogsPage = () => {
                 className={styles.toolbar}
                 onFocus={(event) => event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
             >
-                <Select
+                <M3Select
                     allowClear
                     aria-label={t('deletionAudit.filters.targetType')}
                     placeholder={t('deletionAudit.filters.targetType')}
@@ -153,7 +154,7 @@ export const DeletionAuditLogsPage = () => {
                         label: t(`deletionAudit.targetType.${value}`),
                     }))}
                 />
-                <Select
+                <M3Select
                     allowClear
                     aria-label={t('deletionAudit.filters.outcome')}
                     placeholder={t('deletionAudit.filters.outcome')}

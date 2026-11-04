@@ -7,6 +7,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TOPIC_DUPLICATE_MODES, TopicDuplicateMode } from '../../../types/AppConfigInterface';
+import { topicDuplicateHelp } from './help';
 import styles from './styles.module.scss';
 
 /** Only this mode is implemented; the others are reserved for ORISO-Frontend#1878. */
@@ -35,6 +36,7 @@ export const TopicDuplicateSettingsCard = ({
             className={styles.card}
             variant="dialog"
             headerIcon={<ContentCopyOutlinedIcon />}
+            help={topicDuplicateHelp}
             titleKey="globalSettings.topicDuplicate.title"
             initialValues={{ topicDuplicateMode: mode }}
             isLoading={isLoading}

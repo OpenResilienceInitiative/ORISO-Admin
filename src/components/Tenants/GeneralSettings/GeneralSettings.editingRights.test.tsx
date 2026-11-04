@@ -208,9 +208,7 @@ describe('GeneralSettings editing-rights switch (ORISO-Admin#1339)', () => {
         renderPage();
 
         expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'true');
-        await settledAfterPolicies();
-
-        expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'false');
+        await waitFor(() => expect(screen.getByTestId('name')).toHaveAttribute('data-readonly', 'false'));
     });
 
     it('keeps the cards read-only when the tenant service cannot be read', async () => {

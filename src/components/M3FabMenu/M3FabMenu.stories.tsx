@@ -25,8 +25,8 @@ const footerItems = [
 // Tone per action (#992): "activate" is primary, "deactivate" and the info
 // entry are neutral — whatever the feature is currently set to.
 const policyItems: M3FabMenuItem[] = [
-    { key: 'enabled-enforced', label: 'Aktivierung erzwungen', icon: <LockIcon />, tone: 'primary' },
-    { key: 'disabled-enforced', label: 'Deaktivierung erzwungen', icon: <LockIcon />, tone: 'neutral' },
+    { key: 'enabled-enforced', label: 'Aktivierung (Vorgabe)', icon: <LockIcon />, tone: 'primary' },
+    { key: 'disabled-enforced', label: 'Deaktivierung (Vorgabe)', icon: <LockIcon />, tone: 'neutral' },
     {
         key: 'enabled-suggested',
         label: 'Aktivierung (anpassbar)',
@@ -183,8 +183,8 @@ const expectActionTones = async (canvasElement: HTMLElement) => {
     const backgroundOf = (name: string) =>
         window.getComputedStyle(canvas.getByRole('button', { name })).backgroundColor;
     await Promise.all([
-        ...['Aktivierung erzwungen', 'Aktivierung (anpassbar)'].map((name) => expect(backgroundOf(name)).toBe(primary)),
-        ...['Deaktivierung erzwungen', 'Deaktivierung (anpassbar)', 'Weitere Informationen'].map((name) =>
+        ...['Aktivierung (Vorgabe)', 'Aktivierung (anpassbar)'].map((name) => expect(backgroundOf(name)).toBe(primary)),
+        ...['Deaktivierung (Vorgabe)', 'Deaktivierung (anpassbar)', 'Weitere Informationen'].map((name) =>
             expect(backgroundOf(name)).toBe(neutral),
         ),
     ]);

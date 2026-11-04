@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
@@ -81,6 +82,11 @@ export const SavedOwnServer: Story = {
         ).toBeInTheDocument();
         await expect(host).toHaveValue('unsaved.smtp.example');
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...SavedOwnServer,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };
 
 export const PlatformHasNoOwnServerTest: Story = {

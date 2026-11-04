@@ -15,11 +15,15 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import { toRecipientScopeWrite, withoutInternalGroupChat } from './RecipientScope/recipientScopePolicy';
+import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 
-export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+export const TenantPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    liveChatLinks,
+}: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const {
@@ -156,8 +160,8 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                 const confirmed = confirmedPolicyData.current;
                 if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
-                    ...withoutInternalGroupChat(confirmed),
-                    policies: { ...confirmed.policies, [fieldKey]: policy },
+                    tenantId: confirmed.tenantId,
+                    policies: { [fieldKey]: policy },
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
@@ -201,7 +205,8 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                     throw new Error('Permission policies of this Träger are not loaded');
                 }
                 const saved = await updateRecipientScope.mutateAsync({
-                    ...withoutInternalGroupChat(confirmed),
+                    tenantId: confirmed.tenantId,
+                    policies: {},
                     ...toRecipientScopeWrite({ ...next, inherited: false }),
                 });
                 if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
@@ -230,6 +235,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             tenantId={tenantId}
             caseHandoverTenantId={Number(tenantId) || undefined}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}

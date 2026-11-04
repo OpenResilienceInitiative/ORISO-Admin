@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 const translations: Record<string, string> = {
     agency: 'Agency',
-    'agency.list.searchPlaceholder': 'Search by name or city',
+    'agency.list.searchPlaceholder': 'Search by name, postcode or city',
     'agency.noTopics': 'No topics assigned',
     'agency.status.online': 'Visible',
     'agency.status.offline': 'Hidden',
