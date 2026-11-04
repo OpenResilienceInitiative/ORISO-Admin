@@ -29,47 +29,47 @@ const StatusIcons = ({
     return (
         <div className={clsx('statusIconWrapper', status)}>
             {status === 'IN_DELETION' && (
-                <Tooltip color={attentionColor} title={t('status.IN_DELETION.tooltip')}>
+                <Tooltip title={t('status.IN_DELETION.tooltip')}>
                     <DeleteOutlined style={{ color: attentionColor }} />
                 </Tooltip>
             )}
             {status === 'IN_PROGRESS' && (
-                <Tooltip color={attentionColor} title={t('status.IN_PROGRESS.tooltip')}>
+                <Tooltip title={t('status.IN_PROGRESS.tooltip')}>
                     <InfoCircleOutlined style={{ color: attentionColor }} />
                 </Tooltip>
             )}
             {status === 'ERROR' && (
-                <Tooltip color={errorColor} title={t('status.ERROR.tooltip')}>
+                <Tooltip title={t('status.ERROR.tooltip')}>
                     <CloseCircleOutlined style={{ color: errorColor }} />
                 </Tooltip>
             )}
             {status === 'CREATED' && (
-                <Tooltip color={successColor} title={createdCustomLabel || t('status.CREATED.tooltip')}>
+                <Tooltip title={createdCustomLabel || t('status.CREATED.tooltip')}>
                     <CheckCircleOutlined style={{ color: successColor }} />
                 </Tooltip>
             )}
             {status === 'ACTIVE' && (
-                <Tooltip color={successColor} title={t('status.ACTIVE.tooltip')}>
+                <Tooltip title={t('status.ACTIVE.tooltip')}>
                     <CheckCircleOutlined style={{ color: successColor }} />
                 </Tooltip>
             )}
             {status === 'INACTIVE' && (
-                <Tooltip color={errorColor} title={t('status.INACTIVE.tooltip')}>
+                <Tooltip title={t('status.INACTIVE.tooltip')}>
                     <StopOutlined style={{ color: errorColor }} />
                 </Tooltip>
             )}
             {status === 'INVITED' && (
-                <Tooltip color={attentionColor} title={t('status.INVITED.tooltip')}>
+                <Tooltip title={t('status.INVITED.tooltip')}>
                     <InfoCircleOutlined style={{ color: attentionColor }} />
                 </Tooltip>
             )}
             {status === 'ABSENT' && (
-                <Tooltip color={mutedColor} title={t('status.ABSENT.tooltip')}>
+                <Tooltip title={t('status.ABSENT.tooltip')}>
                     <StopOutlined style={{ color: mutedColor }} />
                 </Tooltip>
             )}
             {status === 'DISABLED' && (
-                <Tooltip color={errorColor} title={t('status.DISABLED.tooltip')}>
+                <Tooltip title={t('status.DISABLED.tooltip')}>
                     <CloseCircleOutlined style={{ color: errorColor }} />
                 </Tooltip>
             )}

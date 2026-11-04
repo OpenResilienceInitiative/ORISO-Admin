@@ -75,7 +75,7 @@
     // orisoScheme writes #ffe2de into --m3-primary-fixed (DEFAULT_ACCENT_LIGHT),
     // so the app renders the rose one shade lighter than the design until the
     // token is corrected globally — deliberately not patched from here.
-    color: var(--m3-primary-fixed, #ffdad5);
+    color: var(--m3-primary-fixed, #ffe2de);
 }
 
 // The last segment rounds its outer side to close the group.

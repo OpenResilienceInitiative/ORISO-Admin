@@ -7,7 +7,7 @@
 
     display: flex;
     min-height: 100%;
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 }
 
 .stickyHeaderPage {
@@ -18,7 +18,7 @@
     .back,
     .pageTitleContainer {
         position: sticky;
-        background: var(--admin-workspace-background, #e4e2e2);
+        background: var(--admin-workspace-background, #fcf9f9);
         z-index: 900;
         margin: 0 calc(-1 * var(--admin-page-edge));
         top: 0;
