@@ -128,18 +128,20 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
             </div>
             <div className={styles.field}>
                 <label htmlFor={monthsId}>{t('deletionWindow.pause.months')}</label>
-                <select
-                    id={monthsId}
-                    className={styles.control}
-                    value={months}
-                    onChange={(event) => setMonths(Number(event.target.value))}
-                >
-                    {MONTH_CHOICES.map((choice) => (
-                        <option key={choice} value={choice}>
-                            {choice}
-                        </option>
-                    ))}
-                </select>
+                <span className={styles.selectFrame}>
+                    <select
+                        id={monthsId}
+                        className={styles.control}
+                        value={months}
+                        onChange={(event) => setMonths(Number(event.target.value))}
+                    >
+                        {MONTH_CHOICES.map((choice) => (
+                            <option key={choice} value={choice}>
+                                {choice}
+                            </option>
+                        ))}
+                    </select>
+                </span>
             </div>
         </Modal>
     );

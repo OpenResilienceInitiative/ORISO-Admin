@@ -46,7 +46,7 @@ export const MissingDisclosure: Story = {
         await expect(greeting.querySelectorAll('p')).toHaveLength(2);
         await userEvent.click(await canvas.findByRole('button', { name: /Veröffentlichen|Publish/i }));
         await expect(canvas.getByRole('alert')).toBeVisible();
-        await expect(canvas.getByRole('alert')).toHaveTextContent(/Nachricht|message/i);
+        await expect(canvas.getByRole('alert')).toHaveTextContent(/mitlesen|read the conversation/i);
     },
 };
 

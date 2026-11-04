@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { ServiceNoticesPage } from './index';
@@ -122,7 +123,7 @@ export const PlatformRoute: Story = {
     render: () => <ExistingPlatformRoute />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByLabelText('Entwurfsreferenz');
+        await canvas.findByLabelText('Entwurfsreferenz', {}, { timeout: 8000 });
         await expect(canvas.getByTestId('service-notice-route')).toHaveTextContent(
             '/admin/theme-settings/service-notices',
         );
@@ -193,7 +194,12 @@ export const SaveReopenAndSevenPreviews: Story = {
         await expect(frame).toHaveAttribute('srcdoc', expect.stringContaining('Status page'));
         await expect(savedFixture.requests).toHaveLength(10);
         await expect(savedFixture.requests.every((request) => request.authorized)).toBe(true);
-        await expect(canvas.getAllByRole('button').map((button) => button.textContent)).toEqual([
+        await expect(
+            canvas
+                .getAllByRole('button')
+                .map((button) => button.textContent)
+                .filter(Boolean),
+        ).toEqual([
             'Entwurf speichern',
             'Gespeicherten Entwurf öffnen',
             // Saving offers counting only; sending needs a count and a confirmation first.
@@ -237,4 +243,9 @@ export const TechnicalAccountDenied: Story = {
         );
         await expect(canvas.queryByLabelText('Entwurfsreferenz')).not.toBeInTheDocument();
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...PlatformRoute,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };

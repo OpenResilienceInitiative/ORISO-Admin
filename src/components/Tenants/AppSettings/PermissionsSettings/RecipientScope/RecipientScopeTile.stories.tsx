@@ -110,7 +110,7 @@ export const PlatformWithoutBackendField: Story = {
         const scope = await control(canvasElement);
         await expect(scope.getByRole('radio', { name: /Auf die Beratungsstelle begrenzt/ })).toBeChecked();
         scope.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
-        await expect(scope.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeVisible();
+        await expect(scope.getByText('Diese Einstellung ist noch nicht verfügbar.')).toBeVisible();
         await expect(scope.queryByRole('button', { name: 'Speichern' })).toBeNull();
     },
 };

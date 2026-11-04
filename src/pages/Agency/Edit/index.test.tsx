@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -60,6 +60,7 @@ const mocks = vi.hoisted(() => ({
         }),
     },
     agencyLegalProps: undefined as any,
+    agencyTabs: undefined as Array<{ to: string; titleKey: string } | false | null> | undefined,
 }));
 
 beforeEach(() => {
@@ -136,10 +137,13 @@ vi.mock('../../../components/Page', () => {
     Page.BackWithActions = function PageBackWithActions({
         children,
         title,
+        tabs,
     }: {
         children: React.ReactNode;
         title?: React.ReactNode;
+        tabs?: typeof mocks.agencyTabs;
     }) {
+        mocks.agencyTabs = tabs;
         return (
             <div>
                 <h1>{title}</h1>
@@ -318,29 +322,6 @@ vi.mock('../../../components/CreateConsultantModal', () => ({
     },
 }));
 
-beforeAll(() => {
-    // The create flow now lays its cards out with CardDeck, whose mount effect
-    // calls deck.scrollTo — not implemented in jsdom. Stub it (as the CardDeck
-    // component's own test does) so the effect doesn't throw.
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-        configurable: true,
-        value: vi.fn(),
-    });
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            addEventListener: vi.fn(),
-            addListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-            matches: false,
-            media: query,
-            onchange: null,
-            removeEventListener: vi.fn(),
-            removeListener: vi.fn(),
-        })),
-    });
-});
-
 vi.mock('../../../utils/parseUserAuthInfo', () => ({
     parseUserAuthInfo: () => ({ tenantId: mocks.authTenantId }),
 }));
@@ -386,10 +367,8 @@ describe('AgencyPageEdit create flow', () => {
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
         // #620: create flow lays its three cards out in the responsive CardGrid —
-        // cards share the row width and wrap/stack below the floor. The fixed-width
-        // horizontal CardDeck must be gone from the create surface.
+        // cards share the row width and wrap/stack below the floor.
         expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
-        expect(container.querySelector('[data-admin-card-deck]')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
@@ -1212,5 +1191,44 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         notificationSpy.mockRestore();
+    });
+});
+
+// ORISO-Admin#1312: every Beratungsstelle view carries the section menu, whoever opens it. The tab
+// list has no role condition, so the roles that reach this page must all see the same sections.
+describe('AgencyPageEdit section menu', () => {
+    const roles = {
+        'platform admin': { isSuperAdmin: true, isTenantScopedAdmin: false },
+        'Träger admin': { isSuperAdmin: false, isTenantScopedAdmin: true },
+        'Beratungsstelle admin': { isSuperAdmin: false, isTenantScopedAdmin: false },
+    };
+    const tabTargets = () => (mocks.agencyTabs || []).filter(Boolean).map((tab) => (tab as { to: string }).to);
+
+    beforeEach(() => {
+        mocks.agencyTabs = undefined;
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
+    });
+
+    it.each(Object.entries(roles))('offers Stammdaten, Rechtliches and Funktionszugang to the %s', (_name, flags) => {
+        mocks.userRoles = { ...mocks.userRoles, ...flags, tenantId: flags.isTenantScopedAdmin ? 84 : 0 };
+        mocks.routeId = '282';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual([
+            '/admin/agency/282/general',
+            '/admin/agency/282/legal-settings',
+            '/admin/agency/282/functionalities',
+        ]);
+    });
+
+    it('offers only Stammdaten while the Beratungsstelle is being created (the other sections need a saved one)', () => {
+        mocks.userRoles = { ...mocks.userRoles, ...roles['platform admin'], tenantId: 0 };
+        mocks.routeId = 'add';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual(['/admin/agency/add/general']);
     });
 });

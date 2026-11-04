@@ -22,7 +22,12 @@ export const useTenantPermissionPoliciesMutation = (tenantId: string) => {
         onMutate: async (next) => {
             await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
             const previous = queryClient.getQueryData<TenantPermissionPolicies>(tenantPermissionPoliciesKey(tenantId));
-            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), next);
+            if (previous) {
+                queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), {
+                    ...previous,
+                    policies: { ...previous.policies, ...next.policies },
+                });
+            }
             return { previous };
         },
         onError: (_error, _next, context) => {

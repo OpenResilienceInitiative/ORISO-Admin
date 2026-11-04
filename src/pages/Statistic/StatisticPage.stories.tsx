@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, within, waitFor } from 'storybook/test';
+import { expect, fireEvent, within, waitFor } from 'storybook/test';
 import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
@@ -77,7 +77,7 @@ const suppressedTarget = (agencyId: number): AdminDashboardTarget => ({
     targetType: 'AGENCY',
     tenantId: 2,
     agencyId,
-    counselorCount: 1,
+    counselorCount: 0,
     suppressed: true,
     metrics: null,
     dailyNewSessions: [],
@@ -187,7 +187,9 @@ type Story = StoryObj<typeof meta>;
 export const DailyStand: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Anfragen gesamt')).toBeVisible();
+        const heading = await canvas.findByText('Anfragen gesamt');
+        // The dashboard fades in, so the text is in the DOM before it is visible.
+        await waitFor(() => expect(heading).toBeVisible());
         const bar = canvasElement.querySelector('.statisticDashboard__bar') as HTMLElement;
         await expect(Number.parseFloat(getComputedStyle(bar).animationDuration)).toBeLessThanOrEqual(0.48);
         const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
@@ -224,6 +226,61 @@ export const WithSuppressedCentre: Story = {
                 ),
             ),
         },
+    },
+};
+// A Träger admin sees the rows of the own centres, one of them hidden next to a shown one.
+export const HiddenRowNextToShownRow: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json({
+                    ...statistics('DAILY', [
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                        suppressedTarget(12),
+                    ]),
+                    scope: 'TENANT',
+                }),
+            ),
+        },
+    },
+    beforeEach: () => {
+        const claims = { tenantId: 2, realm_access: { roles: ['tenant-admin'] } };
+        setSessionTokens(`${btoa('{}')}.${btoa(JSON.stringify(claims))}.fixture`, 'storybook-refresh-fixture');
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        fireEvent.click(await canvas.findByText('Auf Beratungsstellenebene'));
+        const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.queryByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/)).toBeNull();
+        await expect(canvas.getByText('Statistik als CSV herunterladen')).toBeVisible();
+    },
+};
+// The total itself is hidden (UserService#1567): it would reveal a small row, or rests on too few people.
+export const HiddenTotal: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json(
+                    statistics('DAILY', [
+                        { ...suppressedTarget(0), targetType: 'PLATFORM', tenantId: null, agencyId: null },
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                    ]),
+                ),
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const notice = await canvas.findByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/);
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0);
+        // a chart of zeros would read as "nothing happened"
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
     },
 };
 const withoutCases = (row: AdminDashboardTarget): AdminDashboardTarget => ({
@@ -275,4 +332,16 @@ export const Loading: Story = {
 };
 export const LoadError: Story = {
     parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 500 })) } },
+};
+// The settings behind the statistics cannot be read (UserService#1568): no figures, not even old ones.
+export const TemporarilyUnavailable: Story = {
+    parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 503 })) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const notice = await canvas.findByText(/vorübergehend nicht verfügbar/);
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
+        await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+    },
 };

@@ -68,6 +68,7 @@ interface MuiSwitchControlProps {
     fieldName: FieldName;
     label?: React.ReactNode;
     disabled?: boolean;
+    unavailable?: boolean;
     helpText?: string;
     switchLabel: string;
     confirmEnable?: (proceed: () => void) => void;
@@ -84,12 +85,13 @@ const MuiSwitchControl = ({
     fieldName,
     label,
     disabled,
+    unavailable,
     helpText,
     switchLabel,
     confirmEnable,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
-    const isDisabled = componentDisabled || disabled;
+    const isDisabled = componentDisabled || disabled || unavailable;
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';
@@ -115,7 +117,10 @@ const MuiSwitchControl = ({
                 disabled={isDisabled}
                 control={
                     <Switch
-                        className={classNames(styles.switch, { [styles.switchDisabled]: isDisabled })}
+                        className={classNames(styles.switch, {
+                            [styles.switchDisabled]: isDisabled,
+                            [styles.switchUnavailable]: unavailable,
+                        })}
                         focusVisibleClassName=".Mui-focusVisible"
                         disableRipple
                         icon={uncheckedThumb}
@@ -145,6 +150,8 @@ export interface MuiSwitchFieldProps {
     rules?: Rule[];
     required?: boolean;
     disabled?: boolean;
+    /** The option does not exist yet: the text stays readable, the switch itself looks unavailable in every mode. */
+    unavailable?: boolean;
     /** Static helper text shown below the switch (overridden by error message). */
     helpText?: string;
     className?: string;
@@ -170,6 +177,7 @@ export const MuiSwitchField = ({
     rules,
     required,
     disabled,
+    unavailable,
     helpText,
     className,
     switchLabel,
@@ -193,6 +201,7 @@ export const MuiSwitchField = ({
                     fieldName={name}
                     label={label}
                     disabled={disabled}
+                    unavailable={unavailable}
                     helpText={helpText}
                     switchLabel={accessibleSwitchLabel}
                     confirmEnable={confirmEnable}

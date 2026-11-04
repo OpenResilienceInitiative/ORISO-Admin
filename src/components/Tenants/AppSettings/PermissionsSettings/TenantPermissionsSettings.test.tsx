@@ -48,7 +48,7 @@ const basePolicies = {
     tenantId: 7,
     policies: {
         first: { value: false, mode: 'SUGGESTED' as const },
-        second: { value: false, mode: 'SUGGESTED' as const },
+        second: { value: false, mode: 'SUGGESTED' as const, inherited: true },
     },
 };
 
@@ -79,7 +79,7 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         expect(screen.queryByRole('button', { name: 'first' })).not.toBeInTheDocument();
     });
 
-    it('queues complete-map writes so a later field preserves the earlier saved value', async () => {
+    it('queues one-field writes without copying resolved inherited defaults into local settings', async () => {
         vi.mocked(useTenantPermissionPolicies).mockReturnValue({
             data: basePolicies,
             isLoading: false,
@@ -102,7 +102,7 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         fireEvent.click(screen.getByRole('button', { name: 'second' }));
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
-        expect(mutateAsync.mock.calls[0][0].policies.first.value).toBe(true);
+        expect(mutateAsync.mock.calls[0][0].policies).toEqual({ first: { value: true, mode: 'SUGGESTED' } });
         await act(async () => {
             resolveFirst({
                 ...basePolicies,
@@ -112,8 +112,7 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         });
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
-        expect(mutateAsync.mock.calls[1][0].policies).toMatchObject({
-            first: { value: true, mode: 'SUGGESTED' },
+        expect(mutateAsync.mock.calls[1][0].policies).toEqual({
             second: { value: true, mode: 'ENFORCED' },
         });
     });
@@ -156,8 +155,7 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         });
 
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(2));
-        expect(mutateAsync.mock.calls[1][0].policies).toMatchObject({
-            first: { value: true, mode: 'SUGGESTED' },
+        expect(mutateAsync.mock.calls[1][0].policies).toEqual({
             second: { value: true, mode: 'ENFORCED' },
         });
     });
@@ -197,7 +195,6 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(3));
 
         expect(mutateAsync.mock.calls[2][0].policies).toEqual({
-            first: { value: false, mode: 'SUGGESTED' },
             second: { value: true, mode: 'ENFORCED' },
         });
     });
@@ -233,12 +230,9 @@ describe('TenantPermissionsSettings policy loading and serialization', () => {
         fireEvent.click(screen.getByRole('button', { name: 'second' }));
 
         await waitFor(() => expect(mutateTenantEight).toHaveBeenCalledTimes(1));
-        expect(mutateTenantEight.mock.calls[0][0]).toMatchObject({
+        expect(mutateTenantEight.mock.calls[0][0]).toEqual({
             tenantId: 8,
-            policies: {
-                first: { value: false, mode: 'SUGGESTED' },
-                second: { value: true, mode: 'ENFORCED' },
-            },
+            policies: { second: { value: true, mode: 'ENFORCED' } },
         });
 
         await act(async () => {

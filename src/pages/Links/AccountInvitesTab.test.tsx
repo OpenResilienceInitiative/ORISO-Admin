@@ -3,7 +3,7 @@ import React from 'react';
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
@@ -22,6 +22,10 @@ import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 // random. The limit is raised for this file only; what the tests assert is
 // unchanged. The lasting fix is a lighter composer test harness (see #1327).
 vi.setConfig({ testTimeout: 60_000 });
+// The same slow steps also outlast findBy*'s 1 s default wait for an element
+// to appear (a select option on a loaded runner, ORISO-Admin#1328). Match the
+// sibling composer tests (InviteComposer.test.tsx, AccountInvitesBulk.test.tsx).
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
