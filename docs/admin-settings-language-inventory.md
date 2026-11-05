@@ -34,44 +34,103 @@ These columns come from the current table definitions. Some appear only for cert
 | Träger | Name, Träger-ID, Subdomain, E-Mail Träger-Admin, Max. erlaubte Berater, Angelegt, Zuletzt aktualisiert, Aktionen | Name, Provider ID, Subdomain, Provider admin email, Max. allowed consultants, Created, Last updated, Actions | [src/pages/Tenants/List/TenantDataTable.tsx](../src/pages/Tenants/List/TenantDataTable.tsx) |
 | Nutzer / Users | Name, Träger, Träger-Subdomain, Beratungsstellen, Status, Zuletzt aktualisiert, Aktionen | Name, Provider, Provider subdomain, Counselling centres, Status, Last updated, Actions | [src/pages/users/management/UserDataTable.tsx](../src/pages/users/management/UserDataTable.tsx) |
 
-## Titles in settings components
+## Titles in Admin components
 
-Titles with literal locale keys in the global settings, tenant master-data, appearance and functionality components, including dialog titles. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.
+Titles with literal locale keys in the mapped Admin components, including dialog titles. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.
 
 <!-- prettier-ignore -->
 | German | English | Code |
 | --- | --- | --- |
+| AVV veröffentlichen | Publish DPA | [src/components/Tenants/LegalSettings/components/DpaPublishDeadlineDialog/index.tsx:28](../src/components/Tenants/LegalSettings/components/DpaPublishDeadlineDialog/index.tsx#L28) |
+| Abwesenheit | Absence | [src/pages/Profile/Absence/index.tsx:20](../src/pages/Profile/Absence/index.tsx#L20) |
+| Allgemeine Informationen | General information | [src/pages/Agency/Edit/components/GeneralInformation/index.tsx:109](../src/pages/Agency/Edit/components/GeneralInformation/index.tsx#L109), [src/pages/Agency/Edit/index.tsx:440](../src/pages/Agency/Edit/index.tsx#L440), [src/pages/users/Edit/index.tsx:940](../src/pages/users/Edit/index.tsx#L940) |
+| An Beratungsstellen-Admins senden | Send to counselling-centre admins | [src/pages/TenantSettings/ServiceNotices/ServiceNoticeSend.tsx:69](../src/pages/TenantSettings/ServiceNotices/ServiceNoticeSend.tsx#L69) |
 | Ansprache | Form of address | [src/components/Tenants/GeneralSettings/components/TypeOfLanguage/index.tsx:21](../src/components/Tenants/GeneralSettings/components/TypeOfLanguage/index.tsx#L21) |
 | Assistent für Systemnachrichten | System-message assistant | [src/components/Tenants/GeneralSettings/components/AssistantIdentity/index.tsx:96](../src/components/Tenants/GeneralSettings/components/AssistantIdentity/index.tsx#L96) |
+| Ausgewählte Einladungen löschen | Delete selected invites | [src/pages/Links/AccountInvitesTab.tsx:697](../src/pages/Links/AccountInvitesTab.tsx#L697) |
+| Automatisch übersetzen & veröffentlichen | Machine-translate & publish | [src/components/Tenants/LegalSettings/components/TranslateOnPublishModal/index.tsx:58](../src/components/Tenants/LegalSettings/components/TranslateOnPublishModal/index.tsx#L58) |
 | Automatische Übersetzung | Automatic translation | [src/components/GlobalSettings/TranslationApiKeysCard/index.tsx:59](../src/components/GlobalSettings/TranslationApiKeysCard/index.tsx#L59) |
 | Bearbeitungsrechte für Stammdaten und Erscheinungsbild | Editing rights for master data and appearance | [src/components/Tenants/GeneralSettings/components/EditingRightsCard/index.tsx:33](../src/components/Tenants/GeneralSettings/components/EditingRightsCard/index.tsx#L33) |
 | Benachrichtigungen | Notifications | [src/components/Tenants/AppSettings/NotificationsSettings/index.tsx:22](../src/components/Tenants/AppSettings/NotificationsSettings/index.tsx#L22) |
 | Benennung und Slogan | Name and slogan | [src/components/Tenants/GeneralSettings/components/NameAndSlogan/index.tsx:18](../src/components/Tenants/GeneralSettings/components/NameAndSlogan/index.tsx#L18) |
+| Berater wirklich löschen | Really delete advisors | [src/pages/users/List/components/DeleteUser/index.tsx:67](../src/pages/users/List/components/DeleteUser/index.tsx#L67) |
+| Berater:in entfernen? | Remove consultant? | [src/pages/Agency/Edit/components/RegistrationSettings/AssignedConsultants.tsx:97](../src/pages/Agency/Edit/components/RegistrationSettings/AssignedConsultants.tsx#L97) |
+| Beratungsstelle vervollständigen | Complete your counselling centre | [src/pages/Agency/AgencySetupPage.tsx:95](../src/pages/Agency/AgencySetupPage.tsx#L95) |
+| Beratungsstelle wirklich löschen | Delete counselling centre? | [src/pages/Agency/List/AgencyDeletionModal/index.tsx:23](../src/pages/Agency/List/AgencyDeletionModal/index.tsx#L23) |
+| Beratungsstellen | Counselling centres | [src/pages/Agency/List/index.tsx:93](../src/pages/Agency/List/index.tsx#L93) |
 | Berechtigungen | Permissions | [src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx:232](../src/components/Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView.tsx#L232) |
 | Chat-Wiederherstellung für neue Konten | Chat recovery for new accounts | [src/components/GlobalSettings/ChatRecoverySettingsCard/index.tsx:52](../src/components/GlobalSettings/ChatRecoverySettingsCard/index.tsx#L52) |
+| Datenschutzerklärung | Privacy policy | [src/components/Tenants/LegalSettings/index.tsx:36](../src/components/Tenants/LegalSettings/index.tsx#L36) |
+| Die maßgebliche Sprachfassung wurde nicht geändert | The authoritative language version was not changed | [src/components/Tenants/LegalSettings/components/PublishSourceWarningModal/index.tsx:42](../src/components/Tenants/LegalSettings/components/PublishSourceWarningModal/index.tsx#L42) |
+| Diesen Wartungshinweis senden? | Send this maintenance notice? | [src/pages/TenantSettings/ServiceNotices/ServiceNoticeSend.tsx:113](../src/pages/TenantSettings/ServiceNotices/ServiceNoticeSend.tsx#L113) |
 | Dokument-Stammdaten | Document master data | [src/components/GlobalSettings/DocumentMasterDataCard/index.tsx:127](../src/components/GlobalSettings/DocumentMasterDataCard/index.tsx#L127) |
+| E-Mail-Vorlagen | Email templates | [src/pages/Links/EmailTemplatesDialog.tsx:751](../src/pages/Links/EmailTemplatesDialog.tsx#L751) |
 | Eigenen E-Mail-Server testen | Test own email server | [src/components/Tenants/AppSettings/SmtpSettings/index.tsx:365](../src/components/Tenants/AppSettings/SmtpSettings/index.tsx#L365) |
 | Einführung Ratsuchende | Introduction for advice seekers | [src/components/Tenants/AppSettings/ErstantwortSettings/ErstantwortTextsCard/index.tsx:157](../src/components/Tenants/AppSettings/ErstantwortSettings/ErstantwortTextsCard/index.tsx#L157) |
+| Einstellungen | Settings | [src/pages/TenantSettings/index.tsx:61](../src/pages/TenantSettings/index.tsx#L61), [src/pages/users/Edit/index.tsx:952](../src/pages/users/Edit/index.tsx#L952) |
+| Einstellungen | Settings | [src/pages/Topics/Edit/index.tsx:100](../src/pages/Topics/Edit/index.tsx#L100) |
+| Einstellungen Rechtstexte | Legal text settings | [src/components/Tenants/LegalSettings/components/LegalManagementCard/index.tsx:23](../src/components/Tenants/LegalSettings/components/LegalManagementCard/index.tsx#L23) |
+| Einstellungen zum Beratungsangebot | Counseling service settings | [src/pages/Agency/Edit/components/AgencySettings/index.tsx:206](../src/pages/Agency/Edit/components/AgencySettings/index.tsx#L206), [src/pages/Agency/Edit/index.tsx:464](../src/pages/Agency/Edit/index.tsx#L464) |
+| Einwilligungstext | Consent text | [src/components/Tenants/LegalSettings/components/LegalConsentField/index.tsx:139](../src/components/Tenants/LegalSettings/components/LegalConsentField/index.tsx#L139) |
+| Einwilligungstext nicht verfügbar | Consent text not available | [src/components/Tenants/LegalSettings/components/ConsentUnavailableNotice/index.tsx:65](../src/components/Tenants/LegalSettings/components/ConsentUnavailableNotice/index.tsx#L65) |
+| Empfänger aus CSV importieren | Import recipients from CSV | [src/pages/Links/InviteCsvImportModal.tsx:644](../src/pages/Links/InviteCsvImportModal.tsx#L644) |
+| Entwurf durch die Vorlage ersetzen? | Replace your draft with the template? | [src/components/Tenants/LegalSettings/components/LegalTemplateCompare/index.tsx:227](../src/components/Tenants/LegalSettings/components/LegalTemplateCompare/index.tsx#L227) |
+| Ersetzte Entwürfe | Replaced drafts | [src/components/Tenants/LegalSettings/components/LegalTemplateCompare/index.tsx:108](../src/components/Tenants/LegalSettings/components/LegalTemplateCompare/index.tsx#L108) |
+| Erste*r Träger-Administrator*in | First provider administrator | [src/pages/Tenants/Edit/General/index.tsx:312](../src/pages/Tenants/Edit/General/index.tsx#L312) |
 | Fachbereiche | Topics | [src/components/GlobalSettings/OneTopicPerAgencySettingsCard/index.tsx:36](../src/components/GlobalSettings/OneTopicPerAgencySettingsCard/index.tsx#L36) |
 | Fallübergabe | Case handover | [src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverCardView.tsx:139](../src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverCardView.tsx#L139) |
 | Farben | Colors | [src/components/Tenants/GeneralSettings/components/ThemeBuilder/index.tsx:527](../src/components/Tenants/GeneralSettings/components/ThemeBuilder/index.tsx#L527) |
+| Handbuch zur Beratungsplattform | Documentation | [src/pages/Profile/Documentation/index.tsx:13](../src/pages/Profile/Documentation/index.tsx#L13) |
 | Hinweis | Notice | [src/components/Tenants/GeneralSettings/components/Languages/index.tsx:114](../src/components/Tenants/GeneralSettings/components/Languages/index.tsx#L114) |
+| Impressum | Legal notice | [src/components/Tenants/LegalSettings/index.tsx:73](../src/components/Tenants/LegalSettings/index.tsx#L73) |
 | Inaktive Konten | Inactive accounts | [src/components/GlobalSettings/AccountInactivitySettingsCard/index.tsx:47](../src/components/GlobalSettings/AccountInactivitySettingsCard/index.tsx#L47) |
 | Individuelle Bilder | Custom images | [src/components/Tenants/GeneralSettings/components/LogoAndFavicon/index.tsx:60](../src/components/Tenants/GeneralSettings/components/LogoAndFavicon/index.tsx#L60) |
+| Kein Thema ausgewählt | No topic selected | [src/pages/Agency/Edit/components/NoTopicConfirm/index.tsx:18](../src/pages/Agency/Edit/components/NoTopicConfirm/index.tsx#L18) |
 | Kommunikationsfunktionen | Communication features | [src/components/Tenants/AppSettings/CommunicationSettings/index.tsx:21](../src/components/Tenants/AppSettings/CommunicationSettings/index.tsx#L21) |
+| Kontaktdaten Datenschutzbeauftragte_r | Data protection officer contact details | [src/pages/Agency/Edit/components/ContactSettings/index.tsx:145](../src/pages/Agency/Edit/components/ContactSettings/index.tsx#L145), [src/pages/Agency/Edit/components/ContactSettings/index.tsx:163](../src/pages/Agency/Edit/components/ContactSettings/index.tsx#L163) |
+| Kontaktdaten Verantwortlicher für die Datenverarbeitung | Contact details of the data controller | [src/pages/Agency/Edit/components/ResponsibleSettings/index.tsx:76](../src/pages/Agency/Edit/components/ResponsibleSettings/index.tsx#L76), [src/pages/Agency/Edit/components/ResponsibleSettings/index.tsx:87](../src/pages/Agency/Edit/components/ResponsibleSettings/index.tsx#L87) |
 | Konto der ratsuchenden Person | The advice seeker's account | [src/components/Tenants/AppSettings/PermissionsSettings/AskerPermissionsCard/index.tsx:90](../src/components/Tenants/AppSettings/PermissionsSettings/AskerPermissionsCard/index.tsx#L90) |
 | Login-Funktion | Login function | [src/components/GlobalSettings/LoginFunctionCard/index.tsx:25](../src/components/GlobalSettings/LoginFunctionCard/index.tsx#L25) |
+| Löschung abbrechen? | Cancel deletion? | [src/pages/users/List/components/DeletionWindow/index.tsx:83](../src/pages/users/List/components/DeletionWindow/index.tsx#L83) |
+| Löschung pausieren? | Pause deletion? | [src/pages/users/List/components/DeletionWindow/index.tsx:103](../src/pages/users/List/components/DeletionWindow/index.tsx#L103) |
+| Möchten Sie wirklich „{{name}}“ löschen? | Do you really want to delete "{{name}}"? | [src/pages/Tenants/List/index.tsx:154](../src/pages/Tenants/List/index.tsx#L154), [src/pages/users/management/UserManagementTable.tsx:481](../src/pages/users/management/UserManagementTable.tsx#L481) |
+| Möchten Sie {{name}} wirklich löschen? | Are you sure you want to delete {{name}}? | [src/pages/users/List/components/DeleteTenantAdmin/index.tsx:26](../src/pages/users/List/components/DeleteTenantAdmin/index.tsx#L26) |
 | Nachrichten von temporären Konten | Messages from temporary accounts | [src/components/GlobalSettings/TemporaryAccountSettingsCards/index.tsx:199](../src/components/GlobalSettings/TemporaryAccountSettingsCards/index.tsx#L199) |
+| Name und Beschreibung | Name and description | [src/pages/Topics/Edit/index.tsx:60](../src/pages/Topics/Edit/index.tsx#L60) |
+| Nutzer | Users | [src/pages/users/List/index.tsx:28](../src/pages/users/List/index.tsx#L28) |
+| Nutzungsbedingungen | Terms and conditions | [src/components/Tenants/LegalSettings/index.tsx:83](../src/components/Tenants/LegalSettings/index.tsx#L83) |
+| Passwort | Password | [src/pages/Profile/PassswordChange/index.tsx:50](../src/pages/Profile/PassswordChange/index.tsx#L50) |
+| Persönliche Daten des Träger-Admins | Provider admin personal data | [src/pages/users/TenantAdminEdit/index.tsx:174](../src/pages/users/TenantAdminEdit/index.tsx#L174) |
+| Plattform-Mailserver | Platform mail server | [src/pages/GlobalSettings/index.tsx:360](../src/pages/GlobalSettings/index.tsx#L360) |
 | Postleitzahl bei einer weiteren Beratung | Postcode when requesting further counselling | [src/components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard/index.tsx:32](../src/components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard/index.tsx#L32) |
+| Private Daten | Personal data | [src/pages/Profile/PrivateData/index.tsx:23](../src/pages/Profile/PrivateData/index.tsx#L23) |
+| Profil | Profile | [src/pages/Profile/UserProfile.tsx:22](../src/pages/Profile/UserProfile.tsx#L22) |
+| Rollen und Zuständigkeit | Roles and responsibilities | [src/pages/Profile/RolesAndAssignment/index.tsx:35](../src/pages/Profile/RolesAndAssignment/index.tsx#L35) |
 | SMTP & System-E-Mails | SMTP & system emails | [src/components/Tenants/AppSettings/SmtpSettings/index.tsx:207](../src/components/Tenants/AppSettings/SmtpSettings/index.tsx#L207) |
+| SMTP & System-E-Mails | SMTP & system emails | [src/pages/GlobalSettings/index.tsx:286](../src/pages/GlobalSettings/index.tsx#L286) |
+| SMTP Test-E-Mail | SMTP test email | [src/pages/GlobalSettings/index.tsx:440](../src/pages/GlobalSettings/index.tsx#L440) |
+| Selbst beraten | Counsel yourself | [src/pages/Profile/SelfConsultantIdentity/index.tsx:45](../src/pages/Profile/SelfConsultantIdentity/index.tsx#L45) |
+| Sichtbarkeit in der Registrierung | Visibility in registration | [src/pages/Agency/Edit/components/RegistrationSettings/index.tsx:259](../src/pages/Agency/Edit/components/RegistrationSettings/index.tsx#L259), [src/pages/Agency/Edit/index.tsx:452](../src/pages/Agency/Edit/index.tsx#L452) |
 | Sonstige Funktionen | Other features | [src/components/Tenants/AppSettings/OtherFunctionsSettings/index.tsx:62](../src/components/Tenants/AppSettings/OtherFunctionsSettings/index.tsx#L62) |
+| Sprache | Language | [src/pages/Profile/LanguageSettings/index.tsx:10](../src/pages/Profile/LanguageSettings/index.tsx#L10) |
 | Sprachen | Languages | [src/components/Tenants/GeneralSettings/components/Languages/index.tsx:72](../src/components/Tenants/GeneralSettings/components/Languages/index.tsx#L72) |
 | Statistik-Einstellungen | Statistics settings | [src/components/GlobalSettings/StatisticsSettingsCard/index.tsx:145](../src/components/GlobalSettings/StatisticsSettingsCard/index.tsx#L145) |
 | Support-Adresse | Support address | [src/components/GlobalSettings/SupportEmailSettingsCard/index.tsx:43](../src/components/GlobalSettings/SupportEmailSettingsCard/index.tsx#L43) |
+| Systemhinweise | System notices | [src/pages/TenantSettings/ServiceNotices/index.tsx:75](../src/pages/TenantSettings/ServiceNotices/index.tsx#L75) |
 | Temporäre Gastkonten | Temporary guest accounts | [src/components/GlobalSettings/TemporaryAccountSettingsCards/index.tsx:114](../src/components/GlobalSettings/TemporaryAccountSettingsCards/index.tsx#L114) |
+| Thema wirklich löschen | Really delete topic | [src/pages/Topics/List/TopicDeletionModal.tsx:22](../src/pages/Topics/List/TopicDeletionModal.tsx#L22) |
 | Themen | Topics | [src/components/Tenants/AppSettings/TopicsSettings/index.tsx:22](../src/components/Tenants/AppSettings/TopicsSettings/index.tsx#L22) |
+| Themen | Topics | [src/pages/Topics/List/TopicList.tsx:183](../src/pages/Topics/List/TopicList.tsx#L183) |
+| Träger | Providers | [src/pages/Tenants/List/index.tsx:83](../src/pages/Tenants/List/index.tsx#L83) |
+| Trägerinformationen | Provider information | [src/pages/Tenants/Edit/General/index.tsx:187](../src/pages/Tenants/Edit/General/index.tsx#L187), [src/pages/Tenants/Edit/General/index.tsx:253](../src/pages/Tenants/Edit/General/index.tsx#L253) |
+| Trägerzuordnung | Provider assignment | [src/pages/users/TenantAdminEdit/index.tsx:225](../src/pages/users/TenantAdminEdit/index.tsx#L225) |
 | Tutorials für Berater | Counsellor tutorials | [src/components/GlobalSettings/CounsellorTutorialSettingsCard/index.tsx:53](../src/components/GlobalSettings/CounsellorTutorialSettingsCard/index.tsx#L53) |
+| Vorschau des gespeicherten Entwurfs | Preview of saved draft | [src/pages/TenantSettings/ServiceNotices/index.tsx:157](../src/pages/TenantSettings/ServiceNotices/index.tsx#L157) |
+| Zugangsdaten (optional) | Login credentials (optional) | [src/pages/users/TenantAdminEdit/index.tsx:206](../src/pages/users/TenantAdminEdit/index.tsx#L206) |
+| Zur Übersicht | Back to overview | [src/pages/users/Edit/index.tsx:868](../src/pages/users/Edit/index.tsx#L868) |
 | Zwei Beratungen zum gleichen Thema | Two counsellings on one topic | [src/components/GlobalSettings/TopicDuplicateSettingsCard/index.tsx:40](../src/components/GlobalSettings/TopicDuplicateSettingsCard/index.tsx#L40) |
+| Zwei-Faktor-Authentifizierung | Two-factor authentication | [src/pages/Profile/MandatoryTwoFactorSetup.tsx:40](../src/pages/Profile/MandatoryTwoFactorSetup.tsx#L40), [src/pages/Profile/TwoFactorCard.tsx:6](../src/pages/Profile/TwoFactorCard.tsx#L6) |
+| Öffentlicher Kontakt-Link | Public contact link | [src/pages/users/Edit/index.tsx:1033](../src/pages/users/Edit/index.tsx#L1033) |
 
 ## Source index
 
