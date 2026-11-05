@@ -312,7 +312,7 @@ export const SendToSelectedTraeger: Story = {
         const page = within(canvasElement.ownerDocument.body);
         await userEvent.click(await enabledTemplateButton(canvas));
         const dialog = await page.findByRole('dialog');
-        await userEvent.click(within(dialog).getByLabelText(/Ausgewählte Träger|Selected Träger/));
+        await userEvent.click(within(dialog).getByLabelText(/Ausgewählte Träger|Selected providers/));
         const send = within(dialog).getByRole('button', { name: /^(Senden|Send)$/ });
         await expect(send).toBeDisabled();
         await userEvent.click(await within(dialog).findByText('Diakonie Südhang'));
