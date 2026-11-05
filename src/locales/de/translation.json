@@ -1897,7 +1897,7 @@
     "tenants.permissions.feature.threads": "Antworten als Unterhaltungsstrang (Threads)",
     "tenants.permissions.feature.supervision": "Supervision",
     "tenants.typeOfLanguage.title": "Ansprache",
-    "tenants.typeOfLanguage.radio.description": "Sollen die Nutzer eine formelle oder informelle Ansprache vom System bekommen?",
+    "tenants.typeOfLanguage.radio.description": "Welche Ansprache sollen neu angelegte Ratsuchenden-Konten zunächst erhalten? Bestehende Konten behalten ihre gespeicherte Ansprache.",
     "tenants.typeOfLanguage.radio.formal": "Formell („Sie“)",
     "tenants.typeOfLanguage.radio.informal": "Informell („Du“)",
     "users.title": "Nutzer",

@@ -1677,7 +1677,7 @@
     "tenants.permissions.feature.videoCalls": "Video calls",
     "tenants.permissions.feature.voiceMessages": "Voice messages",
     "tenants.permissions.title": "Permissions",
-    "tenants.typeOfLanguage.radio.description": "Choose whether the application addresses users formally or informally.",
+    "tenants.typeOfLanguage.radio.description": "Which form of address should newly created advice-seeker accounts receive by default? Existing accounts keep their saved preference.",
     "tenants.typeOfLanguage.title": "Form of address",
     "termsAndConditions.title": "Terms and conditions",
     "termsAndConditions.subTitle": "keep",
