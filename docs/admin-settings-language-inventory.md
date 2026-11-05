@@ -47,6 +47,18 @@ These columns come from the current table definitions. Some appear only for cert
 | Inaktivitätsprotokoll / Inactivity audit | Erstellt am, Rolle, Konto-ID, Träger des Kontos, Letzte Aktivität, Schwelle (Tage), Empfänger E-Mail, Admin-ID des Empfängers, E-Mail versendet | Created at, Role, Account ID, Account provider, Last activity, Threshold (days), Recipient email, Recipient admin ID, Email dispatched | [src/pages/Logs/InactiveAccountAuditLogs/index.tsx](../src/pages/Logs/InactiveAccountAuditLogs/index.tsx) |
 | Supervisionsprotokoll / Supervision log | Datum, Aktion, Sitzung, Supervisor, Hinzugefügt von, Notiz | Date, Action, Session ID, Supervisor, Actor, Notes | [src/pages/Logs/SupervisorLogs/index.tsx](../src/pages/Logs/SupervisorLogs/index.tsx) |
 
+## Behaviour comparisons completed so far
+
+These checks compare the current wording with source code. They do not replace role-by-role checks in a running environment; all other settings remain to be reviewed.
+
+<!-- prettier-ignore -->
+| Setting | What the source confirms | Source |
+| --- | --- | --- |
+| Form of address | New advice-seeker accounts take an initial preference; changing the setting does not rewrite existing accounts. | [UserService: CreateUserFacade](https://github.com/OpenResilienceInitiative/ORISO-UserService/blob/280585226f2c7308fcf35e1c4135bc2d4e43d051/src/main/java/de/caritas/cob/userservice/api/facade/CreateUserFacade.java) |
+| Same-topic conversations | On acceptance, the implemented mode attempts a notice for other accepted one-to-one conversations on the same topic; the other displayed modes are unavailable. | [UserService: TopicDuplicateService](https://github.com/OpenResilienceInitiative/ORISO-UserService/blob/280585226f2c7308fcf35e1c4135bc2d4e43d051/src/main/java/de/caritas/cob/userservice/api/service/furthercounselling/TopicDuplicateService.java) |
+| One department per counselling centre | Existing multiple topics can be retained or removed; adding a topic that leaves more than one is rejected while the restriction is on. | [AgencyService: OneTopicPerAgencyPolicy](https://github.com/OpenResilienceInitiative/ORISO-AgencyService/blob/51b17163632bb9997350d10bef93c1b49be6326f/src/main/java/de/caritas/cob/agencyservice/api/admin/service/OneTopicPerAgencyPolicy.java) |
+| Chat recovery | New account creation records the applicable method; anonymous users continue using recovery keys. | [UserService: enrollment policy](https://github.com/OpenResilienceInitiative/ORISO-UserService/blob/280585226f2c7308fcf35e1c4135bc2d4e43d051/src/main/java/de/caritas/cob/userservice/api/service/ChatRecoveryEnrollmentPolicyService.java), [Frontend: recovery policy](https://github.com/OpenResilienceInitiative/ORISO-Frontend/blob/8c5be36347f2a44e241892cafd0daed315e3119f/src/services/chatRecoveryPolicy.ts) |
+
 ## Titles in Admin components
 
 Title keys in the mapped Admin components and their configuration, including dialogs, help sections and recognised templates. A component can be shared by multiple roles. This list is not yet complete for all dynamically supplied titles.
