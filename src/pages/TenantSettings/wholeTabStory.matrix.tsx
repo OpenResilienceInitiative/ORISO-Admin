@@ -16,6 +16,10 @@ export const wholeTabHandlers = [
     http.get('*/service/users/data', () => HttpResponse.json({ id: 'storybook-admin' })),
     http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 1, policies: {} })),
+    http.put('*/service/tenantadmin/:id/permission-policies', async ({ request }) =>
+        HttpResponse.json(await request.json()),
+    ),
+    http.get('*/service/tenantadmin/:id/dpa/status', () => HttpResponse.json({ tenantId: 1, status: 'MISSING' })),
     http.get('*/service/tenantadmin/:id/dpa/versions', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/:id/dpa/gate', () => HttpResponse.json({ dpaPublished: false, dpaSigned: false })),
     http.get('*/service/tenantadmin/:id/legal-versions', () => HttpResponse.json([])),
@@ -23,6 +27,7 @@ export const wholeTabHandlers = [
     http.get('*/service/tenantadmin/:id/legal-draft-archives', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/:id/legal-drafts/:type', () => HttpResponse.json(null)),
     http.get('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
+    http.put('*/service/tenantadmin/:id', async ({ request }) => HttpResponse.json(await request.json())),
     http.get('*/service/tenant/:id', () => HttpResponse.json(tenant)),
     ...appearanceHandlers,
 ];

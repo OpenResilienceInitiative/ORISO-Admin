@@ -2,33 +2,37 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
 import { expect } from 'storybook/test';
 import { Form } from 'antd';
+import { ThemeProvider } from '@mui/material/styles';
+import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import { CardGrid } from '../../../../components/CardGrid';
 import { TenantInformationCard } from './TenantInformationCard';
 
 const Example = () => {
     const [form] = Form.useForm();
     return (
-        <CardGrid raster>
-            <CardGrid.Item>
-                <TenantInformationCard
-                    form={form}
-                    initialValues={{
-                        name: 'Beispiel-Träger',
-                        subdomain: 'beispiel',
-                        address: 'Musterstraße 1',
-                        licensing: { allowedNumberOfUsers: 25 },
-                    }}
-                    isLoading={false}
-                    shouldShowSubdomainField
-                    onSave={() => {}}
-                />
-            </CardGrid.Item>
-        </CardGrid>
+        <ThemeProvider theme={orisoMuiTheme}>
+            <CardGrid raster>
+                <CardGrid.Item>
+                    <TenantInformationCard
+                        form={form}
+                        initialValues={{
+                            name: 'Beispiel-Träger',
+                            subdomain: 'beispiel',
+                            address: 'Musterstraße 1',
+                            licensing: { allowedNumberOfUsers: 25 },
+                        }}
+                        isLoading={false}
+                        shouldShowSubdomainField
+                        onSave={() => {}}
+                    />
+                </CardGrid.Item>
+            </CardGrid>
+        </ThemeProvider>
     );
 };
 
 const meta = {
-    title: 'Settings/Träger/Stammdaten/Trägerinformationen',
+    title: 'Settings/Träger/Stammdaten & Mehr/Trägerinformationen',
     component: Example,
 } satisfies Meta<typeof Example>;
 
