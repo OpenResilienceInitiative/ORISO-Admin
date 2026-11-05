@@ -68,6 +68,16 @@ def render():
         '<!-- prettier-ignore -->', '| German | English |', '| --- | --- |',
     ]
     output.extend(f'| {escape(german[key])} | {escape(english[key])} |' for key in menu_keys)
+    list_columns = (
+        ('Beratungsstellen / Counselling centres', 'src/pages/Agency/List/AgencyDataTable.tsx', ('agency.name', 'agency.list.id', 'agency.list.address', 'tenantName', 'topics.title', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
+        ('Träger', 'src/pages/Tenants/List/TenantDataTable.tsx', ('tenants.list.name', 'tenants.list.tenantId', 'tenants.list.subdomain', 'tenants.list.adminEmails', 'tenants.list.maxConsultants', 'tenants.list.created', 'users.table.lastUpdated', 'userTable.columns.actions')),
+        ('Nutzer / Users', 'src/pages/users/management/UserDataTable.tsx', ('userTable.columns.name', 'tenantName', 'tenantAdmins.form.subdomain', 'agency', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
+    )
+    output.extend(['', '## List columns', '', 'These columns come from the current table definitions. Some appear only for certain roles, features or screen widths; the action column has an accessible label rather than a visible heading.', '', '<!-- prettier-ignore -->', '| List | German | English | Code |', '| --- | --- | --- | --- |'])
+    for label, path, keys in list_columns:
+        de_names = ', '.join(escape(german[key]) for key in keys)
+        en_names = ', '.join(escape(english[key]) for key in keys)
+        output.append(f'| {label} | {de_names} | {en_names} | [{path}](../{path}) |')
     output.extend(['', '## Titles in settings components', '', 'Titles with literal locale keys in the global settings, tenant master-data, appearance and functionality components, including dialog titles. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.', '', '<!-- prettier-ignore -->', '| German | English | Code |', '| --- | --- | --- |'])
     for key, refs in sorted(card_titles.items(), key=lambda item: german[item[0]]):
         sources = ', '.join(f'[{escape(path)}:{line}](../{path}#L{line})' for path, line in sorted(refs))

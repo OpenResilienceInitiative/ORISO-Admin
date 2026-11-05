@@ -23,6 +23,17 @@ These tabs are ordered as in the platform menu, with the Träger-only tabs inclu
 | Funktionszugriff | Functionality Access |
 | Funktionalitäten | Functionalities |
 
+## List columns
+
+These columns come from the current table definitions. Some appear only for certain roles, features or screen widths; the action column has an accessible label rather than a visible heading.
+
+<!-- prettier-ignore -->
+| List | German | English | Code |
+| --- | --- | --- | --- |
+| Beratungsstellen / Counselling centres | Name, ID, Adresse, Träger, Themen, Status, Zuletzt aktualisiert, Aktionen | Name, ID, Address, Tenant, Topics, Status, Last updated, Actions | [src/pages/Agency/List/AgencyDataTable.tsx](../src/pages/Agency/List/AgencyDataTable.tsx) |
+| Träger | Name, Träger-ID, Subdomain, E-Mail Träger-Admin, Max. erlaubte Berater, Angelegt, Zuletzt aktualisiert, Aktionen | Name, Tenant ID, Subdomain, Tenant admin email, Max. allowed consultants, Created, Last updated, Actions | [src/pages/Tenants/List/TenantDataTable.tsx](../src/pages/Tenants/List/TenantDataTable.tsx) |
+| Nutzer / Users | Name, Träger, Träger-Subdomain, Beratungsstellen, Status, Zuletzt aktualisiert, Aktionen | Name, Tenant, Tenant subdomain, Counselling centres, Status, Last updated, Actions | [src/pages/users/management/UserDataTable.tsx](../src/pages/users/management/UserDataTable.tsx) |
+
 ## Titles in settings components
 
 Titles with literal locale keys in the global settings, tenant master-data, appearance and functionality components, including dialog titles. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.
