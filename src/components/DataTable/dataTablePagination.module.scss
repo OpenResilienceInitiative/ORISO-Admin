@@ -1,3 +1,4 @@
+@use '../../styles/nativeSelectChevron';
 @use '../../styles/muiSpacing' as mui;
 
 .pagination {
@@ -87,4 +88,8 @@
     .pagination.compact {
         padding: 0;
     }
+}
+
+.selectFrame {
+    @include nativeSelectChevron.native-select-chevron(18px, 4px);
 }

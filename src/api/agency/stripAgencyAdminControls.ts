@@ -5,7 +5,9 @@ import { AgencySettings } from '../../types/agency';
  * they are sent back to the AgencyService. Echoing them would turn a plain agency save into a
  * platform-controls update, which only the super admin may perform (403 for everyone else).
  */
-export const stripAgencyAdminControls = (settings: AgencySettings): Omit<AgencySettings, 'agencyAdminControls'> => {
-    const { agencyAdminControls, ...rest } = settings;
+export const stripAgencyAdminControls = (
+    settings: AgencySettings,
+): Omit<AgencySettings, 'agencyAdminControls' | 'permissionPolicies'> => {
+    const { agencyAdminControls, permissionPolicies, ...rest } = settings;
     return rest;
 };

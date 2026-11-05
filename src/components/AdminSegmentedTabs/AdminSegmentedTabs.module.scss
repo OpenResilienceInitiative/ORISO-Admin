@@ -79,15 +79,15 @@
 .itemActive:last-child {
     background: var(--m3-secondary, #4c555f);
     border-radius: 38px;
-    color: var(--m3-primary-fixed, #ffdad5);
+    color: var(--m3-primary-fixed, #ffe2de);
 
     &:hover {
         background: var(--m3-secondary, #4c555f);
-        color: var(--m3-primary-fixed, #ffdad5);
+        color: var(--m3-primary-fixed, #ffe2de);
     }
 
     .icon {
-        color: var(--m3-primary-fixed, #ffdad5);
+        color: var(--m3-primary-fixed, #ffe2de);
     }
 }
 

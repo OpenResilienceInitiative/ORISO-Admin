@@ -92,7 +92,7 @@
 }
 
 .metaLabel {
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 14px;
     font-weight: 500;
 }
@@ -107,7 +107,7 @@
 
 .discardBody {
     margin: 0;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 14px;
     line-height: 20px;
     text-align: center;
@@ -116,7 +116,7 @@
 /* #713: the disabled Speichern button explains itself. */
 .saveHint {
     margin: 12px 0 0;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 13px;
 }
 

@@ -13,8 +13,8 @@ import { CounsellorInvitesTab, LinksPage, TenantInvitesTab } from './index';
 const emptyList = () => HttpResponse.json({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
 
 /**
- * Full Links page shell — the pill tab row ("Träger-Invites" / "Berater-Invites" /
- * "Externe Inbounds") plus the "Mein Zugang" button — with the tenant invites tab
+ * Full Links page shell — the pill tab row ("Träger-Invites" / "Berater-Invites")
+ * plus the "Mein Zugang" button — with the tenant invites tab
  * mounted as its outlet. Exists mainly to review header spacing and tab styling.
  */
 const meta = {
@@ -53,18 +53,21 @@ const withOutlet =
         );
     };
 
-/** Platform admin (tenantId 0): all three tabs — Träger-Invites, Berater-Invites, Externe Inbounds. */
+/**
+ * Platform admin (tenantId 0): both invitation tabs. The live-chat links moved
+ * to Funktionszugriff (ORISO-Admin#1321), so there is no third tab any more.
+ */
 export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
-        await expect(canvas.getByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
     },
 };
 
-/** Träger admin: Träger-Invites (own Träger only) and Berater-Invites; Externe Inbounds stay platform-only. */
+/** Träger admin: Träger-Invites (own Träger only) and Berater-Invites. */
 export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
     play: async ({ canvas }) => {

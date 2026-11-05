@@ -50,6 +50,24 @@ const mix = (a: string, b: string, amount: number) => {
     );
 };
 
+/**
+ * The brand tone, moved towards black (on a light background) or white (on a
+ * dark one) in small steps until it reaches `target` contrast (ORISO-Admin#1322).
+ * Keeps the hue as long as possible instead of jumping to black or white; the
+ * default seed already passes and comes back unchanged.
+ */
+const keepReadableOn = (foreground: string, background: string, target = 4.5): string => {
+    const towards =
+        contrastRatio('#000000', background) >= contrastRatio('#ffffff', background) ? '#000000' : '#ffffff';
+    for (let step = 0; step <= 20; step += 1) {
+        const candidate = step === 0 ? foreground : mix(foreground, towards, step / 20);
+        if (contrastRatio(candidate, background) >= target) {
+            return candidate;
+        }
+    }
+    return towards;
+};
+
 const DEFAULT_ACCENT_DARK = '#a5000a';
 /** Default error/signal seed — matches Frontend `DEFAULT_SIGNAL.light.error`. */
 const SYSTEM_ERROR = '#b1005e';
@@ -125,7 +143,8 @@ const DEFAULT_NAV_INDICATOR = '#410001';
 const STAGE_SURFACE = '#281715';
 const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
-    '--admin-workspace-background': '#e4e2e2',
+    // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
+    '--admin-workspace-background': '#fcf9f9',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -150,7 +169,7 @@ const ADMIN_TABLE_TOKENS = {
 
 /**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
- * `--admin-workspace-background` (#e4e2e2, surface-container-highest tier) so
+ * the card surface (#eae7e8, surface-container-high tier) so
  * inputs read as raised instead of muddy, with a subtle outline-variant border.
  * Selection is an "illuminated" light primary-container tonal derived from the
  * tenant seed. `--admin-form-field-surface` above is the legacy alias consumed
@@ -162,7 +181,7 @@ const adminFieldTokens = (accentLight: string, onAccentLightVariant: string) => 
     '--admin-field-outline': '#c4c7c8',
     '--admin-field-surface-hover': '#f6f3f3',
     '--admin-field-selected-surface': accentLight,
-    '--admin-field-selected-text': onAccentLightVariant,
+    '--admin-field-selected-text': keepReadableOn(onAccentLightVariant, accentLight),
 });
 
 const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
@@ -230,6 +249,7 @@ const invertedTokens = (
         '--m3-on-primary': readableOn(primary),
         '--m3-primary-container': primaryContainer,
         '--m3-on-primary-container': readableOn(primaryContainer),
+        '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
         '--m3-primary-fixed': accentLight,
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
@@ -300,6 +320,8 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,
             '--m3-on-primary-container': onAccentLight,
+            // Brand-tinted text and icons ON the light container (mobile menu tiles).
+            '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
             '--m3-primary-fixed': accentLight,
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,

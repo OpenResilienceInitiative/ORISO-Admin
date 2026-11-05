@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
+import { MuiSelectChevron } from '../../../components/M3Select/MuiSelectChevron';
 import { Card } from '../../../components/Card';
 import { M3Button } from '../../../components/M3Button';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
@@ -13,6 +14,7 @@ import { EmailPreviewFrame } from '../../../components/EmailPreview/EmailPreview
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useServiceNoticeDraft } from '../../../hooks/useServiceNoticeDraft.hook';
 import { ServiceNoticeSend } from './ServiceNoticeSend';
+import { serviceNoticesHelp } from './help';
 import {
     SERVICE_NOTICE_VARIANTS,
     serviceNoticeErrorKey,
@@ -69,7 +71,12 @@ export const ServiceNoticesPage = () => {
 
     return (
         <Stack spacing={2}>
-            <Card titleKey="serviceNotices.title" subTitleKey="serviceNotices.description" autoHeight>
+            <Card
+                titleKey="serviceNotices.title"
+                subTitleKey="serviceNotices.description"
+                autoHeight
+                help={serviceNoticesHelp}
+            >
                 <Stack spacing={2}>
                     <Alert severity="info">{t('serviceNotices.draftOnly')}</Alert>
                     {operationError && <Alert severity="error">{t(operationError)}</Alert>}
@@ -159,6 +166,7 @@ export const ServiceNoticesPage = () => {
                         </Typography>
                         <TextField
                             select
+                            slotProps={{ select: { IconComponent: MuiSelectChevron } }}
                             label={t('serviceNotices.variant')}
                             value={variant}
                             onChange={(event) => setVariant(event.target.value as ServiceNoticeVariant)}

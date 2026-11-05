@@ -1,8 +1,8 @@
 .adminIconCatalog {
     min-height: 100vh;
     padding: 2rem;
-    background: var(--surface, #fffbfe);
-    color: var(--on-surface, #1f1f1f);
+    background: var(--m3-surface, #fcf9f9);
+    color: var(--m3-on-surface, #1b1b1c);
     font-family: Inter, system-ui, sans-serif;
 }
 
@@ -38,9 +38,9 @@
     min-height: 2.75rem;
     padding: 0.625rem 1rem;
     border: 0;
-    background: var(--primary, #a5000a);
+    background: var(--m3-primary, #a5000a);
     border-radius: 999px;
-    color: var(--on-primary, #ffffff);
+    color: var(--m3-on-primary, #ffffff);
     cursor: pointer;
     font: inherit;
     font-weight: 700;
@@ -56,7 +56,7 @@
 
 .adminIconCatalog__summary div {
     padding: 1rem;
-    background: var(--surface-container, #f3edf7);
+    background: var(--m3-surface-container, #f0edee);
     border-radius: 0.75rem;
 }
 
@@ -72,7 +72,7 @@
 .adminIconCatalog__references {
     max-width: 90rem;
     padding: 1rem;
-    border: 1px solid var(--outline-variant, #cac4d0);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
     margin: 0 auto 1rem;
     border-radius: 0.75rem;
 }
@@ -87,7 +87,7 @@
 }
 
 .adminIconCatalog__references a {
-    color: var(--primary, #a5000a);
+    color: var(--m3-primary, #a5000a);
 }
 
 .adminIconCatalog__filters {
@@ -109,8 +109,8 @@
 .adminIconCatalog__filters select {
     min-height: 2.75rem;
     padding: 0.625rem 0.75rem;
-    border: 1px solid var(--outline, #79747e);
-    background: var(--surface, #fffbfe);
+    border: 1px solid var(--m3-outline, #747878);
+    background: var(--m3-surface, #fcf9f9);
     border-radius: 0.5rem;
     color: inherit;
     font: inherit;
@@ -128,8 +128,8 @@
     display: grid;
     min-width: 0;
     padding: 1rem;
-    border: 1px solid var(--outline-variant, #cac4d0);
-    background: var(--surface-container-lowest, #ffffff);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface-container-lowest, #ffffff);
     border-radius: 1rem;
     gap: 0.625rem;
     grid-template-rows: auto auto auto 1fr auto auto;
@@ -143,7 +143,7 @@
 
 .adminIconCatalog__card p {
     margin: 0;
-    color: var(--on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 0.75rem;
 }
 
@@ -161,7 +161,7 @@
 .adminIconCatalog__preview {
     display: grid;
     height: 6rem;
-    background: var(--surface-container, #f3edf7);
+    background: var(--m3-surface-container, #f0edee);
     border-radius: 0.75rem;
     place-items: center;
 }
@@ -180,7 +180,7 @@
 
 .adminIconCatalog__badges span {
     padding: 0.2rem 0.45rem;
-    background: var(--secondary-container, #e8def8);
+    background: var(--m3-primary-fixed, #ffe2de);
     border-radius: 999px;
     font-size: 0.625rem;
 }
@@ -189,7 +189,7 @@
 .adminIconCatalog input:focus-visible,
 .adminIconCatalog select:focus-visible,
 .adminIconCatalog a:focus-visible {
-    outline: 0.1875rem solid var(--primary, #a5000a);
+    outline: 0.1875rem solid var(--m3-primary, #a5000a);
     outline-offset: 0.125rem;
 }
 

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { FETCH_METHODS, fetchData } from '../../api/fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import getDashboardStatistics from '../../api/statistic/getDashboardStatistics';
 import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint } from '../../appConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
@@ -12,6 +12,11 @@ interface StatisticDashboardDataResult {
     data: StatisticData;
     isLoading: boolean;
     isError: boolean;
+    /**
+     * The backend answered 503 (its settings cannot be read, UserService#1568). Kept apart from
+     * `isError`, and `data` is empty then: figures from an earlier load must not stay on screen.
+     */
+    isUnavailable: boolean;
 }
 
 /**
@@ -100,8 +105,14 @@ export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
         retry: false,
     });
 
+    const isUnavailable =
+        dashboardQuery.isError &&
+        dashboardQuery.error instanceof Error &&
+        dashboardQuery.error.message === FETCH_ERRORS.SERVICE_UNAVAILABLE;
+
     const data = useMemo(() => {
-        if (!dashboardQuery.data) {
+        // a failed refresh keeps the last data in the query; after a 503 it is not shown
+        if (!dashboardQuery.data || isUnavailable) {
             return emptyStatisticData();
         }
 
@@ -110,11 +121,12 @@ export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
             tenantNamesById: tenantsQuery.data || {},
             topicNamesById: topicsQuery.data || {},
         });
-    }, [dashboardQuery.data, agenciesQuery.data, tenantsQuery.data, topicsQuery.data]);
+    }, [dashboardQuery.data, isUnavailable, agenciesQuery.data, tenantsQuery.data, topicsQuery.data]);
 
     return {
         data,
         isLoading: dashboardQuery.isLoading,
-        isError: dashboardQuery.isError,
+        isError: dashboardQuery.isError && !isUnavailable,
+        isUnavailable,
     };
 };
