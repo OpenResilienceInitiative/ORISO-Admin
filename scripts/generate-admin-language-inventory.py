@@ -9,7 +9,7 @@ from pathlib import Path
 ROOTS = (
     'src/components/GlobalSettings', 'src/components/Tenants', 'src/pages/TenantSettings',
     'src/pages/GlobalSettings', 'src/pages/Tenants', 'src/pages/Agency', 'src/pages/Profile',
-    'src/pages/users', 'src/pages/Statistic', 'src/pages/Topics', 'src/pages/Links',
+    'src/pages/users', 'src/pages/Statistic', 'src/pages/Topics', 'src/pages/Links', 'src/pages/Logs',
     'src/constants/settingsTabs.ts', 'src/components/DataTable',
 )
 PATTERN = re.compile(r'''["']([^"'\n]+)["']''')
@@ -61,7 +61,7 @@ def render():
     menu_keys = ('settings.subhead.globalConfig', 'settings.subhead.masterData', 'settings.subhead.view', 'settings.subhead.legal', 'settings.subhead.erstantwort', 'settings.subhead.smtp', 'serviceNotices.title', 'settings.subhead.functionAccess', 'tenants.edit.tabs.appSettings')
     output = [
         '# Admin settings and lists: language inventory', '',
-        'This source index lists locale keys referenced literally or by a recognisable prefix in the settings, organisation, account, user, statistics, topic and invitation surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
+        'This source index lists locale keys referenced literally or by a recognisable prefix in the settings, organisation, account, user, statistics, topic, invitation and audit surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
         'This is an audit starting point, not a claim that every runtime label has been checked: other constructed keys, configured content, hardcoded text and role-dependent visibility need a separate review. Prefix matches may include keys unused by a particular variant. Some references supply a key to a shared component rather than rendering text directly.', '',
         'Refresh it with `python3 scripts/generate-admin-language-inventory.py`. The assistant locale overrides the main locale, as it does in the app.', '',
         '## Locale coverage', '',
@@ -74,6 +74,15 @@ def render():
         ('Beratungsstellen / Counselling centres', 'src/pages/Agency/List/AgencyDataTable.tsx', ('agency.name', 'agency.list.id', 'agency.list.address', 'tenantName', 'topics.title', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
         ('Träger', 'src/pages/Tenants/List/TenantDataTable.tsx', ('tenants.list.name', 'tenants.list.tenantId', 'tenants.list.subdomain', 'tenants.list.adminEmails', 'tenants.list.maxConsultants', 'tenants.list.created', 'users.table.lastUpdated', 'userTable.columns.actions')),
         ('Nutzer / Users', 'src/pages/users/management/UserDataTable.tsx', ('userTable.columns.name', 'tenantName', 'tenantAdmins.form.subdomain', 'agency', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
+        ('Themen / Topics', 'src/pages/Topics/List/TopicList.tsx', ('topic.name', 'topic.description', 'topic.internalIdentifier', 'status')),
+        ('Einladungen / Invitations', 'src/pages/Links/inviteProgress/InviteProgressBoard.tsx', ('links.inviteProgress.col.recipient', 'links.inviteProgress.col.progress', 'links.inviteProgress.col.invitedAt', 'links.inviteProgress.col.lastActivity', 'links.inviteProgress.col.status', 'links.inviteProgress.col.actions')),
+        ('E-Mail-Vorlagen / Email templates', 'src/pages/Links/EmailTemplatesDialog.tsx', ('links.templates.col.kind', 'links.templates.col.name', 'links.templates.col.language', 'links.templates.col.subject', 'links.templates.col.active', 'links.templates.col.actions')),
+        ('CSV-Vorschau / CSV preview', 'src/pages/Links/InviteCsvImportModal.tsx', ('links.csvImport.col.status', 'links.accountInvites.email', 'links.accountInvites.firstName', 'links.composer.lastName', 'links.accountInvites.tenantId', 'links.accountInvites.agencyId', 'links.csvImport.col.target', 'links.composer.role', 'links.composer.template', 'links.composer.topics', 'links.composer.alsoCounsellor.label')),
+        ('Tutorial-Statistik / Tutorial statistics', 'src/pages/Statistic/TutorialStatisticsSection.tsx', ('statistic.tutorials.table.tenant', 'statistic.tutorials.table.tour', 'statistic.tutorials.table.version', 'statistic.tutorials.table.surface', 'statistic.tutorials.table.audiences', 'statistic.tutorials.table.notStarted', 'statistic.tutorials.table.inProgress', 'statistic.tutorials.table.completed', 'statistic.tutorials.table.skipped', 'statistic.tutorials.table.completionRate')),
+        ('Fallübergaben / Case handovers', 'src/pages/Logs/CaseHandoverLogs/index.tsx', ('caseHandoverLogs.table.createdAt', 'caseHandoverLogs.table.status', 'caseHandoverLogs.table.sessionId', 'caseHandoverLogs.table.requester', 'caseHandoverLogs.table.previous', 'caseHandoverLogs.table.reason', 'caseHandoverLogs.table.auditOutcome')),
+        ('Löschprotokoll / Deletion audit', 'src/pages/Logs/DeletionAuditLogs/index.tsx', ('deletionAudit.table.createdAt', 'deletionAudit.table.outcome', 'deletionAudit.table.target', 'deletionAudit.table.targetType', 'deletionAudit.table.targetId', 'deletionAudit.table.tenantId', 'deletionAudit.table.actor', 'deletionAudit.table.actorRole', 'deletionAudit.table.actorId')),
+        ('Inaktivitätsprotokoll / Inactivity audit', 'src/pages/Logs/InactiveAccountAuditLogs/index.tsx', ('inactiveAudit.table.createdAt', 'inactiveAudit.table.role', 'inactiveAudit.table.accountId', 'inactiveAudit.table.accountTenantId', 'inactiveAudit.table.lastActivityAt', 'inactiveAudit.table.thresholdDays', 'inactiveAudit.table.recipientEmail', 'inactiveAudit.table.recipientAdminId', 'inactiveAudit.table.emailDispatched')),
+        ('Supervisionsprotokoll / Supervision log', 'src/pages/Logs/SupervisorLogs/index.tsx', ('logs.table.date', 'logs.table.action', 'logs.table.sessionId', 'logs.table.supervisor', 'logs.table.actor', 'logs.table.notes')),
     )
     output.extend(['', '## List columns', '', 'These columns come from the current table definitions. Some appear only for certain roles, features or screen widths; the action column has an accessible label rather than a visible heading.', '', '<!-- prettier-ignore -->', '| List | German | English | Code |', '| --- | --- | --- | --- |'])
     for label, path, keys in list_columns:
