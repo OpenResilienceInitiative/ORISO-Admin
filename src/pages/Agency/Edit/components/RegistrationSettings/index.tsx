@@ -1,8 +1,9 @@
 import { Alert, Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Card } from '../../../../../components/Card';
+import { M3Button } from '../../../../../components/M3Button';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
@@ -11,15 +12,15 @@ import { useAgencyHasConsultants } from '../../../../../hooks/useAgencyHasConsul
 import { useAgencyData } from '../../../../../hooks/useAgencyData';
 import { useAgencyConsultants } from '../../../../../hooks/useAgencyConsultants';
 import { useConsultantsOrAdminsData } from '../../../../../hooks/useConsultantsOrAdminsData';
+import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { PostCodeRanges } from './PostCodeRanges';
 import styles from './styles.module.scss';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
-import { isActiveRecord } from '../../../../../utils/deleteDate';
 import { CreateConsultantModal } from '../../../../../components/CreateConsultantModal';
 import { parseUserAuthInfo } from '../../../../../utils/parseUserAuthInfo';
 import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
-import { isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
+import { assignableConsultants, isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
 import { AssignedConsultants } from './AssignedConsultants';
 
 interface RegistrationSettingsProps {
@@ -49,32 +50,46 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const { data: hasConsultants, isLoading } = useAgencyHasConsultants({ id });
     // Already in the query cache — the page reads the same key, so this adds no request.
     const { data: agency } = useAgencyData({ id });
-    const { data: consultants, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
+    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
+    const { isSuperAdmin } = useUserRoles();
+    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
+    // A platform admin must choose the Träger first; until then nobody is offered (#953).
+    const awaitingTenant = isSuperAdmin && consultantTenantId === undefined;
+    const {
+        data: consultants,
+        isLoading: isLoadingConsultants,
+        isError: consultantSearchFailed,
+        refetch: retryConsultantSearch,
+    } = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search: '*',
         pageSize: 1000,
-        enabled: showConsultantAssignment,
+        // A failed lookup must reject, or it reads as "this Träger has no counsellors".
+        rethrowOnFailure: true,
+        // The server narrows to the Träger too, so other Träger's counsellors never reach the browser.
+        filters: consultantTenantId === undefined ? {} : { tenantId: String(consultantTenantId) },
+        enabled: showConsultantAssignment && !awaitingTenant,
     });
     // Same query key as the assigned list below, so this costs no extra request.
     const { data: assignedConsultants } = useAgencyConsultants({ id, enabled: hasPersistedAgency });
-    // Superadmins pick the tenant in the form; tenant admins carry it in their token.
-    const consultantTenantId = resolveAgencyTenantId(selectedTenantId, parseUserAuthInfo().tenantId);
     const consultantOptions = useMemo(() => {
-        // A platform admin's consultant search spans tenants and the backend stores a
-        // cross-tenant agency assignment without rejecting it, so scope the list to the
-        // agency's tenant. An unknown tenant leaves it unfiltered rather than emptying
-        // the picker — same rule as the supervisor picker in users/Edit.
         // Already assigned people are listed as chips above the picker, not offered again.
         const assignedIds = new Set((assignedConsultants || []).map(({ id: consultantId }) => String(consultantId)));
-        const assignable = (consultants?.data || []).filter(
-            (consultant) =>
-                isActiveRecord(consultant) &&
-                !assignedIds.has(String(consultant.id)) &&
-                (consultantTenantId === undefined || String(consultant.tenantId) === String(consultantTenantId)),
-        );
+        const assignable = assignableConsultants({
+            consultants: consultants?.data || [],
+            assignedIds,
+            tenantId: consultantTenantId,
+            requiresTenant: Boolean(isSuperAdmin),
+        });
 
         return convertToOptions(assignable, ['firstname', 'lastname', 'email'], 'id');
-    }, [assignedConsultants, consultants?.data, consultantTenantId]);
+    }, [assignedConsultants, consultants?.data, consultantTenantId, isSuperAdmin]);
+    const noConsultantsInTenant =
+        !awaitingTenant &&
+        !isLoadingConsultants &&
+        !consultantSearchFailed &&
+        !!consultants?.data &&
+        consultantOptions.length === 0;
     // One rule for both screens. A selection counts because saving assigns it, which is what
     // the hint on this card promises; the backend count covers counsellors attached earlier.
     const mayGoOnline = mayBeVisibleInRegistration({
@@ -84,6 +99,13 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         isAlreadyVisible: Boolean(agency?.id) && !agency?.offline,
     });
     const needsConsultantAssignment = !mayGoOnline;
+
+    let consultantHelpKey: string | undefined;
+    if (awaitingTenant) {
+        consultantHelpKey = 'agency.form.registrationSettings.consultants.selectTenantFirst';
+    } else if (noConsultantsInTenant) {
+        consultantHelpKey = 'agency.form.registrationSettings.consultants.noneInTenant';
+    }
 
     const onConsultantCreated = (consultant) => {
         const current = form.getFieldValue('consultantIds') || [];
@@ -102,12 +124,28 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         }
     }, [form, hasSelectedConsultants, id]);
 
-    // Narrowing the options does not narrow the selection: MuiSelectField keeps a value it
-    // cannot resolve, so a counsellor picked before the tenant was known would still be
-    // submitted and assigned. Drop what the tenant no longer allows — but only once the
-    // search has answered, or a pending query would read as an empty list and wipe a valid pick.
+    // A pick belongs to the Träger it was made for. MuiSelectField keeps a value it cannot
+    // resolve, and the new Träger's search may still be pending or may fail, so waiting for its
+    // answer would let the old Träger's counsellor be saved (and assigned) for the new one.
+    // Clear on the change itself. The first choice (nothing before it) and a refetch of the same
+    // Träger leave the selection alone.
+    const previousTenantId = useRef(consultantTenantId);
     useEffect(() => {
-        if (isLoadingConsultants || !consultants?.data) {
+        const before = previousTenantId.current;
+        previousTenantId.current = consultantTenantId;
+        if (before !== undefined && String(before) !== String(consultantTenantId)) {
+            const current = form.getFieldValue('consultantIds') || [];
+            if (current.length > 0) {
+                form.setFieldValue('consultantIds', []);
+            }
+        }
+    }, [consultantTenantId, form]);
+
+    // Narrowing the options does not narrow the selection either: drop what the chosen Träger
+    // does not list — but only once its search has answered: a pending or failed query has no
+    // list, and reading that as "nobody is allowed" would wipe picks that are still valid.
+    useEffect(() => {
+        if (isLoadingConsultants || consultantSearchFailed || !consultants?.data) {
             return;
         }
         const allowed = new Set(consultantOptions.map(({ value }) => String(value)));
@@ -119,7 +157,7 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
         if (kept.length !== current.length) {
             form.setFieldValue('consultantIds', kept);
         }
-    }, [consultantOptions, consultants?.data, form, isLoadingConsultants]);
+    }, [consultantOptions, consultants?.data, consultantSearchFailed, form, isLoadingConsultants]);
 
     const fields = (
         <>
@@ -144,9 +182,23 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                         isMulti
                         allowClear
                         loading={isLoadingConsultants}
+                        disabled={awaitingTenant}
+                        help={consultantHelpKey}
                         placeholder="agency.form.registrationSettings.consultants.placeholder"
                         options={consultantOptions}
                     />
+                    {consultantSearchFailed && !awaitingTenant && (
+                        <Alert
+                            className={styles.warning}
+                            type="error"
+                            description={t('agency.form.registrationSettings.consultants.loadError')}
+                            action={
+                                <M3Button variant="text" onClick={() => retryConsultantSearch()}>
+                                    {t('agency.form.registrationSettings.consultants.retry')}
+                                </M3Button>
+                            }
+                        />
+                    )}
                     <div className={styles.createConsultant}>
                         <CreateConsultantModal
                             tenantId={consultantTenantId}

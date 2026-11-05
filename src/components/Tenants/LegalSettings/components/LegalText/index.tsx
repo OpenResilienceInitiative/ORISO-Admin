@@ -27,6 +27,7 @@ import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
 import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
+import { TileHelpButton, type TileHelpTopic } from '../../../../TileHelp';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -91,6 +92,8 @@ const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string)
 };
 
 interface LegalTextProps {
+    /** The tile's explanation (slideshow) behind the info button in the editor's title row. */
+    tileHelp?: TileHelpTopic;
     tenantId: string | number;
     /**
      * Owner of the server-side draft. Defaults to `tenantId`; differs only for the platform, whose
@@ -136,6 +139,7 @@ export type LegalTextComponentProps = LegalTextProps;
 
 export const LegalText = ({
     tenantId,
+    tileHelp,
     draftTenantId,
     offerTemplatesToAgencies = false,
     templateInbox,
@@ -896,6 +900,7 @@ export const LegalText = ({
                 <M3RichTextEditor
                     title={t(titleKey)}
                     icon={icon}
+                    headerAction={tileHelp && <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} />}
                     readOnly={!canEditLegalText}
                     publishing={isPending || draftActionPending}
                     versionLabel={draftVersionLabel}

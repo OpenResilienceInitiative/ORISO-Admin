@@ -9,6 +9,7 @@ import { UserRole } from '../../enums/UserRole';
 const labels: AdminNavLabels = {
     account: 'Account',
     agency: 'Agencies',
+    home: 'Home',
     links: 'Links',
     logs: 'Logs',
     settings: 'Settings',
@@ -29,12 +30,28 @@ describe('resolveLogsPage', () => {
         expect(resolveLogsPage(false, false, true)).toBe(routePathNames.inactiveAccountAuditLogs);
     });
 
+    it('lands on the deletion log when it is the only view the admin may read', () => {
+        expect(resolveLogsPage(false, false, false, true)).toBe(routePathNames.deletionAuditLogs);
+        expect(resolveLogsPage(false, false, true, true)).toBe(routePathNames.inactiveAccountAuditLogs);
+    });
+
     it('returns null when the admin may read no log view', () => {
         expect(resolveLogsPage(false, false, false)).toBeNull();
     });
 });
 
 describe('buildAdminNavItems', () => {
+    // ORISO-Admin#1323: every admin starts at Home, whatever else they may open.
+    it.each([
+        ['platform admin', true, hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin), canFor(Resource.Tenant)],
+        ['Träger admin', false, hasRoleFor(UserRole.TenantAdmin), canFor(Resource.Tenant, Resource.Agency)],
+        ['admin without any section', false, hasRoleFor(), canFor()],
+    ])('puts Home first for the %s', (_label, isSuperAdmin, hasRole, can) => {
+        const items = build({ isSuperAdmin, hasRole, can, labels, settingsPath: '/admin/theme-settings/legal' });
+
+        expect(items[0]).toMatchObject({ key: 'home', to: routePathNames.home, label: 'Home' });
+    });
+
     it('never renders two nav entries with the same label', () => {
         // A tenant admin who also holds `user-admin` — the role mix the duplicate "Logs"
         // menu was reported with (ORISO-Admin#84).
@@ -104,6 +121,7 @@ describe('buildAdminNavItems', () => {
         expect(logs?.activeMatch).toEqual({ paths: [routePathNames.logs], mode: 'startsWith' });
         expect(routePathNames.caseHandoverLogs.startsWith(routePathNames.logs)).toBe(true);
         expect(routePathNames.inactiveAccountAuditLogs.startsWith(routePathNames.logs)).toBe(true);
+        expect(routePathNames.deletionAuditLogs.startsWith(routePathNames.logs)).toBe(true);
     });
 
     it('shows the Beratungsstellen entry to a Beratungsstellen-Admin (restricted-agency-admin + user-admin)', () => {

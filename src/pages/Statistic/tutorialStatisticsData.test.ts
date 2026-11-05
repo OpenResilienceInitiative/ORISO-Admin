@@ -168,4 +168,89 @@ describe('buildTutorialStatisticRows', () => {
         expect(rows[0].completionPercent).toBe(0);
         expect(rows[0].tenantId).toBeNull();
     });
+
+    describe('hidden groups (UserService small-cell rule)', () => {
+        const hiddenCount = {
+            surface: 'frontend',
+            tourId: 'consultant-walkthrough',
+            tourVersion: 1,
+            status: null,
+            total: 0,
+            suppressed: true,
+        } as const;
+
+        it('turns a hidden group into one row without figures, status or percentage', () => {
+            const rows = buildTutorialStatisticRows(
+                response({ smallCellMinimum: 5, tenants: [{ tenantId: 2, counts: [hiddenCount] }] }),
+            );
+
+            expect(rows).toHaveLength(1);
+            expect(rows[0]).toMatchObject({
+                suppressed: true,
+                notStarted: null,
+                inProgress: null,
+                completed: null,
+                skipped: null,
+                total: null,
+                completionPercent: null,
+            });
+        });
+
+        it('does not sum across groups: a shown group keeps its own figures next to a hidden one', () => {
+            const rows = buildTutorialStatisticRows(
+                response({
+                    smallCellMinimum: 5,
+                    tenants: [
+                        {
+                            tenantId: 2,
+                            counts: [
+                                hiddenCount,
+                                {
+                                    surface: 'admin',
+                                    tourId: 'unknown-tour',
+                                    tourVersion: 1,
+                                    status: 'completed',
+                                    total: 4,
+                                    suppressed: false,
+                                },
+                                {
+                                    surface: 'admin',
+                                    tourId: 'unknown-tour',
+                                    tourVersion: 1,
+                                    status: 'skipped',
+                                    total: 1,
+                                    suppressed: false,
+                                },
+                            ],
+                        },
+                    ],
+                }),
+            );
+
+            const shown = rows.find((row) => row.tourId === 'unknown-tour');
+            expect(shown).toMatchObject({
+                suppressed: false,
+                completed: 4,
+                skipped: 1,
+                total: 5,
+                completionPercent: 80,
+            });
+            expect(rows.find((row) => row.tourId === 'consultant-walkthrough')?.total).toBeNull();
+        });
+
+        it('still reads the old response, which has no suppressed flag', () => {
+            const rows = buildTutorialStatisticRows(
+                response({
+                    tenants: [
+                        {
+                            tenantId: 2,
+                            counts: [{ ...hiddenCount, status: 'completed', total: 3, suppressed: undefined }],
+                        },
+                    ],
+                }),
+            );
+
+            expect(rows[0]).toMatchObject({ suppressed: false, completed: 3, total: 3, completionPercent: 100 });
+        });
+    });
 });

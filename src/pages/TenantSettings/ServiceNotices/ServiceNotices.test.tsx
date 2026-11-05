@@ -78,10 +78,12 @@ describe('service-notice saved drafts', () => {
         renderPage();
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue('');
         expect(screen.queryByTestId('service-notice-preview-frame')).not.toBeInTheDocument();
-        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
-            'serviceNotices.save',
-            'serviceNotices.open',
-        ]);
+        expect(
+            screen
+                .getAllByRole('button')
+                .map((button) => button.textContent)
+                .filter(Boolean),
+        ).toEqual(['serviceNotices.save', 'serviceNotices.open']);
         expect(mocks.fetchData).not.toHaveBeenCalled();
     });
 

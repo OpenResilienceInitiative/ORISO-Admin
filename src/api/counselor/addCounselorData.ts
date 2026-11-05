@@ -99,6 +99,8 @@ export const addCounselorData = (counselorData: Record<string, any>): Promise<Co
                 FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
                 FETCH_ERRORS.CONFLICT,
                 FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+                // The account exists when the set-up mail fails: the caller must say so (#1144).
+                FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
                 FETCH_ERRORS.CATCH_ALL,
             ],
             bodyData: JSON.stringify(strippedCounselor),

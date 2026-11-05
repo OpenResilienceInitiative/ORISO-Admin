@@ -10,7 +10,6 @@ import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
-import { CardDeck } from '../../../components/CardDeck';
 import { CardGrid } from '../../../components/CardGrid';
 import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
@@ -39,13 +38,14 @@ import { AgencyLegalTextWithTemplates } from '../../../components/Tenants/LegalS
 import { LegalTemplateUnreadMarker } from '../../../components/Tenants/LegalSettings/components/LegalTemplateCompare/LegalTemplateUnreadMarker';
 import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSettings/hooks/useLegalProposalInbox';
 import pageStyles from '../../../components/Page/styles.module.scss';
-import styles from './styles.module.scss';
 import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { LiveChatLinks } from '../../../components/LiveChatLinks';
+import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
-import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 
@@ -98,7 +98,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
-    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId, hasRole } = useUserRoles();
+    const showLiveChatLinks =
+        resolveAgencyLiveChatLinksAccess({ isSuperAdmin, isTenantScopedAdmin, hasRole }) === 'read';
     const {
         data: dpaGate,
         isLoading: isDpaGateLoading,
@@ -307,10 +309,16 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onError: async (error) => {
                     options?.onError?.();
                     const validationError = await parseAgencyFieldValidationError(error);
-                    if (validationError && options?.form) {
+                    if (validationError) {
                         const message = t(validationError.translationKey);
-                        options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
-                        options.form.scrollToField(validationError.fieldName, { focus: true });
+                        if (options?.form && isFieldMounted(options.form, validationError.fieldName)) {
+                            options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
+                            options.form.scrollToField(validationError.fieldName, { focus: true });
+                            return;
+                        }
+                        // The field lives on another card (the visibility switch is rejected for
+                        // an incomplete data protection contact): say what is missing instead.
+                        notification.error({ message, duration: 8 });
                         return;
                     }
 
@@ -424,12 +432,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
                     <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    <CardDeck
-                        ariaLabel={t(`agency.edit.settings.general.title`)}
-                        previousLabel={t('agency.cardDeck.previous')}
-                        nextLabel={t('agency.cardDeck.next')}
-                    >
-                        <CardDeck.Item>
+                    <CardGrid raster>
+                        <CardGrid.Item>
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
@@ -440,8 +444,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             >
                                 <AgencyGeneralInformation asFields />
                             </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
+                        </CardGrid.Item>
+                        <CardGrid.Item>
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
@@ -452,8 +456,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                             >
                                 {({ editing }) => <RegistrationSettings asFields editing={editing} />}
                             </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
+                        </CardGrid.Item>
+                        <CardGrid.Item>
                             <CardEditable
                                 allowUnsavedChanges
                                 initialValues={initialValues}
@@ -477,8 +481,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                     </>
                                 )}
                             </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
+                        </CardGrid.Item>
+                        <CardGrid.Item>
                             <AgencyDepartmentDetails
                                 agencyData={agencyData}
                                 // The Fachbereich field only renders when the tenant offers topics.
@@ -488,8 +492,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                                         : undefined
                                 }
                             />
-                        </CardDeck.Item>
-                    </CardDeck>
+                        </CardGrid.Item>
+                    </CardGrid>
                 </ThemeProvider>
             );
         }
@@ -527,7 +531,10 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         <>
             <h3 className={pageStyles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
-            <AgencyPermissionsSettings agencyId={id} />
+            <AgencyPermissionsSettings
+                agencyId={id}
+                liveChatLinks={showLiveChatLinks ? <LiveChatLinks mode="read" /> : undefined}
+            />
         </>
     );
 
@@ -559,22 +566,18 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 {t(`agency.edit.settings.legal.title`)}{' '}
                 {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
             </h3>
-            <CardDeck
-                ariaLabel={t(`agency.edit.settings.legal.title`)}
-                previousLabel={t('legal.cardDeck.previous')}
-                nextLabel={t('legal.cardDeck.next')}
-            >
-                <CardDeck.Item>
+            <CardGrid raster>
+                <CardGrid.Item>
                     <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
-                </CardDeck.Item>
-                <CardDeck.Item>
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
+                </CardGrid.Item>
+                <CardGrid.Item span={3}>
                     {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
                     <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
+                </CardGrid.Item>
+                <CardGrid.Item span={3}>
                     {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
                         Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
                         with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
@@ -584,16 +587,16 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
+                </CardGrid.Item>
+                <CardGrid.Item span={3}>
                     <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardDeck.Item>
-            </CardDeck>
+                </CardGrid.Item>
+            </CardGrid>
         </>
     );
 

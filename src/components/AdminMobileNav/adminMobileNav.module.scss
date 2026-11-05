@@ -1,14 +1,33 @@
 /*
- * Figma 1683:39455. Layout only — fixing the bar to the viewport belongs to the
- * layout wrapper, the same split the desktop sidebar uses.
+ * Mobile navigation after the Slack iOS app (ORISO-Admin#1319). Layout only —
+ * fixing it to the viewport belongs to the layout wrapper
+ * (adminMobileNavBar.module.scss), the same split the desktop sidebar uses.
+ *
+ * Colours come from the admin theme tokens (app.css) so the bar follows the
+ * same palette — and the tenant accent — as the desktop sidebar and forms.
  */
 
 .root {
+    --nav-surface: var(--m3-surface-container-lowest, #ffffff);
+    --nav-sheet: var(--m3-surface, #fcf9f9);
+    --nav-hover: var(--m3-surface-container, #f0edee);
+    --nav-tile: var(--m3-primary-container, #ffe2de);
+    // Contrast-guarded brand tone for content on the container (#1322), with
+    // the plain primary as fallback until that token ships.
+    --nav-tile-icon: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
+    --nav-selected: var(--admin-field-selected-surface, #ffe2de);
+    --nav-selected-text: var(--admin-field-selected-text, #930008);
+    --nav-accent: var(--admin-control-selected, #a5000a);
+    --nav-text: var(--m3-on-surface, #1b1b1c);
+    --nav-muted: var(--m3-on-surface-variant, #444748);
+    --nav-line: var(--m3-outline-variant, #c4c7c8);
+    --nav-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+
     display: flex;
     flex-direction: column;
-    // Inset comes from whoever places the bar (see adminMobileNavBar.module.scss)
-    // so the safe-area handling lives in one place.
     gap: 12px;
+    color: var(--nav-text);
+    font-family: var(--m3-body-font-family, inherit);
     pointer-events: none;
 
     // The controls float over the page; the gaps between them must not swallow
@@ -18,9 +37,365 @@
     }
 }
 
-// Always present, always above the bar. Its height is reserved even when a
-// section has neither filters nor a create action, so opening the menu never
-// moves the rows underneath it.
+// Dims the page while a sheet is open and closes it on tap.
+.scrim {
+    position: fixed;
+    z-index: -1;
+    background: rgb(27 27 28 / 18%);
+    inset: 0;
+}
+
+// ── Bottom bar: floating tab pill + separate round search button ──────────
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tabBar {
+    display: flex;
+    min-width: 0;
+    height: 72px;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    align-items: stretch;
+    padding: 6px 4px;
+    border-radius: 36px;
+    background: var(--nav-surface);
+    box-shadow: var(--nav-shadow);
+}
+
+.tab {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: 0;
+    border-radius: 24px;
+    background: none;
+    color: var(--nav-muted);
+    cursor: pointer;
+    font-family: inherit;
+    gap: 4px;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--nav-text);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--nav-accent);
+        outline-offset: -2px;
+    }
+}
+
+// M3 navigation-bar indicator: a pill behind the icon only, as on the
+// desktop sidebar. Active is shown by the pill, the icon colour and a heavier
+// label — never by colour alone.
+.tabIcon {
+    display: inline-flex;
+    width: 56px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    transition: background-color 150ms ease;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.tabLabel {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tabActive,
+.tabActive:hover,
+.tabActive:focus-visible {
+    color: var(--nav-text);
+
+    .tabIcon {
+        background: var(--nav-selected);
+        color: var(--nav-selected-text);
+    }
+
+    .tabLabel {
+        font-weight: 700;
+    }
+}
+
+.searchButton {
+    display: inline-flex;
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--nav-surface);
+    box-shadow: var(--nav-shadow);
+    color: var(--nav-muted);
+    cursor: pointer;
+
+    svg {
+        width: 26px;
+        height: 26px;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--nav-accent);
+        outline-offset: 2px;
+    }
+}
+
+.searchButtonActive {
+    background: var(--nav-selected);
+    color: var(--nav-selected-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tabIcon {
+        transition: none;
+    }
+}
+
+// ── Sheets: the menu card and the global search ───────────────────────────
+.sheet {
+    overflow: auto;
+    max-height: calc(100dvh - 200px - env(safe-area-inset-top, 0px));
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 28px;
+    margin: 0 4px;
+    background: var(--nav-sheet);
+    box-shadow: var(--nav-shadow);
+    overscroll-behavior: contain;
+}
+
+.menuList {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 2px;
+    list-style: none;
+}
+
+.menuRow,
+.resultRow {
+    display: flex;
+    width: 100%;
+    min-height: 60px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 8px;
+    border: 0;
+    border-radius: 18px;
+    background: none;
+    color: var(--nav-text);
+    cursor: pointer;
+    font-family: inherit;
+    gap: 14px;
+    text-align: left;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        background: var(--nav-hover);
+        color: var(--nav-text);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--nav-accent);
+        outline-offset: -2px;
+    }
+}
+
+// An open category keeps a quiet background so its children read as a group.
+.menuRow[aria-expanded='true'] {
+    background: var(--nav-hover);
+}
+
+.resultRow {
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8px 14px;
+    gap: 2px;
+}
+
+.menuRowActive .title {
+    color: var(--nav-selected-text);
+}
+
+// Rounded-square icon tile, as in Slack's "More" card, in the brand tint.
+.tile {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: var(--nav-tile);
+    color: var(--nav-tile-icon);
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.text {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+    line-height: 22px;
+}
+
+.description {
+    overflow: hidden;
+    color: var(--nav-muted);
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chevron {
+    flex: 0 0 24px;
+    color: var(--nav-muted);
+    transition: transform 150ms ease;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chevron {
+        transition: none;
+    }
+}
+
+// Subsections hang off a guide line under the section's tile, each a full
+// 48px touch target with room between them.
+.subList {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 0 8px 16px;
+    border-left: 2px solid var(--nav-line);
+    margin: 4px 8px 4px 29px;
+    gap: 4px;
+    list-style: none;
+}
+
+.subRow {
+    display: flex;
+    min-height: 48px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: 14px;
+    color: var(--nav-text);
+    font-size: 15px;
+    gap: 10px;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+        background: var(--nav-hover);
+        color: var(--nav-text);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--nav-accent);
+        outline-offset: -2px;
+    }
+}
+
+// Current page: tinted pill, accent dot and heavier weight.
+.subRowActive,
+.subRowActive:hover {
+    background: var(--nav-selected);
+    color: var(--nav-selected-text);
+    font-weight: 600;
+
+    &:before {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 6px;
+        border-radius: 50%;
+        background: var(--nav-accent);
+        content: '';
+    }
+}
+
+.divider {
+    height: 1px;
+    border: 0;
+    margin: 8px 12px;
+    background: var(--nav-line);
+}
+
+.searchSheet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hint {
+    padding: 8px 14px;
+    margin: 0;
+    color: var(--nav-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+// Same field as the page search; it sits at the bottom of the sheet, next to
+// the thumb and the button that opened it.
+.globalSearchField {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    height: 52px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: 26px;
+    background: var(--admin-search-surface, #eae7e8);
+    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
+    color: var(--admin-search-text, #444748);
+    gap: 8px;
+}
+
+// ── Page toolbar row (back, list search, filters, create) ─────────────────
 .searchRow {
     display: flex;
     min-width: 0;
@@ -33,20 +408,6 @@
     &::-webkit-scrollbar {
         display: none;
     }
-}
-
-.row {
-    display: flex;
-    min-width: 0;
-    align-items: flex-end;
-    gap: 8px;
-}
-
-// The menu must not be clipped by the row's own overflow handling, and it grows
-// upward past the search row.
-.fabMenu {
-    position: relative;
-    z-index: 2;
 }
 
 .back {
@@ -70,7 +431,7 @@
     }
 }
 
-.search,
+.pageSearch,
 .action {
     display: inline-flex;
     width: 56px;
@@ -90,7 +451,7 @@
     }
 }
 
-.search {
+.pageSearch {
     background: var(--admin-search-surface, #eae7e8);
     box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
     color: var(--m3-on-surface-variant, #444748);

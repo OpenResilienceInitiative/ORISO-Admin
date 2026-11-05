@@ -8,10 +8,10 @@
 .meta {
     display: grid;
     padding: 12px 16px;
-    border: 1px solid var(--m3-outline-variant, #cac4d0);
-    background: var(--m3-surface, #ffffff);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface, #fcf9f9);
     border-radius: 10px;
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     gap: 4px;
     overflow-wrap: anywhere;
 }
@@ -35,7 +35,7 @@
 
 .note {
     margin: 0;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
     line-height: 1.45;
 }
@@ -44,10 +44,10 @@
     display: grid;
     min-height: 120px;
     place-items: center;
-    border: 1px solid var(--m3-outline-variant, #cac4d0);
-    background: var(--m3-surface-container-low, #f7f2fa);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: 12px;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 /* The mail itself, rendered by the ported e-mail kit inside the frame.
@@ -69,16 +69,16 @@
     justify-content: space-between;
     min-height: 120px;
     padding: 16px;
-    border: 1px solid var(--m3-outline-variant, #cac4d0);
-    background: var(--m3-surface-container-low, #f7f2fa);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: var(--m3-surface-container-low, #f6f3f3);
     border-radius: 12px;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     gap: 12px;
 }
 
 .retry {
     padding: 8px 16px;
-    border: 1px solid var(--m3-outline, #79747e);
+    border: 1px solid var(--m3-outline, #747878);
     background: transparent;
     border-radius: 20px;
     color: var(--m3-primary, #a5000a);

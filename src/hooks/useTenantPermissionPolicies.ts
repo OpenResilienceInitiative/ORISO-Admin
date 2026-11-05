@@ -6,10 +6,10 @@ import type { TenantPermissionPolicies } from '../types/permissionPolicy';
 
 export const tenantPermissionPoliciesKey = (tenantId: string) => ['tenant-permission-policies', tenantId] as const;
 
-export const useTenantPermissionPolicies = (tenantId: string, enabled = true) =>
+export const useTenantPermissionPolicies = (tenantId: string, enabled = true, { silent = false } = {}) =>
     useQuery({
         queryKey: tenantPermissionPoliciesKey(tenantId),
-        queryFn: () => getTenantPermissionPolicies(tenantId),
+        queryFn: () => getTenantPermissionPolicies(tenantId, { silent }),
         enabled: enabled && Boolean(tenantId),
     });
 
@@ -22,13 +22,40 @@ export const useTenantPermissionPoliciesMutation = (tenantId: string) => {
         onMutate: async (next) => {
             await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
             const previous = queryClient.getQueryData<TenantPermissionPolicies>(tenantPermissionPoliciesKey(tenantId));
-            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), next);
+            if (previous) {
+                queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), {
+                    ...previous,
+                    policies: { ...previous.policies, ...next.policies },
+                });
+            }
             return { previous };
         },
         onError: (_error, _next, context) => {
             queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), context?.previous);
             notification.error({ message: t('tenants.permissions.policy.saveError') });
         },
-        onSuccess: (saved) => queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved),
+        onSuccess: async (saved) => {
+            await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
+            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved);
+        },
+    });
+};
+
+/**
+ * Saves the Träger's recipient scope for internal group chats (ORISO-Admin#1215). Unlike the switch
+ * mutation it neither updates the cache ahead of the server nor raises its own notification: the
+ * scope control shows the failed save beside the edit, and must not see its value jump back.
+ */
+export const useTenantRecipientScopeMutation = (tenantId: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: updateTenantPermissionPolicies,
+        // A refetch already running must not land after the save and bring the old scope back.
+        onMutate: () => queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) }),
+        onSuccess: async (saved) => {
+            await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
+            queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), saved);
+        },
     });
 };

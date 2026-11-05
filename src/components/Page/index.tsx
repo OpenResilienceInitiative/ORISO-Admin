@@ -3,6 +3,7 @@ import {
     AppsOutlined,
     BalanceOutlined,
     CategoryOutlined,
+    ChatOutlined,
     ChevronLeft,
     EmailOutlined,
     ManageAccountsOutlined,
@@ -12,14 +13,12 @@ import {
 import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, type JSX } from 'react';
+import React, { cloneElement, forwardRef, Ref, useMemo, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
-import { CardDeckNavProvider, useCardDeckNav } from '../CardDeck/CardDeckNavContext';
 import { useRegisterMobileNav } from '../AdminMobileNav/MobileNavContext';
-import { SideScrollerButton } from '../SideScrollerFooter';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -51,48 +50,13 @@ interface PageBackProps {
 
 export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
-        <CardDeckNavProvider>
-            <div
-                className={classNames(styles.page, {
-                    [styles.loading]: isLoading,
-                    [styles.stickyHeaderPage]: stickyHeader,
-                })}
-            >
-                {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
-            </div>
-        </CardDeckNavProvider>
-    );
-};
-
-/**
- * The card-deck arrows, anchored to the left and right edge of the page header
- * (Figma 1285-80496). They used to sit in a sticky footer under the cards, where
- * they overlapped the cards' own footer actions and toasts. The deck registers
- * itself via CardDeckNavContext; with no scrollable deck on the page both arrows
- * stay visible but disabled, so the header does not change height per route.
- */
-const PageDeckNav = () => {
-    const { t } = useTranslation();
-    const nav = useCardDeckNav();
-
-    return (
-        <div className={styles.deckNavRail} data-admin-page-deck-nav>
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="backward"
-                edgeAnchored
-                enabled={nav?.canScrollBackward ?? false}
-                label={nav?.previousLabel ?? t('cardDeck.nav.previous')}
-                onClick={() => nav?.scroll(-1)}
-            />
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="forward"
-                edgeAnchored
-                enabled={nav?.canScrollForward ?? false}
-                label={nav?.nextLabel ?? t('cardDeck.nav.next')}
-                onClick={() => nav?.scroll(1)}
-            />
+        <div
+            className={classNames(styles.page, {
+                [styles.loading]: isLoading,
+                [styles.stickyHeaderPage]: stickyHeader,
+            })}
+        >
+            {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
         </div>
     );
 };
@@ -100,6 +64,7 @@ const PageDeckNav = () => {
 export const tabIcons: Record<string, SvgIconComponent> = {
     appearance: CategoryOutlined,
     email_server: EmailOutlined,
+    erstantwort: ChatOutlined,
     functionalities: AppsOutlined,
     functionality_access: AdminPanelSettingsOutlined,
     global_config: SettingsOutlined,
@@ -110,15 +75,7 @@ export const tabIcons: Record<string, SvgIconComponent> = {
 
 const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
     const { t } = useTranslation();
-    const tabsContainerRef = useRef<HTMLDivElement>(null);
     const isDesktopLayout = useIsDesktopLayout();
-
-    useEffect(() => {
-        tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
-            block: 'nearest',
-            inline: 'nearest',
-        });
-    }, [tabs]);
 
     /*
      * Mobile renders no tab row at all: the subsections moved into the bottom
@@ -131,8 +88,7 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
 
     return (
         <div className={styles.tabsRow}>
-            <PageDeckNav />
-            <div className={styles.tabsContainer} ref={tabsContainerRef}>
+            <div className={styles.tabsContainer} data-admin-page-tabs>
                 {tabs
                     ?.filter((tab) => tab && tab.to)
                     .map(({ icon, iconName, ...tab }) => {

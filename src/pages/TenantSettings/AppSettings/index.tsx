@@ -1,8 +1,4 @@
-import { Col, Row } from 'antd';
-import { CommunicationSettings } from '../../../components/Tenants/AppSettings/CommunicationSettings';
-import { OtherFunctionsSettings } from '../../../components/Tenants/AppSettings/OtherFunctionsSettings';
-import { SmtpSettings } from '../../../components/Tenants/AppSettings/SmtpSettings';
-import { TopicsSettings } from '../../../components/Tenants/AppSettings/TopicsSettings';
+import { FunctionalitiesGrid } from '../../../components/Tenants/AppSettings/FunctionalitiesGrid';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { UserRole } from '../../../enums/UserRole';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -12,30 +8,24 @@ export const AppSettingsPage = () => {
     const { data } = useTenantData();
     const { hasRole, tenantId } = useUserRoles();
     const { settings } = useAppConfigContext();
-    const resolvedTenantId = tenantId && tenantId > 0 ? tenantId : data?.id;
+    const resolvedTenantId = `${(tenantId && tenantId > 0 ? tenantId : data?.id) || ''}`;
 
-    if (settings.multitenancyWithSingleDomainEnabled && hasRole(UserRole.TenantAdmin)) {
+    if (!hasRole(UserRole.TenantAdmin)) {
+        return null;
+    }
+
+    if (settings.multitenancyWithSingleDomainEnabled) {
         return (
-            <Row gutter={[24, 24]}>
-                <Col span={12} sm={6}>
-                    <OtherFunctionsSettings tenantId={`${resolvedTenantId || ''}`} hideStatistics hideGroupChatToggle />
-                </Col>
-            </Row>
+            <FunctionalitiesGrid
+                tenantId={resolvedTenantId}
+                hideSmtp
+                hideCommunication
+                hideTopicsCard
+                hideStatistics
+                hideGroupChatToggle
+            />
         );
     }
 
-    return (
-        <Row gutter={[24, 24]}>
-            {hasRole(UserRole.TenantAdmin) && (
-                <Col span={12} sm={6}>
-                    <SmtpSettings tenantId={`${resolvedTenantId || ''}`} />
-                    {!settings.multitenancyWithSingleDomainEnabled && (
-                        <CommunicationSettings tenantId={`${resolvedTenantId || ''}`} />
-                    )}
-                    <OtherFunctionsSettings tenantId={`${resolvedTenantId || ''}`} hideGroupChatToggle />
-                    <TopicsSettings />
-                </Col>
-            )}
-        </Row>
-    );
+    return <FunctionalitiesGrid tenantId={resolvedTenantId} hideSmtp hideGroupChatToggle />;
 };

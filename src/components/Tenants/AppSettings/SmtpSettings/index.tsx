@@ -5,7 +5,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { CardDeck } from '../../../CardDeck';
+import { CardGrid } from '../../../CardGrid';
 import { Card } from '../../../Card';
 import { CardEditable } from '../../../CardEditable';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../../mui/MuiFormField';
@@ -18,6 +18,10 @@ import { useSingleTenantData, TENANT_QUERY_KEY } from '../../../../hooks/useSing
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import { TENANT_ADMIN_DATA_KEY } from '../../../../hooks/useTenantAdminData.hook';
 import { sendTenantSmtpTestEmail } from '../../../../api/tenant/sendTenantSmtpTestEmail';
+import { tenantSmtpHelp } from './help';
+import { TilePicture } from '../../../TileFill';
+import { TileSections } from '../../../TileSections';
+import mailServerPicture from '../../../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
 
 const DEFAULT_SMTP_SETTINGS = {
@@ -190,13 +194,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
-            <CardDeck
-                className={styles.smtpPage}
-                ariaLabel={t('tenants.appSettings.smtp.title')}
-                previousLabel={t('globalSettings.smtp.cardDeck.previous')}
-                nextLabel={t('globalSettings.smtp.cardDeck.next')}
-            >
-                <CardDeck.Item className={styles.smtpCardSlot}>
+            <CardGrid raster>
+                <CardGrid.Item>
                     <CardEditable
                         key={formKey}
                         className={styles.smtpCard}
@@ -206,6 +205,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         isLoading={isLoading}
                         initialValues={initialValues}
                         titleKey="tenants.appSettings.smtp.title"
+                        help={tenantSmtpHelp}
                         subTitleKey="tenants.appSettings.smtp.description"
                         onSave={(formData, options) => {
                             const save = (confirmed = false) => {
@@ -232,127 +232,138 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             });
                         }}
                     >
-                        <div className={styles.fieldGrid}>
-                            {data?.settings?.smtpMode == null && (
-                                <Alert
-                                    type="warning"
-                                    showIcon
-                                    message={t('tenants.appSettings.smtp.legacyModeMissing')}
-                                />
-                            )}
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'tenants.appSettings.smtp.systemEmailToggle.title',
-                                    'tenants.appSettings.smtp.systemEmailToggle.description',
-                                )}
-                                name={['settings', 'featureSystemNotificationEmailsEnabled']}
-                                disabled={!systemEmailsAllowed}
-                                switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
-                            />
+                        <TileSections>
+                            <TileSections.Section id="smtp-sending" title={t('tileHelp.mailPanels.sending')}>
+                                <div className={styles.fieldGrid}>
+                                    {data?.settings?.smtpMode == null && (
+                                        <Alert
+                                            type="warning"
+                                            showIcon
+                                            message={t('tenants.appSettings.smtp.legacyModeMissing')}
+                                        />
+                                    )}
+                                    <MuiSwitchField
+                                        className={styles.smtpSwitch}
+                                        label={renderSwitchLabel(
+                                            'tenants.appSettings.smtp.systemEmailToggle.title',
+                                            'tenants.appSettings.smtp.systemEmailToggle.description',
+                                        )}
+                                        name={['settings', 'featureSystemNotificationEmailsEnabled']}
+                                        disabled={!systemEmailsAllowed}
+                                        switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
+                                    />
+                                    <MuiRadioGroupField
+                                        vertical
+                                        required
+                                        labelKey="tenants.appSettings.smtp.mode"
+                                        name={['settings', 'smtpMode']}
+                                    >
+                                        <MuiRadioGroupField.Radio value="PLATFORM">
+                                            {t('tenants.appSettings.smtp.platformMode')}
+                                        </MuiRadioGroupField.Radio>
+                                        <MuiRadioGroupField.Radio value="OWN">
+                                            {t('tenants.appSettings.smtp.ownMode')}
+                                        </MuiRadioGroupField.Radio>
+                                    </MuiRadioGroupField>
+                                    <MuiColorField
+                                        className={styles.colorField}
+                                        labelKey="tenants.appSettings.smtp.emailThemeColor"
+                                        help="tenants.appSettings.smtp.emailThemeColor.helpText"
+                                        name={['settings', 'smtp', 'emailThemeColor']}
+                                    />
+                                </div>
+                            </TileSections.Section>
+                            <TileSections.Section id="smtp-server" title={t('tileHelp.mailPanels.server')}>
+                                <div className={styles.fieldGrid}>
+                                    {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
+                                        <Alert
+                                            type="warning"
+                                            showIcon
+                                            message={t('tenants.appSettings.smtp.transportMismatchHint')}
+                                        />
+                                    )}
 
-                            <MuiRadioGroupField
-                                vertical
-                                required
-                                labelKey="tenants.appSettings.smtp.mode"
-                                name={['settings', 'smtpMode']}
-                            >
-                                <MuiRadioGroupField.Radio value="PLATFORM">
-                                    {t('tenants.appSettings.smtp.platformMode')}
-                                </MuiRadioGroupField.Radio>
-                                <MuiRadioGroupField.Radio value="OWN">
-                                    {t('tenants.appSettings.smtp.ownMode')}
-                                </MuiRadioGroupField.Radio>
-                            </MuiRadioGroupField>
-
-                            {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
-                                <Alert
-                                    type="warning"
-                                    showIcon
-                                    message={t('tenants.appSettings.smtp.transportMismatchHint')}
-                                />
-                            )}
-
-                            <MuiFormField
-                                label={t('tenants.appSettings.smtp.host')}
-                                name={['settings', 'smtp', 'host']}
-                                helpText={t('tenants.appSettings.smtp.host.helpText')}
-                                rules={[ownServerRule()]}
-                                disabled={!ownServerSelected}
-                            />
-                            <MuiNumberFormField
-                                label={t('tenants.appSettings.smtp.port')}
-                                name={['settings', 'smtp', 'port']}
-                                helpText={t('tenants.appSettings.smtp.port.helpText')}
-                                min={1}
-                                inputProps={{ max: 65535 }}
-                                rules={
-                                    ownServerSelected
-                                        ? [
-                                              ownServerRule(false, true),
-                                              {
-                                                  type: 'number',
-                                                  min: 1,
-                                                  max: 65535,
-                                                  message: t('tenants.appSettings.smtp.port.invalid'),
-                                              },
-                                          ]
-                                        : []
-                                }
-                                disabled={!ownServerSelected}
-                            />
-                            <MuiFormField
-                                label={t('tenants.appSettings.smtp.username')}
-                                name={['settings', 'smtp', 'username']}
-                                helpText={t('tenants.appSettings.smtp.username.helpText')}
-                                rules={[ownServerRule()]}
-                                autoComplete="off"
-                                disabled={!ownServerSelected}
-                            />
-                            <MuiPasswordFormField
-                                label={t('tenants.appSettings.smtp.passwordNew')}
-                                name={['settings', 'smtp', 'password']}
-                                helpText={t(
-                                    tenantSmtpPasswordSet
-                                        ? 'tenants.appSettings.smtp.passwordStored'
-                                        : 'tenants.appSettings.smtp.passwordNotSet',
-                                )}
-                                rules={[ownServerRule(true)]}
-                                autoComplete="new-password"
-                                disabled={!ownServerSelected}
-                            />
-                            <MuiFormField
-                                label={t('tenants.appSettings.smtp.from')}
-                                name={['settings', 'smtp', 'from']}
-                                helpText={t('tenants.appSettings.smtp.from.helpText')}
-                                rules={[ownServerRule()]}
-                                disabled={!ownServerSelected}
-                            />
-                            <MuiColorField
-                                className={styles.colorField}
-                                labelKey="tenants.appSettings.smtp.emailThemeColor"
-                                help="tenants.appSettings.smtp.emailThemeColor.helpText"
-                                name={['settings', 'smtp', 'emailThemeColor']}
-                            />
-                            <MuiSwitchField
-                                className={styles.smtpSwitch}
-                                label={renderSwitchLabel(
-                                    'tenants.appSettings.smtp.secure',
-                                    'tenants.appSettings.smtp.secure.description',
-                                )}
-                                name={['settings', 'smtp', 'secure']}
-                                disabled={!ownServerSelected}
-                                switchLabel={t('tenants.appSettings.smtp.secure')}
-                            />
-                        </div>
+                                    <MuiFormField
+                                        label={t('tenants.appSettings.smtp.host')}
+                                        name={['settings', 'smtp', 'host']}
+                                        helpText={t('tenants.appSettings.smtp.host.helpText')}
+                                        rules={[ownServerRule()]}
+                                        disabled={!ownServerSelected}
+                                    />
+                                    <MuiNumberFormField
+                                        label={t('tenants.appSettings.smtp.port')}
+                                        name={['settings', 'smtp', 'port']}
+                                        helpText={t('tenants.appSettings.smtp.port.helpText')}
+                                        min={1}
+                                        inputProps={{ max: 65535 }}
+                                        rules={
+                                            ownServerSelected
+                                                ? [
+                                                      ownServerRule(false, true),
+                                                      {
+                                                          type: 'number',
+                                                          min: 1,
+                                                          max: 65535,
+                                                          message: t('tenants.appSettings.smtp.port.invalid'),
+                                                      },
+                                                  ]
+                                                : []
+                                        }
+                                        disabled={!ownServerSelected}
+                                    />
+                                    <MuiFormField
+                                        label={t('tenants.appSettings.smtp.from')}
+                                        name={['settings', 'smtp', 'from']}
+                                        helpText={t('tenants.appSettings.smtp.from.helpText')}
+                                        rules={[ownServerRule()]}
+                                        disabled={!ownServerSelected}
+                                    />
+                                    <MuiSwitchField
+                                        className={styles.smtpSwitch}
+                                        label={renderSwitchLabel(
+                                            'tenants.appSettings.smtp.secure',
+                                            'tenants.appSettings.smtp.secure.description',
+                                        )}
+                                        name={['settings', 'smtp', 'secure']}
+                                        disabled={!ownServerSelected}
+                                        switchLabel={t('tenants.appSettings.smtp.secure')}
+                                    />
+                                </div>
+                            </TileSections.Section>
+                            <TileSections.Section id="smtp-credentials" title={t('tileHelp.mailPanels.credentials')}>
+                                <div className={styles.fieldGrid}>
+                                    <MuiFormField
+                                        label={t('tenants.appSettings.smtp.username')}
+                                        name={['settings', 'smtp', 'username']}
+                                        helpText={t('tenants.appSettings.smtp.username.helpText')}
+                                        rules={[ownServerRule()]}
+                                        autoComplete="off"
+                                        disabled={!ownServerSelected}
+                                    />
+                                    <MuiPasswordFormField
+                                        label={t('tenants.appSettings.smtp.passwordNew')}
+                                        name={['settings', 'smtp', 'password']}
+                                        helpText={t(
+                                            tenantSmtpPasswordSet
+                                                ? 'tenants.appSettings.smtp.passwordStored'
+                                                : 'tenants.appSettings.smtp.passwordNotSet',
+                                        )}
+                                        rules={[ownServerRule(true)]}
+                                        autoComplete="new-password"
+                                        disabled={!ownServerSelected}
+                                    />
+                                </div>
+                            </TileSections.Section>
+                        </TileSections>
                     </CardEditable>
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.smtpCardSlot}>
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <Card
                         className={styles.smtpCard}
                         variant="dialog"
                         headerIcon={<SendOutlinedIcon />}
                         titleKey="tenants.appSettings.smtp.test.title"
+                        picture={<TilePicture src={mailServerPicture} />}
                         subTitleKey="tenants.appSettings.smtp.test.description"
                     >
                         {!canTestStoredOwnServer && (
@@ -362,8 +373,8 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             {t('tenants.appSettings.smtp.test.button')}
                         </Button>
                     </Card>
-                </CardDeck.Item>
-            </CardDeck>
+                </CardGrid.Item>
+            </CardGrid>
         </ThemeProvider>
     );
 };

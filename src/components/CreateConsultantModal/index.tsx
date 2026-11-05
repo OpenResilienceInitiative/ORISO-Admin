@@ -14,7 +14,7 @@ import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsu
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { ADMIN_REMARKS_ROLES } from '../../utils/adminRemarksRoles';
 import { CounselorData } from '../../types/counselor';
-import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import { extractApiErrorMessage, extractSmtpSendFailure } from '../../utils/extractApiErrorMessage';
 import styles from './styles.module.scss';
 
 interface CreateConsultantModalProps {
@@ -34,7 +34,11 @@ interface CreateConsultantModalProps {
  * What this surface does not offer, stated rather than left out, so the difference from the page
  * form is a decision that can be revisited. The remarks are gated by role below, not hidden.
  */
-const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [];
+const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [
+    // #1144: the counsellor chooses their own password through the setup e-mail, so no
+    // administrator ever knows it.
+    'password',
+];
 
 const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and
@@ -149,6 +153,14 @@ export const CreateConsultantModal = ({
             // attempt is over and the admin has to be able to try again.
             isSaving.current = false;
             keepOpenAfterSave.current = false;
+
+            // The counsellor exists; only the set-up mail failed. Another submit would only hit
+            // "username not available", so the dialog closes (#1144).
+            if (await extractSmtpSendFailure(error)) {
+                message.warning({ content: t('counselor.create.setupMailNotSent'), duration: 10 });
+                closeModal();
+                return;
+            }
 
             if (error instanceof Response) {
                 const reason = error.headers.get(FETCH_ERRORS.X_REASON);
@@ -265,7 +277,11 @@ export const CreateConsultantModal = ({
                             onFinish={(values) => startSaving(values, false)}
                         >
                             <div className={styles.columns}>
-                                <ConsultantPersonalFields exclude={personalExclusions} autoFocusFirstField />
+                                <ConsultantPersonalFields
+                                    exclude={personalExclusions}
+                                    autoFocusFirstField
+                                    setupEmailHint
+                                />
                                 <ConsultantSettingsFields exclude={SETTINGS_EXCLUSIONS} />
                             </div>
                             {/*

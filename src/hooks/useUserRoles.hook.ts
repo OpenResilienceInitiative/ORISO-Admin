@@ -7,6 +7,8 @@ export const useUserRoles = (): {
     hasRole: (role: UserRole | UserRole[]) => boolean;
     isSuperAdmin: boolean;
     isTechnicalAccount: boolean;
+    /** The account also holds the counsellor realm role (one login for admin and counselling app). */
+    isCounsellor: boolean;
     isTenantScopedAdmin: boolean;
     tenantId: number | null;
     /**
@@ -37,6 +39,7 @@ export const useUserRoles = (): {
         tenantId = Number(payload.tenantId);
     }
     const isTechnicalAccount = tokenRoles.includes(UserRole.Technical);
+    const isCounsellor = tokenRoles.includes(UserRole.Consultant);
 
     // Keep all token roles so mixed-role admin accounts retain expected UI capabilities.
     const roles = tokenRoles;
@@ -54,6 +57,7 @@ export const useUserRoles = (): {
         hasRole,
         isSuperAdmin,
         isTechnicalAccount,
+        isCounsellor,
         isTenantScopedAdmin,
         tenantId,
         tokenUnreadable,

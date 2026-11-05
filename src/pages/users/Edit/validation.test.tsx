@@ -118,7 +118,6 @@ describe('consultant form validation (#717)', () => {
         await user.type(screen.getByLabelText('Last name'), 'Simpson');
         await user.type(screen.getByLabelText('Email'), 'lisa@example.org');
         await user.type(screen.getByLabelText('Username'), 'lisa.simpson');
-        await user.type(screen.getByLabelText('Password'), 'Strong!Pass1');
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         expect(await screen.findByText('Username contains invalid characters')).toBeVisible();

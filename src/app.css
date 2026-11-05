@@ -109,6 +109,7 @@
        hardcoded the value (editor help icon, success glyph — #594.11). Static
        now, so nothing has to. */
     --m3-secondary: #4c555f;
+    --m3-on-secondary: #ffffff;
 
     /* Static defaults for two roles that until now only existed at runtime
        (applyAdminTheme writes the OrisoScheme light values as inline
@@ -173,17 +174,24 @@
     --m3-on-background: #281715;
     --oriso-app-accent-dark: #a5000a;
     --admin-control-selected: var(--oriso-app-accent-dark, var(--m3-primary, #a5000a));
-    --admin-workspace-background: #e4e2e2;
+
+    /* Workspace = M3 surface (lightest tier). Tiles, containers and dialogs sit ON it in
+       surface-container-high, exactly like the M3 dialog over its light scrim. */
+    --admin-workspace-background: #fcf9f9;
+
+    /* One surface for every tile, container and dialog. A later "light" mode remaps only this. */
+    --admin-form-card-surface: #eae7e8;
+    --admin-card-outline: transparent;
 
     /* Layout raster — Figma "Site Template" 1285-80496.
        Horizontally: sidebar 128 · arrow-rail gutter 60 · card inset 24, so a
        card's left edge sits 84px right of the sidebar. Vertically the header is
        236px: a 144px tab band (24 + 96 + 24) plus a 92px search row. */
     --admin-sidebar-width: 128px;
-    --admin-page-gutter: 60px;
+    --admin-page-gutter: 0px;
     --admin-content-inset: 24px;
     --admin-header-pad: 24px;
-    --admin-tab-height: 96px;
+    --admin-tab-height: 76px;
     --admin-card-gap: 48px;
     --admin-dialog-card-width: 360px;
     --admin-panel-card-width: 800px;
@@ -192,7 +200,7 @@
 
     /* Card elevation. Softer + wider than M3 elevation-1 (which is a tight
        0 1px 3px) — a gentle, diffuse drop like the M3 dialog, tunable here. */
-    --admin-card-elevation: 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
+    --admin-card-elevation: 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%);
 
     /*
      * The search control's surface (#713 follow-up, owner findings 2 + 3:
@@ -239,6 +247,9 @@
     --admin-field-selected-surface: #ffe2de;
     --admin-field-selected-text: #930008;
 
+    /* Brand-tinted text/icons on --m3-primary-container, contrast-guarded per seed (#1322). */
+    --admin-accent-on-container: #a5000a;
+
     /* Mobile bottom-navigation active indicator (Figma 56576:34607). The deep
        brand red pill behind the selected destination's icon; the icon on top is
        the readable foreground. Seed-derived at runtime by computeOrisoPalette —
@@ -275,7 +286,7 @@
 }
 
 body {
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 }
 
 /* ── M3 type scale (Figma Admin.ORISO variable defs) ───────────────────────────

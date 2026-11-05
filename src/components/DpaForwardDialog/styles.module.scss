@@ -145,7 +145,7 @@
     padding: 16px;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
     border-radius: 12px;
-    background: var(--m3-surface-container-low, #f7f3f3);
+    background: var(--m3-surface-container-low, #f6f3f3);
 }
 
 .plainMeta {
@@ -186,4 +186,17 @@
     font-size: 12px;
     line-height: 1.45;
     color: var(--m3-on-surface-variant, #444748);
+}
+
+/* Copy confirmation for screen readers only (live region next to the copy button). */
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }

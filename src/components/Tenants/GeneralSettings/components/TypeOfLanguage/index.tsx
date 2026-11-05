@@ -1,8 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { CardEditable } from '../../../../CardEditable';
+import { TilePicture } from '../../../../TileFill';
 import { MuiRadioGroupField } from '../../../../mui/MuiRadioGroupField';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
+import conversationPicture from '../../../../../resources/img/tile-help/conversation.webp';
 import styles from './styles.module.scss';
 
 export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: string; readOnly?: boolean }) => {
@@ -21,6 +23,7 @@ export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: strin
             variant="dialog"
             editButtonPlacement="footer"
             headerIcon={<TranslateOutlinedIcon />}
+            picture={<TilePicture src={conversationPicture} />}
         >
             <MuiRadioGroupField
                 labelKey="tenants.typeOfLanguage.radio.description"

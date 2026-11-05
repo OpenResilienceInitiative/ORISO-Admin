@@ -1,14 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import { Card } from '../Card';
-import { CardDeck } from '../CardDeck';
+import { CardGrid } from '../CardGrid';
 import { Page } from './index';
 
-/**
- * In the app the page sits right of the 128px admin sidebar, and the header's
- * arrow rail reaches into that gutter. Without the stand-in the backward arrow
- * would fall off the left edge of the Storybook canvas and the rail could not be
- * reviewed at all.
- */
+/** In the app the page sits right of the 128px admin sidebar. */
 const SidebarStandIn = ({ children }: { children: React.ReactNode }) => (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
         <div
@@ -63,41 +60,6 @@ export const WithBackHeader: Story = {
     ),
 };
 
-/**
- * The card-deck navigation in its final home: the arrows sit in the page header
- * flanking the tab row (Figma 1285-80496), not in a sticky footer under the
- * cards where they used to collide with the cards' own footer actions.
- * The deck registers itself through `CardDeckNavContext` — scroll the deck and
- * the header arrows flip between enabled and disabled.
- */
-export const WithCardDeck: Story = {
-    render: () => (
-        <Page>
-            <Page.Title
-                tabs={[
-                    { to: '/admin/settings/global', titleKey: 'Globale Konfigurationen', iconName: 'global_config' },
-                    { to: '/admin/settings/appearance', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
-                    { to: '/admin/settings/legal', titleKey: 'Rechtliches', iconName: 'legal' },
-                    { to: '/admin/settings/email', titleKey: 'Email Server', iconName: 'email_server' },
-                ]}
-            />
-            <CardDeck
-                ariaLabel="Rechtliches"
-                previousLabel="Vorherige Karte anzeigen"
-                nextLabel="Weitere Karte anzeigen"
-            >
-                {['Trägerspezifische Datenschutzerklärung', 'Vertragsunterlagen', 'Datenschutzerklärung'].map(
-                    (title) => (
-                        <CardDeck.Item key={title}>
-                            <Card titleKey={title}>Karteninhalt mit eigenen Footer-Aktionen.</Card>
-                        </CardDeck.Item>
-                    ),
-                )}
-            </CardDeck>
-        </Page>
-    ),
-};
-
 /** A back header with a tab bar (`Page.Back` + tabs) — tabs only show when there is more than one. */
 export const WithTabs: Story = {
     render: () => (
@@ -113,4 +75,42 @@ export const WithTabs: Story = {
             <SampleContent />
         </Page>
     ),
+};
+
+/** Issue #193: the header must reveal the final tab even without a card deck. */
+const SETTINGS_TABS = [
+    { to: '/admin/theme-settings/global-config', titleKey: 'Globale Konfigurationen', iconName: 'global_config' },
+    { to: '/admin/theme-settings/master-data', titleKey: 'Stammdaten & Mehr', iconName: 'master_data' },
+    { to: '/admin/theme-settings/general', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
+    { to: '/admin/theme-settings/legal', titleKey: 'Rechtliches', iconName: 'legal' },
+    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
+    { to: '/admin/theme-settings/notices', titleKey: 'Systemhinweise' },
+    { to: '/admin/theme-settings/function-access', titleKey: 'Funktionszugriff', iconName: 'functionality_access' },
+];
+
+/**
+ * ORISO-Admin#1309: seven tabs, the most a settings page has. The row adapts to the width and
+ * never scrolls sideways; narrow it with the viewport toolbar to see each step.
+ */
+export const SevenSettingsTabs: Story = {
+    render: () => (
+        <Page>
+            <Page.Title tabs={SETTINGS_TABS} />
+            <CardGrid raster>
+                {['Impressum', 'Datenschutzerklärung', 'Vertragsunterlagen', 'Einwilligung'].map((title) => (
+                    <CardGrid.Item key={title}>
+                        <Card titleKey={title} variant="dialog">
+                            Karteninhalt.
+                        </Card>
+                    </CardGrid.Item>
+                ))}
+            </CardGrid>
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const tabs = canvasElement.querySelector<HTMLElement>('[data-admin-page-tabs]');
+        await expect(tabs).not.toBeNull();
+        await expect(tabs!.scrollWidth).toBeLessThanOrEqual(tabs!.clientWidth);
+        await expect(canvasElement.querySelector('[data-admin-page-deck-nav]')).toBeNull();
+    },
 };

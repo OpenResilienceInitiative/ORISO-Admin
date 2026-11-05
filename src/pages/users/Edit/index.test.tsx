@@ -8,6 +8,8 @@ import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { ChangeConsultantTenantError } from '../../../api/counselor/changeConsultantTenant';
+import { appURL } from '../../../appConfig';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -28,6 +30,8 @@ const mocks = vi.hoisted(() => ({
     searchTenantData: vi.fn(),
     /** Drives the real `hasRole` logic below, so the role gate is genuinely exercised. */
     roles: [] as string[],
+    isSuperAdmin: false,
+    changeTenant: vi.fn(),
     /**
      * Query results are held as whole objects and swapped per test rather than
      * rebuilt on every hook call. `agenciesData` is an effect dependency in the
@@ -77,6 +81,7 @@ const translations: Record<string, string> = {
     'counselor.assignedSupervisor.loadFailed': 'Liste konnte nicht geladen werden.',
     'counselor.assignedSupervisor.detailsUnavailable': 'Gespeicherte Zuweisung nicht ladbar.',
     'counselor.assignedSupervisor.noCandidates': 'Noch niemand freigegeben.',
+    'counselor.assignedSupervisor.onlySelf': 'Nur diese Person ist freigegeben.',
     'counselor.assignedSupervisor.truncated': 'Nur die ersten 1000 werden durchsucht.',
     'tenantAdmins.form.tenantAssignment': 'Trägerzuordnung',
     agency: 'Beratungsstelle',
@@ -101,6 +106,30 @@ const translations: Record<string, string> = {
     'counselor.topicsLostByMove.settingsUnavailable': 'Gerade nicht prüfbar, bitte erneut versuchen.',
     'counselor.topicsLostByMove.addedButNotSaved':
         'Thema bei {{agency}} ergänzt, Person nicht gespeichert. Es bleibt bei {{agency}}.',
+    'counselor.changeTenant.title': 'Träger von {{name}} wechseln?',
+    'counselor.changeTenant.description':
+        '{{name}} wechselt von „{{from}}“ zu „{{to}}“ und arbeitet danach in: {{centres}}.',
+    'counselor.changeTenant.cases.unknown': 'Offene Fälle bleiben beim bisherigen Träger „{{from}}“.',
+    'counselor.changeTenant.cases.none': 'Es bleiben keine offenen Fälle zurück.',
+    'counselor.changeTenant.cases.noneDone': 'Es blieben keine offenen Fälle zurück.',
+    'counselor.changeTenant.cases.count': '{{count}} offene Fälle bleiben beim bisherigen Träger „{{from}}“.',
+    'counselor.changeTenant.takeover': 'Kolleg:innen können mit „Zuordnung beendet“ übernehmen.',
+    'counselor.changeTenant.confirm': 'Träger wechseln',
+    'counselor.changeTenant.retry': 'Erneut versuchen',
+    'counselor.changeTenant.back': 'Zurück zum Bearbeiten',
+    'counselor.changeTenant.done.title': 'Träger gewechselt',
+    'counselor.changeTenant.done.close': 'Fertig',
+    'counselor.changeTenant.error.LAST_COUNSELLOR_OF_CENTRE': 'Letzte Beratungsperson einer aktiven Stelle.',
+    'counselor.changeTenant.error.IDENTITY_PROVIDER_UNAVAILABLE': 'Anmeldedienst lehnt ab, nichts geändert.',
+    'counselor.changeTenant.centreRequired': 'Bitte mindestens eine Beratungsstelle des neuen Trägers wählen.',
+    'counselor.changeTenant.saveHint': 'Der Wechsel wird für sich gespeichert. Andere Änderungen separat speichern.',
+    'counselor.publicSlug': 'Name des öffentlichen Kontakt-Links',
+    'counselor.publicSlug.url': 'Öffentlicher Kontakt-Link',
+    'counselor.publicSlug.copy': 'Kontakt-Link kopieren',
+    'counselor.publicSlug.copied': 'Kontakt-Link kopiert',
+    'message.error.publicSlug.format': 'Ungültiger Link-Name',
+    'message.error.publicSlug.maxLength': 'Höchstens {{max}} Zeichen',
+    'counselor.publicSlug.hint': 'Kleinbuchstaben und Ziffern, bis {{max}} Zeichen',
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
@@ -159,9 +188,9 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
         roles: mocks.roles,
         hasRole: (role: string | string[]) =>
             (Array.isArray(role) ? role : [role]).some((candidate) => mocks.roles.includes(candidate)),
-        // Not a super admin, so the tenant is taken from the token instead of
-        // being picked in the form — see `parseUserAuthInfo` below.
-        isSuperAdmin: false,
+        // Not a super admin unless a test says so, so the tenant is taken from the token instead
+        // of being picked in the form — see `parseUserAuthInfo` below.
+        isSuperAdmin: mocks.isSuperAdmin,
         isTechnicalAccount: false,
         isTenantScopedAdmin: mocks.roles.includes(UserRole.TenantAdmin),
         tenantId: TENANT.id,
@@ -207,6 +236,13 @@ vi.mock('../../../api/agency/addTopicsToAgency', async () => {
         '../../../api/agency/addTopicsToAgency',
     );
     return { ...actual, addTopicsToAgency: mocks.addTopicsToAgency };
+});
+
+vi.mock('../../../api/counselor/changeConsultantTenant', async () => {
+    const actual = await vi.importActual<typeof import('../../../api/counselor/changeConsultantTenant')>(
+        '../../../api/counselor/changeConsultantTenant',
+    );
+    return { ...actual, changeConsultantTenant: mocks.changeTenant };
 });
 
 vi.mock('../../../context/useAppConfig', () => ({
@@ -267,7 +303,6 @@ const fillMandatoryFields = async () => {
     setField('Nachname', 'Lovelace');
     setField('E-Mail', 'ada.lovelace@example.org');
     setField('Benutzername', 'ada-lovelace');
-    setField('Passwort', 'Str0ng!Pass');
     // The tenant is not picked in the form for a non-super-admin; it arrives
     // from the token via getSingleTenantData. Wait for that before submitting,
     // otherwise the required `tenantId` rule rejects the submission.
@@ -302,6 +337,8 @@ beforeEach(() => {
     mocks.getSingleTenantData.mockReset();
     mocks.getSingleTenantData.mockResolvedValue(TENANT);
     mocks.roles = [UserRole.TenantAdmin];
+    mocks.isSuperAdmin = false;
+    mocks.changeTenant.mockReset();
     mocks.agenciesResult = { data: { data: [] }, isLoading: false };
     mocks.topicsResult = { data: [], isLoading: false };
     mocks.consultantsResult = { data: { data: [] }, isLoading: false };
@@ -347,6 +384,29 @@ describe('admin remarks are gated on the tenant-level admin role (#994)', () => 
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('adminRemarks');
+    });
+});
+
+describe('a new counsellor chooses their own password (#1144)', () => {
+    it('asks the admin for no password and submits none', async () => {
+        // The setup e-mail is the way in; a password the admin typed would be one somebody else knows.
+        const user = userEvent.setup();
+        renderForm();
+
+        expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument();
+        expect(screen.getByText('counselor.password.setupEmailHint')).toBeInTheDocument();
+        await fillMandatoryFields();
+
+        expect(await submit(user)).not.toHaveProperty('password');
+    });
+
+    it('still asks for the one-time password when an agency admin is created', () => {
+        // Only counsellors are covered by the product decision; agency admins keep the field.
+        mocks.params = { id: 'add', typeOfUsers: 'agency-admins' };
+        renderForm();
+
+        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
+        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
     });
 });
 
@@ -435,6 +495,105 @@ describe('counsellor avatar (#1046)', () => {
         // The field is registered, so the key exists — it must carry no choice.
         const submitted = await submit(user);
         expect(submitted.avatarKind).toBeUndefined();
+    });
+});
+
+describe('public contact link (ORISO-UserService#1534)', () => {
+    it('accepts digits in the link name', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        setField('Name des öffentlichen Kontakt-Links', 'qa-shazia-2810');
+
+        expect(await submit(user)).toMatchObject({ publicSlug: 'qa-shazia-2810' });
+    });
+
+    it.each(['-qa', 'qa-', 'qa--2810', 'QA-2810', 'qa shazia'])(
+        'rejects "%s" with the format message',
+        async (slug) => {
+            const user = userEvent.setup();
+            renderForm();
+            await fillMandatoryFields();
+
+            setField('Name des öffentlichen Kontakt-Links', slug);
+            await user.click(pageButton('Speichern'));
+
+            expect(await screen.findByText('Ungültiger Link-Name')).toBeInTheDocument();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        },
+    );
+
+    // ORISO-UserService#1543
+    it('limits typing to 50 characters', () => {
+        renderForm();
+
+        expect(screen.getByLabelText('Name des öffentlichen Kontakt-Links')).toHaveAttribute('maxLength', '50');
+    });
+
+    it('rejects a pasted name longer than 50 characters with the length message', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+
+        setField('Name des öffentlichen Kontakt-Links', 'a'.repeat(51));
+        await user.click(pageButton('Speichern'));
+
+        expect(await screen.findByText('Höchstens 50 Zeichen')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('shows the full public link of the active link name with a copy button', async () => {
+        const user = userEvent.setup();
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', publicSlug: 'qa-shazia-2810', publicSlugStatus: 'APPROVED' },
+            isLoading: false,
+        };
+        renderForm();
+
+        const expected = `${appURL.replace(/\/$/, '')}/registration?cid=qa-shazia-2810`;
+        expect(await screen.findByLabelText('Öffentlicher Kontakt-Link')).toHaveValue(expected);
+
+        await user.click(screen.getByRole('button', { name: 'Kontakt-Link kopieren' }));
+
+        await screen.findByRole('button', { name: 'Kontakt-Link kopiert' });
+        await expect(navigator.clipboard.readText()).resolves.toBe(expected);
+    });
+
+    it('names the 50-character limit next to the field', () => {
+        renderForm();
+
+        expect(screen.getByText('Kleinbuchstaben und Ziffern, bis 50 Zeichen')).toBeInTheDocument();
+    });
+
+    it('trusts the loaded detail record over a stale list row when the name was cleared', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.consultantsResult = {
+            data: { data: [{ id: 'consultant-1', publicSlug: 'old-name', publicSlugStatus: 'APPROVED' }] },
+            isLoading: false,
+        };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', publicSlug: null, publicSlugStatus: null },
+            isLoading: false,
+        };
+        renderForm();
+
+        expect(await screen.findByLabelText('Name des öffentlichen Kontakt-Links')).toHaveValue('');
+        expect(screen.queryByLabelText('Öffentlicher Kontakt-Link')).not.toBeInTheDocument();
+    });
+
+    it('shows no link while no link name is active', async () => {
+        mocks.params = { id: 'consultant-1', typeOfUsers: 'consultants' };
+        mocks.counselorResult = {
+            data: { id: 'consultant-1', pendingPublicSlug: 'team-2', publicSlugStatus: 'PENDING' },
+            isLoading: false,
+        };
+        renderForm();
+
+        expect(await screen.findByLabelText('Name des öffentlichen Kontakt-Links')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Öffentlicher Kontakt-Link')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Kontakt-Link kopieren' })).not.toBeInTheDocument();
     });
 });
 
@@ -1372,6 +1531,27 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
     });
 
+    /**
+     * OBP 2.1 #105: the tester enabled "Supervisor" on the counsellor she was editing and was told
+     * nobody had been enabled. Nobody can supervise themselves, so the list is rightly empty, but the
+     * hint has to say why instead of suggesting the capability was not saved.
+     */
+    it('says the edited counsellor is the only supervisor, rather than that nobody is enabled', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        mocks.supervisorCandidatesResult = {
+            data: { data: [{ id: CONSULTANT_ID, firstname: 'Self', lastname: 'Supervisor', isSupervisor: true }] },
+            isLoading: false,
+            isError: false,
+        };
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+
+        expect(screen.getByText('Nur diese Person ist freigegeben.')).toBeTruthy();
+        expect(screen.queryByText('Noch niemand freigegeben.')).toBeNull();
+    });
+
     it('locks the field and says so when the stored assignment could not be read', async () => {
         const user = userEvent.setup();
         editExistingConsultant(undefined);
@@ -1444,6 +1624,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+        await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
         // A refetch lands, saying somebody else is stored.
         mocks.counselorResult = {
@@ -1457,6 +1638,25 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         );
 
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', 'Grace Hopper');
+    });
+
+    /**
+     * OBP 2.1 #107: a standing supervisor reads every case of this counsellor, so assigning the
+     * first one reminds the admin that supervision belongs in the privacy policy.
+     */
+    it('asks about the privacy policy before the first standing supervisor is assigned', async () => {
+        const user = userEvent.setup();
+        editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
+        renderForm();
+
+        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+
+        expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'supervision.privacyConfirm.cancel' }));
+
+        expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', '');
+        expect(await submit(user)).not.toHaveProperty('assignedSupervisorId', SUPERVISOR_ID);
     });
 
     /**
@@ -1502,6 +1702,8 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
 
         await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
+        // OBP 2.1 #107: the first standing supervisor is confirmed against the privacy policy.
+        await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
         expect(await submit(user)).toMatchObject({ assignedSupervisorId: SUPERVISOR_ID });
     });
@@ -1620,5 +1822,303 @@ describe('existing consultant username validation', () => {
             isSupervisor: false,
         });
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
+    });
+});
+
+describe('platform admin changes the Träger of a counsellor (Admin#1216)', () => {
+    const OTHER = { id: 12, name: 'Diakonie Nord' };
+    const SUCHT = { id: 11, name: 'Sucht' };
+    const FAMILIE = { id: 13, name: 'Familie' };
+    const NORD = { id: 1, name: 'Nord', postcode: '20095', city: 'Hamburg', tenantId: TENANT.id, topics: [SUCHT] };
+    const SUED = { id: 2, name: 'Süd', postcode: '80331', city: 'München', tenantId: TENANT.id, topics: [SUCHT] };
+    const MITTE = {
+        id: 21,
+        name: 'Mitte',
+        postcode: '30159',
+        city: 'Hannover',
+        tenantId: OTHER.id,
+        topics: [SUCHT, FAMILIE],
+    };
+    const KUESTE = { id: 22, name: 'Küste', postcode: '24103', city: 'Kiel', tenantId: OTHER.id, topics: [FAMILIE] };
+    const ID = 'consultant-7';
+    const MOVED = {
+        consultantId: ID,
+        previousTenantId: TENANT.id,
+        tenantId: OTHER.id,
+        agencyIds: [21],
+        casesLeftWithPreviousTenant: 3,
+        matrixAccessRevocationsQueued: 2,
+    };
+
+    const editAs = (role: 'platform' | 'tenant') => {
+        const edited = {
+            id: ID,
+            firstname: 'Ada',
+            lastname: 'Lovelace',
+            email: 'ada@example.org',
+            username: 'ada',
+            tenantId: TENANT.id,
+            agencies: [NORD],
+            isSupervisor: false,
+        };
+        mocks.isSuperAdmin = role === 'platform';
+        mocks.roles = role === 'platform' ? [UserRole.AgencyAdmin, UserRole.TenantAdmin] : [UserRole.TenantAdmin];
+        mocks.params = { id: ID, typeOfUsers: 'consultants' };
+        mocks.consultantsResult = { data: { data: [edited] }, isLoading: false };
+        mocks.counselorResult = {
+            data: { ...edited, topicsByAgency: [{ agencyId: 1, topicIds: [11] }] },
+            isLoading: false,
+        };
+        mocks.agenciesResult = { data: { data: [NORD, SUED, MITTE, KUESTE] }, isLoading: false };
+        mocks.topicsResult = { data: [SUCHT, FAMILIE], isLoading: false };
+        mocks.searchTenantData.mockResolvedValue({ data: [TENANT, OTHER] });
+        mocks.changeTenant.mockResolvedValue(MOVED);
+    };
+
+    const setup = () => userEvent.setup({ delay: null, pointerEventsCheck: PointerEventsCheckLevel.Never });
+    const unlock = (user: ReturnType<typeof userEvent.setup>) => user.click(pageButton('Bearbeiten'));
+    const centresOffered = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(screen.getByLabelText('Beratungsstelle'));
+        const names = (await screen.findAllByRole('option')).map((option) => option.textContent);
+        await user.keyboard('{Escape}');
+        return names;
+    };
+    /** Opens the confirmation: new Träger, then one of its centres, then Save. */
+    const reviewMoveTo = async (user: ReturnType<typeof userEvent.setup>, centre = '30159 Mitte Hannover') => {
+        await unlock(user);
+        await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+        await chooseOption(user, 'Beratungsstelle', centre);
+        await user.keyboard('{Escape}');
+        await user.click(pageButton('Speichern'));
+        return screen.findByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ });
+    };
+
+    describe('the Träger field', () => {
+        it('stays locked until the form is unlocked with "Bearbeiten"', async () => {
+            editAs('platform');
+            renderForm();
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeDisabled();
+        });
+
+        it('can be changed by a platform admin once the form is unlocked', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeEnabled();
+        });
+
+        it('stays read-only for a Träger admin, even when the form is unlocked', async () => {
+            editAs('tenant');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            expect(await screen.findByLabelText('Trägerzuordnung *')).toBeDisabled();
+        });
+    });
+
+    describe('the counselling centres after choosing another Träger', () => {
+        it("offers only that Träger's centres", async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            expect(await centresOffered(user)).toEqual(['20095 Nord Hamburg', '80331 Süd München']);
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            expect(await centresOffered(user)).toEqual(['24103 Küste Kiel', '30159 Mitte Hannover']);
+        });
+
+        it('drops the centres of the old Träger instead of carrying them along', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            expect(screen.queryByRole('button', { name: '20095 Nord Hamburg' })).not.toBeInTheDocument();
+        });
+
+        it('asks for at least one centre of the new Träger before anything is sent', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            await user.click(pageButton('Speichern'));
+
+            expect(
+                await screen.findByText('Bitte mindestens eine Beratungsstelle des neuen Trägers wählen.'),
+            ).toBeInTheDocument();
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('returns to the centres the counsellor has when the old Träger is chosen again', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+
+            await chooseOption(user, 'Trägerzuordnung *', 'Caritas Augsburg');
+
+            expect(screen.getByRole('button', { name: '20095 Nord Hamburg' })).toBeInTheDocument();
+        });
+    });
+
+    describe('saving', () => {
+        it('asks first: names both Träger, the new centre, and that open cases stay behind', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+
+            const dialog = await reviewMoveTo(user);
+
+            expect(dialog).toHaveTextContent('Caritas Augsburg');
+            expect(dialog).toHaveTextContent('Diakonie Nord');
+            expect(dialog).toHaveTextContent('Mitte (30159 Hannover)');
+            expect(dialog).toHaveTextContent('Offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“.');
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('sends the move only after "Träger wechseln"', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).toHaveBeenCalledWith(
+                ID,
+                expect.objectContaining({ tenantId: '12', centreIds: ['21'] }),
+            );
+            expect(mocks.mutate).not.toHaveBeenCalled();
+        });
+
+        it('sends the topics picked at the new centre', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+            await chooseOption(user, 'Beratungsstelle', '24103 Küste Kiel');
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+            const dialog = await screen.findByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ });
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            // Küste offers one topic only, which is pre-selected like when adding a centre.
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).toHaveBeenCalledWith(ID, {
+                tenantId: '12',
+                centreIds: ['22'],
+                topicIds: ['13'],
+            });
+        });
+
+        it('refuses a topic picked at only one of two new centres that offer it', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+            await chooseOption(user, 'Trägerzuordnung *', 'Diakonie Nord');
+            await chooseOption(user, 'Beratungsstelle', '24103 Küste Kiel');
+            // The list stays open for a further centre.
+            await user.click(await screen.findByRole('option', { name: '30159 Mitte Hannover' }));
+            await user.keyboard('{Escape}');
+            await user.click(pageButton('Speichern'));
+
+            // Küste pre-selects Familie, Mitte offers it too but has nothing picked.
+            expect(await screen.findByText(/Gilt für alle Stellen gemeinsam.*Familie/)).toBeInTheDocument();
+            expect(screen.queryByRole('dialog', { name: /Träger von Ada Lovelace wechseln/ })).not.toBeInTheDocument();
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+        });
+
+        it('does not carry the topics of the old Träger along', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            // Mitte offers two topics, none of them picked: the old "Sucht" must not come with the move.
+            await waitFor(() => expect(mocks.changeTenant).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant.mock.calls[0][1].topicIds).toEqual([]);
+        });
+
+        it('reports how many open cases the server left behind, then returns to the list', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            const done = await screen.findByRole('dialog', { name: /Träger gewechselt/ });
+            expect(done).toHaveTextContent('3 offene Fälle bleiben beim bisherigen Träger „Caritas Augsburg“.');
+            expect(mocks.navigate).not.toHaveBeenCalled();
+            await user.click(within(done).getByRole('button', { name: 'Fertig' }));
+            expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants');
+        });
+
+        it('keeps the edit when the server refuses: says why, and the choices are still there', async () => {
+            editAs('platform');
+            mocks.changeTenant.mockRejectedValue(new ChangeConsultantTenantError('LAST_COUNSELLOR_OF_CENTRE'));
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+
+            expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+                'Letzte Beratungsperson einer aktiven Stelle.',
+            );
+            expect(mocks.navigate).not.toHaveBeenCalled();
+            await user.click(within(dialog).getByRole('button', { name: 'Zurück zum Bearbeiten' }));
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(screen.getByLabelText('Trägerzuordnung *')).toHaveValue('Diakonie Nord');
+            expect(screen.getByRole('button', { name: '30159 Mitte Hannover' })).toBeInTheDocument();
+        });
+
+        it('can be retried after a refusal that may pass on the next try', async () => {
+            editAs('platform');
+            mocks.changeTenant.mockRejectedValueOnce(new ChangeConsultantTenantError('IDENTITY_PROVIDER_UNAVAILABLE'));
+            const user = setup();
+            renderForm();
+            const dialog = await reviewMoveTo(user);
+            await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
+            await within(dialog).findByRole('alert');
+
+            await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }));
+
+            expect(await screen.findByRole('dialog', { name: /Träger gewechselt/ })).toBeInTheDocument();
+            expect(mocks.changeTenant).toHaveBeenCalledTimes(2);
+        });
+
+        it('saves the form the usual way when the Träger was not changed', async () => {
+            editAs('platform');
+            const user = setup();
+            renderForm();
+            await unlock(user);
+
+            await user.click(pageButton('Speichern'));
+
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            expect(mocks.changeTenant).not.toHaveBeenCalled();
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        });
     });
 });

@@ -124,6 +124,8 @@ export const runtimeConfig = {
     tenantServiceOrigin: serviceOrigin('TENANT_SERVICE_ORIGIN'),
     consultingTypeServiceOrigin: serviceOrigin('CONSULTING_TYPE_SERVICE_ORIGIN'),
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
+    /** APP_URL as configured, with no API fallback; '' when unset. */
+    configuredAppUrl: toAbsoluteUrl(appHost, useHttps),
     matrixBaseUrl: matrixHost ? toAbsoluteUrl(matrixHost, useHttps) : '',
     keycloakRealm: readConfigValue('KEYCLOAK_REALM') ?? 'online-beratung',
     keycloakClientId: readConfigValue('KEYCLOAK_CLIENT_ID') ?? 'app',

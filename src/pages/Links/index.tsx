@@ -13,7 +13,6 @@ import pageStyles from '../../components/Page/styles.module.scss';
 import { ReactComponent as TabLinkIcon } from '../../resources/img/svg/oriso/link_24px.svg';
 import styles from './styles.module.scss';
 
-export { ExternalInboundsTab } from './ExternalInboundsTab';
 export { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string }> = [
@@ -26,11 +25,6 @@ const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string 
         key: 'counsellor',
         to: routePathNames.linksCounsellor,
         titleKey: 'links.tabs.counsellor',
-    },
-    {
-        key: 'external-inbounds',
-        to: routePathNames.linksExternalInbounds,
-        titleKey: 'links.tabs.externalInbounds',
     },
 ];
 
