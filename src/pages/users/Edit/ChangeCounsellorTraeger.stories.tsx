@@ -384,8 +384,8 @@ export const PlatformAdminEnglish: Story = {
     beforeEach: english,
     play: async () => {
         await unlock();
-        await expect(await screen.findByLabelText('Tenant assignment *')).toBeEnabled();
-        await choose(await screen.findByLabelText('Tenant assignment *'), NEW_TENANT.name);
+        await expect(await screen.findByLabelText('Provider assignment *')).toBeEnabled();
+        await choose(await screen.findByLabelText('Provider assignment *'), NEW_TENANT.name);
         await expect(screen.getByText(/saves only the Träger, counselling centres and topics/)).toBeVisible();
     },
 };
