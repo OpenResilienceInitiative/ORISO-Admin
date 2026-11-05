@@ -953,7 +953,7 @@ describe('topics per centre (#1264)', () => {
             await editWithDroppedTopic(user);
             await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Schulden');
             await user.keyboard('{Escape}');
-            await user.click(screen.getByRole('button', { name: 'Speichern' }));
+            await user.click(pageButton('Speichern'));
 
             expect(await screen.findByText('Erst markierte Themen entfernen.')).toBeInTheDocument();
             expect(mocks.mutate).not.toHaveBeenCalled();
@@ -1302,7 +1302,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         expect(screen.queryByLabelText(/^Themen/)).not.toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         // null = keep the stored topics (editCounselorData sends it as-is).
         expect((await submit(user)).topicIds).toBeNull();
@@ -1315,7 +1315,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         expect(await screen.findByLabelText('Themen bei Nord (20095 Hamburg)')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect((await submit(user)).topicIds).toEqual(['11']);
     });
@@ -1327,7 +1327,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         await screen.findByLabelText('Themen bei Nord (20095 Hamburg)');
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Themen bei Nord (20095 Hamburg)'));
         await user.keyboard('{Backspace}');
 
@@ -1434,7 +1434,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     };
 
     const unlockAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         return submit(user);
     };
 
@@ -1456,7 +1456,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         // Hover is what a real admin does to reveal the clear affordance.
         await user.hover(screen.getByLabelText('Fester Supervisor'));
         // Query it by its visible title rather than MUI's internal class, so a class rename in
@@ -1496,7 +1496,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Fester Supervisor'));
 
         expect(await screen.findByRole('option', { name: 'Grace Hopper' })).toBeTruthy();
@@ -1525,7 +1525,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Liste konnte nicht geladen werden.')).toBeTruthy();
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
@@ -1546,7 +1546,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Nur diese Person ist freigegeben.')).toBeTruthy();
         expect(screen.queryByText('Noch niemand freigegeben.')).toBeNull();
@@ -1557,7 +1557,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant(undefined);
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
@@ -1576,7 +1576,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Nur die ersten 1000 werden durchsucht.')).toBeTruthy();
     });
@@ -1591,7 +1591,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', ''));
 
         mocks.counselorResult = {
@@ -1622,7 +1622,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
         await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
@@ -1649,7 +1649,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
 
         expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
@@ -1669,7 +1669,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Fester Supervisor'));
 
         const staleOption = await screen.findByRole('option', { name: 'Disabled Supervisor' });
@@ -1689,7 +1689,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
         expect(screen.queryByText('Nur die ersten 1000 werden durchsucht.')).toBeNull();
@@ -1700,7 +1700,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
         // OBP 2.1 #107: the first standing supervisor is confirmed against the privacy policy.
         await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
@@ -1736,7 +1736,7 @@ describe('absence survives an unrelated edit', () => {
         openAbsentConsultant();
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         // The reason the admin opened the page at all: something unrelated.
         setField('E-Mail', 'ada.neu@example.org');
 
@@ -1754,7 +1754,7 @@ describe('absence survives an unrelated edit', () => {
         openAbsentConsultant();
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.getByLabelText('Abwesenheitsnotiz')).toHaveValue(ABSENCE_NOTE);
 
         setField('Abwesenheitsnotiz', 'Zurueck ab dem 01.10.');
@@ -1772,7 +1772,7 @@ describe('absence survives an unrelated edit', () => {
         mocks.counselorResult = { data: present, isLoading: false };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.queryByLabelText('Abwesenheitsnotiz')).not.toBeInTheDocument();
 
         expect(await submit(user)).toMatchObject({ absent: false });
@@ -1808,7 +1808,7 @@ describe('existing consultant username validation', () => {
         mocks.topicsResult = { data: [topic], isLoading: false };
         const user = userEvent.setup();
         renderForm();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
         expect(screen.getByLabelText('Benutzername')).toHaveValue(existing.username);
         await chooseOption(user, 'Beratungsstelle', '10115 Isolated test agency Berlin');
