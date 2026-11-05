@@ -1,4 +1,6 @@
 import { ConfigProvider, Form } from 'antd';
+import { useContext } from 'react';
+import { ReadOnlyTileContext } from '../CardEditable/ReadOnlyTileContext';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +54,8 @@ const FormSwitchFieldLocal = ({
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
+    const inReadOnlyTile = useContext(ReadOnlyTileContext);
+    const readOnly = !!componentDisabled && inReadOnlyTile && !disabled;
     const fieldChecked = inverseValue ? !checked : checked;
     const onSwitchChange = (value: boolean) => {
         const next = inverseValue ? !value : value;
@@ -65,8 +69,8 @@ const FormSwitchFieldLocal = ({
     return (
         <div className="formSwitchField__container">
             <MuiSwitch
-                disabled={disabled}
-                readOnly={!!componentDisabled && !disabled}
+                disabled={!!disabled || (!!componentDisabled && !readOnly)}
+                readOnly={readOnly}
                 ariaLabel={switchLabel}
                 onChange={onSwitchChange}
                 checked={!!fieldChecked}

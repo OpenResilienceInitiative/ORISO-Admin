@@ -4,6 +4,7 @@ import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { MuiSwitchField } from './index';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 
 const withMuiForm = (children: React.ReactNode, options?: { initialValues?: Record<string, unknown> }) => (
     <ThemeProvider theme={orisoMuiTheme}>
@@ -53,9 +54,11 @@ export const DisabledChecked: Story = {
 export const ReadOnlyChecked: Story = {
     render: (args) => (
         <ThemeProvider theme={orisoMuiTheme}>
-            <Form disabled layout="vertical" style={{ maxWidth: 420 }} initialValues={{ enabled: true }}>
-                <MuiSwitchField {...args} />
-            </Form>
+            <ReadOnlyTileContext.Provider value>
+                <Form disabled layout="vertical" style={{ maxWidth: 420 }} initialValues={{ enabled: true }}>
+                    <MuiSwitchField {...args} />
+                </Form>
+            </ReadOnlyTileContext.Provider>
         </ThemeProvider>
     ),
 };

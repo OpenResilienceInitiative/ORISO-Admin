@@ -1,3 +1,4 @@
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
 import { Form, message } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -65,21 +66,23 @@ export const CounsellorTutorialSettingsCard = ({
                             <dd>{availability(practiceAvailable)}</dd>
                         </div>
                     </dl>
-                    <Form
-                        layout="vertical"
-                        disabled={!onToursChange || toursSaving}
-                        className={styles.toursControl}
-                        fields={[{ name: 'tours', value: toursEnabled === true }]}
-                        onValuesChange={(changed: { tours?: boolean }) => {
-                            if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
-                        }}
-                    >
-                        <MuiSwitchField
-                            name="tours"
-                            label={t('globalSettings.tutorials.showTours')}
-                            helpText={t('globalSettings.tutorials.showToursHelp')}
-                        />
-                    </Form>
+                    <ReadOnlyTileContext.Provider value={!onToursChange && !toursSaving}>
+                        <Form
+                            layout="vertical"
+                            disabled={!onToursChange || toursSaving}
+                            className={styles.toursControl}
+                            fields={[{ name: 'tours', value: toursEnabled === true }]}
+                            onValuesChange={(changed: { tours?: boolean }) => {
+                                if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
+                            }}
+                        >
+                            <MuiSwitchField
+                                name="tours"
+                                label={t('globalSettings.tutorials.showTours')}
+                                helpText={t('globalSettings.tutorials.showToursHelp')}
+                            />
+                        </Form>
+                    </ReadOnlyTileContext.Provider>
                 </TileSections.Section>
                 <TileSections.Section
                     id="tutorials-planned"

@@ -7,6 +7,7 @@ import Switch from '@mui/material/Switch';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import styles from './styles.module.scss';
 
 /**
@@ -98,8 +99,9 @@ const MuiSwitchControl = ({
     confirmEnable,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
-    const isDisabled = disabled || unavailable;
-    const isReadOnly = !!componentDisabled && !isDisabled;
+    const inReadOnlyTile = React.useContext(ReadOnlyTileContext);
+    const isReadOnly = !!componentDisabled && inReadOnlyTile && !disabled && !unavailable;
+    const isDisabled = !!disabled || !!unavailable || (!!componentDisabled && !isReadOnly);
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';

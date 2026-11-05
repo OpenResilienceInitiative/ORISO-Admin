@@ -1,3 +1,4 @@
+import { ReadOnlyTileContext } from './ReadOnlyTileContext';
 import { Form, FormInstance } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useRef, useState } from 'react';
@@ -161,21 +162,23 @@ export const CardEditable = ({
                 )
             }
         >
-            <Form
-                validateTrigger={['onSubmit', 'onChange']}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                size="large"
-                onValuesChange={() => setHasChanges(true)}
-                onFinish={onFormSubmit}
-                disabled={!editing}
-                initialValues={initialValues}
-                className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
-            >
-                {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
-            </Form>
+            <ReadOnlyTileContext.Provider value={!editing}>
+                <Form
+                    validateTrigger={['onSubmit', 'onChange']}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    size="large"
+                    onValuesChange={() => setHasChanges(true)}
+                    onFinish={onFormSubmit}
+                    disabled={!editing}
+                    initialValues={initialValues}
+                    className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
+                >
+                    {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
+                </Form>
+            </ReadOnlyTileContext.Provider>
 
             {note && <TileNote icon={note.icon}>{note.text}</TileNote>}
             {canStartEditing && finalEditButtonPlacement === 'footer' && (
