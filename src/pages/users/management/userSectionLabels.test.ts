@@ -23,7 +23,7 @@ describe('accounts section wording (ORISO-Admin#676)', () => {
         expect(en['users.sectionPills.platformAdmins']).toBe('Platform Admins');
         expect(en['users.sectionPills.tenantAdmins']).toBe('Provider Admins');
         expect(en['users.sectionPills.counsellorAdmins']).toBe('Counselling centre Admins');
-        expect(en['users.sectionPills.counsellors']).toBe('Counselors');
+        expect(en['users.sectionPills.counsellors']).toBe('Counsellors');
     });
 
     it('names the accounts and agencies menu entries', () => {
