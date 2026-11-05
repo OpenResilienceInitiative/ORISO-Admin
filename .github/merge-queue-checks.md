@@ -4,9 +4,9 @@ The pull-request workflows also run for `merge_group` candidates. Each checkout 
 
 Candidate check names:
 
-- Admin application image validation
-- Unit tests (shard 1/4) through Unit tests (shard 4/4)
-- Storybook component tests (interactions + a11y)
-- Admin Storybook image validation
+-   Admin application image validation
+-   Unit tests (shard 1/4) through Unit tests (shard 4/4)
+-   Storybook component tests (interactions + a11y)
+-   Admin Storybook image validation
 
 Both image builds keep publishing disabled. Existing review and branch protections remain in place. After merge, validate the real queue event, exact candidate SHA, independent concurrency and each emitted name before configuring required checks.
