@@ -13,6 +13,11 @@ const tenant = {
 };
 
 export const wholeTabHandlers = [
+    http.get('*/service/agencyadmin/legal-proposal-distributions', () => HttpResponse.json([])),
+    http.get('*/service/topic/', () => HttpResponse.json([])),
+    http.get('*/service/useradmin/invitelinks', () =>
+        HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    ),
     http.get('*/service/users/data', () => HttpResponse.json({ id: 'storybook-admin' })),
     http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 1, policies: {} })),

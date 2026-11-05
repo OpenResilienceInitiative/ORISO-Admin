@@ -7,6 +7,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { walkThroughTileHelp } from '../../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../enums/UserRole';
+import i18n from '../../../i18n';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { ServiceNoticesPage } from './index';
 import { App } from '../../../App';
@@ -122,22 +123,39 @@ const ExistingPlatformRoute = () => {
 
 export const PlatformRoute: Story = {
     render: () => <ExistingPlatformRoute />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 1, settings: {}, licensing: {} })),
+            ],
+        },
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByLabelText('Entwurfsreferenz', {}, { timeout: 8000 });
+        await canvas.findByLabelText(i18n.t('serviceNotices.reference'), {}, { timeout: 8000 });
         await expect(canvas.getByTestId('service-notice-route')).toHaveTextContent(
             '/admin/theme-settings/service-notices',
         );
-        await expect(canvas.getByLabelText('Öffentliche Statusseiten-URL')).toHaveValue('');
-        ['Beginn', 'Ende'].forEach((name) => {
+        await expect(canvas.getByLabelText(i18n.t('serviceNotices.statusUrl'))).toHaveValue('');
+        [i18n.t('serviceNotices.start'), i18n.t('serviceNotices.end')].forEach((name) => {
             const clockInput = canvas.getByLabelText(name);
             const label = canvas.getByText(name, { selector: 'label' });
             expect(label.getBoundingClientRect().bottom).toBeLessThanOrEqual(clockInput.getBoundingClientRect().top);
         });
-        await expect(canvas.getByRole('link', { name: 'Systemhinweise' })).toHaveAttribute(
+        await expect(canvas.getByRole('link', { name: i18n.t('serviceNotices.title') })).toHaveAttribute(
             'href',
             routePathNames.serviceNotices,
         );
+    },
+};
+
+/** The route and its controls work with English selected. */
+export const PlatformRouteEnglish: Story = {
+    ...PlatformRoute,
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('en');
+        return () => i18n.changeLanguage(previousLanguage);
     },
 };
 
