@@ -126,6 +126,21 @@ describe('Statistic page', () => {
         expect(screen.queryByText('Caritas NRW')).toBeNull();
     });
 
+    it('places metric and chart cards in the shared settings raster', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        const { container } = renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        const rasters = container.querySelectorAll('[data-admin-card-raster]');
+        expect(rasters).toHaveLength(3);
+        container
+            .querySelectorAll('.statisticDashboard__metricCard, .statisticDashboard__chartCard')
+            .forEach((card) => {
+                expect(card.parentElement).toHaveAttribute('data-admin-card-grid-item');
+            });
+    });
+
     it('still renders dashboard data when a name lookup fails with 403', async () => {
         dashboardMock.mockResolvedValue(response);
         // simulate the Pre-Dev incident: /service/topicadmin denies access
