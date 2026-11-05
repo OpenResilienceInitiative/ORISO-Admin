@@ -12,7 +12,7 @@ ROOTS = (
     'src/pages/users', 'src/pages/Statistic', 'src/pages/Topics', 'src/pages/Links',
     'src/constants/settingsTabs.ts', 'src/components/DataTable',
 )
-PATTERN = re.compile(r'''(?:\bt(?:<[^>]+>)?\(\s*|(?:titleKey|subTitleKey|labelKey)\s*[:=]\s*)["']([^"']+)["']''')
+PATTERN = re.compile(r'''["']([^"'\n]+)["']''')
 OUTPUT = Path('docs/admin-settings-language-inventory.md')
 
 
@@ -42,13 +42,17 @@ def render():
                     key = match.group(1)
                     if key in german and key in english:
                         references[key].add((str(file), number))
+    menu_keys = ('settings.subhead.globalConfig', 'settings.subhead.masterData', 'settings.subhead.view', 'settings.subhead.legal', 'settings.subhead.erstantwort', 'settings.subhead.smtp', 'serviceNotices.title', 'settings.subhead.functionAccess', 'tenants.edit.tabs.appSettings')
     output = [
         '# Admin settings and lists: language inventory', '',
-        'This source index lists literal translation keys used by the settings, organisation, account, user, statistics, topic and invitation surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
-        'This is an audit starting point, not a claim that every runtime label has been checked: dynamically constructed keys, configured content, hardcoded text and role-dependent visibility need a separate review.', '',
+        'This source index lists literal locale keys referenced by the settings, organisation, account, user, statistics, topic and invitation surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
+        'This is an audit starting point, not a claim that every runtime label has been checked: constructed keys, configured content, hardcoded text and role-dependent visibility need a separate review. Some references supply a key to a shared component rather than rendering text directly.', '',
         'Refresh it with `python3 scripts/generate-admin-language-inventory.py`. The assistant locale overrides the main locale, as it does in the app.', '',
-        '<!-- prettier-ignore -->', '| Key | German | English | Source |', '| --- | --- | --- | --- |',
+        '## Settings tabs', '', 'These tabs are ordered as in the platform menu, with the Träger-only tabs included. Visibility depends on the role and configuration.', '',
+        '<!-- prettier-ignore -->', '| German | English |', '| --- | --- |',
     ]
+    output.extend(f'| {escape(german[key])} | {escape(english[key])} |' for key in menu_keys)
+    output.extend(['', '## Source index', '', '<!-- prettier-ignore -->', '| Key | German | English | Source |', '| --- | --- | --- | --- |'])
     for key, refs in sorted(references.items()):
         sources = ', '.join(f'[{escape(path)}:{line}](../{path}#L{line})' for path, line in sorted(refs))
         output.append(f'| `{escape(key)}` | {escape(german[key])} | {escape(english[key])} | {sources} |')
