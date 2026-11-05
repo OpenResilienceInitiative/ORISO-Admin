@@ -2,6 +2,8 @@ name: CI - Pull Request
 
 on:
     pull_request:
+    merge_group:
+        types: [checks_requested]
 
 env:
     REGISTRY: ghcr.io
@@ -14,12 +16,15 @@ concurrency:
 
 jobs:
     build:
+        name: Admin application image validation
         runs-on: ubuntu-latest
         timeout-minutes: 45
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Build frontend application
               uses: ./.github/actions/node-build
@@ -51,6 +56,8 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Set up Node.js
               uses: actions/setup-node@v4
@@ -99,6 +106,8 @@ jobs:
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Set up Node.js
               uses: actions/setup-node@v4

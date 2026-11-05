@@ -2,6 +2,8 @@ name: CI - Storybook Pull Request
 
 on:
     pull_request:
+    merge_group:
+        types: [checks_requested]
 
 env:
     REGISTRY: ghcr.io
@@ -14,12 +16,15 @@ concurrency:
 
 jobs:
     build:
+        name: Admin Storybook image validation
         runs-on: ubuntu-latest
         timeout-minutes: 25
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Create Storybook Docker image
               uses: ./.github/actions/docker-build-push
