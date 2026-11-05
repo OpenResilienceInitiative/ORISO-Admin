@@ -49,7 +49,7 @@ These columns come from the current table definitions. Some appear only for cert
 
 ## Titles in Admin components
 
-Literal title keys in the mapped Admin components and their configuration, including dialogs and help sections. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.
+Title keys in the mapped Admin components and their configuration, including dialogs, help sections and recognised templates. A component can be shared by multiple roles. This list is not yet complete for all dynamically supplied titles.
 
 <!-- prettier-ignore -->
 | German | English | Code |
@@ -88,7 +88,9 @@ Literal title keys in the mapped Admin components and their configuration, inclu
 | Chat-Wiederherstellung für neue Konten | Chat recovery for new accounts | [src/components/GlobalSettings/ChatRecoverySettingsCard/help.tsx:8](../src/components/GlobalSettings/ChatRecoverySettingsCard/help.tsx#L8), [src/components/GlobalSettings/ChatRecoverySettingsCard/index.tsx:52](../src/components/GlobalSettings/ChatRecoverySettingsCard/index.tsx#L52) |
 | Das Anmeldesystem zieht nach | The sign-in system follows | [src/components/Tenants/AppSettings/SmtpSettings/help.tsx:23](../src/components/Tenants/AppSettings/SmtpSettings/help.tsx#L23) |
 | Das Passwortfeld | The password field | [src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx:21](../src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx#L21) |
+| Datenschutz-Vorlage an Träger senden | Send privacy template to providers | [src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx:153](../src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx#L153) |
 | Datenschutzerklärung | Privacy policy | [src/components/Tenants/LegalSettings/components/LegalText/help.tsx:31](../src/components/Tenants/LegalSettings/components/LegalText/help.tsx#L31), [src/components/Tenants/LegalSettings/index.tsx:36](../src/components/Tenants/LegalSettings/index.tsx#L36) |
+| Datenschutzerklärung an Beratungsstellen weiterreichen | Forward privacy policy to counselling centres | [src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx:153](../src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx#L153) |
 | Der Hauptschalter | The main switch | [src/components/Tenants/AppSettings/PermissionsSettings/help.tsx:97](../src/components/Tenants/AppSettings/PermissionsSettings/help.tsx#L97) |
 | Der Zustimmungssatz | The consent sentence | [src/components/Tenants/LegalSettings/components/LegalText/help.tsx:42](../src/components/Tenants/LegalSettings/components/LegalText/help.tsx#L42) |
 | Die Frist bleibt bei der Person | The period stays with the person | [src/components/GlobalSettings/AccountInactivitySettingsCard/help.tsx:23](../src/components/GlobalSettings/AccountInactivitySettingsCard/help.tsx#L23) |
@@ -146,6 +148,8 @@ Literal title keys in the mapped Admin components and their configuration, inclu
 | Immer behalten | Always kept | [src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx:45](../src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx#L45) |
 | Immer temporär | Always temporary | [src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx:34](../src/components/GlobalSettings/TemporaryAccountSettingsCards/help.tsx#L34) |
 | Impressum | Legal notice | [src/components/Tenants/LegalSettings/components/LegalText/help.tsx:7](../src/components/Tenants/LegalSettings/components/LegalText/help.tsx#L7), [src/components/Tenants/LegalSettings/index.tsx:73](../src/components/Tenants/LegalSettings/index.tsx#L73) |
+| Impressum an Beratungsstellen weiterreichen | Forward imprint to counselling centres | [src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx:153](../src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx#L153) |
+| Impressum-Vorlage an Träger senden | Send imprint template to providers | [src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx:153](../src/components/Tenants/LegalSettings/components/SendLegalTemplateDialog/index.tsx#L153) |
 | Inaktive Konten | Inactive accounts | [src/components/GlobalSettings/AccountInactivitySettingsCard/help.tsx:7](../src/components/GlobalSettings/AccountInactivitySettingsCard/help.tsx#L7), [src/components/GlobalSettings/AccountInactivitySettingsCard/index.tsx:47](../src/components/GlobalSettings/AccountInactivitySettingsCard/index.tsx#L47) |
 | Individuelle Bilder | Custom images | [src/components/Tenants/GeneralSettings/components/LogoAndFavicon/index.tsx:60](../src/components/Tenants/GeneralSettings/components/LogoAndFavicon/index.tsx#L60) |
 | Informationswege | Information channels | [src/components/Tenants/DpiaSettings/utils/dpiaSections.ts:53](../src/components/Tenants/DpiaSettings/utils/dpiaSections.ts#L53) |

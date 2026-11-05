@@ -45,6 +45,13 @@ def render():
                     title = re.search(r'titleKey\s*(?:=|:)\s*["\']([^"\']+)["\']', line)
                     if title and title.group(1) in german and title.group(1) in english:
                         card_titles[title.group(1)].add((str(file), number))
+                    dynamic_title = re.search(r'titleKey\s*=\s*\{`([^`]*)`\}', line)
+                    if dynamic_title:
+                        parts = re.split(r'\$\{[^}]+\}', dynamic_title.group(1))
+                        key_pattern = re.compile('^' + r'[^.]+'.join(map(re.escape, parts)) + '$')
+                        for key in german.keys() & english.keys():
+                            if key_pattern.match(key):
+                                card_titles[key].add((str(file), number))
                 for match in PATTERN.finditer(line):
                     key = match.group(1)
                     if key in german and key in english:
@@ -89,7 +96,7 @@ def render():
         de_names = ', '.join(escape(german[key]) for key in keys)
         en_names = ', '.join(escape(english[key]) for key in keys)
         output.append(f'| {label} | {de_names} | {en_names} | [{path}](../{path}) |')
-    output.extend(['', '## Titles in Admin components', '', 'Literal title keys in the mapped Admin components and their configuration, including dialogs and help sections. A component can be shared by multiple roles. This list is not yet complete for dynamically supplied titles.', '', '<!-- prettier-ignore -->', '| German | English | Code |', '| --- | --- | --- |'])
+    output.extend(['', '## Titles in Admin components', '', 'Title keys in the mapped Admin components and their configuration, including dialogs, help sections and recognised templates. A component can be shared by multiple roles. This list is not yet complete for all dynamically supplied titles.', '', '<!-- prettier-ignore -->', '| German | English | Code |', '| --- | --- | --- |'])
     for key, refs in sorted(card_titles.items(), key=lambda item: german[item[0]]):
         sources = ', '.join(f'[{escape(path)}:{line}](../{path}#L{line})' for path, line in sorted(refs))
         output.append(f'| {escape(german[key])} | {escape(english[key])} | {sources} |')
