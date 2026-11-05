@@ -6,6 +6,10 @@ This is an audit starting point, not a claim that every runtime label has been c
 
 Refresh it with `python3 scripts/generate-admin-language-inventory.py`. The assistant locale overrides the main locale, as it does in the app.
 
+## Locale coverage
+
+The merged locale files have 3419 German keys and 3419 English keys; 0 are German-only and 0 are English-only. This checks key presence, not translation quality or runtime coverage.
+
 ## Settings tabs
 
 These tabs are ordered as in the platform menu, with the Träger-only tabs included. Visibility depends on the role and configuration.

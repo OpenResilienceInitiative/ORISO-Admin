@@ -64,6 +64,8 @@ def render():
         'This source index lists locale keys referenced literally or by a recognisable prefix in the settings, organisation, account, user, statistics, topic and invitation surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
         'This is an audit starting point, not a claim that every runtime label has been checked: other constructed keys, configured content, hardcoded text and role-dependent visibility need a separate review. Prefix matches may include keys unused by a particular variant. Some references supply a key to a shared component rather than rendering text directly.', '',
         'Refresh it with `python3 scripts/generate-admin-language-inventory.py`. The assistant locale overrides the main locale, as it does in the app.', '',
+        '## Locale coverage', '',
+        f'The merged locale files have {len(german)} German keys and {len(english)} English keys; {len(german.keys() - english.keys())} are German-only and {len(english.keys() - german.keys())} are English-only. This checks key presence, not translation quality or runtime coverage.', '',
         '## Settings tabs', '', 'These tabs are ordered as in the platform menu, with the Träger-only tabs included. Visibility depends on the role and configuration.', '',
         '<!-- prettier-ignore -->', '| German | English |', '| --- | --- |',
     ]
