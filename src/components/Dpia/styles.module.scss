@@ -5,6 +5,8 @@
  */
 
 .page {
+    overflow-wrap: anywhere;
+
     --dpia-hair: var(--m3-surface-container-highest, #e4e2e2);
     --dpia-hair-soft: var(--m3-surface-container, #f0edee);
     --dpia-wash: var(--list-item-selected-bg, #fdeceb);
@@ -390,7 +392,8 @@
     color: var(--m3-primary, #a5000a);
     font-size: 12px;
     font-weight: 600;
-    white-space: nowrap;
+    max-width: 100%;
+    white-space: normal;
 }
 
 .internalNote {
@@ -564,6 +567,8 @@
 }
 
 .tableScroll {
+    position: relative;
+    max-width: 100%;
     border: 1px solid var(--dpia-hair);
     margin: 0 0 6px;
     border-radius: 8px;
@@ -572,6 +577,201 @@
     &:focus-visible {
         outline: 2px solid var(--focus-blue, #199fff);
         outline-offset: 2px;
+    }
+}
+
+/* Chapter 1, 7 and 10 carry deliberately wide legal tables. Their width is
+   contained here so the document itself never becomes a horizontal scroller. */
+
+.dataTable {
+    overflow-wrap: normal;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    th,
+    td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--dpia-hair);
+        vertical-align: top;
+        text-align: left;
+    }
+
+    th {
+        background: var(--m3-surface-container, #f0edee);
+        font-weight: 700;
+    }
+}
+
+.threshold {
+    padding: 12px 16px;
+    border: 1px solid var(--dpia-success-line);
+    border-radius: 12px;
+    background: var(--dpia-success-wash);
+
+    summary {
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    p {
+        margin: 12px 0 0;
+    }
+}
+
+.evidenceButton {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 24px;
+
+    &:focus-visible {
+        outline: 2px solid var(--focus-blue, #199fff);
+        outline-offset: 2px;
+    }
+}
+
+.evidenceDetails {
+    margin: 0;
+
+    div {
+        margin: 0 0 14px;
+    }
+
+    dt {
+        color: var(--m3-on-surface, #1a1c1e);
+        font-weight: 700;
+    }
+
+    dd {
+        margin: 2px 0 0;
+    }
+}
+
+.evidenceLinks {
+    padding-left: 20px;
+    margin: 16px 0 0;
+}
+
+.documentState {
+    padding: 24px;
+}
+
+/* Source chapter structures reuse the document's existing color and spacing tokens. */
+.masterDataTable {
+    min-width: 680px;
+
+    th {
+        width: 210px;
+    }
+}
+
+.riskTable {
+    min-width: 960px;
+    table-layout: fixed;
+
+    th:nth-child(1) {
+        width: 7%;
+    }
+
+    th:nth-child(2),
+    th:nth-child(5) {
+        width: 23%;
+    }
+
+    th:nth-child(3) {
+        width: 10%;
+    }
+
+    th:nth-child(4) {
+        width: 37%;
+    }
+}
+
+.wideTable {
+    min-width: 680px;
+}
+
+.muted {
+    color: var(--m3-on-surface-variant);
+}
+
+.sourceLink {
+    color: var(--m3-primary);
+    text-decoration: underline;
+}
+
+.sumKicker,
+.checklistHead {
+    display: block;
+    font-weight: 700;
+}
+
+.thresholdBody,
+.checklist {
+    margin-top: var(--spacing-sm);
+}
+
+.checklistRow {
+    display: grid;
+    padding: var(--spacing-s) 0;
+    border-bottom: 1px solid var(--dpia-success-line);
+    gap: var(--spacing-sm);
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.checklistAnswer {
+    font-weight: 700;
+}
+
+.rights {
+    padding: 0;
+    list-style: none;
+
+    li {
+        display: grid;
+        padding: var(--spacing-s) 0;
+        border-bottom: 1px solid var(--dpia-hair);
+        gap: var(--spacing-s);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+}
+
+.referenceId {
+    font-family: var(--dpia-mono);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.severity {
+    font-weight: 700;
+}
+
+.finalBox {
+    padding: var(--spacing-m);
+    border: 1px solid var(--dpia-success-line);
+    background: var(--dpia-success-wash);
+    border-radius: var(--spacing-s);
+}
+
+.finalTitle {
+    margin-bottom: var(--spacing-s);
+    font-weight: 700;
+}
+
+.evidenceDialog {
+    overflow-wrap: anywhere;
+
+    :global(.ant-modal-content) {
+        max-height: calc(100dvh - var(--spacing-xl));
+        overflow-y: auto;
     }
 }
 
@@ -887,6 +1087,10 @@
 
     .body {
         padding: 0 14px 48px;
+    }
+
+    .rights li {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .section {
