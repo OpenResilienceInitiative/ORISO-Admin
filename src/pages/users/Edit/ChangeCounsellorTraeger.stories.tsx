@@ -185,7 +185,7 @@ const reviewMove = async (centreName = '30159 Beratungsstelle Mitte Hannover') =
 };
 
 const confirmMove = async (dialog: ReturnType<typeof within>) =>
-    userEvent.click(dialog.getByRole('button', { name: wording('Träger wechseln', 'Change Träger') }));
+    userEvent.click(dialog.getByRole('button', { name: wording('Träger wechseln', 'Change provider') }));
 
 /** The Träger field of a counsellor is greyed out until "Bearbeiten", then a platform admin can pick another. */
 export const PlatformAdminCanChangeTraeger: Story = {
@@ -375,7 +375,7 @@ export const AsksBeforeMovingEnglish: Story = {
     beforeEach: english,
     play: async () => {
         const dialog = await reviewMove();
-        await expect(dialog.getByText(/Open cases stay with the previous Träger “Caritas Augsburg”/)).toBeVisible();
+        await expect(dialog.getByText(/Open cases stay with the previous provider “Caritas Augsburg”/)).toBeVisible();
         await expect(sent).toHaveLength(0);
     },
 };
@@ -386,7 +386,7 @@ export const PlatformAdminEnglish: Story = {
         await unlock();
         await expect(await screen.findByLabelText('Provider assignment *')).toBeEnabled();
         await choose(await screen.findByLabelText('Provider assignment *'), NEW_TENANT.name);
-        await expect(screen.getByText(/saves only the Träger, counselling centres and topics/)).toBeVisible();
+        await expect(screen.getByText(/saves only the provider, counselling centres and topics/)).toBeVisible();
     },
 };
 
@@ -394,10 +394,10 @@ export const MovedEnglish: Story = {
     beforeEach: english,
     play: async () => {
         const dialog = await reviewMove();
-        await expect(dialog.getByText(/Open cases stay with the previous Träger “Caritas Augsburg”/)).toBeVisible();
+        await expect(dialog.getByText(/Open cases stay with the previous provider “Caritas Augsburg”/)).toBeVisible();
         await confirmMove(dialog);
         await expect(
-            await screen.findByText('3 open cases stay with the previous Träger “Caritas Augsburg”.'),
+            await screen.findByText('3 open cases stay with the previous provider “Caritas Augsburg”.'),
         ).toBeVisible();
     },
 };
