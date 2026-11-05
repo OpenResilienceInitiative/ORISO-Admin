@@ -3,7 +3,8 @@ import { TourOverviewSection } from '../../components/productTour/TourOverviewSe
 import { inTheRaster, withRoles } from './profileStory.matrix';
 
 const meta = {
-    title: 'Pages/Profile/TourOverviewSection',
+    title: 'Settings/Mein Account/TourOverviewSection',
+    id: 'pages-profile-touroverviewsection',
     component: TourOverviewSection,
     parameters: { layout: 'padded' },
     decorators: [withRoles(['agency-admin'])],

@@ -13,7 +13,8 @@ const traegerDpo = {
 };
 
 const meta = {
-    title: 'Pages/Agency/Edit/ContactSettings',
+    title: 'Settings/Beratungsstellen/ContactSettings',
+    id: 'pages-agency-edit-contactsettings',
     component: ContactSettings,
     parameters: { layout: 'padded' },
     decorators: [

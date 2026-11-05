@@ -33,7 +33,8 @@ const handlers = (traegerSettings: Record<string, unknown>, policies: Record<str
 ];
 
 const meta = {
-    title: 'Pages/Tenants/TenantGlobalSettings',
+    title: 'Settings/Träger/TenantGlobalSettings',
+    id: 'pages-tenants-tenantglobalsettings',
     component: TenantGlobalSettings,
     parameters: { layout: 'fullscreen' },
     decorators: [

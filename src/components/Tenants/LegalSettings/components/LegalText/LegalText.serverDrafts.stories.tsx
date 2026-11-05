@@ -92,7 +92,8 @@ const conflictHandlers = () => {
 };
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Server drafts',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Server drafts',
+    id: 'organisms-legal-legaltext-server-drafts',
     component: LegalText,
     parameters: { layout: 'padded' },
     decorators: [

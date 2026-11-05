@@ -77,7 +77,8 @@ const platformAdminHandlers = [
 const oneTopicSwitchName = /genau einen Fachbereich/;
 
 const meta = {
-    title: 'Organisms/Pages/Settings/GlobalLoginSettings',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/GlobalLoginSettings',
+    id: 'organisms-pages-settings-globalloginsettings',
     component: GlobalLoginSettingsPage,
     parameters: { layout: 'fullscreen' },
     // Tenant-scoped admin (not super-admin) so the superadmin-only translation-keys

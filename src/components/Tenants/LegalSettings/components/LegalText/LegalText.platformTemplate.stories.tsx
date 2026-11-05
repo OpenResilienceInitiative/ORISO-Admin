@@ -125,7 +125,8 @@ const withSavedDraft = (distribute: 'created' | 'conflict' = 'created') => [
 ];
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Platform template',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Platform template',
+    id: 'organisms-legal-legaltext-platform-template',
     component: LegalText,
     parameters: { layout: 'padded' },
     decorators: [

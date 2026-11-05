@@ -11,7 +11,8 @@ import { AgencyGeneralInformation } from './index';
  * phone, secondary phone, email) can be reviewed without a backend or login.
  */
 const meta: Meta<typeof AgencyGeneralInformation> = {
-    title: 'Organisms/Agency/GeneralInformation',
+    title: 'Settings/Beratungsstellen/GeneralInformation',
+    id: 'organisms-agency-generalinformation',
     component: AgencyGeneralInformation,
     decorators: [
         (Story) => (

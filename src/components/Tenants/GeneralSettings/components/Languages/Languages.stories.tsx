@@ -3,7 +3,8 @@ import { Languages } from './index';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/Languages',
+    title: 'Settings/Einstellungen/Erscheinungsbild/Languages',
+    id: 'organisms-tenants-appearance-languages',
     component: Languages,
     args: { tenantId: '1' },
     parameters: { layout: 'padded', msw: { handlers: appearanceHandlers } },

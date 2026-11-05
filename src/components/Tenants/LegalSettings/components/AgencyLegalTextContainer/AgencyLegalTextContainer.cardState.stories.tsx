@@ -92,7 +92,8 @@ const expectFunctionBarFits = async (canvasElement: HTMLElement, scrollable = fa
 };
 
 const meta = {
-    title: 'Organisms/Legal/AgencyLegalText/Card state',
+    title: 'Settings/Einstellungen/Rechtliches/AgencyLegalText/Card state',
+    id: 'organisms-legal-agencylegaltext-card-state',
     component: AgencyLegalTextContainer,
     parameters: { layout: 'padded', msw: { handlers } },
     decorators: [

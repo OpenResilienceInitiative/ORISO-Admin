@@ -66,7 +66,8 @@ const handlers = [
 ];
 
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementContainer/Signing deadline',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementContainer/Signing deadline',
+    id: 'organisms-legal-dataprocessingagreementcontainer-signing-deadline',
     component: DataProcessingAgreementContainer,
     decorators: [(Story) => withAdminProviders(Story)],
     parameters: { layout: 'padded', msw: { handlers } },

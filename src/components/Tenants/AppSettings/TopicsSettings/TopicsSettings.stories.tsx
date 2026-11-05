@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TopicsSettings } from './index';
 
 const meta = {
-    title: 'Organisms/AppSettings/TopicsSettings',
+    title: 'Settings/Einstellungen/Funktionalitäten/TopicsSettings',
+    id: 'organisms-appsettings-topicssettings',
     component: TopicsSettings,
     parameters: { layout: 'padded' },
 } satisfies Meta<typeof TopicsSettings>;

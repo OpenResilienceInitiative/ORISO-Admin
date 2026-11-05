@@ -3,7 +3,8 @@ import { LogoAndFavicon } from './index';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/LogoAndFavicon',
+    title: 'Settings/Einstellungen/Erscheinungsbild/LogoAndFavicon',
+    id: 'organisms-tenants-appearance-logoandfavicon',
     component: LogoAndFavicon,
     args: { tenantId: '1' },
     parameters: { layout: 'padded', msw: { handlers: appearanceHandlers } },

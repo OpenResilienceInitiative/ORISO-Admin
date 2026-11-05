@@ -11,7 +11,8 @@ const STUB_APP_BASE_URL = 'https://theme-preview.test';
  * accent, error/signal). Alert/warning row intentionally absent (#905).
  */
 const meta = {
-    title: 'Organisms/Tenants/ThemeBuilder',
+    title: 'Settings/Einstellungen/Erscheinungsbild/ThemeBuilder',
+    id: 'organisms-tenants-themebuilder',
     component: ThemeEditorModal,
     parameters: { layout: 'fullscreen' },
     args: {

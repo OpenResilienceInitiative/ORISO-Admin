@@ -3,7 +3,8 @@ import { EditingRightsCard } from './index';
 import { inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/EditingRightsCard',
+    title: 'Settings/Einstellungen/Erscheinungsbild/EditingRightsCard',
+    id: 'organisms-tenants-appearance-editingrightscard',
     component: EditingRightsCard,
     args: { allowEdit: true, editable: true, onSave: () => {} },
     parameters: { layout: 'padded' },

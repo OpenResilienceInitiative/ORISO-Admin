@@ -7,7 +7,8 @@ import { CardGrid } from '../../CardGrid';
 import { LoginFunctionCard } from '.';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/LoginFunctionCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/LoginFunctionCard',
+    id: 'organisms-globalsettings-loginfunctioncard',
     component: LoginFunctionCard,
     decorators: [
         (Story, { parameters }) => (

@@ -94,7 +94,8 @@ const SwitchingHarness = () => (
 );
 
 const meta = {
-    title: 'Organisms/Agency/RegistrationSettingsCounsellors',
+    title: 'Settings/Beratungsstellen/RegistrationSettingsCounsellors',
+    id: 'organisms-agency-registrationsettingscounsellors',
     component: Harness,
     parameters: { msw: { handlers: [http.get('*/service/users/consultants/search*', search)] } },
     beforeEach: async () => {

@@ -84,7 +84,8 @@ const fixtureHandlers = () => {
 };
 
 const meta = {
-    title: 'Organisms/Pages/Settings/ServiceNotices',
+    title: 'Settings/Einstellungen/Servicehinweise/ServiceNotices',
+    id: 'organisms-pages-settings-servicenotices',
     component: ServiceNoticesPage,
     parameters: { layout: 'fullscreen' },
     decorators: [

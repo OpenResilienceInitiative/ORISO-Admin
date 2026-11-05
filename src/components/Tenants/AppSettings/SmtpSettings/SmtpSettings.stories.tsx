@@ -47,7 +47,8 @@ const handlers = (mode: 'OWN' | 'PLATFORM' = 'OWN') => [
 ];
 
 const meta = {
-    title: 'Organisms/Tenants/Settings/Smtp',
+    title: 'Settings/Einstellungen/Email Server/Smtp',
+    id: 'organisms-tenants-settings-smtp',
     component: SmtpSettings,
     args: { tenantId: '42' },
     render: () => <StoredSettingsExample />,

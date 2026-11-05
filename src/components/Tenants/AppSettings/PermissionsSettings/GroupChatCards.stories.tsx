@@ -50,7 +50,14 @@ const handlers = ({
     tenantSettings?: Record<string, unknown>;
     agencySettings?: Record<string, unknown>;
 } = {}) => {
-    const agency = { _embedded: { id: '55', name: 'Beratungsstelle Nord', tenantId: 7, settings: agencySettings } };
+    const agency = {
+        _embedded: {
+            id: 'organisms-permissions-groupchatcards',
+            name: 'Beratungsstelle Nord',
+            tenantId: 7,
+            settings: agencySettings,
+        },
+    };
     const controls = { permissionsPageEnabled: true, allowedPermissionToggles: {}, permissionPolicies: policies };
     return [
         http.get(CONTROLS, () => HttpResponse.json(controls)),
@@ -79,7 +86,8 @@ const ROLES: Record<Level, UserRole[]> = {
 };
 
 const meta = {
-    title: 'Organisms/Permissions/GroupChatCards',
+    title: 'Settings/Einstellungen/Funktionszugriff/GroupChatCards',
+    id: 'organisms-permissions-groupchatcards',
     component: LevelView,
     parameters: { layout: 'fullscreen' },
     args: { level: 'platform' },

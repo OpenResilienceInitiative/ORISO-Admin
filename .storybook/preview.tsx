@@ -79,15 +79,26 @@ const preview: Preview = {
             },
         },
         options: {
-            // Pages/Profile follows the tiles of Mein Account from top to bottom.
             storySort: {
                 order: [
-                    'Atoms',
-                    'Molecules',
-                    'Organisms',
-                    'Pages',
+                    'Settings',
                     [
-                        'Profile',
+                        'Einstellungen',
+                        [
+                            'Globale Konfigurationen',
+                            'Stammdaten & Mehr',
+                            'Erscheinungsbild',
+                            'Rechtliches',
+                            'Erstantwort',
+                            'Email Server',
+                            'Servicehinweise',
+                            'Funktionszugriff',
+                            'Funktionalitäten',
+                            '*',
+                        ],
+                        'Träger',
+                        'Beratungsstellen',
+                        'Mein Account',
                         [
                             'UserProfile',
                             'PrivateData',
@@ -104,6 +115,10 @@ const preview: Preview = {
                         ],
                         '*',
                     ],
+                    'Atoms',
+                    'Molecules',
+                    'Organisms',
+                    'Pages',
                     '*',
                 ],
             },
