@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import classNames from 'classnames';
-import { M3Switch } from '../M3Switch';
+import { MuiSwitch } from '../mui/MuiSwitchField';
 import { M3Checkbox } from '../M3Checkbox';
 import { Typography } from '../Typography';
 import styles from './styles.module.scss';
@@ -65,7 +65,7 @@ export const ToggleRow = ({
                     )}
                 </div>
             </div>
-            <M3Switch label={name} checked={checked} disabled={switchDisabled} onChange={onCheckedChange} />
+            <MuiSwitch ariaLabel={name} checked={checked} disabled={switchDisabled} onChange={onCheckedChange} />
         </div>
     );
 };

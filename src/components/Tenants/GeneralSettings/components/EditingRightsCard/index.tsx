@@ -53,7 +53,6 @@ export const EditingRightsCard = ({
                 disabled={!allowEdit}
                 className={styles.masterDataToggle}
                 switchLabel={t('settings.masterData.editable.toggle')}
-                switchVariant="m3"
             />
         </CardEditable>
     );

@@ -54,6 +54,6 @@ describe('MuiSwitchField', () => {
             disabled: true,
         });
 
-        expect(screen.getByRole('switch', { name: 'Enabled' })).toBeDisabled();
+        expect(screen.getByRole('switch', { name: 'Enabled' })).toHaveAttribute('aria-disabled', 'true');
     });
 });

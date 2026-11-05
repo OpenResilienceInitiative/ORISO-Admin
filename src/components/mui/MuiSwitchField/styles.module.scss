@@ -28,10 +28,10 @@
 }
 
 .formControlLabelDisabled {
-    cursor: not-allowed;
+    cursor: default;
 
     &:hover {
-        cursor: not-allowed;
+        cursor: default;
     }
 
     &.formControlLabel :global(.MuiFormControlLabel-label.Mui-disabled) {
@@ -164,5 +164,18 @@
 
     :global(.MuiSwitch-input) {
         cursor: not-allowed;
+    }
+}
+
+.switchReadOnly {
+    cursor: default;
+
+    :global(.MuiSwitch-switchBase),
+    :global(.MuiSwitch-input) {
+        cursor: default;
+    }
+
+    :global(.MuiSwitch-switchBase:hover) {
+        background: transparent;
     }
 }

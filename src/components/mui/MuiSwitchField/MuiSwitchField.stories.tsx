@@ -49,6 +49,17 @@ export const DisabledChecked: Story = {
     render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
 };
 
+/** View-only values stay readable and can be reached with the keyboard. */
+export const ReadOnlyChecked: Story = {
+    render: (args) => (
+        <ThemeProvider theme={orisoMuiTheme}>
+            <Form disabled layout="vertical" style={{ maxWidth: 420 }} initialValues={{ enabled: true }}>
+                <MuiSwitchField {...args} />
+            </Form>
+        </ThemeProvider>
+    ),
+};
+
 export const WithHelpText: Story = {
     args: {
         helpText: 'When enabled, the platform sends mail through the global SMTP settings.',
