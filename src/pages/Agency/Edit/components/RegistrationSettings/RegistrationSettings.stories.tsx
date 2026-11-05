@@ -94,7 +94,7 @@ const SwitchingHarness = () => (
 );
 
 const meta = {
-    title: 'Settings/Beratungsstellen/RegistrationSettingsCounsellors',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/RegistrationSettingsCounsellors',
     id: 'organisms-agency-registrationsettingscounsellors',
     component: Harness,
     parameters: { msw: { handlers: [http.get('*/service/users/consultants/search*', search)] } },

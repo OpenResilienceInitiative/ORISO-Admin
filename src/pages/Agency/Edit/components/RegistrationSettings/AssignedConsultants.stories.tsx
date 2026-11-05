@@ -10,7 +10,7 @@ import { AssignedConsultants } from './AssignedConsultants';
  * and a confirmation; the list comes from GET /useradmin/agencies/{id}/consultants.
  */
 const meta: Meta<typeof AssignedConsultants> = {
-    title: 'Settings/Beratungsstellen/AssignedConsultants',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/AssignedConsultants',
     id: 'organisms-agency-assignedconsultants',
     component: AssignedConsultants,
     decorators: [

@@ -37,7 +37,7 @@ const Harness = ({ language, saveLabel }: { language: string; saveLabel: string 
 };
 
 const meta = {
-    title: 'Settings/Beratungsstellen/NoTopicConfirmModal',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/NoTopicConfirmModal',
     id: 'organisms-agency-notopicconfirmmodal',
     component: NoTopicConfirmModal,
     parameters: { layout: 'fullscreen' },

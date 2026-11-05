@@ -36,7 +36,7 @@ const consultants = {
 };
 
 const meta: Meta<typeof CardGrid> = {
-    title: 'Settings/Beratungsstellen/CreateFlowRaster',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/CreateFlowRaster',
     id: 'organisms-agency-createflowraster',
     component: CardGrid,
     parameters: {

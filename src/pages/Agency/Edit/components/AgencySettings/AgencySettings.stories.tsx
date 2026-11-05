@@ -14,7 +14,7 @@ const FormValue = () => {
 
 /** Settings card of an existing Beratungsstelle, incl. the topic permission default for invited counsellors. */
 const meta: Meta<typeof AgencySettings> = {
-    title: 'Settings/Beratungsstellen/AgencySettings',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/AgencySettings',
     id: 'organisms-agency-agencysettings',
     component: AgencySettings,
     decorators: [

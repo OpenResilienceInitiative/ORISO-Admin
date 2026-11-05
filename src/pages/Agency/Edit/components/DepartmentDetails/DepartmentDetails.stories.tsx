@@ -13,7 +13,7 @@ import { DepartmentDetailsCard } from './index';
  * card to GET/PUT /agencyadmin/agencies/{agencyId}/topics/{topicId}/details.
  */
 const meta: Meta<typeof DepartmentDetailsCard> = {
-    title: 'Settings/Beratungsstellen/DepartmentDetails',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/DepartmentDetails',
     id: 'organisms-agency-departmentdetails',
     component: DepartmentDetailsCard,
     decorators: [

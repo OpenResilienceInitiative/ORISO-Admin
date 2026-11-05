@@ -3,7 +3,7 @@ import { TypeOfLanguage } from './index';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Settings/Einstellungen/Erscheinungsbild/TypeOfLanguage',
+    title: 'Settings/Einstellungen/Stammdaten & Mehr/TypeOfLanguage',
     id: 'organisms-tenants-appearance-typeoflanguage',
     component: TypeOfLanguage,
     args: { tenantId: '1' },

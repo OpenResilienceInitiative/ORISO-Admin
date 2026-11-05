@@ -106,7 +106,7 @@ const conflictHandlers = () => {
 };
 
 const meta = {
-    title: 'Settings/Einstellungen/Rechtliches/AgencyLegalText/Server drafts',
+    title: 'Settings/Beratungsstellen/Rechtliches/AgencyLegalText/Server drafts',
     id: 'organisms-legal-agencylegaltext-server-drafts',
     component: AgencyLegalTextContainer,
     parameters: { layout: 'padded' },

@@ -97,7 +97,18 @@ const preview: Preview = {
                             '*',
                         ],
                         'Träger',
+                        [
+                            'Stammdaten & Mehr',
+                            'Erscheinungsbild',
+                            'Rechtliches',
+                            'Erstantwort',
+                            'Email Server',
+                            'Funktionszugriff',
+                            'Funktionalitäten',
+                            '*',
+                        ],
                         'Beratungsstellen',
+                        ['Stammdaten & Mehr', 'Rechtliches', 'Funktionszugriff', '*'],
                         'Mein Account',
                         [
                             'UserProfile',
