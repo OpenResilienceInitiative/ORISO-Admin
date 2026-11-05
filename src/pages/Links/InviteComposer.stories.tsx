@@ -11,6 +11,7 @@ import {
 } from '../../api/accountInvites/accountInvites';
 import { searchInviteAgencies } from '../../api/agency/searchInviteAgencies';
 import type { IdUnitOption } from '../../components/IdAllocationField';
+import i18n from '../../i18n';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -250,6 +251,24 @@ export const Empty: Story = {
 };
 
 /** Picking a role after filling the names keeps every value and the same DOM (no remount). */
+/** The invitation composer uses the accepted English organisation terms. */
+export const EnglishOrganisationLabels: Story = {
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('en');
+        return () => i18n.changeLanguage(previousLanguage);
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('combobox', { name: 'Provider' })).toBeEnabled();
+        await expect(canvas.getByRole('combobox', { name: 'Counselling centre' })).toBeEnabled();
+        await userEvent.click(canvas.getByRole('combobox', { name: 'Role' }));
+        await expect(
+            await within(canvasElement.ownerDocument.body).findByTitle('Counselling centre admin'),
+        ).toBeInTheDocument();
+    },
+};
+
 export const RoleSelectKeepsValues: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
