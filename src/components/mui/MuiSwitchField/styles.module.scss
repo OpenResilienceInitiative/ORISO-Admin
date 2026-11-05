@@ -175,7 +175,7 @@
         cursor: default;
     }
 
-    :global(.MuiSwitch-switchBase:hover) {
+    &.switchReadOnly :global(.MuiSwitch-switchBase:hover) {
         background: transparent;
     }
 }

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, within } from 'storybook/test';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
@@ -61,6 +62,13 @@ export const ReadOnlyChecked: Story = {
             </ReadOnlyTileContext.Provider>
         </ThemeProvider>
     ),
+    play: async ({ canvasElement }) => {
+        const toggle = within(canvasElement).getByRole('switch', { name: 'Enable SMTP' });
+        const switchBase = toggle.closest('.MuiSwitch-switchBase')!;
+        await expect(toggle).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.hover(toggle);
+        await expect(getComputedStyle(switchBase).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    },
 };
 
 export const WithHelpText: Story = {

@@ -38,6 +38,7 @@ describe('CardEditable', () => {
         toggle.focus();
         expect(toggle).toHaveFocus();
         await user.keyboard('[Space]');
+        expect(toggle).toBeChecked();
         await user.click(toggle);
         expect(toggle).toBeChecked();
     });
