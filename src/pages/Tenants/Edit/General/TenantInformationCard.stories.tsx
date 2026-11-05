@@ -36,6 +36,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Filled: Story = {
     play: async ({ canvas }) => {
-        await expect(canvas.getByText(/Trägerinformationen|Tenant information/i)).toBeVisible();
+        await expect(canvas.getByText(/Trägerinformationen|Tenant information|Provider information/i)).toBeVisible();
     },
 };
