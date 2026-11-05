@@ -7,7 +7,7 @@ import { M3Button } from '../../../M3Button';
 import { ErstantwortSettings } from './index';
 
 const meta = {
-    title: 'Settings/Einstellungen/Erstantwort/PublishValidation',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/PublishValidation',
     id: 'tenants-erstantwort-publishvalidation',
     component: ErstantwortSettings,
     parameters: { layout: 'padded' },

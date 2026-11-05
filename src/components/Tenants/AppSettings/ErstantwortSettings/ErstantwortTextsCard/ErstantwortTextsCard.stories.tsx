@@ -22,7 +22,7 @@ import type { ErstantwortBausteinKey } from '../erstantwortBausteine';
  *   nothing here to switch off.
  */
 const meta = {
-    title: 'Settings/Einstellungen/Erstantwort/ErstantwortTextsCard',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/ErstantwortTextsCard',
     id: 'tenants-erstantwort-erstantworttextscard',
     component: ErstantwortTextsCard,
     tags: ['autodocs'],

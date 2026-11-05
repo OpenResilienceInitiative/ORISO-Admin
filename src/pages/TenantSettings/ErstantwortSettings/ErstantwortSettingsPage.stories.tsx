@@ -15,7 +15,7 @@ import {
  * here; the card is driven by local state so the filled and the emptied field state are visible.
  */
 const meta = {
-    title: 'Settings/Einstellungen/Erstantwort/ErstantwortSettingsPage',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/ErstantwortSettingsPage',
     id: 'pages-tenantsettings-erstantwortsettingspage',
     component: Page,
     parameters: { layout: 'fullscreen' },
