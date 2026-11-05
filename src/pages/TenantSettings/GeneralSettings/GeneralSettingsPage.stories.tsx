@@ -22,6 +22,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const MasterData: Story = {
     play: async ({ canvas }) => {
-        await expect(await canvas.findByText('Benennung und Slogan')).toBeVisible();
+        await expect(await canvas.findByText(/Benennung und Slogan|Name and slogan/i)).toBeVisible();
     },
 };

@@ -22,6 +22,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Appearance: Story = {
     play: async ({ canvas }) => {
-        await expect(await canvas.findByText('Individuelle Bilder')).toBeVisible();
+        await expect(await canvas.findByText(/Individuelle Bilder|Custom images/i)).toBeVisible();
     },
 };

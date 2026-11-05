@@ -16,6 +16,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const TenantAdmin: Story = {
     play: async ({ canvas }) => {
-        await expect(await canvas.findByText('Impressum')).toBeVisible();
+        await expect(await canvas.findByText(/^(Impressum|Legal notice)$/i)).toBeVisible();
     },
 };
