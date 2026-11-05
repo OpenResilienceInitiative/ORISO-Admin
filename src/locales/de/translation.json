@@ -1721,7 +1721,7 @@
     "tenants.appSettings.notifications.option.onlyConsultant": "Nur den zuständigen Berater",
     "tenants.appSettings.notifications.option.allTeamConsultants": "Alle Teamberater",
     "tenants.appSettings.communications.title": "Kommunikationsfunktionen",
-    "tenants.appSettings.communications.video.title": "Video-Beratung",
+    "tenants.appSettings.communications.video.title": "Audio- und Videoanrufe",
     "tenants.appSettings.smtp.title": "SMTP & System-E-Mails",
     "tenants.appSettings.smtp.description": "Konfigurieren Sie SMTP-Versand und System-E-Mail-Benachrichtigungen für diesen Träger.",
     "tenants.appSettings.smtp.systemEmailToggle.title": "Systembenachrichtigungen per E-Mail",
@@ -3388,7 +3388,7 @@
     "tileHelp.otherFunctions.supervision.body": "In geschützten Supervisions-Chats tauschen sich Beratende aus. Die Schalter darunter legen fest, was dort möglich ist. Video und Audio prüft auch der Server, die übrigen wirken nur in der Beratungs-App.",
     "tileHelp.otherFunctions.team.title": "Team-Besprechung",
     "tileHelp.otherFunctions.team.body": "Beratende stimmen sich zu einer offenen Anfrage in einem Raum ab, den die ratsuchende Person nie sieht.",
-    "tileHelp.communications.essence": "Dieser eine Schalter legt fest, ob Beratende aus dem Gespräch heraus einen Videoanruf starten können.",
+    "tileHelp.communications.essence": "Dieser Schalter ermöglicht Audio- und Videoanrufe aus dem Gespräch. Weitere Berechtigungen können die verfügbaren Anrufe einschränken.",
     "tileHelp.mailPanels.sending": "Versand",
     "tileHelp.mailPanels.server": "Server",
     "tileHelp.mailPanels.credentials": "Zugangsdaten"

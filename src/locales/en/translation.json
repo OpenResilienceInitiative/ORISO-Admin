@@ -1581,7 +1581,7 @@
     "tenants.add.headline": "Create new provider",
     "tenants.add.mainTenantTitle": "Provider information",
     "tenants.appSettings.communications.title": "Communication features",
-    "tenants.appSettings.communications.video.title": "Video counselling",
+    "tenants.appSettings.communications.video.title": "Audio and video calls",
     "tenants.appSettings.nextSteps.label": "Next steps",
     "tenants.appSettings.notifications.info": "Who should be notified when an advice seeker sends a new message?",
     "tenants.appSettings.topics.title": "Topics",
@@ -3388,7 +3388,7 @@
     "tileHelp.otherFunctions.supervision.body": "In protected supervision chats, counsellors talk to each other. The switches below decide what is possible there. The server also checks video and audio; the others take effect only in the counselling app.",
     "tileHelp.otherFunctions.team.title": "Team discussion",
     "tileHelp.otherFunctions.team.body": "Counsellors confer on an open enquiry in a room that the advice seeker never sees.",
-    "tileHelp.communications.essence": "This single switch decides whether counsellors can start a video call from the conversation.",
+    "tileHelp.communications.essence": "This switch enables audio and video calls from a conversation. Other permissions may restrict which calls are available.",
     "tileHelp.mailPanels.sending": "Sending",
     "tileHelp.mailPanels.server": "Server",
     "tileHelp.mailPanels.credentials": "Credentials"
