@@ -17,8 +17,8 @@ OUTPUT = Path('docs/admin-settings-language-inventory.md')
 
 
 def locales(language):
-    values = json.loads(Path(f'src/locales/{language}/translation.json').read_text())
-    values.update(json.loads(Path(f'src/locales/{language}/assistant.json').read_text()))
+    values = json.loads(Path(f'src/locales/{language}/translation.json').read_text(encoding='utf-8'))
+    values.update(json.loads(Path(f'src/locales/{language}/assistant.json').read_text(encoding='utf-8')))
     return values
 
 
@@ -36,29 +36,30 @@ def render():
         for file in files:
             if any(part in file.name for part in ('.test.', '.stories.', '.matrix.')):
                 continue
-            contents = file.read_text()
+            source_path = file.as_posix()
+            contents = file.read_text(encoding='utf-8')
             constants = dict(re.findall(r"const (\w+) = ['\"]([^'\"]+)['\"]", contents))
             for number, line in enumerate(contents.splitlines(), 1):
                 if line.lstrip().startswith(('//', '*', '{/*')):
                     continue
-                if str(file).startswith(('src/components/GlobalSettings/', 'src/components/Tenants/', 'src/pages/TenantSettings/', 'src/pages/GlobalSettings/', 'src/pages/Tenants/', 'src/pages/Agency/', 'src/pages/Profile/', 'src/pages/users/', 'src/pages/Topics/', 'src/pages/Links/')):
+                if source_path.startswith(('src/components/GlobalSettings/', 'src/components/Tenants/', 'src/pages/TenantSettings/', 'src/pages/GlobalSettings/', 'src/pages/Tenants/', 'src/pages/Agency/', 'src/pages/Profile/', 'src/pages/users/', 'src/pages/Topics/', 'src/pages/Links/')):
                     title = re.search(r'titleKey\s*(?:=|:)\s*["\']([^"\']+)["\']', line)
                     if title and title.group(1) in german and title.group(1) in english:
-                        card_titles[title.group(1)].add((str(file), number))
+                        card_titles[title.group(1)].add((source_path, number))
                     translated_title = re.search(r'title\s*=\s*\{t\(\s*["\']([^"\']+)["\']', line)
                     if translated_title and translated_title.group(1) in german and translated_title.group(1) in english:
-                        card_titles[translated_title.group(1)].add((str(file), number))
+                        card_titles[translated_title.group(1)].add((source_path, number))
                     dynamic_title = re.search(r'titleKey\s*=\s*\{`([^`]*)`\}', line)
                     if dynamic_title:
                         parts = re.split(r'\$\{[^}]+\}', dynamic_title.group(1))
                         key_pattern = re.compile('^' + r'[^.]+'.join(map(re.escape, parts)) + '$')
                         for key in german.keys() & english.keys():
                             if key_pattern.match(key):
-                                card_titles[key].add((str(file), number))
+                                card_titles[key].add((source_path, number))
                 for match in PATTERN.finditer(line):
                     key = match.group(1)
                     if key in german and key in english:
-                        references[key].add((str(file), number))
+                        references[key].add((source_path, number))
                 for dynamic in re.finditer(r'\bt(?:<[^>]+>)?\(\s*`([^`]*)`', line):
                     template = dynamic.group(1)
                     for name, value in constants.items():
@@ -67,8 +68,8 @@ def render():
                     if prefix and '${' in template:
                         for key in german.keys() & english.keys():
                             if key.startswith(prefix):
-                                references[key].add((str(file), number))
-    menu_keys = ('settings.subhead.globalConfig', 'settings.subhead.masterData', 'settings.subhead.view', 'settings.subhead.legal', 'settings.subhead.erstantwort', 'settings.subhead.smtp', 'serviceNotices.title', 'settings.subhead.functionAccess', 'tenants.edit.tabs.appSettings')
+                                references[key].add((source_path, number))
+    menu_keys = ('settings.subhead.globalConfig', 'settings.subhead.masterData', 'settings.subhead.view', 'settings.subhead.legal', 'settings.subhead.erstantwort', 'settings.subhead.smtp', 'serviceNotices.title', 'settings.subhead.functionAccess', 'tenants.edit.tabs.appSettings', 'tenants.edit.tabs.globalSettings')
     output = [
         '# Admin settings and lists: language inventory', '',
         'This source index lists locale keys referenced literally or by a recognisable prefix in the settings, organisation, account, user, statistics, topic, invitation and audit surfaces. The German and English text comes from the locale files. Paths point to the code using each key.', '',
@@ -76,7 +77,7 @@ def render():
         'Refresh it with `python3 scripts/generate-admin-language-inventory.py`. The assistant locale overrides the main locale, as it does in the app.', '',
         '## Locale coverage', '',
         f'The merged locale files have {len(german)} German keys and {len(english)} English keys; {len(german.keys() - english.keys())} are German-only and {len(english.keys() - german.keys())} are English-only. This checks key presence, not translation quality or runtime coverage.', '',
-        '## Settings tabs', '', 'These tabs are ordered as in the platform menu, with the Träger-only tabs included. Visibility depends on the role and configuration.', '',
+        '## Settings tabs', '', 'These tabs are ordered as in the platform menu, with the Träger-only tabs included. The final two titles are alternatives for the provider settings tab: the first applies when single-domain multitenancy is disabled; the second applies when it is enabled. Visibility depends on the role and configuration.', '',
         '<!-- prettier-ignore -->', '| German | English |', '| --- | --- |',
     ]
     output.extend(f'| {escape(german[key])} | {escape(english[key])} |' for key in menu_keys)
@@ -145,7 +146,7 @@ def render():
         '| Chat recovery | New account creation records the applicable method; anonymous users continue using recovery keys. | [UserService: enrollment policy](https://github.com/OpenResilienceInitiative/ORISO-UserService/blob/280585226f2c7308fcf35e1c4135bc2d4e43d051/src/main/java/de/caritas/cob/userservice/api/service/ChatRecoveryEnrollmentPolicyService.java), [Frontend: recovery policy](https://github.com/OpenResilienceInitiative/ORISO-Frontend/blob/8c5be36347f2a44e241892cafd0daed315e3119f/src/services/chatRecoveryPolicy.ts) |',
     ])
     output.extend(['', '## Titles in Admin components', '', 'Title keys in the mapped Admin components and their configuration, including dialogs, help sections and recognised templates. A component can be shared by multiple roles. This list is not yet complete for all dynamically supplied titles.', '', '<!-- prettier-ignore -->', '| German | English | Code |', '| --- | --- | --- |'])
-    for key, refs in sorted(card_titles.items(), key=lambda item: german[item[0]]):
+    for key, refs in sorted(card_titles.items(), key=lambda item: (german[item[0]], item[0])):
         sources = ', '.join(f'[{escape(path)}:{line}](../{path}#L{line})' for path, line in sorted(refs))
         output.append(f'| {escape(german[key])} | {escape(english[key])} | {sources} |')
     output.extend(['', '## Source index', '', '<!-- prettier-ignore -->', '| Key | German | English | Source |', '| --- | --- | --- | --- |'])
@@ -161,10 +162,10 @@ def main():
     args = parser.parse_args()
     content = render()
     if args.check:
-        if not OUTPUT.exists() or OUTPUT.read_text() != content:
+        if not OUTPUT.exists() or OUTPUT.read_text(encoding='utf-8') != content:
             raise SystemExit('Inventory is stale; rerun this script.')
     else:
-        OUTPUT.write_text(content)
+        OUTPUT.write_text(content, encoding='utf-8')
 
 
 if __name__ == '__main__':

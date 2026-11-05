@@ -28,6 +28,7 @@ const RECOGNISED_HEADER_FIRST_CELLS = new Set([
 export type InviteCsvRejectionReason =
     | 'invalidEmail'
     | 'invalidId'
+    | 'ambiguousId'
     /** "Ziel" is neither neu/new nor bestehend/existing. */
     | 'invalidMode'
     /** "bestehend" names a unit by its number — without one there is nothing to invite into. */
@@ -329,6 +330,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
     const records = tokenize(content, delimiter).filter((record) => record.cells.some((c) => c.trim() !== ''));
 
     let headerSkipped = false;
+    let ambiguousId = false;
     let dataRecords = records;
     let columnIndex: Partial<Record<ColumnKey, number>> = Object.fromEntries(
         INVITE_CSV_COLUMN_ORDER.map((key, index) => [key, index]),
@@ -346,6 +348,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
                 HEADER_LABELS[candidate].includes(label),
             );
         });
+        ambiguousId = recognised.filter((key) => key === 'id').length > 1;
         // Named columns claim first, so a positional fallback never steals a column that is labelled later on.
         recognised.forEach((key, index) => {
             if (key && columnIndex[key] == null) columnIndex[key] = index;
@@ -375,6 +378,11 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
                 firstName: cell('firstName'),
                 lastName: cell('lastName'),
             });
+
+        if (ambiguousId) {
+            reject('ambiguousId');
+            return;
+        }
 
         const email = cell('email');
         const firstName = cell('firstName');

@@ -67,9 +67,17 @@ describe('parseInviteCsv', () => {
         expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', id: 4 });
     });
 
+    it('rejects ambiguous provider and centre IDs instead of picking the wrong organisation', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Provider ID,Agency ID,Target,Role\nmaria@example.org,Maria,Huber,4,9,existing,counselling centre admin',
+        );
+        expect(result.rows).toEqual([]);
+        expect(result.rejected).toMatchObject([{ line: 2, reason: 'ambiguousId' }]);
+    });
+
     it('accepts the provider ID heading in an extended invitation file', () => {
         const result = parseInviteCsv(
-            'Email,First Name,Name,Provider ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,provider admin,standard',
+            'Email,First Name,Name,Target,Role,Provider ID,Template\nmaria@example.org,Maria,Huber,existing,provider admin,4,standard',
         );
         expect(result.headerSkipped).toBe(true);
         expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'TENANT_ADMIN' });
@@ -77,7 +85,7 @@ describe('parseInviteCsv', () => {
 
     it('accepts the counselling centre ID and admin role in an extended invitation file', () => {
         const result = parseInviteCsv(
-            'Email,First Name,Name,Counselling centre ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,counselling centre admin,standard',
+            'Email,First Name,Name,Target,Role,Counselling centre ID,Template\nmaria@example.org,Maria,Huber,existing,counselling centre admin,4,standard',
         );
         expect(result.headerSkipped).toBe(true);
         expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'AGENCY_ADMIN' });

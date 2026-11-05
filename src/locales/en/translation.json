@@ -902,6 +902,7 @@
     "links.csvImport.status.emailTaken": "Email address already exists",
     "links.csvImport.status.idTaken": "{{idLabel}} taken",
     "links.csvImport.reason.invalidEmail": "Invalid email address (line {{line}})",
+    "links.csvImport.reason.ambiguousId": "Multiple ID columns (line {{line}})",
     "links.csvImport.reason.invalidId": "Invalid {{idLabel}} (line {{line}})",
     "links.csvImport.autoAssigned": "Auto-populated",
     "links.csvImport.auto": "Automatic",

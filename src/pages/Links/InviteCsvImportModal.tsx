@@ -372,6 +372,8 @@ export const InviteCsvImportModal = ({
         switch (row.rejectedReason) {
             case 'invalidEmail':
                 return t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', line);
+            case 'ambiguousId':
+                return t('links.csvImport.reason.ambiguousId', 'Mehrere ID-Spalten (Zeile {{line}})', line);
             case 'invalidId':
                 return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
                     idLabel,

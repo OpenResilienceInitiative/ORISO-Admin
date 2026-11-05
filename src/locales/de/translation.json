@@ -720,6 +720,7 @@
     "links.csvImport.status.emailTaken": "E-Mail-Adresse bereits vorhanden",
     "links.csvImport.status.idTaken": "{{idLabel}} vergeben",
     "links.csvImport.reason.invalidEmail": "Ungültige E-Mail-Adresse (Zeile {{line}})",
+    "links.csvImport.reason.ambiguousId": "Mehrere ID-Spalten (Zeile {{line}})",
     "links.csvImport.reason.invalidId": "Ungültige {{idLabel}} (Zeile {{line}})",
     "links.csvImport.autoAssigned": "Automatisch vergeben",
     "links.csvImport.auto": "Automatisch",
