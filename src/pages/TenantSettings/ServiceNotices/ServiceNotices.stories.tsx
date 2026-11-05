@@ -132,17 +132,17 @@ export const PlatformRoute: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByLabelText(i18n.t('serviceNotices.reference'), {}, { timeout: 8000 });
+        await canvas.findByLabelText(i18n.t<string>('serviceNotices.reference'), {}, { timeout: 8000 });
         await expect(canvas.getByTestId('service-notice-route')).toHaveTextContent(
             '/admin/theme-settings/service-notices',
         );
-        await expect(canvas.getByLabelText(i18n.t('serviceNotices.statusUrl'))).toHaveValue('');
-        [i18n.t('serviceNotices.start'), i18n.t('serviceNotices.end')].forEach((name) => {
+        await expect(canvas.getByLabelText(i18n.t<string>('serviceNotices.statusUrl'))).toHaveValue('');
+        [i18n.t<string>('serviceNotices.start'), i18n.t<string>('serviceNotices.end')].forEach((name) => {
             const clockInput = canvas.getByLabelText(name);
             const label = canvas.getByText(name, { selector: 'label' });
             expect(label.getBoundingClientRect().bottom).toBeLessThanOrEqual(clockInput.getBoundingClientRect().top);
         });
-        await expect(canvas.getByRole('link', { name: i18n.t('serviceNotices.title') })).toHaveAttribute(
+        await expect(canvas.getByRole('link', { name: i18n.t<string>('serviceNotices.title') })).toHaveAttribute(
             'href',
             routePathNames.serviceNotices,
         );
