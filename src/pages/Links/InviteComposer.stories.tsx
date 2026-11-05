@@ -198,8 +198,8 @@ const PILL = {
     email: either('E-Mail bearbeiten', 'Edit E-mail'),
     firstName: either('Vorname bearbeiten', 'Edit First name'),
     lastName: either('Name bearbeiten', 'Edit Name'),
-    tenant: either('Träger bearbeiten', 'Edit Tenant'),
-    agency: either('Beratungsstelle bearbeiten', 'Edit Agency'),
+    tenant: either('Träger bearbeiten', 'Edit Provider'),
+    agency: either('Beratungsstelle bearbeiten', 'Edit Counselling centre'),
     role: either('Rolle bearbeiten', 'Edit Role'),
     topics: either('Themen & Fachbereiche bearbeiten', 'Edit Topics & departments'),
     alsoCounsellor: either('Berät auch bearbeiten', 'Edit Also counsels'),
@@ -208,8 +208,8 @@ const PILL = {
 const FIELD = {
     email: /^(E-Mail|E-mail)$/,
     firstName: /^(Vorname|First name)$/,
-    tenant: /^(Träger|Tenant)$/,
-    agency: /^(Beratungsstelle|Agency)$/,
+    tenant: /^(Träger|Provider)$/,
+    agency: /^(Beratungsstelle|Counselling centre)$/,
     role: /^(Rolle|Role)$/,
     topics: /^(Themen & Fachbereiche|Topics & departments)$/,
 };
@@ -261,10 +261,10 @@ export const RoleSelectKeepsValues: Story = {
         await userEvent.tab();
 
         await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
-        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
+        await userEvent.click(await body.findByTitle(/BST-Admin|Counselling centre admin/));
 
         const pill = await canvas.findByRole('button', { name: PILL.role });
-        await expect(pill).toHaveTextContent(/BST-Admin|Agency admin/);
+        await expect(pill).toHaveTextContent(/BST-Admin|Counselling centre admin/);
         await expect(canvasElement.querySelector('[class*="composer"]')).toBe(bar);
         const values = [...canvasElement.querySelectorAll<HTMLInputElement>('input[name]')].map((input) => input.value);
         await expect(values).toEqual([PREFILLED.recipientEmail, PREFILLED.firstName, PREFILLED.lastName]);
@@ -640,13 +640,17 @@ export const NewAgencyNumber: Story = {
         await userEvent.click(agencyUp);
         await waitFor(() => expect(agency).toHaveValue('141'));
         await expect(canvas.getByRole('button', { name: SEND.createAndInvite })).toBeDisabled();
-        await canvas.findByText(/Nur eine BST-Admin legt eine neue Beratungsstelle an|Only an agency admin creates/);
+        await canvas.findByText(
+            /Nur eine BST-Admin legt eine neue Beratungsstelle an|Only a counselling centre admin creates/,
+        );
 
         await userEvent.click(
-            canvas.getByRole('button', { name: /Stattdessen als BST-Admin einladen|Invite as agency admin instead/ }),
+            canvas.getByRole('button', {
+                name: /Stattdessen als BST-Admin einladen|Invite as counselling centre admin instead/,
+            }),
         );
         await expect(await canvas.findByRole('button', { name: PILL.role })).toHaveTextContent(
-            /BST-Admin|Agency admin/,
+            /BST-Admin|Counselling centre admin/,
         );
         await expect(canvas.getByRole('button', { name: PILL.alsoCounsellor })).toHaveTextContent(
             /Berät auch|Also counsels/,
@@ -875,7 +879,7 @@ export const RoleHidesFields: Story = {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(await canvas.findByRole('combobox', { name: FIELD.role }));
-        await userEvent.click(await body.findByTitle(/BST-Admin|Agency admin/));
+        await userEvent.click(await body.findByTitle(/BST-Admin|Counselling centre admin/));
         await waitFor(() => expect(canvas.queryByRole('button', { name: PILL.topics })).not.toBeInTheDocument());
         await expect(canvas.getByRole('combobox', { name: FIELD.agency })).toBeInTheDocument();
 

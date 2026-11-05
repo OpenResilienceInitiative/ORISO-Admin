@@ -75,6 +75,21 @@ describe('parseInviteCsv', () => {
         expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'TENANT_ADMIN' });
     });
 
+    it('accepts the counselling centre ID and admin role in an extended invitation file', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Counselling centre ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,counselling centre admin,standard',
+        );
+        expect(result.headerSkipped).toBe(true);
+        expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'AGENCY_ADMIN' });
+    });
+
+    it.each(['counselling-centre admin', 'agency admin'])('accepts the centre-admin role spelling %s', (role) => {
+        const result = parseInviteCsv(
+            `Email,First Name,Name,Counselling centre ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,${role},standard`,
+        );
+        expect(result.rows[0]).toMatchObject({ id: 4, role: 'AGENCY_ADMIN' });
+    });
+
     it('does not treat a merely invalid first e-mail as a header (surfaces it as a rejection)', () => {
         const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
 
