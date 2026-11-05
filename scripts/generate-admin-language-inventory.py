@@ -45,6 +45,9 @@ def render():
                     title = re.search(r'titleKey\s*(?:=|:)\s*["\']([^"\']+)["\']', line)
                     if title and title.group(1) in german and title.group(1) in english:
                         card_titles[title.group(1)].add((str(file), number))
+                    translated_title = re.search(r'title\s*=\s*\{t\(\s*["\']([^"\']+)["\']', line)
+                    if translated_title and translated_title.group(1) in german and translated_title.group(1) in english:
+                        card_titles[translated_title.group(1)].add((str(file), number))
                     dynamic_title = re.search(r'titleKey\s*=\s*\{`([^`]*)`\}', line)
                     if dynamic_title:
                         parts = re.split(r'\$\{[^}]+\}', dynamic_title.group(1))
@@ -79,7 +82,7 @@ def render():
     output.extend(f'| {escape(german[key])} | {escape(english[key])} |' for key in menu_keys)
     list_columns = (
         ('Beratungsstellen / Counselling centres', 'src/pages/Agency/List/AgencyDataTable.tsx', ('agency.name', 'agency.list.id', 'agency.list.address', 'tenantName', 'topics.title', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
-        ('Träger', 'src/pages/Tenants/List/TenantDataTable.tsx', ('tenants.list.name', 'tenants.list.tenantId', 'tenants.list.subdomain', 'tenants.list.adminEmails', 'tenants.list.maxConsultants', 'tenants.list.created', 'users.table.lastUpdated', 'userTable.columns.actions')),
+        ('Träger / Providers', 'src/pages/Tenants/List/TenantDataTable.tsx', ('tenants.list.name', 'tenants.list.tenantId', 'tenants.list.subdomain', 'tenants.list.adminEmails', 'tenants.list.maxConsultants', 'tenants.list.created', 'users.table.lastUpdated', 'userTable.columns.actions')),
         ('Nutzer / Users', 'src/pages/users/management/UserDataTable.tsx', ('userTable.columns.name', 'tenantName', 'tenantAdmins.form.subdomain', 'agency', 'status', 'users.table.lastUpdated', 'userTable.columns.actions')),
         ('Themen / Topics', 'src/pages/Topics/List/TopicList.tsx', ('topic.name', 'topic.description', 'topic.internalIdentifier', 'status')),
         ('Einladungen / Invitations', 'src/pages/Links/inviteProgress/InviteProgressBoard.tsx', ('links.inviteProgress.col.recipient', 'links.inviteProgress.col.progress', 'links.inviteProgress.col.invitedAt', 'links.inviteProgress.col.lastActivity', 'links.inviteProgress.col.status', 'links.inviteProgress.col.actions')),
