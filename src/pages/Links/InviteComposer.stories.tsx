@@ -839,7 +839,7 @@ export const AgencyPickFillsTraeger: Story = {
     },
 };
 
-/** Tenant admin: the Träger is pinned to their own (visible, disabled); roles stay open. */
+/** Provider admin: the Träger is pinned to their own (visible, disabled); roles stay open. */
 export const TenantAdminLocked: Story = {
     args: { viewerScope: 'tenant', ownTenant: TENANTS[0] },
     play: async ({ canvasElement }) => {
@@ -882,7 +882,7 @@ export const RoleHidesFields: Story = {
         // Träger-Admin is no role of this tab: a new Träger is founded on the Träger tab.
         await userEvent.click(canvas.getByRole('button', { name: PILL.role }));
         await expect(await body.findByTitle(/^(Berater:in|Counsellor)$/)).toBeInTheDocument();
-        await expect(body.queryByTitle(/Träger-Admin|Tenant admin/)).not.toBeInTheDocument();
+        await expect(body.queryByTitle(/Träger-Admin|Provider admin/)).not.toBeInTheDocument();
     },
 };
 
@@ -892,7 +892,7 @@ export const TraegerTabRoleFixed: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const role = await canvas.findByRole('combobox', { name: FIELD.role });
-        await expect(role.closest('.ant-select')).toHaveTextContent(/Träger-Admin|Tenant admin/);
+        await expect(role.closest('.ant-select')).toHaveTextContent(/Träger-Admin|Provider admin/);
         await expect(role).toBeDisabled();
     },
 };

@@ -185,7 +185,7 @@ export const TraegerTab: Story = {
     args: { tab: 'tenant' },
     play: async ({ canvas }) => {
         await expect(
-            await canvas.findByRole('heading', { name: either('Träger-Admin einladen', 'Invite tenant admin') }),
+            await canvas.findByRole('heading', { name: either('Träger-Admin einladen', 'Invite provider admin') }),
         ).toBeVisible();
         await expect(canvas.getByRole('button', { name: either('Rolle bearbeiten', 'Edit Role') })).toBeDisabled();
         await expect(canvas.queryByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ })).not.toBeInTheDocument();

@@ -67,6 +67,14 @@ describe('parseInviteCsv', () => {
         expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', id: 4 });
     });
 
+    it('accepts the provider ID heading in an extended invitation file', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Provider ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,provider admin,standard',
+        );
+        expect(result.headerSkipped).toBe(true);
+        expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'TENANT_ADMIN' });
+    });
+
     it('does not treat a merely invalid first e-mail as a header (surfaces it as a rejection)', () => {
         const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
 

@@ -84,6 +84,9 @@ const HEADER_LABELS: Record<Exclude<ColumnKey, 'email'>, string[]> = {
         'tenant id',
         'tenant-id',
         'tenantid',
+        'provider id',
+        'provider-id',
+        'providerid',
         'agency id',
         'agency-id',
         'agencyid',
@@ -141,6 +144,8 @@ const ROLE_VALUES: Record<string, InviteRole> = {
     'traeger-admin': 'TENANT_ADMIN',
     tenant_admin: 'TENANT_ADMIN',
     'tenant admin': 'TENANT_ADMIN',
+    provider_admin: 'TENANT_ADMIN',
+    'provider admin': 'TENANT_ADMIN',
 };
 
 /** The backend enum, plain true/false and the German yes/no words a spreadsheet user types. */

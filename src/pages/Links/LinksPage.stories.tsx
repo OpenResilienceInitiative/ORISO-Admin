@@ -61,7 +61,7 @@ export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
     },
@@ -72,7 +72,7 @@ export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
     play: async ({ canvas }) => {
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toHaveAttribute('href');
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toHaveAttribute('href');
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toHaveAttribute('href');
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
         await expect(
@@ -86,11 +86,11 @@ export const TenantAdminOnTraegerTab: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <TenantInvitesTab />)],
     play: async ({ canvas }) => {
         await expect(
-            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite tenant admin/ }),
+            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite provider admin/ }),
         ).toBeVisible();
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
         await expect(canvas.queryByRole('button', { name: /Neu anlegen|Create new/ })).toBeNull();
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
     },
 };
@@ -134,7 +134,7 @@ export const AgencyAdmin: Story = {
         // One role on offer: „Rolle" is a fixed value row on „Berater:in".
         await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         // Platform-only: never shown to a Beratungsstellen admin.
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
@@ -146,7 +146,7 @@ export const AgencyAdminOnTraegerTab: Story = {
     parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
     decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <TenantInvitesTab />)],
     play: async ({ canvas }) => {
-        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.getByRole('button', { name: /Einladen|Invite/ })).toBeDisabled();
     },
