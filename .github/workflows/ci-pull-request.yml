@@ -62,6 +62,9 @@ jobs:
               # Same supply-chain hardening as .github/actions/node-build.
               run: npm ci --ignore-scripts
 
+            - name: Verify unit timing sanitizer
+              run: node --test scripts/write-unit-file-timings.test.mjs
+
             - name: Run unit tests
               run: npm run test:shard -- --shard=${{ matrix.shard }}/4 --reporter=json --outputFile.json="$RUNNER_TEMP/unit-raw.json"
 
