@@ -62,8 +62,30 @@ jobs:
               # Same supply-chain hardening as .github/actions/node-build.
               run: npm ci --ignore-scripts
 
+            - name: Verify unit timing sanitizer
+              run: node --test scripts/write-unit-file-timings.nodecheck.mjs
+
             - name: Run unit tests
-              run: npm run test:shard -- --shard=${{ matrix.shard }}/4
+              run: npm run test:shard -- --shard=${{ matrix.shard }}/4 --reporter=json --outputFile.json="$RUNNER_TEMP/unit-raw.json"
+
+            # Upload only file paths and elapsed times, never assertion output or test data.
+            - name: Prepare unit file timings
+              if: always()
+              continue-on-error: true
+              run: |
+                  if [ -f "$RUNNER_TEMP/unit-raw.json" ]; then
+                    node scripts/write-unit-file-timings.mjs "$RUNNER_TEMP/unit-raw.json" "$RUNNER_TEMP/unit-file-timings.json"
+                  fi
+
+            - name: Upload unit file timings
+              if: always()
+              continue-on-error: true
+              uses: actions/upload-artifact@v4
+              with:
+                  name: unit-file-timings-${{ matrix.shard }}
+                  path: ${{ runner.temp }}/unit-file-timings.json
+                  if-no-files-found: ignore
+                  retention-days: 7
 
     # Runs every story in a real Chromium: renders it, executes its `play`
     # function, and fails on any axe (WCAG 2.2 AA) violation, because
