@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { updateTenantAdminControls } from '../api/tenant/updateTenantAdminControls';
 import { updateTenantPermissionPolicies } from '../api/tenant/tenantPermissionPolicies';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';

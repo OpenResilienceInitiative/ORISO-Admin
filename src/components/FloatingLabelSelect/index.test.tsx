@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { Form } from 'antd';
 import { FloatingLabelSelect } from './index';
 import arrowStyles from '../M3Select/m3Select.module.scss';
@@ -40,6 +40,16 @@ describe('FloatingLabelSelect', () => {
 
         rerender(<FloatingLabelSelect label="Stadt" suffixIcon={null} options={options} />);
         expect(container.querySelector('.ant-select-arrow')).not.toBeInTheDocument();
+    });
+
+    it('renders standalone without useStatus context warnings', () => {
+        const error = vi.spyOn(console, 'error');
+        try {
+            render(<FloatingLabelSelect label="Standalone" options={options} />);
+            expect(error).not.toHaveBeenCalled();
+        } finally {
+            error.mockRestore();
+        }
     });
 
     it('floats the label on focus and rests it again on blur while empty', async () => {

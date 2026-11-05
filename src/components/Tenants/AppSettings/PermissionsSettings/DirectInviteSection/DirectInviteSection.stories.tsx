@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
 import { DirectInviteSection } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';

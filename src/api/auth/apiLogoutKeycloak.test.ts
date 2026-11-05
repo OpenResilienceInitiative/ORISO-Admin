@@ -1,6 +1,6 @@
 // @vitest-environment node
 // Node env: fetch/Request/AbortController from one realm (same as fetchData.test.ts).
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const getSessionRefreshToken = vi.fn();
 vi.mock('./tokenSessionStore', () => ({

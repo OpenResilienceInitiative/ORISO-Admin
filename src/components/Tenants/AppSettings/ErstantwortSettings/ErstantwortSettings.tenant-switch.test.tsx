@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { fetchData } from '../../../../api/fetchData';
 import { getSingleTenantData } from '../../../../api/tenant/getSingleTenantData';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';

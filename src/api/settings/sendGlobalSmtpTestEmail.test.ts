@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { message } from 'antd';
 import { sendGlobalSmtpTestEmail } from './sendGlobalSmtpTestEmail';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';

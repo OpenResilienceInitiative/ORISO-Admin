@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { message } from 'antd';

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import generateCsrfToken from './generateCsrfToken';
 import { getValueFromCookie, setValueInCookie } from '../api/auth/accessSessionCookie';
 

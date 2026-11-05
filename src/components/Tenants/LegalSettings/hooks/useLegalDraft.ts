@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { notification } from 'antd';
+
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../hooks/useAdminFeedback';
 import {
     clearLegalDraft,
     LegalDraft,
@@ -58,6 +59,7 @@ export const useLegalDraft = (
     baseVersionId?: string,
     onError?: (message: string) => void,
 ): UseLegalDraftResult => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const key = legalDraftKey(document, scope);
     // Key, draft and save markers live in ONE state object so they can never

@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('react-i18next', () => {
     const t = (key?: string) => key ?? '';

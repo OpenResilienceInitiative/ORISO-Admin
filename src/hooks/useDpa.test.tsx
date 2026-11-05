@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -8,7 +8,8 @@ vi.mock('../api/tenant/getDpaVersions', () => ({ getDpaVersions: vi.fn() }));
 
 const notificationSuccess = vi.fn();
 const notificationError = vi.fn();
-vi.mock('antd', () => ({
+vi.mock('antd', async () => ({
+    ...(await vi.importActual<typeof import('antd')>('antd')),
     notification: {
         success: (args: unknown) => notificationSuccess(args),
         error: (args: unknown) => notificationError(args),
@@ -73,8 +74,9 @@ describe('usePublishDpa', () => {
         });
 
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(notificationSuccess).toHaveBeenCalledTimes(1);
         expect(notificationSuccess).toHaveBeenCalledWith(
-            expect.objectContaining({ message: 'tenants.legal.version.publishSuccess' }),
+            expect.objectContaining({ message: 'tenants.legal.version.publishSuccess', duration: 4 }),
         );
     });
 
@@ -89,7 +91,9 @@ describe('usePublishDpa', () => {
         });
 
         await waitFor(() => expect(result.current.isError).toBe(true));
+        expect(result.current.error).toEqual(new Error('CATCH_ALL'));
         expect(notificationError).not.toHaveBeenCalled();
+        expect(notificationSuccess).not.toHaveBeenCalled();
     });
 });
 

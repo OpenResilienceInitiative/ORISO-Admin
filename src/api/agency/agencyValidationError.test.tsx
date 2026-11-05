@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { Form, FormInstance, Input } from 'antd';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { isFieldMounted } from './agencyValidationError';
 
 const OFFICER = ['dataProtection', 'dataProtectionOfficerContact', 'nameAndLegalForm'];

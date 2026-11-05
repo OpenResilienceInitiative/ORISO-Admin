@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeAll, beforeEach } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalText } from './index';

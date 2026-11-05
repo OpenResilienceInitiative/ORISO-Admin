@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { GeneralTenantSettings } from './index';
 
 type MutationOptions = { onSuccess: (data: unknown, variables: unknown) => void; onError: (error: Error) => void };

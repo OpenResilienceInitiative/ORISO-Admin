@@ -1,0 +1,65 @@
+import React from 'react';
+import { theme } from 'antd';
+import { expect, userEvent, within } from 'storybook/test';
+import { useAdminFeedback } from '../../src/hooks/useAdminFeedback';
+import { http, HttpResponse } from 'msw';
+import { ErrorBoundary } from '../../src/components/ErrorBoundary';
+
+export default { title: 'VerificationControls/Temporary', parameters: { a11y: { test: 'error' } } };
+const readable = () => <p>Accessible positive control</p>;
+export const Healthy = { render: readable };
+export const LowContrast = { render: () => <p style={{ color: '#eeeeee', background: '#ffffff' }}>Low contrast control</p> };
+export const UnnamedButton = { render: () => <button /> };
+export const MissingAlt = { render: () => <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'/%3E" /> };
+export const CaughtError = { render: readable, play: () => { console.error('controlled console error'); } };
+export const UncaughtError = { render: readable, play: async () => { setTimeout(() => { throw new Error('controlled uncaught error'); }, 0); await new Promise(resolve => setTimeout(resolve, 100)); } };
+export const UnhandledRejection = { render: readable, play: async () => { void Promise.reject(new Error('controlled unhandled rejection')); await new Promise(resolve => setTimeout(resolve, 100)); } };
+export const UnexpectedRequest = { render: readable, play: async () => { await fetch('/service/__verification_unexpected__').catch(() => undefined); } };
+export const Fallback = { render: () => <div data-story-fallback="">Needs live app data</div> };
+const BrokenProductChild = () => { throw new Error('controlled production boundary failure'); };
+export const ProductionBoundary = {
+    parameters: { msw: { handlers: [http.post('*/service/error-reports', () => new HttpResponse(null, { status: 202 }))] } },
+    render: () => <ErrorBoundary scope="verification"><BrokenProductChild /></ErrorBoundary>,
+};
+export const ExpectedError = {
+    render: readable,
+    parameters: { verification: { expectedErrors: [{ kind: 'console-error', message: 'controlled expected error', count: 1 }] } },
+    play: () => { console.error('controlled expected error'); },
+};
+
+const baselineParagraph = () => <><style>{`.baseline-contrast { color: ${import.meta.env.ORISO_A11Y_CONTROL_PHASE === 'verify' && import.meta.env.ORISO_A11Y_CONTROL_WORSE ? '#ddd' : '#aaa'}; background: white; }`}</style><p id="baseline-contrast" className="baseline-contrast">Unchanged baseline DOM</p></>;
+export const KnownBaseline = { render: baselineParagraph };
+export const KnownAddedNode = { render: () => <>{baselineParagraph()}{import.meta.env.ORISO_A11Y_CONTROL_PHASE === 'verify' && <button />}</> };
+export const KnownWorseStyle = { render: () => <><style>{`.baseline-contrast { color: ${import.meta.env.ORISO_A11Y_CONTROL_PHASE === 'verify' ? '#ddd' : '#aaa'} !important; }`}</style>{baselineParagraph()}</> };
+export const KnownOperationalError = { render: baselineParagraph, play: () => { if (import.meta.env.ORISO_A11Y_CONTROL_PHASE === 'verify') console.error('approved story independent console failure'); } };
+export const MissingAudit = { render: readable, play: ({ parameters }) => { parameters.a11y.disable = true; } };
+export const AuditError = { render: readable, play: ({ parameters }) => { parameters.a11y.element = 'body'; } };
+export const DuplicateAudit = { render: readable, play: ({ reporting }) => { reporting.addReport({ type: 'a11y', version: 1, result: { error: 'controlled duplicate audit' }, status: 'failed' }); } };
+
+const ThemedFeedbackContent = () => {
+    const { token } = theme.useToken();
+    return <span data-feedback-token={token.colorPrimary} style={{ color: token.colorPrimary }}>Contextual feedback</span>;
+};
+const FeedbackControl = () => {
+    const { message } = useAdminFeedback();
+    const { token } = theme.useToken();
+    return <button data-feedback-source={token.colorPrimary} onClick={() => message.success({ content: <ThemedFeedbackContent />, duration: 0 })}>Show themed feedback</button>;
+};
+export const ContextualFeedback = {
+    render: () => <FeedbackControl />,
+    play: async ({ canvasElement }) => {
+        const button = within(canvasElement).getByRole('button', { name: 'Show themed feedback' });
+        await userEvent.click(button);
+        const content = await within(document.body).findByText('Contextual feedback');
+        expect(content.getAttribute('data-feedback-token')).toBe(button.getAttribute('data-feedback-source'));
+        const expectedColor = document.createElement('span');
+        expectedColor.style.color = button.getAttribute('data-feedback-source');
+        document.body.append(expectedColor);
+        expect(getComputedStyle(content).color).toBe(getComputedStyle(expectedColor).color);
+        expectedColor.remove();
+        expect(content.closest('.ant-message')).not.toBeNull();
+    },
+};
+
+// The pinned addon must keep its real strict assertion and raw violation evidence.
+export const StrictAddonViolation = { render: () => <button data-strict-addon-control="" /> };

@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { useState } from 'react';
-import { message } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import i18n from '../../../i18n';
@@ -102,6 +102,7 @@ export const Saving: Story = {
 export const SaveFailed: Story = {
     args: { toursEnabled: true, practiceEnabled: true },
     render: function SaveFailedStory(args) {
+        const { message } = useAdminFeedback();
         const [, setAttempts] = useState(0);
         return (
             <CounsellorTutorialSettingsCard

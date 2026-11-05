@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ProductTourAdapter } from './ProductTourAdapter';
 import type { TourDefinition, TourEvent } from './types';
 

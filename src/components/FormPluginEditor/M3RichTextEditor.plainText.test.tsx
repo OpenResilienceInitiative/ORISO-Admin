@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { M3RichTextEditor } from './M3RichTextEditor';
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { canGrantConsultantIdentity } from './canGrantConsultantIdentity';
 import { CounselorData } from '../types/counselor';

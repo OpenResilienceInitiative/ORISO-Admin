@@ -1,7 +1,7 @@
-import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     acceptBaseUrlForRole,
     type CreateAccountInviteRequest,
@@ -88,6 +88,7 @@ const loadAgencyTopics = async (agencyId: number): Promise<SelfAssignTopic[]> =>
 };
 
 export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField = false }: AccountInvitesTabProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();

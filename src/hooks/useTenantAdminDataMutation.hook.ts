@@ -1,7 +1,7 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { useAdminFeedback } from './useAdminFeedback';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { getSingleTenantData } from '../api/tenant/getSingleTenantData';
 import { tenantAdminEndpoint } from '../appConfig';
@@ -29,6 +29,7 @@ export const useTenantAdminDataMutation = ({
     prefetchTenantAdminData = true,
     ...options
 }: TenantAdminDataOptions) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const queryClient = useQueryClient();
     const shouldPrefetchTenantAdminData =
