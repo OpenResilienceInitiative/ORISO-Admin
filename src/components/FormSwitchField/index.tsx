@@ -1,9 +1,9 @@
 import { ConfigProvider, Form } from 'antd';
 import { useContext } from 'react';
-import { ReadOnlyTileContext } from '../CardEditable/ReadOnlyTileContext';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { ReadOnlyTileContext } from '../CardEditable/ReadOnlyTileContext';
 import { MuiSwitch } from '../mui/MuiSwitchField';
 import styles from './styles.module.scss';
 
