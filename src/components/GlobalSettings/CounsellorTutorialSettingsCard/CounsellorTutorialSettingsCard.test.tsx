@@ -168,7 +168,7 @@ describe('Counsellor tutorial settings preview', () => {
         render(<CounsellorTutorialSettingsCardContainer />);
         const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
         expect(tours).toBeChecked();
-        expect(tours).toBeDisabled();
+        expect(tours).toHaveAttribute('aria-disabled', 'true');
         await userEvent.click(tours.closest('label')!);
         expect(state.mutateSettings).not.toHaveBeenCalled();
     });

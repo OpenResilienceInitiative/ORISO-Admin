@@ -47,7 +47,7 @@ export const DisabledForNonSuperadmins: Story = {
         const canvas = within(canvasElement);
         const oneTopicSwitch = canvas.getByRole('switch', { name: /genau einen Fachbereich/ });
         await expect(oneTopicSwitch).toBeChecked();
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };

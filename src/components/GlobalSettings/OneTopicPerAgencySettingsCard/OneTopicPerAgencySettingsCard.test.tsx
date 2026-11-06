@@ -58,7 +58,7 @@ it('renders visible-but-not-editable when disabled', () => {
     render(<OneTopicPerAgencySettingsCard enabled isLoading={false} onSave={() => undefined} disabled />);
 
     expect(oneTopicSwitch()).toBeChecked();
-    expect(oneTopicSwitch()).toBeDisabled();
+    expect(oneTopicSwitch()).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
 });
 

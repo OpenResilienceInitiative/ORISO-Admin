@@ -1,11 +1,11 @@
-import { ConfigProvider, Form, Switch } from 'antd';
+import { ConfigProvider, Form } from 'antd';
+import { useContext } from 'react';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { M3Switch } from '../M3Switch';
+import { ReadOnlyTileContext } from '../CardEditable/ReadOnlyTileContext';
+import { MuiSwitch } from '../mui/MuiSwitchField';
 import styles from './styles.module.scss';
-
-type SwitchVariant = 'antd' | 'm3';
 
 interface FormSwitchFieldProps {
     labelKey?: string;
@@ -23,7 +23,6 @@ interface FormSwitchFieldProps {
     inverseValue?: boolean;
     className?: string;
     switchLabel?: string;
-    switchVariant?: SwitchVariant;
     /** Asked before the switch turns ON; see `MuiSwitchField`. Turning it off never asks. */
     confirmEnable?: (proceed: () => void) => void;
 }
@@ -38,7 +37,6 @@ interface FormSwitchFieldLocalProps {
     disableLabels?: boolean;
     inverseValue?: boolean;
     switchLabel: string;
-    switchVariant: SwitchVariant;
     confirmEnable?: (proceed: () => void) => void;
 }
 
@@ -52,12 +50,12 @@ const FormSwitchFieldLocal = ({
     unCheckedKey,
     inverseValue,
     switchLabel,
-    switchVariant,
     confirmEnable,
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
-    const isDisabled = componentDisabled || disabled;
+    const inReadOnlyTile = useContext(ReadOnlyTileContext);
+    const readOnly = !!componentDisabled && inReadOnlyTile && !disabled;
     const fieldChecked = inverseValue ? !checked : checked;
     const onSwitchChange = (value: boolean) => {
         const next = inverseValue ? !value : value;
@@ -70,29 +68,15 @@ const FormSwitchFieldLocal = ({
 
     return (
         <div className="formSwitchField__container">
-            {switchVariant === 'm3' ? (
-                <>
-                    <M3Switch
-                        disabled={isDisabled}
-                        label={switchLabel}
-                        onChange={onSwitchChange}
-                        checked={fieldChecked}
-                    />
-                    {!disableLabels && (
-                        <span className="formSwitchField__stateLabel">
-                            {t(fieldChecked ? checkedKey : unCheckedKey)}
-                        </span>
-                    )}
-                </>
-            ) : (
-                <Switch
-                    disabled={isDisabled}
-                    size="default"
-                    onChange={onSwitchChange}
-                    checked={fieldChecked}
-                    checkedChildren={!disableLabels && t(checkedKey)}
-                    unCheckedChildren={!disableLabels && t(unCheckedKey)}
-                />
+            <MuiSwitch
+                disabled={!!disabled || (!!componentDisabled && !readOnly)}
+                readOnly={readOnly}
+                ariaLabel={switchLabel}
+                onChange={onSwitchChange}
+                checked={!!fieldChecked}
+            />
+            {!disableLabels && (
+                <span className="formSwitchField__stateLabel">{t(fieldChecked ? checkedKey : unCheckedKey)}</span>
             )}
             {paragraphKey && <Paragraph className="desc__toggleText">{t(paragraphKey)}</Paragraph>}
         </div>
@@ -115,7 +99,6 @@ export const FormSwitchField = ({
     checkedKey = 'yes',
     unCheckedKey = 'no',
     switchLabel,
-    switchVariant = 'm3',
     confirmEnable,
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
@@ -139,7 +122,6 @@ export const FormSwitchField = ({
                 disableLabels={disableLabels}
                 inverseValue={inverseValue}
                 switchLabel={accessibleSwitchLabel}
-                switchVariant={switchVariant}
                 confirmEnable={confirmEnable}
             />
         </Form.Item>

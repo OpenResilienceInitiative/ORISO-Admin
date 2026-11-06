@@ -32,7 +32,8 @@ const meta = {
         const canvas = within(canvasElement);
         const controls = canvas.getAllByRole('switch');
         await expect(controls).toHaveLength(4);
-        controls.forEach((control) => expect(control).toBeDisabled());
+        await expect(controls[0]).toHaveAttribute('aria-disabled', 'true');
+        controls.slice(1).forEach((control) => expect(control).toBeDisabled());
         await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
         await expect(canvas.getByText(/^(Kommt bald|Coming soon)$/)).toBeVisible();
     },
@@ -47,12 +48,12 @@ export const On: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
-        await expect(tours).toBeDisabled();
+        await expect(tours).toHaveAttribute('aria-disabled', 'true');
         await expect(tours).toBeChecked();
         await userEvent.click(tours.closest('label')!);
         tours.focus();
         await userEvent.keyboard(' {Enter}');
-        await expect(tours).not.toHaveFocus();
+        await expect(tours).toHaveFocus();
         await expect(tours).toBeChecked();
         await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
         await expect(

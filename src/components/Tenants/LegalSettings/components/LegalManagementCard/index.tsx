@@ -33,7 +33,6 @@ export const LegalManagementCard = ({
                     name={['legalContentChangesBySingleTenantAdminsAllowed']}
                     inline
                     disableLabels
-                    disabled={!allowEdit}
                 />
             </div>
         </CardEditable>
