@@ -296,32 +296,9 @@
     }
 }
 
-.statisticDashboard__summaryGrid,
 .statisticDashboard__communicationGrid,
 .statisticDashboard__chartGrid {
-    display: grid;
-    gap: 12px;
-}
-
-.statisticDashboard__summaryGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.statisticDashboard__communicationGrid {
-    margin-top: 12px;
-    grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr));
-}
-
-.statisticDashboard__chartGrid {
-    align-items: stretch;
-    margin-top: 12px;
-    grid-template-columns: minmax(0, 2.08fr) minmax(360px, 1fr);
-}
-
-.statisticDashboard__metricCard,
-.statisticDashboard__chartCard {
-    background: var(--m3-surface-container-lowest);
-    border-radius: 28px;
+    margin-top: 24px;
 }
 
 .statisticDashboard__metricCard {
@@ -1228,15 +1205,6 @@
     .statisticDashboard__filterBar {
         grid-template-columns: minmax(0, 499px);
     }
-
-    .statisticDashboard__summaryGrid,
-    .statisticDashboard__chartGrid {
-        grid-template-columns: 1fr;
-    }
-
-    .statisticDashboard__communicationGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1263,12 +1231,6 @@
 
     .statisticDashboard__filterChips {
         justify-content: flex-start;
-    }
-
-    .statisticDashboard__summaryGrid,
-    .statisticDashboard__communicationGrid,
-    .statisticDashboard__chartGrid {
-        grid-template-columns: 1fr;
     }
 
     .statisticDashboard__metricCard {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import cardStyles from '../Card/styles.module.scss';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
 import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
 import { useAnimatedDisplayValue } from '../../pages/Statistic/useAnimatedDisplayValue';
@@ -35,7 +36,7 @@ const translateDashboardKey = (
 ) => translate(key, { defaultValue, ...options });
 
 const getCardClassName = (card: StatisticCardDefinition) =>
-    `statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}`;
+    `${cardStyles.card} statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}`;
 
 const getTrendClassName = (tone: TrendScoreTone) => `statisticDashboard__trend statisticDashboard__trend--${tone}`;
 
