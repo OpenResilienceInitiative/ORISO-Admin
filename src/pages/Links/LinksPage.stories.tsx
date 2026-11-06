@@ -4,6 +4,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../enums/UserRole';
+import i18n from '../../i18n';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { CounsellorInvitesTab, LinksPage, TenantInvitesTab } from './index';
 
@@ -71,9 +72,24 @@ export const PlatformAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
+    },
+};
+
+/** English labels use the accepted glossary for providers and counselling centres. */
+export const PlatformAdminEnglish: Story = {
+    decorators: [withOutlet([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0, <TenantInvitesTab />)],
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('en');
+        return () => i18n.changeLanguage(previousLanguage);
+    },
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('link', { name: 'Provider invites' })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: 'Counsellor invites' })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: 'Tenant invites' })).toBeNull();
     },
 };
 
@@ -82,7 +98,7 @@ export const TenantAdmin: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <CounsellorInvitesTab />)],
     play: async ({ canvas }) => {
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toHaveAttribute('href');
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toHaveAttribute('href');
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toHaveAttribute('href');
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
         await expect(
@@ -96,11 +112,11 @@ export const TenantAdminOnTraegerTab: Story = {
     decorators: [withOutlet([UserRole.TenantAdmin, UserRole.UserAdmin], 7, <TenantInvitesTab />)],
     play: async ({ canvas }) => {
         await expect(
-            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite tenant admin/ }),
+            await canvas.findByRole('heading', { name: /Träger-Admin einladen|Invite provider admin/ }),
         ).toBeVisible();
-        await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: /^(Träger|Provider)$/ })).toBeDisabled();
         await expect(canvas.queryByRole('button', { name: /Neu anlegen|Create new/ })).toBeNull();
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
     },
 };
@@ -139,15 +155,15 @@ export const AgencyAdmin: Story = {
     decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <CounsellorInvitesTab />)],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ });
+        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Counselling centre)$/ });
         await waitFor(() => expect(agency).toHaveValue('Nr. 101'), { timeout: 5_000 });
         await expect(agency).toBeDisabled();
         await expect(canvas.getByText('Caritas Suchtberatung Freiburg')).toBeVisible();
-        await expect(canvas.getByRole('combobox', { name: /^(Träger|Tenant)$/ })).toBeDisabled();
+        await expect(canvas.getByRole('combobox', { name: /^(Träger|Provider)$/ })).toBeDisabled();
         // One role on offer: „Rolle" is a fixed value row on „Berater:in".
         await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
         await expect(canvas.getByRole('link', { name: /Berater-Invites|Counsellor invites/ })).toBeVisible();
-        await expect(canvas.getByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         // Platform-only: never shown to a Beratungsstellen admin.
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.queryByText(/Externe Inbounds|External inbounds/)).toBeNull();
@@ -159,7 +175,7 @@ export const AgencyAdminOnTraegerTab: Story = {
     parameters: { msw: { handlers: agencyAdminHandlers([{ id: 101, name: 'Caritas Suchtberatung Freiburg' }]) } },
     decorators: [withOutlet([UserRole.AgencyAdmin, UserRole.UserAdmin], 40, <TenantInvitesTab />)],
     play: async ({ canvas }) => {
-        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Tenant invites/ })).toBeVisible();
+        await expect(await canvas.findByRole('link', { name: /Träger-Invites|Provider invites/ })).toBeVisible();
         await expect(canvas.queryByRole('link', { name: /Externe Inbounds|External inbounds/ })).toBeNull();
         await expect(canvas.getByRole('button', { name: /Einladen|Invite/ })).toBeDisabled();
     },
@@ -186,7 +202,7 @@ export const AgencyAdminSeveralAgencies: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
-        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Agency)$/ });
+        const agency = await canvas.findByRole('combobox', { name: /^(Beratungsstelle|Counselling centre)$/ });
         await expect(agency).toBeEnabled();
         await userEvent.click(agency);
         const choice = await body.findByRole('option', { name: /Caritas Schuldnerberatung Freiburg/ });
@@ -196,6 +212,6 @@ export const AgencyAdminSeveralAgencies: Story = {
         await userEvent.click(choice);
         await waitFor(() => expect(agency).toHaveValue('Caritas Schuldnerberatung Freiburg · 102'));
         await expect(agency).toHaveAttribute('aria-expanded', 'false');
-        await expect(body.queryByRole('listbox', { name: /^(Beratungsstelle|Agency)$/ })).toBeNull();
+        await expect(body.queryByRole('listbox', { name: /^(Beratungsstelle|Counselling centre)$/ })).toBeNull();
     },
 };

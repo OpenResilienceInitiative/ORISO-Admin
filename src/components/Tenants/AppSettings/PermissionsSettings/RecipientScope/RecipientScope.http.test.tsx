@@ -127,7 +127,7 @@ describe('Träger admin', () => {
         server.scope = { value: 'AGENCY', mode: 'SUGGESTED', inherited: true };
         mountTenant();
         const control = await tile();
-        await user.click(control.getByRole('radio', { name: /Träger-wide/ }));
+        await user.click(control.getByRole('radio', { name: /Provider-wide/ }));
         await user.click(control.getByRole('button', { name: 'Save' }));
 
         await waitFor(() =>
@@ -159,14 +159,14 @@ describe('Träger admin', () => {
         mountTenant();
         control = await tile();
         await waitFor(() => expect(control.getByRole('radio', { name: /Platform-wide/ })).toBeChecked());
-        expect(control.getByText('Set by this Träger')).toBeInTheDocument();
+        expect(control.getByText('Set by this provider')).toBeInTheDocument();
     });
 
     it('sees the choice locked when the platform enforces it, and no save goes out', async () => {
         server.scope = { value: 'TENANT', mode: 'ENFORCED', inherited: true };
         mountTenant();
         const control = await tile();
-        await waitFor(() => expect(control.getByRole('radio', { name: /Träger-wide/ })).toBeChecked());
+        await waitFor(() => expect(control.getByRole('radio', { name: /Provider-wide/ })).toBeChecked());
         control.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(control.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
         expect(server.puts).toHaveLength(0);
