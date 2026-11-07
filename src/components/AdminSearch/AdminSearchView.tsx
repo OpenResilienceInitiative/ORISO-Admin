@@ -500,7 +500,14 @@ export const AdminSearchView = ({
                                 {filtersActive ? t('adminSearch.empty.filtered') : t('adminSearch.empty.text')}
                             </p>
                             {filtersActive && (
-                                <button type="button" className={styles.textButton} onClick={() => setFilters({})}>
+                                <button
+                                    type="button"
+                                    className={styles.textButton}
+                                    onClick={() => {
+                                        setFilters({});
+                                        refocusField();
+                                    }}
+                                >
                                     {t('adminSearch.filter.reset')}
                                 </button>
                             )}

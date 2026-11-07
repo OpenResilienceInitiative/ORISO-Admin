@@ -265,6 +265,17 @@ describe('AdminSearchView', () => {
         expect((first.input as HTMLInputElement).value).toBe(i18n.t('adminSearch.suggestion.1'));
     });
 
+    // Found in review: "Reset filters" leaves the page with the empty state, and focus fell to the body.
+    it('keeps focus in the field after the filters are reset', async () => {
+        const { user, input } = setup({ initialFilters: { kinds: ['tenants'] } });
+
+        await user.type(input, 'smtp');
+        await user.click(await screen.findByRole('button', { name: i18n.t('adminSearch.filter.reset') }));
+
+        await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(0));
+        expect(input).toHaveFocus();
+    });
+
     it('keeps focus in the field after a recent search is removed or all are cleared', async () => {
         rememberSearch('smtp');
         rememberSearch('legal');
