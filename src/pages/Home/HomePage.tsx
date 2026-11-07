@@ -60,7 +60,7 @@ const factsFor = (tile: HomeTile, facts: HomeFacts, t: (key: string, options?: o
 export const HomePage = () => {
     const { t } = useTranslation();
     const { navItems, settingsTabs, tree } = useAdminNavigation();
-    const { isSuperAdmin, isTenantScopedAdmin, hasRole } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, hasRole, tenantId } = useUserRoles();
     const { can } = useUserPermissions();
     const { data: userData } = useUserData();
     const role = resolveHomeRole({ isSuperAdmin, isTenantScopedAdmin, hasRole });
@@ -68,6 +68,7 @@ export const HomePage = () => {
 
     const facts = useHomeFacts({
         role,
+        tenantId,
         canReadTenants: can(PermissionAction.Read, Resource.Tenant),
         canReadAgencies: can(PermissionAction.Read, Resource.Agency),
         canReadConsultants: can(PermissionAction.Read, Resource.Consultant),
@@ -81,7 +82,12 @@ export const HomePage = () => {
         tree,
         canCreateAgency: can(PermissionAction.Create, Resource.Agency),
     });
-    const steps = buildChecklist(role, facts, navItems);
+    const steps = buildChecklist(
+        role,
+        facts,
+        navItems,
+        settingsTabs.map((tab) => tab.to),
+    );
     const doneCount = steps.filter((step) => step.state === 'done').length;
     const showChecklist = steps.length > 0 && doneCount < steps.length;
     const settingsGroups = groupSettingsTabs(settingsTabs);

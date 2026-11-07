@@ -8,7 +8,13 @@ import {
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import type { AccountInviteListTab, PagedAccountInviteResponse } from '../../api/accountInvites/accountInvites';
 import { USER_TABLE_API_SAFE_SORT } from '../../constants/userTableSort';
-import type { HomeFacts, HomeRole } from './homeModel';
+import getPublicTenantData from '../../api/tenant/getPublicTenantData';
+import getTenantData from '../../api/tenant/getTenantData';
+import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
+import { getDpaStatus } from '../../api/tenant/getDpaStatus';
+import { useAppConfigContext } from '../../context/useAppConfig';
+import removeEmbedded from '../../utils/removeEmbedded';
+import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
 
 /**
  * The counts Home shows (ORISO-Admin#1323). One request per fact, page size 1,
@@ -49,8 +55,37 @@ const useFact = <T>(key: string, enabled: boolean, load: () => Promise<T>) =>
         staleTime: 60_000,
     }).data;
 
+const hasText = (value: unknown): boolean => {
+    if (typeof value === 'string') return value.trim() !== '';
+    if (value && typeof value === 'object') return Object.values(value).some(hasText);
+    return false;
+};
+
+/** The few things Home needs from a tenant record; tolerant of missing blocks. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- public and admin tenant payloads differ
+export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
+    if (!tenant || (tenant.id == null && !tenant.name)) return undefined;
+    const smtp = tenant.settings?.smtp;
+
+    return {
+        appearanceComplete: hasText(tenant.name) && hasText(tenant.content?.claim) && hasText(tenant.theming?.logo),
+        smtpMode: tenant.settings?.smtpMode ?? null,
+        smtpComplete: smtp ? hasText(smtp.host) && hasText(smtp.from) && smtp.passwordSet === true : undefined,
+    };
+};
+
+/**
+ * A Beratungsstelle counts as complete with a postcode and — when the list
+ * carries topics at all — at least one topic.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, only two fields read
+export const isAgencyComplete = (agency: any): boolean =>
+    hasText(agency?.postcode) && (!Array.isArray(agency?.topics) || agency.topics.length > 0);
+
 export interface HomeFactAccess {
     role: HomeRole;
+    /** From the token; null for the platform admin or an unreadable token. */
+    tenantId?: number | null;
     canReadTenants: boolean;
     canReadAgencies: boolean;
     canReadConsultants: boolean;
@@ -59,6 +94,38 @@ export interface HomeFactAccess {
 }
 
 export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
+    const { settings } = useAppConfigContext();
+    const tenantId = access.tenantId ?? null;
+    const ownTenant = useFact('own-tenant', access.role === 'platform' || access.role === 'tenant', async () => {
+        // The admin endpoint carries the SMTP block; fall back to the public
+        // tenant (always reachable) for name, claim and logo.
+        const adminRecord =
+            access.role === 'tenant' && tenantId != null
+                ? await getSingleTenantData(tenantId, { silent: true }).catch(() => undefined)
+                : undefined;
+        const summary = summariseOwnTenant(adminRecord);
+        if (summary) return summary;
+        const publicTenant = await getPublicTenantData(settings).catch(() => undefined);
+        const record = publicTenant
+            ? await getTenantData(publicTenant, settings.multitenancyWithSingleDomainEnabled).catch(() => undefined)
+            : undefined;
+        return summariseOwnTenant(record) ?? null;
+    });
+    const dpaStatus = useFact('dpa-status', access.role === 'tenant' && tenantId != null, async () => {
+        const result = await getDpaStatus(tenantId ?? 0).catch(() => undefined);
+        return (result?.status as DpaStatusFact | undefined) ?? null;
+    });
+    const agencyComplete = useFact('agency-complete', access.role === 'agency' && access.canReadAgencies, async () => {
+        const result = await fetchData({
+            url: `${agencyEndpointBase}?q=*&page=1&perPage=20&order=ASC&field=NAME`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        }).catch(() => undefined);
+        const agencies = result ? removeEmbedded(result)?.data : undefined;
+        if (!Array.isArray(agencies)) return null;
+        return agencies.length > 0 && agencies.every(isAgencyComplete);
+    });
     const tenants = useFact('tenants', access.role === 'platform' && access.canReadTenants, () =>
         getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),
     );
@@ -79,6 +146,9 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
             : counts.reduce((total, count) => total + phases.reduce((part, p) => part + (count?.[p] ?? 0), 0), 0);
 
     return {
+        ownTenant: ownTenant ?? undefined,
+        dpaStatus: dpaStatus ?? undefined,
+        agencyComplete: agencyComplete ?? undefined,
         tenants,
         agencies,
         consultants,

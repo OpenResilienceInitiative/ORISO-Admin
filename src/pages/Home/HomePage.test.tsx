@@ -135,19 +135,21 @@ describe('HomePage (ORISO-Admin#1323)', () => {
     });
 
     it('shows the checklist while steps are open, with state in text, not colour alone', () => {
-        state.facts = { agencies: 1, consultants: 0, acceptedCounsellorInvites: 0 };
+        state.facts = { dpaStatus: 'UNSIGNED', agencies: 1, consultants: 0, acceptedCounsellorInvites: 0 };
 
         renderHome();
 
         const checklist = screen.getByRole('region', { name: 'Erste Schritte' });
-        expect(within(checklist).getByText('1 von 2 erledigt')).toBeTruthy();
+        expect(within(checklist).getByText('1 von 3 erledigt')).toBeTruthy();
+        // The AVV comes first and reads the stored DPA status (#1374).
+        expect(within(checklist).getAllByRole('link')[0]).toHaveAccessibleName(/^Auftragsverarbeitungsvertrag/);
         expect(within(checklist).getByRole('link', { name: /Beratungsstelle anlegen.*erledigt/ })).toBeTruthy();
         expect(within(checklist).getByRole('link', { name: /^Beratende einladen/ })).toBeTruthy();
         expect(within(checklist).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
     });
 
     it('hides the checklist once everything is done', () => {
-        state.facts = { agencies: 1, consultants: 5 };
+        state.facts = { dpaStatus: 'VALID', agencies: 1, consultants: 5 };
 
         renderHome();
 

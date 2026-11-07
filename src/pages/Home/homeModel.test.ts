@@ -3,6 +3,7 @@ import { UserRole } from '../../enums/UserRole';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import { buildChecklist, buildHomeTiles, groupSettingsTabs, resolveHomeRole } from './homeModel';
+import { isAgencyComplete, summariseOwnTenant } from './useHomeFacts';
 
 const nav = (...keys: string[]): AdminSidebarNavItem[] =>
     keys.map((key) => ({ key, to: `/admin/${key}`, label: key, iconPath: `/admin/${key}` }));
@@ -146,9 +147,9 @@ describe('buildChecklist — derived from data, never stored', () => {
     });
 
     it('counts counsellors who already have an account as done, even without an invitation', () => {
-        const [step] = buildChecklist('agency', { consultants: 3, acceptedCounsellorInvites: 0 }, ALL);
+        const steps = buildChecklist('agency', { consultants: 3, acceptedCounsellorInvites: 0 }, ALL);
 
-        expect(step).toMatchObject({ id: 'invite-counsellors', state: 'done' });
+        expect(steps.find((step) => step.id === 'invite-counsellors')).toMatchObject({ state: 'done' });
     });
 
     it('marks a step unknown when its fact could not be loaded', () => {
@@ -160,7 +161,101 @@ describe('buildChecklist — derived from data, never stored', () => {
     it('never shows a Beratungsstellen admin a Träger step', () => {
         const steps = buildChecklist('agency', {}, ALL);
 
-        expect(steps.map((step) => step.id)).toEqual(['invite-counsellors']);
+        expect(steps.map((step) => step.id)).toEqual(['complete-agency', 'invite-counsellors']);
+    });
+
+    it('tells a Beratungsstellen admin whether the centre is complete', () => {
+        expect(buildChecklist('agency', { agencyComplete: false }, ALL)[0]).toMatchObject({
+            id: 'complete-agency',
+            state: 'open',
+        });
+        expect(buildChecklist('agency', { agencyComplete: true }, ALL)[0].state).toBe('done');
+    });
+});
+
+describe('buildChecklist — role perspectives from stored data (#1374)', () => {
+    const WITH_SETTINGS = nav('theme', 'tenants', 'agency', 'counselors', 'links');
+
+    it('starts the platform admin with the platform look, then Träger and their admins', () => {
+        const steps = buildChecklist(
+            'platform',
+            { ownTenant: { appearanceComplete: true }, tenants: 0, acceptedTenantInvites: 0 },
+            WITH_SETTINGS,
+        );
+
+        expect(steps.map((step) => [step.id, step.state])).toEqual([
+            ['platform-appearance', 'done'],
+            ['create-tenant', 'open'],
+            ['invite-tenant-admins', 'open'],
+        ]);
+    });
+
+    it('starts a Träger admin with the AVV, read from the stored DPA status', () => {
+        const state = (dpaStatus: 'VALID' | 'UNSIGNED' | 'OUTDATED' | 'INCONSISTENT' | undefined) =>
+            buildChecklist('tenant', { dpaStatus }, WITH_SETTINGS)[0];
+
+        expect(state('VALID')).toMatchObject({ id: 'sign-dpa', state: 'done' });
+        expect(state('UNSIGNED').state).toBe('open');
+        expect(state('OUTDATED').state).toBe('open');
+        expect(state('INCONSISTENT').state).toBe('unknown');
+        expect(state(undefined).state).toBe('unknown');
+    });
+
+    it('shows the mail server step only to a Träger with its own mail server', () => {
+        const ids = (smtpMode: 'OWN' | 'PLATFORM') =>
+            buildChecklist(
+                'tenant',
+                { ownTenant: { appearanceComplete: false, smtpMode, smtpComplete: false } },
+                WITH_SETTINGS,
+            ).map((step) => step.id);
+
+        expect(ids('OWN')).toEqual([
+            'sign-dpa',
+            'tenant-appearance',
+            'check-mail-server',
+            'create-agency',
+            'invite-counsellors',
+        ]);
+        expect(ids('PLATFORM')).not.toContain('check-mail-server');
+    });
+
+    it('drops a settings step when this admin does not have that settings tab', () => {
+        const steps = buildChecklist('tenant', {}, WITH_SETTINGS, ['/admin/theme-settings/legal']);
+
+        expect(steps.map((step) => step.id)).toEqual(['sign-dpa', 'create-agency', 'invite-counsellors']);
+    });
+});
+
+describe('summariseOwnTenant / isAgencyComplete', () => {
+    it('needs name, claim and logo for a complete look', () => {
+        const tenant = {
+            id: 3,
+            name: 'Caritas Süd',
+            content: { claim: { de: 'Für Sie da' } },
+            theming: { logo: 'x.png' },
+        };
+
+        expect(summariseOwnTenant(tenant)?.appearanceComplete).toBe(true);
+        expect(summariseOwnTenant({ ...tenant, content: { claim: { de: ' ' } } })?.appearanceComplete).toBe(false);
+    });
+
+    it('reads the SMTP block only when the API exposes it', () => {
+        const base = { id: 3, name: 'x', settings: { smtpMode: 'OWN' } };
+
+        expect(summariseOwnTenant(base)?.smtpComplete).toBeUndefined();
+        expect(
+            summariseOwnTenant({
+                ...base,
+                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', passwordSet: true } },
+            })?.smtpComplete,
+        ).toBe(true);
+    });
+
+    it('counts a centre complete with postcode and topics', () => {
+        expect(isAgencyComplete({ postcode: '10115', topics: [{ id: 1 }] })).toBe(true);
+        expect(isAgencyComplete({ postcode: '10115', topics: [] })).toBe(false);
+        expect(isAgencyComplete({ postcode: '', topics: [{ id: 1 }] })).toBe(false);
+        expect(isAgencyComplete({ postcode: '10115' })).toBe(true);
     });
 });
 

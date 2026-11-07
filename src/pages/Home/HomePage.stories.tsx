@@ -39,6 +39,7 @@ export const PlatformAdminFirstLogin: Story = {
             return withSeededAdminProviders(
                 Story,
                 seedFacts({
+                    'own-tenant': { appearanceComplete: true, smtpMode: 'PLATFORM' },
                     tenants: 0,
                     agencies: 0,
                     consultants: 0,
@@ -58,6 +59,9 @@ export const TraegerAdmin: Story = {
             return withSeededAdminProviders(
                 Story,
                 seedFacts({
+                    // AVV still to sign, own mail server not finished (#1374).
+                    'dpa-status': 'UNSIGNED',
+                    'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: false },
                     agencies: 1,
                     consultants: 0,
                     'invites-unit': { INVITED: 3, NEEDS_ACTION: 1, DONE: 0 },
@@ -74,7 +78,12 @@ export const BeratungsstellenAdmin: Story = {
             setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 7);
             return withSeededAdminProviders(
                 Story,
-                seedFacts({ agencies: 1, consultants: 4, 'invites-unit': { INVITED: 2 } }),
+                seedFacts({
+                    'agency-complete': false,
+                    agencies: 1,
+                    consultants: 4,
+                    'invites-unit': { INVITED: 2 },
+                }),
             );
         },
     ],

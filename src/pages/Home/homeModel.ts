@@ -11,7 +11,8 @@ import type { AdminNavSubsection } from '../../components/Layout/adminNavTree';
  *
  * Pure on purpose: tiles come from the nav items the layout already resolved
  * with the permission helpers, so Home can never offer an area the navigation
- * hides. Checklist steps are derived from counts, never stored.
+ * hides. Checklist steps are derived from data the services already store
+ * (counts, AVV status, Träger master data, SMTP mode); nothing is stored for Home.
  */
 
 export type HomeRole = 'platform' | 'tenant' | 'agency' | 'other';
@@ -32,7 +33,23 @@ export const resolveHomeRole = ({
 };
 
 /** Counts Home reads; `undefined` = not loaded or not allowed. */
+/** What Home knows about the admin's own Träger (or the platform's own tenant). */
+export interface OwnTenantFacts {
+    /** Name, claim and logo are set. */
+    appearanceComplete: boolean;
+    smtpMode?: 'PLATFORM' | 'OWN' | null;
+    /** Host, sender and password stored; undefined when the API does not expose the SMTP block. */
+    smtpComplete?: boolean;
+}
+
+export type DpaStatusFact = 'MISSING' | 'UNSIGNED' | 'OUTDATED' | 'VALID' | 'INCONSISTENT';
+
 export interface HomeFacts {
+    ownTenant?: OwnTenantFacts;
+    /** AVV status of the admin's Träger (tenant admins only). */
+    dpaStatus?: DpaStatusFact;
+    /** Every own Beratungsstelle has a postcode and, where listed, at least one topic. */
+    agencyComplete?: boolean;
     tenants?: number;
     agencies?: number;
     consultants?: number;
@@ -201,8 +218,19 @@ export const buildHomeTiles = (context: HomeTileContext) => dropEmptyOrganisatio
 
 export type StepState = 'done' | 'open' | 'unknown';
 
+export type ChecklistStepId =
+    | 'platform-appearance'
+    | 'create-tenant'
+    | 'invite-tenant-admins'
+    | 'sign-dpa'
+    | 'tenant-appearance'
+    | 'check-mail-server'
+    | 'create-agency'
+    | 'complete-agency'
+    | 'invite-counsellors';
+
 export interface ChecklistStep {
-    id: 'create-tenant' | 'invite-tenant-admins' | 'create-agency' | 'invite-counsellors';
+    id: ChecklistStepId;
     labelKey: string;
     to: string;
     state: StepState;
@@ -212,6 +240,19 @@ const atLeastOne = (...counts: Array<number | undefined>): StepState => {
     if (counts.some((count) => (count ?? 0) > 0)) return 'done';
     return counts.every((count) => count === undefined) ? 'unknown' : 'open';
 };
+
+const fromFlag = (flag: boolean | undefined): StepState => {
+    if (flag === undefined) return 'unknown';
+    return flag ? 'done' : 'open';
+};
+
+const fromDpa = (status: DpaStatusFact | undefined): StepState => {
+    if (status === 'VALID') return 'done';
+    if (status === 'UNSIGNED' || status === 'OUTDATED' || status === 'MISSING') return 'open';
+    return 'unknown';
+};
+
+const SETTINGS = routePathNames.themeSettings;
 
 const buildRoleSteps = (role: HomeRole, facts: HomeFacts): ChecklistStep[] => {
     const step = (id: ChecklistStep['id'], to: string, state: StepState): ChecklistStep => ({
@@ -226,31 +267,66 @@ const buildRoleSteps = (role: HomeRole, facts: HomeFacts): ChecklistStep[] => {
         atLeastOne(facts.consultants, facts.acceptedCounsellorInvites),
     );
 
+    const { ownTenant } = facts;
+    const appearance = (id: 'platform-appearance' | 'tenant-appearance') =>
+        step(id, `${SETTINGS}/general`, fromFlag(ownTenant?.appearanceComplete));
+    // Only a Träger with its own mail server has something to check here.
+    const mailServer =
+        ownTenant?.smtpMode === 'OWN'
+            ? [step('check-mail-server', `${SETTINGS}/smtp`, fromFlag(ownTenant.smtpComplete))]
+            : [];
+
     switch (role) {
         case 'platform':
             return [
+                appearance('platform-appearance'),
                 step('create-tenant', routePathNames.linksTenants, atLeastOne(facts.tenants)),
                 step('invite-tenant-admins', routePathNames.linksTenants, atLeastOne(facts.acceptedTenantInvites)),
             ];
         case 'tenant':
-            return [step('create-agency', routePathNames.agency, atLeastOne(facts.agencies)), inviteCounsellors];
+            return [
+                step('sign-dpa', `${SETTINGS}/legal`, fromDpa(facts.dpaStatus)),
+                appearance('tenant-appearance'),
+                ...mailServer,
+                step('create-agency', routePathNames.agency, atLeastOne(facts.agencies)),
+                inviteCounsellors,
+            ];
         case 'agency':
-            return [inviteCounsellors];
+            return [step('complete-agency', routePathNames.agency, fromFlag(facts.agencyComplete)), inviteCounsellors];
         default:
             return [];
     }
 };
 
 /** Nav section a step leads into; without it the step would link into a dead end. */
-const STEP_AREA: Record<ChecklistStep['id'], string> = {
+const STEP_AREA: Record<ChecklistStepId, string> = {
+    'platform-appearance': 'theme',
+    'sign-dpa': 'theme',
+    'tenant-appearance': 'theme',
+    'check-mail-server': 'theme',
+    'complete-agency': 'agency',
     'create-tenant': 'links',
     'invite-tenant-admins': 'links',
     'create-agency': 'agency',
     'invite-counsellors': 'links',
 };
 
-export const buildChecklist = (role: HomeRole, facts: HomeFacts, navItems: AdminSidebarNavItem[]): ChecklistStep[] =>
-    buildRoleSteps(role, facts).filter((step) => navItems.some((item) => item.key === STEP_AREA[step.id]));
+/**
+ * `settingsRoutes`: the settings tabs this admin can open. A step that leads into a
+ * settings tab only shows when that tab is there (e.g. no appearance step when the
+ * platform has not released appearance editing to Träger admins).
+ */
+export const buildChecklist = (
+    role: HomeRole,
+    facts: HomeFacts,
+    navItems: AdminSidebarNavItem[],
+    settingsRoutes?: string[],
+): ChecklistStep[] =>
+    buildRoleSteps(role, facts).filter(
+        (step) =>
+            navItems.some((item) => item.key === STEP_AREA[step.id]) &&
+            (STEP_AREA[step.id] !== 'theme' || !settingsRoutes || settingsRoutes.includes(step.to)),
+    );
 
 export type SettingsGroupId = 'appearance' | 'communication' | 'access';
 
