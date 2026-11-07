@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, waitFor, within } from 'storybook/test';
 import { applyAdminInvertedTheme } from '../../utils/applyAdminTheme';
+import { contrastRatio } from '../../utils/contrastRatio';
 import { Snackbar, SnackbarCloseButton, SnackbarTextButton, type SnackbarProps } from './Snackbar';
 import { SnackbarProvider, useSnackbar } from './useSnackbar';
 import { createSnackbarStore } from './snackbarStore';
@@ -284,6 +285,65 @@ const DarkFrame = () => {
 };
 
 export const DarkScheme: Story = { render: () => <DarkFrame /> };
+
+/* ---------------------------------------------------------------- focus ring */
+
+const TONES_WITH_CONTROLS = (['info', 'success', 'warning', 'error'] as const).map((severity) => (
+    <Snackbar key={severity} message={`${severity}: keyboard focus`} severity={severity} action={action} dismissible />
+));
+
+const rgbToHex = (rgb: string): string => {
+    const [r, g, b] = (rgb.match(/\d+(\.\d+)?/g) ?? ['0', '0', '0'])
+        .slice(0, 3)
+        .map((part) => Math.round(Number(part)));
+    return `#${[r, g, b].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+};
+
+const FocusRingFrames = () => {
+    const dark = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        if (dark.current) applyAdminInvertedTheme({ primaryColor: '#A5000A' }, dark.current);
+    }, []);
+    return (
+        <div style={{ display: 'grid', gap: 24, width: 344 }}>
+            <div style={{ display: 'grid', gap: 16 }}>{TONES_WITH_CONTROLS}</div>
+            <div
+                ref={dark}
+                style={{ display: 'grid', gap: 16, padding: 16, background: 'var(--m3-surface)', borderRadius: 8 }}
+            >
+                {TONES_WITH_CONTROLS}
+            </div>
+        </div>
+    );
+};
+
+/**
+ * The focus ring of the action and the close button, in every tone and in both schemes, measured on
+ * the real rendering: a 3px ring that is at least 3:1 against the snackbar behind it (WCAG 1.4.11).
+ * axe does not look at the focus state, so this story does.
+ */
+export const FocusRing: Story = {
+    render: () => <FocusRingFrames />,
+    play: async ({ canvasElement, userEvent }) => {
+        const buttons = within(canvasElement).getAllByRole('button');
+        await expect(buttons).toHaveLength(16);
+        for (let index = 0; index < buttons.length; index += 1) {
+            const button = buttons[index];
+            // eslint-disable-next-line no-await-in-loop -- keyboard focus moves one stop at a time
+            await userEvent.tab();
+            // eslint-disable-next-line no-await-in-loop
+            await expect(button).toHaveFocus();
+            const ring = getComputedStyle(button);
+            const container = getComputedStyle(button.closest('[data-severity]') as HTMLElement);
+            // eslint-disable-next-line no-await-in-loop
+            await expect(ring.outlineWidth).toBe('3px');
+            // eslint-disable-next-line no-await-in-loop
+            await expect(
+                contrastRatio(rgbToHex(ring.outlineColor), rgbToHex(container.backgroundColor)),
+            ).toBeGreaterThanOrEqual(3);
+        }
+    },
+};
 
 /* ---------------------------------------------------------------- channel demo */
 

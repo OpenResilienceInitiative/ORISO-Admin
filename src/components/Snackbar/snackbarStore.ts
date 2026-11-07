@@ -265,7 +265,12 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
             setState([...state.visible, item], state.queued);
         } else {
             const queued = [...state.queued, item];
-            while (queued.length > MAX_QUEUE) finish(queued.shift() as SnackbarItem, 'replaced');
+            // Errors stay: when the queue is full, the oldest waiting message that is not an error goes
+            // first, and an error only makes room for a newer error.
+            while (queued.length > MAX_QUEUE) {
+                const drop = queued.findIndex((waiting) => waiting.severity !== 'error');
+                finish(queued.splice(drop < 0 ? 0 : drop, 1)[0], 'replaced');
+            }
             setState(state.visible, queued);
         }
         return key;
@@ -343,24 +348,14 @@ interface LegacyNotice {
     title?: ReactNode;
     /** Seconds, as antd. Only success and info time out, so this is read for those; 0 = until closed. */
     duration?: number;
-    /** Ignored, antd layout props that have no meaning here. */
-    placement?: unknown;
-    className?: unknown;
-    style?: unknown;
-    icon?: unknown;
-    closeIcon?: unknown;
 }
-
-/** antd layout props that have no meaning on a pop-up. */
-const IGNORED_LEGACY_PROPS = ['placement', 'className', 'style', 'icon', 'closeIcon'];
 
 const toOptions = (severity: SnackbarSeverity, input: SnackbarSugar): SnackbarOptions => {
     // antd `message.success(<Content />)` took a bare node as the content.
     if (typeof input === 'string' || isValidElement(input)) return { message: input, severity };
     const { content, message, title, duration, ...rest } = input as LegacyNotice &
         Omit<SnackbarOptionsBase, 'durationMs'>;
-    const kept = Object.fromEntries(Object.entries(rest).filter(([name]) => !IGNORED_LEGACY_PROPS.includes(name)));
-    const options: SnackbarOptions = { ...kept, message: content ?? title ?? message, severity };
+    const options: SnackbarOptions = { ...rest, message: content ?? title ?? message, severity };
     if (duration !== undefined) {
         if (duration > 0) options.durationMs = duration * 1000;
         else options.persistent = true;
@@ -374,8 +369,6 @@ export const createSnackbarApi = (store: SnackbarStore) => ({
     info: (input: SnackbarSugar) => store.notify(toOptions('info', input)),
     success: (input: SnackbarSugar) => store.notify(toOptions('success', input)),
     warning: (input: SnackbarSugar) => store.notify(toOptions('warning', input)),
-    /** Alias of `warning`, the antd spelling. */
-    warn: (input: SnackbarSugar) => store.notify(toOptions('warning', input)),
     error: (input: SnackbarSugar) => store.notify(toOptions('error', input)),
     /** Close one pop-up by the key `notify` returned, or the oldest visible one without a key. */
     dismiss: (key?: string) => (key ? store.dismiss(key) : store.close('dismiss')),

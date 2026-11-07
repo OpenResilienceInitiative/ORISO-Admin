@@ -277,9 +277,14 @@ const invertedTokens = (
         '--m3-inverse-surface': '#fcf9f9',
         '--m3-inverse-on-surface': '#1a1c1e',
         // Dark scheme: the inverse roles are the light scheme's, so the snackbar action keeps the brand red.
-        '--m3-inverse-primary': accentDark,
+        '--m3-inverse-primary': keepReadableOn(accentDark, '#fcf9f9'),
         '--m3-success-container': '#39414b',
         '--m3-on-success-container': '#e7effc',
+        '--m3-success-action': keepReadableOn(primary, '#39414b'),
+        // The tertiary container stays light in the dark scheme, so the warning snackbar has its own dark pair.
+        '--m3-warning-container': '#5a3a36',
+        '--m3-on-warning-container': '#ffdad6',
+        '--m3-warning-action': keepReadableOn(primary, '#5a3a36'),
         '--oriso-app-accent': primary,
         '--oriso-app-accent-dark': accentDark,
         '--oriso-app-accent-light': accentLight,
@@ -329,6 +334,9 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-primary-fixed': accentLight,
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
+            // Snackbar action text on the success and warning containers, whatever the brand seed.
+            '--m3-success-action': keepReadableOn(accentDark, '#e7effc'),
+            '--m3-warning-action': keepReadableOn(accentDark, '#ffdad6'),
             '--m3-secondary': '#4c555f',
             '--m3-on-secondary': '#ffffff',
             '--m3-secondary-container': '#646d78',

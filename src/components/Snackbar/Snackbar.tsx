@@ -144,7 +144,7 @@ export const Snackbar = ({
         styles.snackbar,
         stacked ? styles.stacked : styles.inline,
         dismissible ? styles.hasClose : '',
-        action ? styles.hasAction : '',
+        action || secondaryAction ? styles.hasAction : '',
         className ?? '',
     ]
         .filter(Boolean)
@@ -165,8 +165,9 @@ export const Snackbar = ({
     return (
         <div className={classNames} data-severity={severity} data-layout="inline" data-testid={testId}>
             {text}
-            {(actionButton || closeButton) && (
+            {(actionButton || secondaryButton || closeButton) && (
                 <div className={styles.controls}>
+                    {secondaryButton}
                     {actionButton}
                     {closeButton}
                 </div>

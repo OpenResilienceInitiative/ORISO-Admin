@@ -122,6 +122,16 @@
     --m3-success-container: var(--m3-on-secondary-container);
     --m3-on-success-container: var(--m3-on-primary-container);
 
+    /* Warning tone of the snackbar: the tertiary container pair in the light scheme. The dark scheme
+       (orisoScheme.ts) sets a dark pair, because the tertiary container stays light there. */
+    --m3-warning-container: var(--m3-tertiary-container);
+    --m3-on-warning-container: var(--m3-on-tertiary-container);
+
+    /* Action text on those two containers. The scheme computes it from the brand seed so that a pale seed
+       still reads (orisoScheme.ts); this is the default seed's value. */
+    --m3-success-action: var(--m3-primary);
+    --m3-warning-action: var(--m3-primary);
+
     /* Figma `M3/Elevation Light/3` (snackbar, menus): two layers, 0/1/3 at 30% and 0/4/8 spread 3 at 15%. */
     --m3-elevation-3: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
 

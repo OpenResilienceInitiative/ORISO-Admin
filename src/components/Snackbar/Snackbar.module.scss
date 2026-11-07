@@ -11,6 +11,9 @@
     --snackbar-container: var(--m3-inverse-surface);
     --snackbar-on-container: var(--m3-inverse-on-surface);
     --snackbar-action: var(--m3-inverse-primary);
+    // The ring is the text colour of the variant: that pair is built to be readable on the container,
+    // so the ring always clears 3:1 (WCAG 1.4.11), in every tone and both schemes.
+    --snackbar-focus: var(--snackbar-on-container);
 
     display: flex;
     box-sizing: border-box;
@@ -46,13 +49,13 @@
 .snackbar[data-severity='success'] {
     --snackbar-container: var(--m3-success-container);
     --snackbar-on-container: var(--m3-on-success-container);
-    --snackbar-action: var(--m3-primary);
+    --snackbar-action: var(--m3-success-action);
 }
 
 .snackbar[data-severity='warning'] {
-    --snackbar-container: var(--m3-tertiary-container);
-    --snackbar-on-container: var(--m3-on-tertiary-container);
-    --snackbar-action: var(--m3-primary);
+    --snackbar-container: var(--m3-warning-container);
+    --snackbar-on-container: var(--m3-on-warning-container);
+    --snackbar-action: var(--m3-warning-action);
 }
 
 .snackbar[data-severity='error'] {
@@ -103,8 +106,9 @@
     &[data-state='focused'],
     &:focus-visible {
         overflow: visible;
-        // Figma focus indicator: 3px ring, 2px outside the button (M3/sys/light/secondary).
-        outline: 3px solid var(--m3-secondary);
+        // Figma focus indicator: 3px ring, 2px outside the button. Figma paints it M3 secondary, which
+        // is 1.1 to 1.7:1 on the snackbar containers, so the ring takes the variant's text colour.
+        outline: 3px solid var(--snackbar-focus);
         outline-offset: -1px;
 
         .stateLayer {
@@ -152,7 +156,7 @@
 
     &[data-state='focused'],
     &:focus-visible {
-        outline: 3px solid var(--m3-secondary);
+        outline: 3px solid var(--snackbar-focus);
         outline-offset: -5px;
         border-radius: 100px;
 

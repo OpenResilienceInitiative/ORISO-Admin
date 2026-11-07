@@ -97,8 +97,12 @@ both set, an extra `jump` is left out; three actions do not fit.
 
 -   Confirmations are announced politely (`role="status"`), errors assertively (`role="alert"`).
     Both regions exist before the first message, which is what makes screen readers read it.
--   Focus is never moved to a snackbar. The action and the close button are ordinary buttons in the
-    tab order; **Escape** closes the snackbar when focus is inside it.
+-   Focus is never moved to a snackbar by the channel itself. The action and the close button are
+    ordinary buttons in the tab order, and the host sits at the end of the page, so **Alt+T** moves
+    focus to the newest one from anywhere. **Escape** closes the snackbar when focus is inside it, and
+    closing it (Escape, close button, action or timeout while it has focus) returns focus to where it was.
+-   The focus ring takes the text colour of the tone, so it is at least 3:1 against the snackbar in
+    every tone and both schemes (the `FocusRing` story measures it).
 -   `prefers-reduced-motion` turns the 150 ms rise-and-fade off.
 -   Action and close targets are 40 and 48 px high, as in Figma.
 

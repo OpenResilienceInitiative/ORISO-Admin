@@ -356,4 +356,58 @@ describe('SnackbarHost', () => {
             expect(screen.queryByText('Weg')).toBeNull();
         });
     });
+    describe('keyboard and pointer', () => {
+        it('keeps waiting while focus is inside, even after the pointer leaves', async () => {
+            const { api } = setup();
+            act(() => {
+                api.success('Gespeichert');
+            });
+            const close = screen.getByRole('button', { name: /Meldung schließen|Close message/ });
+            const popup = screen.getByTestId('snackbar');
+            await userEvent.hover(popup);
+            act(() => {
+                close.focus();
+            });
+            await userEvent.unhover(popup);
+            act(() => {
+                vi.advanceTimersByTime(60_000);
+            });
+            expect(screen.getByText('Gespeichert')).toBeInTheDocument();
+        });
+
+        it('gives focus back to where it was when the focused pop-up closes with Escape', async () => {
+            const { api } = setup();
+            const opener = document.createElement('button');
+            document.body.appendChild(opener);
+            opener.focus();
+            act(() => {
+                api.error('Fehler');
+            });
+            act(() => {
+                screen.getByRole('button', { name: /Meldung schließen|Close message/ }).focus();
+            });
+            await userEvent.keyboard('{Escape}');
+            expect(screen.queryByText('Fehler')).toBeNull();
+            expect(opener).toHaveFocus();
+            opener.remove();
+        });
+
+        it('reaches the newest pop-up with Alt+T from anywhere on the page', async () => {
+            const { api } = setup();
+            act(() => {
+                api.error('Erster');
+                api.error('Neuester');
+            });
+            await userEvent.keyboard('{Alt>}t{/Alt}');
+            expect(within(screen.getAllByTestId('snackbar')[1]).getByRole('button')).toHaveFocus();
+        });
+    });
+
+    it('shows a second action even without a first one', () => {
+        const { api } = setup();
+        act(() => {
+            api.notify({ title: 'Zwei', secondaryAction: { label: 'Verwerfen', onClick: vi.fn() } });
+        });
+        expect(screen.getByRole('button', { name: 'Verwerfen' })).toBeInTheDocument();
+    });
 });

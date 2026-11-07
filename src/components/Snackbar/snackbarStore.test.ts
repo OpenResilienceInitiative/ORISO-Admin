@@ -52,6 +52,17 @@ describe('snackbar store: the stack', () => {
         ]);
     });
 
+    it('keeps waiting errors when the queue overflows: other messages go first', () => {
+        const { api, store } = setup();
+        for (let i = 0; i < 4; i += 1) api.info(`shown${i}`);
+        api.error('waiting error');
+        for (let i = 0; i < 12; i += 1) api.info(`waiting${i}`);
+        const queued = messages(store.getState().queued);
+        expect(queued).toHaveLength(10);
+        expect(queued[0]).toBe('waiting error');
+        expect(queued).not.toContain('waiting0');
+    });
+
     it('caps the queue and drops the oldest waiting message', () => {
         const { api, store } = setup();
         for (let i = 0; i < 20; i += 1) api.info(`m${i}`);
@@ -163,7 +174,7 @@ describe('snackbar store: the antd call shape', () => {
             description: 'more',
             durationMs: 5000,
         });
-        api.warn('same as warning');
+        api.warning('same as warning');
         expect(store.getState().visible[2].severity).toBe('warning');
     });
 

@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    useSyncExternalStore,
+    type FocusEvent,
+    type KeyboardEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Snackbar } from './Snackbar';
@@ -29,14 +38,19 @@ interface SlotProps {
  */
 const SnackbarSlot = ({ store, item, order }: SlotProps) => {
     const { t } = useTranslation();
-    const [paused, setPaused] = useState(false);
+    // Hover and focus are two reasons to wait: leaving with the mouse must not restart the timer while
+    // focus is still inside the pop-up, and the other way round.
+    const [hovered, setHovered] = useState(false);
+    const [focused, setFocused] = useState(false);
+    const paused = hovered || focused;
     const remaining = useRef<number | null>(null);
     const startedAt = useRef(0);
 
     // A new or refreshed pop-up is a new object: it always starts with its full time.
     useEffect(() => {
         remaining.current = item.durationMs;
-        setPaused(false);
+        setHovered(false);
+        setFocused(false);
     }, [item]);
 
     useEffect(() => {
@@ -52,8 +66,13 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
         };
     }, [item, paused, store]);
 
-    const pause = useCallback(() => setPaused(true), []);
-    const resume = useCallback(() => setPaused(false), []);
+    const hover = useCallback(() => setHovered(true), []);
+    const unhover = useCallback(() => setHovered(false), []);
+    const focus = useCallback(() => setFocused(true), []);
+    const blur = useCallback((event: FocusEvent<HTMLDivElement>) => {
+        // Moving between the buttons of one pop-up is still "focus inside".
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+    }, []);
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === 'Escape') {
             event.stopPropagation();
@@ -76,10 +95,11 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
         <div
             className={styles.item}
             style={{ order }}
-            onMouseEnter={pause}
-            onMouseLeave={resume}
-            onFocus={pause}
-            onBlur={resume}
+            data-snackbar-key={item.key}
+            onMouseEnter={hover}
+            onMouseLeave={unhover}
+            onFocus={focus}
+            onBlur={blur}
             onKeyDown={onKeyDown}
         >
             <Snackbar
@@ -110,6 +130,51 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
 export const SnackbarHost = ({ store = snackbarStore, container, contained = false }: SnackbarHostProps) => {
     const { t } = useTranslation();
     const { visible } = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+    const hostRef = useRef<HTMLDivElement>(null);
+    const lastOutside = useRef<HTMLElement | null>(null);
+    const focusWasInside = useRef(false);
+
+    // Keyboard access. The host sits at the end of the page, so a pop-up that stays (an error) would be
+    // the last thing a keyboard user reaches by Tab. Alt+T jumps to the newest one; closing it gives
+    // focus back to where it came from.
+    useEffect(() => {
+        const inside = (node: EventTarget | null) => node instanceof Node && !!hostRef.current?.contains(node);
+        const onFocusIn = (event: globalThis.FocusEvent) => {
+            if (inside(event.target)) focusWasInside.current = true;
+            else if (event.target instanceof HTMLElement) {
+                lastOutside.current = event.target;
+                focusWasInside.current = false;
+            }
+        };
+        const onKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (!event.altKey || event.code !== 'KeyT') return;
+            const newest = store.getState().visible.at(-1);
+            const element = Array.from(
+                hostRef.current?.querySelectorAll<HTMLElement>('[data-snackbar-key]') ?? [],
+            ).find((node) => node.dataset.snackbarKey === newest?.key);
+            const button = element?.querySelector<HTMLElement>('button');
+            if (!button) return;
+            event.preventDefault();
+            button.focus();
+        };
+        document.addEventListener('focusin', onFocusIn);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('focusin', onFocusIn);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [store]);
+
+    // A pop-up that had focus is gone (closed, acted on, timed out): focus would fall to <body>, which
+    // sends a keyboard user back to the top of the page. Return it to where it was.
+    useLayoutEffect(() => {
+        if (!focusWasInside.current) return;
+        const active = document.activeElement;
+        if (active && active !== document.body && hostRef.current?.contains(active)) return;
+        focusWasInside.current = false;
+        const back = lastOutside.current;
+        if (back?.isConnected) back.focus();
+    }, [visible]);
 
     let target = container;
     if (target === undefined) target = typeof document === 'undefined' ? null : document.body;
@@ -122,6 +187,7 @@ export const SnackbarHost = ({ store = snackbarStore, container, contained = fal
         );
     return createPortal(
         <div
+            ref={hostRef}
             className={`${styles.host} ${contained ? styles.contained : ''}`}
             data-testid="snackbar-host"
             role="region"
