@@ -2530,9 +2530,12 @@ export const Statistic = () => {
                                     ))}
                                 </CardGrid>
 
+                                {/* Five channel tiles: narrower minimum so they share one row on a desktop
+                                    instead of leaving one tile alone next to an empty gap (#1374). */}
                                 <CardGrid
                                     raster
                                     fluid
+                                    minCardWidth={224}
                                     className={`statisticDashboard__communicationGrid${
                                         showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
                                     }`}
