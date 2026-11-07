@@ -1,0 +1,177 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import type { AdminSidebarNavItem } from '../Layout/AdminSidebar';
+import type { AdminNavSubsection } from '../Layout/adminNavTree';
+import { AdminSearchView } from './AdminSearchView';
+import { rememberSearch } from './recentSearches';
+import type { SearchDoc } from './searchTypes';
+import { useAdminSearchIndex } from './useAdminSearchIndex';
+import { useSearchEntities } from './useSearchEntities';
+import { useTileTarget } from './useTileTarget';
+import { withTileTarget } from './tileTarget';
+
+interface AdminSearchContextValue {
+    isOpen: boolean;
+    /** False outside a provider (or while disabled): callers fall back to their own search. */
+    available: boolean;
+    /** `trigger` is the button that was pressed: the view grows out of it and shrinks back into it. */
+    open: (trigger?: Element | null) => void;
+    close: () => void;
+}
+
+const noop = () => undefined;
+const AdminSearchContext = createContext<AdminSearchContextValue>({
+    isOpen: false,
+    available: false,
+    open: noop,
+    close: noop,
+});
+
+/** `open()` shows the search view; a no-op outside the provider so buttons can render in isolation. */
+export const useAdminSearch = () => useContext(AdminSearchContext);
+
+/** Ctrl/Cmd+K, the shortcut people know from other tools. */
+export const isSearchShortcut = (event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>): boolean =>
+    event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey;
+
+const isTypingTarget = (target: EventTarget | null): boolean =>
+    target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+/** "/" opens the search too (GitHub, Slack), as long as the person is not typing somewhere. */
+export const isSlashShortcut = (
+    event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'target' | 'defaultPrevented'>,
+): boolean =>
+    event.key === '/' &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.defaultPrevented &&
+    !isTypingTarget(event.target);
+
+export interface SearchOrigin {
+    x: number;
+    y: number;
+}
+
+const centreOf = (element: Element | null | undefined): SearchOrigin | undefined => {
+    const rect = element?.getBoundingClientRect();
+
+    return rect && rect.width > 0 ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : undefined;
+};
+
+/** The pressed button, else any visible search button (keyboard shortcut), else the top middle. */
+export const resolveOrigin = (trigger?: Element | null): SearchOrigin =>
+    centreOf(trigger) ??
+    centreOf(document.querySelector('[data-admin-search-button], [data-admin-mobile-nav-search]')) ?? {
+        x: window.innerWidth / 2,
+        y: 40,
+    };
+
+interface DialogProps {
+    navItems: AdminSidebarNavItem[];
+    account?: AdminSidebarNavItem;
+    tree: Record<string, AdminNavSubsection[]>;
+    origin: SearchOrigin;
+    onClose: () => void;
+}
+
+const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogProps) => {
+    const navigate = useNavigate();
+    const index = useAdminSearchIndex({ navItems, account, tree });
+    const [query, setQuery] = useState('');
+    const { docs, isFetching } = useSearchEntities(query);
+
+    const onOpen = useCallback(
+        (doc: SearchDoc, typed: string) => {
+            rememberSearch(typed);
+            // The view closes itself (shrinking back into the button) right after this.
+            navigate(withTileTarget(doc.to, doc.tileKey));
+        },
+        [navigate],
+    );
+
+    return (
+        <AdminSearchView
+            index={index}
+            entityDocs={docs}
+            loadingEntities={isFetching}
+            onQueryChange={setQuery}
+            onOpen={onOpen}
+            onClose={onClose}
+            origin={origin}
+        />
+    );
+};
+
+interface ProviderProps {
+    navItems: AdminSidebarNavItem[];
+    account?: AdminSidebarNavItem;
+    tree: Record<string, AdminNavSubsection[]>;
+    /** The restricted layout (2FA gate) has no navigation to search. */
+    disabled?: boolean;
+    children: ReactNode;
+}
+
+/**
+ * Owns the open state of the admin search and its keyboard shortcuts (Ctrl/Cmd+K and /), renders the
+ * view while it is open, and makes the page a result opened scroll to its tile. Mount once
+ * inside the router, around the layout.
+ */
+export const AdminSearchProvider = ({ navItems, account, tree, disabled = false, children }: ProviderProps) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [origin, setOrigin] = useState<SearchOrigin>({ x: 0, y: 0 });
+    const isOpenRef = useRef(false);
+    const returnFocus = useRef<HTMLElement | null>(null);
+    useTileTarget();
+
+    const open = useCallback((trigger?: Element | null) => {
+        if (isOpenRef.current) {
+            return;
+        }
+
+        isOpenRef.current = true;
+        const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+        returnFocus.current = trigger instanceof HTMLElement ? trigger : focused;
+        setOrigin(resolveOrigin(trigger));
+        setIsOpen(true);
+    }, []);
+    const close = useCallback(() => {
+        isOpenRef.current = false;
+        setIsOpen(false);
+        // Back to where the person was, once the dialog is gone.
+        window.setTimeout(() => returnFocus.current?.focus?.(), 0);
+    }, []);
+
+    useEffect(() => {
+        if (disabled) {
+            return undefined;
+        }
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (isSearchShortcut(event)) {
+                // While the view is open it closes itself (animated), see its own key handler.
+                event.preventDefault();
+                open();
+            } else if (!isOpenRef.current && isSlashShortcut(event)) {
+                event.preventDefault();
+                open();
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [disabled, open]);
+
+    const value = useMemo(() => ({ isOpen, available: !disabled, open, close }), [isOpen, disabled, open, close]);
+
+    return (
+        <AdminSearchContext.Provider value={value}>
+            {children}
+            {isOpen && !disabled && (
+                <AdminSearchDialog navItems={navItems} account={account} tree={tree} origin={origin} onClose={close} />
+            )}
+        </AdminSearchContext.Provider>
+    );
+};
