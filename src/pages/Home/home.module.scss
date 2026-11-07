@@ -1,65 +1,162 @@
-// Home (ORISO-Admin#1323). Same token family as the mobile menu.
+// Home (ORISO-Admin#1323, layout #1374). Same token family as the mobile menu.
 .page {
     display: flex;
-    max-width: 1200px;
+    width: 100%;
+    max-width: 1440px;
     box-sizing: border-box;
     flex-direction: column;
     padding: 32px var(--admin-content-inset, 24px) 48px;
     color: var(--m3-on-surface, #1b1b1c);
-    gap: 32px;
+    gap: 40px;
 
     @media (max-width: 767px) {
         padding: 20px 16px 24px;
-        gap: 24px;
+        gap: 28px;
     }
 }
 
-.header {
+// Welcome: text left, the line-art conversation right; stacks on a phone.
+.hero {
     display: flex;
+    overflow: hidden;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 32px 36px;
+    border-radius: 24px;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    gap: 24px;
+
+    @media (max-width: 767px) {
+        padding: 24px 20px;
+    }
+}
+
+.heroText {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 420px;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+}
+
+.heroPicture {
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    flex: 0 1 360px;
+    margin: 0 auto;
+    mix-blend-mode: multiply;
+
+    @media (max-width: 767px) {
+        max-width: 240px;
+    }
+}
+
+.roleChip {
+    align-self: flex-start;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: var(--m3-primary-fixed, #ffdad5);
+    color: var(--m3-on-primary-fixed-variant, #930008);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 .title {
     margin: 0;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 500;
-    line-height: 36px;
+    line-height: 40px;
+
+    @media (max-width: 767px) {
+        font-size: 26px;
+        line-height: 32px;
+    }
 }
 
 .intro {
-    max-width: 720px;
+    max-width: 640px;
     margin: 0;
     color: var(--m3-on-surface-variant, #444748);
     font-size: 16px;
     line-height: 24px;
 }
 
-.sectionTitle {
-    margin: 0 0 12px;
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 24px;
+// First steps + welcome video side by side, same height: no blank hole under a
+// short checklist next to the taller video.
+.startRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 24px;
+}
+
+.checklist,
+.videoCard {
+    display: flex;
+    min-width: 0;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding: 24px;
+    border-radius: 24px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%));
+    gap: 16px;
 }
 
 .checklist {
-    max-width: 720px;
-    padding: 20px;
-    border-radius: 24px;
-    background: var(--m3-primary-container, #ffe2de);
+    flex: 2 1 480px;
 }
 
-.checklistHeader {
+.videoCard {
+    max-width: 520px;
+    flex: 1 1 340px;
+
+    @media (max-width: 899px) {
+        max-width: none;
+    }
+}
+
+.cardHeader {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 8px 16px;
+}
+
+.cardTitle {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 28px;
+}
+
+.cardText {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
 }
 
 .progress {
     color: var(--m3-on-surface-variant, #444748);
     font-size: 14px;
+}
+
+.progressBar {
+    overflow: hidden;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--m3-surface-container-high, #eae7e8);
+
+    span {
+        display: block;
+        height: 100%;
+        background: var(--m3-primary, #a5000a);
+    }
 }
 
 .steps {
@@ -73,17 +170,20 @@
 
 .step {
     display: flex;
-    min-height: 48px;
+    min-height: 56px;
     box-sizing: border-box;
     align-items: center;
-    padding: 8px 12px;
-    border-radius: 14px;
-    background: var(--m3-surface-container-lowest, #ffffff);
+    padding: 10px 12px;
+    border-radius: 16px;
     color: var(--m3-on-surface, #1b1b1c);
-    gap: 12px;
+    gap: 14px;
     text-decoration: none;
 
-    &:hover,
+    &:hover {
+        background: var(--m3-surface-container, #f0edee);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
     &:focus-visible {
         color: var(--m3-on-surface, #1b1b1c);
         outline: 2px solid var(--admin-control-selected, #a5000a);
@@ -96,6 +196,10 @@
     color: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
 }
 
+.step[data-state='done'] .stepIcon {
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
 .step[data-state='done'] .stepLabel {
     color: var(--m3-on-surface-variant, #444748);
 }
@@ -104,10 +208,23 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
-.stepLabel {
+.stepText {
+    display: flex;
+    min-width: 0;
     flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stepLabel {
     font-size: 15px;
     font-weight: 500;
+}
+
+.stepHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
 }
 
 .chevron {
@@ -115,17 +232,93 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
+// Welcome video (placeholder until the files are uploaded).
+.video,
+.videoPlaceholder {
+    width: 100%;
+    border-radius: 16px;
+    aspect-ratio: 16 / 9;
+}
+
+.video {
+    background: #000000;
+}
+
+.videoPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+    gap: 12px;
+}
+
+.playButton {
+    display: inline-flex;
+    width: 64px;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: 0 4px 0 0 rgb(0 0 0 / 12%);
+    color: var(--m3-primary, #a5000a);
+    font-size: 36px;
+}
+
+.videoPlaceholderText {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+// Sections: who · what · keep an eye on.
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sectionHeader {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sectionTitle {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 28px;
+}
+
+.sectionText {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
 .tiles {
     display: grid;
     padding: 0;
     margin: 0;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
     list-style: none;
+}
+
+.tiles[data-section='observe'] {
+    grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
 }
 
 .tileItem {
     display: flex;
+}
+
+// A single tile in its section takes the whole row (settings).
+.tileItem:only-child {
+    grid-column: 1 / -1;
 }
 
 .tile {
@@ -133,11 +326,16 @@
     width: 100%;
     box-sizing: border-box;
     flex-direction: column;
-    padding: 16px;
+    padding: 20px;
     border-radius: 24px;
     background: var(--m3-surface-container-lowest, #ffffff);
     box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%));
-    gap: 8px;
+    gap: 12px;
+}
+
+.tileItem[data-tile='invite'] .tile {
+    outline: 2px solid var(--m3-primary-fixed-dim, #ffb4aa);
+    outline-offset: -2px;
 }
 
 .tileLink {
@@ -177,8 +375,8 @@
 .tileTitle {
     flex: 1 1 auto;
     margin: 0;
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 500;
 }
 
 .tileText {
@@ -188,11 +386,78 @@
     line-height: 20px;
 }
 
+.tileLinks {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 2px;
+    list-style: none;
+}
+
+.tileShortcut {
+    display: flex;
+    min-height: 44px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 12px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 15px;
+    gap: 10px;
+    text-decoration: none;
+
+    &:hover {
+        background: var(--m3-surface-container, #f0edee);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &:focus-visible {
+        color: var(--m3-on-surface, #1b1b1c);
+        outline: 2px solid var(--admin-control-selected, #a5000a);
+        outline-offset: -2px;
+    }
+}
+
+.shortcutIcon {
+    flex: 0 0 20px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 20px;
+}
+
+.tileShortcut[data-kind='add'] .shortcutIcon {
+    color: var(--m3-primary, #a5000a);
+}
+
+.shortcutLabel {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.statisticsPreview {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+    list-style: none;
+
+    li {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: var(--m3-surface-container-low, #f6f3f3);
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 13px;
+        line-height: 18px;
+    }
+}
+
 .facts {
     display: flex;
     flex-wrap: wrap;
-    padding: 0;
-    margin: 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
+    margin: auto 0 0;
     gap: 6px;
     list-style: none;
 
@@ -208,36 +473,24 @@
 
 .settingsGroups {
     display: grid;
-    margin: 0;
-    gap: 8px 16px;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-
-    dt {
-        color: var(--m3-on-surface-variant, #444748);
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-    }
-
-    dd {
-        margin: 0;
-        font-size: 14px;
-        line-height: 22px;
-    }
-
-    a {
-        color: var(--m3-on-surface, #1b1b1c);
-        text-decoration: underline;
-        text-decoration-color: var(--m3-outline-variant, #c4c7c8);
-        text-underline-offset: 3px;
-    }
+    gap: 16px 24px;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 }
 
 .settingsGroup {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+}
+
+.settingsGroupTitle {
+    padding: 0 10px 4px;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 .visuallyHidden {

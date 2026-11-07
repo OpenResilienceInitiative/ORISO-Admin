@@ -5,8 +5,10 @@ import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import type { HomeFacts } from './homeModel';
 import { HomePage } from './HomePage';
 import de from '../../locales/de/translation.json';
+import { Resource } from '../../enums/Resource';
 
 const state = vi.hoisted(() => ({
+    canCreateAgency: true,
     roles: { isSuperAdmin: false, isTenantScopedAdmin: true, roles: ['tenant-admin'] as string[] },
     navItems: [] as AdminSidebarNavItem[],
     facts: {} as HomeFacts,
@@ -23,11 +25,19 @@ vi.mock('../../hooks/useUserRoles.hook', () => ({
         hasRole: (role: string | string[]) => [role].flat().some((r) => state.roles.roles.includes(r)),
     }),
 }));
-vi.mock('../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => true }) }));
+vi.mock('../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: string, resource: unknown) =>
+            !(action === 'create' && String(resource) === String(Resource.Agency)) || state.canCreateAgency,
+    }),
+}));
 vi.mock('../../hooks/useUserData.hook', () => ({ useUserData: () => ({ data: { firstName: 'Kim' } }) }));
 vi.mock('../../components/Layout/useAdminNavigation', () => ({
     useAdminNavigation: () => ({
         navItems: state.navItems,
+        tree: {
+            links: [{ id: 'links:counsellor', to: '/admin/links/counsellor', labelKey: 'links.tabs.counsellor' }],
+        },
         settingsTabs: [
             { to: '/admin/theme-settings/legal', titleKey: 'settings.subhead.legal', iconName: 'legal' },
             { to: '/admin/theme-settings/smtp', titleKey: 'settings.subhead.smtp', iconName: 'email_server' },
@@ -51,6 +61,16 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         state.roles = { isSuperAdmin: false, isTenantScopedAdmin: true, roles: ['tenant-admin'] };
         state.navItems = nav('home', 'theme', 'agency', 'counselors', 'links');
         state.facts = {};
+        state.canCreateAgency = true;
+    });
+
+    it('offers founding a Beratungsstelle only with the Create Agency permission', () => {
+        state.canCreateAgency = false;
+
+        renderHome();
+
+        expect(screen.queryByRole('link', { name: 'Beratungsstelle gründen' })).toBeNull();
+        expect(screen.queryByRole('heading', { level: 3, name: 'Organisation' })).toBeNull();
     });
 
     it('greets the admin and explains their level', () => {
@@ -60,16 +80,21 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         expect(screen.getByText(translations['home.intro.tenant'])).toBeTruthy();
     });
 
-    it('shows one linked tile per reachable area, Home itself excluded', () => {
+    it('groups the reachable areas into sections, inviting first, Home itself excluded', () => {
         renderHome();
 
-        const areas = screen.getByRole('region', { name: 'Bereiche' });
+        const people = screen.getByRole('region', { name: 'Wen Sie anlegen' });
         expect(
-            within(areas)
+            within(people)
                 .getAllByRole('heading', { level: 3 })
                 .map((heading) => heading.textContent),
-        ).toEqual(['Organisation', 'Einladen', 'Konten', 'Einstellungen']);
-        expect(within(areas).getByRole('link', { name: /Organisation/ })).toHaveAttribute('href', '/admin/agency');
+        ).toEqual(['Einladen', 'Organisation', 'Bestehendes bearbeiten']);
+        expect(within(people).getByRole('link', { name: /^Organisation/ })).toHaveAttribute('href', '/admin/agency');
+        expect(within(people).getByRole('link', { name: 'Beratende einladen' })).toHaveAttribute(
+            'href',
+            '/admin/links/counsellor',
+        );
+        expect(screen.getByRole('region', { name: 'Was Sie einstellen' })).toBeTruthy();
     });
 
     it('lists the settings this role has, grouped', () => {
@@ -79,7 +104,16 @@ describe('HomePage (ORISO-Admin#1323)', () => {
             'href',
             '/admin/theme-settings/legal',
         );
-        expect(screen.getByText('Technik')).toBeTruthy();
+        expect(screen.getByRole('heading', { level: 4, name: 'Recht & Kommunikation' })).toBeTruthy();
+    });
+
+    it('offers the welcome video in German and English, with a placeholder until it is uploaded', () => {
+        renderHome();
+
+        const video = screen.getByRole('region', { name: 'Einführungsvideo' });
+        expect(within(video).getByRole('checkbox', { name: 'Deutsch' })).toHaveAttribute('aria-checked', 'true');
+        expect(within(video).getByRole('checkbox', { name: 'English' })).toHaveAttribute('aria-checked', 'false');
+        expect(within(video).getByRole('img', { name: 'Das Video folgt in Kürze.' })).toBeTruthy();
     });
 
     it('shows live counts as text', () => {
@@ -108,7 +142,8 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         const checklist = screen.getByRole('region', { name: 'Erste Schritte' });
         expect(within(checklist).getByText('1 von 2 erledigt')).toBeTruthy();
         expect(within(checklist).getByRole('link', { name: /Beratungsstelle anlegen.*erledigt/ })).toBeTruthy();
-        expect(within(checklist).getByRole('link', { name: 'Beratende einladen' })).toBeTruthy();
+        expect(within(checklist).getByRole('link', { name: /^Beratende einladen/ })).toBeTruthy();
+        expect(within(checklist).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
     });
 
     it('hides the checklist once everything is done', () => {
