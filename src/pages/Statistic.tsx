@@ -56,7 +56,6 @@ import {
     getTodayDayCode,
     NO_DATA_LABEL,
     noDataTopics,
-    SUPPRESSED_DETAIL,
     topicMenuKeyForMonth,
 } from './Statistic/statisticDashboardData';
 import type {
@@ -69,7 +68,7 @@ import type {
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
-import { StatisticStandNotice } from './Statistic/StatisticStandNotice';
+import { StatisticInfoRow } from './Statistic/StatisticInfoRow';
 import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
@@ -87,6 +86,7 @@ import type {
     SelectedCardMenuByScope,
     StatisticCardBlueprint,
     StatisticCardDefinition,
+    StatisticEmptyKind,
     TrendBadgeDefinition,
 } from './Statistic/types';
 import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
@@ -163,6 +163,7 @@ const dashboardTextKeyByValue: Record<string, string> = {
     'zeigt sich ab dem ersten Gespräch': 'statistic.dashboard.empty.topicPending',
     'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
     'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
+    'Geschützt – zu wenige aktive Beratende': 'statistic.dashboard.empty.protected',
     'Keine Filter verfügbar': 'statistic.dashboard.filter.noFilters',
     'Letzter Monat': 'statistic.dashboard.text.lastMonth',
     Live: 'statistic.dashboard.text.live',
@@ -1015,8 +1016,20 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 // German seed strings for the calm empty presentation (translated like every other
 // dashboard seed via dashboardTextKeyByValue).
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
+
+type EmptyState = Pick<CardMenuOption, 'emptyHint' | 'emptyKind'>;
+const noEmptyState: EmptyState = { emptyHint: undefined, emptyKind: undefined };
+/** A metric without an application-layer source: honest "not tracked yet" card. */
+const notTrackedOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint' | 'emptyKind'>> = {
+    value: NO_DATA_LABEL,
+    detail: undefined,
+    trend: undefined,
+    emptyHint: NOT_TRACKED_HINT,
+    emptyKind: 'notTracked',
+};
 
 /**
  * Maps aggregated real statistics onto the dashboard metric slots. Metrics without an
@@ -1038,16 +1051,19 @@ const buildMetricOverridesFromFilterStats = (
             ? `Vormonat gesamt ${formatIntegerMetric(stats.enquiriesPreviousMonth)}`
             : undefined;
     // null = withheld (all targets KDG-suppressed) or simply not there yet.
-    const emptyMetricHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : NO_DATA_YET_HINT;
-    const emptyTopicHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : TOPIC_PENDING_HINT;
-    const metricEmptyHint = (value: MetricValue) => (value === null ? emptyMetricHint : undefined);
-    const topicEmptyHint = (topic: TopicStatistic) => (topic.label === NO_DATA_LABEL ? emptyTopicHint : undefined);
+    const emptyKind: StatisticEmptyKind = allTargetsSuppressed ? 'protected' : 'pending';
+    const emptyMetricHint = allTargetsSuppressed ? PROTECTED_HINT : NO_DATA_YET_HINT;
+    const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : TOPIC_PENDING_HINT;
+    const metricEmptyState = (value: MetricValue): EmptyState =>
+        value === null ? { emptyHint: emptyMetricHint, emptyKind } : noEmptyState;
+    const topicEmptyState = (topic: TopicStatistic): EmptyState =>
+        topic.label === NO_DATA_LABEL ? { emptyHint: emptyTopicHint, emptyKind } : noEmptyState;
     const topicOverride = (monthsAgo: number): Partial<CardMenuOption> => {
         const topic = stats.metrics.topicsByMonth[monthsAgo] ?? { label: NO_DATA_LABEL, share: 0 };
 
         return {
             value: topic.label,
-            emptyHint: topicEmptyHint(topic),
+            ...topicEmptyState(topic),
             detail: topicMonthDetail(monthsAgo),
             trend: buildTopicTrend(topic),
         };
@@ -1063,72 +1079,72 @@ const buildMetricOverridesFromFilterStats = (
     return {
         activeAgencies: {
             value: formatMetricValue(stats.metrics.activeAgencies),
-            emptyHint: metricEmptyHint(stats.metrics.activeAgencies),
+            ...metricEmptyState(stats.metrics.activeAgencies),
             detail: 'zugeordnete Beratungsstellen',
             trend: undefined,
         },
         activeConversations: {
             value: formatMetricValue(stats.metrics.activeConversations),
-            emptyHint: metricEmptyHint(stats.metrics.activeConversations),
+            ...metricEmptyState(stats.metrics.activeConversations),
             detail: 'heute aktiv',
             trend: undefined,
         },
         activeCounselors: {
             value: formatMetricValue(stats.metrics.counselors),
-            emptyHint: metricEmptyHint(stats.metrics.counselors),
+            ...metricEmptyState(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         all: {
             value: formatMetricValue(stats.metrics.oneToOne),
-            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
+            ...metricEmptyState(stats.metrics.oneToOne),
             detail: requestDetail,
             trend: requestTrend,
         },
         cases: {
             value: formatMetricValue(stats.metrics.cases),
-            emptyHint: metricEmptyHint(stats.metrics.cases),
+            ...metricEmptyState(stats.metrics.cases),
             detail: 'Aktuell in Beratung',
             trend: undefined,
         },
-        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        consultations: notTrackedOverride,
         conversationsTotal: {
             value: formatMetricValue(stats.metrics.conversationsTotal),
-            emptyHint: metricEmptyHint(stats.metrics.conversationsTotal),
+            ...metricEmptyState(stats.metrics.conversationsTotal),
             detail: 'gesamt',
             trend: undefined,
         },
         counselors: {
             value: formatMetricValue(stats.metrics.counselors),
-            emptyHint: metricEmptyHint(stats.metrics.counselors),
+            ...metricEmptyState(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         groups: {
             value: formatMetricValue(stats.metrics.groups),
-            emptyHint: metricEmptyHint(stats.metrics.groups),
+            ...metricEmptyState(stats.metrics.groups),
             detail: 'gesamt',
             trend: undefined,
         },
-        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        liveChat: notTrackedOverride,
+        messagesCounselors: notTrackedOverride,
+        messagesPerSession: notTrackedOverride,
+        messagesSeekers: notTrackedOverride,
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
-            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
+            ...metricEmptyState(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        phoneShare: notTrackedOverride,
         previousMonth: topicOverride(1),
-        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        textMessagesTotal: notTrackedOverride,
         threeMonthsAgo: topicOverride(3),
         topTopic: topicOverride(0),
         twoMonthsAgo: topicOverride(2),
-        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        videoCallCount: notTrackedOverride,
+        videoShare: notTrackedOverride,
+        voiceShare: notTrackedOverride,
         ...furtherTopicOverrides,
     };
 };
@@ -1165,12 +1181,7 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint'>> = {
-    value: NO_DATA_LABEL,
-    detail: undefined,
-    trend: undefined,
-    emptyHint: NOT_TRACKED_HINT,
-};
+const noSourceMetricOverride = notTrackedOverride;
 
 /**
  * Resolves the value/detail/trend for a card or menu-option blueprint. Every
@@ -2381,13 +2392,6 @@ export const Statistic = () => {
                                         )}
                                     </p>
                                 )}
-                                {statisticData.generatedAt && !hasStatisticLoadError && (
-                                    <StatisticStandNotice
-                                        className="statisticDashboard__notice statisticDashboard__notice--info"
-                                        dataUntil={statisticData.dataUntil}
-                                        snapshotInterval={statisticData.snapshotInterval}
-                                    />
-                                )}
                                 {statisticData.suppressionDisabled && (
                                     <p
                                         className="statisticDashboard__notice statisticDashboard__notice--warning"
@@ -2400,24 +2404,38 @@ export const Statistic = () => {
                                         )}
                                     </p>
                                 )}
-                                {hiddenRowShown && (
-                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.suppressedNotice',
-                                            'Einige Bereiche zeigen aus Datenschutzgründen keine Zahlen. Das gilt für Bereiche mit weniger aktiven Beratenden als der festgelegten Mindestzahl. Es kann auch einen größeren Bereich treffen, wenn sich seine Zahlen sonst aus der Gesamtzahl ausrechnen ließen.',
-                                        )}
-                                    </p>
-                                )}
-                                {hiddenTotalShown && (
-                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.suppressedTotalNotice',
-                                            'Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt, weil sie auf zu wenigen aktiven Beratenden beruht oder die Zahlen eines kleinen Bereichs verraten würde.',
-                                        )}
-                                    </p>
-                                )}
+                                <StatisticInfoRow
+                                    stand={
+                                        statisticData.generatedAt &&
+                                        !hasStatisticLoadError &&
+                                        (statisticData.snapshotInterval === 'LIVE' || statisticData.dataUntil)
+                                            ? {
+                                                  dataUntil: statisticData.dataUntil,
+                                                  snapshotInterval: statisticData.snapshotInterval,
+                                              }
+                                            : null
+                                    }
+                                    privacyReasons={[
+                                        ...(hiddenRowShown
+                                            ? [
+                                                  translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.suppressedNotice',
+                                                      'Einige Bereiche zeigen aus Datenschutzgründen keine Zahlen. Das gilt für Bereiche mit weniger aktiven Beratenden als der festgelegten Mindestzahl. Es kann auch einen größeren Bereich treffen, wenn sich seine Zahlen sonst aus der Gesamtzahl ausrechnen ließen.',
+                                                  ),
+                                              ]
+                                            : []),
+                                        ...(hiddenTotalShown
+                                            ? [
+                                                  translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.suppressedTotalNotice',
+                                                      'Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt, weil sie auf zu wenigen aktiven Beratenden beruht oder die Zahlen eines kleinen Bereichs verraten würde.',
+                                                  ),
+                                              ]
+                                            : []),
+                                    ]}
+                                />
                                 {showEmptyHero && (
                                     <DashboardEmptyState
                                         className="statisticDashboard__emptyHero"
@@ -2484,6 +2502,7 @@ export const Statistic = () => {
                                 )}
                                 <CardGrid
                                     raster
+                                    fluid
                                     className={`statisticDashboard__summaryGrid${
                                         showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
                                     }`}
@@ -2513,6 +2532,7 @@ export const Statistic = () => {
 
                                 <CardGrid
                                     raster
+                                    fluid
                                     className={`statisticDashboard__communicationGrid${
                                         showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
                                     }`}
@@ -2536,6 +2556,7 @@ export const Statistic = () => {
                                 {!allTargetsSuppressed && (
                                     <CardGrid
                                         raster
+                                        fillers={false}
                                         className={`statisticDashboard__chartGrid${
                                             showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
                                         }`}

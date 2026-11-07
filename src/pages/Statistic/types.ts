@@ -36,6 +36,12 @@ export type CardMenuKey =
     | 'videoShare'
     | 'voiceShare';
 
+/**
+ * Why a card has no figure: `protected` = withheld by the small-cell rule (too few active
+ * counsellors), `notTracked` = no data source yet, `pending` = nothing happened yet.
+ */
+export type StatisticEmptyKind = 'protected' | 'notTracked' | 'pending';
+
 export type SvgIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export interface ScopeDefinition {
@@ -66,6 +72,8 @@ export interface CardMenuOption {
      * screen readers keep the explicit "Keine Daten" wording.
      */
     emptyHint?: string;
+    /** How the empty card presents itself; see StatisticEmptyKind. Defaults to `pending`. */
+    emptyKind?: StatisticEmptyKind;
 }
 
 export interface StatisticCardDefinition {
@@ -83,6 +91,8 @@ export interface StatisticCardDefinition {
     size: CardSize;
     /** See CardMenuOption.emptyHint — calm empty presentation instead of the raw value. */
     emptyHint?: string;
+    /** See CardMenuOption.emptyKind. */
+    emptyKind?: StatisticEmptyKind;
 }
 
 export interface CaseChartBar {
