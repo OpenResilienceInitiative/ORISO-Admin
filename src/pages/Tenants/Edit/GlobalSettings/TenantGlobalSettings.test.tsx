@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render as rtlRender, waitFor, within } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -11,11 +11,11 @@ import i18n from '../../../../i18n';
  * `/tenantadmin/controls`. The API is mocked at the request boundary (`fetchData`).
  */
 
-type Request = { url: string; method: string; bodyData?: string };
+type Request = { url: string; method: string; bodyData?: string; headersData?: Record<string, string> };
 
 const mocks = vi.hoisted(() => ({
-    routes: new Map<string, (request: { url: string; method: string; bodyData?: string }) => unknown>(),
-    requests: [] as Array<{ url: string; method: string; bodyData?: string }>,
+    routes: new Map<string, (request: Request) => unknown>(),
+    requests: [] as Request[],
 }));
 
 vi.mock('../../../../api/fetchData', async (importOriginal) => {
@@ -26,7 +26,7 @@ vi.mock('../../../../api/fetchData', async (importOriginal) => {
             mocks.requests.push(request);
             const route = Array.from(mocks.routes.entries()).find(([key]) => {
                 const [method, suffix] = key.split(' ');
-                return request.method === method && request.url.endsWith(suffix);
+                return request.method === method && request.url.split('?')[0].endsWith(suffix);
             });
             if (!route) throw new Error(`Unmocked request ${request.method} ${request.url}`);
             return route[1](request);
@@ -140,5 +140,32 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
         // Only the round button states the value; the dependent feature has no lock while its card is off.
         expect(within(control).getByRole('button', { name: /: (Active|Inactive)$/ })).toBeDisabled();
         expect(within(control).getByText(/Available only while the card is activated/i)).toBeInTheDocument();
+    });
+});
+
+describe('Live-chat links for the selected Träger (ORISO-Admin#1321)', () => {
+    it('uses the selected Träger for both topics and live-chat links', async () => {
+        serve({ traegerSettings: {} });
+        mocks.routes.set('GET /service/useradmin/invitelinks/topics', () => [
+            { id: 5, name: 'Träger Süd topic', status: 'ACTIVE' },
+        ]);
+        mocks.routes.set('GET /service/useradmin/invitelinks', () => ({ content: [], totalElements: 0 }));
+        const user = userEvent.setup();
+        renderPage();
+
+        const manager = within(await screen.findByRole('region', { name: 'Live chat links' }));
+        await user.click(manager.getByRole('combobox'));
+        expect(await screen.findByTitle('Träger Süd topic')).toBeInTheDocument();
+        expect(requestsTo('/service/useradmin/invitelinks/topics')).toEqual([
+            expect.objectContaining({ headersData: { 'X-Tenant-Id': '7' } }),
+        ]);
+        expect(mocks.requests).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    url: expect.stringContaining('/service/useradmin/invitelinks?'),
+                    headersData: { 'X-Tenant-Id': '7' },
+                }),
+            ]),
+        );
     });
 });

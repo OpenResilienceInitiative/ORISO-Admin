@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import getTopicByTenantData from '../api/topic/getTopicByTenantData';
 import { TopicData } from '../types/topic';
 
-export const useTenantTopics = (onlyActive?: boolean) => {
+export const useTenantTopics = (onlyActive?: boolean, enabled = true) => {
     return useQuery<TopicData[]>({
+        enabled,
         queryKey: ['ALL_TOPICS', onlyActive],
         queryFn: () =>
             getTopicByTenantData()
