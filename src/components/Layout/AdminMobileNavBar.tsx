@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AdminMobileNav, type AdminMobileNavItem, type AdminMobileNavSection } from '../AdminMobileNav';
 import { useMobileNav } from '../AdminMobileNav/MobileNavContext';
+import { useAdminSearch } from '../AdminSearch';
 import { keywordsFor } from '../AdminMobileNav/navKeywords';
 import type { NavSearchEntry } from '../AdminMobileNav/navSearch';
 import { NavGlyph, type NavGlyphName } from '../NavGlyph';
@@ -122,6 +123,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const registration = useMobileNav();
+    const adminSearch = useAdminSearch();
 
     const sections = useMemo<AdminMobileNavSection[]>(
         () =>
@@ -194,6 +196,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
             activeSectionKey={activeSectionKey}
             activeSubsectionKey={activeSubsectionKey}
             searchEntries={searchEntries}
+            onOpenGlobalSearch={adminSearch.available ? (trigger) => adminSearch.open(trigger) : undefined}
             tabKeys={TAB_KEYS}
             onSectionSelect={(key) => {
                 if (key === LOGOUT_KEY) {

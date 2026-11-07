@@ -61,6 +61,11 @@ export interface AdminMobileNavProps {
     onSectionSelect?: (key: string) => void;
     /** Everything the global search may find (see `buildNavSearchEntries`). */
     searchEntries?: NavSearchEntry[];
+    /**
+     * When set, the round search button opens the app-wide search view (`AdminSearch`) instead of
+     * this bar's own navigation-only sheet, which stays as the fallback.
+     */
+    onOpenGlobalSearch?: (trigger: HTMLElement) => void;
     /** Present only on pages you can go back from. */
     onBack?: () => void;
     /** Search of the current page's list — distinct from the global search. */
@@ -118,6 +123,7 @@ export const AdminMobileNav = ({
     sections,
     tabCount = 3,
     tabKeys = [],
+    onOpenGlobalSearch,
 }: AdminMobileNavProps) => {
     const navigate = useNavigate();
     const [sheet, setSheet] = useState<Sheet>(null);
@@ -490,7 +496,9 @@ export const AdminMobileNav = ({
                     aria-label={sheet === 'search' ? labels.close : labels.globalSearch}
                     aria-expanded={sheet === 'search'}
                     aria-haspopup="dialog"
-                    onClick={() => toggleSheet('search')}
+                    onClick={(event) =>
+                        onOpenGlobalSearch ? onOpenGlobalSearch(event.currentTarget) : toggleSheet('search')
+                    }
                     data-admin-mobile-nav-search
                 >
                     {sheet === 'search' ? <CloseIcon /> : <SearchIcon />}
