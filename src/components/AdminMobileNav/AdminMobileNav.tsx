@@ -58,6 +58,11 @@ export interface AdminMobileNavProps {
      * the view can grow out of it. Without it the button is not shown.
      */
     onOpenGlobalSearch?: (trigger: HTMLElement) => void;
+    /**
+     * Whether the app-wide search is open, however it was opened (round button, Ctrl/Cmd+K). The search
+     * is a modal of its own: it replaces the menu instead of sitting on top of it.
+     */
+    searchOpen?: boolean;
     /** Present only on pages you can go back from. */
     onBack?: () => void;
     /** Search of the current page's list — distinct from the global search. */
@@ -113,6 +118,7 @@ export const AdminMobileNav = ({
     tabCount = 3,
     tabKeys = [],
     onOpenGlobalSearch,
+    searchOpen = false,
 }: AdminMobileNavProps) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [pageSearchOpen, setPageSearchOpen] = useState(false);
@@ -132,6 +138,15 @@ export const AdminMobileNav = ({
         setMenuOpen(false);
         setPageSearchOpen(false);
     }, [activeSectionKey, activeSubsectionKey]);
+
+    // The app-wide search takes over: the menu and its focus trap must not stay underneath it, and
+    // focus must not jump back to "More" when the menu closes — it belongs to the search now.
+    useEffect(() => {
+        if (searchOpen) {
+            returnFocusRef.current = null;
+            setMenuOpen(false);
+        }
+    }, [searchOpen]);
 
     useEffect(() => {
         if (menuOpen) {

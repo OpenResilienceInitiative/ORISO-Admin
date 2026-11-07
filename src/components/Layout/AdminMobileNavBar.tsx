@@ -124,6 +124,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
             activeSectionKey={activeSectionKey}
             activeSubsectionKey={activeSubsectionKey}
             onOpenGlobalSearch={adminSearch.available ? (trigger) => adminSearch.open(trigger) : undefined}
+            searchOpen={adminSearch.isOpen}
             tabKeys={TAB_KEYS}
             onSectionSelect={(key) => {
                 if (key === LOGOUT_KEY) {

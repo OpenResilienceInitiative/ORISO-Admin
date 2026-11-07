@@ -39,30 +39,37 @@ const labels = {
 
 const Location = () => <span data-testid="path">{useLocation().pathname}</span>;
 
-const renderNav = (path = '/settings/legal', onSectionSelect = vi.fn(), onOpenGlobalSearch = vi.fn()) =>
-    render(
-        <MemoryRouter initialEntries={[path]}>
-            <Routes>
-                <Route
-                    path="*"
-                    element={
-                        <>
-                            <AdminMobileNav
-                                sections={sections}
-                                accountItems={[{ key: 'logout', label: 'Verlassen' }]}
-                                activeSectionKey={path.startsWith('/settings') ? 'settings' : 'tenants'}
-                                activeSubsectionKey={path}
-                                onOpenGlobalSearch={onOpenGlobalSearch}
-                                onSectionSelect={onSectionSelect}
-                                labels={labels}
-                            />
-                            <Location />
-                        </>
-                    }
-                />
-            </Routes>
-        </MemoryRouter>,
-    );
+const navTree = (
+    path = '/settings/legal',
+    onSectionSelect = vi.fn(),
+    onOpenGlobalSearch = vi.fn(),
+    searchOpen = false,
+) => (
+    <MemoryRouter initialEntries={[path]}>
+        <Routes>
+            <Route
+                path="*"
+                element={
+                    <>
+                        <AdminMobileNav
+                            sections={sections}
+                            accountItems={[{ key: 'logout', label: 'Verlassen' }]}
+                            activeSectionKey={path.startsWith('/settings') ? 'settings' : 'tenants'}
+                            activeSubsectionKey={path}
+                            onOpenGlobalSearch={onOpenGlobalSearch}
+                            searchOpen={searchOpen}
+                            onSectionSelect={onSectionSelect}
+                            labels={labels}
+                        />
+                        <Location />
+                    </>
+                }
+            />
+        </Routes>
+    </MemoryRouter>
+);
+
+const renderNav = (...args: Parameters<typeof navTree>) => render(navTree(...args));
 
 describe('AdminMobileNav', () => {
     beforeEach(() => window.localStorage.clear());
@@ -222,6 +229,20 @@ describe('AdminMobileNav', () => {
         expect(onOpenGlobalSearch).toHaveBeenCalledWith(button);
         expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    // Found in review: the menu stayed open (and trapped Tab) underneath the search.
+    it('closes the menu when the app-wide search opens, and does not pull focus back to "Mehr"', async () => {
+        const view = renderNav();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+        expect(screen.getByRole('dialog', { name: 'Mehr' })).toBeInTheDocument();
+
+        // Opened by the round button or by Ctrl/Cmd+K: the nav only sees that the search is open.
+        view.rerender(navTree('/settings/legal', vi.fn(), vi.fn(), true));
+
+        expect(screen.queryByRole('dialog', { name: 'Mehr' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Mehr' })).not.toHaveFocus();
     });
 
     it('shows no search button when there is no app-wide search (restricted layout)', () => {

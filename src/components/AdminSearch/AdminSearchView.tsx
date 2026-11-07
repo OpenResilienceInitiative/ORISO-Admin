@@ -237,17 +237,22 @@ export const AdminSearchView = ({
     const activate = (row: NavRow) => (row.kind === 'hit' ? open(row.hit) : showAll(row.group));
 
     const onKeyDown = (event: KeyboardEvent) => {
+        // The cursor through the results belongs to the combobox (aria-activedescendant). On a chip,
+        // the clear or back button, or the scrolling results region, Enter and the arrows keep their
+        // own meaning: activate the control, scroll.
+        const fromField = event.target === inputRef.current;
+
         if (event.key === 'Escape' || (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey))) {
-            // Esc, and the shortcut that opened it, close it again.
+            // Esc, and the shortcut that opened it, close it again (from anywhere in the dialog).
             event.preventDefault();
             requestClose();
-        } else if (event.key === 'ArrowDown' && rows.length) {
+        } else if (fromField && event.key === 'ArrowDown' && rows.length) {
             event.preventDefault();
             setActiveIndex((current) => (current + 1) % rows.length);
-        } else if (event.key === 'ArrowUp' && rows.length) {
+        } else if (fromField && event.key === 'ArrowUp' && rows.length) {
             event.preventDefault();
             setActiveIndex((current) => (current - 1 + rows.length) % rows.length);
-        } else if (event.key === 'Enter' && rows[activeIndex]) {
+        } else if (fromField && event.key === 'Enter' && rows[activeIndex]) {
             event.preventDefault();
             activate(rows[activeIndex]);
         } else if (event.key === 'Tab') {

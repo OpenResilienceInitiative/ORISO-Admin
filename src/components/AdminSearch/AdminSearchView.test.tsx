@@ -149,6 +149,25 @@ describe('AdminSearchView', () => {
         expect(screen.getByRole('button', { name: /^Pages/ }).getAttribute('aria-pressed')).toBe('true');
     });
 
+    // Found in review: Enter on a chip opened the active result instead of toggling the chip.
+    it('lets Enter and the arrow keys act on the focused control, not on the result cursor', async () => {
+        const { user, input, onOpen } = setup();
+
+        await user.type(input, 'mail');
+        await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(0));
+        const cursor = input.getAttribute('aria-activedescendant');
+
+        screen.getByRole('button', { name: /^Pages/ }).focus();
+        await user.keyboard('{ArrowDown}');
+
+        expect(input.getAttribute('aria-activedescendant')).toBe(cursor);
+
+        await user.keyboard('{Enter}');
+
+        expect(onOpen).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: /^Pages/ }).getAttribute('aria-pressed')).toBe('true');
+    });
+
     // Found by the Storybook accessibility check: a listbox may own only options and groups of options.
     it('keeps the results a valid listbox: groups of options, "Show n more" is an option too', async () => {
         const { user, input, onOpen } = setup();
