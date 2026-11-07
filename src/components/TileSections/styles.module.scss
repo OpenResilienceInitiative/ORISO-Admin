@@ -10,6 +10,9 @@
     --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
     --input-label-bg: var(--m3-surface-container-lowest, #ffffff);
 
+    /* The panel surface follows the colour scheme, so the field text must too (it is a fixed #1b1b1c in app.css). */
+    --admin-form-field-text: var(--m3-on-surface, #1b1b1c);
+
     display: flex;
     min-width: 0;
     flex: 1 1 auto;
