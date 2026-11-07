@@ -49,5 +49,5 @@ it('places the tutorial preview after topics and before translation settings', (
         Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(screen.getByText('Kommt bald')).toBeVisible();
-    expect(screen.getAllByRole('switch')).toHaveLength(5);
+    expect(screen.getAllByRole('switch')).toHaveLength(4);
 });
