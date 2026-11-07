@@ -57,6 +57,13 @@ export const Tonal: Story = {
         await expect(link).toHaveFocus();
         await expect(getComputedStyle(link).outlineStyle).toBe('solid');
         await expect(link.getBoundingClientRect().height).toBeCloseTo(40, 0);
+        // 48px hit area around the 40px visual: a point 3px outside the visible edge still lands on the
+        // link, one 6px outside does not.
+        const box = link.getBoundingClientRect();
+        const middle = box.top + box.height / 2;
+        await expect(document.elementFromPoint(box.left - 3, middle)).toBe(link);
+        await expect(document.elementFromPoint(box.left + 12, box.top - 3)).toBe(link);
+        await expect(document.elementFromPoint(box.left - 6, middle)).not.toBe(link);
     },
 };
 
@@ -68,7 +75,7 @@ export const Breadcrumb: Story = {
     args: { variant: 'breadcrumb', label: 'Träger', current: 'Beispiel-Mandant' },
 };
 
-/** The three looks on one canvas, as shown to the product owner. */
+/** The three looks side by side, to compare them. */
 export const Compare: Story = {
     render: (args) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -150,6 +157,13 @@ export const LongGermanTitle: Story = {
         await userEvent.hover(link);
         await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(LONG_LABEL);
         await userEvent.unhover(link);
+        // The cut-off current page of the breadcrumb is reachable by keyboard and shows its full name.
+        const current = within(canvasElement).getByText(LONG_CURRENT);
+        await expect(current.scrollWidth).toBeGreaterThan(current.clientWidth);
+        current.focus();
+        await expect(current).toHaveFocus();
+        await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(LONG_CURRENT);
+        current.blur();
     },
 };
 

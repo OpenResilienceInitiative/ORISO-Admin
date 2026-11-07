@@ -236,6 +236,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    /* Only focusable while the name is cut off; same ring as the link. */
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

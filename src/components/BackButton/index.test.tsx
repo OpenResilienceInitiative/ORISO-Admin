@@ -202,6 +202,33 @@ describe('BackButton breadcrumb', () => {
         expect(screen.getByRole('navigation')).not.toHaveAttribute('aria-label');
     });
 
+    it('makes a cut-off current page a tab stop that shows its full name in a tooltip', async () => {
+        setOverflow(480, 200);
+        const user = userEvent.setup();
+        renderOnDetailPage(
+            <BackButton variant="breadcrumb" label="Träger" to="/admin/tenants" current="Beispiel-Mandant" />,
+        );
+
+        const current = screen.getByText('Beispiel-Mandant');
+        expect(current).toHaveAttribute('tabindex', '0');
+        expect(current).not.toHaveAttribute('title');
+
+        await user.tab();
+        await user.tab();
+
+        expect(current).toHaveFocus();
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Beispiel-Mandant');
+    });
+
+    it('leaves the current page out of the tab order while it fits', () => {
+        setOverflow(120, 200);
+        renderOnDetailPage(
+            <BackButton variant="breadcrumb" label="Träger" to="/admin/tenants" current="Beispiel-Mandant" />,
+        );
+
+        expect(screen.getByText('Beispiel-Mandant')).not.toHaveAttribute('tabindex');
+    });
+
     it('ignores iconOnly: a trail without its words is no trail', () => {
         renderOnDetailPage(<BackButton variant="breadcrumb" iconOnly label="Träger" to="/admin/tenants" />);
 

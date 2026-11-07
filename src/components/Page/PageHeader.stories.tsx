@@ -15,9 +15,8 @@ import { Page, tabIcons } from './index';
  * The header of a sub page, old and new, on the same page with the same tile underneath.
  *
  * "Before" is the real `Page.Back` as it ships. "After" is the target geometry, built here from
- * the real parts (BackButton, AdminSegmentedTabs, Card, TileSections) because the shared shell
- * in `Page/styles.module.scss` is being changed by someone else; the wiring that moves this
- * into `Page.Back` is in the hand-over note of this task.
+ * the real parts (BackButton, AdminSegmentedTabs, Card, TileSections), because the BackButton
+ * is not wired into `Page.Back` yet.
  *
  * The raster: one left edge for back button, title, tab bar and tile (the content edge), 16px
  * between the four rows.

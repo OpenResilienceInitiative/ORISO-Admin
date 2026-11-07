@@ -169,13 +169,26 @@ export const BackButton = ({
                         <span className={styles.separator} aria-hidden>
                             /
                         </span>
-                        <span
-                            ref={setCurrentElement}
-                            className={styles.currentLabel}
-                            title={currentTruncated ? current : undefined}
+                        {/* A cut-off name becomes a tab stop with the same bubble as the link, so keyboard and
+                            touch users can read it too (a native `title` is hover only). */}
+                        <M3Tooltip
+                            nameOnly
+                            keepWrapper
+                            portal
+                            placement="bottom"
+                            className={styles.tooltipSlot}
+                            text={currentTruncated ? current : ''}
                         >
-                            {current}
-                        </span>
+                            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- a tab stop only while the text is cut off */}
+                            <span
+                                ref={setCurrentElement}
+                                className={styles.currentLabel}
+                                tabIndex={currentTruncated ? 0 : undefined}
+                            >
+                                {current}
+                            </span>
+                            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
+                        </M3Tooltip>
                     </li>
                 )}
             </ol>
