@@ -141,7 +141,7 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  * src/app.css before renaming or re-valuing this.
  */
 const STAGE_SURFACE = '#281715';
-const DARK_TEXT = '#141c25';
+export const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
@@ -209,7 +209,8 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
     };
 };
 
-const readableOn = (background: string) =>
+/** Text colour the theme draws on `background`: the better of white and {@link DARK_TEXT}. */
+export const readableOn = (background: string) =>
     contrastRatio(DARK_TEXT, background) >= contrastRatio('#ffffff', background) ? DARK_TEXT : '#ffffff';
 
 /**

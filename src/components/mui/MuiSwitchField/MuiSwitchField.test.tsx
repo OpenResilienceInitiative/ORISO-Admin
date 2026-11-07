@@ -56,4 +56,19 @@ describe('MuiSwitchField', () => {
 
         expect(screen.getByRole('switch', { name: 'Enabled' })).toBeDisabled();
     });
+
+    it('renders the dark off knob when unchecked and the white on knob when checked (#1374)', async () => {
+        const user = userEvent.setup();
+        const { container } = renderWithForm(<MuiSwitchField name="enabled" label="Enabled" />, {
+            initialValues: { enabled: false },
+        });
+
+        expect(container.querySelector('[data-switch-thumb="off"]')).toBeInTheDocument();
+        expect(container.querySelector('[data-switch-thumb="on"]')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('switch', { name: 'Enabled' }));
+
+        expect(container.querySelector('[data-switch-thumb="on"]')).toBeInTheDocument();
+        expect(container.querySelector('[data-switch-thumb="off"]')).not.toBeInTheDocument();
+    });
 });
