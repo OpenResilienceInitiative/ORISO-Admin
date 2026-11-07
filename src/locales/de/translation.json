@@ -1449,7 +1449,7 @@
     "tenants.add.form.description.placeholder": "Kurze Beschreibung des Trägers",
     "tenants.form.section.general": "Allgemein",
     "tenants.form.section.sender": "Absender und Kontakt",
-    "tenants.form.sender.legalName": "Vollständiger Name",
+    "tenants.form.sender.legalName": "Vollständiger Name der Organisation",
     "tenants.form.sender.contactEmail": "Kontakt-E-Mail-Adresse",
     "tenants.form.sender.contactPhone": "Telefonnummer",
     "tenants.add.form.topic.label": "Thema",
