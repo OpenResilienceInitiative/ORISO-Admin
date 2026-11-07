@@ -219,6 +219,18 @@ describe('buildChecklist — role perspectives from stored data (#1374)', () => 
         expect(ids('PLATFORM')).not.toContain('check-mail-server');
     });
 
+    it('leads to Stammdaten while name or claim is missing, otherwise to Erscheinungsbild', () => {
+        const first = (masterDataComplete: boolean) =>
+            buildChecklist(
+                'platform',
+                { ownTenant: { appearanceComplete: false, masterDataComplete } },
+                WITH_SETTINGS,
+            )[0];
+
+        expect(first(false).to).toBe('/admin/theme-settings/master-data');
+        expect(first(true).to).toBe('/admin/theme-settings/general');
+    });
+
     it('drops a settings step when this admin does not have that settings tab', () => {
         const steps = buildChecklist('tenant', {}, WITH_SETTINGS, ['/admin/theme-settings/legal']);
 
@@ -235,7 +247,11 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
             theming: { logo: 'x.png' },
         };
 
-        expect(summariseOwnTenant(tenant)?.appearanceComplete).toBe(true);
+        expect(summariseOwnTenant(tenant)).toMatchObject({ appearanceComplete: true, masterDataComplete: true });
+        expect(summariseOwnTenant({ ...tenant, theming: {} })).toMatchObject({
+            appearanceComplete: false,
+            masterDataComplete: true,
+        });
         expect(summariseOwnTenant({ ...tenant, content: { claim: { de: ' ' } } })?.appearanceComplete).toBe(false);
     });
 

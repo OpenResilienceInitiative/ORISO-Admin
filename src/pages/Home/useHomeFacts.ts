@@ -67,8 +67,11 @@ export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
     if (!tenant || (tenant.id == null && !tenant.name)) return undefined;
     const smtp = tenant.settings?.smtp;
 
+    const masterDataComplete = hasText(tenant.name) && hasText(tenant.content?.claim);
+
     return {
-        appearanceComplete: hasText(tenant.name) && hasText(tenant.content?.claim) && hasText(tenant.theming?.logo),
+        appearanceComplete: masterDataComplete && hasText(tenant.theming?.logo),
+        masterDataComplete,
         smtpMode: tenant.settings?.smtpMode ?? null,
         smtpComplete: smtp ? hasText(smtp.host) && hasText(smtp.from) && smtp.passwordSet === true : undefined,
     };

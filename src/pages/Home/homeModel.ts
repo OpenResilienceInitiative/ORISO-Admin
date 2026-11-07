@@ -37,6 +37,8 @@ export const resolveHomeRole = ({
 export interface OwnTenantFacts {
     /** Name, claim and logo are set. */
     appearanceComplete: boolean;
+    /** Name and claim are set (edited under Stammdaten, not Erscheinungsbild). */
+    masterDataComplete?: boolean;
     smtpMode?: 'PLATFORM' | 'OWN' | null;
     /** Host, sender and password stored; undefined when the API does not expose the SMTP block. */
     smtpComplete?: boolean;
@@ -268,8 +270,14 @@ const buildRoleSteps = (role: HomeRole, facts: HomeFacts): ChecklistStep[] => {
     );
 
     const { ownTenant } = facts;
+    // Name and claim live under Stammdaten, the logo under Erscheinungsbild: lead to
+    // the tab where the missing part can actually be filled in.
     const appearance = (id: 'platform-appearance' | 'tenant-appearance') =>
-        step(id, `${SETTINGS}/general`, fromFlag(ownTenant?.appearanceComplete));
+        step(
+            id,
+            ownTenant?.masterDataComplete === false ? `${SETTINGS}/master-data` : `${SETTINGS}/general`,
+            fromFlag(ownTenant?.appearanceComplete),
+        );
     // Only a Träger with its own mail server has something to check here.
     const mailServer =
         ownTenant?.smtpMode === 'OWN'
