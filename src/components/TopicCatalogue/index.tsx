@@ -138,7 +138,8 @@ export const TopicCatalogue = ({
         setSaving(true);
         setSaveFailed(false);
         try {
-            await onSaveLayout(draft);
+            // Trim once at the save boundary: typing spaces stays possible, stored names stay clean.
+            await onSaveLayout(draft.map((group) => ({ ...group, name: group.name.trim() })));
             stopEditing();
             setAnnouncement(t('topicCatalogue.announce.saved'));
         } catch {
@@ -190,6 +191,8 @@ export const TopicCatalogue = ({
         const next = moveTopic(draft, topicId, groupId, Number.MAX_SAFE_INTEGER);
         if (next === draft) return;
         setDraft(next);
+        // The row is re-created inside the other category; give its handle the focus back.
+        setFocusTopicId(topicId);
         const group = next.find((entry) => entry.id === groupId);
         announcePosition(topicId, groupId, (group?.topicIds.length ?? 1) - 1, next);
     };
@@ -347,6 +350,7 @@ export const TopicCatalogue = ({
     };
 
     const renderGroup = (group: TopicLayout[number], groupIndex: number) => {
+        const groupLabel = group.name || t('topicCatalogue.unnamedGroup');
         const headingId = `topic-group-${group.id}`;
         const count = group.topicIds.length;
         const dropAtEnd = drop?.groupId === group.id && drop.slot >= count;
@@ -376,7 +380,7 @@ export const TopicCatalogue = ({
                             <button
                                 type="button"
                                 className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupEarlier', { name: group.name })}
+                                aria-label={t('topicCatalogue.groupEarlier', { name: groupLabel })}
                                 disabled={saving || groupIndex === 0}
                                 onClick={() => setDraft(moveGroup(draft, group.id, -1))}
                             >
@@ -385,7 +389,7 @@ export const TopicCatalogue = ({
                             <button
                                 type="button"
                                 className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupLater', { name: group.name })}
+                                aria-label={t('topicCatalogue.groupLater', { name: groupLabel })}
                                 disabled={saving || groupIndex === draft.length - 1}
                                 onClick={() => setDraft(moveGroup(draft, group.id, 1))}
                             >
@@ -394,7 +398,7 @@ export const TopicCatalogue = ({
                             <button
                                 type="button"
                                 className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupRemove', { name: group.name })}
+                                aria-label={t('topicCatalogue.groupRemove', { name: groupLabel })}
                                 disabled={saving || count > 0}
                                 title={count > 0 ? t('topicCatalogue.groupRemoveBlocked') : undefined}
                                 onClick={() => setDraft(removeGroup(draft, group.id))}
@@ -467,16 +471,15 @@ export const TopicCatalogue = ({
         );
     }
 
-    let saveMessage = '';
-    if (saveFailed) saveMessage = t('topicCatalogue.saveError');
-    else if (saving) saveMessage = t('topicCatalogue.saving');
-
     let footer: ReactNode;
     if (editing) {
         footer = (
             <div className={styles.footer}>
-                <p className={styles.saveState} role={saveFailed ? 'alert' : undefined}>
-                    {saveMessage}
+                {/* The alert stays mounted: a role added together with its text is not reliably announced. The saving state is also
+                    announced by the busy Save button. */}
+                <p className={styles.saveState}>
+                    <span>{saving && !saveFailed ? t('topicCatalogue.saving') : ''}</span>
+                    <span role="alert">{saveFailed ? t('topicCatalogue.saveError') : ''}</span>
                 </p>
                 <M3Button variant="text" disabled={saving} onClick={cancel}>
                     {t('topicCatalogue.cancel')}
