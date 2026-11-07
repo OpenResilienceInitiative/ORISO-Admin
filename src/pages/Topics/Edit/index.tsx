@@ -40,6 +40,7 @@ export const TopicEditOrAdd = () => {
         <Page isLoading={isLoading}>
             <Page.Back
                 path="/admin/topics"
+                parentKey="topics.title"
                 titleKey={isEditing ? 'topic.modal.headline.edit' : 'topic.modal.headline.add'}
             />
 

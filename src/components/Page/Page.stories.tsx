@@ -77,6 +77,43 @@ export const WithTabs: Story = {
     ),
 };
 
+const TENANT_TABS = [
+    { to: '/admin/tenants/1/general', titleKey: 'Stammdaten', iconName: 'master_data' },
+    { to: '/admin/tenants/1/theme-settings', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
+    { to: '/admin/tenants/1/legal-settings', titleKey: 'Rechtliches', iconName: 'legal' },
+    { to: '/admin/tenants/1/erstantwort', titleKey: 'Einführung Ratsuchende', iconName: 'erstantwort' },
+    { to: '/admin/tenants/1/smtp', titleKey: 'E-Mail-Server', iconName: 'email_server' },
+    { to: '/admin/tenants/1/global-settings', titleKey: 'Funktionszugriff', iconName: 'functionality_access' },
+    { to: '/admin/tenants/1/functionalities', titleKey: 'Funktionalitäten', iconName: 'functionalities' },
+];
+
+/**
+ * Compact record header (ORISO-Admin#1374): small back button, the list as breadcrumb, the
+ * record's name and a few facts — the header no longer spends an 88px pill on the way back.
+ */
+export const RecordHeaderWithFacts: Story = {
+    render: () => (
+        <Page>
+            <Page.BackWithActions
+                path="/admin/tenants"
+                parentKey="sidebar.tenants"
+                title="Caritas Süd"
+                meta={['caritas-sued', '12 Beratende']}
+                tabs={TENANT_TABS}
+            />
+            <SampleContent />
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const back = canvasElement.querySelector<HTMLElement>('a[aria-label^="Zurück"], a[aria-label^="Back"]');
+        await expect(back).not.toBeNull();
+        // The back button stays a compact 40px control.
+        await expect(back!.getBoundingClientRect().height).toBeLessThanOrEqual(40);
+        await expect(canvasElement.querySelector('nav a')?.textContent).toMatch(/Träger|Organisations|Tenants/);
+        await expect(canvasElement.textContent).toContain('caritas-sued');
+    },
+};
+
 /** Issue #193: the header must reveal the final tab even without a card deck. */
 const SETTINGS_TABS = [
     { to: '/admin/theme-settings/global-config', titleKey: 'Konfiguration', iconName: 'global_config' },

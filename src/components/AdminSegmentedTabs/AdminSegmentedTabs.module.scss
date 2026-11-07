@@ -43,7 +43,10 @@
     border: 0;
     margin: 0;
     background: transparent;
-    border-radius: 0;
+
+    /* Rounded top corners, square bottom: the hover/press layer reads soft like the
+       rest of Admin and still sits flush on the divider and the underline. */
+    border-radius: 12px 12px 0 0;
     color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     font-family: var(--m3-body-font-family);

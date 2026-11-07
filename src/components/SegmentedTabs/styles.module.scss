@@ -3,7 +3,7 @@
 
 .tabs {
     display: flex;
-    gap: 24px;
+    gap: 4px;
     overflow-x: auto;
     border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
     scrollbar-width: none;
@@ -16,11 +16,14 @@
 .tab {
     position: relative;
     flex: 0 0 auto;
-    padding: 10px 2px;
+    padding: 10px 12px;
     border: 0;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     background: transparent;
+
+    /* Same hover layer as AdminSegmentedTabs: rounded top, square bottom (#1374). */
+    border-radius: 12px 12px 0 0;
     color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     font-family: var(--m3-body-font-family);
@@ -29,7 +32,11 @@
     letter-spacing: 0.1px;
     line-height: 20px;
     white-space: nowrap;
-    transition: color 160ms ease, border-color 160ms ease;
+    transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.tab:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
 }
 
 .tab:hover:not(.tabActive):not(:disabled) {
@@ -43,7 +50,7 @@
 
 .tab:focus-visible {
     outline: 2px solid var(--m3-primary, #a5000a);
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 
 .tabActive {
