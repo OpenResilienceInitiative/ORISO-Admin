@@ -425,5 +425,6 @@ describe('SnackbarHost', () => {
             api.notify({ title: 'Zwei', secondaryAction: { label: 'Verwerfen', onClick: vi.fn() } });
         });
         expect(screen.getByRole('button', { name: 'Verwerfen' })).toBeInTheDocument();
+        expect(screen.getByTestId('snackbar')).toHaveAttribute('data-layout', 'stacked');
     });
 });

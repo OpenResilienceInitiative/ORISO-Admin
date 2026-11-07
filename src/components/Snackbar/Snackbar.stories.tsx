@@ -597,3 +597,25 @@ export const CauseKeyBurst: Story = {
         await waitFor(() => expect(canvasElement.querySelectorAll('[data-testid="snackbar"]')).toHaveLength(1));
     },
 };
+
+/**
+ * The same four tones in both schemes, measured on the real rendering: message text and action text
+ * are at least 4.5:1 against their snackbar. The warning tone with an action in the dark frame is the
+ * pair that once came out at 1.06:1.
+ */
+export const ToneContrast: Story = {
+    render: () => <FocusRingFrames />,
+    play: async ({ canvasElement }) => {
+        const popups = within(canvasElement).getAllByTestId('snackbar');
+        await expect(popups).toHaveLength(8);
+        popups.forEach((popup) => {
+            const background = rgbToHex(getComputedStyle(popup).backgroundColor);
+            const actionButton = popup.querySelector('button:not([aria-label])') as HTMLElement;
+            [popup, actionButton].forEach((element) => {
+                expect(contrastRatio(rgbToHex(getComputedStyle(element).color), background)).toBeGreaterThanOrEqual(
+                    4.5,
+                );
+            });
+        });
+    },
+};

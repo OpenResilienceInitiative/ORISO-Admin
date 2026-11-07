@@ -100,10 +100,10 @@ export const Snackbar = ({
     const { t } = useTranslation();
     const longText = textLength(message) + textLength(description) > SNACKBAR_LONG_TEXT_LENGTH;
     const stacked =
-        !!action &&
+        (!!action || !!secondaryAction) &&
         (layout === 'stacked' ||
             !!secondaryAction ||
-            (layout === 'auto' && (action.label.length > SNACKBAR_LONG_ACTION_LENGTH || longText)));
+            (layout === 'auto' && ((action?.label.length ?? 0) > SNACKBAR_LONG_ACTION_LENGTH || longText)));
     const actionButton = action && (
         <SnackbarTextButton
             onClick={() => {
@@ -165,9 +165,8 @@ export const Snackbar = ({
     return (
         <div className={classNames} data-severity={severity} data-layout="inline" data-testid={testId}>
             {text}
-            {(actionButton || secondaryButton || closeButton) && (
+            {(actionButton || closeButton) && (
                 <div className={styles.controls}>
-                    {secondaryButton}
                     {actionButton}
                     {closeButton}
                 </div>

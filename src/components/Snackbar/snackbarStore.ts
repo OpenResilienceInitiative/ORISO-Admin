@@ -140,16 +140,20 @@ export const resolveDuration = (options: SnackbarOptions): number | null => {
 
 let anonymous = 0;
 
+/** A node that is there but shows no words of its own, such as `<Trans i18nKey="x" />`. */
+const isOpaque = (node: ReactNode): boolean =>
+    node !== undefined && node !== null && node !== false && node !== '' && plainText(node) === '';
+
 const textKey = (options: SnackbarOptions): string => {
     const severity = options.severity ?? 'info';
-    // Elements count by the words they show, so `<b>Save failed</b>` and `<b>Delete failed</b>` stay two events.
-    const text = [titleOf(options), options.description].map(plainText).join('|');
-    // An element that shows no words of its own (`<Trans i18nKey="x" />`) has no identity to compare:
-    // it is never merged with another one unless the caller gives a `key` or `causeKey`.
-    if (text === '|') {
+    // An element that shows no words has no identity to compare: it is never merged with another one
+    // unless the caller gives a `key` or `causeKey`, whatever the other text says.
+    if (isOpaque(titleOf(options)) || isOpaque(options.description)) {
         anonymous += 1;
         return `${severity}:#${anonymous}`;
     }
+    // Elements count by the words they show, so `<b>Save failed</b>` and `<b>Delete failed</b>` stay two events.
+    const text = [titleOf(options), options.description].map(plainText).join('|');
     return `${severity}:${text}`;
 };
 

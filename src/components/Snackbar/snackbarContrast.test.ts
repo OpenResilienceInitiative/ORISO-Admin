@@ -28,7 +28,8 @@ const TONES = {
     error: { container: '--m3-error', text: '--m3-on-error', action: '--m3-on-error' },
 } as const;
 
-const SEEDS = ['#a5000a', '#ffe066', '#a8e6a1', '#9ec9ff', '#ff9f43', '#004e8c'];
+// Pale seeds, dark seeds and the default: the brand seed is the tenant's choice.
+const SEEDS = ['#a5000a', '#ffe066', '#a8e6a1', '#9ec9ff', '#ff9f43', '#004e8c', '#646d78', '#222222', '#3b0a45'];
 
 describe.each<OrisoSchemeName>(['light', 'inverted'])('snackbar tones in the %s scheme', (scheme) => {
     describe.each(SEEDS)('seed %s', (accentDark) => {

@@ -117,10 +117,11 @@
     --m3-inverse-on-surface: #f3f0f0;
     --m3-inverse-primary: #ffb4aa;
 
-    /* Confirmation tone of the snackbar. Aliases of the secondary/primary container pair in the light
-       scheme; the dark scheme (orisoScheme.ts) sets its own pair so the text stays readable. */
+    /* Confirmation tone of the snackbar: the pale secondary container with its own dark text. The text
+       is a fixed value on purpose: borrowing the primary container's text colour made it white on this
+       pale container for a tenant with a dark brand seed. The dark scheme (orisoScheme.ts) sets its own pair. */
     --m3-success-container: var(--m3-on-secondary-container);
-    --m3-on-success-container: var(--m3-on-primary-container);
+    --m3-on-success-container: #141c25;
 
     /* Warning tone of the snackbar: the tertiary container pair in the light scheme. The dark scheme
        (orisoScheme.ts) sets a dark pair, because the tertiary container stays light there. */

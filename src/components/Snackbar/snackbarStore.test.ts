@@ -138,6 +138,13 @@ describe('snackbar store: identity', () => {
         expect(store.getState().visible).toHaveLength(2);
     });
 
+    it('does not merge word-less element titles that share a description', () => {
+        const { api, store } = setup();
+        api.error({ title: createElement('i'), description: 'Please retry' });
+        api.error({ title: createElement('u'), description: 'Please retry' });
+        expect(store.getState().visible).toHaveLength(2);
+    });
+
     it('lets an explicit key replace the text of the visible pop-up, in the same place', () => {
         const { api, store } = setup();
         api.error({ message: 'Session ends', key: 'session' });
