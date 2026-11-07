@@ -36,7 +36,7 @@ export type AgencyTileLayout = 'raster' | 'collapsible';
 export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile[]; layout?: AgencyTileLayout }) => {
     if (layout === 'collapsible') {
         return (
-            <CardGrid raster fillers={false}>
+            <CardGrid raster>
                 {tiles.map(({ id, summary, document, node }, index) => (
                     <CardGrid.Item key={id} span={3}>
                         {summary ? (
