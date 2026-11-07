@@ -52,7 +52,13 @@
 }
 
 /**
- * iOS-style switch geometry. Colors use ORISO CSS vars.
+ * M3 switch geometry: a 52×32 track with a 24px knob, inset 4px on every side
+ * so the knob sits vertically centred in both states (#1374). Colours use
+ * ORISO CSS vars.
+ *
+ * Off: tonal track (`surface-container-highest`) with a 2px `outline` border —
+ * ≥3:1 against the tile surface (WCAG 1.4.11) — and a dark knob carrying a
+ * light ✕. On: brand track with a white knob carrying a brand ✓.
  */
 
 .switch {
@@ -60,14 +66,14 @@
     // defaults on .MuiSwitch-root regardless of style-tag injection order,
     // which differs between the Vite app and Storybook.
     &.switch {
-        width: 52.5px;
-        height: 32.5px;
+        width: 52px;
+        height: 32px;
         padding: 0;
     }
 
     :global(.MuiSwitch-switchBase) {
         padding: 0;
-        margin: 2.5px;
+        margin: 4px;
         transition-duration: 300ms;
 
         &:global(.Mui-checked) {
@@ -75,9 +81,9 @@
             color: var(--m3-on-primary, #ffffff);
 
             & + :global(.MuiSwitch-track) {
+                border: 0;
                 background-color: var(--admin-control-selected, var(--m3-primary, #a5000a));
                 opacity: 1;
-                border: 0;
             }
 
             // Keep checked colors when disabled; root .switchDisabled dims via opacity.
@@ -85,9 +91,9 @@
                 color: var(--m3-on-primary, #ffffff);
 
                 & + :global(.MuiSwitch-track) {
+                    border: 0;
                     background-color: var(--admin-control-selected, var(--m3-primary, #a5000a));
                     opacity: 1;
-                    border: 0;
                 }
             }
         }
@@ -104,8 +110,8 @@
             cursor: not-allowed;
 
             & + :global(.MuiSwitch-track) {
-                background-color: transparent;
-                border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
+                border: 2px solid var(--m3-outline, #747878);
+                background-color: var(--m3-surface-container-highest, #e4e2e2);
                 opacity: 1;
             }
 
@@ -121,29 +127,36 @@
 
     :global(.MuiSwitch-thumb) {
         box-sizing: border-box;
-        width: 26px;
-        height: 26px;
+        width: 24px;
+        height: 24px;
     }
 
-    // Replacement thumb used for the `icon`/`checkedIcon` slots: a white
-    // circle matching the default thumb, with the state glyph centered inside.
+    // Replacement thumb used for the `icon`/`checkedIcon` slots, with the
+    // state glyph centred inside.
     .thumb {
-        box-sizing: border-box;
         display: flex;
+        box-sizing: border-box;
+        width: 24px;
+        height: 24px;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
         border-radius: 50%;
+    }
+
+    .thumbOn {
         background-color: var(--m3-on-primary, #ffffff);
         box-shadow: 0 2px 1px -1px rgb(0 0 0 / 20%), 0 1px 1px 0 rgb(0 0 0 / 14%), 0 1px 3px 0 rgb(0 0 0 / 12%);
     }
 
+    .thumbOff {
+        background-color: var(--m3-on-surface-variant, #444748);
+    }
+
     :global(.MuiSwitch-track) {
-        border-radius: 16.25px;
-        background-color: transparent;
-        border: 1px solid var(--input-border-color, var(--m3-outline, #747878));
         box-sizing: border-box;
+        border: 2px solid var(--m3-outline, #747878);
+        border-radius: 16px;
+        background-color: var(--m3-surface-container-highest, #e4e2e2);
         opacity: 1;
         transition: background-color 500ms, border-color 500ms;
     }

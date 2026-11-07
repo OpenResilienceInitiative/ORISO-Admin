@@ -101,7 +101,40 @@ describe('ThemeBuilder', () => {
     });
 });
 
+describe('ThemeBuilder colour summary (#1374)', () => {
+    it('shows the hex code and a contrast badge for every colour, main colour included', () => {
+        const { container } = render(<ThemeBuilder tenantId="1" />);
+
+        expect(screen.getByText('#A5000A')).toBeInTheDocument();
+        expect(screen.getByText('#FFE2DE')).toBeInTheDocument();
+        expect(screen.getByText('#B1005E')).toBeInTheDocument();
+        expect(container.querySelectorAll('[data-contrast-level]')).toHaveLength(3);
+        // All three seeds reach 4.5 : 1 against the text drawn on them.
+        expect(screen.queryByText('theme.contrast.notice')).not.toBeInTheDocument();
+    });
+});
+
 describe('ThemeEditorModal', () => {
+    it('shows a contrast badge next to each colour field and a notice for a weak colour', () => {
+        render(
+            <ThemeEditorModal
+                open
+                initialValues={{ theming: { primaryColor: '#a5000a', accent: '#ffe2de', signal: '#808080' } }}
+                storedSeeds={{ accentDark: '#a5000a', accentLight: '#ffe2de', signal: '#808080' }}
+                locks={locks}
+                onCancel={() => undefined}
+                onSubmit={() => undefined}
+            />,
+        );
+
+        const dialog = screen.getByRole('dialog');
+        const levels = [...dialog.querySelectorAll('.colorSelector [data-contrast-level]')].map((badge) =>
+            badge.getAttribute('data-contrast-level'),
+        );
+        expect(levels).toEqual(['AAA', 'AAA', 'fail']);
+        expect(within(dialog).getByRole('status')).toHaveTextContent('theme.contrast.notice');
+    });
+
     it('opens without deprecated lifecycle warnings', () => {
         const error = vi.spyOn(console, 'error');
         try {
