@@ -246,7 +246,7 @@ export const GeneralTenantSettings = () => {
                                                 ]}
                                             />
                                         </div>
-                                        <div className={styles.fieldGroup}>
+                                        <div className={`${styles.fieldGroup} ${styles.fieldGroupLongHint}`}>
                                             <MuiPasswordFormField
                                                 name="tenantAdminPassword"
                                                 label={t('tenantAdmins.form.password')}

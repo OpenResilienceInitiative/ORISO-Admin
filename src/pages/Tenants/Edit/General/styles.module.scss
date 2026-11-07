@@ -51,6 +51,12 @@
     line-height: 16px;
 }
 
+.fieldGroupLongHint {
+    /* The hint under this field runs to two or three lines; the next field's label sits 8px above its box,
+       so the hint gets 12px of room below it and never touches that label. */
+    padding-bottom: 12px;
+}
+
 .fields {
     display: flex;
     min-width: 0;
