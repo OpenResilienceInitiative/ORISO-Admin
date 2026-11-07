@@ -349,7 +349,8 @@ export const ReadOnlyTraegerAdmin: Story = {
 };
 
 export const KeyboardNavigation: Story = {
-    args: { height: 700 },
+    // The spies the play function asserts on (the harness only supplies defaults).
+    args: { height: 700, onOpen: fn(), onClose: fn() },
     play: async ({ canvas, userEvent, args }) => {
         const input = await canvas.findByRole('combobox');
 

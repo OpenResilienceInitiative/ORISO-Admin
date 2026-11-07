@@ -149,6 +149,34 @@ describe('AdminSearchView', () => {
         expect(screen.getByRole('button', { name: /^Pages/ }).getAttribute('aria-pressed')).toBe('true');
     });
 
+    // Found by the Storybook accessibility check: a listbox may own only options and groups of options.
+    it('keeps the results a valid listbox: groups of options, "Show n more" is an option too', async () => {
+        const { user, input, onOpen } = setup();
+
+        await user.type(input, 'mail');
+        const more = await screen.findByRole('option', { name: /Show \d+ more/ });
+        const listbox = screen.getByRole('listbox');
+
+        // Only groups (named by their label) and options live directly in the list.
+        Array.from(listbox.children).forEach((child) => {
+            expect(child.getAttribute('role')).toBe('group');
+            expect(child.getAttribute('aria-labelledby')).toBeTruthy();
+        });
+        expect(listbox.querySelector('h1, h2, h3, button')).toBeNull();
+
+        // The arrow keys reach it, Enter shows the rest of the group and does not open anything.
+        const before = screen.getAllByRole('option').length;
+
+        const position = screen.getAllByRole('option').indexOf(more);
+
+        await user.keyboard('{ArrowDown}'.repeat(position));
+        expect(input.getAttribute('aria-activedescendant')).toBe(more.id);
+        await user.keyboard('{Enter}');
+
+        expect(onOpen).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(before));
+    });
+
     it('says so when nothing matches and offers no stale options', async () => {
         const { user, input } = setup();
 

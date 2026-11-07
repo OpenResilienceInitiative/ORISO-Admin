@@ -95,6 +95,9 @@ const renderTitle = (title: string, ranges: Array<[number, number]>): ReactNode 
     return parts.map((part, index) => <Fragment key={index}>{part}</Fragment>);
 };
 
+/** One stop of the arrow keys: a hit, or the "Show n more" row that ends a long group. */
+type NavRow = { kind: 'hit'; hit: SearchHit } | { kind: 'more'; group: SearchGroup; count: number };
+
 const toggle = <T,>(list: T[] | undefined, value: T): T[] =>
     list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value];
 
@@ -175,6 +178,16 @@ export const AdminSearchView = ({
         [groups, expanded],
     );
     const flat = useMemo(() => visibleGroups.flatMap((group) => group.shown), [visibleGroups]);
+    // What the arrow keys walk through: the hits, and at the end of a long group its "Show n more"
+    // row, which is an option too (a listbox may only own options and groups of options).
+    const rows = useMemo<NavRow[]>(
+        () =>
+            visibleGroups.flatMap((group) => [
+                ...group.shown.map((hit): NavRow => ({ kind: 'hit', hit })),
+                ...(group.more > 0 ? [{ kind: 'more' as const, group: group.group, count: group.more }] : []),
+            ]),
+        [visibleGroups],
+    );
     const countsByGroup = useMemo(() => {
         const counts = new Map<SearchGroup, number>();
 
@@ -194,7 +207,7 @@ export const AdminSearchView = ({
     }, [trimmed, onQueryChange]);
     useEffect(() => {
         panelRef.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView?.({ block: 'nearest' });
-    }, [activeIndex, flat]);
+    }, [activeIndex, rows]);
 
     useEffect(() => () => window.clearTimeout(closeTimer.current), []);
 
@@ -219,24 +232,30 @@ export const AdminSearchView = ({
         requestClose();
     };
 
+    /** A hit opens; the "Show n more" row opens the rest of its group (the cursor stays in place). */
+    const showAll = (group: SearchGroup) => setExpanded((current) => new Set(current).add(group));
+    const activate = (row: NavRow) => (row.kind === 'hit' ? open(row.hit) : showAll(row.group));
+
     const onKeyDown = (event: KeyboardEvent) => {
         if (event.key === 'Escape' || (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey))) {
             // Esc, and the shortcut that opened it, close it again.
             event.preventDefault();
             requestClose();
-        } else if (event.key === 'ArrowDown' && flat.length) {
+        } else if (event.key === 'ArrowDown' && rows.length) {
             event.preventDefault();
-            setActiveIndex((current) => (current + 1) % flat.length);
-        } else if (event.key === 'ArrowUp' && flat.length) {
+            setActiveIndex((current) => (current + 1) % rows.length);
+        } else if (event.key === 'ArrowUp' && rows.length) {
             event.preventDefault();
-            setActiveIndex((current) => (current - 1 + flat.length) % flat.length);
-        } else if (event.key === 'Enter' && flat[activeIndex]) {
+            setActiveIndex((current) => (current - 1 + rows.length) % rows.length);
+        } else if (event.key === 'Enter' && rows[activeIndex]) {
             event.preventDefault();
-            open(flat[activeIndex]);
+            activate(rows[activeIndex]);
         } else if (event.key === 'Tab') {
             // The dialog is modal: Tab cycles inside it.
             const focusable = Array.from(
-                panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])') ?? [],
+                panelRef.current?.querySelectorAll<HTMLElement>(
+                    'button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+                ) ?? [],
             );
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
@@ -257,7 +276,7 @@ export const AdminSearchView = ({
     const levelLabel = (level: SearchLevel) => t(`adminSearch.level.${level}`);
     const groupLabel = (group: SearchGroup) => t(`adminSearch.group.${group}`);
     const filtersActive = !!(filters.kinds?.length || filters.levels?.length);
-    const activeId = flat[activeIndex] ? `${listId}-option-${activeIndex}` : undefined;
+    const activeId = rows[activeIndex] ? `${listId}-option-${activeIndex}` : undefined;
 
     const chip = (label: string, on: boolean, onClick: () => void, count?: number, key?: string) => (
         <button
@@ -392,7 +411,9 @@ export const AdminSearchView = ({
                     )}
                 </div>
 
-                <div className={styles.body}>
+                {/* The results scroll inside the panel; axe (scrollable-region-focusable) wants such a region reachable by keyboard. */}
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                <div className={styles.body} role="region" aria-label={t('adminSearch.results')} tabIndex={0}>
                     <p className={styles.srOnly} role="status" aria-live="polite">
                         {trimmed ? t('adminSearch.count', { count: flat.length }) : ''}
                     </p>
@@ -462,8 +483,15 @@ export const AdminSearchView = ({
                     {trimmed && flat.length > 0 && (
                         <div id={listId} role="listbox" aria-label={t('adminSearch.title')}>
                             {visibleGroups.map((group) => (
-                                <div key={group.group} role="group" aria-label={groupLabel(group.group)}>
-                                    <h3 className={styles.groupTitle}>{groupLabel(group.group)}</h3>
+                                <div key={group.group} role="group" aria-labelledby={`${listId}-group-${group.group}`}>
+                                    {/* The group's name, not a heading: a listbox may only own options and groups of options. */}
+                                    <div
+                                        id={`${listId}-group-${group.group}`}
+                                        className={styles.groupTitle}
+                                        role="presentation"
+                                    >
+                                        {groupLabel(group.group)}
+                                    </div>
                                     <ul className={styles.list} role="presentation">
                                         {group.shown.map((hit) => {
                                             optionNumber += 1;
@@ -475,6 +503,10 @@ export const AdminSearchView = ({
                                                 !hit.titleRanges.length &&
                                                 hit.matchedText !== hit.doc.title &&
                                                 hit.matchedField !== 'description';
+
+                                            // Where it lives ("Settings › Legal"), else what it is; "Matches …" follows after a dot.
+                                            const secondary =
+                                                hit.doc.breadcrumb.slice(0, -1).join(' › ') || hit.doc.description;
 
                                             return (
                                                 // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- APG combobox/listbox: the options are driven by keys on the input (arrows, Enter), the click is the pointer path
@@ -494,11 +526,10 @@ export const AdminSearchView = ({
                                                             {renderTitle(hit.doc.title, hit.titleRanges)}
                                                         </div>
                                                         <div className={styles.secondary}>
-                                                            {hit.doc.breadcrumb.slice(0, -1).join(' › ') ||
-                                                                hit.doc.description}
+                                                            {secondary}
                                                             {showMatch && (
                                                                 <span className={styles.matches}>
-                                                                    {hit.doc.breadcrumb.length > 1 ? ' · ' : ''}
+                                                                    {secondary ? ' · ' : ''}
                                                                     {t('adminSearch.matches', {
                                                                         text: hit.matchedText,
                                                                     })}
@@ -532,16 +563,30 @@ export const AdminSearchView = ({
                                                 </li>
                                             );
                                         })}
+                                        {group.more > 0 &&
+                                            (() => {
+                                                optionNumber += 1;
+                                                const number = optionNumber;
+                                                const active = number === activeIndex;
+
+                                                return (
+                                                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- same as the hits: keys go through the input
+                                                    <li
+                                                        id={`${listId}-option-${number}`}
+                                                        role="option"
+                                                        aria-selected={active}
+                                                        data-active={active}
+                                                        className={classNames(styles.more, {
+                                                            [styles.rowActive]: active,
+                                                        })}
+                                                        onMouseMove={() => active || setActiveIndex(number)}
+                                                        onClick={() => showAll(group.group)}
+                                                    >
+                                                        {t('adminSearch.group.more', { count: group.more })}
+                                                    </li>
+                                                );
+                                            })()}
                                     </ul>
-                                    {group.more > 0 && (
-                                        <button
-                                            type="button"
-                                            className={styles.more}
-                                            onClick={() => setExpanded((current) => new Set(current).add(group.group))}
-                                        >
-                                            {t('adminSearch.group.more', { count: group.more })}
-                                        </button>
-                                    )}
                                 </div>
                             ))}
                         </div>

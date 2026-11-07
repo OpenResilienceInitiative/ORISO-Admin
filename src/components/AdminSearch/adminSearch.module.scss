@@ -392,9 +392,16 @@ $reveal-duration: 300ms;
     font-size: 14px;
     font-weight: 500;
     text-align: left;
+    list-style: none;
 
     &:hover {
         background: var(--search-hover);
+    }
+
+    // The keyboard cursor on this row: same colours as an active hit.
+    &.rowActive {
+        background: var(--search-active);
+        color: var(--search-on-active);
     }
 
     &:focus-visible {
