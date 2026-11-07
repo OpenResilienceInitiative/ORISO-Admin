@@ -28,6 +28,8 @@ export interface SearchContext {
     /** Service accounts never get the personal cards that make an admin a counsellor. */
     isTechnicalAccount: boolean;
     hasRole: (role: UserRole | UserRole[]) => boolean;
+    /** `settings.documentationEnabled`: the account page only shows the Documentation card when it is on. */
+    documentationEnabled: boolean;
     /** `multitenancyWithSingleDomainEnabled`: tenant admins work on one shared domain. */
     singleDomain: boolean;
     can: CanFn;
@@ -42,7 +44,7 @@ export interface SearchContext {
 }
 
 /** Who sees a tile on top of its tab. */
-export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin' | 'selfCounsel';
+export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin' | 'selfCounsel' | 'documentation';
 
 /** The admin roles that see "make me a counsellor" on the account page (rule of `SelfConsultantIdentity`). */
 export const SELF_COUNSEL_ROLES = [
@@ -60,6 +62,8 @@ export const TILE_GATES: Record<TileGate, (context: SearchContext) => boolean> =
     // The card renders nothing for platform admins, service accounts and accounts without an admin role.
     selfCounsel: (context) =>
         !context.isSuperAdmin && !context.isTechnicalAccount && context.hasRole(SELF_COUNSEL_ROLES),
+    // `UserProfile` renders the card only when the app config turns documentation on.
+    documentation: (context) => context.documentationEnabled,
 };
 
 export interface RegistryTile {
@@ -618,7 +622,7 @@ export const SEARCH_TILES: RegistryTile[] = [
         'profile.documentation.title',
         ['page:account'],
         'src/pages/Profile/Documentation/index.tsx',
-        { level: 'personal' },
+        { level: 'personal', gate: 'documentation' },
     ),
 ];
 

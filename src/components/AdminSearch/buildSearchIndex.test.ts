@@ -50,6 +50,18 @@ describe('buildSearchIndex: what each role may find', () => {
         expect(has(ids({ role: 'agency', singleDomain: true }), 'account:self-counsel')).toBe(true);
     });
 
+    // Found in review: the profile page renders the Documentation card only when the app config enables it.
+    it('offers the documentation card only where the account page shows it', () => {
+        ['platform', 'tenant', 'agency'].forEach((role) => {
+            const on = ids({ role: role as 'platform', singleDomain: true, documentationEnabled: true });
+            const off = ids({ role: role as 'platform', singleDomain: true, documentationEnabled: false });
+
+            expect(has(on, 'account:documentation'), `${role} on`).toBe(true);
+            expect(has(off, 'account:documentation'), `${role} off`).toBe(false);
+            expect(has(off, 'account:password'), `${role} off keeps the other tiles`).toBe(true);
+        });
+    });
+
     it('marks settings read-only for an admin who cannot update', () => {
         const index = buildFixtureIndex({ role: 'tenantReadOnly', singleDomain: true });
         const settings = index.filter((entry) => entry.kind === 'setting' && entry.level === 'tenant');

@@ -77,6 +77,14 @@ describe('search registry drift', () => {
         expect(card).toContain('isTechnicalAccount');
     });
 
+    it('gates the documentation tile with the setting the profile page uses', () => {
+        const profile = readFileSync(resolve(root, 'src/pages/Profile/UserProfile.tsx'), 'utf8');
+        const tile = SEARCH_TILES.find((entry) => entry.id === 'account:documentation');
+
+        expect(tile?.gate).toBe('documentation');
+        expect(profile).toMatch(/settings\.documentationEnabled\s*&&/);
+    });
+
     it('only has synonyms for ids that exist', () => {
         const known = new Set<string>([...SEARCH_TILES.map((tile) => tile.id), ...EXTRA_PAGES.map((page) => page.id)]);
         const strangers = Object.keys(SEARCH_KEYWORDS).filter((id) => !known.has(id));

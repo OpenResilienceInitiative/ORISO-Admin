@@ -108,11 +108,19 @@ export interface FixtureOptions {
     role: FixtureRole;
     language?: 'de' | 'en';
     singleDomain?: boolean;
+    /** `settings.documentationEnabled`; on by default, like a configured Träger. */
+    documentationEnabled?: boolean;
     tenant?: SearchContext['tenant'];
     agency?: SearchContext['agency'];
 }
 
-export const buildFixtureContext = ({ role, singleDomain = true, tenant, agency }: FixtureOptions) => {
+export const buildFixtureContext = ({
+    role,
+    singleDomain = true,
+    documentationEnabled = true,
+    tenant,
+    agency,
+}: FixtureOptions) => {
     const spec = ROLE_SPECS[role];
     const can = canFor(...spec.grants);
     const hasRole = hasRoleFor(...spec.roles);
@@ -155,6 +163,7 @@ export const buildFixtureContext = ({ role, singleDomain = true, tenant, agency 
         isTenantAdmin: hasRole(UserRole.TenantAdmin),
         isTechnicalAccount: false,
         hasRole,
+        documentationEnabled,
         singleDomain,
         can,
         navTo: { ...Object.fromEntries(items.map((item) => [item.key, item.to])), account: routePathNames.userProfile },
