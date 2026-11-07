@@ -20,19 +20,11 @@ const meta = {
     component: MandatoryTwoFactorSetup,
     parameters: { layout: 'fullscreen' },
     decorators: [
-        (Story) => {
-            // The enrolment wizard renders through a portal into #overlay.
-            if (!document.getElementById('overlay')) {
-                const overlayRoot = document.createElement('div');
-                overlayRoot.id = 'overlay';
-                document.body.appendChild(overlayRoot);
-            }
-            return (
-                <ThemeProvider theme={orisoMuiTheme}>
-                    <Story />
-                </ThemeProvider>
-            );
-        },
+        (Story) => (
+            <ThemeProvider theme={orisoMuiTheme}>
+                <Story />
+            </ThemeProvider>
+        ),
     ],
 } satisfies Meta<typeof MandatoryTwoFactorSetup>;
 
