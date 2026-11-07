@@ -4,6 +4,7 @@ import { CardEditable } from '../../../CardEditable';
 import { TileSections } from '../../../TileSections';
 import { otherFunctionsHelp } from './help';
 import { FormSwitchField } from '../../../FormSwitchField';
+import { TEAM_FUNCTIONS, TeamFunctionSwitch } from '../../../TeamFunctions';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
@@ -110,18 +111,8 @@ export const OtherFunctionsSettings = ({
                             </div>
                         )}
                     </TileSections.Section>
-                    <TileSections.Section id="other-team" title={t('tileHelp.otherFunctions.team.title')}>
-                        <div className={styles.checkGroup}>
-                            <FormSwitchField
-                                labelKey="tenants.appSettings.otherFunctions.teamDiscussion.title"
-                                name={['settings', 'featureTeamDiscussionEnabled']}
-                                inline
-                                disableLabels
-                            />
-                            <p className={styles.checkInfo}>
-                                {t('tenants.appSettings.otherFunctions.teamDiscussion.description')}
-                            </p>
-                        </div>
+                    <TileSections.Section id="other-team" title={t(TEAM_FUNCTIONS.chat.nameKey)}>
+                        <TeamFunctionSwitch fn="chat" />
                     </TileSections.Section>
                 </div>
                 <TileSections.Section id="other-supervision" title={t('tileHelp.otherFunctions.supervision.title')}>
