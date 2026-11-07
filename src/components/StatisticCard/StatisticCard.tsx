@@ -181,7 +181,13 @@ const CardValueRow = ({
         return (
             <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
                 <p className="statisticDashboard__cardEmptyState">
-                    {emptyKind === 'protected' && <LockOutlined aria-hidden="true" focusable="false" />}
+                    {emptyKind === 'protected' && (
+                        <LockOutlined
+                            aria-hidden="true"
+                            focusable="false"
+                            data-testid="statistic-card-protected-icon"
+                        />
+                    )}
                     <span>{emptyHint}</span>
                 </p>
             </div>

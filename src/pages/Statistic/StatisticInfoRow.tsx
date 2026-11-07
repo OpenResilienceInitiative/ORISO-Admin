@@ -45,12 +45,15 @@ export const StatisticInfoRow = ({ stand, privacyReasons }: StatisticInfoRowProp
                 {hasPrivacyReasons && (
                     <div className="statisticDashboard__infoItem">
                         <LockOutlinedIcon aria-hidden="true" focusable="false" />
-                        <p className="statisticDashboard__infoText">{t('statistic.dashboard.protected.summary')}</p>
+                        <p id={`${reasonId}-summary`} className="statisticDashboard__infoText">
+                            {t('statistic.dashboard.protected.summary')}
+                        </p>
                         <button
                             type="button"
                             className="statisticDashboard__infoWhy"
                             aria-expanded={isReasonOpen}
                             aria-controls={reasonId}
+                            aria-describedby={`${reasonId}-summary`}
                             onClick={() => setIsReasonOpen((open) => !open)}
                         >
                             {t('statistic.dashboard.protected.why')}
