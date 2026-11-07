@@ -8,7 +8,9 @@ import './tileHighlight.module.scss';
  * `#tile=<key>` the page that just opened scrolls to that tile and highlights it.
  */
 export const useTileTarget = () => {
-    const { hash, pathname } = useLocation();
+    // The key changes with every navigation, also to the very same URL: choosing the same result a
+    // second time (after scrolling away) must reveal its tile again.
+    const { hash, key, pathname } = useLocation();
 
     useEffect(() => {
         const tileKey = readTileTarget(hash);
@@ -21,5 +23,5 @@ export const useTileTarget = () => {
             typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         return revealTile(tileKey, { reducedMotion });
-    }, [hash, pathname]);
+    }, [hash, key, pathname]);
 };

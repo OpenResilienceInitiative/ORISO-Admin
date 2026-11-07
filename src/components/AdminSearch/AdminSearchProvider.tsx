@@ -30,9 +30,15 @@ const AdminSearchContext = createContext<AdminSearchContextValue>({
 /** `open()` shows the search view; a no-op outside the provider so buttons can render in isolation. */
 export const useAdminSearch = () => useContext(AdminSearchContext);
 
-/** Ctrl/Cmd+K, the shortcut people know from other tools. */
-export const isSearchShortcut = (event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>): boolean =>
-    event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey;
+/**
+ * Ctrl/Cmd+K, the shortcut people know from other tools. A key that something else already handled
+ * does not count: the open view closes itself on it, and without this check the same key event
+ * would bubble up to the window and open the view again (at once when motion is reduced).
+ */
+export const isSearchShortcut = (
+    event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'defaultPrevented'>,
+): boolean =>
+    event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.defaultPrevented;
 
 const isTypingTarget = (target: EventTarget | null): boolean =>
     target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));

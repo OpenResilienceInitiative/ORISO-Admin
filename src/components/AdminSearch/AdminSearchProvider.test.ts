@@ -19,6 +19,12 @@ describe('search shortcuts', () => {
         expect(isSearchShortcut(key({ key: 'k', ctrlKey: true, altKey: true }))).toBe(false);
     });
 
+    // Found in review: with reduced motion the open view closed at once, and the same key event then
+    // reached the window listener, which opened it again.
+    it('ignores Ctrl+K that the open view has already handled', () => {
+        expect(isSearchShortcut(key({ key: 'k', ctrlKey: true, defaultPrevented: true }))).toBe(false);
+    });
+
     it('opens with / unless the person is typing', () => {
         const input = document.createElement('input');
         const editable = document.createElement('div');
