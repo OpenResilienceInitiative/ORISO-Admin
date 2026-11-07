@@ -63,7 +63,10 @@ describe('stepTopic', () => {
         expect(stepTopic(base(), 1, 'up').changed).toBe(false);
         expect(stepTopic(base(), 3, 'down').changed).toBe(false);
         expect(stepTopic(base(), 1, 'previousGroup').changed).toBe(false);
-        expect(stepTopic(base(), 4, 'nextGroup').layout[1].topicIds).toEqual([]);
+        // the last category has no next one, the first has no previous one
+        const inLast = moveTopic(base(), 4, 'c', 0);
+        expect(stepTopic(inLast, 4, 'nextGroup').changed).toBe(false);
+        expect(stepTopic(base(), 4, 'nextGroup').changed).toBe(true);
     });
 
     it('goes over to the next group at the same row, or its end if that is shorter', () => {
@@ -127,6 +130,13 @@ describe('withUnplacedTopics', () => {
 
     it('builds one group from an empty layout', () => {
         expect(withUnplacedTopics([], [3, 1], fallback)).toEqual([{ ...fallback, topicIds: [3, 1] }]);
+    });
+
+    it('appends to an existing fallback group instead of adding a second one', () => {
+        const withFallback = [...base(), { id: 'unsorted', name: 'Sonstige', topicIds: [5] }];
+        const next = withUnplacedTopics(withFallback, [1, 2, 3, 4, 5, 6], fallback);
+        expect(next).toHaveLength(4);
+        expect(next[3]).toMatchObject({ id: 'unsorted', topicIds: [5, 6] });
     });
 
     it('leaves a complete layout alone', () => {
