@@ -11,18 +11,19 @@ import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import styles from './styles.module.scss';
 
 /**
- * MUI `icon`/`checkedIcon` replace the default thumb, so each icon is wrapped
- * in a white circle that reproduces the thumb geometry. Glyphs are colored
- * (never white) so they stay visible on the white thumb.
+ * MUI `icon`/`checkedIcon` replace the default thumb, so each state brings its
+ * own knob. Off (#1374): a dark knob (`on-surface-variant`) with a light ✕ on a
+ * tonal track with a 2px outline — the old white-on-white knob was invisible on
+ * the tile surface (WCAG 1.4.11). On: white knob with a brand-coloured ✓.
  */
 const uncheckedThumb = (
-    <span className={styles.thumb}>
-        <CloseIcon sx={{ fontSize: 16, color: 'var(--input-border-color, var(--m3-outline, #747878))' }} />
+    <span className={classNames(styles.thumb, styles.thumbOff)} data-switch-thumb="off">
+        <CloseIcon sx={{ fontSize: 16, color: 'var(--m3-surface-container-highest, #e4e2e2)' }} />
     </span>
 );
 
 const checkedThumb = (
-    <span className={styles.thumb}>
+    <span className={classNames(styles.thumb, styles.thumbOn)} data-switch-thumb="on">
         <CheckIcon sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }} />
     </span>
 );

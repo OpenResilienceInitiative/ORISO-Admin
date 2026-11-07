@@ -337,8 +337,24 @@
     }
 }
 
+// antd derives the warning fill from --m3-warning (#410001), which renders as a dark
+// brown slab here. Calm M3 surface instead; the icon keeps the signal (#1374).
 .tooPaleAlert {
     margin-top: 12px;
+
+    &:global(.ant-alert) {
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
+        background: var(--m3-surface-container-high, #eae7e8);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    :global(.ant-alert-message) {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    :global(.ant-alert-icon) {
+        color: var(--m3-error, #ba1a1a);
+    }
 }
 
 .colorSummaryRow {
@@ -347,11 +363,29 @@
     padding: 4px 0;
     border-bottom: 1px solid #d3d0d1;
     gap: 12px;
-    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr) auto;
 
-    &:last-child {
+    // The contrast notice may follow the last row (#1374).
+    &:last-of-type {
         border-bottom: 0;
     }
+}
+
+// Hex code + WCAG contrast badge, right-aligned in the row (#1374).
+.colorValue {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.colorHex {
+    color: #1b1b1c;
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 .colorSwatch {

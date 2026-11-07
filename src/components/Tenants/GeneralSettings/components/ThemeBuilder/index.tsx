@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { coloursHelp } from './help';
+import { ContrastBadge, ContrastNotice } from '../../../../ContrastBadge';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
@@ -91,6 +92,10 @@ const ColorSummaryRow = ({ color, label, description }: { color: string; label: 
             <span className={styles.colorDescription}>{description}</span>
             <span className={styles.colorLabel}>{label}</span>
         </span>
+        <span className={styles.colorValue}>
+            <span className={styles.colorHex}>{color ? color.toUpperCase() : '–'}</span>
+            <ContrastBadge color={color} />
+        </span>
     </div>
 );
 
@@ -104,6 +109,7 @@ const ThemeSummary = ({ seeds }: { seeds: TenantSeeds }) => {
             {rows.map((row) => (
                 <ColorSummaryRow {...row} key={row.label} />
             ))}
+            <ContrastNotice colors={rows.map(({ label, color }) => ({ name: label, color }))} />
         </div>
     );
 };
@@ -132,6 +138,7 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentDarkColor"
+                    showContrast
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
@@ -149,16 +156,25 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentLightColor"
+                    showContrast
                     name={['theming', 'accent']}
                     disabled={locks.accentLight}
                 />
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.signalColor"
+                    showContrast
                     name={['theming', 'signal']}
                     disabled={locks.signal}
                 />
             </div>
+            <ContrastNotice
+                colors={[
+                    { name: t('theme.builder.accentDarkColor'), color: draftSeeds.accentDark },
+                    { name: t('theme.builder.accentLightColor'), color: draftSeeds.accentLight },
+                    { name: t('theme.builder.signalColor'), color: draftSeeds.signal },
+                ]}
+            />
             {saveRejected && tooPale && (
                 <Alert className={styles.tooPaleAlert} type="error" showIcon message={unusableSeedMessage} />
             )}
