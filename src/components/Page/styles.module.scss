@@ -125,10 +125,10 @@
 
 .backBar {
     display: flex;
-    width: calc(100% - var(--admin-subnav-inset, 0px));
-    max-width: calc(100% - var(--admin-subnav-inset, 0px));
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    max-width: calc(100% - var(--admin-subnav-inset, 0%));
     box-sizing: border-box;
-    margin-inline-start: var(--admin-subnav-inset, 0px);
+    margin-inline-start: var(--admin-subnav-inset, 0%);
     min-width: 0;
     flex-wrap: wrap;
     align-items: center;
@@ -137,8 +137,8 @@
 
 // The bar spans the row; the tab bar wraps below it.
 .backBar.backWithTabs {
-    width: calc(100% - var(--admin-subnav-inset, 0px));
-    max-width: calc(100% - var(--admin-subnav-inset, 0px));
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    max-width: calc(100% - var(--admin-subnav-inset, 0%));
 }
 
 // 40px tonal icon button instead of the 88px dark pill.
