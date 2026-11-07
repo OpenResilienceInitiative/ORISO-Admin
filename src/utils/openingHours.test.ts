@@ -5,6 +5,7 @@ import {
     formatOpeningHours,
     isRangeValid,
     isWeekCompatible,
+    nextRange,
     parseOpeningHours,
     serializeOpeningHours,
     slotsFromWeek,
@@ -133,5 +134,16 @@ describe('weekday view round trip', () => {
         expect(next.WEDNESDAY).toEqual([]);
         next.TUESDAY[0].from = '10:00';
         expect(next.MONDAY[0].from).toBe('09:00');
+    });
+});
+
+describe('nextRange', () => {
+    it('continues after the last valid range', () => {
+        expect(nextRange([{ from: '08:00', until: '12:00' }])).toEqual({ from: '12:00', until: '17:00' });
+        expect(nextRange([{ from: '14:00', until: '18:00' }])).toEqual({ from: '18:00', until: '23:59' });
+    });
+    it('falls back to the default for an empty or invalid day', () => {
+        expect(nextRange([])).toEqual({ from: '09:00', until: '17:00' });
+        expect(nextRange([{ from: '10:00', until: '09:00' }])).toEqual({ from: '09:00', until: '17:00' });
     });
 });

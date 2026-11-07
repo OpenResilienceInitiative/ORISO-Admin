@@ -4,6 +4,11 @@ import { expect, fn } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
 import { DepartmentDetailsCard } from './index';
+import { serializeOpeningHours, type OpeningHoursSlot } from '../../../../../utils/openingHours';
+
+const weekdays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as const;
+const slotsFor = (from: string, until: string): OpeningHoursSlot[] =>
+    weekdays.map((day) => ({ fromDay: day, from, untilDay: day, until }));
 
 /**
  * Story for the per-Fachbereich contact detail overrides card (ORISO-Admin#197: a center may run
@@ -38,7 +43,34 @@ export default meta;
 
 type Story = StoryObj<typeof DepartmentDetailsCard>;
 
-/** Department with its own overrides: all three fields carry stored values. */
+/** Structured hours (Mo–Fr, one weekday closed on top): the weekday rows with clock, phone and floor icons. */
+export const StructuredHours: Story = {
+    args: {
+        initialValues: {
+            openingHours: serializeOpeningHours(slotsFor('14:00', '18:00').slice(1, 4)),
+            phoneExtension: '-23',
+            floorLocation: '3. OG, Raum 312',
+        },
+        inherited: { openingHours: serializeOpeningHours(slotsFor('09:00', '17:00')), floorLocation: 'Haus B' },
+    },
+};
+
+/** Longest German text in every field, plus a structured inherited value in the hint. */
+export const LongestGermanText: Story = {
+    args: {
+        departments: [
+            { id: 3, name: 'Schuldner- und Insolvenzberatung für Familien und junge Erwachsene' },
+        ],
+        initialValues: {
+            openingHours: serializeOpeningHours(slotsFor('08:00', '12:00').concat(slotsFor('13:00', '18:30'))),
+            phoneExtension: '-1234 (Durchwahl Sekretariat)',
+            floorLocation: 'Verwaltungsgebäude Nord, 3. Obergeschoss, Raum 312',
+        },
+        inherited: { openingHours: serializeOpeningHours(slotsFor('09:00', '17:00')) },
+    },
+};
+
+/** Department with its own overrides: all three fields carry stored values (hours here are legacy free text). */
 export const WithOverrides: Story = {
     args: {
         initialValues: {

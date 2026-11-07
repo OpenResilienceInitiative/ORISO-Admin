@@ -1,0 +1,115 @@
+/* Opening hours editor. Surfaces follow the admin tiers; colours are M3 tokens only. */
+
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.week {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.day {
+    display: grid;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+    gap: 8px 16px;
+    grid-template-columns: minmax(150px, 190px) 1fr;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.dayHead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dayName {
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.dayClosed .dayName {
+    color: var(--m3-on-surface-variant, #444748);
+    font-weight: 400;
+}
+
+.dayBody {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: 6px;
+    gap: 8px;
+}
+
+.closed {
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+}
+
+.range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.time {
+    width: 124px;
+}
+
+.rangeError {
+    flex-basis: 100%;
+    color: var(--form-error, var(--m3-error, #ba1a1a));
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+}
+
+.dayActions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* A neutral inline note: left rule on the low surface, same look as the legacy-text note. */
+.note {
+    padding: 10px 14px;
+    border-left: 3px solid var(--admin-status-muted, var(--m3-outline, #747878));
+    border-radius: 0 8px 8px 0;
+    background: var(--m3-surface-container-low, #f6f3f3);
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+}
+
+.convert {
+    align-self: flex-start;
+}
+
+.formItem {
+    margin-bottom: 0;
+}
+
+/* Narrow panels (390px phone, 392px tile rail): switch row above its ranges. */
+@media (max-width: 520px) {
+    .day {
+        grid-template-columns: 1fr;
+    }
+
+    .dayBody {
+        padding-top: 0;
+        padding-left: 4px;
+    }
+}

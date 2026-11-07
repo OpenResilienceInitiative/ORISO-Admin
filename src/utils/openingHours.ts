@@ -149,3 +149,10 @@ export const copyDay = (week: WeekSchedule, source: Weekday, targets: readonly W
     });
     return next;
 };
+
+/** Default for "add time range": starts where the last valid range ended, otherwise at 09:00. */
+export const nextRange = (ranges: DayRange[]): DayRange => {
+    const last = ranges[ranges.length - 1];
+    const from = last && isRangeValid(last) && last.until < '23:00' ? last.until : DEFAULT_RANGE.from;
+    return { from, until: from < DEFAULT_RANGE.until ? DEFAULT_RANGE.until : '23:59' };
+};
