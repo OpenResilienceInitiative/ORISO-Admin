@@ -20,6 +20,7 @@ const TENANT_POLICIES = '*/service/tenantadmin/:id/permission-policies';
 const TENANT_PUBLIC = '*/service/tenant/public/*';
 const TENANT_PUBLIC_BY_ID = '*/service/tenant/:id';
 const HANDOVER_REASON_POLICIES = '*/service/users/case-handover/reason-policies';
+const LIVE_CHAT_LINKS = '*/service/useradmin/invitelinks';
 
 type Policy = { value: boolean; mode: 'ENFORCED' | 'SUGGESTED'; inherited?: boolean };
 
@@ -30,6 +31,14 @@ const handlers = (traegerSettings: Record<string, unknown>, policies: Record<str
     http.get(TENANT_PUBLIC, () => HttpResponse.json({ id: 7, settings: {} })),
     http.get(TENANT_PUBLIC_BY_ID, () => HttpResponse.json({ id: 7, settings: {} })),
     http.get(HANDOVER_REASON_POLICIES, () => HttpResponse.json([])),
+    http.get(`${LIVE_CHAT_LINKS}/topics`, ({ request }) =>
+        request.headers.get('X-Tenant-Id') === '7' ? HttpResponse.json([]) : new HttpResponse(null, { status: 403 }),
+    ),
+    http.get(LIVE_CHAT_LINKS, ({ request }) =>
+        request.headers.get('X-Tenant-Id') === '7'
+            ? HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })
+            : new HttpResponse(null, { status: 403 }),
+    ),
 ];
 
 const meta = {
