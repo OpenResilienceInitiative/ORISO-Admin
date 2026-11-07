@@ -148,7 +148,8 @@ describe('tenant assistant Appearance', () => {
     });
     it('keeps a restricted Appearance card read-only', () => {
         const { container } = render(<AssistantIdentity tenantId="1" readOnly />);
-        expect(screen.queryByRole('button', { name: 'edit' })).toBeNull();
+        // Read access only: the edit action stays visible but locked (#1374).
+        expect(screen.getByRole('button', { name: 'edit' })).toHaveAttribute('aria-disabled', 'true');
         expect(container.querySelector('input[type="file"]')).toBeDisabled();
     });
 });

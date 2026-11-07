@@ -20,6 +20,8 @@
     "search-placeholder": "Enter search term",
     "cancel": "Cancel",
     "card.edit.save": "Save",
+    "card.edit.nudge": "Choose “Edit” first to make changes",
+    "card.edit.readOnly": "You only have read access here. Someone with write access can change this.",
     "card.edit.cancel": "Cancel",
     "new": "New",
     "yes": "Yes",

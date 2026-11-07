@@ -321,6 +321,8 @@
     "organisation": "Organisation",
     "card.edit.cancel": "Abbrechen",
     "card.edit.save": "Speichern",
+    "card.edit.nudge": "Zum Ändern zuerst „Bearbeiten“ wählen",
+    "card.edit.readOnly": "Hier haben Sie nur Lesezugriff. Ändern kann das eine Person mit Schreibrechten.",
     "notification.copy.success": "Link kopiert",
     "message.form.login.loginBtn": "Anmelden",
     "message.form.login.username": "Bitte Benutzernamen/E-Mail eingeben",
