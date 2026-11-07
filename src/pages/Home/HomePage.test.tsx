@@ -5,8 +5,10 @@ import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import type { HomeFacts } from './homeModel';
 import { HomePage } from './HomePage';
 import de from '../../locales/de/translation.json';
+import { Resource } from '../../enums/Resource';
 
 const state = vi.hoisted(() => ({
+    canCreateAgency: true,
     roles: { isSuperAdmin: false, isTenantScopedAdmin: true, roles: ['tenant-admin'] as string[] },
     navItems: [] as AdminSidebarNavItem[],
     facts: {} as HomeFacts,
@@ -23,7 +25,12 @@ vi.mock('../../hooks/useUserRoles.hook', () => ({
         hasRole: (role: string | string[]) => [role].flat().some((r) => state.roles.roles.includes(r)),
     }),
 }));
-vi.mock('../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => true }) }));
+vi.mock('../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: string, resource: unknown) =>
+            !(action === 'create' && String(resource) === String(Resource.Agency)) || state.canCreateAgency,
+    }),
+}));
 vi.mock('../../hooks/useUserData.hook', () => ({ useUserData: () => ({ data: { firstName: 'Kim' } }) }));
 vi.mock('../../components/Layout/useAdminNavigation', () => ({
     useAdminNavigation: () => ({
@@ -54,6 +61,16 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         state.roles = { isSuperAdmin: false, isTenantScopedAdmin: true, roles: ['tenant-admin'] };
         state.navItems = nav('home', 'theme', 'agency', 'counselors', 'links');
         state.facts = {};
+        state.canCreateAgency = true;
+    });
+
+    it('offers founding a Beratungsstelle only with the Create Agency permission', () => {
+        state.canCreateAgency = false;
+
+        renderHome();
+
+        expect(screen.queryByRole('link', { name: 'Beratungsstelle gründen' })).toBeNull();
+        expect(screen.queryByRole('heading', { level: 3, name: 'Organisation' })).toBeNull();
     });
 
     it('greets the admin and explains their level', () => {

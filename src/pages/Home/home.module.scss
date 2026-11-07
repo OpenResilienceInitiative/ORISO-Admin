@@ -298,16 +298,12 @@
     padding: 0;
     margin: 0;
     gap: 20px;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
     list-style: none;
 }
 
 .tiles[data-section='observe'] {
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-
-    @media (max-width: 479px) {
-        grid-template-columns: 1fr;
-    }
+    grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
 }
 
 .tileItem {
