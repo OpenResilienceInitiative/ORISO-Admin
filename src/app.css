@@ -412,7 +412,20 @@ body {
         [contenteditable='true'],
         .MuiButtonBase-root,
         .ant-btn
-    ):focus-visible {
+    ):not(.ProseMirror):focus-visible {
     outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
     outline-offset: var(--admin-focus-ring-offset);
+}
+
+/* MUI radios and checkboxes: the focus lands on the hidden input, so the root carries the shared ring and the
+   default pulsating halo (a 16% tint, 1.8:1) is switched off. */
+
+:is(.MuiRadio-root, .MuiCheckbox-root).Mui-focusVisible {
+    border-radius: 50%;
+    outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
+    outline-offset: var(--admin-focus-ring-offset);
+}
+
+:is(.MuiRadio-root, .MuiCheckbox-root).Mui-focusVisible .MuiTouchRipple-root {
+    display: none;
 }

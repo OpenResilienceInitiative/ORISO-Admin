@@ -475,6 +475,13 @@ $m3-state-active: rgb(39 50 112 / 12%);
     &::-webkit-scrollbar {
         display: none;
     }
+
+    // A scroller is a keyboard stop (Chrome): it draws the shared ring too, inside its own edge so the
+    // scrollport does not clip it.
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: -2px;
+    }
 }
 
 @media (max-width: 599px) {
@@ -1305,8 +1312,9 @@ $m3-state-active: rgb(39 50 112 / 12%);
     border-radius: 14px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    // M3 focus state: the text surface highlights with the primary colour.
-    &:focus-within {
+    // Focus state of the text surface: ONE ring, drawn here when the text itself has focus. (Not on :focus-within:
+    // a focused button inside the editor, such as a hint action, would get a second ring around the whole surface.)
+    &:has(:global(.ProseMirror):focus) {
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 1px;
     }
@@ -1529,6 +1537,13 @@ $m3-state-active: rgb(39 50 112 / 12%);
     box-sizing: border-box;
     // Desktop can wrap so every control stays directly visible.
     flex-wrap: wrap;
+
+    // The phone layout below makes it a scroller, hence a keyboard stop: shared ring, inside its edge.
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: -2px;
+    }
+
     align-items: center;
     justify-content: flex-end;
     padding: 12px 16px 8px;

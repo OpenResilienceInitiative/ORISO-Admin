@@ -12,11 +12,20 @@ describe('shared focus ring', () => {
     });
 
     it('has one :focus-visible rule that also covers MUI and antd buttons and the editors', () => {
-        const rule = appCss.slice(appCss.lastIndexOf(':is('));
+        const rule = appCss.slice(appCss.indexOf('THE keyboard focus ring'));
         expect(rule).toContain('.MuiButtonBase-root');
         expect(rule).toContain('.ant-btn');
         expect(rule).toContain("[contenteditable='true']");
         expect(rule).toMatch(/outline:\s*var\(--admin-focus-ring-width\) solid var\(--admin-focus-ring-color\)/);
+    });
+
+    it('draws the switch ring around the whole switch, not on the track, and one ring on the editor surface', () => {
+        expect(read('../components/mui/MuiSwitchField/styles.module.scss')).toMatch(
+            /\.switch:has\(:global\(\.Mui-focusVisible\)\)\s*\{[^}]*outline:/,
+        );
+        // The rich-text surface draws its own single ring on the container; the text node must not add a second one.
+        expect(appCss).toContain('):not(.ProseMirror):focus-visible');
+        expect(appCss).toMatch(/\.MuiRadio-root, \.MuiCheckbox-root\)\.Mui-focusVisible/);
     });
 
     it.each(['../components/EditButton/styles.module.scss', '../components/M3Switch/styles.module.scss'])(
