@@ -357,7 +357,7 @@
     font-size: 14px;
     line-height: 20px;
 
-    &[role='alert'] {
+    [role='alert'] {
         color: var(--m3-error, #ba1a1a);
     }
 }

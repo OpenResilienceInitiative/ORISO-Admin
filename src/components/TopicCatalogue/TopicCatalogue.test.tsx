@@ -196,6 +196,40 @@ describe('TopicCatalogue edit mode', () => {
         expect(groupItems('b').some((text) => text.includes('Sucht'))).toBe(true);
     });
 
+    it('hands focus back to the moved topic row after the category select', async () => {
+        setup();
+        await startEditing();
+        await user().selectOptions(label('Kategorie von „Sucht“'), 'b');
+        await waitFor(() => expect(handle('Sucht')).toHaveFocus());
+    });
+
+    it('trims category names once, when saving', async () => {
+        const { onSaveLayout } = setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        const input = screen.getAllByLabelText('Name der Kategorie')[0];
+        await u.clear(input);
+        await u.type(input, '  Grundlagen ');
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0][0].name).toBe('Grundlagen');
+    });
+
+    it('names an unnamed category in the labels of its buttons instead of leaving quotes empty', async () => {
+        setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.clear(screen.getAllByLabelText('Name der Kategorie')[0]);
+        expect(screen.queryByLabelText(/„“/)).toBeNull();
+    });
+
+    it('keeps the alert region mounted so a failed save is announced', async () => {
+        setup();
+        await startEditing();
+        expect(document.querySelector('[role="alert"]')).not.toBeNull();
+        expect(screen.queryByText('Das Speichern hat nicht geklappt')).toBeNull();
+    });
+
     it('adds a category, renames one, and removes only an empty one', async () => {
         setup();
         const u = user();
