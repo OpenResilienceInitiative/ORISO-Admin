@@ -82,6 +82,16 @@ export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
 export const isAgencyComplete = (agency: any): boolean =>
     hasText(agency?.postcode) && (!Array.isArray(agency?.topics) || agency.topics.length > 0);
 
+/**
+ * Complete only when every centre was inspected: with more centres than one
+ * page holds, the state stays unknown instead of claiming "done".
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, only two fields read
+export const agencyPageComplete = (agencies: any[], total?: number): boolean | null => {
+    if (typeof total === 'number' && total > agencies.length) return null;
+    return agencies.length > 0 && agencies.every(isAgencyComplete);
+};
+
 export interface HomeFactAccess {
     role: HomeRole;
     /** From the token; null for the platform admin or an unreadable token. */
@@ -122,9 +132,10 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
         }).catch(() => undefined);
-        const agencies = result ? removeEmbedded(result)?.data : undefined;
+        const page = result ? removeEmbedded(result) : undefined;
+        const agencies = page?.data;
         if (!Array.isArray(agencies)) return null;
-        return agencies.length > 0 && agencies.every(isAgencyComplete);
+        return agencyPageComplete(agencies, page?.total);
     });
     const tenants = useFact('tenants', access.role === 'platform' && access.canReadTenants, () =>
         getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),

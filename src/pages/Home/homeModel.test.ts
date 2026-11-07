@@ -3,7 +3,7 @@ import { UserRole } from '../../enums/UserRole';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import { buildChecklist, buildHomeTiles, groupSettingsTabs, resolveHomeRole } from './homeModel';
-import { isAgencyComplete, summariseOwnTenant } from './useHomeFacts';
+import { agencyPageComplete, isAgencyComplete, summariseOwnTenant } from './useHomeFacts';
 
 const nav = (...keys: string[]): AdminSidebarNavItem[] =>
     keys.map((key) => ({ key, to: `/admin/${key}`, label: key, iconPath: `/admin/${key}` }));
@@ -256,6 +256,14 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
         expect(isAgencyComplete({ postcode: '10115', topics: [] })).toBe(false);
         expect(isAgencyComplete({ postcode: '', topics: [{ id: 1 }] })).toBe(false);
         expect(isAgencyComplete({ postcode: '10115' })).toBe(true);
+    });
+
+    it('stays unknown when more centres exist than one page shows', () => {
+        const complete = { postcode: '10115', topics: [{ id: 1 }] };
+
+        expect(agencyPageComplete([complete, complete], 2)).toBe(true);
+        expect(agencyPageComplete([complete, complete], 25)).toBeNull();
+        expect(agencyPageComplete([], 0)).toBe(false);
     });
 });
 
