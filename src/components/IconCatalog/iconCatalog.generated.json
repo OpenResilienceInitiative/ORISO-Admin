@@ -1984,8 +1984,8 @@
         "fileName": "link_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/link_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/index.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:lock-open-right:400",
@@ -2026,7 +2026,7 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
+        "usageFiles": ["src/pages/Links/index.tsx", "src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
