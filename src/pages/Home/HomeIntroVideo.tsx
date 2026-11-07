@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
+import { PillGroup } from '../../components/PillGroup';
 import styles from './home.module.scss';
 
 export type IntroVideoLanguage = 'de' | 'en';
@@ -31,18 +32,13 @@ export const HomeIntroVideo = ({
                 <h2 className={styles.cardTitle} id="home-video-title">
                     {t('home.video.title')}
                 </h2>
-                <div className={styles.languageSwitch} role="group" aria-label={t('home.video.language')}>
-                    {LANGUAGES.map((code) => (
-                        <button
-                            key={code}
-                            type="button"
-                            className={styles.languageOption}
-                            aria-pressed={language === code}
-                            onClick={() => setLanguage(code)}
-                        >
-                            {t(`home.video.language.${code}`)}
-                        </button>
-                    ))}
+                <div role="group" aria-label={t('home.video.language')}>
+                    <PillGroup
+                        mode="single"
+                        options={LANGUAGES.map((code) => ({ value: code, label: t(`home.video.language.${code}`) }))}
+                        value={[language]}
+                        onChange={([next]) => next && setLanguage(next as IntroVideoLanguage)}
+                    />
                 </div>
             </div>
             {source ? (

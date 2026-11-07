@@ -94,8 +94,8 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         renderHome();
 
         const video = screen.getByRole('region', { name: 'Einführungsvideo' });
-        expect(within(video).getByRole('button', { name: 'Deutsch' })).toHaveAttribute('aria-pressed', 'true');
-        expect(within(video).getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'false');
+        expect(within(video).getByRole('checkbox', { name: 'Deutsch' })).toHaveAttribute('aria-checked', 'true');
+        expect(within(video).getByRole('checkbox', { name: 'English' })).toHaveAttribute('aria-checked', 'false');
         expect(within(video).getByRole('img', { name: 'Das Video folgt in Kürze.' })).toBeTruthy();
     });
 
