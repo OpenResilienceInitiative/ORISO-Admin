@@ -257,10 +257,10 @@ export const SmtpCredentialsMissing: Story = {
             { timeout: 10_000 },
         );
         await userEvent.click(enabledSendButton);
-        // antd renders toasts in a portal outside canvasElement.
+        // The snackbar host renders in a portal outside canvasElement.
         await waitFor(
             () =>
-                expect(document.body.querySelector('.ant-message')?.textContent ?? '').toContain(
+                expect(document.body.querySelector('[data-testid="snackbar"]')?.textContent ?? '').toContain(
                     'SMTP-Zugangsdaten fehlen',
                 ),
             { timeout: 10_000 },
