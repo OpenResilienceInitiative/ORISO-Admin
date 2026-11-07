@@ -3426,5 +3426,7 @@
     "tokenInspection.active": "Aktiv",
     "tokenInspection.draft": "Entwurf",
     "tokenInspection.before": "Vorher — feste blaue Werte",
-    "tokenInspection.after": "Nachher — M3-Zuordnung"
+    "tokenInspection.after": "Nachher — M3-Zuordnung",
+    "adminSearch.page.foundAgency": "Beratungsstelle gründen",
+    "adminSearch.page.foundTenant": "Träger gründen"
 }

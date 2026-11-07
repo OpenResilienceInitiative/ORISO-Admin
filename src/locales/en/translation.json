@@ -3426,5 +3426,7 @@
     "tokenInspection.active": "Active",
     "tokenInspection.draft": "Draft",
     "tokenInspection.before": "Before — fixed blue values",
-    "tokenInspection.after": "After — M3 bridge"
+    "tokenInspection.after": "After — M3 bridge",
+    "adminSearch.page.foundAgency": "Found a counselling centre",
+    "adminSearch.page.foundTenant": "Found a tenant"
 }
