@@ -9,13 +9,27 @@ const PREFIX = '#tile=';
 export const withTileTarget = (to: string, tileKey?: string): string =>
     tileKey ? `${to.split('#')[0]}${PREFIX}${encodeURIComponent(tileKey)}` : to;
 
-export const readTileTarget = (hash: string): string | null =>
-    hash.startsWith(PREFIX) ? decodeURIComponent(hash.slice(PREFIX.length)) : null;
+export const readTileTarget = (hash: string): string | null => {
+    if (!hash.startsWith(PREFIX)) {
+        return null;
+    }
 
-const escapeAttribute = (value: string) => value.replace(/["\\]/g, '\\$&');
+    try {
+        return decodeURIComponent(hash.slice(PREFIX.length));
+    } catch {
+        // A hand-edited or cut-off link ("#tile=%"): no tile, and no error in the layout.
+        return null;
+    }
+};
 
+/**
+ * The key comes from the URL, so it is compared as text instead of being built into a selector:
+ * a quote, a backslash or a line break in it would make `querySelector` throw.
+ */
 export const findTile = (root: ParentNode, tileKey: string): HTMLElement | null =>
-    root.querySelector<HTMLElement>(`[data-search-tile="${escapeAttribute(tileKey)}"]`);
+    Array.from(root.querySelectorAll<HTMLElement>('[data-search-tile]')).find(
+        (element) => element.dataset.searchTile === tileKey,
+    ) ?? null;
 
 export const HIGHLIGHT_ATTRIBUTE = 'data-search-highlight';
 const HIGHLIGHT_MS = 2600;

@@ -15,6 +15,28 @@ describe('tile target in the URL', () => {
     });
 });
 
+describe('a link that was edited by hand', () => {
+    // Found by the automated security review: a malformed hash threw inside the layout's effect.
+    it.each(['#tile=%', '#tile=%E0%A4%A', '#tile=%zz'])('reads %s as "no tile" instead of throwing', (hash) => {
+        expect(() => readTileTarget(hash)).not.toThrow();
+        expect(readTileTarget(hash)).toBeNull();
+    });
+
+    it('finds keys with quotes, backslashes and line breaks without building a selector from them', () => {
+        const key = 'a"b\\c\nd';
+
+        document.body.innerHTML = '<div data-search-tile="plain"></div>';
+        const odd = document.createElement('div');
+
+        odd.setAttribute('data-search-tile', key);
+        document.body.appendChild(odd);
+
+        expect(() => findTile(document, key)).not.toThrow();
+        expect(findTile(document, key)).toBe(odd);
+        expect(findTile(document, 'missing"]')).toBeNull();
+    });
+});
+
 describe('revealTile', () => {
     beforeEach(() => {
         vi.useFakeTimers();
