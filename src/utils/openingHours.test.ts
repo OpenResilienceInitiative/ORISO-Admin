@@ -112,13 +112,13 @@ describe('weekday view round trip', () => {
     });
 
     it('detects slots that run past midnight as not week-compatible', () => {
-        const slots = parseOpeningHours(
+        const { slots: overnight } = parseOpeningHours(
             JSON.stringify({
                 version: 1,
                 openingHours: [{ fromDay: 'MONDAY', from: '22:00', untilDay: 'TUESDAY', until: '02:00' }],
             }),
-        ).slots;
-        expect(isWeekCompatible(slots)).toBe(false);
+        );
+        expect(isWeekCompatible(overnight)).toBe(false);
     });
 
     it('treats free text as legacy and not as slots', () => {

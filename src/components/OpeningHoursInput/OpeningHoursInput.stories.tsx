@@ -76,7 +76,9 @@ export const AllDaysSplitShifts: Story = {
 };
 
 /** A hand-typed value stays free text; the note says so and offers an explicit switch. */
-export const FreeTextFallback: Story = { render: () => <Controlled initial="Mo-Fr 9-17 Uhr, nach Vereinbarung auch abends" /> };
+export const FreeTextFallback: Story = {
+    render: () => <Controlled initial="Mo-Fr 9-17 Uhr, nach Vereinbarung auch abends" />,
+};
 
 /** A slot over midnight cannot sit in a weekday row, so it is edited as an individual timeslot. */
 export const CrossesMidnight: Story = {

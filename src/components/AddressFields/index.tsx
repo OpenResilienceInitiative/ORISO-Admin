@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
 import LocationCityOutlinedIcon from '@mui/icons-material/LocationCityOutlined';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import NumbersOutlinedIcon from '@mui/icons-material/NumbersOutlined';
 import MarkunreadMailboxOutlinedIcon from '@mui/icons-material/MarkunreadMailboxOutlined';
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import SignpostOutlinedIcon from '@mui/icons-material/SignpostOutlined';
@@ -48,6 +49,7 @@ export const AddressFields = () => {
                         name="houseNumber"
                         label={t('agency.edit.general.address.house_number')}
                         placeholder={t('agency.edit.general.address.house_number')}
+                        startAdornment={fieldIcon(<NumbersOutlinedIcon fontSize="small" />)}
                         inputProps={{ maxLength: 20 }}
                     />
                 </div>

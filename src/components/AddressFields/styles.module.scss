@@ -6,10 +6,13 @@
     container-type: inline-size;
 }
 
-.legend {
+.group .legend {
     display: flex;
     align-items: center;
+    width: auto;
+    margin: 0;
     padding: 0;
+    border: 0;
     color: var(--m3-on-surface, #1d1b20);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -24,25 +27,26 @@
 .grid {
     display: grid;
     margin-top: 12px;
+    row-gap: 8px;
     column-gap: 16px;
     grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 /* Short pairs stay side by side even in a narrow panel: number beside street, postcode beside city. */
 .street {
-    grid-column: span 8;
+    grid-column: span 6;
 }
 
 .number {
-    grid-column: span 4;
+    grid-column: span 6;
 }
 
 .postcode {
-    grid-column: span 5;
+    grid-column: span 6;
 }
 
 .city {
-    grid-column: span 7;
+    grid-column: span 6;
 }
 
 .half {

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { ConfigProvider, Form } from 'antd';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
+import EditNoteOutlinedIcon from '@mui/icons-material/EditNoteOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
@@ -90,14 +92,14 @@ export const OpeningHoursInput = ({ value, onChange, disabled, className }: Open
     if (legacyMode) {
         return (
             <div className={classNames(styles.root, className)} data-mode="legacy">
-                <div className={styles.note} role="note">
+                <p className={styles.note} role="note">
+                    <EditNoteOutlinedIcon fontSize="small" aria-hidden />
                     {t('openingHours.legacyNotice')}
-                </div>
+                </p>
                 <TextField
                     multiline
                     minRows={3}
                     fullWidth
-                    size="small"
                     value={parsed.legacyText || (value ?? '')}
                     placeholder={t('openingHours.legacyPlaceholder')}
                     disabled={isDisabled}
@@ -161,7 +163,12 @@ export const OpeningHoursInput = ({ value, onChange, disabled, className }: Open
                                 <span className={styles.dayName}>{dayName}</span>
                             </div>
                             <div className={styles.dayBody}>
-                                {!open && <span className={styles.closed}>{t('openingHours.closed')}</span>}
+                                {!open && (
+                                    <span className={styles.closed}>
+                                        <EventBusyOutlinedIcon fontSize="small" aria-hidden />
+                                        {t('openingHours.closed')}
+                                    </span>
+                                )}
                                 {ranges.map((range, index) => {
                                     const invalid = !isRangeValid(range) && range.from !== '' && range.until !== '';
                                     return (
@@ -172,7 +179,6 @@ export const OpeningHoursInput = ({ value, onChange, disabled, className }: Open
                                                 <TextField
                                                     key={edge}
                                                     type="time"
-                                                    size="small"
                                                     className={styles.time}
                                                     label={t(`openingHours.${edge}`)}
                                                     value={range[edge]}
@@ -191,7 +197,6 @@ export const OpeningHoursInput = ({ value, onChange, disabled, className }: Open
                                             ))}
                                             {ranges.length > 1 && (
                                                 <IconButton
-                                                    size="small"
                                                     disabled={isDisabled}
                                                     aria-label={`${dayName} — ${t('openingHours.removeRange')}`}
                                                     onClick={() =>
@@ -222,7 +227,6 @@ export const OpeningHoursInput = ({ value, onChange, disabled, className }: Open
                                             {t('openingHours.addRange')}
                                         </M3Button>
                                         <IconButton
-                                            size="small"
                                             aria-label={`${dayName} — ${t('openingHours.copyTo')}`}
                                             aria-haspopup="menu"
                                             onClick={(event) => setCopyMenu({ day, anchor: event.currentTarget })}

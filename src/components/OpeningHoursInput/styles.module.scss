@@ -54,6 +54,9 @@
 }
 
 .closed {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -66,8 +69,11 @@
     gap: 8px;
 }
 
-.time {
-    width: 124px;
+.range .time {
+    flex: 1 1 130px;
+    width: auto;
+    min-width: 0;
+    max-width: 170px;
 }
 
 .rangeError {
@@ -79,19 +85,21 @@
 
 .dayActions {
     display: flex;
+    margin-left: -8px;
     align-items: center;
     gap: 4px;
 }
 
-/* A neutral inline note: left rule on the low surface, same look as the legacy-text note. */
+/* Helper text under the field, not a box: events are pop-ups, state is plain hint text. */
 .note {
-    padding: 10px 14px;
-    border-left: 3px solid var(--admin-status-muted, var(--m3-outline, #747878));
-    border-radius: 0 8px 8px 0;
-    background: var(--m3-surface-container-low, #f6f3f3);
-    color: var(--m3-on-surface, #1d1b20);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
-    font-size: 14px;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .convert {
@@ -112,4 +120,16 @@
         padding-top: 0;
         padding-left: 4px;
     }
+}
+
+/* Read-only (disabled) values stay at full contrast: the day switches show what is set,
+   so grey values next to a red "on" switch read as broken. Only the border stays tonal. */
+.range .time :global(.Mui-disabled) {
+    -webkit-text-fill-color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1d1b20);
+}
+
+.range .time :global(.MuiInputLabel-root.Mui-disabled) {
+    -webkit-text-fill-color: var(--m3-on-surface-variant, #444748);
+    color: var(--m3-on-surface-variant, #444748);
 }

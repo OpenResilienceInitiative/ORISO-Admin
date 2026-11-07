@@ -3496,5 +3496,6 @@
     "openingHours.legacyPlaceholder": "Free text, e.g. Mon–Fri 9–17",
     "openingHours.crossNotice": "These hours contain timeslots that run past midnight, so they are edited as individual timeslots.",
     "agency.edit.general.department_details.opening_hours_section": "Opening hours",
-    "agency.edit.general.department_details.contact_section": "Location and contact"
+    "agency.edit.general.department_details.contact_section": "Location and contact",
+    "agency.edit.general.department_details.department_label": "Department"
 }

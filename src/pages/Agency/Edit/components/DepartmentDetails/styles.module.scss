@@ -32,7 +32,10 @@
 }
 
 .hint {
+    display: flex;
+    align-items: flex-start;
     margin: 0;
+    gap: 6px;
     color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 12px;
@@ -40,4 +43,26 @@
 
 .fieldIcon {
     color: var(--m3-on-surface-variant, #444748);
+}
+
+/* The department select spans the card and carries a visible label. */
+.departmentPicker {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+}
+
+.departmentLabel {
+    display: flex;
+    align-items: center;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+    gap: 8px;
+
+    svg {
+        color: var(--m3-primary, #a5000a);
+    }
 }

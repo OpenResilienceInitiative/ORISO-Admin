@@ -1,5 +1,6 @@
 import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PhoneInTalkOutlinedIcon from '@mui/icons-material/PhoneInTalkOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import { Alert, Button, Skeleton } from 'antd';
@@ -75,15 +76,21 @@ export const DepartmentDetailsCard = ({
     const { t } = useTranslation();
 
     const departmentSelect = (
-        <M3Select
-            aria-label={t('agency.legal.department.choose', 'Fachbereich wählen')}
-            options={departments.map(({ id, name }) => ({ value: id, label: name }))}
-            value={selected}
-            onChange={onSelect}
-            placeholder={t('agency.legal.department.choose', 'Fachbereich wählen')}
-            style={{ minWidth: 220 }}
-            disabled={departments.length === 0}
-        />
+        <div className={styles.departmentPicker}>
+            <span className={styles.departmentLabel}>
+                <CategoryOutlinedIcon fontSize="small" aria-hidden />
+                {t(`${TITLE_KEY}.department_label`)}
+            </span>
+            <M3Select
+                aria-label={t('agency.legal.department.choose', 'Fachbereich wählen')}
+                options={departments.map(({ id, name }) => ({ value: id, label: name }))}
+                value={selected}
+                onChange={onSelect}
+                placeholder={t('agency.legal.department.choose', 'Fachbereich wählen')}
+                style={{ width: '100%' }}
+                disabled={departments.length === 0}
+            />
+        </div>
     );
 
     // Disable-not-hide: an agency without Fachbereiche keeps the card, with a hint instead
@@ -194,7 +201,10 @@ export const DepartmentDetailsCard = ({
                         {t(`${TITLE_KEY}.opening_hours_section`)}
                     </h3>
                     <OpeningHoursFormField name="openingHours" />
-                    <p className={styles.hint}>{inheritHint(readableInheritedHours)}</p>
+                    <p className={styles.hint}>
+                        <InfoOutlinedIcon fontSize="inherit" aria-hidden />
+                        {inheritHint(readableInheritedHours)}
+                    </p>
                 </section>
                 <section className={styles.section} aria-labelledby="department-contact-title">
                     <h3 id="department-contact-title" className={styles.sectionTitle}>

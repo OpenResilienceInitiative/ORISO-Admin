@@ -58,9 +58,7 @@ export const StructuredHours: Story = {
 /** Longest German text in every field, plus a structured inherited value in the hint. */
 export const LongestGermanText: Story = {
     args: {
-        departments: [
-            { id: 3, name: 'Schuldner- und Insolvenzberatung für Familien und junge Erwachsene' },
-        ],
+        departments: [{ id: 3, name: 'Schuldner- und Insolvenzberatung für Familien und junge Erwachsene' }],
         initialValues: {
             openingHours: serializeOpeningHours(slotsFor('08:00', '12:00').concat(slotsFor('13:00', '18:30'))),
             phoneExtension: '-1234 (Durchwahl Sekretariat)',
