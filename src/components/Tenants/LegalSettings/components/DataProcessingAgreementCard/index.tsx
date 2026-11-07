@@ -239,7 +239,11 @@ export const DataProcessingAgreementCard = ({
             <M3RichTextEditor
                 title={t('tenants.legal.dataProcessingAgreement.title')}
                 headerAction={
-                    <TileHelpButton topic={contractHelp} tileTitle={t('tenants.legal.dataProcessingAgreement.title')} />
+                    <TileHelpButton
+                        topic={contractHelp}
+                        tileTitle={t('tenants.legal.dataProcessingAgreement.title')}
+                        tileIcon={<DpaIcon />}
+                    />
                 }
                 icon={DpaIcon}
                 value={currentContent}
