@@ -79,18 +79,18 @@ export const WithTabs: Story = {
 
 /** Issue #193: the header must reveal the final tab even without a card deck. */
 const SETTINGS_TABS = [
-    { to: '/admin/theme-settings/global-config', titleKey: 'Globale Konfigurationen', iconName: 'global_config' },
-    { to: '/admin/theme-settings/master-data', titleKey: 'Stammdaten & Mehr', iconName: 'master_data' },
+    { to: '/admin/theme-settings/global-config', titleKey: 'Konfiguration', iconName: 'global_config' },
+    { to: '/admin/theme-settings/master-data', titleKey: 'Stammdaten', iconName: 'master_data' },
     { to: '/admin/theme-settings/general', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
     { to: '/admin/theme-settings/legal', titleKey: 'Rechtliches', iconName: 'legal' },
-    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
+    { to: '/admin/theme-settings/smtp', titleKey: 'E-Mail-Server', iconName: 'email_server' },
     { to: '/admin/theme-settings/notices', titleKey: 'Systemhinweise' },
     { to: '/admin/theme-settings/function-access', titleKey: 'Funktionszugriff', iconName: 'functionality_access' },
 ];
 
 /**
- * ORISO-Admin#1309: seven tabs, the most a settings page has. The row adapts to the width and
- * never scrolls sideways; narrow it with the viewport toolbar to see each step.
+ * Seven tabs, the most a settings page has, in the shared underline tab bar (ORISO-Admin#1374).
+ * When the bar is narrower than its tabs it scrolls inside itself; the page never scrolls sideways.
  */
 export const SevenSettingsTabs: Story = {
     render: () => (
@@ -110,7 +110,11 @@ export const SevenSettingsTabs: Story = {
     play: async ({ canvasElement }) => {
         const tabs = canvasElement.querySelector<HTMLElement>('[data-admin-page-tabs]');
         await expect(tabs).not.toBeNull();
+        // The bar may scroll inside itself, but it never widens the page.
         await expect(tabs!.scrollWidth).toBeLessThanOrEqual(tabs!.clientWidth);
+        await expect(canvasElement.ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(
+            canvasElement.ownerDocument.documentElement.clientWidth,
+        );
         await expect(canvasElement.querySelector('[data-admin-page-deck-nav]')).toBeNull();
     },
 };
