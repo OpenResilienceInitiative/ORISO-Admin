@@ -117,10 +117,12 @@ describe('Statistic page', () => {
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         // previous month detail is computed from the real comparison value
         expect(screen.getAllByText(/Vormonat gesamt 10/).length).toBeGreaterThan(0);
-        // metrics without an application-layer source render the calm empty
-        // presentation (dash + hint) instead of a shouty "Keine Daten" value
-        expect(screen.getAllByText('wird noch nicht erfasst').length).toBeGreaterThan(0);
-        expect(screen.getAllByLabelText('Keine Daten').length).toBeGreaterThan(0);
+        // metrics without an application-layer source render a lighter "not tracked yet"
+        // card that says so in words, instead of a shouty "Keine Daten" value or a bare dash
+        expect(screen.getAllByText('Wird noch nicht erfasst').length).toBeGreaterThan(0);
+        const notTrackedCards = document.querySelectorAll('.statisticDashboard__metricCard--notTracked');
+        expect(notTrackedCards.length).toBeGreaterThan(0);
+        notTrackedCards.forEach((card) => expect(card.textContent).not.toContain('–'));
         // legacy mock numbers must be gone
         expect(screen.queryByText('312')).toBeNull();
         expect(screen.queryByText('Caritas NRW')).toBeNull();
@@ -183,6 +185,32 @@ describe('Statistic page', () => {
         expect(screen.queryByText('Kleinzellen-Schutz deaktiviert – nur für Testumgebungen')).toBeNull();
     });
 
+    it('puts the stand into one quiet info row, with no privacy line while nothing is hidden (Admin#1374)', async () => {
+        dashboardMock.mockResolvedValue({
+            ...response,
+            generatedAt: '2026-11-06T05:00:00Z',
+            dataUntil: '2026-11-05',
+            snapshotInterval: 'DAILY',
+        });
+
+        renderStatistic();
+
+        const infoRow = await screen.findByTestId('statistic-info-row');
+        expect(infoRow).toHaveTextContent('Stand 05.11.2026 · neue Zahlen täglich um 6:00 Uhr');
+        expect(screen.getAllByTestId('statistic-info-row')).toHaveLength(1);
+        expect(screen.queryByRole('button', { name: 'Warum?' })).toBeNull();
+        expect(document.querySelector('.statisticDashboard__notice')).toBeNull();
+    });
+
+    it('fills the width with the KPI cards instead of leaving free cells for a picture (Admin#1374)', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        const { container } = renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        expect(container.querySelectorAll('[data-admin-card-grid-filler]')).toHaveLength(0);
+    });
+
     describe('fixed stand (UserService#1547)', () => {
         const standOf = (snapshotInterval: 'DAILY' | 'WEEKLY', dataUntil: string) => ({
             ...response,
@@ -211,7 +239,7 @@ describe('Statistic page', () => {
             dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [noCases] });
             renderStatistic();
 
-            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            await screen.findByText(/^Stand 03\.11\.2026/);
             expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
             expect(screen.getAllByText('0').length).toBeGreaterThan(0);
         });
@@ -221,7 +249,7 @@ describe('Statistic page', () => {
             dashboardMock.mockResolvedValue({ ...standOf('DAILY', '2026-11-03'), targets: [response.targets[0]] });
             renderStatistic();
 
-            await screen.findByText(/^Zahlen bis einschließlich 03\.11\.2026/);
+            await screen.findByText(/^Stand 03\.11\.2026/);
             expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
 
             fireEvent.click(screen.getByRole('tab', { name: 'Auf Beratungsstellenebene' }));
@@ -233,9 +261,7 @@ describe('Statistic page', () => {
             dashboardMock.mockResolvedValue(standOf('DAILY', '2026-11-03'));
             renderStatistic();
 
-            expect(
-                await screen.findByText('Zahlen bis einschließlich 03.11.2026. Neue Zahlen täglich um 6:00 Uhr.'),
-            ).toBeInTheDocument();
+            expect(await screen.findByText('Stand 03.11.2026 · neue Zahlen täglich um 6:00 Uhr')).toBeInTheDocument();
         });
 
         it('says the same in English for a weekly stand', async () => {
@@ -245,9 +271,7 @@ describe('Statistic page', () => {
             try {
                 renderStatistic();
 
-                expect(
-                    await screen.findByText(/^Figures up to and including .*2026\. New figures every Monday at 6:00/),
-                ).toBeInTheDocument();
+                expect(await screen.findByText(/^As of .*2026 · new figures every Monday at 6:00/)).toBeInTheDocument();
             } finally {
                 await i18n.changeLanguage('de');
             }
@@ -309,7 +333,7 @@ describe('Statistic page', () => {
         renderStatistic();
 
         expect(await screen.findByText('Live-Zahlen')).toBeInTheDocument();
-        expect(screen.queryByText(/Neue Zahlen/)).toBeNull();
+        expect(screen.queryByText(/neue Zahlen/)).toBeNull();
     });
 
     it('shows an error notice when the statistics endpoint fails', async () => {
@@ -436,7 +460,9 @@ describe('Statistic page', () => {
 
         renderStatistic();
 
-        await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
+        await waitFor(() =>
+            expect(screen.getAllByText('Geschützt – zu wenige aktive Beratende').length).toBeGreaterThan(0),
+        );
         expect(screen.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
     });
 
@@ -449,13 +475,27 @@ describe('Statistic page', () => {
             sessionCountsByPeriod: null,
             groupChatCountsByPeriod: null,
         };
+        /** The long reason sits behind the "Warum?" disclosure of the one info row (Admin#1374). */
+        const expectPrivacyReason = async (reason: RegExp) => {
+            const why = await screen.findByRole('button', { name: 'Warum?' });
+            expect(
+                screen.getByText('Einige Werte sind geschützt, solange zu wenige Beratende aktiv sind.'),
+            ).toBeVisible();
+            expect(why).toHaveAttribute('aria-expanded', 'false');
+            expect(screen.getByText(reason)).not.toBeVisible();
+            fireEvent.click(why);
+            expect(why).toHaveAttribute('aria-expanded', 'true');
+            expect(screen.getByText(reason)).toBeVisible();
+        };
 
         it('shows no counsellor count for a hidden row', async () => {
             dashboardMock.mockResolvedValue({ ...response, targets: [hiddenRow] });
 
             renderStatistic();
 
-            await waitFor(() => expect(screen.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0));
+            await waitFor(() =>
+                expect(screen.getAllByText('Geschützt – zu wenige aktive Beratende').length).toBeGreaterThan(0),
+            );
             // the zero a hidden row carries must never be shown as a count
             const cards = document.querySelector('.statisticDashboard__summaryGrid') as HTMLElement;
             expect(cards.textContent).not.toMatch(/(^|\D)0(\D|$)/);
@@ -466,11 +506,7 @@ describe('Statistic page', () => {
 
             renderStatistic();
 
-            await waitFor(() =>
-                expect(
-                    screen.getByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/),
-                ).toBeInTheDocument(),
-            );
+            await expectPrivacyReason(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/);
             // a chart of zeros would read as "nothing happened"
             expect(document.querySelector('.statisticDashboard__chartGrid')).toBeNull();
         });
@@ -540,7 +576,7 @@ describe('Statistic page', () => {
             await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
             openAgencyLevel();
 
-            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            await expectPrivacyReason(rowNotice);
             expect(screen.queryByText(totalNotice)).toBeNull();
             // a shown row remains: charts and the export stay
             expect(screen.getByText('Statistik als CSV herunterladen')).toBeInTheDocument();
@@ -556,7 +592,7 @@ describe('Statistic page', () => {
             );
             renderStatistic();
 
-            expect(await screen.findByText(totalNotice)).toBeInTheDocument();
+            await expectPrivacyReason(totalNotice);
             expect(screen.queryByText(rowNotice)).toBeNull();
             expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();
         });
@@ -569,7 +605,7 @@ describe('Statistic page', () => {
             fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
             fireEvent.click(await screen.findByRole('option', { name: /Beratungsstelle 12/ }));
 
-            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            await expectPrivacyReason(rowNotice);
             expect(screen.queryByText(totalNotice)).toBeNull();
         });
 
@@ -594,7 +630,7 @@ describe('Statistic page', () => {
             });
             const { unmount } = renderStatistic();
 
-            expect(await screen.findByText(totalNotice)).toBeInTheDocument();
+            await expectPrivacyReason(totalNotice);
             expect(screen.queryByText(rowNotice)).toBeNull();
             unmount();
 
@@ -608,7 +644,7 @@ describe('Statistic page', () => {
             fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
             fireEvent.click(await screen.findByRole('option', { name: /Träger 6/ }));
 
-            expect(await screen.findByText(rowNotice)).toBeInTheDocument();
+            await expectPrivacyReason(rowNotice);
             expect(screen.queryByText(totalNotice)).toBeNull();
         });
 

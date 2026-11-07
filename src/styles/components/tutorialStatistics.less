@@ -1,10 +1,13 @@
 // Aggregate tutorial-completion dashboard section (epic TOUR-07).
 // Design tokens only — the --m3-* custom properties are the canonical source.
+// Full width of the dashboard, same gap and corner radius as the statistic cards above.
 .tutorialStatistics {
-    margin-top: 48px;
+    width: 100%;
+    box-sizing: border-box;
     padding: 24px;
+    margin-top: 24px;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
-    border-radius: 12px;
+    border-radius: 28px;
     background-color: var(--m3-surface, #fcf9f9);
 
     &__title {

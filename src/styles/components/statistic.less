@@ -22,7 +22,7 @@
 }
 
 .statisticDashboard {
-    width: min(100%, 1236px);
+    width: 100%;
     margin-top: 16px;
 }
 
@@ -235,14 +235,73 @@
     color: var(--m3-on-tertiary-container);
 }
 
-.statisticDashboard__notice--info {
-    background: var(--m3-surface-container);
-    color: var(--m3-on-surface-variant);
-}
-
 .statisticDashboard__notice--warning {
     background: var(--warning-light);
     color: var(--m3-on-surface);
+}
+
+// One quiet line above the cards (Admin#1374): stand + optional "protected" hint,
+// the long privacy reason behind a disclosure. Replaces stacked full-width notice bars.
+.statisticDashboard__infoRow {
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin: 0 0 16px;
+    background: var(--m3-surface-container-low);
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.statisticDashboard__infoItems {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+}
+
+.statisticDashboard__infoItem {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.statisticDashboard__infoWhy {
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    color: var(--m3-on-surface);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary);
+        outline-offset: 2px;
+    }
+}
+
+.statisticDashboard__infoReasons {
+    display: grid;
+    max-width: 90ch;
+    padding-left: 26px;
+    margin-top: 8px;
+    gap: 4px;
+
+    // `display: grid` would otherwise beat the UA rule for [hidden].
+    &[hidden] {
+        display: none;
+    }
 }
 
 .statisticDashboard__loading {
@@ -593,6 +652,36 @@
 
     strong {
         color: var(--m3-on-surface-variant);
+    }
+}
+
+.statisticDashboard__cardEmptyState {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+    }
+}
+
+// Not tracked yet: no surface, no elevation, a dashed outline — a slot that exists,
+// not a card that broke. Two classes, so the dashed style wins over the shared card.
+.statisticDashboard__metricCard.statisticDashboard__metricCard--notTracked {
+    --admin-form-card-surface: transparent;
+    --admin-card-outline: var(--m3-outline-variant);
+    --admin-card-elevation: none;
+
+    border-style: dashed;
+
+    .statisticDashboard__metricIcon {
+        opacity: 0.6;
     }
 }
 

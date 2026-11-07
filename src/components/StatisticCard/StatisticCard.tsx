@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import { ArrowDownward, ArrowUpward, LockOutlined, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
 import cardStyles from '../Card/styles.module.scss';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
 import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
@@ -8,6 +8,7 @@ import type {
     CardMenuKey,
     IconTone,
     StatisticCardDefinition,
+    StatisticEmptyKind,
     SvgIcon,
     TrendBadgeDefinition,
     TrendDirection,
@@ -35,8 +36,10 @@ const translateDashboardKey = (
     options: Record<string, unknown> = {},
 ) => translate(key, { defaultValue, ...options });
 
-const getCardClassName = (card: StatisticCardDefinition) =>
-    `${cardStyles.card} statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}`;
+const getCardClassName = (card: StatisticCardDefinition, emptyKind?: StatisticEmptyKind) =>
+    `${cardStyles.card} statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}${
+        emptyKind ? ` statisticDashboard__metricCard--${emptyKind}` : ''
+    }`;
 
 const getTrendClassName = (tone: TrendScoreTone) => `statisticDashboard__trend statisticDashboard__trend--${tone}`;
 
@@ -156,6 +159,64 @@ const TrendBadge = ({
     );
 };
 
+const CardValueRow = ({
+    detail,
+    emptyHint,
+    emptyKind,
+    locale,
+    translate,
+    trend,
+    value,
+}: {
+    detail?: string;
+    emptyHint?: string;
+    emptyKind?: StatisticEmptyKind;
+    locale: string;
+    translate: DashboardTranslate;
+    trend?: TrendBadgeDefinition;
+    value: string;
+}) => {
+    if (emptyKind === 'protected' || emptyKind === 'notTracked') {
+        // No dash: the hint itself says why there is no figure, so the card does not look broken.
+        return (
+            <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                <p className="statisticDashboard__cardEmptyState">
+                    {emptyKind === 'protected' && (
+                        <LockOutlined
+                            aria-hidden="true"
+                            focusable="false"
+                            data-testid="statistic-card-protected-icon"
+                        />
+                    )}
+                    <span>{emptyHint}</span>
+                </p>
+            </div>
+        );
+    }
+
+    if (emptyHint) {
+        return (
+            <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                {/* Screen readers get the explicit wording; the dash is purely visual. */}
+                <strong aria-label={value}>
+                    <span aria-hidden="true">–</span>
+                </strong>
+                <span className="statisticDashboard__cardEmptyHint">{emptyHint}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="statisticDashboard__cardValueRow">
+            <strong>
+                <AnimatedValue locale={locale} value={value} />
+            </strong>
+            <TrendBadge locale={locale} translate={translate} trend={trend} />
+            {detail && <span className="statisticDashboard__cardDetail">{detail}</span>}
+        </div>
+    );
+};
+
 export interface StatisticCardProps {
     card: StatisticCardDefinition;
     locale: string;
@@ -176,6 +237,9 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
     const displayDetail = selectedMenuOption?.detail ?? card.detail;
     const displayTrend = selectedMenuOption?.trend || card.trend;
     const displayEmptyHint = selectedMenuOption ? selectedMenuOption.emptyHint : card.emptyHint;
+    const displayEmptyKind: StatisticEmptyKind | undefined = displayEmptyHint
+        ? (selectedMenuOption ? selectedMenuOption.emptyKind : card.emptyKind) ?? 'pending'
+        : undefined;
     const DisplayIcon = selectedMenuOption?.icon || card.icon;
     const displayIconTone = selectedMenuOption?.iconTone ?? card.iconTone;
     const menuLabel =
@@ -193,7 +257,9 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
 
     return (
         <section
-            className={`${getCardClassName(card)} ${isMenuOpen ? 'statisticDashboard__metricCard--menuOpen' : ''}`}
+            className={`${getCardClassName(card, displayEmptyKind)} ${
+                isMenuOpen ? 'statisticDashboard__metricCard--menuOpen' : ''
+            }`}
             data-card-key={card.key}
         >
             <div
@@ -268,23 +334,15 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
                 )}
             </div>
 
-            {displayEmptyHint ? (
-                <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
-                    {/* Screen readers get the explicit wording; the dash is purely visual. */}
-                    <strong aria-label={displayValue}>
-                        <span aria-hidden="true">–</span>
-                    </strong>
-                    <span className="statisticDashboard__cardEmptyHint">{displayEmptyHint}</span>
-                </div>
-            ) : (
-                <div className="statisticDashboard__cardValueRow">
-                    <strong>
-                        <AnimatedValue locale={locale} value={displayValue} />
-                    </strong>
-                    <TrendBadge locale={locale} translate={translate} trend={displayTrend} />
-                    {displayDetail && <span className="statisticDashboard__cardDetail">{displayDetail}</span>}
-                </div>
-            )}
+            <CardValueRow
+                detail={displayDetail}
+                emptyHint={displayEmptyHint}
+                emptyKind={displayEmptyKind}
+                locale={locale}
+                translate={translate}
+                trend={displayTrend}
+                value={displayValue}
+            />
         </section>
     );
 };
