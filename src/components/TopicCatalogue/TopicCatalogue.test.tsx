@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
@@ -187,6 +187,41 @@ describe('TopicCatalogue edit mode', () => {
         fireEvent.dragOver(emptyList);
         fireEvent.drop(emptyList);
         expect(groupItems('c')[0]).toContain('Sucht');
+    });
+
+    it('drags a topic down inside its category and saves that order', async () => {
+        const { onSaveLayout } = setup();
+        fireEvent.click(label('Bearbeiten'));
+        const row = (id: number) => document.querySelector(`li[data-topic-id="${id}"]`) as HTMLElement;
+        // jsdom has no layout: give the target row a box so the lower half can be hit.
+        vi.spyOn(row(2), 'getBoundingClientRect').mockReturnValue({ top: 100, height: 40 } as DOMRect);
+
+        fireEvent.dragStart(row(1));
+        // jsdom's drag events carry no clientY: set it on the event itself.
+        const over = createEvent.dragOver(row(2));
+        Object.defineProperty(over, 'clientY', { value: 130 });
+        fireEvent(row(2), over);
+        fireEvent.drop(row(2));
+        expect(groupItems('a')).toEqual([expect.stringContaining('Schulden'), expect.stringContaining('Sucht')]);
+
+        fireEvent.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0][0].topicIds).toEqual([2, 1]);
+    });
+
+    it('clears an old save error as soon as the draft changes again', async () => {
+        const onSaveLayout = vi.fn().mockRejectedValue(new Error('500'));
+        setup({ onSaveLayout });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowDown}');
+        await u.click(textButton('Speichern'));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Das Speichern hat nicht geklappt');
+
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowUp}');
+        expect(screen.getByRole('alert')).toBeEmptyDOMElement();
     });
 
     it('moves a topic through the category select (touch)', async () => {
