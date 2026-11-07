@@ -31,6 +31,9 @@ $m3-state-active: rgb(39 50 112 / 12%);
 }
 
 .module {
+    /* The card keeps its light surface in every scheme, so its focus ring is the (fixed) brand accent. */
+    --admin-focus-ring-color: var(--oriso-app-accent-dark, #a5000a);
+
     display: flex;
     flex-direction: column;
     // Shared cards can be phone-width inside a desktop Storybook or split view.
@@ -318,7 +321,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     &:focus-visible {
-        outline: 2px solid $m3-on-surface;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 
@@ -609,7 +612,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     // M3 keyboard focus ring
     &:focus-visible {
-        outline: 2px solid $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 1px;
     }
 
@@ -907,7 +910,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -1500,7 +1503,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: -2px;
     }
 }
@@ -1578,15 +1581,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 1px;
     }
 }
 
 .versionHistoryControl {
     @container (max-width: 599px) {
+        // Wide enough for "Aktuelle Version (Entwurf)" (26 chars) so the label
+        // is not cut off at 390 px; the bar scrolls sideways if it ever overflows.
         .versionLeading > span {
-            max-width: 12ch;
+            max-width: 28ch;
         }
     }
 }
@@ -1893,15 +1898,16 @@ $m3-state-active: rgb(39 50 112 / 12%);
 .actions {
     display: flex;
     min-width: 0;
-    min-height: var(--admin-card-footer-height, 68px);
+    /* The shared 64px tile footer (Card `.dialogCard .footer`): 40px buttons, 12px above and below. */
+    min-height: var(--admin-dialog-card-footer-height, 64px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
-    padding: 8px 16px 16px;
+    padding: 12px 24px;
 
     @media (max-width: 400px) {
         gap: 4px;
-        padding-inline: 8px;
+        padding-inline: 16px;
     }
 }
 
@@ -1914,7 +1920,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .readOnlyFooter {
     display: flex;
-    min-height: var(--admin-card-footer-height, 68px);
+    min-height: var(--admin-dialog-card-footer-height, 64px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;

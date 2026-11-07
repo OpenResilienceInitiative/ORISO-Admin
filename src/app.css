@@ -179,6 +179,13 @@
        surface-container-high, exactly like the M3 dialog over its light scrim. */
     --admin-workspace-background: #fcf9f9;
 
+    /* ONE keyboard focus ring for every control (one token, not three looks). Colour = the scheme's
+       primary; surfaces that do not follow the scheme (the editor card, the workspace tab bar)
+       override only the colour locally. */
+    --admin-focus-ring-width: 2px;
+    --admin-focus-ring-offset: 2px;
+    --admin-focus-ring-color: var(--m3-primary, #a5000a);
+
     /* One surface for every tile, container and dialog. A later "light" mode remaps only this. */
     --admin-form-card-surface: #eae7e8;
     --admin-card-outline: transparent;
@@ -383,4 +390,11 @@ body {
 .ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last:after,
 .ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first:after {
     box-shadow: none !important;
+}
+
+/* Baseline ring for controls that bring no focus style of their own (browser-default blue `auto` ring before).
+   `:where` keeps specificity at zero, so every component that styles its own ring with the token wins. */
+:where(button, a[href], [role='button'], summary):focus-visible {
+    outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
+    outline-offset: var(--admin-focus-ring-offset);
 }
