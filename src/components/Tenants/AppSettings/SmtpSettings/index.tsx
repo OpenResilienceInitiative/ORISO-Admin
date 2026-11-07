@@ -2,7 +2,7 @@ import { Alert, Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAdminFeedback } from '../../../../hooks/useAdminFeedback';
@@ -38,6 +38,13 @@ const DEFAULT_SMTP_SETTINGS = {
         emailThemeColor: '#0f3b8f',
     },
 } as const;
+
+/**
+ * Tiles of the Email Server tab, in display order. Moving a tile is a one-line change here.
+ * The test tile belongs to the server settings; the branded mail preview follows below (page level).
+ */
+export const SMTP_TILE_ORDER = ['smtpServer', 'serverTest'] as const;
+type SmtpTile = (typeof SMTP_TILE_ORDER)[number];
 
 const isBlank = (value?: string | number | boolean | null) =>
     value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
@@ -194,188 +201,198 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                 : Promise.reject(new Error(t('tenants.appSettings.smtp.ownServerIncomplete'))),
     });
 
+    const tiles: Record<SmtpTile, ReactNode> = {
+        smtpServer: (
+            <CardGrid.Item span={2}>
+                <CardEditable
+                    key={formKey}
+                    className={styles.smtpCard}
+                    variant="dialog"
+                    headerIcon={<EmailOutlinedIcon />}
+                    formProp={form}
+                    isLoading={isLoading}
+                    initialValues={initialValues}
+                    titleKey="tenants.appSettings.smtp.title"
+                    help={tenantSmtpHelp}
+                    subTitleKey="tenants.appSettings.smtp.description"
+                    onSave={(formData, options) => {
+                        const save = (confirmed = false) => {
+                            const prepared = prepareTenantSettings(formData);
+                            if (confirmed) prepared.settings.smtp.nonstandardTransportConfirmed = true;
+                            mutate(prepared, {
+                                onError: () => options?.onError?.(),
+                            });
+                        };
+                        const mode = form.getFieldValue(['settings', 'smtpMode']);
+                        const port = form.getFieldValue(['settings', 'smtp', 'port']);
+                        const secure = form.getFieldValue(['settings', 'smtp', 'secure']);
+                        if (mode !== 'OWN' || !needsTransportConfirmation(port, secure)) {
+                            save();
+                            return;
+                        }
+                        feedbackModal.confirm({
+                            title: t('tenants.appSettings.smtp.transportMismatchTitle'),
+                            content: t('tenants.appSettings.smtp.transportMismatchExplanation'),
+                            okText: t('tenants.appSettings.smtp.transportMismatchConfirm'),
+                            cancelText: t('tenants.appSettings.smtp.transportMismatchCancel'),
+                            onOk: () => save(true),
+                            onCancel: () => options?.onError?.(),
+                        });
+                    }}
+                >
+                    <TileSections>
+                        <TileSections.Section id="smtp-sending" title={t('tileHelp.mailPanels.sending')}>
+                            <div className={styles.fieldGrid}>
+                                {data?.settings?.smtpMode == null && (
+                                    <Alert
+                                        type="warning"
+                                        showIcon
+                                        message={t('tenants.appSettings.smtp.legacyModeMissing')}
+                                    />
+                                )}
+                                <MuiSwitchField
+                                    className={styles.smtpSwitch}
+                                    label={renderSwitchLabel(
+                                        'tenants.appSettings.smtp.systemEmailToggle.title',
+                                        'tenants.appSettings.smtp.systemEmailToggle.description',
+                                    )}
+                                    name={['settings', 'featureSystemNotificationEmailsEnabled']}
+                                    disabled={!systemEmailsAllowed}
+                                    switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
+                                />
+                                <MuiRadioGroupField
+                                    vertical
+                                    required
+                                    labelKey="tenants.appSettings.smtp.mode"
+                                    name={['settings', 'smtpMode']}
+                                >
+                                    <MuiRadioGroupField.Radio value="PLATFORM">
+                                        {t('tenants.appSettings.smtp.platformMode')}
+                                    </MuiRadioGroupField.Radio>
+                                    <MuiRadioGroupField.Radio value="OWN">
+                                        {t('tenants.appSettings.smtp.ownMode')}
+                                    </MuiRadioGroupField.Radio>
+                                </MuiRadioGroupField>
+                                <MuiColorField
+                                    className={styles.colorField}
+                                    labelKey="tenants.appSettings.smtp.emailThemeColor"
+                                    help="tenants.appSettings.smtp.emailThemeColor.helpText"
+                                    name={['settings', 'smtp', 'emailThemeColor']}
+                                />
+                            </div>
+                        </TileSections.Section>
+                        <TileSections.Section id="smtp-server" title={t('tileHelp.mailPanels.server')}>
+                            <div className={styles.fieldGrid}>
+                                {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
+                                    <Alert
+                                        type="warning"
+                                        showIcon
+                                        message={t('tenants.appSettings.smtp.transportMismatchHint')}
+                                    />
+                                )}
+
+                                <MuiFormField
+                                    label={t('tenants.appSettings.smtp.host')}
+                                    name={['settings', 'smtp', 'host']}
+                                    helpText={t('tenants.appSettings.smtp.host.helpText')}
+                                    rules={[ownServerRule()]}
+                                    disabled={!ownServerSelected}
+                                />
+                                <MuiNumberFormField
+                                    label={t('tenants.appSettings.smtp.port')}
+                                    name={['settings', 'smtp', 'port']}
+                                    helpText={t('tenants.appSettings.smtp.port.helpText')}
+                                    min={1}
+                                    inputProps={{ max: 65535 }}
+                                    rules={
+                                        ownServerSelected
+                                            ? [
+                                                  ownServerRule(false, true),
+                                                  {
+                                                      type: 'number',
+                                                      min: 1,
+                                                      max: 65535,
+                                                      message: t('tenants.appSettings.smtp.port.invalid'),
+                                                  },
+                                              ]
+                                            : []
+                                    }
+                                    disabled={!ownServerSelected}
+                                />
+                                <MuiFormField
+                                    label={t('tenants.appSettings.smtp.from')}
+                                    name={['settings', 'smtp', 'from']}
+                                    helpText={t('tenants.appSettings.smtp.from.helpText')}
+                                    rules={[ownServerRule()]}
+                                    disabled={!ownServerSelected}
+                                />
+                                <MuiSwitchField
+                                    className={styles.smtpSwitch}
+                                    label={renderSwitchLabel(
+                                        'tenants.appSettings.smtp.secure',
+                                        'tenants.appSettings.smtp.secure.description',
+                                    )}
+                                    name={['settings', 'smtp', 'secure']}
+                                    disabled={!ownServerSelected}
+                                    switchLabel={t('tenants.appSettings.smtp.secure')}
+                                />
+                            </div>
+                        </TileSections.Section>
+                        <TileSections.Section id="smtp-credentials" title={t('tileHelp.mailPanels.credentials')}>
+                            <div className={styles.fieldGrid}>
+                                <MuiFormField
+                                    label={t('tenants.appSettings.smtp.username')}
+                                    name={['settings', 'smtp', 'username']}
+                                    helpText={t('tenants.appSettings.smtp.username.helpText')}
+                                    rules={[ownServerRule()]}
+                                    autoComplete="off"
+                                    disabled={!ownServerSelected}
+                                />
+                                <MuiPasswordFormField
+                                    label={t('tenants.appSettings.smtp.passwordNew')}
+                                    name={['settings', 'smtp', 'password']}
+                                    helpText={t(
+                                        tenantSmtpPasswordSet
+                                            ? 'tenants.appSettings.smtp.passwordStored'
+                                            : 'tenants.appSettings.smtp.passwordNotSet',
+                                    )}
+                                    rules={[ownServerRule(true)]}
+                                    autoComplete="new-password"
+                                    disabled={!ownServerSelected}
+                                />
+                            </div>
+                        </TileSections.Section>
+                    </TileSections>
+                </CardEditable>
+            </CardGrid.Item>
+        ),
+        serverTest: (
+            <CardGrid.Item>
+                <Card
+                    className={styles.smtpCard}
+                    variant="dialog"
+                    headerIcon={<SendOutlinedIcon />}
+                    titleKey="tenants.appSettings.smtp.test.title"
+                    picture={<TilePicture src={mailServerPicture} />}
+                    subTitleKey="tenants.appSettings.smtp.test.description"
+                >
+                    {!canTestStoredOwnServer && (
+                        <Alert type="info" message={t('tenants.appSettings.smtp.test.saveOwnServerFirst')} />
+                    )}
+                    <Button loading={testSending} disabled={!canTestStoredOwnServer} onClick={sendTest}>
+                        {t('tenants.appSettings.smtp.test.button')}
+                    </Button>
+                </Card>
+            </CardGrid.Item>
+        ),
+    };
+
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <CardGrid raster>
-                <CardGrid.Item>
-                    <CardEditable
-                        key={formKey}
-                        className={styles.smtpCard}
-                        variant="dialog"
-                        headerIcon={<EmailOutlinedIcon />}
-                        formProp={form}
-                        isLoading={isLoading}
-                        initialValues={initialValues}
-                        titleKey="tenants.appSettings.smtp.title"
-                        help={tenantSmtpHelp}
-                        subTitleKey="tenants.appSettings.smtp.description"
-                        onSave={(formData, options) => {
-                            const save = (confirmed = false) => {
-                                const prepared = prepareTenantSettings(formData);
-                                if (confirmed) prepared.settings.smtp.nonstandardTransportConfirmed = true;
-                                mutate(prepared, {
-                                    onError: () => options?.onError?.(),
-                                });
-                            };
-                            const mode = form.getFieldValue(['settings', 'smtpMode']);
-                            const port = form.getFieldValue(['settings', 'smtp', 'port']);
-                            const secure = form.getFieldValue(['settings', 'smtp', 'secure']);
-                            if (mode !== 'OWN' || !needsTransportConfirmation(port, secure)) {
-                                save();
-                                return;
-                            }
-                            feedbackModal.confirm({
-                                title: t('tenants.appSettings.smtp.transportMismatchTitle'),
-                                content: t('tenants.appSettings.smtp.transportMismatchExplanation'),
-                                okText: t('tenants.appSettings.smtp.transportMismatchConfirm'),
-                                cancelText: t('tenants.appSettings.smtp.transportMismatchCancel'),
-                                onOk: () => save(true),
-                                onCancel: () => options?.onError?.(),
-                            });
-                        }}
-                    >
-                        <TileSections>
-                            <TileSections.Section id="smtp-sending" title={t('tileHelp.mailPanels.sending')}>
-                                <div className={styles.fieldGrid}>
-                                    {data?.settings?.smtpMode == null && (
-                                        <Alert
-                                            type="warning"
-                                            showIcon
-                                            message={t('tenants.appSettings.smtp.legacyModeMissing')}
-                                        />
-                                    )}
-                                    <MuiSwitchField
-                                        className={styles.smtpSwitch}
-                                        label={renderSwitchLabel(
-                                            'tenants.appSettings.smtp.systemEmailToggle.title',
-                                            'tenants.appSettings.smtp.systemEmailToggle.description',
-                                        )}
-                                        name={['settings', 'featureSystemNotificationEmailsEnabled']}
-                                        disabled={!systemEmailsAllowed}
-                                        switchLabel={t('tenants.appSettings.smtp.systemEmailToggle.title')}
-                                    />
-                                    <MuiRadioGroupField
-                                        vertical
-                                        required
-                                        labelKey="tenants.appSettings.smtp.mode"
-                                        name={['settings', 'smtpMode']}
-                                    >
-                                        <MuiRadioGroupField.Radio value="PLATFORM">
-                                            {t('tenants.appSettings.smtp.platformMode')}
-                                        </MuiRadioGroupField.Radio>
-                                        <MuiRadioGroupField.Radio value="OWN">
-                                            {t('tenants.appSettings.smtp.ownMode')}
-                                        </MuiRadioGroupField.Radio>
-                                    </MuiRadioGroupField>
-                                    <MuiColorField
-                                        className={styles.colorField}
-                                        labelKey="tenants.appSettings.smtp.emailThemeColor"
-                                        help="tenants.appSettings.smtp.emailThemeColor.helpText"
-                                        name={['settings', 'smtp', 'emailThemeColor']}
-                                    />
-                                </div>
-                            </TileSections.Section>
-                            <TileSections.Section id="smtp-server" title={t('tileHelp.mailPanels.server')}>
-                                <div className={styles.fieldGrid}>
-                                    {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
-                                        <Alert
-                                            type="warning"
-                                            showIcon
-                                            message={t('tenants.appSettings.smtp.transportMismatchHint')}
-                                        />
-                                    )}
-
-                                    <MuiFormField
-                                        label={t('tenants.appSettings.smtp.host')}
-                                        name={['settings', 'smtp', 'host']}
-                                        helpText={t('tenants.appSettings.smtp.host.helpText')}
-                                        rules={[ownServerRule()]}
-                                        disabled={!ownServerSelected}
-                                    />
-                                    <MuiNumberFormField
-                                        label={t('tenants.appSettings.smtp.port')}
-                                        name={['settings', 'smtp', 'port']}
-                                        helpText={t('tenants.appSettings.smtp.port.helpText')}
-                                        min={1}
-                                        inputProps={{ max: 65535 }}
-                                        rules={
-                                            ownServerSelected
-                                                ? [
-                                                      ownServerRule(false, true),
-                                                      {
-                                                          type: 'number',
-                                                          min: 1,
-                                                          max: 65535,
-                                                          message: t('tenants.appSettings.smtp.port.invalid'),
-                                                      },
-                                                  ]
-                                                : []
-                                        }
-                                        disabled={!ownServerSelected}
-                                    />
-                                    <MuiFormField
-                                        label={t('tenants.appSettings.smtp.from')}
-                                        name={['settings', 'smtp', 'from']}
-                                        helpText={t('tenants.appSettings.smtp.from.helpText')}
-                                        rules={[ownServerRule()]}
-                                        disabled={!ownServerSelected}
-                                    />
-                                    <MuiSwitchField
-                                        className={styles.smtpSwitch}
-                                        label={renderSwitchLabel(
-                                            'tenants.appSettings.smtp.secure',
-                                            'tenants.appSettings.smtp.secure.description',
-                                        )}
-                                        name={['settings', 'smtp', 'secure']}
-                                        disabled={!ownServerSelected}
-                                        switchLabel={t('tenants.appSettings.smtp.secure')}
-                                    />
-                                </div>
-                            </TileSections.Section>
-                            <TileSections.Section id="smtp-credentials" title={t('tileHelp.mailPanels.credentials')}>
-                                <div className={styles.fieldGrid}>
-                                    <MuiFormField
-                                        label={t('tenants.appSettings.smtp.username')}
-                                        name={['settings', 'smtp', 'username']}
-                                        helpText={t('tenants.appSettings.smtp.username.helpText')}
-                                        rules={[ownServerRule()]}
-                                        autoComplete="off"
-                                        disabled={!ownServerSelected}
-                                    />
-                                    <MuiPasswordFormField
-                                        label={t('tenants.appSettings.smtp.passwordNew')}
-                                        name={['settings', 'smtp', 'password']}
-                                        helpText={t(
-                                            tenantSmtpPasswordSet
-                                                ? 'tenants.appSettings.smtp.passwordStored'
-                                                : 'tenants.appSettings.smtp.passwordNotSet',
-                                        )}
-                                        rules={[ownServerRule(true)]}
-                                        autoComplete="new-password"
-                                        disabled={!ownServerSelected}
-                                    />
-                                </div>
-                            </TileSections.Section>
-                        </TileSections>
-                    </CardEditable>
-                </CardGrid.Item>
-                <CardGrid.Item>
-                    <Card
-                        className={styles.smtpCard}
-                        variant="dialog"
-                        headerIcon={<SendOutlinedIcon />}
-                        titleKey="tenants.appSettings.smtp.test.title"
-                        picture={<TilePicture src={mailServerPicture} />}
-                        subTitleKey="tenants.appSettings.smtp.test.description"
-                    >
-                        {!canTestStoredOwnServer && (
-                            <Alert type="info" message={t('tenants.appSettings.smtp.test.saveOwnServerFirst')} />
-                        )}
-                        <Button loading={testSending} disabled={!canTestStoredOwnServer} onClick={sendTest}>
-                            {t('tenants.appSettings.smtp.test.button')}
-                        </Button>
-                    </Card>
-                </CardGrid.Item>
+                {SMTP_TILE_ORDER.map((tile) => (
+                    <Fragment key={tile}>{tiles[tile]}</Fragment>
+                ))}
             </CardGrid>
         </ThemeProvider>
     );
