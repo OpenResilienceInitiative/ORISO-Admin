@@ -2,14 +2,12 @@ import { CardGrid } from '../../../CardGrid';
 import { CommunicationSettings } from '../CommunicationSettings';
 import { OtherFunctionsSettings } from '../OtherFunctionsSettings';
 import { SmtpSettings } from '../SmtpSettings';
-import { TopicsSettings } from '../TopicsSettings';
 
 interface FunctionalitiesGridProps {
     tenantId: string;
     /** Tiles a level does not offer. Every flag defaults to showing the tile. */
     hideSmtp?: boolean;
     hideCommunication?: boolean;
-    hideTopicsCard?: boolean;
     /** Flags of the "Sonstige Funktionen" tile itself. */
     hideTopicsToggle?: boolean;
     hideStatistics?: boolean;
@@ -25,7 +23,6 @@ export const FunctionalitiesGrid = ({
     tenantId,
     hideSmtp,
     hideCommunication,
-    hideTopicsCard,
     hideTopicsToggle,
     hideStatistics,
     hideGroupChatToggle,
@@ -49,10 +46,5 @@ export const FunctionalitiesGrid = ({
                 hideGroupChatToggle={hideGroupChatToggle}
             />
         </CardGrid.Item>
-        {!hideTopicsCard && (
-            <CardGrid.Item>
-                <TopicsSettings />
-            </CardGrid.Item>
-        )}
     </CardGrid>
 );
