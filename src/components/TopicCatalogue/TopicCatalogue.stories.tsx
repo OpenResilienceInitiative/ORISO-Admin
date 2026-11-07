@@ -283,6 +283,29 @@ export const UploadIcon: Story = {
     },
 };
 
+/** Categories get a picture of their own as well (later used for games); same rules as for topics. */
+export const UploadCategoryIcon: Story = {
+    args: base,
+    render: () => <Stateful {...i18n} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
+        const input = await canvas.findByTestId('icon-input-Gesundheit und Leben');
+        const file = new File(
+            [
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="4" fill="#0b57d0"/></svg>',
+            ],
+            'gesundheit.svg',
+            { type: 'image/svg+xml' },
+        );
+        await userEvent.upload(input, file);
+        await expect(
+            await canvas.findByRole('button', { name: 'Icon von „Gesundheit und Leben“ ersetzen' }),
+        ).toBeInTheDocument();
+        await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    },
+};
+
 /** Anything but SVG or PNG is refused with a message in the footer. */
 export const UploadIconWrongType: Story = {
     args: base,

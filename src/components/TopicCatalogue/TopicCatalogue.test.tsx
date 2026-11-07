@@ -193,6 +193,7 @@ describe('TopicCatalogue edit mode', () => {
             ],
             topics: [],
             iconFiles: {},
+            groupIconFiles: {},
         });
         await waitFor(() => expect(screen.getByLabelText('Bearbeiten')).toBeInTheDocument());
     });
@@ -313,6 +314,36 @@ describe('TopicCatalogue icons', () => {
         await u.click(textButton('Speichern'));
         await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
         expect(onSaveLayout.mock.calls[0][0].iconFiles).toEqual({ 1: null });
+    });
+
+    it('lets a category have a picture of its own, handed to the save next to the layout', async () => {
+        const { onSaveLayout } = setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        const file = svg();
+        await u.upload(screen.getByTestId('icon-input-Allgemein'), file);
+
+        expect(await screen.findByLabelText('Icon von „Allgemein“ ersetzen')).toBeInTheDocument();
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        const change = onSaveLayout.mock.calls[0][0];
+        expect(change.groupIconFiles).toEqual({ a: file });
+        expect(change.iconFiles).toEqual({});
+        expect(change.layout.find((group: { id: string }) => group.id === 'a')?.icon).toMatch(/^data:image\/svg\+xml/);
+    });
+
+    it('removes a category picture again and shows none in view mode when there is none', async () => {
+        const { onSaveLayout } = setup({
+            layout: layout.map((group) =>
+                group.id === 'a' ? { ...group, icon: 'data:image/png;base64,AA==' } : group,
+            ),
+        });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(label('Icon von „Allgemein“ entfernen'));
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].groupIconFiles).toEqual({ a: null });
     });
 
     it('refuses other file types and files over 100 KB', async () => {

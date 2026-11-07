@@ -4,6 +4,7 @@ import {
     addToGroup,
     groupsOfTopic,
     layoutsEqual,
+    setGroupIcon,
     moveGroup,
     moveTopic,
     removeFromGroup,
@@ -144,6 +145,20 @@ describe('categories', () => {
         expect(moveGroup(base(), 'c', -1).map((g) => g.id)).toEqual(['a', 'c', 'b']);
         const layout = base();
         expect(moveGroup(layout, 'a', -1)).toBe(layout);
+    });
+});
+
+describe('setGroupIcon', () => {
+    it('sets and removes the picture of one category only', () => {
+        const withIcon = setGroupIcon(base(), 'a', 'data:image/png;base64,AA==');
+        expect(withIcon[0].icon).toBe('data:image/png;base64,AA==');
+        expect(withIcon[1].icon).toBeUndefined();
+        expect(setGroupIcon(withIcon, 'a', null)[0].icon).toBeNull();
+    });
+
+    it('counts a changed picture as a change, but null equals missing', () => {
+        expect(layoutsEqual(base(), setGroupIcon(base(), 'a', 'data:image/png;base64,AA=='))).toBe(false);
+        expect(layoutsEqual(base(), setGroupIcon(base(), 'a', null))).toBe(true);
     });
 });
 

@@ -39,6 +39,7 @@ import {
     removeFromGroup,
     removeGroup,
     renameGroup,
+    setGroupIcon,
     stepTopic,
     translateGroup,
     type StepDirection,
@@ -74,6 +75,8 @@ export interface CatalogueChange {
     topics: CatalogueTopic[];
     /** topic id -> the new icon file; `null` means the icon was removed. */
     iconFiles: Record<number, File | null>;
+    /** category id -> the new picture file; `null` means the picture was removed. */
+    groupIconFiles: Record<string, File | null>;
 }
 
 export interface TranslateRequest {
@@ -158,6 +161,7 @@ export const TopicCatalogue = ({
     const [draft, setDraft] = useState<TopicLayout>(layout);
     const [draftTopics, setDraftTopics] = useState<CatalogueTopic[]>(topics);
     const [iconFiles, setIconFiles] = useState<Record<number, File | null>>({});
+    const [groupIconFiles, setGroupIconFiles] = useState<Record<string, File | null>>({});
     const [machine, setMachine] = useState<string[]>([]);
     const [lang, setLang] = useState(sourceLanguage);
     const [collapsed, setCollapsed] = useState<string[]>([]);
@@ -241,6 +245,7 @@ export const TopicCatalogue = ({
         setDraft(layout);
         setDraftTopics(topics);
         setIconFiles({});
+        setGroupIconFiles({});
         setMachine([]);
         setSaveFailed(false);
         setNote(null);
@@ -268,7 +273,7 @@ export const TopicCatalogue = ({
         setSaveFailed(false);
         setNote(null);
         try {
-            await onSaveLayout({ layout: draft, topics: changedTopics, iconFiles });
+            await onSaveLayout({ layout: draft, topics: changedTopics, iconFiles, groupIconFiles });
             stopEditing();
             setAnnouncement(t('topicCatalogue.announce.saved'));
         } catch {
@@ -401,6 +406,17 @@ export const TopicCatalogue = ({
     const removeIcon = (topicId: number) => {
         setDraftTopics((list) => list.map((topic) => (topic.id === topicId ? { ...topic, icon: null } : topic)));
         setIconFiles((files) => ({ ...files, [topicId]: null }));
+    };
+
+    const pickGroupIcon = (groupId: string, file: File, dataUrl: string) => {
+        setDraft((current) => setGroupIcon(current, groupId, dataUrl));
+        setGroupIconFiles((files) => ({ ...files, [groupId]: file }));
+        setNote(null);
+    };
+
+    const removeGroupIcon = (groupId: string) => {
+        setDraft((current) => setGroupIcon(current, groupId, null));
+        setGroupIconFiles((files) => ({ ...files, [groupId]: null }));
     };
 
     const iconProblem = (problem: IconProblem, name: string) =>
@@ -698,6 +714,16 @@ export const TopicCatalogue = ({
                     >
                         {isCollapsed ? <ExpandMoreIcon aria-hidden /> : <ExpandLessIcon aria-hidden />}
                     </button>
+                    <TopicIconSlot
+                        editable={editing}
+                        icon={group.icon}
+                        topicName={groupLabel(group)}
+                        placeholder={null}
+                        disabled={saving}
+                        onPick={(file, dataUrl) => pickGroupIcon(group.id, file, dataUrl)}
+                        onRemove={() => removeGroupIcon(group.id)}
+                        onProblem={iconProblem}
+                    />
                     {editing ? (
                         <input
                             id={headingId}

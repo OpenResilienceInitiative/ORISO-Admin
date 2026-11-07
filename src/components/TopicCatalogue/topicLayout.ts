@@ -14,6 +14,8 @@ export interface TopicGroup {
     name: string;
     /** Names in the other languages; a missing or empty entry means "not translated yet". */
     names?: Localized;
+    /** The category's own picture (SVG or PNG, as data URL or address); without it none is shown. */
+    icon?: string | null;
     topicIds: number[];
 }
 
@@ -141,6 +143,10 @@ export const renameGroup = (layout: TopicLayout, groupId: string, name: string):
 export const translateGroup = (layout: TopicLayout, groupId: string, lang: string, text: string): TopicLayout =>
     layout.map((group) => (group.id === groupId ? { ...group, names: { ...group.names, [lang]: text } } : group));
 
+/** Sets or removes (`null`) the picture of a category. */
+export const setGroupIcon = (layout: TopicLayout, groupId: string, icon: string | null): TopicLayout =>
+    layout.map((group) => (group.id === groupId ? { ...group, icon } : group));
+
 /** A topic never vanishes with its category: it stays in the topic list and in its other categories. */
 export const removeGroup = (layout: TopicLayout, groupId: string): TopicLayout => {
     if (!layout.some((group) => group.id === groupId)) return layout;
@@ -169,6 +175,7 @@ export const layoutsEqual = (a: TopicLayout, b: TopicLayout): boolean =>
             group.id === other.id &&
             group.name === other.name &&
             localizedEqual(group.names, other.names) &&
+            (group.icon ?? null) === (other.icon ?? null) &&
             group.topicIds.length === other.topicIds.length &&
             group.topicIds.every((id, j) => id === other.topicIds[j])
         );

@@ -1,7 +1,7 @@
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
-import { useId, useRef, type ChangeEvent } from 'react';
+import { useId, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
 
@@ -21,6 +21,8 @@ export interface TopicIconSlotProps {
     onPick?: (file: File, dataUrl: string) => void;
     onRemove?: () => void;
     onProblem?: (problem: IconProblem, topicName: string) => void;
+    /** Shown while there is no own icon and the slot is not editable. Topics get a label icon; categories show nothing. */
+    placeholder?: ReactNode | null;
 }
 
 const readAsDataUrl = (file: File): Promise<string> =>
@@ -39,15 +41,17 @@ export const TopicIconSlot = ({
     onPick,
     onRemove,
     onProblem,
+    placeholder,
 }: TopicIconSlotProps) => {
     const { t } = useTranslation();
     const inputId = useId();
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const picture = icon ? <img className={styles.iconImage} src={icon} alt="" /> : <LabelOutlinedIcon aria-hidden />;
+    const fallback = placeholder === undefined ? <LabelOutlinedIcon aria-hidden /> : placeholder;
+    const picture = icon ? <img className={styles.iconImage} src={icon} alt="" /> : fallback;
 
     if (!editable) {
-        return <span className={styles.iconSlot}>{picture}</span>;
+        return picture ? <span className={styles.iconSlot}>{picture}</span> : null;
     }
 
     const onChange = async (event: ChangeEvent<HTMLInputElement>) => {
