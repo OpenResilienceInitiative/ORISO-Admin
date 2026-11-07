@@ -31,9 +31,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
 }
 
 .module {
-    /* The card keeps its light surface in every scheme, so its focus ring is the (fixed) brand accent. */
-    --admin-focus-ring-color: var(--oriso-app-accent-dark, #a5000a);
-
     display: flex;
     flex-direction: column;
     // Shared cards can be phone-width inside a desktop Storybook or split view.
@@ -418,14 +415,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
         align-items: center;
         justify-content: center;
         height: 48px;
-        border: 1px solid $m3-outline-variant;
+        border: 1px solid var(--editor-chip-border, #{$m3-outline-variant});
         background: transparent;
         cursor: pointer;
-        color: $m3-on-surface-variant;
+        color: var(--editor-chip-text, #{$m3-on-surface-variant});
         transition: background 0.15s ease;
 
         &:hover {
-            background: $m3-state-hover;
+            background: var(--editor-chip-hover, #{$m3-state-hover});
         }
     }
 
@@ -1063,6 +1060,9 @@ $m3-state-active: rgb(39 50 112 / 12%);
         animation: none;
     }
 
+    /* Dark in every scheme: the ring is the light rose of its action text (8.9:1 on #303031). */
+    --admin-focus-ring-color: #ffb4aa;
+
     display: flex;
     align-items: center;
     padding: 4px 4px 4px 16px;
@@ -1304,8 +1304,8 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     // M3 focus state: the text surface highlights with the primary colour.
     &:focus-within {
-        border-color: $m3-primary;
-        box-shadow: 0 0 0 1px $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 1px;
     }
 
     :global(.ProseMirror) {
@@ -1618,12 +1618,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     display: inline-flex;
     height: 36px;
     align-items: center;
-    border: 1px solid $m3-outline-variant;
-    color: $m3-on-surface-variant;
+    border: 1px solid var(--editor-chip-border, #{$m3-outline-variant});
+    color: var(--editor-chip-text, #{$m3-on-surface-variant});
     transition: background 0.15s ease;
 
     .versionSplit:hover & {
-        background: $m3-state-hover;
+        background: var(--editor-chip-hover, #{$m3-state-hover});
     }
 
     @container (max-width: 599px) {
@@ -1894,10 +1894,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
     color: $m3-on-surface-variant;
 }
 
-// Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
+// Figma 1285-80496, "Footer Legal Editor": the publish/edit row (shared 64px tile footer since the pixel review).
 .actions {
     display: flex;
     min-width: 0;
+
     /* The shared 64px tile footer (Card `.dialogCard .footer`): 40px buttons, 12px above and below. */
     min-height: var(--admin-dialog-card-footer-height, 64px);
     gap: 8px;

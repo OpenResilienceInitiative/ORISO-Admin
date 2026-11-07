@@ -5,7 +5,9 @@
     right: 12px;
     width: 48px;
     height: 48px;
-    color: var(--m3-on-surface-variant, #444748);
+    // Tiles stay light in every scheme, so the default is a fixed workspace tone (7:1); a surface that
+    // follows the scheme (the dialog-variant card) sets --tile-help-color itself.
+    color: var(--tile-help-color, var(--admin-table-text, #444748));
 
     // MUI's ButtonBase resets the outline, so the shared ring token is set here (D13): the (i) button
     // is a keyboard stop and must show where focus is.

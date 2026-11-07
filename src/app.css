@@ -179,12 +179,13 @@
        surface-container-high, exactly like the M3 dialog over its light scrim. */
     --admin-workspace-background: #fcf9f9;
 
-    /* ONE keyboard focus ring for every control (one token, not three looks). Colour = the scheme's
-       primary; surfaces that do not follow the scheme (the editor card, the workspace tab bar)
-       override only the colour locally. */
+    /* ONE keyboard focus ring for every control (one token, not three looks). The default colour is the
+       fixed brand accent: the workspace and the tiles are light in every scheme (7.7:1 on #fcf9f9).
+       Surfaces that DO follow the scheme (the dialog-variant card, the dark hint box) set only the colour
+       locally, to a light tone, so the ring stays >= 3:1 on them too. */
     --admin-focus-ring-width: 2px;
     --admin-focus-ring-offset: 2px;
-    --admin-focus-ring-color: var(--m3-primary, #a5000a);
+    --admin-focus-ring-color: var(--oriso-app-accent-dark, #a5000a);
 
     /* One surface for every tile, container and dialog. A later "light" mode remaps only this. */
     --admin-form-card-surface: #eae7e8;
@@ -392,9 +393,26 @@ body {
     box-shadow: none !important;
 }
 
-/* Baseline ring for controls that bring no focus style of their own (browser-default blue `auto` ring before).
-   `:where` keeps specificity at zero, so every component that styles its own ring with the token wins. */
-:where(button, a[href], [role='button'], summary):focus-visible {
+/* THE keyboard focus ring: one rule, one token, every interactive element (native, MUI, antd, editors).
+   `:is()` takes the specificity of its most specific argument (a class), so this also wins over MUI's
+   `.MuiButtonBase-root { outline: 0 }` reset. Components must not draw their own ring (no per-component
+   outline colours); to change the colour on a surface, set `--admin-focus-ring-color` on that surface.
+   Text inputs keep their field border as focus indication (M3 outlined fields). */
+
+:is(
+        button,
+        a[href],
+        [role='button'],
+        [role='tab'],
+        [role='switch'],
+        [role='checkbox'],
+        [role='radio'],
+        summary,
+        [tabindex]:not([tabindex='-1']),
+        [contenteditable='true'],
+        .MuiButtonBase-root,
+        .ant-btn
+    ):focus-visible {
     outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
     outline-offset: var(--admin-focus-ring-offset);
 }

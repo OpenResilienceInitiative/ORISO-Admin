@@ -24,7 +24,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 1px;
     }
 }
