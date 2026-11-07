@@ -136,6 +136,44 @@ describe('AdminSearchView', () => {
         await waitFor(() => expect(screen.getByRole('button', { name: /^Tenants\s*1/ })).toBeTruthy());
     });
 
+    // Found in review: the entity fetch trails the typing, so the rows of the previous query were still
+    // offered as "matched by the server" for the new one.
+    describe('rows the server matched by something the index does not hold', () => {
+        const byEmail = {
+            id: 'account:consultants:7',
+            kind: 'account' as const,
+            title: 'Springfield Contact',
+            breadcrumb: ['Accounts', 'Springfield Contact'],
+            to: '/admin/users/consultants/7',
+            level: 'agency' as const,
+            terms: { title: ['Springfield Contact'], fields: [], synonyms: [], description: [], context: [] },
+        };
+
+        it('keeps them while the rows belong to the typed query', async () => {
+            const { user, input } = setup({ entityDocs: [byEmail], entityQuery: 'zzqx' });
+
+            await user.type(input, 'zzqx');
+
+            await waitFor(() => expect(screen.getByText('Springfield Contact')).toBeTruthy());
+        });
+
+        it('drops them as soon as the typed query is no longer the one they were fetched for', async () => {
+            const { user, input } = setup({ entityDocs: [byEmail], entityQuery: 'anna' });
+
+            await user.type(input, 'zzqx');
+
+            expect(screen.queryByText('Springfield Contact')).toBeNull();
+        });
+
+        it('treats rows without a query as current (stories)', async () => {
+            const { user, input } = setup({ entityDocs: [byEmail] });
+
+            await user.type(input, 'zzqx');
+
+            await waitFor(() => expect(screen.getByText('Springfield Contact')).toBeTruthy());
+        });
+    });
+
     it('narrows by type with a filter chip', async () => {
         const { user, input } = setup();
 

@@ -85,7 +85,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
     const navigate = useNavigate();
     const index = useAdminSearchIndex({ navItems, account, tree });
     const [query, setQuery] = useState('');
-    const { docs, isFetching } = useSearchEntities(query);
+    const { docs, isFetching, forQuery } = useSearchEntities(query);
 
     const onOpen = useCallback(
         (doc: SearchDoc, typed: string) => {
@@ -100,6 +100,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
         <AdminSearchView
             index={index}
             entityDocs={docs}
+            entityQuery={forQuery}
             loadingEntities={isFetching}
             onQueryChange={setQuery}
             onOpen={onOpen}

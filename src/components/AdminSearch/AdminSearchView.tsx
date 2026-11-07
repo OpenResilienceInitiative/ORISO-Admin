@@ -35,6 +35,13 @@ export interface AdminSearchViewProps {
     index: SearchDoc[];
     /** Rows from the list endpoints for the current query (tenants, agencies, topics, accounts). */
     entityDocs?: SearchDoc[];
+    /**
+     * The (trimmed) query `entityDocs` were fetched for. The fetch trails the typing, so rows the server
+     * matched by something the index does not hold (e-mail, id) are only kept while this equals what is
+     * typed; otherwise Enter right after changing the text could open the previous person's account.
+     * Leave it out when `entityDocs` are not tied to a query (stories).
+     */
+    entityQuery?: string;
     /** An entity request is still running. */
     loadingEntities?: boolean;
     /** Called with every query change; the container debounces it into the list requests. */
@@ -104,6 +111,7 @@ const toggle = <T,>(list: T[] | undefined, value: T): T[] =>
 export const AdminSearchView = ({
     index,
     entityDocs = [],
+    entityQuery,
     loadingEntities = false,
     onQueryChange,
     onOpen,
@@ -134,6 +142,10 @@ export const AdminSearchView = ({
     const entityIds = useMemo(() => new Set(entityDocs.map((doc) => doc.id)), [entityDocs]);
     // The server matched these by something the index does not hold (email, id): keep them, rank low.
     const withPassthrough = (found: SearchHit[], active: SearchFilters): SearchHit[] => {
+        if (entityQuery !== undefined && entityQuery !== trimmed) {
+            return found;
+        }
+
         const foundIds = new Set(found.map((hit) => hit.doc.id));
         const extra: SearchHit[] = entityDocs
             .filter((doc) => !foundIds.has(doc.id))
@@ -154,13 +166,13 @@ export const AdminSearchView = ({
                   })
                 : [],
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prepared, trimmed, filters.levels, entityDocs],
+        [prepared, trimmed, filters.levels, entityDocs, entityQuery],
     );
 
     const hits = useMemo(
         () => (trimmed ? withPassthrough(searchIndex(prepared, trimmed, filters), filters) : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prepared, trimmed, filters, entityDocs],
+        [prepared, trimmed, filters, entityDocs, entityQuery],
     );
 
     const groups: HitGroup[] = useMemo(() => groupHits(hits, 1000), [hits]);

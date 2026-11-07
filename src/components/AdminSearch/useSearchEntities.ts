@@ -115,5 +115,6 @@ export const useSearchEntities = (query: string) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, labels, search, stamp, canEditTopics]);
 
-    return { docs, isFetching };
+    // `search` trails the typed text by the debounce; the rows belong to `search`, not to what is typed now.
+    return { docs, isFetching, forQuery: search };
 };
