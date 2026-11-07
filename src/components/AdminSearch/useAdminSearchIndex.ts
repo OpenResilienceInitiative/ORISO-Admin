@@ -37,7 +37,7 @@ export const useAdminSearchIndex = ({ navItems, account, tree }: UseAdminSearchI
     const { i18n } = useTranslation();
     const { settings } = useAppConfigContext();
     const { can } = useUserPermissions();
-    const { hasRole, isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
+    const { hasRole, isSuperAdmin, isTechnicalAccount, isTenantScopedAdmin } = useUserRoles();
     const { pathname } = useLocation();
 
     const tenantId = isSuperAdmin ? idFromRoute(pathname, routePathNames.tenants) : undefined;
@@ -58,6 +58,8 @@ export const useAdminSearchIndex = ({ navItems, account, tree }: UseAdminSearchI
         const context: SearchContext = {
             isSuperAdmin,
             isTenantAdmin: hasRole(UserRole.TenantAdmin),
+            isTechnicalAccount,
+            hasRole,
             singleDomain: settings.multitenancyWithSingleDomainEnabled,
             can,
             navTo: Object.fromEntries([...navItems, ...(account ? [account] : [])].map((item) => [item.key, item.to])),
@@ -83,6 +85,7 @@ export const useAdminSearchIndex = ({ navItems, account, tree }: UseAdminSearchI
         agencyRouteId,
         i18n,
         isSuperAdmin,
+        isTechnicalAccount,
         language,
         navItems,
         onlyAgency?.id,

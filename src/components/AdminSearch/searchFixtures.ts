@@ -153,6 +153,8 @@ export const buildFixtureContext = ({ role, singleDomain = true, tenant, agency 
     const context: SearchContext = {
         isSuperAdmin: spec.isSuperAdmin,
         isTenantAdmin: hasRole(UserRole.TenantAdmin),
+        isTechnicalAccount: false,
+        hasRole,
         singleDomain,
         can,
         navTo: { ...Object.fromEntries(items.map((item) => [item.key, item.to])), account: routePathNames.userProfile },

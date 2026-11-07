@@ -5,7 +5,15 @@ import enAssistant from '../../locales/en/assistant.json';
 import enTranslation from '../../locales/en/translation.json';
 import deAssistant from '../../locales/de/assistant.json';
 import deTranslation from '../../locales/de/translation.json';
-import { AGENCY_TABS, EXTRA_PAGES, NAV_TITLE_KEYS, SEARCH_TILES, TENANT_TABS } from './searchRegistry';
+import { UserRole } from '../../enums/UserRole';
+import {
+    AGENCY_TABS,
+    EXTRA_PAGES,
+    NAV_TITLE_KEYS,
+    SEARCH_TILES,
+    SELF_COUNSEL_ROLES,
+    TENANT_TABS,
+} from './searchRegistry';
 import { SEARCH_KEYWORDS } from './searchKeywords';
 
 const en = { ...enTranslation, ...enAssistant } as Record<string, string>;
@@ -56,6 +64,17 @@ describe('search registry drift', () => {
         });
 
         expect(broken).toEqual([]);
+    });
+
+    it('offers "make me a counsellor" under the same role rule as the card renders it', () => {
+        const card = readFileSync(resolve(root, 'src/pages/Profile/SelfConsultantIdentity/index.tsx'), 'utf8');
+        const names = SELF_COUNSEL_ROLES.map((role) =>
+            Object.keys(UserRole).find((key) => UserRole[key as keyof typeof UserRole] === role),
+        );
+
+        expect(names.every((name) => name && card.includes(`UserRole.${name}`))).toBe(true);
+        expect(card).toContain('isSuperAdmin');
+        expect(card).toContain('isTechnicalAccount');
     });
 
     it('only has synonyms for ids that exist', () => {

@@ -43,6 +43,13 @@ describe('buildSearchIndex: what each role may find', () => {
         });
     });
 
+    // Found in review: the card renders nothing for a platform admin, so the result must not exist either.
+    it('offers "make me a counsellor" only to the roles whose account page shows that card', () => {
+        expect(has(ids({ role: 'platform', singleDomain: true }), 'account:self-counsel')).toBe(false);
+        expect(has(ids({ role: 'tenant', singleDomain: true }), 'account:self-counsel')).toBe(true);
+        expect(has(ids({ role: 'agency', singleDomain: true }), 'account:self-counsel')).toBe(true);
+    });
+
     it('marks settings read-only for an admin who cannot update', () => {
         const index = buildFixtureIndex({ role: 'tenantReadOnly', singleDomain: true });
         const settings = index.filter((entry) => entry.kind === 'setting' && entry.level === 'tenant');

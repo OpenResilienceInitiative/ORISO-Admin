@@ -2,6 +2,7 @@ import routePathNames from '../../appConfig';
 import type { CanFn } from '../../constants/caseHandoverAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
+import { UserRole } from '../../enums/UserRole';
 import type { SearchLevel } from './searchTypes';
 
 /**
@@ -24,6 +25,9 @@ import type { SearchLevel } from './searchTypes';
 export interface SearchContext {
     isSuperAdmin: boolean;
     isTenantAdmin: boolean;
+    /** Service accounts never get the personal cards that make an admin a counsellor. */
+    isTechnicalAccount: boolean;
+    hasRole: (role: UserRole | UserRole[]) => boolean;
     /** `multitenancyWithSingleDomainEnabled`: tenant admins work on one shared domain. */
     singleDomain: boolean;
     can: CanFn;
@@ -38,13 +42,24 @@ export interface SearchContext {
 }
 
 /** Who sees a tile on top of its tab. */
-export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin';
+export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin' | 'selfCounsel';
+
+/** The admin roles that see "make me a counsellor" on the account page (rule of `SelfConsultantIdentity`). */
+export const SELF_COUNSEL_ROLES = [
+    UserRole.AgencyAdmin,
+    UserRole.RestrictedAgencyAdmin,
+    UserRole.TenantAdmin,
+    UserRole.SingleTenantAdmin,
+];
 
 export const TILE_GATES: Record<TileGate, (context: SearchContext) => boolean> = {
     platform: (context) => context.isSuperAdmin,
     singleDomain: (context) => context.singleDomain,
     multiTenant: (context) => !context.singleDomain,
     notTenantAdmin: (context) => !context.isTenantAdmin,
+    // The card renders nothing for platform admins, service accounts and accounts without an admin role.
+    selfCounsel: (context) =>
+        !context.isSuperAdmin && !context.isTechnicalAccount && context.hasRole(SELF_COUNSEL_ROLES),
 };
 
 export interface RegistryTile {
@@ -569,7 +584,7 @@ export const SEARCH_TILES: RegistryTile[] = [
         'grantConsultantIdentity.self.title',
         ['page:account'],
         'src/pages/Profile/SelfConsultantIdentity/index.tsx',
-        { level: 'personal' },
+        { gate: 'selfCounsel', level: 'personal' },
     ),
     tile(
         'account:password',
