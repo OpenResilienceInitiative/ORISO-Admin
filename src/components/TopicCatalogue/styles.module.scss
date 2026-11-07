@@ -4,6 +4,7 @@
 
 /* The card keeps 24px of padding on each side. The panels reach almost to its edge (8px), the
    panels themselves carry the air around their icons. */
+
 .body {
     margin: 0 -16px;
 }
@@ -268,7 +269,7 @@
     position: relative;
     height: 0;
 
-    &::after {
+    &:after {
         position: absolute;
         top: -2px;
         right: 0;
