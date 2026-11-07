@@ -5,14 +5,16 @@ import { FieldGrid } from '../../../../../components/FieldGrid';
 
 interface AgencyGeneralInformationProps {
     asFields?: boolean;
+    /** Narrowest a field column may get; a panel inside a tile needs less than a whole card. */
+    minColumnWidth?: number;
 }
 
-export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationProps) => {
+export const AgencyGeneralInformation = ({ asFields, minColumnWidth }: AgencyGeneralInformationProps) => {
     const { t } = useTranslation();
     const requiredRule = { required: true, message: t('form.errors.required') };
 
     const fields = (
-        <FieldGrid>
+        <FieldGrid minColumnWidth={minColumnWidth}>
             {/* Name + description span the full row; the address fields flow into
                 as many columns as the card width allows (FieldGrid decides — the
                 per-field antd Col spans are gone). Field data binding is unchanged:

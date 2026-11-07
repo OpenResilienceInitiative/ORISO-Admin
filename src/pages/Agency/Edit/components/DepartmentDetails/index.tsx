@@ -1,3 +1,4 @@
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import { Alert, Button, Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,7 +85,14 @@ export const DepartmentDetailsCard = ({
     // "cannot be added later" and created a new Beratungsstelle instead (#1069).
     if (departments.length === 0) {
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
                 <p>
                     {t('agency.edit.general.department_details.no_departments', {
                         card: t('agency.edit.settings.title'),
@@ -104,7 +112,14 @@ export const DepartmentDetailsCard = ({
 
     if (isLoading) {
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
                 <Skeleton active title={false} paragraph={{ rows: 4 }} />
             </Card>
         );
@@ -115,7 +130,14 @@ export const DepartmentDetailsCard = ({
     if (isError) {
         const selectedName = departments.find(({ id }) => id === selected)?.name ?? '';
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
                 <Alert
                     type="error"
                     showIcon
@@ -148,6 +170,7 @@ export const DepartmentDetailsCard = ({
             }}
             titleKey={TITLE_KEY}
             subTitle={departmentSelect}
+            headerIcon={<CategoryOutlinedIcon />}
             variant="dialog"
             editButtonPlacement="footer"
             onSave={onSave}
