@@ -469,8 +469,8 @@ export const PlatformAdminsTab: Story = {
             const row = await rowOf(canvasElement, 'Muster');
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
-        await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        await step('delete confirmation identifies the platform admin', () =>
+            expectDeleteDialog(canvasElement, /Plattform-Admin Anna Muster löschen\?/),
         );
     },
 };
