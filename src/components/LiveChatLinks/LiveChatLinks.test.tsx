@@ -29,8 +29,8 @@ vi.mock('../../api/invitelinks/topicInviteLinks', async () => {
     };
 });
 
-vi.mock('../../hooks/useTenantTopics', () => ({
-    useTenantTopics: () => ({ data: [{ id: 5, name: 'Sozialberatung' }], isLoading: false }),
+vi.mock('../../hooks/useLiveChatLinkTopics', () => ({
+    useLiveChatLinkTopics: () => ({ data: [{ id: 5, name: 'Sozialberatung' }], isLoading: false }),
 }));
 
 vi.mock('antd', async () => {
@@ -124,7 +124,7 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         mocks.createTopicInviteLink.mockResolvedValue(link());
         const user = userEvent.setup();
 
-        render(<LiveChatLinks mode="manage" />);
+        render(<LiveChatLinks mode="manage" tenantId={7} />);
         await screen.findByText(translations['liveChatLinks.manage.empty']);
         expect(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
         expect(screen.queryByText('Chat Type')).toBeNull();
@@ -134,12 +134,15 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         await user.click(screen.getByRole('button', { name: 'Create link' }));
 
         await waitFor(() =>
-            expect(mocks.createTopicInviteLink).toHaveBeenCalledWith({
-                topicId: 5,
-                linkKind: 'EXTERNAL_INBOUND',
-                chatType: 'LIVE_CHAT',
-                anonymity: 'FULL',
-            }),
+            expect(mocks.createTopicInviteLink).toHaveBeenCalledWith(
+                {
+                    topicId: 5,
+                    linkKind: 'EXTERNAL_INBOUND',
+                    chatType: 'LIVE_CHAT',
+                    anonymity: 'FULL',
+                },
+                7,
+            ),
         );
         expect(await screen.findByRole('button', { name: 'Copy' })).toBeTruthy();
     });
@@ -151,7 +154,7 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         mocks.deactivateTopicInviteLink.mockResolvedValue(link({ status: 'DISABLED' }));
         const user = userEvent.setup();
 
-        render(<LiveChatLinks mode="manage" />);
+        render(<LiveChatLinks mode="manage" tenantId={7} />);
         await user.click(await screen.findByRole('button', { name: 'Deactivate' }));
 
         expect(mocks.deactivateTopicInviteLink).not.toHaveBeenCalled();
@@ -159,7 +162,7 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         expect(within(dialog).getByText(/Sozialberatung/)).toBeTruthy();
         await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }));
 
-        await waitFor(() => expect(mocks.deactivateTopicInviteLink).toHaveBeenCalledWith(1));
+        await waitFor(() => expect(mocks.deactivateTopicInviteLink).toHaveBeenCalledWith(1, 7));
         await waitFor(() => expect(mocks.listTopicInviteLinks).toHaveBeenCalledTimes(2));
         expect(mocks.messageSuccess).toHaveBeenCalledWith('Link deactivated');
         expect(await screen.findByRole('button', { name: 'Reactivate' })).toBeTruthy();
@@ -173,12 +176,12 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         mocks.reactivateTopicInviteLink.mockResolvedValue(link());
         const user = userEvent.setup();
 
-        render(<LiveChatLinks mode="manage" />);
+        render(<LiveChatLinks mode="manage" tenantId={7} />);
         const reactivate = await screen.findByRole('button', { name: 'Reactivate' });
         expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull();
         await user.click(reactivate);
 
-        await waitFor(() => expect(mocks.reactivateTopicInviteLink).toHaveBeenCalledWith(1));
+        await waitFor(() => expect(mocks.reactivateTopicInviteLink).toHaveBeenCalledWith(1, 7));
         expect(await screen.findByRole('button', { name: 'Copy' })).toBeTruthy();
     });
 
@@ -187,13 +190,13 @@ describe('LiveChatLinks — manage (platform admin)', () => {
         mocks.deleteTopicInviteLink.mockResolvedValue(undefined);
         const user = userEvent.setup();
 
-        render(<LiveChatLinks mode="manage" />);
+        render(<LiveChatLinks mode="manage" tenantId={7} />);
         await user.click(await screen.findByRole('button', { name: 'Delete' }));
 
         expect(mocks.deleteTopicInviteLink).not.toHaveBeenCalled();
         await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
-        await waitFor(() => expect(mocks.deleteTopicInviteLink).toHaveBeenCalledWith(1));
+        await waitFor(() => expect(mocks.deleteTopicInviteLink).toHaveBeenCalledWith(1, 7));
         expect(await screen.findByText(translations['liveChatLinks.manage.empty'])).toBeTruthy();
     });
 

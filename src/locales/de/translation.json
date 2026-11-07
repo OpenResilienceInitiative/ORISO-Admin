@@ -3158,6 +3158,7 @@
     "tileHelp.statistics.protocol.title": "Speichern und Protokoll",
     "tileHelp.statistics.protocol.body": "Nur Plattform-Admins sehen und ändern diese Kachel. Ein neuer Stand-Rhythmus, höhere Mindestzahlen und der Nachrichtenzähler wirken sofort. Niedrigere Mindestzahlen und neue Zeiträume erscheinen mit dem nächsten Stand, bei „Live“ sofort. Jede Änderung steht mit altem und neuem Wert, Name und Zeitpunkt im Protokoll, das sich als CSV herunterladen lässt.",
     "liveChatLinks.title": "Live-Chat-Links",
+    "liveChatLinks.topicsFailed": "Die Themen dieses Trägers konnten nicht geladen werden.",
     "liveChatLinks.manage.empty": "Noch keine Links. Wählen Sie ein Thema und erstellen Sie den ersten.",
     "liveChatLinks.reactivate": "Reaktivieren",
     "liveChatLinks.reactivated": "Link reaktiviert",

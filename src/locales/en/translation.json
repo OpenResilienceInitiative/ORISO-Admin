@@ -3158,6 +3158,7 @@
     "tileHelp.statistics.protocol.title": "Saving and the change log",
     "tileHelp.statistics.protocol.body": "Only platform admins can see and change this tile. A new snapshot rhythm, higher minimums and the message counter apply at once. Lower minimums and new periods appear with the next snapshot, or at once on \"Live\". Every change is in the change log with old and new value, name and time, and you can download it as a CSV.",
     "liveChatLinks.title": "Live chat links",
+    "liveChatLinks.topicsFailed": "Could not load the topics for this tenant.",
     "liveChatLinks.manage.empty": "No links yet. Pick a topic and create the first one.",
     "liveChatLinks.reactivate": "Reactivate",
     "liveChatLinks.reactivated": "Link reactivated",
