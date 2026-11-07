@@ -2,10 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import '../../i18n';
+import i18n from '../../i18n';
 import { AdminSearchView } from './AdminSearchView';
 import { buildFixtureIndex } from './searchFixtures';
-import { clearRecentSearches } from './recentSearches';
+import { clearRecentSearches, rememberSearch } from './recentSearches';
 
 const index = buildFixtureIndex({ role: 'platform', language: 'en', singleDomain: false });
 
@@ -211,6 +211,34 @@ describe('AdminSearchView', () => {
         await user.click(screen.getByRole('button', { name: 'smtp' }));
 
         expect((input as HTMLInputElement).value).toBe('smtp');
+    });
+
+    // Found in review: the pressed button left the page with its section, and focus fell out of the dialog.
+    it('keeps focus in the field after a recent search or a suggestion is used', async () => {
+        const first = setup({ recent: ['smtp'] });
+
+        await first.user.click(screen.getByRole('button', { name: 'smtp' }));
+        expect(first.input).toHaveFocus();
+
+        await first.user.clear(first.input);
+        await first.user.click(screen.getByRole('button', { name: i18n.t('adminSearch.suggestion.1') }));
+
+        expect(first.input).toHaveFocus();
+        expect((first.input as HTMLInputElement).value).toBe(i18n.t('adminSearch.suggestion.1'));
+    });
+
+    it('keeps focus in the field after a recent search is removed or all are cleared', async () => {
+        rememberSearch('smtp');
+        rememberSearch('legal');
+        const { user, input } = setup({ recent: undefined });
+
+        await user.click(screen.getByRole('button', { name: i18n.t('adminSearch.recent.remove', { query: 'smtp' }) }));
+        expect(screen.queryByRole('button', { name: 'smtp' })).not.toBeInTheDocument();
+        expect(input).toHaveFocus();
+
+        await user.click(screen.getByRole('button', { name: i18n.t('adminSearch.recent.clear') }));
+        expect(screen.queryByRole('button', { name: 'legal' })).not.toBeInTheDocument();
+        expect(input).toHaveFocus();
     });
 
     it('shows read-only for a role that cannot change a setting', async () => {

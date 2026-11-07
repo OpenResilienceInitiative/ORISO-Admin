@@ -234,6 +234,12 @@ export const AdminSearchView = ({
 
     /** A hit opens; the "Show n more" row opens the rest of its group (the cursor stays in place). */
     const showAll = (group: SearchGroup) => setExpanded((current) => new Set(current).add(group));
+    /** The buttons of the empty state disappear when they are used; focus goes back to the field, not to the page. */
+    const refocusField = () => inputRef.current?.focus();
+    const applyQuery = (value: string) => {
+        setQuery(value);
+        refocusField();
+    };
     const activate = (row: NavRow) => (row.kind === 'hit' ? open(row.hit) : showAll(row.group));
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -435,6 +441,7 @@ export const AdminSearchView = ({
                                             onClick={() => {
                                                 clearRecentSearches();
                                                 setRecentState([]);
+                                                refocusField();
                                             }}
                                         >
                                             {t('adminSearch.recent.clear')}
@@ -447,7 +454,7 @@ export const AdminSearchView = ({
                                                 type="button"
                                                 className={classNames(styles.recentLabel, styles.textButton)}
                                                 style={{ color: 'inherit', textAlign: 'left', padding: 0 }}
-                                                onClick={() => setQuery(item)}
+                                                onClick={() => applyQuery(item)}
                                             >
                                                 {item}
                                             </button>
@@ -455,7 +462,10 @@ export const AdminSearchView = ({
                                                 type="button"
                                                 className={styles.iconButton}
                                                 aria-label={t('adminSearch.recent.remove', { query: item })}
-                                                onClick={() => setRecentState(forgetSearch(item))}
+                                                onClick={() => {
+                                                    setRecentState(forgetSearch(item));
+                                                    refocusField();
+                                                }}
                                             >
                                                 <CloseIcon fontSize="small" />
                                             </button>
@@ -466,7 +476,7 @@ export const AdminSearchView = ({
                             <p className={styles.hint}>{t('adminSearch.hint')}</p>
                             <div className={styles.suggestions}>
                                 <span className={styles.chipLabel}>{t('adminSearch.suggestions')}</span>
-                                {suggestions.map((suggestion) => chip(suggestion, false, () => setQuery(suggestion)))}
+                                {suggestions.map((suggestion) => chip(suggestion, false, () => applyQuery(suggestion)))}
                             </div>
                         </>
                     )}
