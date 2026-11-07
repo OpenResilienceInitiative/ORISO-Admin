@@ -146,6 +146,9 @@
     color: var(--m3-on-surface, #1b1b1b);
     font-size: 16px;
     line-height: 24px;
+
+    /* A text may list steps on separate lines. */
+    white-space: pre-line;
 }
 
 .related {
