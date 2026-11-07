@@ -1,0 +1,606 @@
+/*
+ * Admin search view (Material 3 "search view"): full screen on a phone, a centred
+ * panel on desktop (the pattern Material UI's own site uses). Tokens only: surface
+ * containers for the layers, primary-container for the match highlight and the
+ * active row, outline-variant for lines. Layout switches on the width of the
+ * element, not of the window, so the same component works in a story at 390 px.
+ */
+
+$reveal-duration: 300ms;
+
+// Grows out of the button that opened it and shrinks back into it (set by the view as
+// --search-origin-x/y and --search-radius), so people see a layer above the page and
+// do not think a new page was opened.
+@keyframes search-reveal {
+    from {
+        clip-path: circle(0 at var(--search-origin-x) var(--search-origin-y));
+    }
+
+    to {
+        clip-path: circle(var(--search-radius) at var(--search-origin-x) var(--search-origin-y));
+    }
+}
+
+@keyframes search-conceal {
+    from {
+        clip-path: circle(var(--search-radius) at var(--search-origin-x) var(--search-origin-y));
+        opacity: 1;
+    }
+
+    to {
+        clip-path: circle(0 at var(--search-origin-x) var(--search-origin-y));
+        opacity: 1;
+    }
+}
+
+.root {
+    --search-panel: var(--m3-surface-container-high, #eae7e8);
+    --search-field: var(--m3-surface-container-highest, #e4e2e2);
+    --search-hover: var(--m3-surface-container-highest, #e4e2e2);
+    --search-active: var(--m3-primary-container, #ffe2de);
+    --search-on-active: var(--m3-on-primary-container, #141c25);
+    --search-text: var(--m3-on-surface, #1b1b1c);
+    --search-muted: var(--m3-on-surface-variant, #444748);
+    --search-line: var(--m3-outline-variant, #c4c7c8);
+    --search-accent: var(--admin-control-selected, var(--m3-primary, #a5000a));
+
+    position: fixed;
+    z-index: 2000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 8vh 24px 24px;
+    color: var(--search-text);
+    container-name: admin-search;
+    container-type: inline-size;
+    font-family: var(--m3-body-font-family, inherit);
+    inset: 0;
+}
+
+.inline {
+    position: relative;
+    z-index: auto;
+    min-height: 100%;
+    padding: 0;
+    inset: auto;
+}
+
+.scrim {
+    position: absolute;
+    background: rgb(27 27 28 / 32%);
+    inset: 0;
+}
+
+.panel {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    width: min(720px, 100%);
+    max-height: var(--search-panel-max-height, min(680px, 84vh));
+    flex-direction: column;
+    border-radius: 28px;
+    background: var(--search-panel);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 12%);
+}
+
+// ── Search bar ───────────────────────────────────────────────────────────────
+.bar {
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px 4px 12px;
+}
+
+.iconButton {
+    display: inline-flex;
+    width: 48px;
+    height: 48px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--search-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--search-accent);
+        outline-offset: -2px;
+    }
+}
+
+.leading {
+    color: var(--search-text);
+}
+
+.input {
+    min-width: 0;
+    height: 56px;
+    flex: 1 1 auto;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--search-text);
+    font: inherit;
+    font-size: 18px;
+    line-height: 24px;
+    outline: none;
+
+    &::placeholder {
+        color: var(--search-muted);
+    }
+
+    // The browser's own clear cross would double ours.
+    &::-webkit-search-cancel-button {
+        display: none;
+    }
+}
+
+.escHint {
+    flex: none;
+    padding: 2px 8px;
+    border: 1px solid var(--search-line);
+    border-radius: 6px;
+    color: var(--search-muted);
+    font-size: 12px;
+    line-height: 20px;
+}
+
+.progress {
+    height: 3px;
+    flex: none;
+    background: linear-gradient(90deg, transparent, var(--search-accent), transparent) 0 0 / 40% 100% no-repeat;
+    animation: admin-search-progress 1.1s linear infinite;
+}
+
+@keyframes admin-search-progress {
+    from {
+        background-position: -40% 0;
+    }
+
+    to {
+        background-position: 140% 0;
+    }
+}
+
+.progressIdle {
+    height: 1px;
+    flex: none;
+    background: var(--search-line);
+}
+
+// ── Filter chips ─────────────────────────────────────────────────────────────
+.chips {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.chipLabel {
+    flex: none;
+    color: var(--search-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+}
+
+.chipDivider {
+    width: 1px;
+    height: 20px;
+    flex: none;
+    background: var(--search-line);
+}
+
+.chip {
+    display: inline-flex;
+    height: 32px;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--search-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    white-space: nowrap;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--search-accent);
+        outline-offset: 2px;
+    }
+}
+
+.chipOn {
+    border-color: transparent;
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+
+    &:hover {
+        background: var(--m3-secondary-container, #646d78);
+        filter: brightness(1.08);
+    }
+}
+
+.chipCount {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+// ── Body ─────────────────────────────────────────────────────────────────────
+.body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 4px 0 8px;
+    overscroll-behavior: contain;
+}
+
+.groupTitle {
+    margin: 0;
+    padding: 14px 24px 6px;
+    color: var(--search-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    text-transform: none;
+}
+
+.list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.row {
+    position: relative;
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    gap: 16px;
+    margin: 0 8px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+}
+
+.rowActive {
+    background: var(--search-active);
+    color: var(--search-on-active);
+
+    &:hover {
+        background: var(--search-active);
+    }
+
+    .secondary,
+    .rowIcon {
+        color: inherit;
+    }
+}
+
+.rowIcon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--search-muted);
+}
+
+.rowText {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.title {
+    overflow: hidden;
+    font-size: 16px;
+    line-height: 24px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mark {
+    padding: 0;
+    border-radius: 3px;
+    background: var(--search-active);
+    box-shadow: 0 0 0 2px var(--search-active);
+    color: inherit;
+    font-weight: 600;
+}
+
+.rowActive .mark {
+    background: transparent;
+    box-shadow: none;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+.secondary {
+    overflow: hidden;
+    color: var(--search-muted);
+    font-size: 13px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.matches {
+    font-style: italic;
+}
+
+.badges {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge {
+    padding: 0 8px;
+    border: 1px solid var(--search-line);
+    border-radius: 8px;
+    color: var(--search-muted);
+    font-size: 12px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.enter {
+    color: var(--search-muted);
+}
+
+.more {
+    display: block;
+    margin: 2px 8px 0;
+    padding: 8px 16px;
+    border: 0;
+    border-radius: 16px;
+    background: none;
+    color: var(--search-accent);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    list-style: none;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+
+    // The keyboard cursor on this row: same colours as an active hit.
+    &.rowActive {
+        background: var(--search-active);
+        color: var(--search-on-active);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--search-accent);
+        outline-offset: -2px;
+    }
+}
+
+// ── Empty query and no result ────────────────────────────────────────────────
+.section {
+    padding: 8px 24px 4px;
+}
+
+.sectionHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--search-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+}
+
+.textButton {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--search-accent);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+}
+
+.recentRow {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 16px;
+    margin: 0 -8px;
+    padding: 0 8px 0 16px;
+    border-radius: 16px;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--search-hover);
+    }
+}
+
+.recentLabel {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    font-size: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px 8px;
+}
+
+.hint {
+    margin: 0;
+    padding: 12px 24px 4px;
+    color: var(--search-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.empty {
+    padding: 32px 24px 24px;
+    text-align: center;
+}
+
+.emptyTitle {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+
+.emptyText {
+    margin: 0 auto 12px;
+    max-width: 420px;
+    color: var(--search-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────────
+.footer {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 24px;
+    border-top: 1px solid var(--search-line);
+    color: var(--search-muted);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.key {
+    display: inline-block;
+    min-width: 20px;
+    margin-right: 6px;
+    padding: 1px 5px;
+    border: 1px solid var(--search-line);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+// ── Phone: full screen search view ───────────────────────────────────────────
+@container admin-search (min-width: 768px) {
+    // Room enough: show every filter instead of scrolling it sideways.
+    .chips {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    .chipDivider {
+        display: none;
+    }
+}
+
+// The overlay is the container itself, so its own padding cannot be set from a container query:
+// there the window width is the width of the container.
+@media (max-width: 767px) {
+    .root:not(.inline) {
+        padding: 0;
+    }
+}
+
+@container admin-search (max-width: 767px) {
+    .panel {
+        width: 100%;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .root:not(.inline) .panel {
+        height: 100%;
+    }
+
+    .inline .panel {
+        min-height: 100%;
+    }
+
+    .escHint,
+    .footer {
+        display: none;
+    }
+
+    .row {
+        margin: 0 4px;
+        padding: 8px 12px;
+    }
+
+    .badges {
+        display: none;
+    }
+}
+
+.reveal {
+    animation: search-reveal $reveal-duration cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.closing {
+    animation: search-conceal $reveal-duration cubic-bezier(0.3, 0, 0.8, 0.15) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .closing {
+        animation: none;
+    }
+
+    .progress {
+        animation: none;
+        background-position: 30% 0;
+    }
+}
