@@ -92,9 +92,14 @@ export const TopicCatalogue = ({
     const { t } = useTranslation();
     const hintId = useId();
     const [editing, setEditing] = useState(false);
-    const [draft, setDraft] = useState<TopicLayout>(layout);
+    const [draft, setDraftState] = useState<TopicLayout>(layout);
     const [saving, setSaving] = useState(false);
     const [saveFailed, setSaveFailed] = useState(false);
+    // Every edit of the draft clears an old save error: it no longer describes what is on screen.
+    const setDraft = (next: TopicLayout) => {
+        setSaveFailed(false);
+        setDraftState(next);
+    };
     const [announcement, setAnnouncement] = useState('');
     const [draggingId, setDraggingId] = useState<number | null>(null);
     const [drop, setDrop] = useState<DropTarget | null>(null);
