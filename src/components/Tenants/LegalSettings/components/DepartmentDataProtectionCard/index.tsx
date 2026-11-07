@@ -360,6 +360,7 @@ export const DepartmentDataProtectionCard = ({
                     <TileHelpButton
                         topic={documentType === 'imprint' ? legalTextHelp : privacyHelp}
                         tileTitle={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                        tileIcon={documentType === 'imprint' ? <ImprintIcon /> : <GdprIcon />}
                     />
                 }
                 value={currentContent}
