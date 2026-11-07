@@ -116,7 +116,8 @@ const LegalDelegation = ({ allowed = false, children }: { allowed?: boolean; chi
 };
 
 const meta = {
-    title: 'Organisms/Legal/AgencyLegalText/Received template (Beratungsstelle)',
+    title: 'Settings/Beratungsstellen/Rechtliches/AgencyLegalText/Received template (Beratungsstelle)',
+    id: 'organisms-legal-agencylegaltext-received-template-beratungsstelle',
     component: AgencyLegalTextWithTemplates,
     parameters: { layout: 'fullscreen', msw: { handlers } },
     decorators: [

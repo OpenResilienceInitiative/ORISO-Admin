@@ -3,7 +3,8 @@ import { NameAndSlogan } from './index';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/NameAndSlogan',
+    title: 'Settings/Einstellungen/Stammdaten & Mehr/NameAndSlogan',
+    id: 'organisms-tenants-appearance-nameandslogan',
     component: NameAndSlogan,
     args: { tenantId: '1' },
     parameters: { layout: 'padded', msw: { handlers: appearanceHandlers } },

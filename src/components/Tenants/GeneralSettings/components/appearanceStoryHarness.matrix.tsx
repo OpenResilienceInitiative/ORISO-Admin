@@ -21,11 +21,13 @@ const tenant = {
 export const appearanceHandlers = [
     http.get(`${baseTenantPublicEndpoint}/*`, () => HttpResponse.json(tenant)),
     http.get(`${tenantAdminEndpoint}/1`, () => HttpResponse.json(tenant)),
+    http.get(`${tenantAdminEndpoint}/1/permission-policies`, () => HttpResponse.json({ tenantId: 1, policies: {} })),
 ];
 
 export const withAppearanceData = (Story: () => ReactElement) =>
     withSeededAdminProviders(Story, (client) => {
         client.setQueryData([TENANT_DATA_KEY, 'no-tenant-claim'], tenant);
+        client.setQueryData([TENANT_DATA_KEY, 1], tenant);
     });
 
 /** The tile as the raster places it, beside a taller neighbour, so unused space shows. */

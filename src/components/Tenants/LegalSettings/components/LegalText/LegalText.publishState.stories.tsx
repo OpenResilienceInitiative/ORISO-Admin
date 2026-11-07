@@ -76,7 +76,8 @@ const typeIntoEditor = async (canvasElement: HTMLElement, text: string) => {
 };
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Publish state',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Publish state',
+    id: 'organisms-legal-legaltext-publish-state',
     component: LegalText,
     parameters: { layout: 'padded' },
     decorators: [

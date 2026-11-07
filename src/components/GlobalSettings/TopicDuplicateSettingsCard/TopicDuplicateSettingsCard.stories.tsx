@@ -9,7 +9,8 @@ import { TopicDuplicateSettingsCard } from '.';
 
 /** ORISO-Frontend#1876: only "inform the existing counsellor once" is live; the rest come with #1878. */
 const meta = {
-    title: 'Organisms/GlobalSettings/TopicDuplicateSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/TopicDuplicateSettingsCard',
+    id: 'organisms-globalsettings-topicduplicatesettingscard',
     component: TopicDuplicateSettingsCard,
     decorators: [
         (Story, { parameters }) => (

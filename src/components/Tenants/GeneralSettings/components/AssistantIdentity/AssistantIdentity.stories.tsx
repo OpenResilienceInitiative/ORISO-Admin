@@ -40,7 +40,8 @@ const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
     );
 };
 const meta = {
-    title: 'Organisms/Tenants/AssistantIdentity',
+    title: 'Settings/Einstellungen/Erscheinungsbild/AssistantIdentity',
+    id: 'organisms-tenants-assistantidentity',
     component: Harness,
     beforeEach: () => {
         localStorage.removeItem(storageKey);

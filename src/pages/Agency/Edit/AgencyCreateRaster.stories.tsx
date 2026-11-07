@@ -24,7 +24,7 @@ const consultants = {
     embedded: [
         {
             embedded: {
-                id: 'c1',
+                id: 'organisms-agency-createflowraster',
                 firstname: 'Erika',
                 lastname: 'Beispiel',
                 email: 'erika@example.org',
@@ -36,7 +36,8 @@ const consultants = {
 };
 
 const meta: Meta<typeof CardGrid> = {
-    title: 'Organisms/Agency/CreateFlowRaster',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/CreateFlowRaster',
+    id: 'organisms-agency-createflowraster',
     component: CardGrid,
     parameters: {
         msw: {

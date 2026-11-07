@@ -18,7 +18,8 @@ import styles from './styles.module.scss';
  * Switch the toolbar viewport to mobile to check both.
  */
 const meta = {
-    title: 'Organisms/Pages/Tenants/AppearanceLayout',
+    title: 'Settings/Einstellungen/Erscheinungsbild/AppearanceLayout',
+    id: 'organisms-pages-tenants-appearancelayout',
     parameters: { layout: 'fullscreen' },
 } satisfies Meta;
 

@@ -8,7 +8,8 @@ import { FurtherCounsellingPostcodeSettingsCard } from '.';
 
 /** ORISO-Frontend#1876: postcode prefill for further counselling, default Smart. */
 const meta = {
-    title: 'Organisms/GlobalSettings/FurtherCounsellingPostcodeSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/FurtherCounsellingPostcodeSettingsCard',
+    id: 'organisms-globalsettings-furthercounsellingpostcodesettingscard',
     component: FurtherCounsellingPostcodeSettingsCard,
     decorators: [
         (Story, { parameters }) => (

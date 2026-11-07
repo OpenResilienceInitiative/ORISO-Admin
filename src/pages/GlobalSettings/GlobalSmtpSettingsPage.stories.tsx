@@ -76,7 +76,8 @@ const savedSettingsHandlers = (pendingAfterSave = false) => {
 };
 
 const meta = {
-    title: 'Organisms/Pages/Settings/PlatformSmtp',
+    title: 'Settings/Einstellungen/Email Server/PlatformSmtp',
+    id: 'organisms-pages-settings-platformsmtp',
     component: GlobalSmtpSettingsPage,
     render: () => <SavedSettingsExample />,
     parameters: { layout: 'fullscreen' },
