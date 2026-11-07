@@ -26,11 +26,11 @@
         color: currentColor;
     }
 
-    &:hover:not(:disabled) {
+    &:hover:not(:disabled, [aria-disabled='true']) {
         background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, transparent);
     }
 
-    &:active:not(:disabled) {
+    &:active:not(:disabled, [aria-disabled='true']) {
         transform: translateY(1px);
     }
 
@@ -48,4 +48,10 @@
 .iconOnly {
     width: 40px;
     padding: 0;
+}
+
+/* Read access only: still focusable for its tooltip, but plainly not a working control. */
+.locked {
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: not-allowed;
 }

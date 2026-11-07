@@ -1,6 +1,6 @@
 import { Form, FormInstance } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReadOnlyTileContext } from './ReadOnlyTileContext';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
@@ -10,6 +10,7 @@ import type { TileHelpTopic } from '../TileHelp';
 import { Card, CardVariant } from '../Card';
 import { TileNote } from '../TileFill';
 import { EditButton } from '../EditButton';
+import { M3Tooltip } from '../M3Tooltip';
 
 interface CardEditableProps {
     className?: string;
@@ -51,7 +52,54 @@ interface CardEditableProps {
     editLabelKey?: string;
     /** When false, the card is view-only (no edit pencil). */
     allowEdit?: boolean;
+    /**
+     * The viewer only has read access to this tile. Instead of hiding the edit action, it shows
+     * locked (lock icon, not-allowed cursor) with a tooltip naming who can change it. Use it for
+     * permissions only, not for a value that is still loading or saving.
+     */
+    readOnlyAccess?: boolean;
 }
+
+/** Three pulses of 1.1 s (see `.editNudge`); with reduced motion a static outline for 2 s. */
+const NUDGE_MS = 3300;
+const NUDGE_REDUCED_MOTION_MS = 2000;
+
+/** Anything that can be a control of its own. Read mode disables most of them; a working one keeps its job. */
+const CONTROL_SELECTOR = [
+    'a[href]',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    'summary',
+    '[role="button"]',
+    '[role="link"]',
+    '[role="tab"]',
+    '[role="switch"]',
+    '[role="checkbox"]',
+    '[role="radio"]',
+    '[role="combobox"]',
+    '[tabindex]:not([tabindex="-1"])',
+].join(',');
+/** Where a field sits: a press here, while the field is locked, means "I want to change this". */
+const FIELD_SELECTOR = '.ant-form-item, .MuiFormControl-root, .MuiInputBase-root, label';
+
+const isInert = (control: Element) => control.matches(':disabled') || control.getAttribute('aria-disabled') === 'true';
+
+/**
+ * Whether a press inside a read-mode tile landed on a locked field, as opposed to empty space or
+ * a control that still works in read mode (a link, a help button, an expander).
+ */
+const pressedLockedField = (target: EventTarget, root: HTMLElement) => {
+    if (!(target instanceof Element) || !root.contains(target)) return false;
+    const control = target.closest(CONTROL_SELECTOR);
+    if (control && root.contains(control)) return isInert(control);
+    const field = target.closest(FIELD_SELECTOR);
+    return !!field && root.contains(field);
+};
+
+const prefersReducedMotion = () =>
+    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export const CardEditable = ({
     allowUnsavedChanges,
@@ -82,6 +130,7 @@ export const CardEditable = ({
     variant = 'default',
     headerIcon,
     allowEdit = true,
+    readOnlyAccess = false,
 }: CardEditableProps) => {
     const [form] = Form.useForm(formProp);
     const { t } = useTranslation();
@@ -89,6 +138,10 @@ export const CardEditable = ({
     const [hasChanges, setHasChanges] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
     const latestSubmission = useRef(0);
+    const [nudging, setNudging] = useState(false);
+    const nudgeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    useEffect(() => () => clearTimeout(nudgeTimer.current), []);
 
     const cancelEditButton: ButtonItem = {
         label: t(cancelKey),
@@ -127,12 +180,15 @@ export const CardEditable = ({
         },
         [editMode, form, onSave],
     );
-    const canStartEditing = allowEdit && !editMode && !editing;
+    const canStartEditing = allowEdit && !readOnlyAccess && !editMode && !editing;
+    const showLockedEdit = readOnlyAccess && !editMode && !editing;
     const finalEditButtonPlacement = editButtonPlacement ?? (variant === 'dialog' ? 'footer' : 'header');
     const footerActionClassName = classNames(styles.footerActions, {
         [styles.dialogFooterActions]: variant === 'dialog',
     });
     const startEditing = useCallback(() => {
+        clearTimeout(nudgeTimer.current);
+        setNudging(false);
         if (onEdit) {
             onEdit();
             return;
@@ -140,6 +196,38 @@ export const CardEditable = ({
 
         setEditing(true);
     }, [onEdit]);
+
+    /*
+     * A press on a locked field of a tile that is not being edited used to do nothing at all, so
+     * nothing told the user that "Bearbeiten" comes first. Point at the edit button instead.
+     */
+    const nudgeTowardsEdit = () => {
+        clearTimeout(nudgeTimer.current);
+        setNudging(true);
+        nudgeTimer.current = setTimeout(
+            () => setNudging(false),
+            prefersReducedMotion() ? NUDGE_REDUCED_MOTION_MS : NUDGE_MS,
+        );
+    };
+    const onFormPointerDown = (event: PointerEvent<HTMLFormElement>) => {
+        if (canStartEditing && pressedLockedField(event.target, event.currentTarget)) nudgeTowardsEdit();
+    };
+    const onFormKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+        // A locked switch keeps keyboard focus (#1357); Space or Enter on it is the same attempt.
+        if (event.key !== ' ' && event.key !== 'Enter') return;
+        if (canStartEditing && pressedLockedField(event.target, event.currentTarget)) nudgeTowardsEdit();
+    };
+    const editNudgeClassName = classNames({ [styles.editNudge]: nudging });
+    const nudgeHint = canStartEditing && (
+        <p aria-live="polite" className={styles.editNudgeHint} role="status">
+            {nudging ? t('card.edit.nudge') : ''}
+        </p>
+    );
+    const lockedEditButton = (showLabel: boolean) => (
+        <M3Tooltip portal text={t('card.edit.readOnly')}>
+            <EditButton locked labelKey={editLabelKey} showLabel={showLabel} />
+        </M3Tooltip>
+    );
 
     return (
         <Card
@@ -156,10 +244,17 @@ export const CardEditable = ({
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
-                canStartEditing &&
-                finalEditButtonPlacement === 'header' && (
-                    <EditButton showLabel={false} icon={editButton} onClick={startEditing} />
-                )
+                finalEditButtonPlacement === 'header' &&
+                (canStartEditing ? (
+                    <EditButton
+                        className={editNudgeClassName}
+                        showLabel={false}
+                        icon={editButton}
+                        onClick={startEditing}
+                    />
+                ) : (
+                    showLockedEdit && lockedEditButton(false)
+                ))
             }
         >
             <ReadOnlyTileContext.Provider value={!editing}>
@@ -172,6 +267,8 @@ export const CardEditable = ({
                     size="large"
                     onValuesChange={() => setHasChanges(true)}
                     onFinish={onFormSubmit}
+                    onPointerDown={onFormPointerDown}
+                    onKeyDown={onFormKeyDown}
                     disabled={!editing}
                     initialValues={initialValues}
                     className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
@@ -180,11 +277,21 @@ export const CardEditable = ({
                 </Form>
             </ReadOnlyTileContext.Provider>
 
+            {finalEditButtonPlacement === 'header' && nudgeHint}
             {note && <TileNote icon={note.icon}>{note.text}</TileNote>}
             {canStartEditing && finalEditButtonPlacement === 'footer' && (
                 <div className={footerActionClassName}>
-                    <EditButton icon={editButton} labelKey={editLabelKey} onClick={startEditing} />
+                    {nudgeHint}
+                    <EditButton
+                        className={editNudgeClassName}
+                        icon={editButton}
+                        labelKey={editLabelKey}
+                        onClick={startEditing}
+                    />
                 </div>
+            )}
+            {showLockedEdit && finalEditButtonPlacement === 'footer' && (
+                <div className={footerActionClassName}>{lockedEditButton(true)}</div>
             )}
             {editing && (!hideSaveButton || !hideCancelButton) && (
                 <div className={footerActionClassName}>

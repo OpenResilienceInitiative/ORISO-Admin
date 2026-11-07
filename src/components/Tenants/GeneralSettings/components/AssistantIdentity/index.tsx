@@ -98,6 +98,7 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             initialValues={initialValues}
             isLoading={isLoading}
             allowEdit={!locked}
+            readOnlyAccess={readOnly}
             onSave={(submitted, options) => {
                 const values = submitted as { theming: { assistantName?: string; assistantIcon?: string } };
                 const theming: { assistantName?: string | null; assistantIcon?: string | null } = {};

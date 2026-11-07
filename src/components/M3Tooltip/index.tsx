@@ -32,6 +32,11 @@ export interface M3TooltipProps {
     placement?: 'top' | 'bottom';
     /** Render into `document.body` so a clipping container (a scrolling row) cannot cut the bubble off. */
     portal?: boolean;
+    /**
+     * The text only repeats the trigger's accessible name (an icon button's `aria-label`): show
+     * it, but do not wire it up as a description too, or screen readers hear it twice.
+     */
+    nameOnly?: boolean;
     className?: string;
 }
 
@@ -54,7 +59,14 @@ const UNPLACED: CSSProperties = { position: 'fixed', top: 0, left: 0, transform:
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
 
-export const M3Tooltip = ({ text, children, placement = 'top', portal = false, className }: M3TooltipProps) => {
+export const M3Tooltip = ({
+    text,
+    children,
+    placement = 'top',
+    portal = false,
+    nameOnly = false,
+    className,
+}: M3TooltipProps) => {
     const id = useId();
     const wrapperRef = useRef<HTMLSpanElement>(null);
     const [open, setOpen] = useState(false);
@@ -153,7 +165,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
             onMouseLeave={() => setOpen(false)}
         >
             {cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, {
-                'aria-describedby': visible ? id : undefined,
+                'aria-describedby': visible && !nameOnly ? id : undefined,
             })}
             {visible && (portal ? createPortal(bubble, document.body) : bubble)}
         </span>

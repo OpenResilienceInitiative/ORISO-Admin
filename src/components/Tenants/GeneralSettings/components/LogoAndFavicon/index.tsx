@@ -55,6 +55,7 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
         <CardEditable
             key={`branding-images-${initialValues.theming.logo}-${initialValues.theming.favicon}-${logoReadOnly}-${faviconReadOnly}-${associationLogoReadOnly}`}
             allowEdit={!logoReadOnly || !faviconReadOnly || !associationLogoReadOnly}
+            readOnlyAccess={readOnly}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="settings.images.title"
