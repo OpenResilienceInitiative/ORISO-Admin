@@ -92,6 +92,7 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
                     <CardGrid.Item>
                         <EditingRightsCard
                             allowEdit={isSuperAdmin && editable !== undefined}
+                            readOnlyAccess={!isSuperAdmin}
                             editable={editable}
                             isLoading={rightsLoading}
                             onSave={onSaveTenantAdminControls}

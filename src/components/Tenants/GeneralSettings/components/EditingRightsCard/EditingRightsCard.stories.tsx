@@ -20,8 +20,13 @@ export const InTheRaster: Story = {};
 export const OffForOrganisationAdmins: Story = { args: { editable: false } };
 
 export const ReadOnly: Story = {
-    args: { allowEdit: false },
+    args: { allowEdit: false, readOnlyAccess: true },
     play: async ({ canvasElement }) => {
+        // Read access only: the edit action stays, locked, instead of disappearing (#1374).
+        await expect(within(canvasElement).getByRole('button', { name: /bearbeiten|edit/i })).toHaveAttribute(
+            'aria-disabled',
+            'true',
+        );
         const toggle = within(canvasElement).getByRole('switch');
         await expect(toggle).toHaveAttribute('aria-disabled', 'true');
         toggle.focus();

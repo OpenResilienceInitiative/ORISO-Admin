@@ -67,6 +67,7 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
             <CardEditable
                 key={`languages-${tenantId}-${readOnly}-${activeLanguages.join('-')}`}
                 allowEdit={!readOnly}
+                readOnlyAccess={readOnly}
                 isLoading={isLoading}
                 initialValues={initialValues}
                 titleKey="organisations.language"

@@ -25,9 +25,9 @@ import { ReactComponent as TopicsInactiveIcon } from '../../resources/img/svg/na
 import { ReactComponent as StatisticsActiveIcon } from '../../resources/img/svg/navbar/statistics_active.svg';
 import { ReactComponent as StatisticsHoverIcon } from '../../resources/img/svg/navbar/statistics_hover.svg';
 import { ReactComponent as StatisticsInactiveIcon } from '../../resources/img/svg/navbar/statistics_inactive.svg';
-import { ReactComponent as LinksActiveIcon } from '../../resources/img/svg/navbar/links_active.svg';
-import { ReactComponent as LinksHoverIcon } from '../../resources/img/svg/navbar/links_hover.svg';
-import { ReactComponent as LinksInactiveIcon } from '../../resources/img/svg/navbar/links_inactive.svg';
+import { ReactComponent as InviteActiveIcon } from '../../resources/img/svg/navbar/invite_active.svg';
+import { ReactComponent as InviteHoverIcon } from '../../resources/img/svg/navbar/invite_hover.svg';
+import { ReactComponent as InviteInactiveIcon } from '../../resources/img/svg/navbar/invite_inactive.svg';
 import { ReactComponent as LogsActiveIcon } from '../../resources/img/svg/navbar/logs_active.svg';
 import { ReactComponent as LogsHoverIcon } from '../../resources/img/svg/navbar/logs_hover.svg';
 import { ReactComponent as LogsInactiveIcon } from '../../resources/img/svg/navbar/logs_inactive.svg';
@@ -120,18 +120,14 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
                 hover: <LogsHoverIcon />,
                 inactive: <LogsInactiveIcon />,
             });
+        // The invite area: an envelope, since inviting means sending a mail (#1374).
         case routePathNames.links:
-            return selectIcon(iconState, {
-                active: <LinksActiveIcon />,
-                hover: <LinksHoverIcon />,
-                inactive: <LinksInactiveIcon />,
-            });
         case routePathNames.linksTenants:
         case routePathNames.linksCounsellor:
             return selectIcon(iconState, {
-                active: <LinksActiveIcon />,
-                hover: <LinksHoverIcon />,
-                inactive: <LinksInactiveIcon />,
+                active: <InviteActiveIcon />,
+                hover: <InviteHoverIcon />,
+                inactive: <InviteInactiveIcon />,
             });
         case routePathNames.userProfile:
             return selectIcon(iconState, {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { CardEditable } from './index';
@@ -165,5 +165,121 @@ describe('CardEditable', () => {
         deferredErrors[0]();
 
         await waitFor(() => expect(screen.getByLabelText('Name')).toBeDisabled());
+    });
+
+    /** #1374: a press on a locked field used to do nothing, so nothing said "Bearbeiten" comes first. */
+    describe('edit nudge', () => {
+        const renderFooterCard = () =>
+            render(
+                <CardEditable
+                    titleKey="card.title"
+                    onSave={vi.fn()}
+                    variant="dialog"
+                    editButtonPlacement="footer"
+                    initialValues={{ name: 'ACME', enabled: true }}
+                >
+                    <MuiFormField name="name" label="Name" />
+                    <MuiSwitchField name="enabled" label="Enabled" />
+                    <a href="#help">Mehr erfahren</a>
+                </CardEditable>,
+            );
+
+        it('points at the edit button when a locked field is pressed in read mode', () => {
+            vi.useFakeTimers();
+            try {
+                renderFooterCard();
+                const status = screen.getByRole('status');
+                expect(status).toHaveAttribute('aria-live', 'polite');
+                expect(status).toBeEmptyDOMElement();
+
+                fireEvent.pointerDown(screen.getByLabelText('Name'));
+
+                expect(status).toHaveTextContent('card.edit.nudge');
+                expect(screen.getByRole('button', { name: 'edit' }).className).toMatch(/editNudge/);
+
+                act(() => {
+                    vi.advanceTimersByTime(3300);
+                });
+                expect(status).toBeEmptyDOMElement();
+                expect(screen.getByRole('button', { name: 'edit' }).className).not.toMatch(/editNudge/);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('also nudges for Space on a locked switch that keeps keyboard focus', () => {
+            renderFooterCard();
+            fireEvent.keyDown(screen.getByRole('switch', { name: 'Enabled' }), { key: ' ' });
+            expect(screen.getByRole('status')).toHaveTextContent('card.edit.nudge');
+        });
+
+        it('leaves working read-mode controls such as links alone', () => {
+            renderFooterCard();
+            fireEvent.pointerDown(screen.getByRole('link', { name: 'Mehr erfahren' }));
+            expect(screen.getByRole('status')).toBeEmptyDOMElement();
+        });
+
+        it('does not nudge once the tile is being edited', async () => {
+            const user = userEvent.setup();
+            renderFooterCard();
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+
+            fireEvent.pointerDown(screen.getByLabelText('Name'));
+
+            expect(screen.queryByRole('status')).not.toBeInTheDocument();
+            expect(screen.queryByText('card.edit.nudge')).not.toBeInTheDocument();
+        });
+
+        it('stops the nudge when editing starts', async () => {
+            const user = userEvent.setup();
+            renderFooterCard();
+            fireEvent.pointerDown(screen.getByLabelText('Name'));
+            await user.click(screen.getByRole('button', { name: 'edit' }));
+            expect(screen.queryByText('card.edit.nudge')).not.toBeInTheDocument();
+            expect(screen.getByLabelText('Name')).toBeEnabled();
+        });
+    });
+
+    describe('read-only access', () => {
+        const renderReadOnly = (placement: 'header' | 'footer') =>
+            render(
+                <CardEditable
+                    titleKey="card.title"
+                    onSave={vi.fn()}
+                    readOnlyAccess
+                    editButtonPlacement={placement}
+                    initialValues={{ name: 'ACME' }}
+                >
+                    <MuiFormField name="name" label="Name" />
+                </CardEditable>,
+            );
+
+        it.each(['header', 'footer'] as const)(
+            'shows a locked, focusable edit action with a %s tooltip and stays read-only',
+            async (placement) => {
+                const user = userEvent.setup();
+                renderReadOnly(placement);
+                const locked = screen.getByRole('button', { name: 'edit' });
+                expect(locked).toHaveAttribute('aria-disabled', 'true');
+                expect(locked).not.toBeDisabled();
+
+                await user.tab();
+                expect(locked).toHaveFocus();
+                const tooltip = await screen.findByRole('tooltip');
+                expect(tooltip).toHaveTextContent('card.edit.readOnly');
+                // Announced with the button, not only shown.
+                expect(locked).toHaveAttribute('aria-describedby', tooltip.id);
+
+                await user.click(locked);
+                expect(screen.getByLabelText('Name')).toBeDisabled();
+                expect(screen.queryByRole('button', { name: 'card.edit.save' })).not.toBeInTheDocument();
+            },
+        );
+
+        it('does not nudge towards an edit the viewer cannot make', () => {
+            renderReadOnly('footer');
+            fireEvent.pointerDown(screen.getByLabelText('Name'));
+            expect(screen.queryByText('card.edit.nudge')).not.toBeInTheDocument();
+        });
     });
 });
