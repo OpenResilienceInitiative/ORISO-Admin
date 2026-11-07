@@ -433,7 +433,7 @@
     padding: 0;
     margin: 0;
     gap: 8px;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
     list-style: none;
 
     li {
@@ -468,7 +468,7 @@
 .settingsGroups {
     display: grid;
     gap: 16px 24px;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 }
 
 .settingsGroup {
