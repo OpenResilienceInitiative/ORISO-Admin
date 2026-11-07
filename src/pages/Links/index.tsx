@@ -8,9 +8,9 @@ import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { type LinksTabKey, resolveVisibleLinksTabs } from '../../constants/linksAccess';
 import routePathNames from '../../appConfig';
 import { AdminSegmentedTabs } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
-// The tab glyph is the ORISO icon-master link mark, not the generic permissions
-// star that stood in for it: every tab here hands out an invite link.
-import { ReactComponent as TabLinkIcon } from '../../resources/img/svg/oriso/link_24px.svg';
+// Invitations go out by email, so the tabs carry the ORISO icon-master envelope,
+// the same mark as the Home "Einladen" tile (#1374).
+import { ReactComponent as TabInviteIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 
 export { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
@@ -77,7 +77,7 @@ export const LinksPage = () => {
                             id: tab.key,
                             label: String(t(tab.titleKey)),
                             to: tab.to,
-                            icon: <TabLinkIcon />,
+                            icon: <TabInviteIcon />,
                         }))}
                     />
                 )}
