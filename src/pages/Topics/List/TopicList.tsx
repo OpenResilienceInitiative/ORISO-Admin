@@ -42,7 +42,7 @@ export const TopicList = () => {
     const { mutate: updateTenantData, isPending: isTopicsSwitchPending } = useTenantAdminDataMutation({
         id: `${tenant.id}`,
     });
-    const { mutate: setActive } = useTopicActiveMutation();
+    const { mutateAsync: setActive } = useTopicActiveMutation();
     const [pendingTopicIds, setPendingTopicIds] = useState<number[]>([]);
     const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
     const {
@@ -82,17 +82,21 @@ export const TopicList = () => {
         [topics, t],
     );
 
+    /*
+     * `mutateAsync` with its own try/finally per call: the callbacks of `mutate` only run for the latest
+     * call of a shared mutation, so toggling topic B before topic A is saved would leave A locked.
+     */
     const onToggleActive = useCallback(
-        (topicId: number, active: boolean) => {
+        async (topicId: number, active: boolean) => {
             const name = topics.find((topic) => topic.id === topicId)?.name ?? '';
             setPendingTopicIds((ids) => [...ids, topicId]);
-            setActive(
-                { id: topicId, active },
-                {
-                    onError: () => message.error({ content: t('topicCatalogue.changeError', { name }), duration: 8 }),
-                    onSettled: () => setPendingTopicIds((ids) => ids.filter((id) => id !== topicId)),
-                },
-            );
+            try {
+                await setActive({ id: topicId, active });
+            } catch {
+                message.error({ content: t('topicCatalogue.changeError', { name }), duration: 8 });
+            } finally {
+                setPendingTopicIds((ids) => ids.filter((id) => id !== topicId));
+            }
         },
         [setActive, t, topics],
     );
