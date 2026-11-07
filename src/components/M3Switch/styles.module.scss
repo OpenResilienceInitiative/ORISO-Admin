@@ -19,9 +19,9 @@
         height: 48px;
     }
 
+    // The disabled SVGs carry the Frontend's disabled palette; no extra dimming.
     &:disabled {
         cursor: not-allowed;
-        opacity: var(--admin-field-disabled-opacity, 0.45);
     }
 
     &:focus-visible {

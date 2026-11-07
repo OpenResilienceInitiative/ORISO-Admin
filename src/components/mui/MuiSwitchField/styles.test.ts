@@ -20,7 +20,7 @@ const ruleBody = (selector: string) =>
 const OUTLINE = '#747878';
 const TILE_SURFACE = '#ffffff';
 const OFF_TRACK = '#e4e2e2';
-const OFF_KNOB = '#444748';
+const OFF_KNOB = '#747878';
 
 describe('MuiSwitch off state (#1374)', () => {
     it('draws the unchecked track as a tonal fill with a 2px outline border', () => {
@@ -31,15 +31,15 @@ describe('MuiSwitch off state (#1374)', () => {
         expect(track).not.toMatch(/transparent/);
     });
 
-    it('uses a dark knob for the off state', () => {
-        expect(ruleBody('\\.thumbOff')).toMatch(/background-color:\s*var\(--m3-on-surface-variant, #444748\);/);
+    it('uses the Frontend switch knob (outline colour) for the off state', () => {
+        expect(stylesheet).toMatch(/\.thumbOff \{\s*background-color:\s*var\(--m3-outline, #747878\);/);
     });
 
     it('keeps the outline at least 3:1 against the tile surface (WCAG 1.4.11)', () => {
         expect(contrastRatio(OUTLINE, TILE_SURFACE)).toBeGreaterThanOrEqual(3);
         expect(contrastRatio(OFF_KNOB, OFF_TRACK)).toBeGreaterThanOrEqual(3);
-        // The ✕ glyph is drawn in the track colour on the dark knob.
-        expect(contrastRatio(OFF_TRACK, OFF_KNOB)).toBeGreaterThanOrEqual(4.5);
+        // The ✕ glyph (a graphic, not text: 3:1) is drawn in the track colour on the knob.
+        expect(contrastRatio(OFF_TRACK, OFF_KNOB)).toBeGreaterThanOrEqual(3);
     });
 
     it('centres the 24px knob in the 32px track (4px inset on every side)', () => {

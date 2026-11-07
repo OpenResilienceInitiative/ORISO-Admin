@@ -39,23 +39,32 @@ describe('M3Switch', () => {
         );
     });
 
-    it('uses a neutral outlined track and a dark knob when checked and disabled', () => {
+    // Disabled = unavailable: the Frontend switch's M3 disabled palette, never brand red.
+    it('uses the faint disabled palette when checked and disabled', () => {
         const { container } = render(<M3Switch checked disabled label="Enable calls" />);
 
-        expect(container.querySelector('rect[width="52"]')).toHaveAttribute(
-            'fill',
-            'var(--m3-surface-container-highest, #E4E2E2)',
-        );
-        expect(container.querySelector('rect[width="50"]')).toHaveAttribute('stroke', 'var(--m3-outline, #747878)');
+        const track = container.querySelector('rect[width="52"]');
+        expect(track).toHaveAttribute('fill', 'var(--m3-on-surface, #1B1B1C)');
+        expect(track).toHaveAttribute('fill-opacity', '0.1');
         const thumb = container.querySelector('rect[width="24"]');
         expect(thumb).toHaveAttribute('x', '28');
-        expect(thumb).toHaveAttribute('fill', 'var(--m3-on-surface-variant, #444748)');
+        expect(thumb).toHaveAttribute('fill', 'var(--m3-surface, #FCF9F9)');
+        expect(container.querySelector('path')).toHaveAttribute('fill-opacity', '0.38');
         expect(screen.getByRole('switch', { name: 'Enable calls' })).toBeDisabled();
     });
 
+    it('uses the faint disabled palette when unchecked and disabled', () => {
+        const { container } = render(<M3Switch checked={false} disabled label="Enable calls" />);
+
+        expect(container.querySelector('rect[width="50"]')).toHaveAttribute('stroke-opacity', '0.1');
+        const thumb = container.querySelector('rect[width="24"]');
+        expect(thumb).toHaveAttribute('x', '8');
+        expect(thumb).toHaveAttribute('fill-opacity', '0.38');
+    });
+
     // #1374: the off state must read as a switch on a light tile (WCAG 1.4.11):
-    // full-strength 2px outline, a dark knob and a contrasting ✕ — no faded fills.
-    it('draws the off state with a 2px outline, a dark knob and a light ✕', () => {
+    // full-strength 2px outline, an outline-coloured knob and a light ✕ — the Frontend switch.
+    it('draws the off state with a 2px outline, an outline-coloured knob and a light ✕', () => {
         const { container } = render(<M3Switch checked={false} label="Enable calls" />);
 
         const track = container.querySelector('rect[width="52"]');
@@ -68,7 +77,7 @@ describe('M3Switch', () => {
         expect(outline).not.toHaveAttribute('stroke-opacity');
 
         const thumb = container.querySelector('rect[width="24"]');
-        expect(thumb).toHaveAttribute('fill', 'var(--m3-on-surface-variant, #444748)');
+        expect(thumb).toHaveAttribute('fill', 'var(--m3-outline, #747878)');
         expect(thumb).not.toHaveAttribute('fill-opacity');
 
         expect(container.querySelector('path')).toHaveAttribute('fill', 'var(--m3-surface-container-highest, #E4E2E2)');

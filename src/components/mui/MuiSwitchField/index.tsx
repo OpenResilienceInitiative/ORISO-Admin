@@ -12,19 +12,20 @@ import styles from './styles.module.scss';
 
 /**
  * MUI `icon`/`checkedIcon` replace the default thumb, so each state brings its
- * own knob. Off (#1374): a dark knob (`on-surface-variant`) with a light ✕ on a
- * tonal track with a 2px outline — the old white-on-white knob was invisible on
- * the tile surface (WCAG 1.4.11). On: white knob with a brand-coloured ✓.
+ * own knob — the same switch as the Frontend Storybook (`Atoms/Switch`, #1374).
+ * Off: an outline-coloured knob with a light ✕ on a tonal track with a 2px
+ * outline (WCAG 1.4.11). On: white knob with a brand-coloured ✓. Glyph colours
+ * live in the stylesheet so the disabled palette can override them.
  */
 const uncheckedThumb = (
     <span className={classNames(styles.thumb, styles.thumbOff)} data-switch-thumb="off">
-        <CloseIcon sx={{ fontSize: 16, color: 'var(--m3-surface-container-highest, #e4e2e2)' }} />
+        <CloseIcon className={styles.glyph} sx={{ fontSize: 16 }} />
     </span>
 );
 
 const checkedThumb = (
     <span className={classNames(styles.thumb, styles.thumbOn)} data-switch-thumb="on">
-        <CheckIcon sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }} />
+        <CheckIcon className={styles.glyph} sx={{ fontSize: 16 }} />
     </span>
 );
 
