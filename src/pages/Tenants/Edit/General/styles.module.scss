@@ -51,11 +51,17 @@
     line-height: 16px;
 }
 
+.fields {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+/* Every field is one row of the same height: the field itself already reserves its helper line. */
 .fieldGroup {
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    margin-bottom: 16px;
 }
 
 .domainSuffix {
