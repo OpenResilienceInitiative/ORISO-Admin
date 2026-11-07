@@ -1,6 +1,8 @@
 import { TilePicture } from '../../TileFill';
 import type { TileHelpTopic } from '../../TileHelp';
 import tutorialsPicture from '../../../resources/img/tile-help/tutorials.webp';
+import tutorialsPracticePicture from '../../../resources/img/tile-help/tutorials/practice.webp';
+import tutorialsPlannedPicture from '../../../resources/img/tile-help/tutorials/planned.webp';
 
 export const tutorialsHelp: TileHelpTopic = {
     id: 'tutorials',
@@ -17,11 +19,13 @@ export const tutorialsHelp: TileHelpTopic = {
             id: 'practice',
             titleKey: 'tileHelp.tutorials.practice.title',
             bodyKey: 'tileHelp.tutorials.practice.body',
+            visual: <TilePicture src={tutorialsPracticePicture} />,
         },
         {
             id: 'planned',
             titleKey: 'tileHelp.tutorials.planned.title',
             bodyKey: 'tileHelp.tutorials.planned.body',
+            visual: <TilePicture src={tutorialsPlannedPicture} />,
         },
     ],
 };
