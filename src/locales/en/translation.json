@@ -1260,7 +1260,7 @@
     "tenantAdmins.edit.back": "Create new admin",
     "tenantAdmins.message.add": "Tenant admin account created successfully.",
     "tenantAdmins.message.update": "Tenant admin account updated successfully.",
-    "tenantAdmins.form.password": "One-time registration password",
+    "tenantAdmins.form.password": "One-time password",
     "tenantAdmins.form.password.hint": "Used for the first sign-in only. The person replaces it with their own password right away.",
     "tenantAdmins.form.subdomain": "Tenant subdomain",
     "tenantAdmins.form.username": "Username",
