@@ -76,7 +76,7 @@ describe('AgencySettings team/single toggle', () => {
         expect(screen.getByText('agency.form.settings.teamAdviceCenter.changeWarning')).toBeInTheDocument();
     });
 
-    it('does not warn when creating a new agency or leaving team counseling on', async () => {
+    it('does not warn when creating a new agency or leaving team counselling on', async () => {
         const user = userEvent.setup();
         const { unmount } = renderSettings({ teamAgency: false }, false);
 
