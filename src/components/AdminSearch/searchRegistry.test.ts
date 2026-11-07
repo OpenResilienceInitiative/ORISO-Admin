@@ -77,6 +77,15 @@ describe('search registry drift', () => {
         expect(card).toContain('isTechnicalAccount');
     });
 
+    it('keeps the live-chat tile off the Träger page that excludes that card', () => {
+        const page = readFileSync(resolve(root, 'src/pages/Tenants/Edit/GlobalSettings/index.tsx'), 'utf8');
+        const tile = SEARCH_TILES.find((entry) => entry.id === 'access:live-chat');
+
+        expect(page).toContain("excludeCardKeys={['liveChat']}");
+        expect(tile?.parents).not.toContain('tenant:global-settings');
+        expect(tile?.parents.length).toBeGreaterThan(0);
+    });
+
     it('gates the documentation tile with the setting the profile page uses', () => {
         const profile = readFileSync(resolve(root, 'src/pages/Profile/UserProfile.tsx'), 'utf8');
         const tile = SEARCH_TILES.find((entry) => entry.id === 'account:documentation');

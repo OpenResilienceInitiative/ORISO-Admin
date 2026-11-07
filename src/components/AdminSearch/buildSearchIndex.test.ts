@@ -50,6 +50,21 @@ describe('buildSearchIndex: what each role may find', () => {
         expect(has(ids({ role: 'agency', singleDomain: true }), 'account:self-counsel')).toBe(true);
     });
 
+    // Found in review: the Träger's "Global settings" tab leaves the live-chat card out, so a result for it
+    // would open a page that cannot show the tile.
+    it('does not offer live chat on the Träger tab that hides that card', () => {
+        const list = buildFixtureIndex({
+            role: 'platform',
+            singleDomain: false,
+            tenant: { id: '7', name: 'Springfield' },
+        });
+        const onTenantTab = (id: string) => list.some((entry) => entry.id === `${id}@tenant:global-settings`);
+
+        expect(onTenantTab('access:group')).toBe(true);
+        expect(onTenantTab('access:live-chat')).toBe(false);
+        expect(list.some((entry) => entry.id.startsWith('access:live-chat@'))).toBe(true);
+    });
+
     // Found in review: the profile page renders the Documentation card only when the app config enables it.
     it('offers the documentation card only where the account page shows it', () => {
         ['platform', 'tenant', 'agency'].forEach((role) => {

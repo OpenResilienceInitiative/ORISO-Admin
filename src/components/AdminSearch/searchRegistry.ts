@@ -93,6 +93,8 @@ const tile = (
 ): RegistryTile => ({ id, titleKey, parents, source, ...options });
 
 const PERMISSIONS = ['settings:permissions', 'tenant:global-settings', 'agency:functionalities'];
+// The Träger page (`TenantGlobalSettings`) passes `excludeCardKeys={['liveChat']}`: no live-chat card there.
+const PERMISSIONS_WITHOUT_LIVE_CHAT = PERMISSIONS.filter((parent) => parent !== 'tenant:global-settings');
 const CHAT = 'src/components/Tenants/AppSettings/PermissionsSettings';
 const FEATURE_LABELS = [
     'tenants.permissions.feature.videoCalls',
@@ -450,9 +452,15 @@ export const SEARCH_TILES: RegistryTile[] = [
             fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
         },
     ),
-    tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
-        fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
-    }),
+    tile(
+        'access:live-chat',
+        'tenants.permissions.card.liveChat.title',
+        PERMISSIONS_WITHOUT_LIVE_CHAT,
+        `${CHAT}/chatTypeCards.ts`,
+        {
+            fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
+        },
+    ),
     tile('access:group', 'tenants.permissions.card.group.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
         fieldKeys: [...WITHOUT_SUPERVISION, ...NOTIFICATION_LABELS],
     }),
