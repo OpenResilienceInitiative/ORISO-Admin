@@ -111,6 +111,20 @@
     --m3-secondary: #4c555f;
     --m3-on-secondary: #ffffff;
 
+    /* Inverse roles of the M3 scheme (Figma `M3/sys/light/inverse-*`). They paint the snackbar:
+       a dark container with a light text and a rose text action, on any light page. */
+    --m3-inverse-surface: #303031;
+    --m3-inverse-on-surface: #f3f0f0;
+    --m3-inverse-primary: #ffb4aa;
+
+    /* Confirmation tone of the snackbar. Aliases of the secondary/primary container pair in the light
+       scheme; the dark scheme (orisoScheme.ts) sets its own pair so the text stays readable. */
+    --m3-success-container: var(--m3-on-secondary-container);
+    --m3-on-success-container: var(--m3-on-primary-container);
+
+    /* Figma `M3/Elevation Light/3` (snackbar, menus): two layers, 0/1/3 at 30% and 0/4/8 spread 3 at 15%. */
+    --m3-elevation-3: 0 1px 3px rgb(0 0 0 / 30%), 0 4px 8px 3px rgb(0 0 0 / 15%);
+
     /* Static defaults for two roles that until now only existed at runtime
        (applyAdminTheme writes the OrisoScheme light values as inline
        properties). Without them every consumer had to carry its own literal

@@ -276,6 +276,10 @@ const invertedTokens = (
         '--m3-on-background': STAGE_SURFACE,
         '--m3-inverse-surface': '#fcf9f9',
         '--m3-inverse-on-surface': '#1a1c1e',
+        // Dark scheme: the inverse roles are the light scheme's, so the snackbar action keeps the brand red.
+        '--m3-inverse-primary': accentDark,
+        '--m3-success-container': '#39414b',
+        '--m3-on-success-container': '#e7effc',
         '--oriso-app-accent': primary,
         '--oriso-app-accent-dark': accentDark,
         '--oriso-app-accent-light': accentLight,

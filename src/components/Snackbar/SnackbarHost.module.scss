@@ -1,0 +1,66 @@
+// Placement: a classic toast stack at the bottom right of the screen. Pop-ups overlay the page and
+// never take part in its layout. The newest one is nearest the corner. On phones (below 600px) the
+// stack spans the bottom with the M3 side margin (the Figma frame is 344px on a 360px phone).
+.host {
+    position: fixed;
+    z-index: 2100; // above antd modals (1000) and its own notices (2010)
+    right: 0;
+    bottom: 8px;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    padding: 0 8px;
+    pointer-events: none;
+
+    @media (min-width: 600px) {
+        right: 24px;
+        bottom: 24px;
+        left: auto;
+        align-items: flex-end;
+        padding: 0;
+    }
+}
+
+// Stories showing the stack inside a frame instead of the viewport.
+.contained {
+    position: absolute;
+
+    @media (min-width: 600px) {
+        right: 16px;
+        bottom: 16px;
+    }
+}
+
+// The two live regions only announce; they do not take part in the layout. Items keep their
+// order in the stack through `order`.
+.region {
+    display: contents;
+}
+
+.item {
+    width: fit-content;
+    min-width: min(344px, 100%);
+    max-width: min(672px, 100%);
+    pointer-events: auto;
+    animation: snackbar-enter 150ms cubic-bezier(0.05, 0.7, 0.1, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
+// M3 enter: a short fade and rise (emphasized decelerate). No exit animation: the next message
+// in the queue should not wait for one.
+@keyframes snackbar-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

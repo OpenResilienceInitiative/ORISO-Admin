@@ -1,0 +1,221 @@
+// M3 snackbar, ORISO Figma "Snackbar" (Design-System-M3_ORISO 53977:33575).
+// Colours come from M3 system tokens (src/app.css), never from literals:
+//   container  M3/sys/light/inverse-surface       --m3-inverse-surface
+//   text       M3/sys/light/inverse-on-surface    --m3-inverse-on-surface
+//   action     M3/sys/light/inverse-primary       --m3-inverse-primary
+//   elevation  M3/Elevation Light/3               --m3-elevation-3
+// Geometry (Figma, px): 344 wide, 4 radius, 16 start padding, 14 text padding, 48 icon button,
+// 40 text button (12 x 10 padding), 4 gap between text and controls. Heights fall out of that:
+// one line 48, two lines 68, two lines with the action below 112.
+.snackbar {
+    --snackbar-container: var(--m3-inverse-surface);
+    --snackbar-on-container: var(--m3-inverse-on-surface);
+    --snackbar-action: var(--m3-inverse-primary);
+
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+    padding-left: 16px;
+    background: var(--snackbar-container);
+    border-radius: 4px;
+    box-shadow: var(--m3-elevation-3);
+    color: var(--snackbar-on-container);
+    font: 400 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.25px;
+
+    // Without any control the text keeps the same 16px on the end side.
+    &.inline:not(.hasAction, .hasClose) {
+        padding-right: 16px;
+    }
+
+    &.inline.hasAction:not(.hasClose) {
+        padding-right: 8px;
+    }
+
+    // Figma: text and close affordance touch (no 4px gap); the gap only separates text and action.
+    &.hasClose:not(.hasAction) {
+        gap: 0;
+    }
+}
+
+// Tones. Figma defines one snackbar (inverse); the tones reuse the same shell for the other
+// meanings. An error is the M3 error role (owner call 2026-09-23).
+.snackbar[data-severity='success'] {
+    --snackbar-container: var(--m3-success-container);
+    --snackbar-on-container: var(--m3-on-success-container);
+    --snackbar-action: var(--m3-primary);
+}
+
+.snackbar[data-severity='warning'] {
+    --snackbar-container: var(--m3-tertiary-container);
+    --snackbar-on-container: var(--m3-on-tertiary-container);
+    --snackbar-action: var(--m3-primary);
+}
+
+.snackbar[data-severity='error'] {
+    --snackbar-container: var(--m3-error);
+    --snackbar-on-container: var(--m3-on-error);
+    --snackbar-action: var(--m3-on-error);
+}
+
+.text {
+    min-width: 0;
+    flex: 1 1 0;
+    margin: 0;
+    padding: 14px 0;
+    overflow-wrap: break-word;
+}
+
+.title {
+    font-weight: 600;
+}
+
+.description {
+    display: block;
+}
+
+.controls {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+// Text action (Figma Building Blocks/Snackbar-action). The state layer is the action colour at
+// 8% (hover) and 10% (focus, press): M3/state-layers/light/inversePrimary.
+.action {
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 100px;
+    color: var(--snackbar-action);
+    cursor: pointer;
+    font: inherit;
+
+    &:hover .stateLayer,
+    &[data-state='hovered'] .stateLayer {
+        background: color-mix(in srgb, currentcolor 8%, transparent);
+    }
+
+    &[data-state='focused'],
+    &:focus-visible {
+        overflow: visible;
+        // Figma focus indicator: 3px ring, 2px outside the button (M3/sys/light/secondary).
+        outline: 3px solid var(--m3-secondary);
+        outline-offset: -1px;
+
+        .stateLayer {
+            background: color-mix(in srgb, currentcolor 10%, transparent);
+        }
+    }
+
+    &:active .stateLayer,
+    &[data-state='pressed'] .stateLayer {
+        background: color-mix(in srgb, currentcolor 10%, transparent);
+    }
+}
+
+.stateLayer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 12px;
+    border-radius: 100px;
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+// Close affordance (Figma Building Blocks/Snackbar-close-affordance): 48px target, 40px circle,
+// 24px icon, state layer inverse-on-surface at 8% / 10%.
+.close {
+    display: flex;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--snackbar-on-container);
+    cursor: pointer;
+
+    &:hover .closeStateLayer,
+    &[data-state='hovered'] .closeStateLayer {
+        background: color-mix(in srgb, currentcolor 8%, transparent);
+    }
+
+    &[data-state='focused'],
+    &:focus-visible {
+        outline: 3px solid var(--m3-secondary);
+        outline-offset: -5px;
+        border-radius: 100px;
+
+        .closeStateLayer {
+            background: color-mix(in srgb, currentcolor 10%, transparent);
+        }
+    }
+
+    &:active .closeStateLayer,
+    &[data-state='pressed'] .closeStateLayer {
+        background: color-mix(in srgb, currentcolor 10%, transparent);
+    }
+}
+
+.closeContainer {
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    border-radius: 100px;
+}
+
+.closeStateLayer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+.closeIcon {
+    width: 24px;
+    height: 24px;
+
+    // The asset carries the light inverse colour; recolour it per tone with the exact same shape.
+    path {
+        fill: currentcolor;
+    }
+}
+
+// Figma "longer action": the text uses the full width, the action sits on its own row below.
+// Two text lines (40px) + 14px top padding + 14px gap + 40px action + 4px bottom = 112px.
+.stacked {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+
+    .text {
+        padding: 14px 16px 0;
+    }
+
+    .controls {
+        justify-content: flex-end;
+    }
+
+    &:not(.hasClose) .controls {
+        padding: 0 8px 4px;
+        margin-top: 14px;
+    }
+
+    // With the close affordance the row is 48px high and starts 8px in (no end padding).
+    &.hasClose .controls {
+        padding: 0 0 0 8px;
+        margin-top: 10px;
+    }
+}
