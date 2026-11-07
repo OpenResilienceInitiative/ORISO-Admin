@@ -18,18 +18,23 @@ export const useTopicActiveMutation = () => {
                 url: `${topicAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
-                responseHandling: [FETCH_ERRORS.CATCH_ALL],
+                // Silent: the page shows ONE message that names the topic. A 403 must not throw the
+                // whole page to the access-denied screen either, the switch just says it failed.
+                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
             });
             return fetchData({
                 url: `${topicAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.PUT,
-                responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
+                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_SUCCESS.CONTENT],
                 bodyData: JSON.stringify(buildTopicRequestBody(stored, { status: active })),
             });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['TOPICS'] });
-            queryClient.invalidateQueries({ queryKey: [TOPIC_ADMIN_KEY] });
-        },
+        // Returned, so the mutation (and the switch's pending state) lasts until the list is fresh:
+        // otherwise the switch would unlock on the old value and jump back for a moment.
+        onSuccess: () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['TOPICS'] }),
+                queryClient.invalidateQueries({ queryKey: [TOPIC_ADMIN_KEY] }),
+            ]),
     });
 };
