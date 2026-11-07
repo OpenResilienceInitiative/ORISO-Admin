@@ -55,6 +55,14 @@
  * iOS-style switch geometry. Colors use ORISO CSS vars.
  */
 
+// The shared ring goes around the WHOLE switch (track included), 2px off its outer edge, so its contrast is
+// measured against the tile or panel, never against the track it would otherwise sit on.
+.switch:has(:global(.Mui-focusVisible)) {
+    border-radius: 16px;
+    outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+    outline-offset: var(--admin-focus-ring-offset, 2px);
+}
+
 .switch {
     // Doubled class (0,2,0) so the geometry beats the single-class emotion
     // defaults on .MuiSwitch-root regardless of style-tag injection order,
@@ -90,13 +98,6 @@
                     border: 0;
                 }
             }
-        }
-
-        // Custom icon thumbs replace .MuiSwitch-thumb, so target the local class.
-        // The shared ring (one token for every control), drawn around the thumb.
-        &:global(.Mui-focusVisible) .thumb {
-            outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-            outline-offset: 2px;
         }
 
         // Keep off-state colors when disabled; root .switchDisabled dims via opacity.
