@@ -608,14 +608,13 @@ export const ToneContrast: Story = {
     play: async ({ canvasElement }) => {
         const popups = within(canvasElement).getAllByTestId('snackbar');
         await expect(popups).toHaveLength(8);
-        popups.forEach((popup) => {
+        const ratios = popups.flatMap((popup) => {
             const background = rgbToHex(getComputedStyle(popup).backgroundColor);
             const actionButton = popup.querySelector('button:not([aria-label])') as HTMLElement;
-            [popup, actionButton].forEach((element) => {
-                expect(contrastRatio(rgbToHex(getComputedStyle(element).color), background)).toBeGreaterThanOrEqual(
-                    4.5,
-                );
-            });
+            return [popup, actionButton].map((element) =>
+                contrastRatio(rgbToHex(getComputedStyle(element).color), background),
+            );
         });
+        await expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
     },
 };

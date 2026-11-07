@@ -145,6 +145,11 @@ export const SnackbarHost = ({ store = snackbarStore, container, contained = fal
                 focusWasInside.current = false;
             }
         };
+        // A click on a part of the page that cannot take focus drops focus to <body> without a focusin:
+        // the person chose to leave the pop-up, so nothing should be given back later.
+        const onPointerDown = (event: PointerEvent) => {
+            if (!inside(event.target)) focusWasInside.current = false;
+        };
         const onKeyDown = (event: globalThis.KeyboardEvent) => {
             if (!event.altKey || event.code !== 'KeyT') return;
             const newest = store.getState().visible.at(-1);
@@ -157,9 +162,11 @@ export const SnackbarHost = ({ store = snackbarStore, container, contained = fal
             button.focus();
         };
         document.addEventListener('focusin', onFocusIn);
+        document.addEventListener('pointerdown', onPointerDown, true);
         document.addEventListener('keydown', onKeyDown);
         return () => {
             document.removeEventListener('focusin', onFocusIn);
+            document.removeEventListener('pointerdown', onPointerDown, true);
             document.removeEventListener('keydown', onKeyDown);
         };
     }, [store]);

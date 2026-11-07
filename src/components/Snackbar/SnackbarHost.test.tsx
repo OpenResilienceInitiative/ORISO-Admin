@@ -408,6 +408,26 @@ describe('SnackbarHost', () => {
             expect(close).toHaveFocus();
         });
 
+        it('does not take focus back after the person clicked elsewhere on the page', async () => {
+            const { api } = setup();
+            const opener = document.createElement('button');
+            document.body.appendChild(opener);
+            opener.focus();
+            act(() => {
+                api.error({ title: 'Eins', key: 'one' });
+            });
+            act(() => {
+                screen.getByRole('button', { name: /Meldung schließen|Close message/ }).focus();
+            });
+            await userEvent.click(document.body);
+            act(() => {
+                api.error({ title: 'Zwei', key: 'two' });
+                api.dismiss('one');
+            });
+            expect(opener).not.toHaveFocus();
+            opener.remove();
+        });
+
         it('reaches the newest pop-up with Alt+T from anywhere on the page', async () => {
             const { api } = setup();
             act(() => {
