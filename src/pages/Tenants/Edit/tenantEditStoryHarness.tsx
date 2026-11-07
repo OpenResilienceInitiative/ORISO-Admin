@@ -1,10 +1,9 @@
 import { useLayoutEffect, type ReactElement } from 'react';
 // eslint-disable-next-line import/no-extraneous-dependencies -- story-only helper
 import { http, HttpResponse } from 'msw';
-import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import inviteTenantLogoDe from '../../../components/EmailPreview/fixtures/invite-tenant-logo-de.html?raw';
 import { LegalSettings } from '../../../components/Tenants/LegalSettings';
-import type { LegalTileLayout } from '../../../components/Tenants/LegalSettings/legalTileLayout';
 import { applyAdminInvertedTheme, applyAdminTheme } from '../../../utils/applyAdminTheme';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { UserRole } from '../../../enums/UserRole';
@@ -84,12 +83,9 @@ export const tenantEditHandlers = [
     http.get('*/service/tenant/:id', () => HttpResponse.json(storyTenant)),
 ];
 
-/** The Legal tab with the document-tile shape chosen by `?layout=` (standard | wide | collapsible), for the review stories. */
 const LegalTabForStory = () => {
     const { id } = useParams();
-    const [search] = useSearchParams();
-    const layout = (search.get('layout') ?? 'wide') as LegalTileLayout;
-    return <LegalSettings tenantId={id} tileLayout={layout} />;
+    return <LegalSettings tenantId={id} />;
 };
 
 const tabs: Record<string, ReactElement> = {

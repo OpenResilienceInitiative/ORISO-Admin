@@ -17,16 +17,7 @@ export const MasterData: Story = { decorators: [tenantEditDecorator('general')] 
 
 export const Appearance: Story = { decorators: [tenantEditDecorator('theme-settings')] };
 
-/** Legal, variant A: document tiles fill the raster width, the text keeps a page's line length. */
-export const Legal: Story = { decorators: [tenantEditDecorator('legal-settings', '7', '?layout=wide')] };
-
-/** Legal, variant B: the same tiles, each folded behind its header (icon, title, status); the first one is open. */
-export const LegalCollapsible: Story = {
-    decorators: [tenantEditDecorator('legal-settings', '7', '?layout=collapsible')],
-};
-
-/** Legal as it was before (800px editor cards), for comparison only. */
-export const LegalBefore: Story = { decorators: [tenantEditDecorator('legal-settings', '7', '?layout=standard')] };
+export const Legal: Story = { decorators: [tenantEditDecorator('legal-settings')] };
 
 export const Introduction: Story = { decorators: [tenantEditDecorator('erstantwort')] };
 
