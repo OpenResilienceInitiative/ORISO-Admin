@@ -93,6 +93,12 @@ describe('buildHomeTiles — only areas this admin can open', () => {
         expect(tiles.map((tile) => tile.id)).toEqual(['invite', 'accounts']);
     });
 
+    it('never offers a Beratungsstellen admin to invite admins, the Träger tab is read-only for them', () => {
+        const [invite] = buildHomeTiles({ role: 'agency', navItems: nav('links'), tree });
+
+        expect(invite.links.map((link) => link.id)).toEqual(['links:counsellor']);
+    });
+
     it('lists only the log views this admin may read', () => {
         const [logs] = buildHomeTiles({ role: 'platform', navItems: nav('logs'), tree });
 

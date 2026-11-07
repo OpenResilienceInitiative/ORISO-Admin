@@ -113,16 +113,20 @@ const linksFor = (
         case 'invite':
             // "Träger-Invites" founds a whole Träger for the platform admin, invites
             // further admins of the own Träger for everybody else.
-            return (tree.links ?? []).map((sub) => ({
-                id: sub.id,
-                to: sub.to,
-                labelKey:
-                    sub.id === 'links:tenants'
-                        ? `home.link.invite.tenants.${role === 'platform' ? 'platform' : 'other'}`
-                        : 'home.link.invite.counsellor',
-                fallbackKey: sub.labelKey,
-                kind: 'add',
-            }));
+            // A Beratungsstellen admin sees "Träger-Invites" read-only (the composer
+            // refuses agency viewers, useInviteDraft), so it is no shortcut to invite.
+            return (tree.links ?? [])
+                .filter((sub) => !(sub.id === 'links:tenants' && (role === 'agency' || role === 'other')))
+                .map((sub) => ({
+                    id: sub.id,
+                    to: sub.to,
+                    labelKey:
+                        sub.id === 'links:tenants'
+                            ? `home.link.invite.tenants.${role === 'platform' ? 'platform' : 'other'}`
+                            : 'home.link.invite.counsellor',
+                    fallbackKey: sub.labelKey,
+                    kind: 'add',
+                }));
         case 'organisation': {
             const links: HomeTileLink[] = [];
             if (role === 'platform' && has('links') && (tree.links ?? []).some((sub) => sub.id === 'links:tenants')) {
