@@ -297,6 +297,11 @@
     padding-left: 26px;
     margin-top: 8px;
     gap: 4px;
+
+    // `display: grid` would otherwise beat the UA rule for [hidden].
+    &[hidden] {
+        display: none;
+    }
 }
 
 .statisticDashboard__loading {

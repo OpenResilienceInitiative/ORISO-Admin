@@ -191,7 +191,8 @@ export const EmptySuppressed: Story = {
     play: async ({ canvasElement }) => {
         await expect(within(canvasElement).getByText('Geschützt – zu wenige aktive Beratende')).toBeVisible();
         await expect(canvasElement.querySelector('[data-testid="LockOutlinedIcon"]')).not.toBeNull();
-        await expect(canvasElement.querySelector('.statisticDashboard__metricCard')?.textContent).not.toContain('–');
+        // No standalone "–" value placeholder (the hint itself may contain a dash).
+        await expect(within(canvasElement).queryByText('–')).toBeNull();
     },
 };
 
