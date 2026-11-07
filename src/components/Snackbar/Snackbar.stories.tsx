@@ -52,7 +52,7 @@ interface Variant {
 }
 
 /** The ten examples of the Figma "Snackbar" page, in its order (left column, then right column). */
-export const FIGMA_VARIANTS: Variant[] = [
+const FIGMA_VARIANTS: Variant[] = [
     { id: 'single', figma: '53977:34289', label: 'Single-line', props: { message: 'Single-line snackbar' } },
     {
         id: 'single-close',

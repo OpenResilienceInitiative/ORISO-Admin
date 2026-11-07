@@ -138,10 +138,18 @@ export const resolveDuration = (options: SnackbarOptions): number | null => {
     return Math.min(SNACKBAR_MAX_DURATION_MS, Math.max(SNACKBAR_MIN_DURATION_MS, reading));
 };
 
+let anonymous = 0;
+
 const textKey = (options: SnackbarOptions): string => {
     const severity = options.severity ?? 'info';
     // Elements count by the words they show, so `<b>Save failed</b>` and `<b>Delete failed</b>` stay two events.
     const text = [titleOf(options), options.description].map(plainText).join('|');
+    // An element that shows no words of its own (`<Trans i18nKey="x" />`) has no identity to compare:
+    // it is never merged with another one unless the caller gives a `key` or `causeKey`.
+    if (text === '|') {
+        anonymous += 1;
+        return `${severity}:#${anonymous}`;
+    }
     return `${severity}:${text}`;
 };
 

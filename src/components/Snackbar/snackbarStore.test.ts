@@ -131,6 +131,13 @@ describe('snackbar store: identity', () => {
         expect(store.getState().visible).toHaveLength(2);
     });
 
+    it('never merges element messages that show no words of their own', () => {
+        const { api, store } = setup();
+        api.error(createElement('i'));
+        api.error(createElement('u'));
+        expect(store.getState().visible).toHaveLength(2);
+    });
+
     it('lets an explicit key replace the text of the visible pop-up, in the same place', () => {
         const { api, store } = setup();
         api.error({ message: 'Session ends', key: 'session' });
