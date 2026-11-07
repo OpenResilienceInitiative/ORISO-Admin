@@ -731,12 +731,18 @@ export const ConsultantsTabAt960: Story = {
             await noSideScroll(canvasElement);
         });
 
-        await step('tab arrows scroll the account types; Beratende starts in view', async () => {
-            const left = canvas.getByRole('button', { name: 'Tabs nach links' });
-            const right = canvas.getByRole('button', { name: 'Tabs nach rechts' });
-            await waitFor(() => expect(right).toBeDisabled());
-            await user.click(left);
-            await waitFor(() => expect(right).toBeEnabled());
+        await step('account types scroll inside the tab bar; the active tab starts in view', async () => {
+            // #1374: the shared tab bar scrolls itself instead of arrow buttons.
+            const active = canvas.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true');
+            await expect(active).toBeDefined();
+            const bar = active!.closest('[role="tablist"]') as HTMLElement;
+            await waitFor(() => {
+                const barRect = bar.getBoundingClientRect();
+                const tabRect = active!.getBoundingClientRect();
+                expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
+                expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
+            });
+            await noSideScroll(canvasElement);
         });
 
         await step('⋯ opens the row menu; Bearbeiten goes where it always did', async () => {

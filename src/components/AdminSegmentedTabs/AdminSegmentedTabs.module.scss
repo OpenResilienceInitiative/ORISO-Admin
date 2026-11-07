@@ -1,124 +1,129 @@
+/* Sub-navigation tab bar (ORISO-Admin#1374, "Variant A"): M3 primary underline
+   tabs on a full-width 1px divider. One look for every sub-navigation. */
+
 .container {
     display: flex;
-    width: 100%;
-    max-width: 100%;
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    max-width: calc(100% - var(--admin-subnav-inset, 0%));
     min-width: 0;
-    align-items: center;
+    box-sizing: border-box;
+    align-self: stretch;
+    margin-inline-start: var(--admin-subnav-inset, 0%);
+
+    /* The divider is a shadow, not a border, so the 3px active underline of the
+       tab (painted above the parent) sits on top of it. */
+    box-shadow: inset 0 -1px 0 0 var(--m3-outline-variant, #c4c7c8);
 }
+
+/* Overflow: never wrap, never truncate — the bar scrolls horizontally inside
+   itself. A thin scrollbar keeps the overflow discoverable for mouse users. */
 
 .scroll {
-    max-width: 100%;
+    display: flex;
     min-width: 0;
+    flex: 1 1 auto;
+    align-items: stretch;
+    gap: 4px;
     overflow-x: auto;
     overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
-}
-
-.group {
-    display: inline-flex;
-    width: max-content;
-    max-width: none;
-    align-items: center;
-    border-radius: 48px;
-    gap: 2px;
+    overscroll-behavior-x: contain;
+    scrollbar-color: var(--m3-outline-variant, #c4c7c8) transparent;
+    scrollbar-width: thin;
 }
 
 .item {
+    position: relative;
     display: inline-flex;
-    min-height: 76px;
-    flex-shrink: 0;
+    height: 48px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: center;
-    padding: 24px 38px;
+    padding: 0 16px;
     border: 0;
-    background: var(--m3-secondary-container, #646d78);
-    border-radius: 12px;
-    color: var(--m3-on-secondary-container, #e7effc);
+    margin: 0;
+    background: transparent;
+
+    /* Rounded top corners, square bottom: the hover/press layer reads soft like the
+       rest of Admin and still sits flush on the divider and the underline. */
+    border-radius: 12px 12px 0 0;
+    color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
-    font-family: Inter, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 20px;
-    font-weight: 400;
-    gap: 10px;
-    letter-spacing: 0;
-    line-height: 26px;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    gap: 8px;
+    letter-spacing: 0.1px;
+    line-height: 20px;
     text-decoration: none;
-    transition: background 220ms ease, border-radius 220ms ease, color 220ms ease, transform 220ms ease;
+    transition: background-color 160ms ease, color 160ms ease;
     white-space: nowrap;
 
-    &:first-child {
-        border-radius: 38px 12px 12px 38px;
+    /* Active indicator: 3px, transparent until selected. */
+    &:after {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: transparent;
+        border-radius: 3px 3px 0 0;
+        content: '';
+        transition: background-color 160ms ease;
     }
 
-    &:last-child {
-        border-radius: 12px 38px 38px 12px;
+    &:hover:not(.itemDisabled) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+        color: var(--m3-on-surface, #1b1b1c);
     }
 
-    &:hover:not(.itemActive):not(.itemDisabled) {
-        background: color-mix(in srgb, var(--m3-secondary-container, #646d78) 90%, #000000);
-        color: var(--m3-on-secondary-container, #e7effc);
-    }
-
-    &:active:not(.itemDisabled) {
-        transform: translateY(1px);
-    }
-
+    /* Inset ring: the scrollport clips anything drawn outside the tab. */
     &:focus-visible {
-        outline: 2px solid var(--m3-on-primary-container, #141c25);
-        outline-offset: 2px;
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -2px;
     }
 }
 
-/* Align with Page subsection tabs (Settings / Links) so Users / Logs / Statistics match. */
 .itemActive,
-.itemActive:first-child,
-.itemActive:last-child {
-    background: var(--m3-secondary, #4c555f);
-    border-radius: 38px;
-    color: var(--m3-primary-fixed, #ffe2de);
+.itemActive:hover:not(.itemDisabled) {
+    color: var(--m3-primary, #a5000a);
 
-    &:hover {
-        background: var(--m3-secondary, #4c555f);
-        color: var(--m3-primary-fixed, #ffe2de);
-    }
-
-    .icon {
-        color: var(--m3-primary-fixed, #ffe2de);
+    &:after {
+        background: var(--m3-primary, #a5000a);
     }
 }
 
 .itemDisabled {
-    color: var(--m3-on-secondary-container, #e7effc);
     cursor: not-allowed;
-    opacity: 0.72;
+    opacity: 0.38;
 
     &:disabled {
         pointer-events: none;
     }
 }
 
+/* Icons are monochrome: they follow the tab's text colour, whatever fill the
+   source SVG ships with. */
+
 .icon {
     display: inline-flex;
-    width: 26px;
-    height: 26px;
-    flex: 0 0 26px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
     align-items: center;
     justify-content: center;
     color: currentColor;
 
     > svg {
         display: block;
-        width: 26px;
-        height: 26px;
+        width: 18px;
+        height: 18px;
+        color: currentColor;
     }
 
     :global {
         .anticon {
-            font-size: 26px;
+            font-size: 18px;
             line-height: 1;
         }
     }
@@ -126,33 +131,15 @@
 
 .label {
     flex: 0 0 auto;
-    font-weight: 400;
-    text-transform: math-auto;
 }
 
-@media (max-width: 768px) {
-    .item {
-        min-height: 64px;
-        padding: 20px 24px;
-        font-size: 16px;
-        gap: 8px;
-        line-height: 24px;
-    }
+.badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
 
-    .icon {
-        width: 24px;
-        height: 24px;
-        flex-basis: 24px;
-
-        > svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        :global {
-            .anticon {
-                font-size: 24px;
-            }
-        }
+    > svg {
+        width: 18px;
+        height: 18px;
     }
 }

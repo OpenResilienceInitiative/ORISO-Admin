@@ -99,7 +99,7 @@ describe('searchNav — the examples from ORISO-Admin#1319', () => {
     it('labels results in the UI language and names the section', () => {
         const [hit] = searchNav(entries, 'smtp');
 
-        expect(hit.entry.label).toBe('Email Server');
+        expect(hit.entry.label).toBe('E-Mail-Server');
         expect(hit.entry.sectionLabel).toBe('Einstellungen');
     });
 });

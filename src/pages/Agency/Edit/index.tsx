@@ -650,6 +650,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
             <Page.BackWithActions
                 path={routePathNames.agency}
+                parentKey="sidebar.agency"
                 title={
                     isEditing
                         ? agencyData?.name || t<string>('agency.edit.general.headline')
