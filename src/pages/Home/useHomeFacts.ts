@@ -14,6 +14,7 @@ import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
 import { getDpaStatus } from '../../api/tenant/getDpaStatus';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
+import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
 
 /**
@@ -122,7 +123,8 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
         const record = publicTenant
             ? await getTenantData(publicTenant, settings.multitenancyWithSingleDomainEnabled).catch(() => undefined)
             : undefined;
-        return summariseOwnTenant(record) ?? null;
+        // Same normalisation as the settings editor (claim may come top-level).
+        return (record ? summariseOwnTenant(mapTenantDataToTenantAdminData(record)) : undefined) ?? null;
     });
     const dpaStatus = useFact('dpa-status', access.role === 'tenant' && tenantId != null, async () => {
         const result = await getDpaStatus(tenantId ?? 0).catch(() => undefined);

@@ -4,6 +4,7 @@ import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import { buildChecklist, buildHomeTiles, groupSettingsTabs, resolveHomeRole } from './homeModel';
 import { agencyPageComplete, isAgencyComplete, summariseOwnTenant } from './useHomeFacts';
+import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 
 const nav = (...keys: string[]): AdminSidebarNavItem[] =>
     keys.map((key) => ({ key, to: `/admin/${key}`, label: key, iconPath: `/admin/${key}` }));
@@ -253,6 +254,21 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
             masterDataComplete: true,
         });
         expect(summariseOwnTenant({ ...tenant, content: { claim: { de: ' ' } } })?.appearanceComplete).toBe(false);
+    });
+
+    it('reads a claim the tenant service returns top-level, like the settings editor does', () => {
+        const fromTenantService = {
+            id: 1,
+            name: 'Plattform',
+            claim: 'Für Sie da',
+            content: { claim: '' },
+            theming: { logo: 'logo.png' },
+        } as unknown as Parameters<typeof mapTenantDataToTenantAdminData>[0];
+
+        expect(summariseOwnTenant(mapTenantDataToTenantAdminData(fromTenantService))).toMatchObject({
+            appearanceComplete: true,
+            masterDataComplete: true,
+        });
     });
 
     it('reads the SMTP block only when the API exposes it', () => {
