@@ -1,0 +1,395 @@
+@use '../../styles/nativeSelectChevron';
+
+/* The topic catalogue: one white panel per category inside a tile. M3 tokens only. */
+
+/* The card keeps 24px of padding on each side. The panels reach almost to its edge (8px), the
+   panels themselves carry the air around their icons. */
+.body {
+    margin: 0 -16px;
+}
+
+/* A topic row needs more room than the default 240px panel. */
+.groups {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    align-items: start;
+}
+
+.group {
+    --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
+
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 16px 16px 8px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+}
+
+.groupHeader {
+    display: flex;
+    min-height: 32px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.groupTitle {
+    min-width: 0;
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+}
+
+.groupCount {
+    margin: 0 0 4px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.groupInput {
+    min-width: 0;
+    flex: 1 1 160px;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+    font-weight: 500;
+
+    &:focus-visible {
+        border-color: var(--m3-primary, #a5000a);
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: -1px;
+    }
+
+    &[aria-invalid='true'] {
+        border-color: var(--m3-error, #ba1a1a);
+    }
+}
+
+.groupTools {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.listEditing {
+    min-height: 56px;
+}
+
+.row {
+    position: relative;
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+    border-top: 1px solid var(--m3-outline-variant, #c4c7c8);
+
+    &:first-child {
+        border-top: 0;
+    }
+}
+
+.rowDragging {
+    opacity: 0.4;
+}
+
+.text {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    padding: 4px 8px 4px 0;
+}
+
+.name,
+.nameButton {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    font-size: 16px;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+}
+
+.nameButton {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+
+    &:hover {
+        text-decoration: underline;
+    }
+
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid #273270;
+        outline-offset: 2px;
+    }
+}
+
+.description {
+    overflow: hidden;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rowInactive .name,
+.rowInactive .nameButton {
+    color: var(--m3-on-surface-variant, #444748);
+}
+
+.chip {
+    flex: 0 0 auto;
+    padding: 2px 10px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.handle,
+.iconButton {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #273270;
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.38;
+    }
+}
+
+.handle {
+    cursor: grab;
+    touch-action: none;
+}
+
+.row[draggable='true'] {
+    cursor: grab;
+}
+
+/* Moving without a mouse: buttons and a select on touch screens and narrow panels. */
+.touchMoves {
+    display: none;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+}
+
+@media (pointer: coarse), (max-width: 600px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .touchMoves {
+        display: inline-flex;
+        flex: 1 0 100%;
+        justify-content: flex-end;
+        padding: 0 0 4px 44px;
+    }
+}
+
+.selectWrap {
+    @include nativeSelectChevron.native-select-chevron(20px, 10px);
+
+    min-width: 0;
+    max-width: 170px;
+    flex: 1 1 130px;
+}
+
+.groupSelect {
+    min-width: 0;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+}
+
+/* Zero height, so showing the drop position never shifts the rows. */
+.dropLine {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--m3-primary, #a5000a);
+    pointer-events: none;
+}
+
+.dropEnd {
+    position: relative;
+    height: 0;
+
+    &::after {
+        position: absolute;
+        top: -2px;
+        right: 0;
+        left: 0;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--m3-primary, #a5000a);
+        content: '';
+    }
+}
+
+.emptyGroup {
+    position: relative;
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border: 1px dashed var(--m3-outline, #747878);
+    border-radius: 12px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    text-align: center;
+}
+
+.addGroup {
+    display: flex;
+    min-height: 120px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed var(--m3-outline, #747878);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--m3-secondary, #4c555f);
+    cursor: pointer;
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 500;
+
+    &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid #273270;
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.38;
+    }
+}
+
+.state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 16px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+    color: var(--m3-on-surface-variant, #444748);
+    text-align: center;
+
+    p {
+        margin: 0;
+    }
+}
+
+.footer {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.saveState {
+    min-width: 0;
+    flex: 1 1 auto;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+
+    &[role='alert'] {
+        color: var(--m3-error, #ba1a1a);
+    }
+}
+
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    border: 0;
+    clip: rect(0 0 0 0);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    /* 24px card padding − 20px = 4px to the card edge on a phone. */
+    .body {
+        margin: 0 -20px;
+    }
+
+    .group {
+        padding: 12px 12px 4px 16px;
+    }
+
+    .footer {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .row {
+        transition: opacity 120ms ease;
+    }
+}
