@@ -156,7 +156,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         },
         onError: () => {
             notification.error({
-                closeIcon: null,
                 duration: 10,
                 description: t('tenants.list.deleteMessage.error.description'),
                 message: t('tenants.list.deleteMessage.error.title'),

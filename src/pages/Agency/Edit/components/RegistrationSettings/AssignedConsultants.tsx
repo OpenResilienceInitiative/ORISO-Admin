@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { snackbar } from '../../../../../components/Snackbar';
 import { InputChipPicker } from '../../../../../components/InputChipPicker';
 import { Modal } from '../../../../../components/Modal';
 import { X_REASON } from '../../../../../api/fetchData';
@@ -39,7 +39,7 @@ export const AssignedConsultants = ({ agencyId, editing }: AssignedConsultantsPr
     const removal = useMutation({
         mutationFn: (consultant: AgencyConsultant) => unassignAgencyFromConsultant(agencyId, consultant.id),
         onSuccess: (_result, consultant) => {
-            notification.success({
+            snackbar.success({
                 message: t('agency.form.registrationSettings.assigned.removed', {
                     name: consultantDisplayName(consultant),
                 }),
@@ -48,7 +48,7 @@ export const AssignedConsultants = ({ agencyId, editing }: AssignedConsultantsPr
         },
         onError: async (error, consultant) => {
             const reason = await extractApiErrorReason(error);
-            notification.error({
+            snackbar.error({
                 message:
                     reason === X_REASON.CONSULTANT_IS_THE_LAST_OF_AGENCY_AND_AGENCY_IS_STILL_ACTIVE
                         ? t('agency.form.registrationSettings.assigned.removeLast')

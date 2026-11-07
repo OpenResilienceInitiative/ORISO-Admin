@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Button, Col, Row, Form, notification } from 'antd';
+import { Button, Col, Row, Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+import { snackbar } from '../../../components/Snackbar';
 import { MuiFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { Page } from '../../../components/Page';
@@ -85,13 +86,13 @@ const TenantAdminEditor = () => {
         id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
-            notification.success({
+            snackbar.success({
                 message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
             });
         },
         onError: async (error) => {
             const content = await extractApiErrorMessage(error);
-            notification.error({
+            snackbar.error({
                 message: content,
                 duration: 8,
             });
