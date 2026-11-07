@@ -63,24 +63,26 @@ kubectl apply -f /home/caritas/Desktop/online-beratung/kubernetes-complete/03-fr
 
 ## Knowledge Graph
 
-The Understand-Anything graph for this repository is stored at:
+The generated Understand-Anything graph (`knowledge-graph.json`, `meta.json`, `fingerprints.json`) is not committed to this repository. ORISO-Docs builds it and publishes it as a signed release asset. The hand-written summaries in `.understand-anything/*.md` stay here.
+
+-   Browse it: [understand.oriso.org](https://understand.oriso.org/)
+-   Fetch it locally:
 
 ```bash
-.understand-anything/knowledge-graph.json
+mkdir -p /tmp/ua && cd /tmp/ua
+curl -fsSLO https://github.com/OpenResilienceInitiative/ORISO-Docs/releases/download/ua-graph-latest/ORISO-Admin.tar.gz
+gh attestation verify ORISO-Admin.tar.gz --repo OpenResilienceInitiative/ORISO-Docs \
+  --signer-workflow OpenResilienceInitiative/ORISO-Docs/.github/workflows/ua-graph-refresh.yml
+tar -xzf ORISO-Admin.tar.gz   # unpacks to ORISO-Admin/.understand-anything/
 ```
 
-Before opening the dashboard, make sure the graph file exists:
+Before relying on it, compare `gitCommitHash` in `meta.json` with `origin/dev`.
+
+To open the fetched graph in a local dashboard:
 
 ```bash
-test -f .understand-anything/knowledge-graph.json
-```
-
-To open the graph dashboard from the ORISO-Admin repository root:
-
-```bash
-PROJECT_DIR="$(pwd)"
 cd "$UNDERSTAND_ANYTHING_DASHBOARD"
-GRAPH_DIR="$PROJECT_DIR" pnpm exec vite --host 127.0.0.1
+GRAPH_DIR=/tmp/ua/ORISO-Admin pnpm exec vite --host 127.0.0.1
 ```
 
 Set `UNDERSTAND_ANYTHING_DASHBOARD` to your local Understand-Anything `packages/dashboard` directory before running the command. This keeps the README portable and avoids hardcoded local paths.
@@ -106,14 +108,7 @@ test -f "$UNDERSTAND_ANYTHING_DASHBOARD/package.json"
 
 Then run `cd "$UNDERSTAND_ANYTHING_DASHBOARD"` again and confirm `pwd` points to the Understand-Anything `packages/dashboard` directory, not this ORISO-Admin repository.
 
-If the dashboard opens but shows `Invalid knowledge graph: Missing or invalid project metadata`, stop the dashboard with `Ctrl+C` and restart it with `GRAPH_DIR="$PROJECT_DIR"` included:
-
-```bash
-cd ~/Developer/freelance/Germany/Oriso-frank-client/ORISO/ORISO-Admin
-PROJECT_DIR="$(pwd)"
-cd ~/.understand-anything/repo/understand-anything-plugin/packages/dashboard
-GRAPH_DIR="$PROJECT_DIR" pnpm exec vite --host 127.0.0.1
-```
+If the dashboard opens but shows `Invalid knowledge graph: Missing or invalid project metadata`, stop it with `Ctrl+C` and restart it with `GRAPH_DIR` pointing at the unpacked `/tmp/ua/ORISO-Admin` directory.
 
 Generated graph documentation lives under `.understand-anything/`:
 
@@ -125,14 +120,4 @@ Generated graph documentation lives under `.understand-anything/`:
 -   `.understand-anything/DEPENDENCY-AUDIT.md`
 -   `.understand-anything/visuals/`
 
-Auto-update is enabled for this repository through `.understand-anything/config.json`. The equivalent setup command is:
-
-```bash
-/understand . --auto-update
-```
-
-If the environment does not run the auto-update hook, rebuild the graph manually after meaningful repository changes:
-
-```bash
-/understand . --full
-```
+Local regeneration (`/understand . --full`) still works, but its output is git-ignored. Do not commit it; the published graph is the shared one.
