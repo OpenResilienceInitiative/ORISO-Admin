@@ -1,6 +1,6 @@
 import { KeyboardEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import classNames from 'classnames';
-import { NavLink, useMatch, useResolvedPath } from 'react-router-dom';
+import { NavLink, useInRouterContext, useLocation, useMatch, useResolvedPath } from 'react-router-dom';
 import styles from './AdminSegmentedTabs.module.scss';
 
 export type AdminSegmentedTabItem = {
@@ -82,6 +82,19 @@ const TabLink = ({
 };
 
 /**
+ * Reruns `onRouteChange` after every route change (browser Back/Forward too):
+ * the link tabs re-render on their own, but the bar would not, so the newly
+ * selected tab could stay scrolled out of view. Only mounted inside a router.
+ */
+const RevealOnRouteChange = ({ onRouteChange }: { onRouteChange: () => void }) => {
+    const { key } = useLocation();
+    useLayoutEffect(() => {
+        onRouteChange();
+    }, [key, onRouteChange]);
+    return null;
+};
+
+/**
  * The one sub-navigation bar of the admin (Settings, Logs, Statistics, Invites,
  * Users, entity edit pages): M3 primary underline tabs on a full-width divider
  * (ORISO-Admin#1374). Icons are monochrome (`currentColor`), the active tab is
@@ -96,6 +109,7 @@ const TabLink = ({
  */
 export const AdminSegmentedTabs = ({ activeId, ariaLabel, className, items, onChange }: AdminSegmentedTabsProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const inRouter = useInRouterContext();
 
     // Keep the active tab visible when the bar overflows. Only the bar scrolls —
     // `scrollIntoView` would also move the page. Runs after every render and
@@ -166,6 +180,7 @@ export const AdminSegmentedTabs = ({ activeId, ariaLabel, className, items, onCh
 
     return (
         <div className={classNames(styles.container, className)} data-admin-subnav>
+            {inRouter && <RevealOnRouteChange onRouteChange={revealActive} />}
             {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus -- focus lives on the tabs; the list only routes arrow keys */}
             <div
                 ref={scrollRef}

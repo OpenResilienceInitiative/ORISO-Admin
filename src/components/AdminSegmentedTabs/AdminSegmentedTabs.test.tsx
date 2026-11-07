@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -112,6 +112,39 @@ describe('AdminSegmentedTabs overflow', () => {
 
         expect(scroller.scrollLeft).toBe(400);
         vi.unstubAllGlobals();
+    });
+});
+
+describe('AdminSegmentedTabs history navigation', () => {
+    it('scrolls the newly active tab into view after Back, without a resize', async () => {
+        const user = userEvent.setup();
+        const Back = () => {
+            const navigate = useNavigate();
+            return (
+                <button type="button" onClick={() => navigate(-1)}>
+                    back
+                </button>
+            );
+        };
+        render(
+            <MemoryRouter initialEntries={['/logs/deletions', '/logs']} initialIndex={1}>
+                <AdminSegmentedTabs ariaLabel="Logs" items={LINK_TABS} />
+                <Back />
+            </MemoryRouter>,
+        );
+        const scroller = screen.getByRole('tablist') as HTMLDivElement;
+        Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 600 });
+        Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 200 });
+        scroller.getBoundingClientRect = () => ({ left: 0 } as DOMRect);
+        // Like a real layout: the tab's on-screen position moves when the bar scrolls.
+        screen.getByRole('tab', { name: 'Löschprotokoll' }).getBoundingClientRect = () =>
+            ({ left: 450 - scroller.scrollLeft, width: 150 } as DOMRect);
+        scroller.scrollLeft = 0;
+
+        await user.click(screen.getByRole('button', { name: 'back' }));
+
+        expect(screen.getByRole('tab', { name: 'Löschprotokoll' })).toHaveAttribute('aria-selected', 'true');
+        expect(scroller.scrollLeft).toBe(400);
     });
 });
 
