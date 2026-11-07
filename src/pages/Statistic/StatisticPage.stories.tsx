@@ -201,10 +201,20 @@ export const WeeklyStand: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findAllByRole('button', { name: /Beratungsfälle in KW/ })).toHaveLength(CHART_WEEKS);
-        const notice = canvas.getByText(/^Zahlen bis einschließlich 01\.11\.2026\./);
+        const notice = canvas.getByText(/^Stand 01\.11\.2026 · neue Zahlen montags/);
         // The page fades in, so the notice is only visible once that has settled.
         await waitFor(() => expect(notice).toBeVisible());
-        await expect(getComputedStyle(notice).marginBottom).toBe('16px');
+        // One quiet info row, not a stack of full-width bars (Admin#1374).
+        const infoRow = canvas.getByTestId('statistic-info-row');
+        await expect(getComputedStyle(infoRow).marginBottom).toBe('16px');
+        await expect(getComputedStyle(infoRow).borderTopLeftRadius).toBe('16px');
+        // The KPI cards use the full width: no picture fills a free cell.
+        const dashboard = canvasElement.querySelector('.statisticDashboard') as HTMLElement;
+        const summary = canvasElement.querySelector('.statisticDashboard__summaryGrid') as HTMLElement;
+        await expect(Math.round(summary.getBoundingClientRect().width)).toBe(
+            Math.round(dashboard.getBoundingClientRect().width),
+        );
+        await expect(canvasElement.querySelectorAll('[data-admin-card-grid-filler]')).toHaveLength(0);
         // The newest week is the tallest bar: its tooltip must stay clear of the period menu above it.
         const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
         const menu = canvas.getByText('5 Wochen im Überblick');
@@ -252,6 +262,9 @@ export const HiddenRowNextToShownRow: Story = {
         const canvas = within(canvasElement);
         fireEvent.click(await canvas.findByText('Auf Beratungsstellenebene'));
         const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
+        // The long reason waits behind "Warum?" in the one info row.
+        await expect(notice).not.toBeVisible();
+        fireEvent.click(await canvas.findByRole('button', { name: 'Warum?' }));
         await waitFor(() => expect(notice).toBeVisible());
         await expect(canvas.queryByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/)).toBeNull();
         await expect(canvas.getByText('Statistik als CSV herunterladen')).toBeVisible();
@@ -275,9 +288,10 @@ export const HiddenTotal: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const notice = await canvas.findByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/);
+        fireEvent.click(await canvas.findByRole('button', { name: 'Warum?' }));
         // The page fades in, so the notice is only visible once that has settled.
         await waitFor(() => expect(notice).toBeVisible());
-        await expect(canvas.getAllByText('Statistik unterdrückt').length).toBeGreaterThan(0);
+        await expect(canvas.getAllByText('Geschützt – zu wenige aktive Beratende').length).toBeGreaterThan(0);
         // a chart of zeros would read as "nothing happened"
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();

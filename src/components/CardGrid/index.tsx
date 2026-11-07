@@ -17,10 +17,21 @@ export interface CardGridProps {
     /**
      * The settings raster: three columns, two or one depending on the room the grid
      * has. Tiles sit in `CardGrid.Item`, may span columns, stretch to the height of
-     * their row, and show a small graphic in free space. `minCardWidth` and
-     * `maxColumns` do not apply.
+     * their row, and show a small graphic in free space. `maxColumns` does not
+     * apply, `minCardWidth` only together with `fluid`.
      */
     raster?: boolean;
+    /**
+     * With `raster`: as many equal columns as fit the full width, each at least
+     * `minCardWidth` wide (default 260), instead of the fixed three settings columns.
+     * Meant for rows of small KPI tiles. Leaves no free cells, so it shows no graphic.
+     */
+    fluid?: boolean;
+    /**
+     * With `raster`: fill free cells with the small graphic. Default true. Turn it off
+     * where a picture in a data grid would read as a missing tile (e.g. statistics).
+     */
+    fillers?: boolean;
     /**
      * Pinterest-style flow: cards stack top to bottom inside each column, so cards of
      * different heights leave no gaps and nothing scrolls sideways. The reading order
@@ -97,13 +108,13 @@ const measureFreeCells = (grid: HTMLElement): FreeCells[] => {
     return free;
 };
 
-const useFreeCells = () => {
+const useFreeCells = (enabled: boolean) => {
     const gridRef = useRef<HTMLDivElement>(null);
     const [freeCells, setFreeCells] = useState<FreeCells[]>([]);
 
     useLayoutEffect(() => {
         const grid = gridRef.current;
-        if (!grid) return undefined;
+        if (!grid || !enabled) return undefined;
         const measure = () => {
             const next = measureFreeCells(grid);
             setFreeCells((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
@@ -113,17 +124,28 @@ const useFreeCells = () => {
         const observer = new ResizeObserver(measure);
         observer.observe(grid);
         return () => observer.disconnect();
-    }, []);
+    }, [enabled]);
 
-    return { gridRef, freeCells };
+    return { gridRef, freeCells: enabled ? freeCells : [] };
 };
 
-const CardGridRaster = ({ children, className }: Pick<CardGridProps, 'children' | 'className'>) => {
-    const { gridRef, freeCells } = useFreeCells();
+const CardGridRaster = ({
+    children,
+    className,
+    fluid = false,
+    fillers = true,
+    minCardWidth = 260,
+}: Pick<CardGridProps, 'children' | 'className' | 'fluid' | 'fillers' | 'minCardWidth'>) => {
+    const { gridRef, freeCells } = useFreeCells(fillers && !fluid);
 
     return (
         <div className={styles.rasterHost} data-admin-card-raster>
-            <div ref={gridRef} data-admin-card-grid className={classNames(styles.raster, className)}>
+            <div
+                ref={gridRef}
+                data-admin-card-grid
+                className={classNames(styles.raster, { [styles.rasterFluid]: fluid }, className)}
+                style={fluid ? ({ '--card-grid-min': `${minCardWidth}px` } as CSSProperties) : undefined}
+            >
                 {children}
                 {freeCells.map(({ row, column, span }) => (
                     <div
@@ -151,21 +173,25 @@ const CardGridRaster = ({ children, className }: Pick<CardGridProps, 'children' 
  */
 const CardGridRoot = ({
     children,
-    minCardWidth = 400,
+    minCardWidth,
     maxColumns = 3,
     raster,
+    fluid,
+    fillers,
     masonry = false,
     className,
 }: CardGridProps) =>
     raster ? (
-        <CardGridRaster className={className}>{children}</CardGridRaster>
+        <CardGridRaster className={className} fluid={fluid} fillers={fillers} minCardWidth={minCardWidth}>
+            {children}
+        </CardGridRaster>
     ) : (
         <div
             data-admin-card-grid
             className={classNames(styles.cardGrid, { [styles.masonry]: masonry }, className)}
             style={
                 {
-                    '--field-grid-min': `${minCardWidth}px`,
+                    '--field-grid-min': `${minCardWidth ?? 400}px`,
                     '--field-grid-max-columns': maxColumns,
                 } as CSSProperties
             }

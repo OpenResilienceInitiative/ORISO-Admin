@@ -84,3 +84,15 @@
         break-inside: avoid;
     }
 }
+
+/* Fluid raster: as many equal columns as fit, never narrower than --card-grid-min.
+   Two classes, so it wins over the fixed column counts of the container queries above. */
+
+.raster.rasterFluid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-grid-min, 260px)), 1fr));
+
+    .span2,
+    .span3 {
+        grid-column: auto;
+    }
+}
