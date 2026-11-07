@@ -87,11 +87,22 @@ export const HelpKeepsItsGeometry: Story = {
         const dialog = await body.findByRole('dialog');
         await expect(dialog.querySelector('[data-tile-help-icon] svg')).not.toBeNull();
 
+        // Layout sizes, not getBoundingClientRect: the dialog's zoom-in animation
+        // scales the box (0.2 → 1) and would make the first frames look smaller.
+        const offsetTopWithin = (element: HTMLElement) => {
+            let top = 0;
+            let node: HTMLElement | null = element;
+            while (node && node !== dialog) {
+                top += node.offsetTop;
+                node = node.offsetParent as HTMLElement | null;
+            }
+            return top;
+        };
         const measure = () => ({
-            media: dialog.querySelector('[data-tile-help-media]')!.getBoundingClientRect().height,
-            next: within(dialog)
-                .getByRole('button', { name: /^(weiter|next|fertig|done)$/i })
-                .getBoundingClientRect().top,
+            media: (dialog.querySelector('[data-tile-help-media]') as HTMLElement).offsetHeight,
+            next: offsetTopWithin(
+                within(dialog).getByRole('button', { name: /^(weiter|next|fertig|done)$/i }) as HTMLElement,
+            ),
         });
         const first = measure();
         await expect(dialog.querySelector('[data-tile-help-media="visual"] img')).not.toBeNull();
