@@ -337,8 +337,24 @@
     }
 }
 
+// antd derives the warning fill from --m3-warning (#410001), which renders as a dark
+// brown slab here. Calm M3 surface instead; the icon keeps the signal (#1374).
 .tooPaleAlert {
     margin-top: 12px;
+
+    &:global(.ant-alert) {
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
+        background: var(--m3-surface-container-high, #eae7e8);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    :global(.ant-alert-message) {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    :global(.ant-alert-icon) {
+        color: var(--m3-error, #ba1a1a);
+    }
 }
 
 .colorSummaryRow {
