@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { AdminMobileNav, type AdminMobileNavSection } from './AdminMobileNav';
-import type { NavSearchEntry } from './navSearch';
 import { EXPANDED_SECTION_STORAGE_KEY } from './useRememberedExpansion';
 
 const sections: AdminMobileNavSection[] = [
@@ -30,31 +29,17 @@ const sections: AdminMobileNavSection[] = [
     { key: 'logs', label: 'Logs', to: '/logs' },
 ];
 
-const searchEntries: NavSearchEntry[] = [
-    {
-        id: 'settings:smtp',
-        label: 'Email Server',
-        to: '/settings/smtp',
-        sectionLabel: 'Einstellungen',
-        terms: ['smtp'],
-    },
-    { id: 'tenants', label: 'Träger', to: '/tenants', terms: ['tenant'] },
-];
-
 const labels = {
     navigation: 'Navigation',
     more: 'Mehr',
     globalSearch: 'Überall suchen',
-    globalSearchPlaceholder: 'Wohin?',
-    globalSearchHint: 'Suchen Sie nach Bereichen',
-    globalSearchEmpty: 'Nichts gefunden.',
     close: 'Schließen',
     back: 'Zurück',
 };
 
 const Location = () => <span data-testid="path">{useLocation().pathname}</span>;
 
-const renderNav = (path = '/settings/legal', onSectionSelect = vi.fn()) =>
+const renderNav = (path = '/settings/legal', onSectionSelect = vi.fn(), onOpenGlobalSearch = vi.fn()) =>
     render(
         <MemoryRouter initialEntries={[path]}>
             <Routes>
@@ -67,7 +52,7 @@ const renderNav = (path = '/settings/legal', onSectionSelect = vi.fn()) =>
                                 accountItems={[{ key: 'logout', label: 'Verlassen' }]}
                                 activeSectionKey={path.startsWith('/settings') ? 'settings' : 'tenants'}
                                 activeSubsectionKey={path}
-                                searchEntries={searchEntries}
+                                onOpenGlobalSearch={onOpenGlobalSearch}
                                 onSectionSelect={onSectionSelect}
                                 labels={labels}
                             />
@@ -211,21 +196,6 @@ describe('AdminMobileNav', () => {
         expect(first).toHaveFocus();
     });
 
-    it('keeps Tab inside the open search sheet too', async () => {
-        renderNav();
-        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
-        const field = screen.getByRole('searchbox', { name: 'Überall suchen' });
-        await userEvent.type(field, 'smtp');
-
-        await userEvent.tab();
-        await userEvent.tab();
-        await userEvent.tab();
-
-        const sheet = field.closest('[role="dialog"]');
-        expect(sheet).not.toBeNull();
-        expect(sheet?.contains(document.activeElement)).toBe(true);
-    });
-
     it('names a tab by its visible short label (WCAG 2.5.3)', () => {
         render(
             <MemoryRouter>
@@ -240,27 +210,27 @@ describe('AdminMobileNav', () => {
         expect(within(screen.getByRole('navigation')).getByRole('link', { name: 'Optionen' })).toBeInTheDocument();
     });
 
-    it('global search: focuses the field, finds by keyword and opens the hit on Enter', async () => {
-        renderNav('/tenants');
-        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
+    it('hands the round button to the app-wide search and has no search of its own', async () => {
+        const onOpenGlobalSearch = vi.fn();
 
-        const field = screen.getByRole('searchbox', { name: 'Überall suchen' });
+        renderNav('/tenants', vi.fn(), onOpenGlobalSearch);
+        const button = screen.getByRole('button', { name: 'Überall suchen' });
 
-        expect(field).toHaveFocus();
-        expect(screen.getByText('Suchen Sie nach Bereichen')).toBeInTheDocument();
+        await userEvent.click(button);
 
-        await userEvent.type(field, 'smpt');
-        expect(screen.getByRole('link', { name: /Email Server/ })).toBeInTheDocument();
-
-        await userEvent.keyboard('{Enter}');
-        expect(screen.getByTestId('path')).toHaveTextContent('/settings/smtp');
+        // The button is passed on, so the search view can grow out of it.
+        expect(onOpenGlobalSearch).toHaveBeenCalledWith(button);
+        expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
-    it('global search: says so when nothing matches', async () => {
-        renderNav();
-        await userEvent.click(screen.getByRole('button', { name: 'Überall suchen' }));
-        await userEvent.type(screen.getByRole('searchbox', { name: 'Überall suchen' }), 'xqzvw');
+    it('shows no search button when there is no app-wide search (restricted layout)', () => {
+        render(
+            <MemoryRouter>
+                <AdminMobileNav sections={sections} activeSectionKey="settings" labels={labels} />
+            </MemoryRouter>,
+        );
 
-        expect(screen.getByRole('status')).toHaveTextContent('Nichts gefunden.');
+        expect(screen.queryByRole('button', { name: 'Überall suchen' })).not.toBeInTheDocument();
     });
 });

@@ -1,12 +1,46 @@
 /**
  * Text handling for the admin search: folding, tokens, light stemming.
  *
- * Pure, no React, no i18n. The folding is the same as the mobile menu search
- * (`navSearch.ts`, ORISO-Admin#1319), extended with an index map so a match in
- * the folded text can be highlighted in the original (`ä` folds to `ae`, so
- * offsets shift).
+ * Pure, no React, no i18n. The folding started with the mobile menu search
+ * (ORISO-Admin#1319), which this search has replaced; it is extended with an
+ * index map so a match in the folded text can be highlighted in the original
+ * (`ä` folds to `ae`, so offsets shift).
  */
-export { editDistance } from '../AdminMobileNav/navSearch';
+
+/** Optimal string alignment distance (Levenshtein + adjacent transposition), capped. */
+export const editDistance = (a: string, b: string, max: number): number => {
+    if (Math.abs(a.length - b.length) > max) {
+        return max + 1;
+    }
+
+    const rows: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+
+    for (let j = 1; j <= b.length; j += 1) {
+        rows[0][j] = j;
+    }
+
+    for (let i = 1; i <= a.length; i += 1) {
+        let rowMin = Number.POSITIVE_INFINITY;
+
+        for (let j = 1; j <= b.length; j += 1) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            let value = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+
+            if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                value = Math.min(value, rows[i - 2][j - 2] + 1);
+            }
+
+            rows[i][j] = value;
+            rowMin = Math.min(rowMin, value);
+        }
+
+        if (rowMin > max) {
+            return max + 1;
+        }
+    }
+
+    return rows[a.length][b.length];
+};
 
 const FOLD_REPLACEMENTS: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss', æ: 'ae', œ: 'oe' };
 

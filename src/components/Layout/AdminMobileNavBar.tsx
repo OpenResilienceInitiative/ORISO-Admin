@@ -5,8 +5,6 @@ import type { TFunction } from 'i18next';
 import { AdminMobileNav, type AdminMobileNavItem, type AdminMobileNavSection } from '../AdminMobileNav';
 import { useMobileNav } from '../AdminMobileNav/MobileNavContext';
 import { useAdminSearch } from '../AdminSearch';
-import { keywordsFor } from '../AdminMobileNav/navKeywords';
-import type { NavSearchEntry } from '../AdminMobileNav/navSearch';
 import { NavGlyph, type NavGlyphName } from '../NavGlyph';
 import type { AdminSidebarNavItem } from './AdminSidebar';
 import type { AdminNavSubsection } from './adminNavTree';
@@ -32,9 +30,6 @@ const SECTION_GLYPHS: Record<string, NavGlyphName> = {
     logout: 'logout',
 };
 
-/** Languages the global search always covers, whatever the UI language (#1319). */
-const SEARCH_LANGUAGES = ['de', 'en'];
-
 export interface AdminMobileNavBarProps {
     /** The same resolved destinations the sidebar gets. */
     items: AdminSidebarNavItem[];
@@ -51,64 +46,8 @@ const LOGOUT_KEY = 'logout';
 /** Bottom bar: Home · Einstellen · Einladen · Mehr (ORISO-Admin#1323). */
 const TAB_KEYS = ['home', 'theme', 'links'];
 
-/** The sidebar label key per section — the item itself only carries the resolved label. */
-const SECTION_LABEL_KEYS: Record<string, string> = {
-    home: 'sidebar.home',
-    theme: 'sidebar.settings',
-    tenants: 'sidebar.tenants',
-    agency: 'sidebar.agency',
-    counselors: 'sidebar.users',
-    statistics: 'sidebar.statistics',
-    links: 'sidebar.links',
-    logs: 'sidebar.logs',
-    account: 'sidebar.account',
-    logout: 'sidebar.logout',
-};
-
 const subsectionLabel = (t: TFunction, subsection: AdminNavSubsection) =>
     String(t(subsection.labelKey, subsection.fallbackKey ? String(t(subsection.fallbackKey)) : undefined));
-
-/**
- * Every destination this admin may open, each tagged with its label in German
- * and English plus the curated synonyms from `navKeywords.ts`.
- */
-export const buildNavSearchEntries = (
-    t: TFunction,
-    translators: TFunction[],
-    sections: Array<{ key: string; label: string; to?: string }>,
-    tree: Record<string, AdminNavSubsection[]>,
-): NavSearchEntry[] => {
-    const otherLabels = (key: string | undefined, fallbackKey?: string) =>
-        key ? translators.map((fixed) => String(fixed(key, fallbackKey ? String(fixed(fallbackKey)) : undefined))) : [];
-
-    return sections.flatMap((section) => {
-        const sectionEntry: NavSearchEntry[] = section.to
-            ? [
-                  {
-                      id: section.key,
-                      label: section.label,
-                      to: section.to,
-                      terms: [...otherLabels(SECTION_LABEL_KEYS[section.key]), ...keywordsFor(section.key)],
-                  },
-              ]
-            : [];
-
-        const children = (tree[section.key] ?? []).map((subsection) => ({
-            id: subsection.id,
-            label: subsectionLabel(t, subsection),
-            to: subsection.to,
-            sectionLabel: section.label,
-            terms: [
-                ...otherLabels(subsection.labelKey, subsection.fallbackKey),
-                // A subsection is also found by its section's words ("Einstellungen Mail").
-                ...otherLabels(SECTION_LABEL_KEYS[section.key]),
-                ...keywordsFor(subsection.id),
-            ],
-        }));
-
-        return [...sectionEntry, ...children];
-    });
-};
 
 /**
  * Connects {@link AdminMobileNav} to the app: destinations from the same
@@ -120,7 +59,7 @@ export const buildNavSearchEntries = (
  * back to nothing.
  */
 export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = {} }: AdminMobileNavBarProps) => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const registration = useMobileNav();
     const adminSearch = useAdminSearch();
@@ -161,17 +100,6 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
         [account, logout.label, t],
     );
 
-    const searchEntries = useMemo(
-        () =>
-            buildNavSearchEntries(
-                t,
-                SEARCH_LANGUAGES.map((language) => i18n.getFixedT(language)),
-                account ? [...items, account] : items,
-                tree,
-            ),
-        [account, i18n, items, t, tree],
-    );
-
     // Prefix match plus each item's `activeMatch`, so Users/Logs sibling hubs
     // still light the right section.
     const activeSectionKey = useMemo(
@@ -195,7 +123,6 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
             accountItems={accountItems}
             activeSectionKey={activeSectionKey}
             activeSubsectionKey={activeSubsectionKey}
-            searchEntries={searchEntries}
             onOpenGlobalSearch={adminSearch.available ? (trigger) => adminSearch.open(trigger) : undefined}
             tabKeys={TAB_KEYS}
             onSectionSelect={(key) => {
@@ -213,12 +140,6 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
                 navigation: t('mobileNav.navigation', 'Navigation'),
                 more: t('mobileNav.more', 'Mehr'),
                 globalSearch: t('mobileNav.search.label', 'Überall suchen'),
-                globalSearchPlaceholder: t('mobileNav.search.placeholder', 'Wohin möchten Sie?'),
-                globalSearchHint: t(
-                    'mobileNav.search.hint',
-                    'Suche nach Bereichen und Einstellungen – auf Deutsch oder Englisch.',
-                ),
-                globalSearchEmpty: t('mobileNav.search.empty', 'Nichts gefunden.'),
                 close: t('mobileNav.close', 'Schließen'),
                 back: registration?.backLabel ?? t('back', 'Zurück'),
             }}

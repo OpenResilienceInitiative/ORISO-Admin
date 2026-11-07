@@ -1,6 +1,7 @@
 /**
- * Search keywords per navigation destination, German and English together
- * (ORISO-Admin#1319).
+ * Search keywords per navigation destination (sections and tabs), German and
+ * English together. Started with the mobile menu search (ORISO-Admin#1319),
+ * which the global search has replaced.
  *
  * The visible labels in both languages are added automatically from the
  * translation files; this list carries what an admin might *type* instead —
@@ -270,5 +271,3 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
     'links:tenants': ['träger einladung', 'träger invite', 'tenant invite', 'organisation invite'],
     'links:counsellor': ['berater einladung', 'berater invite', 'counsellor invite', 'consultant invite'],
 };
-
-export const keywordsFor = (id: string): string[] => NAV_KEYWORDS[id] ?? [];

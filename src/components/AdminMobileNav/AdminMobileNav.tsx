@@ -1,5 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
@@ -7,7 +7,6 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SearchIcon from '@mui/icons-material/Search';
 import classNames from 'classnames';
-import { searchNav, type NavSearchEntry } from './navSearch';
 import { useRememberedExpansion } from './useRememberedExpansion';
 import styles from './adminMobileNav.module.scss';
 
@@ -38,13 +37,8 @@ export interface AdminMobileNavLabels {
     navigation: string;
     /** The "More" tab that opens the menu card. */
     more: string;
-    /** The round search button and the search dialog. */
+    /** Accessible name of the round search button. */
     globalSearch: string;
-    globalSearchPlaceholder: string;
-    /** Shown in the search sheet before anything is typed. */
-    globalSearchHint: string;
-    /** Shown when nothing matches; `{{query}}` is not interpolated here, the caller does it. */
-    globalSearchEmpty: string;
     close: string;
     back: string;
 }
@@ -59,11 +53,9 @@ export interface AdminMobileNavProps {
     activeSubsectionKey?: string;
     /** Called for entries without a route, e.g. logout. */
     onSectionSelect?: (key: string) => void;
-    /** Everything the global search may find (see `buildNavSearchEntries`). */
-    searchEntries?: NavSearchEntry[];
     /**
-     * When set, the round search button opens the app-wide search view (`AdminSearch`) instead of
-     * this bar's own navigation-only sheet, which stays as the fallback.
+     * Opens the app-wide search (`AdminSearch`) from the round button, which hands over itself so
+     * the view can grow out of it. Without it the button is not shown.
      */
     onOpenGlobalSearch?: (trigger: HTMLElement) => void;
     /** Present only on pages you can go back from. */
@@ -88,8 +80,6 @@ export interface AdminMobileNavProps {
     className?: string;
 }
 
-type Sheet = 'menu' | 'search' | null;
-
 /**
  * The mobile navigation (ORISO-Admin#1319), modelled on the Slack iOS app:
  *
@@ -99,8 +89,8 @@ type Sheet = 'menu' | 'search' | null;
  *   section (icon tile, title, one-line description); sections that have
  *   subsections are collapsible categories, and the last one the user expanded
  *   is remembered;
- * - **search** opens a global, typo-tolerant, German + English search over
- *   every destination this admin may open.
+ * - **search** opens the app-wide search (`AdminSearch`), which grows out of
+ *   the round button. This bar has no search of its own.
  *
  * The page's own toolbar (back, list search, filters, create) stays in the row
  * above the bar: it belongs to the page, not to the navigation.
@@ -117,7 +107,6 @@ export const AdminMobileNav = ({
     onBack,
     onSearch,
     onSectionSelect,
-    searchEntries = [],
     searchLabel,
     searchPlaceholder,
     sections,
@@ -125,12 +114,9 @@ export const AdminMobileNav = ({
     tabKeys = [],
     onOpenGlobalSearch,
 }: AdminMobileNavProps) => {
-    const navigate = useNavigate();
-    const [sheet, setSheet] = useState<Sheet>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
     const [pageSearchOpen, setPageSearchOpen] = useState(false);
-    const [query, setQuery] = useState('');
     const pageSearchRef = useRef<HTMLInputElement>(null);
-    const globalSearchRef = useRef<HTMLInputElement>(null);
     const sheetRef = useRef<HTMLDivElement>(null);
     const returnFocusRef = useRef<HTMLElement | null>(null);
     const sheetId = useId();
@@ -139,29 +125,24 @@ export const AdminMobileNav = ({
     const preferred = tabKeys.flatMap((key) => sections.filter((section) => section.key === key));
     const tabs = [...preferred, ...sections.filter((section) => !preferred.includes(section))].slice(0, tabCount);
     const moreIsActive = !tabs.some((tab) => tab.key === activeSectionKey);
-    const results = useMemo(() => searchNav(searchEntries, query), [searchEntries, query]);
 
-    // A route change (from a menu row, a result, a link in the page or the
-    // back button) closes whatever is open; the page search belongs to the page
-    // you left.
+    // A route change (from a menu row, a link in the page or the back button)
+    // closes the menu; the page search belongs to the page you left.
     useEffect(() => {
-        setSheet(null);
+        setMenuOpen(false);
         setPageSearchOpen(false);
     }, [activeSectionKey, activeSubsectionKey]);
 
     useEffect(() => {
-        if (sheet === 'search') {
-            globalSearchRef.current?.focus();
-        } else if (sheet === 'menu') {
+        if (menuOpen) {
             sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus();
         } else {
-            setQuery('');
-            // Back to the button that opened the sheet, so keyboard and
+            // Back to the button that opened the menu, so keyboard and
             // screen-reader users keep their place in the bar.
             returnFocusRef.current?.focus();
             returnFocusRef.current = null;
         }
-    }, [sheet]);
+    }, [menuOpen]);
 
     useEffect(() => {
         if (pageSearchOpen) {
@@ -170,17 +151,17 @@ export const AdminMobileNav = ({
     }, [pageSearchOpen]);
 
     useEffect(() => {
-        if (!sheet) {
+        if (!menuOpen) {
             return undefined;
         }
 
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                setSheet(null);
+                setMenuOpen(false);
                 return;
             }
-            // Both sheets are aria-modal, so Tab must not wander into the page
-            // behind them: wrap at either end, and pull focus back in if it is
+            // The menu is aria-modal, so Tab must not wander into the page
+            // behind it: wrap at either end, and pull focus back in if it is
             // outside. Collapsed sections are not rendered, so every match is
             // a visible control.
             const container = sheetRef.current;
@@ -210,15 +191,14 @@ export const AdminMobileNav = ({
         window.addEventListener('keydown', onKeyDown);
 
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [sheet]);
+    }, [menuOpen]);
 
-    const close = () => setSheet(null);
-    const toggleSheet = (next: Exclude<Sheet, null>) => {
-        // Keep the first opener when switching from one sheet to the other.
-        if (sheet === null) {
+    const close = () => setMenuOpen(false);
+    const toggleMenu = () => {
+        if (!menuOpen) {
             returnFocusRef.current = document.activeElement as HTMLElement | null;
         }
-        setSheet((current) => (current === next ? null : next));
+        setMenuOpen((current) => !current);
     };
 
     const renderLeaf = (item: AdminMobileNavItem, active: boolean) => {
@@ -315,9 +295,9 @@ export const AdminMobileNav = ({
 
     return (
         <div className={classNames(styles.root, className)} data-admin-mobile-nav>
-            {sheet && <div className={styles.scrim} onClick={close} aria-hidden data-admin-mobile-nav-scrim />}
+            {menuOpen && <div className={styles.scrim} onClick={close} aria-hidden data-admin-mobile-nav-scrim />}
 
-            {sheet === 'menu' && (
+            {menuOpen && (
                 <div
                     className={styles.sheet}
                     ref={sheetRef}
@@ -337,58 +317,6 @@ export const AdminMobileNav = ({
                             </ul>
                         </>
                     )}
-                </div>
-            )}
-
-            {sheet === 'search' && (
-                <div
-                    className={classNames(styles.sheet, styles.searchSheet)}
-                    ref={sheetRef}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={labels.globalSearch}
-                    data-admin-mobile-nav-global-search
-                >
-                    {query.trim() === '' && <p className={styles.hint}>{labels.globalSearchHint}</p>}
-                    {query.trim() !== '' && results.length === 0 && (
-                        <p className={styles.hint} role="status">
-                            {labels.globalSearchEmpty}
-                        </p>
-                    )}
-                    {results.length > 0 && (
-                        <ul className={styles.menuList} aria-label={labels.globalSearch}>
-                            {results.map(({ entry }) => (
-                                <li key={entry.id}>
-                                    <Link className={styles.resultRow} to={entry.to} onClick={close}>
-                                        <span className={styles.title}>{entry.label}</span>
-                                        {entry.sectionLabel && (
-                                            <span className={styles.description}>{entry.sectionLabel}</span>
-                                        )}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <div className={styles.globalSearchField}>
-                        <SearchIcon className={styles.searchFieldIcon} aria-hidden />
-                        <input
-                            className={styles.searchInput}
-                            ref={globalSearchRef}
-                            type="search"
-                            aria-label={labels.globalSearch}
-                            placeholder={labels.globalSearchPlaceholder}
-                            value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                            onKeyDown={(event) => {
-                                // Enter opens the best hit, like Slack's quick switcher.
-                                if (event.key === 'Enter' && results[0]) {
-                                    event.preventDefault();
-                                    close();
-                                    navigate(results[0].entry.to);
-                                }
-                            }}
-                        />
-                    </div>
                 </div>
             )}
 
@@ -457,7 +385,7 @@ export const AdminMobileNav = ({
             <div className={styles.bar}>
                 <nav className={styles.tabBar} aria-label={labels.navigation}>
                     {tabs.map((tab) => {
-                        const active = sheet === null && tab.key === activeSectionKey;
+                        const active = !menuOpen && tab.key === activeSectionKey;
 
                         return (
                             <Link
@@ -476,12 +404,12 @@ export const AdminMobileNav = ({
                     })}
                     <button
                         className={classNames(styles.tab, {
-                            [styles.tabActive]: sheet === 'menu' || (sheet === null && moreIsActive),
+                            [styles.tabActive]: menuOpen || moreIsActive,
                         })}
                         type="button"
-                        aria-expanded={sheet === 'menu'}
+                        aria-expanded={menuOpen}
                         aria-haspopup="dialog"
-                        onClick={() => toggleSheet('menu')}
+                        onClick={toggleMenu}
                         data-admin-mobile-nav-more
                     >
                         <span className={styles.tabIcon} aria-hidden>
@@ -490,19 +418,18 @@ export const AdminMobileNav = ({
                         <span className={styles.tabLabel}>{labels.more}</span>
                     </button>
                 </nav>
-                <button
-                    className={classNames(styles.searchButton, { [styles.searchButtonActive]: sheet === 'search' })}
-                    type="button"
-                    aria-label={sheet === 'search' ? labels.close : labels.globalSearch}
-                    aria-expanded={sheet === 'search'}
-                    aria-haspopup="dialog"
-                    onClick={(event) =>
-                        onOpenGlobalSearch ? onOpenGlobalSearch(event.currentTarget) : toggleSheet('search')
-                    }
-                    data-admin-mobile-nav-search
-                >
-                    {sheet === 'search' ? <CloseIcon /> : <SearchIcon />}
-                </button>
+                {onOpenGlobalSearch && (
+                    <button
+                        className={styles.searchButton}
+                        type="button"
+                        aria-label={labels.globalSearch}
+                        aria-haspopup="dialog"
+                        onClick={(event) => onOpenGlobalSearch(event.currentTarget)}
+                        data-admin-mobile-nav-search
+                    >
+                        <SearchIcon />
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -36,6 +36,19 @@ describe('scoreWord', () => {
     it('finds a typo in an unfinished word', () => {
         expect(scoreWord('stamd', 'stammdaten')).toBeGreaterThan(0);
     });
+
+    // Found by trying the search in the browser: "privacy" brought up the colours ("primary colour").
+    it('allows one typo up to seven letters, two from eight on', () => {
+        expect(scoreWord('privacy', 'primary')).toBe(0);
+        expect(scoreWord('privacy', 'private')).toBe(0);
+        expect(scoreWord('passwrd', 'password')).toBeGreaterThan(0);
+        expect(scoreWord('beratungsstele', 'beratungsstelle')).toBeGreaterThan(0);
+    });
+
+    it('does not take a four-letter stem for a prefix', () => {
+        expect(scoreWord('server', 'service')).toBe(0);
+        expect(scoreWord('servers', 'server')).toBeGreaterThan(0);
+    });
 });
 
 describe('searchIndex on a small index', () => {
@@ -278,6 +291,57 @@ describe('real queries against the index of a role', () => {
                 `${id} should be near the top for "${query}": ${ids.slice(0, 6).join(', ')}`,
             ).toBe(true),
         );
+    });
+});
+
+/**
+ * The queries the retired mobile-menu search (ORISO-Admin#1319) was built for. The app-wide search
+ * replaced it, so everything it found must still be found: the old destination (or the setting
+ * inside it) has to be among the first hits.
+ */
+const RETIRED_MOBILE_SEARCH: Array<[string, string[]]> = [
+    ['smtp', ['settings:smtp', 'smtp:']],
+    ['mail server', ['settings:smtp', 'smtp:']],
+    ['Mailserver', ['settings:smtp', 'smtp:']],
+    ['Emial', ['settings:smtp', 'smtp:']],
+    ['Datenschutz', ['settings:legal', 'legal:privacy']],
+    ['privacy', ['settings:legal', 'legal:privacy']],
+    ['impressum', ['settings:legal', 'legal:imprint']],
+    ['berater', ['users:counsellors']],
+    ['counsellor', ['users:counsellors']],
+    ['counselor', ['users:counsellors']],
+    ['loeschen', ['logs:deletions']],
+    ['löschen', ['logs:deletions']],
+    ['deleted', ['logs:deletions']],
+    ['Farbe', ['settings:general', 'appearance:colors']],
+    ['colour', ['settings:general', 'appearance:colors']],
+    ['appearance', ['settings:general', 'appearance:']],
+    ['Stammdatn', ['settings:master-data']],
+    ['handover', ['logs:case-handover', 'access:case-handover']],
+    ['Fallübergabe', ['logs:case-handover', 'access:case-handover']],
+    ['permissions', ['settings:permissions', 'access:']],
+    ['Live-Chat-Links', ['settings:permissions', 'access:']],
+    ['inbound', ['settings:permissions', 'access:']],
+    ['Beratungsstele', ['page:agency']],
+];
+
+describe('the queries of the retired mobile menu search still work', () => {
+    const prepared = buildFixturePrepared(PLATFORM_DE);
+
+    it.each(RETIRED_MOBILE_SEARCH)('"%s"', (query, wanted) => {
+        const ids = searchIndex(prepared, query)
+            .slice(0, 6)
+            .map((hit) => hit.doc.id);
+
+        expect(
+            wanted.some((id) => ids.some((candidate) => candidate.startsWith(id))),
+            `"${query}" should reach ${wanted.join(' or ')} in the first hits, got ${ids.join(', ')}`,
+        ).toBe(true);
+    });
+
+    it('still narrows with every word and ignores nonsense', () => {
+        expect(searchIndex(prepared, 'xqzvw')).toEqual([]);
+        expect(searchIndex(prepared, '   ')).toEqual([]);
     });
 });
 

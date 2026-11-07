@@ -71,9 +71,13 @@ export const prepareIndex = (docs: SearchDoc[]): PreparedIndex =>
         ),
     }));
 
+/**
+ * Typos allowed in a typed word: none in very short ones, one up to seven letters ("privacy" must
+ * not find "primary"), two from eight on ("Beratungsstele").
+ */
 const allowedTypos = (length: number): number => {
     if (length <= 3) return 0;
-    if (length <= 6) return 1;
+    if (length <= 7) return 1;
     return 2;
 };
 
@@ -85,7 +89,8 @@ export const scoreWord = (query: string, word: string, wordStem: string = stem(w
 
     if (queryStem.length >= 4 && wordStem === queryStem) return 92;
     if (query.length >= 2 && word.startsWith(query)) return 82;
-    if (queryStem.length >= 4 && word.startsWith(queryStem)) return 76;
+    // A stem of four letters is too loose a prefix ("serv" would find every "service"): five and up.
+    if (queryStem.length >= 5 && word.startsWith(queryStem)) return 76;
     // German compounds: "server" finds "mailserver", "schutz" finds "datenschutz".
     if (query.length >= 4 && word.includes(query)) return 60;
 

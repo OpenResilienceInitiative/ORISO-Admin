@@ -1,4 +1,4 @@
-import { NAV_KEYWORDS } from '../AdminMobileNav/navKeywords';
+import { NAV_KEYWORDS } from './navKeywords';
 
 /**
  * THE synonym table of the admin search. One file, German and English side by
@@ -6,9 +6,7 @@ import { NAV_KEYWORDS } from '../AdminMobileNav/navKeywords';
  *
  * Keys are registry ids (`searchRegistry.ts`) for tiles and extra pages. For
  * navigation sections and tabs (`home`, `settings:legal`, `users:counsellors`,
- * `logs:deletions` …) the existing table of the mobile menu
- * (`AdminMobileNav/navKeywords.ts`) is reused as is, so a synonym added for the
- * menu helps here and the other way round.
+ * `logs:deletions` …) the table in `navKeywords.ts` is used as is.
  *
  * What belongs in a list: the word a person would type *instead of* the title
  * (old name, technical term, colloquial term, the other language, what the
@@ -901,5 +899,16 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
     ],
 };
 
-/** All curated words for an id: its own entry plus, for navigation ids, the mobile menu's. */
+/** All curated words for an id: its own entry plus, for navigation ids, the navigation table's. */
 export const keywordsFor = (id: string): string[] => [...(SEARCH_KEYWORDS[id] ?? []), ...(NAV_KEYWORDS[id] ?? [])];
+
+/**
+ * Former or everyday names of an entry that count like its title, not like a synonym. "Berater" is
+ * what admins still call the counsellor list ("Beratende" today); typed alone it has to bring that
+ * list first, ahead of every setting that merely has the word in its title.
+ */
+const TITLE_ALIASES: Record<string, string[]> = {
+    'users:counsellors': ['Berater'],
+};
+
+export const aliasesFor = (id: string): string[] => TITLE_ALIASES[id] ?? [];

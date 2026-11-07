@@ -14,7 +14,7 @@ import {
     type RegistryTile,
     type SearchContext,
 } from './searchRegistry';
-import { keywordsFor } from './searchKeywords';
+import { aliasesFor, keywordsFor } from './searchKeywords';
 import type { SearchDoc, SearchLevel, SearchTerms } from './searchTypes';
 
 /** Languages the search always covers, whatever the UI language. */
@@ -143,7 +143,7 @@ export const buildSearchIndex = ({ context, tree, translate }: BuildSearchIndexI
             readOnly: sub.id.startsWith('settings:') && !canUpdateTenant,
             terms: {
                 ...emptyTerms(),
-                title: allLanguages(translate, sub.labelKey, sub.fallbackKey),
+                title: [...allLanguages(translate, sub.labelKey, sub.fallbackKey), ...aliasesFor(sub.id)],
                 synonyms: keywordsFor(sub.id),
                 context: allLanguages(translate, NAV_TITLE_KEYS[navKey]),
             },
