@@ -1,7 +1,8 @@
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiFormField } from '../../mui/MuiFormField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -78,7 +79,7 @@ export const SupportEmailSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({ content: t('globalSettings.supportEmail.error.generic'), duration: 5 });
+                            snackbar.error({ content: t('globalSettings.supportEmail.error.generic'), duration: 5 });
                             options?.onError?.();
                         },
                     },
