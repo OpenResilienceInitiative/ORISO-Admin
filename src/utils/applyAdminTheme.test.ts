@@ -122,6 +122,16 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).not.toBe('#fcf9f9');
     });
 
+    it('flips tile pictures light on the dark surface and back to as-drawn on the light one', () => {
+        const root = document.createElement('div');
+
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('invert(1) hue-rotate(180deg)');
+
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+    });
+
     it('uses the same stored seeds without writing a separate admin palette', () => {
         const root = document.createElement('div');
         applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: '#646d78' }, root);

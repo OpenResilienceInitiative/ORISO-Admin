@@ -225,6 +225,14 @@ const adminNavTokens = (navIndicator: string) => ({
     '--admin-nav-indicator-icon': readableOn(navIndicator),
 });
 
+/**
+ * Tile pictures are dark pen drawings on a transparent ground. On a dark surface the
+ * inverted scheme flips the strokes light (and turns the red accent back to red) with a
+ * filter, so the same picture reads on both schemes. Light keeps the picture as drawn.
+ */
+const PICTURE_FILTER_LIGHT = 'none';
+const PICTURE_FILTER_INVERTED = 'invert(1) hue-rotate(180deg)';
+
 const invertedTokens = (
     accentDark: string,
     accentLight: string,
@@ -250,6 +258,7 @@ const invertedTokens = (
         '--m3-primary-container': primaryContainer,
         '--m3-on-primary-container': readableOn(primaryContainer),
         '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
+        '--admin-picture-filter': PICTURE_FILTER_INVERTED,
         '--m3-primary-fixed': accentLight,
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
@@ -322,6 +331,7 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-primary-container': onAccentLight,
             // Brand-tinted text and icons ON the light container (mobile menu tiles).
             '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
+            '--admin-picture-filter': PICTURE_FILTER_LIGHT,
             '--m3-primary-fixed': accentLight,
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
