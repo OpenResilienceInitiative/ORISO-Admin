@@ -1912,13 +1912,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
     color: $m3-on-surface-variant;
 }
 
-// Figma 1285-80496, "Footer Legal Editor": the publish/edit row (shared 64px tile footer since the pixel review).
+// Figma 1285-80496, "Footer Legal Editor": the publish/edit row is 68px tall.
 .actions {
     display: flex;
     min-width: 0;
-
-    /* The shared 64px tile footer (Card `.dialogCard .footer`): 40px buttons, 12px above and below. */
-    min-height: var(--admin-dialog-card-footer-height, 64px);
+    min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
@@ -1939,7 +1937,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .readOnlyFooter {
     display: flex;
-    min-height: var(--admin-dialog-card-footer-height, 64px);
+    min-height: var(--admin-card-footer-height, 68px);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
