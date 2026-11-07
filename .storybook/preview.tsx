@@ -11,8 +11,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { getWorker, initialize, mswLoader } from 'msw-storybook-addon';
-import { adminMessageConfig } from '../src/constants/adminMessageConfig';
-import { TransportFeedbackBridge } from '../src/components/TransportFeedbackBridge';
+import { SnackbarHost } from '../src/components/Snackbar';
 import { beginStoryVerification, recordUnexpectedRequest } from './verification';
 import { isProductRequest } from './verificationIntegrity';
 import { a11yVerification } from './a11yVerification';
@@ -141,8 +140,8 @@ const preview: Preview = {
         (Story) => (
             <StoryProviders>
                 <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <AntdApp component={false} message={adminMessageConfig}>
-                        <TransportFeedbackBridge />
+                    <AntdApp component={false}>
+                        <SnackbarHost />
                         <MemoryRouter>
                             <Story />
                         </MemoryRouter>

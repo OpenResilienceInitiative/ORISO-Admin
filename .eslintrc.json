@@ -41,6 +41,11 @@
                 "paths": [
                     {
                         "name": "antd",
+                        "importNames": ["message", "notification"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd",
                         "importNames": ["Select"],
                         "message": "Use M3Select for a shared select arrow."
                     },

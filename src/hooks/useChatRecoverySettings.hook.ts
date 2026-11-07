@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../components/Snackbar';
 import { getChatRecoverySettings, updateChatRecoverySettings } from '../api/tenant/chatRecoverySettings';
 import { FETCH_ERRORS } from '../api/fetchData';
 
@@ -28,9 +28,9 @@ export const useChatRecoverySettings = (enabled = true) => {
         mutationFn: updateChatRecoverySettings,
         onSuccess: (confirmed) => {
             queryClient.setQueryData(CHAT_RECOVERY_SETTINGS_QUERY_KEY, confirmed);
-            message.success({ content: t('globalSettings.chatRecovery.saveSuccess'), duration: 3 });
+            snackbar.success({ content: t('globalSettings.chatRecovery.saveSuccess'), duration: 3 });
         },
-        onError: (error) => message.error({ content: t(errorKey(error)), duration: 5 }),
+        onError: (error) => snackbar.error({ content: t(errorKey(error)), duration: 5 }),
     });
     return { ...query, save: mutation.mutate, isSaving: mutation.isPending };
 };
