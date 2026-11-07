@@ -421,7 +421,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 const updated = await updateAccountInviteTopicPermission(invite.id, topicPermission);
                 setRowPermission(topicPermission, updated);
-                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'), 2);
+                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'));
             } catch (error) {
                 setRowPermission(previous);
                 message.error((await explain(error, 'topicPermission', invite.targetRole)).message);
@@ -493,27 +493,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     }
                     // The link stays valid, but the mail already sent named the old role: offer, never force, a resend.
                     const key = `role-changed-${invite.id}`;
-                    message.success({
+                    message.notify({
                         key,
-                        duration: 8,
-                        content: (
-                            <span className={styles.snackbar}>
-                                {t(
-                                    'links.accountInvites.roleChangedMailOutdated',
-                                    'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
-                                )}
-                                <button
-                                    type="button"
-                                    className={styles.snackbarAction}
-                                    onClick={() => {
-                                        message.destroy(key);
-                                        onResend(updated ?? invite);
-                                    }}
-                                >
-                                    {t('links.accountInvites.resendAfterRoleChange', 'Erneut senden')}
-                                </button>
-                            </span>
+                        severity: 'success',
+                        message: t(
+                            'links.accountInvites.roleChangedMailOutdated',
+                            'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
                         ),
+                        action: {
+                            label: t('links.accountInvites.resendAfterRoleChange', 'Erneut senden'),
+                            onClick: () => onResend(updated ?? invite),
+                        },
                     });
                 } catch (error) {
                     message.error((await explain(error, 'roleChange', role)).message);
