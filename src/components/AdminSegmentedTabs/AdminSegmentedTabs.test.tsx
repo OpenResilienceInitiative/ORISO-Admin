@@ -87,6 +87,34 @@ describe('AdminSegmentedTabs', () => {
     });
 });
 
+describe('AdminSegmentedTabs overflow', () => {
+    it('scrolls the active tab back into view when only the bar is resized', () => {
+        let onResize: (() => void) | undefined;
+        vi.stubGlobal(
+            'ResizeObserver',
+            // A constructor stand-in: arrow functions cannot be called with `new`.
+            vi.fn(function FakeResizeObserver(callback: () => void) {
+                onResize = callback;
+                return { observe: vi.fn(), disconnect: vi.fn() };
+            }),
+        );
+        renderLinks('/logs/deletions');
+        const scroller = screen.getByRole('tablist').closest('div') as HTMLDivElement;
+        const active = screen.getByRole('tab', { name: 'Löschprotokoll' });
+        // The window got narrower: the bar overflows and the active tab sits past its right edge.
+        Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 600 });
+        Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 200 });
+        scroller.getBoundingClientRect = () => ({ left: 0 } as DOMRect);
+        active.getBoundingClientRect = () => ({ left: 450, width: 150 } as DOMRect);
+        scroller.scrollLeft = 0;
+
+        onResize?.();
+
+        expect(scroller.scrollLeft).toBe(400);
+        vi.unstubAllGlobals();
+    });
+});
+
 describe('Löschprotokoll tab icon (#1374)', () => {
     it('follows the tab colour instead of a fixed dark blue', () => {
         const svg = readFileSync(resolve(__dirname, '../../resources/img/svg/delete.svg'), 'utf8');

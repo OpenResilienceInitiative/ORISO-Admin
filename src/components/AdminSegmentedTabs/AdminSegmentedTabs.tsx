@@ -1,4 +1,4 @@
-import { KeyboardEvent, ReactNode, useLayoutEffect, useRef } from 'react';
+import { KeyboardEvent, ReactNode, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import classNames from 'classnames';
 import { NavLink, useMatch, useResolvedPath } from 'react-router-dom';
 import styles from './AdminSegmentedTabs.module.scss';
@@ -98,8 +98,9 @@ export const AdminSegmentedTabs = ({ activeId, ariaLabel, className, items, onCh
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Keep the active tab visible when the bar overflows. Only the bar scrolls —
-    // `scrollIntoView` would also move the page.
-    useLayoutEffect(() => {
+    // `scrollIntoView` would also move the page. Runs after every render and
+    // whenever the bar itself is resized (a window resize does not re-render).
+    const revealActive = useCallback(() => {
         const scroller = scrollRef.current;
         const active = scroller?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
         if (!scroller || !active || scroller.scrollWidth <= scroller.clientWidth) {
@@ -113,7 +114,19 @@ export const AdminSegmentedTabs = ({ activeId, ariaLabel, className, items, onCh
         } else if (end > scroller.scrollLeft + scroller.clientWidth) {
             scroller.scrollLeft = end - scroller.clientWidth;
         }
-    });
+    }, []);
+
+    useLayoutEffect(revealActive);
+
+    useEffect(() => {
+        const scroller = scrollRef.current;
+        if (!scroller || typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+        const observer = new ResizeObserver(() => revealActive());
+        observer.observe(scroller);
+        return () => observer.disconnect();
+    }, [revealActive]);
 
     const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         const tabs = Array.from(scrollRef.current?.querySelectorAll<HTMLElement>(TAB_SELECTOR) ?? []);
