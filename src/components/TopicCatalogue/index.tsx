@@ -158,7 +158,7 @@ export const TopicCatalogue = ({
     const { t } = useTranslation();
     const hintId = useId();
     const [editing, setEditing] = useState(false);
-    const [draft, setDraft] = useState<TopicLayout>(layout);
+    const [draft, setDraftState] = useState<TopicLayout>(layout);
     const [draftTopics, setDraftTopics] = useState<CatalogueTopic[]>(topics);
     const [iconFiles, setIconFiles] = useState<Record<number, File | null>>({});
     const [groupIconFiles, setGroupIconFiles] = useState<Record<string, File | null>>({});
@@ -167,6 +167,11 @@ export const TopicCatalogue = ({
     const [collapsed, setCollapsed] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [saveFailed, setSaveFailed] = useState(false);
+    // Every edit of the draft clears an old save error: it no longer describes what is on screen.
+    const setDraft = (next: TopicLayout | ((current: TopicLayout) => TopicLayout)) => {
+        setSaveFailed(false);
+        setDraftState(next);
+    };
     const [translating, setTranslating] = useState(false);
     const [note, setNote] = useState<Note | null>(null);
     const [announcement, setAnnouncement] = useState('');

@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
@@ -226,6 +226,39 @@ describe('TopicCatalogue edit mode', () => {
         fireEvent.drop(section('c'));
         expect(groupItems('c')[0]).toContain('Sucht');
         expect(groupItems('a')).toHaveLength(1);
+    });
+
+    it('drags a placement down inside its category and saves that order', async () => {
+        const { onSaveLayout } = setup();
+        fireEvent.click(label('Bearbeiten'));
+        // jsdom has no layout and its drag events carry no clientY: give the target row a box and a position.
+        vi.spyOn(placement('a', 2), 'getBoundingClientRect').mockReturnValue({ top: 100, height: 40 } as DOMRect);
+
+        fireEvent.dragStart(placement('a', 1));
+        const over = createEvent.dragOver(placement('a', 2));
+        Object.defineProperty(over, 'clientY', { value: 130 });
+        fireEvent(placement('a', 2), over);
+        fireEvent.drop(placement('a', 2));
+        expect(groupItems('a')).toEqual([expect.stringContaining('Schulden'), expect.stringContaining('Sucht')]);
+
+        fireEvent.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].layout[0].topicIds).toEqual([2, 1]);
+    });
+
+    it('clears an old save error as soon as the draft changes again', async () => {
+        const onSaveLayout = vi.fn().mockRejectedValue(new Error('500'));
+        setup({ onSaveLayout });
+        const u = user();
+        await startEditing();
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowDown}');
+        await u.click(textButton('Speichern'));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Das Speichern hat nicht geklappt');
+
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowUp}');
+        expect(screen.getByRole('alert')).toBeEmptyDOMElement();
     });
 
     it('copies a topic from the topic list into a category by drag and drop', () => {
