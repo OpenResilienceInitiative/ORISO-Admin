@@ -24,7 +24,7 @@ describe('shared focus ring', () => {
             /\.switch:has\(:global\(\.Mui-focusVisible\)\)\s*\{[^}]*outline:/,
         );
         // The rich-text surface draws its own single ring on the container; the text node must not add a second one.
-        expect(appCss).toContain('):not(.ProseMirror):focus-visible');
+        expect(appCss).toContain('):not(.ProseMirror, .PrivateSwitchBase-input):focus-visible');
         expect(appCss).toMatch(/\.MuiRadio-root, \.MuiCheckbox-root\)\.Mui-focusVisible/);
     });
 

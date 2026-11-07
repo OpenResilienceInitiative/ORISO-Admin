@@ -397,6 +397,8 @@ body {
    `:is()` takes the specificity of its most specific argument (a class), so this also wins over MUI's
    `.MuiButtonBase-root { outline: 0 }` reset. Components must not draw their own ring (no per-component
    outline colours); to change the colour on a surface, set `--admin-focus-ring-color` on that surface.
+   The rich-text node and the hidden switch input are excluded: their container (editor surface, whole switch)
+   draws the one ring.
    Text inputs keep their field border as focus indication (M3 outlined fields). */
 
 :is(
@@ -412,7 +414,7 @@ body {
         [contenteditable='true'],
         .MuiButtonBase-root,
         .ant-btn
-    ):not(.ProseMirror):focus-visible {
+    ):not(.ProseMirror, .PrivateSwitchBase-input):focus-visible {
     outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
     outline-offset: var(--admin-focus-ring-offset);
 }
