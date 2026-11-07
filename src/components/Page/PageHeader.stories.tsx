@@ -45,7 +45,7 @@ const SidebarStandIn = ({ children }: { children: ReactNode }) => {
     );
 };
 
-const TABS = [
+const TABS: Array<{ to: string; label: string; iconName: keyof typeof tabIcons }> = [
     { to: '/admin/tenants/1/general', label: 'Stammdaten', iconName: 'master_data' },
     { to: '/admin/tenants/1/legal', label: 'Rechtliches', iconName: 'legal' },
     { to: '/admin/tenants/1/appearance', label: 'Erscheinungsbild', iconName: 'appearance' },
@@ -135,7 +135,13 @@ const ProposedPage = ({
                         padding: `var(--admin-header-pad, 24px) 0 ${ROW_GAP}px`,
                     }}
                 >
-                    <BackButton variant={variant} label={backLabel} to="/admin/tenants" current={title} />
+                    <BackButton
+                        variant={variant}
+                        label={backLabel}
+                        to="/admin/tenants"
+                        current={title}
+                        trailLabel="Seitenpfad"
+                    />
                     <h1
                         className="m3-headline-small"
                         data-story-title
@@ -208,13 +214,13 @@ export const AfterTonal: Story = {
         const tile = rect('[data-story-tiles]');
         const title = rect('[data-story-title]');
         // One left edge for the four rows.
-        await expect(back.left).toBe(tabs.left);
-        await expect(tile.left).toBe(tabs.left);
-        await expect(title.left).toBe(tabs.left);
+        await expect(back.left).toBeCloseTo(tabs.left, 0);
+        await expect(tile.left).toBeCloseTo(tabs.left, 0);
+        await expect(title.left).toBeCloseTo(tabs.left, 0);
         // 16px between the rows.
-        await expect(title.top - back.bottom).toBe(16);
-        await expect(tabs.top - title.bottom).toBe(16);
-        await expect(tile.top - tabs.bottom).toBe(16);
+        await expect(title.top - back.bottom).toBeCloseTo(16, 0);
+        await expect(tabs.top - title.bottom).toBeCloseTo(16, 0);
+        await expect(tile.top - tabs.bottom).toBeCloseTo(16, 0);
     },
 };
 

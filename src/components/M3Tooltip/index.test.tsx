@@ -150,4 +150,24 @@ describe('M3Tooltip', () => {
             window.innerWidth = originalWidth;
         }
     });
+
+    // A text that comes and goes must not remount the trigger: a focused one would lose keyboard focus.
+    it('keeps the same trigger, and its focus, when the text becomes empty with keepWrapper', async () => {
+        const user = userEvent.setup();
+        const tree = (text: string) => (
+            <M3Tooltip keepWrapper text={text}>
+                <button type="button">Zurück</button>
+            </M3Tooltip>
+        );
+        const { rerender } = render(tree('Zurück zu Träger'));
+        await user.tab();
+        const trigger = screen.getByRole('button', { name: 'Zurück' });
+        expect(trigger).toHaveFocus();
+
+        rerender(tree(''));
+
+        expect(screen.getByRole('button', { name: 'Zurück' })).toBe(trigger);
+        expect(trigger).toHaveFocus();
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
 });

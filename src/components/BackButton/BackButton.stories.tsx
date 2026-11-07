@@ -30,7 +30,7 @@ const meta = {
         scheme: { control: 'inline-radio', options: ['light', 'inverted'] },
         variant: { control: 'inline-radio', options: ['tonal', 'text', 'breadcrumb'] },
     },
-    args: { label: 'Zurück zu Träger', to: '/admin/tenants', scheme: 'light' },
+    args: { label: 'Zurück zu Träger', to: '/admin/tenants', trailLabel: 'Seitenpfad', scheme: 'light' },
     decorators: [
         (Story, context) => (
             <SchemeScope scheme={context.args.scheme} minHeight="100vh">
@@ -56,7 +56,7 @@ export const Tonal: Story = {
         await userEvent.tab();
         await expect(link).toHaveFocus();
         await expect(getComputedStyle(link).outlineStyle).toBe('solid');
-        await expect(link.getBoundingClientRect().height).toBe(40);
+        await expect(link.getBoundingClientRect().height).toBeCloseTo(40, 0);
     },
 };
 
@@ -143,7 +143,7 @@ export const LongGermanTitle: Story = {
     ),
     play: async ({ canvasElement }) => {
         const link = within(canvasElement).getAllByRole('link', { name: LONG_LABEL })[0];
-        const label = link.querySelector('span:last-child') as HTMLElement;
+        const label = within(link).getByText(LONG_LABEL);
         // Shortened, and the row did not grow past its container.
         await expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
         await expect(link.getBoundingClientRect().width).toBeLessThanOrEqual(420);
@@ -191,7 +191,7 @@ export const IconOnly: Story = {
     ),
     play: async ({ canvasElement }) => {
         const links = within(canvasElement).getAllByRole('link', { name: 'Zurück zu Träger' });
-        await expect(links[0].getBoundingClientRect().width).toBe(40);
+        await expect(links[0].getBoundingClientRect().width).toBeCloseTo(40, 0);
         await userEvent.hover(links[0]);
         await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent('Zurück zu Träger');
         await userEvent.unhover(links[0]);

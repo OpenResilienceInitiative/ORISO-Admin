@@ -30,7 +30,10 @@ export interface BackButtonProps {
     iconOnly?: boolean;
     /** `breadcrumb` only: the page the person is on now. Not a link. */
     current?: string;
-    /** `breadcrumb` only: name of the navigation landmark. */
+    /**
+     * `breadcrumb` only: name of the navigation landmark, already translated ("Seitenpfad").
+     * Pass it: without one the landmark has no name.
+     */
     trailLabel?: string;
     /** Lands on the link or button itself (for `breadcrumb`: the parent link), never on the wrapper. */
     className?: string;
@@ -40,9 +43,8 @@ export interface BackButtonProps {
  * True while the text is cut off by `text-overflow: ellipsis`. Measured, not guessed, so
  * only a really shortened label gets a tooltip.
  *
- * Takes the element itself (from a callback ref), not a ref object: the tooltip wrapper
- * appears and disappears around the label, which remounts it, and the observer must follow
- * the NEW element instead of watching the detached one.
+ * Takes the element itself (from a callback ref), not a ref object, so the observer follows
+ * the label if it is ever re-created (for example when `iconOnly` is switched).
  */
 const useIsTruncated = (element: HTMLElement | null, text: string) => {
     const [truncated, setTruncated] = useState(false);
@@ -83,7 +85,7 @@ export const BackButton = ({
     variant = 'tonal',
     iconOnly = false,
     current,
-    trailLabel = 'Seitenpfad',
+    trailLabel,
     className,
 }: BackButtonProps) => {
     const [labelElement, setLabelElement] = useState<HTMLSpanElement | null>(null);
@@ -138,12 +140,13 @@ export const BackButton = ({
         );
 
     // The bubble only repeats the visible or accessible name, so it must not be announced twice.
-    // `portal`: the header is a sticky, clipping container. The tooltip only exists while the label is
-    // cut off; when a window resize crosses that threshold the button is remounted once (so a focused
-    // button loses focus at that very moment). Never while the label stays as it is.
+    // `portal`: the header is a sticky, clipping container. The bubble only exists while the label is
+    // cut off (or icon only). `keepWrapper`: the control keeps the same wrapper when that changes, so a
+    // resize or zoom that crosses the threshold never remounts it and a focused button keeps focus.
     const control = (
         <M3Tooltip
             nameOnly
+            keepWrapper
             portal
             placement="bottom"
             className={styles.tooltipSlot}

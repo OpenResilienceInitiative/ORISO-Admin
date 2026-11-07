@@ -149,6 +149,31 @@ describe('BackButton long labels', () => {
     });
 });
 
+describe('BackButton focus while the label is cut off', () => {
+    it('stays the same focused element when a resize starts to cut the label', async () => {
+        setOverflow(120, 200);
+        const user = userEvent.setup();
+        const tree = (label: string) => (
+            <MemoryRouter>
+                <BackButton label={label} to="/admin/tenants" />
+            </MemoryRouter>
+        );
+        const { rerender } = render(tree('Zurück zu Träger'));
+        await user.tab();
+        const link = screen.getByRole('link', { name: 'Zurück zu Träger' });
+        expect(link).toHaveFocus();
+
+        // The label no longer fits: the measurement runs again for the new text.
+        setOverflow(480, 200);
+        rerender(tree('Zurück zu Träger-Verwaltung'));
+
+        const sameLink = screen.getByRole('link', { name: 'Zurück zu Träger-Verwaltung' });
+        expect(sameLink).toBe(link);
+        expect(sameLink).toHaveFocus();
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Zurück zu Träger-Verwaltung');
+    });
+});
+
 describe('BackButton breadcrumb', () => {
     it('is a navigation landmark with the parent as link and the current page as plain text', async () => {
         const user = userEvent.setup();
@@ -169,6 +194,12 @@ describe('BackButton breadcrumb', () => {
 
         await user.click(screen.getByRole('link', { name: 'Träger' }));
         expect(screen.getByText('Träger-Liste')).toBeInTheDocument();
+    });
+
+    it('gives the landmark no name of its own when none is passed (no hard-coded German)', () => {
+        renderOnDetailPage(<BackButton variant="breadcrumb" label="Träger" to="/admin/tenants" current="Mandant" />);
+
+        expect(screen.getByRole('navigation')).not.toHaveAttribute('aria-label');
     });
 
     it('ignores iconOnly: a trail without its words is no trail', () => {
