@@ -52,3 +52,21 @@ export const HelpSlideshow: Story = {
     ...TenantView,
     play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };
+
+/**
+ * Every switch of the tile is the shared Switch (FormSwitchField, off-state contrast included), shown in
+ * all three states at once: ON (group chat, supervision), OFF (statistics, team discussion, the supervision
+ * sub-switches) and DISABLED (the media AI scan, which stays off until the platform provides the scanner).
+ */
+export const SwitchStates: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers({
+                featureGroupChatV2Enabled: true,
+                featureSupervisionEnabled: true,
+                featureStatisticsEnabled: false,
+                featureTeamDiscussionEnabled: false,
+            }),
+        },
+    },
+};
