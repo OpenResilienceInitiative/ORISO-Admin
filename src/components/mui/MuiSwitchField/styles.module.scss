@@ -93,9 +93,10 @@
         }
 
         // Custom icon thumbs replace .MuiSwitch-thumb, so target the local class.
+        // The shared ring (one token for every control), drawn around the thumb.
         &:global(.Mui-focusVisible) .thumb {
-            box-shadow: 0 0 0 3px var(--admin-control-selected, var(--m3-primary, #a5000a)),
-                0 2px 1px -1px rgb(0 0 0 / 20%), 0 1px 1px 0 rgb(0 0 0 / 14%), 0 1px 3px 0 rgb(0 0 0 / 12%);
+            outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+            outline-offset: 2px;
         }
 
         // Keep off-state colors when disabled; root .switchDisabled dims via opacity.
