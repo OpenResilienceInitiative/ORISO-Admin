@@ -102,7 +102,15 @@ const MAX_QUEUE = 10;
 export const SNACKBAR_MIN_DURATION_MS = 4000;
 export const SNACKBAR_MAX_DURATION_MS = 6000;
 
-const textLength = (node: ReactNode): number => (typeof node === 'string' ? node.length : 0);
+/** The words a node shows: strings and numbers as they are, elements and arrays through their children. */
+const plainText = (node: ReactNode): string => {
+    if (typeof node === 'string' || typeof node === 'number') return String(node);
+    if (Array.isArray(node)) return node.map(plainText).join('');
+    if (isValidElement<{ children?: ReactNode }>(node)) return plainText(node.props.children);
+    return '';
+};
+
+const textLength = (node: ReactNode): number => plainText(node).length;
 
 const titleOf = (options: SnackbarOptions): ReactNode => options.title ?? options.message ?? options.description;
 
@@ -132,9 +140,8 @@ export const resolveDuration = (options: SnackbarOptions): number | null => {
 
 const textKey = (options: SnackbarOptions): string => {
     const severity = options.severity ?? 'info';
-    const text = [titleOf(options), options.description]
-        .map((part) => (typeof part === 'string' ? part : ''))
-        .join('|');
+    // Elements count by the words they show, so `<b>Save failed</b>` and `<b>Delete failed</b>` stay two events.
+    const text = [titleOf(options), options.description].map(plainText).join('|');
     return `${severity}:${text}`;
 };
 

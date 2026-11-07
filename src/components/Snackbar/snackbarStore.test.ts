@@ -112,6 +112,14 @@ describe('snackbar store: identity', () => {
         expect(store.getState().visible).toHaveLength(3);
     });
 
+    it('tells element messages apart by the words they show, and still collapses identical ones', () => {
+        const { api, store } = setup();
+        api.error(createElement('b', null, 'Save failed'));
+        api.error(createElement('b', null, 'Delete failed'));
+        api.error(createElement('b', null, 'Save failed'));
+        expect(store.getState().visible).toHaveLength(2);
+    });
+
     it('lets an explicit key replace the text of the visible pop-up, in the same place', () => {
         const { api, store } = setup();
         api.error({ message: 'Session ends', key: 'session' });
