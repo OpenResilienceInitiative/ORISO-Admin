@@ -46,11 +46,10 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
     const remaining = useRef<number | null>(null);
     const startedAt = useRef(0);
 
-    // A new or refreshed pop-up is a new object: it always starts with its full time.
+    // A refreshed pop-up is a new object under the same key: it starts with its full time again, and its
+    // buttons stay mounted so a keyboard user keeps focus. Hover and focus are real state, not reset.
     useEffect(() => {
         remaining.current = item.durationMs;
-        setHovered(false);
-        setFocused(false);
     }, [item]);
 
     useEffect(() => {
@@ -182,7 +181,7 @@ export const SnackbarHost = ({ store = snackbarStore, container, contained = fal
     const slots = (errors: boolean) =>
         visible.map((item, order) =>
             (item.severity === 'error') === errors ? (
-                <SnackbarSlot key={`${item.key}:${item.createdAt}`} store={store} item={item} order={order} />
+                <SnackbarSlot key={item.key} store={store} item={item} order={order} />
             ) : null,
         );
     return createPortal(
