@@ -257,6 +257,33 @@ describe('TopicCatalogue edit mode', () => {
         expect(status()).toHaveTextContent('„Sucht“ ist schon in „Weitere“.');
     });
 
+    it('trims category names once, when saving', async () => {
+        const { onSaveLayout } = setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        const input = screen.getAllByLabelText('Name der Kategorie')[0];
+        await u.clear(input);
+        await u.type(input, '  Grundlagen ');
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].layout[0].name).toBe('Grundlagen');
+    });
+
+    it('names an unnamed category in the labels of its buttons instead of leaving quotes empty', async () => {
+        setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.clear(screen.getAllByLabelText('Name der Kategorie')[0]);
+        expect(screen.queryByLabelText(/„“/)).toBeNull();
+    });
+
+    it('keeps the alert region mounted so a failed save is announced', async () => {
+        setup();
+        await startEditing();
+        expect(document.querySelector('[role="alert"]')).not.toBeNull();
+        expect(screen.queryByText('Das Speichern hat nicht geklappt')).toBeNull();
+    });
+
     it('takes a topic out of one category only; it stays in the topic list', async () => {
         setup();
         const u = user();

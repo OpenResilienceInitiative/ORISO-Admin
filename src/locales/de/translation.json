@@ -2207,7 +2207,7 @@
     "topicCatalogue.changeError": "„{{name}}“ konnte nicht geändert werden.",
     "topicCatalogue.registrationSwitch": "Themen übergreifend in der Anwendung aktivieren",
     "topicCatalogue.registrationTitle": "Themen in der Registrierung",
-    "topicCatalogue.subtitle": "Die Themen der Plattform, nach Kategorien geordnet. Änderungen gelten für alle Träger.",
+    "topicCatalogue.subtitle": "Die Themen der Plattform. Änderungen gelten für alle Träger.",
     "topicCatalogue.count_one": "{{count}} Thema",
     "topicCatalogue.count_other": "{{count}} Themen",
     "topicCatalogue.hidden": "Ausgeblendet",

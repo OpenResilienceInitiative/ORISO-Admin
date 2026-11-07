@@ -273,7 +273,9 @@ export const TopicCatalogue = ({
         setSaveFailed(false);
         setNote(null);
         try {
-            await onSaveLayout({ layout: draft, topics: changedTopics, iconFiles, groupIconFiles });
+            // Trim once at the save boundary: typing spaces stays possible, stored names stay clean.
+            const layoutToSave = draft.map((group) => ({ ...group, name: group.name.trim() }));
+            await onSaveLayout({ layout: layoutToSave, topics: changedTopics, iconFiles, groupIconFiles });
             stopEditing();
             setAnnouncement(t('topicCatalogue.announce.saved'));
         } catch {
@@ -903,8 +905,10 @@ export const TopicCatalogue = ({
     if (editing) {
         footer = (
             <div className={styles.footer}>
-                <p className={styles.saveState} role={message?.kind === 'error' ? 'alert' : undefined}>
-                    {message?.text}
+                {/* The alert stays mounted: a role added together with its text is not reliably announced. */}
+                <p className={styles.saveState}>
+                    <span>{message?.kind === 'error' ? '' : message?.text}</span>
+                    <span role="alert">{message?.kind === 'error' ? message.text : ''}</span>
                 </p>
                 {onTranslate && multiLanguage && (
                     <M3Button

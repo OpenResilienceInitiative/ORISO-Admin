@@ -1683,7 +1683,7 @@
     "topicCatalogue.changeError": "“{{name}}” could not be changed.",
     "topicCatalogue.registrationSwitch": "Activate topics across the application",
     "topicCatalogue.registrationTitle": "Topics in registration",
-    "topicCatalogue.subtitle": "The platform's topics, sorted into categories. Changes apply to all organisations.",
+    "topicCatalogue.subtitle": "The platform's topics. Changes apply to all organisations.",
     "topicCatalogue.count_one": "{{count}} topic",
     "topicCatalogue.count_other": "{{count}} topics",
     "topicCatalogue.hidden": "Hidden",
