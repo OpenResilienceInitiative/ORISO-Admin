@@ -55,7 +55,6 @@ export const AssignedConsultants = ({ agencyId, editing }: AssignedConsultantsPr
                         : t('agency.form.registrationSettings.assigned.removeFailed', {
                               name: consultantDisplayName(consultant),
                           }),
-                duration: 8,
             });
         },
         onSettled: () =>

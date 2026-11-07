@@ -154,7 +154,6 @@ export const CounsellorTutorialSettingsCardContainer = () => {
                                   onError: () =>
                                       snackbar.error({
                                           content: t('globalSettings.tutorials.error.generic'),
-                                          duration: 5,
                                       }),
                               },
                           )

@@ -79,7 +79,7 @@ export const SupportEmailSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            snackbar.error({ content: t('globalSettings.supportEmail.error.generic'), duration: 5 });
+                            snackbar.error({ content: t('globalSettings.supportEmail.error.generic') });
                             options?.onError?.();
                         },
                     },

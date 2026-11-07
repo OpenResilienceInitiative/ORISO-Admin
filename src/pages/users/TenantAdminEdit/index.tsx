@@ -94,7 +94,6 @@ const TenantAdminEditor = () => {
             const content = await extractApiErrorMessage(error);
             snackbar.error({
                 message: content,
-                duration: 8,
             });
         },
     });

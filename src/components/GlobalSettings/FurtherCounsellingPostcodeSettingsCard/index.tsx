@@ -75,7 +75,6 @@ export const FurtherCounsellingPostcodeSettingsCardContainer = () => {
                         onError: () => {
                             snackbar.error({
                                 content: t('globalSettings.furtherCounsellingPostcode.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },
