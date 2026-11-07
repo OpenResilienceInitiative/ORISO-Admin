@@ -20,6 +20,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Card } from '../Card';
 import { EditButton } from '../EditButton';
+import { IconButton } from '../IconButton';
 import { M3Button } from '../M3Button';
 import { M3Switch } from '../M3Switch';
 import { TileSections } from '../TileSections';
@@ -308,24 +309,18 @@ export const TopicCatalogue = ({
                 {!topic.active && <span className={styles.chip}>{t('topicCatalogue.hidden')}</span>}
                 {editing ? (
                     <span className={styles.touchMoves}>
-                        <button
-                            type="button"
-                            className={styles.iconButton}
-                            aria-label={t('topicCatalogue.moveUp', { name: topic.name })}
+                        <IconButton
+                            icon={<ArrowUpwardIcon />}
+                            ariaLabel={t('topicCatalogue.moveUp', { name: topic.name })}
                             disabled={saving || rowIndex === 0}
                             onClick={() => step(topicId, 'up')}
-                        >
-                            <ArrowUpwardIcon aria-hidden />
-                        </button>
-                        <button
-                            type="button"
-                            className={styles.iconButton}
-                            aria-label={t('topicCatalogue.moveDown', { name: topic.name })}
+                        />
+                        <IconButton
+                            icon={<ArrowDownwardIcon />}
+                            ariaLabel={t('topicCatalogue.moveDown', { name: topic.name })}
                             disabled={saving || rowIndex === group.topicIds.length - 1}
                             onClick={() => step(topicId, 'down')}
-                        >
-                            <ArrowDownwardIcon aria-hidden />
-                        </button>
+                        />
                         <span className={styles.selectWrap}>
                             <select
                                 className={styles.groupSelect}
@@ -382,34 +377,25 @@ export const TopicCatalogue = ({
                     )}
                     {editing && (
                         <span className={styles.groupTools}>
-                            <button
-                                type="button"
-                                className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupEarlier', { name: groupLabel })}
+                            <IconButton
+                                icon={<ChevronLeftIcon />}
+                                ariaLabel={t('topicCatalogue.groupEarlier', { name: groupLabel })}
                                 disabled={saving || groupIndex === 0}
                                 onClick={() => setDraft(moveGroup(draft, group.id, -1))}
-                            >
-                                <ChevronLeftIcon aria-hidden />
-                            </button>
-                            <button
-                                type="button"
-                                className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupLater', { name: groupLabel })}
+                            />
+                            <IconButton
+                                icon={<ChevronRightIcon />}
+                                ariaLabel={t('topicCatalogue.groupLater', { name: groupLabel })}
                                 disabled={saving || groupIndex === draft.length - 1}
                                 onClick={() => setDraft(moveGroup(draft, group.id, 1))}
-                            >
-                                <ChevronRightIcon aria-hidden />
-                            </button>
-                            <button
-                                type="button"
-                                className={styles.iconButton}
-                                aria-label={t('topicCatalogue.groupRemove', { name: groupLabel })}
+                            />
+                            <IconButton
+                                icon={<DeleteOutlinedIcon />}
+                                ariaLabel={t('topicCatalogue.groupRemove', { name: groupLabel })}
                                 disabled={saving || count > 0}
                                 title={count > 0 ? t('topicCatalogue.groupRemoveBlocked') : undefined}
                                 onClick={() => setDraft(removeGroup(draft, group.id))}
-                            >
-                                <DeleteOutlinedIcon aria-hidden />
-                            </button>
+                            />
                         </span>
                     )}
                 </div>

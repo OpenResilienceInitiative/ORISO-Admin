@@ -169,8 +169,7 @@
     line-height: 16px;
 }
 
-.handle,
-.iconButton {
+.handle {
     display: inline-flex;
     width: 40px;
     height: 40px;
@@ -182,7 +181,8 @@
     border-radius: 20px;
     background: transparent;
     color: var(--m3-on-surface-variant, #444748);
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
 
     svg {
         width: 24px;
@@ -202,11 +202,6 @@
         cursor: default;
         opacity: 0.38;
     }
-}
-
-.handle {
-    cursor: grab;
-    touch-action: none;
 }
 
 .row[draggable='true'] {
