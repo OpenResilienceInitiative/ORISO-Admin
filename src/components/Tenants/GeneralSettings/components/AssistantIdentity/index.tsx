@@ -3,6 +3,7 @@ import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DefaultRobot } from '../../../../../resources/img/assistant/default.svg';
 import { CardEditable } from '../../../../CardEditable';
+import { TileSections } from '../../../../TileSections';
 import { assistantHelp } from './help';
 import { FormInputField } from '../../../../FormInputField';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
@@ -29,10 +30,13 @@ const IconPicker = ({
     value,
     onChange,
     disabled,
+    label,
 }: {
     value?: string;
     onChange?: (value: string) => void;
     disabled?: boolean;
+    /** Names the group for screen readers; the section title above it says the same in words. */
+    label?: string;
 }) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
@@ -42,6 +46,7 @@ const IconPicker = ({
             onChange={(event) => onChange?.(event.target.value)}
             disabled={disabled || componentDisabled}
             className={styles.presets}
+            aria-label={label}
         >
             <Radio value="">{t('settings.assistant.inherit')}</Radio>
             {presets.map(([id, Asset], index) => (
@@ -113,39 +118,47 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             help={assistantHelp}
         >
             {isError && <Alert type="error" message={t('settings.assistant.loadError')} showIcon />}
-            <FormInputField
-                name={['theming', 'assistantName']}
-                labelKey="settings.assistant.name"
-                maxLength={80}
-                disabled={locked}
-            />
-            {!hasOwnName && (
-                <p>
-                    {t('settings.assistant.inherit')}
-                    {inherited && `: ${inherited.theming?.assistantName || 'Carimat'}`}
-                </p>
-            )}
-            <Form.Item name={['theming', 'assistantIcon']} label={t('settings.assistant.icon')}>
-                <IconPicker disabled={locked} />
-            </Form.Item>
-            <FormFileUploaderField
-                name={['theming', 'assistantIcon']}
-                labelKey="settings.assistant.upload"
-                uploadPolicy={assistantIconUploadPolicy}
-                disabled={locked}
-                tooltip={t('settings.assistant.formats')}
-            />
-            <p>{t('settings.assistant.formats')}</p>
-            {!hasOwnIcon && inherited && (
-                <div className={styles.preset}>
-                    {assistantIconUploadPolicy.canPreview(inheritedIcon) ? (
-                        <img src={inheritedIcon} alt={t('settings.assistant.inheritedIcon')} />
-                    ) : (
-                        <InheritedPreset aria-label={t('settings.assistant.inheritedIcon')} role="img" />
+            <TileSections>
+                <TileSections.Section id="assistant-name" title={t('settings.assistant.section.name')}>
+                    <FormInputField
+                        name={['theming', 'assistantName']}
+                        labelKey="settings.assistant.name"
+                        maxLength={80}
+                        disabled={locked}
+                    />
+                    {!hasOwnName && (
+                        <p className={styles.sectionText}>
+                            {t('settings.assistant.inherit')}
+                            {inherited && `: ${inherited.theming?.assistantName || 'Carimat'}`}
+                        </p>
                     )}
-                    <span>{t('settings.assistant.inherit')}</span>
-                </div>
-            )}
+                </TileSections.Section>
+                <TileSections.Section id="assistant-icon" title={t('settings.assistant.section.icon')}>
+                    <Form.Item name={['theming', 'assistantIcon']} className={styles.iconPicker}>
+                        <IconPicker disabled={locked} label={t('settings.assistant.icon')} />
+                    </Form.Item>
+                </TileSections.Section>
+                <TileSections.Section id="assistant-upload" title={t('settings.assistant.section.upload')}>
+                    <FormFileUploaderField
+                        name={['theming', 'assistantIcon']}
+                        labelKey="settings.assistant.upload"
+                        uploadPolicy={assistantIconUploadPolicy}
+                        disabled={locked}
+                        tooltip={t('settings.assistant.formats')}
+                    />
+                    <p className={styles.sectionText}>{t('settings.assistant.formats')}</p>
+                    {!hasOwnIcon && inherited && (
+                        <div className={styles.preset}>
+                            {assistantIconUploadPolicy.canPreview(inheritedIcon) ? (
+                                <img src={inheritedIcon} alt={t('settings.assistant.inheritedIcon')} />
+                            ) : (
+                                <InheritedPreset aria-label={t('settings.assistant.inheritedIcon')} role="img" />
+                            )}
+                            <span>{t('settings.assistant.inherit')}</span>
+                        </div>
+                    )}
+                </TileSections.Section>
+            </TileSections>
         </CardEditable>
     );
 };
