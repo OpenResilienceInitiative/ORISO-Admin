@@ -37,9 +37,10 @@
     flex-direction: column;
     gap: 8px;
 
-    /* A long German compound ("Systembenachrichtigungen") must wrap inside its panel, not push the switch out. */
+    /* A long German compound ("Systembenachrichtigungen") must wrap inside its panel, not push the switch out. `anywhere`,
+       unlike `break-word`, also lowers the min-content width, so the grid track cannot be widened by the word. */
     hyphens: auto;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
     white-space: normal;
 }
 

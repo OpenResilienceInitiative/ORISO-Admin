@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vite-plus/test';
+import { spanOf } from '../../../CardGrid/cardGridTestUtils';
 
 vi.mock('../SmtpSettings', () => ({
     SmtpSettings: ({ tenantId }: { tenantId: string }) => <div data-testid="smtp">{tenantId}</div>,
@@ -42,7 +43,7 @@ describe('FunctionalitiesGrid', () => {
             'other-functions',
             'topics',
         ]);
-        expect(items.map((item) => /span([23])/.exec(item.className)?.[1] ?? '1')).toEqual(['3', '1', '2', '1']);
+        expect(items.map(spanOf)).toEqual([3, 1, 2, 1]);
     });
 
     it('drops the tiles a level hides', () => {

@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../../i18n';
+import { spanOf } from '../../../CardGrid/cardGridTestUtils';
+import { SmtpSettings } from './index';
 
 /** The email server tile in German, with the real translations (the other tests echo the keys). */
 
@@ -22,11 +24,6 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
     useTenantAdminDataMutation: () => ({ mutate: vi.fn() }),
 }));
-
-// eslint-disable-next-line import/first
-import { SmtpSettings } from './index';
-
-const spanOf = (item: Element) => /span([23])/.exec(item.className)?.[1] ?? '1';
 
 describe('SmtpSettings in German', () => {
     beforeAll(async () => {
@@ -55,6 +52,6 @@ describe('SmtpSettings in German', () => {
         expect(rest).toHaveLength(0);
         expect(server).toContainElement(screen.getByLabelText('Neues SMTP-Passwort'));
         expect(test).toContainElement(screen.getByRole('button', { name: 'Testmail an mich senden' }));
-        expect([spanOf(server), spanOf(test)]).toEqual(['2', '1']);
+        expect([spanOf(server), spanOf(test)]).toEqual([2, 1]);
     });
 });

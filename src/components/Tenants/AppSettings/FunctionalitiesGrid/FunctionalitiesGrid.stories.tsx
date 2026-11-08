@@ -42,17 +42,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const tilesStayInTheirHost: NonNullable<Story['play']> = async ({ canvasElement }) => {
+const PHONE_WIDTH = 390;
+
+const noSidewaysScroll: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const items = () => canvasElement.querySelectorAll('[data-admin-card-grid-item]');
     await waitFor(() => expect(items()).toHaveLength(3));
     const page = canvasElement.ownerDocument.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
 };
 
-export const InTheRaster: Story = { play: tilesStayInTheirHost };
+export const InTheRaster: Story = { play: noSidewaysScroll };
 
-/** The same page at phone width: one column, no sideways scrolling. */
+/**
+ * The same page in a phone-wide host (the raster follows the width of its host, not of the window): one column,
+ * every tile as wide as the host and below the one before, no sideways scrolling.
+ */
 export const Phone: Story = {
-    globals: { viewport: { value: 'phone', isRotated: false } },
-    play: tilesStayInTheirHost,
+    decorators: [
+        (Story) => (
+            <div data-testid="phone-host" style={{ width: PHONE_WIDTH }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async (context) => {
+        await noSidewaysScroll(context);
+        const { canvasElement } = context;
+        const host = canvasElement.querySelector<HTMLElement>('[data-testid="phone-host"]');
+        const hostWidth = host?.getBoundingClientRect().width ?? 0;
+        const tiles = [...canvasElement.querySelectorAll('[data-admin-card-grid-item]')].map((item) =>
+            item.getBoundingClientRect(),
+        );
+
+        await expect(hostWidth).toBe(PHONE_WIDTH);
+        tiles.forEach((tile, index) => {
+            expect(Math.abs(tile.width - hostWidth)).toBeLessThanOrEqual(1);
+            if (index > 0) expect(tile.top).toBeGreaterThanOrEqual(tiles[index - 1].bottom);
+        });
+    },
 };
