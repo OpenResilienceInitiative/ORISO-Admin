@@ -120,6 +120,11 @@ export interface TopicCatalogueProps {
     sourceLanguage?: string;
     /** Machine translation (opt-in). Resolves to lang -> (key -> text). Without it there is no AI button. */
     onTranslate?: (request: TranslateRequest) => Promise<Record<string, Record<string, string>>>;
+    /**
+     * The machine marks the caller kept from earlier saves (`CatalogueChange.machineTranslated`). They show in
+     * view mode and are handed back with the next save, so a marker survives reload and the next edit.
+     */
+    machineTranslated?: string[];
 }
 
 interface DragState {
@@ -142,6 +147,16 @@ interface Note {
 const newGroupId = () => `group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 const placementKey = (groupId: string, topicId: number) => `${groupId}:${topicId}`;
 const isBlank = (text?: string) => !text || text.trim() === '';
+const NO_MARKS: string[] = [];
+
+/** Marks of texts that are gone (a removed category, a deleted topic) are not kept. */
+const marksStillInUse = (marks: string[], layout: TopicLayout, topics: CatalogueTopic[]) =>
+    marks.filter((mark) => {
+        const key = mark.slice(mark.indexOf('|') + 1);
+        const [kind, id] = key.split(':');
+        if (kind === 'group') return layout.some((group) => group.id === id);
+        return topics.some((topic) => String(topic.id) === id);
+    });
 
 const topicSignature = (topic: CatalogueTopic) =>
     JSON.stringify([topic.names ?? {}, topic.descriptions ?? {}, topic.icon ?? null]);
@@ -161,6 +176,7 @@ export const TopicCatalogue = ({
     languages = [],
     sourceLanguage = 'de',
     onTranslate,
+    machineTranslated = NO_MARKS,
 }: TopicCatalogueProps) => {
     const { t } = useTranslation();
     const hintId = useId();
@@ -218,7 +234,7 @@ export const TopicCatalogue = ({
 
     const topicText = (topic: CatalogueTopic) => textIn(topic.name, topic.names, lang, sourceLanguage);
     const groupText = (group: TopicGroup) => textIn(group.name, group.names, lang, sourceLanguage);
-    const isMachine = (key: string) => machine.includes(machineMark(lang, key));
+    const isMachine = (key: string) => (editing ? machine : machineTranslated).includes(machineMark(lang, key));
 
     const nameOf = (topicId: number) => {
         const topic = topicsById.get(topicId);
@@ -266,7 +282,7 @@ export const TopicCatalogue = ({
         setDraftTopics(topics);
         setIconFiles({});
         setGroupIconFiles({});
-        setMachine([]);
+        setMachine(machineTranslated);
         editSession.current += 1;
         setSaveFailed(false);
         setNote(null);
@@ -302,7 +318,7 @@ export const TopicCatalogue = ({
                 topics: changedTopics,
                 iconFiles,
                 groupIconFiles,
-                machineTranslated: machine,
+                machineTranslated: marksStillInUse(machine, layoutToSave, draftTopics),
             });
             stopEditing();
             setAnnouncement(t('topicCatalogue.announce.saved'));
@@ -410,7 +426,15 @@ export const TopicCatalogue = ({
             // Left or restarted edit mode while waiting: the answer belongs to a draft that is gone.
             if (session !== editSession.current) return;
             const { draft: nowDraft, draftTopics: nowTopics, machine: nowMachine } = latest.current;
-            const merged = mergeTranslations(nowTopics, nowDraft, translations, sourceLanguage);
+            // A source text changed while the request ran: its answer describes the old text, so it is not used.
+            const nowTexts = buildTranslateTexts(nowTopics, nowDraft, targetLangs, sourceLanguage);
+            const stillCurrent = Object.fromEntries(
+                Object.entries(translations).map(([code, byKey]) => [
+                    code,
+                    Object.fromEntries(Object.entries(byKey).filter(([key]) => nowTexts[key] === texts[key])),
+                ]),
+            );
+            const merged = mergeTranslations(nowTopics, nowDraft, stillCurrent, sourceLanguage);
             setDraftTopics(merged.topics);
             setDraft(merged.layout);
             setMachine([...nowMachine, ...merged.machine]);

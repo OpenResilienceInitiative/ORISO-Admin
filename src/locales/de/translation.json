@@ -2252,6 +2252,7 @@
     "topicCatalogue.iconProblem.type": "„{{name}}“: Das Icon muss eine SVG- oder PNG-Datei sein.",
     "topicCatalogue.iconProblem.size": "„{{name}}“: Das Icon ist größer als 100 KB.",
     "topicCatalogue.iconProblem.read": "„{{name}}“: Die Datei konnte nicht gelesen werden.",
+    "topicCatalogue.iconProblem.unsafe": "„{{name}}“: Dieses SVG enthält Skripte, Animationen oder andere nicht erlaubte Elemente. Erlaubt sind nur einfache Formen.",
     "topicCatalogue.inNoGroup": "In keiner Kategorie",
     "topicCatalogue.inGroups_one": "In {{count}} Kategorie",
     "topicCatalogue.inGroups_other": "In {{count}} Kategorien",

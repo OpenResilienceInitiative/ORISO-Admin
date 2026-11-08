@@ -8,13 +8,13 @@ import styles from './styles.module.scss';
 
 /**
  * Icons are SVG or PNG and small: they are shown at most 40 x 40 px. An SVG is only accepted when it holds
- * nothing but plain shapes (the same allowlist as the assistant icon); anything else counts as a wrong type.
+ * nothing but plain shapes (the same allowlist as the assistant icon); anything else is refused with its own message.
  */
 export const ICON_TYPES = assistantIconUploadPolicy.mimeTypes;
 /** "100 KB" in the texts is meant as 100 000 bytes. */
 export const ICON_MAX_BYTES = 100 * 1000;
 
-export type IconProblem = 'type' | 'size' | 'read';
+export type IconProblem = 'type' | 'size' | 'read' | 'unsafe';
 
 export interface TopicIconSlotProps {
     /** Data URL or address of the topic's own icon; without it the standard icon is shown. */
@@ -72,7 +72,7 @@ export const TopicIconSlot = ({
         else {
             try {
                 const dataUrl = await readAsDataUrl(file);
-                if (assistantIconUploadPolicy.validate?.(dataUrl, file) === false) onProblem?.('type', topicName);
+                if (assistantIconUploadPolicy.validate?.(dataUrl, file) === false) onProblem?.('unsafe', topicName);
                 else onPick?.(file, dataUrl);
             } catch {
                 onProblem?.('read', topicName);

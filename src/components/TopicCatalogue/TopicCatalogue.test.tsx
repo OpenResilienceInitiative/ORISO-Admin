@@ -416,7 +416,7 @@ describe('TopicCatalogue icons', () => {
         });
         await u.upload(screen.getByTestId('icon-input-topic-1'), bad);
         // The alert region is always mounted; wait for its text, not for the element.
-        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('SVG- oder PNG-Datei'));
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('enthält Skripte'));
         expect(textButton('Speichern')).toBeDisabled();
     });
 
@@ -540,6 +540,42 @@ describe('TopicCatalogue languages', () => {
         const change = onSaveLayout.mock.calls[0][0];
         expect(change.layout[0].topicIds).toEqual([2, 1]);
         expect(change.machineTranslated).toEqual(['fr|topic:2']);
+    });
+
+    it('does not give a source text the translation of its old wording', async () => {
+        let answer: (value: Record<string, Record<string, string>>) => void = () => undefined;
+        const onTranslate = vi.fn().mockReturnValue(
+            new Promise((resolve) => {
+                answer = resolve;
+            }),
+        );
+        setup({ topics: translated, languages, onTranslate });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(textButton('Fehlende Texte mit KI übersetzen'));
+        await u.type(screen.getAllByLabelText('Name der Kategorie')[0], ' neu');
+        await act(async () => answer({ en: { 'group:a': 'General', 'topic:2': 'Debt' } }));
+
+        await u.click(langButton('en'));
+        expect(screen.getAllByLabelText('Name der Kategorie')[0]).toHaveValue('');
+        expect(label('Name von „Schulden“ auf Englisch')).toHaveValue('Debt');
+    });
+
+    it('shows marks the caller kept, hands them back and forgets those of removed categories', async () => {
+        const { onSaveLayout } = setup({
+            topics: translated,
+            languages,
+            machineTranslated: ['en|topic:1', 'en|group:c'],
+        });
+        const u = user();
+        await u.click(langButton('en'));
+        expect(screen.getAllByRole('img', { name: 'Maschinell übersetzt, noch nicht geprüft' })).toHaveLength(1);
+        await u.click(langButton('de'));
+        await u.click(label('Bearbeiten'));
+        await u.click(label('Kategorie „Leer“ entfernen'));
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].machineTranslated).toEqual(['en|topic:1']);
     });
 
     it('drops an answer that arrives after the edit mode was left', async () => {

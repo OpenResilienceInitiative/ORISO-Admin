@@ -1728,6 +1728,7 @@
     "topicCatalogue.iconProblem.type": "“{{name}}”: the icon must be an SVG or PNG file.",
     "topicCatalogue.iconProblem.size": "“{{name}}”: the icon is larger than 100 KB.",
     "topicCatalogue.iconProblem.read": "“{{name}}”: the file could not be read.",
+    "topicCatalogue.iconProblem.unsafe": "“{{name}}”: this SVG contains scripts, animations or other elements that are not allowed. Only plain shapes are accepted.",
     "topicCatalogue.inNoGroup": "In no category",
     "topicCatalogue.inGroups_one": "In {{count}} category",
     "topicCatalogue.inGroups_other": "In {{count}} categories",
