@@ -40,7 +40,7 @@ export const TopicList = () => {
     const { isEnabled, toggleFeature } = useFeatureContext();
     const { hasRole } = useUserRoles();
     const { mutate: updateTenantData, isPending: isTopicsSwitchPending } = useTenantAdminDataMutation({
-        id: `${tenant.id}`,
+        id: tenant?.id != null ? `${tenant.id}` : '',
     });
     const { mutateAsync: setActive } = useTopicActiveMutation();
     const [pendingTopicIds, setPendingTopicIds] = useState<number[]>([]);
@@ -142,7 +142,7 @@ export const TopicList = () => {
                                 <M3Switch
                                     id="topics-in-registration"
                                     checked={isTopicsFeatureActive}
-                                    disabled={isTopicsSwitchPending}
+                                    disabled={isTopicsSwitchPending || tenant?.id == null}
                                     label={t('topics.featureToggle')}
                                     onChange={() => setSwitchConfirmOpen(true)}
                                 />
@@ -185,7 +185,7 @@ export const TopicList = () => {
                     width={768}
                     cancelLabelKey="btn.cancel.uppercase"
                     okLabelKey="btn.ok.uppercase"
-                    confirmDisabled={isTopicsSwitchPending}
+                    confirmDisabled={isTopicsSwitchPending || tenant?.id == null}
                     onConfirm={confirmTopicsSwitch}
                     onClose={() => setSwitchConfirmOpen(false)}
                 />

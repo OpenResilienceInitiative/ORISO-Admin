@@ -64,6 +64,23 @@ describe('useTopicActiveMutation', () => {
         });
     });
 
+    it('sends no save when the stored topic could not be read', async () => {
+        fetchData.mockReset();
+        fetchData.mockRejectedValueOnce(new Error(FETCH_ERRORS.FORBIDDEN));
+        const failed = setup();
+        failed.result.current.mutate({ id: 4, active: true });
+        await waitFor(() => expect(failed.result.current.isError).toBe(true));
+        expect(fetchData).toHaveBeenCalledTimes(1);
+        expect(fetchData.mock.calls[0][0].method).toBe(FETCH_METHODS.GET);
+
+        fetchData.mockReset();
+        fetchData.mockResolvedValueOnce(undefined);
+        const empty = setup();
+        empty.result.current.mutate({ id: 4, active: true });
+        await waitFor(() => expect(empty.result.current.isError).toBe(true));
+        expect(fetchData).toHaveBeenCalledTimes(1);
+    });
+
     it('reports a failed save as an error', async () => {
         fetchData.mockReset();
         fetchData.mockResolvedValueOnce(stored).mockRejectedValueOnce(new Error(FETCH_ERRORS.NOT_ALLOWED));
