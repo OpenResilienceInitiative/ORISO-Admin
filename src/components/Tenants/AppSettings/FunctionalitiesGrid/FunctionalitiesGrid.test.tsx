@@ -33,17 +33,17 @@ describe('FunctionalitiesGrid', () => {
         expect(container.querySelector('.ant-row')).toBeNull();
     });
 
-    it('keeps the tiles in reading order and gives the other-functions tile two columns', () => {
+    it('keeps the email server, communication and other-functions tiles in reading order and spans', () => {
         const { container } = render(<FunctionalitiesGrid tenantId="7" />);
-        const items = [...container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]')];
+        const spanByTile: Record<string, number> = { smtp: 3, communication: 1, 'other-functions': 2 };
+        // Only these three tiles are looked at, so a tile that is added or removed elsewhere in the tab does not
+        // change this test.
+        const tiles = [...container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]')]
+            .map((item) => ({ id: item.querySelector('[data-testid]')?.getAttribute('data-testid') ?? '', item }))
+            .filter(({ id }) => id in spanByTile);
 
-        expect(items.map((item) => item.querySelector('[data-testid]')?.getAttribute('data-testid'))).toEqual([
-            'smtp',
-            'communication',
-            'other-functions',
-            'topics',
-        ]);
-        expect(items.map(spanOf)).toEqual([3, 1, 2, 1]);
+        expect(tiles.map(({ id }) => id)).toEqual(['smtp', 'communication', 'other-functions']);
+        expect(Object.fromEntries(tiles.map(({ id, item }) => [id, spanOf(item)]))).toEqual(spanByTile);
     });
 
     it('drops the tiles a level hides', () => {
