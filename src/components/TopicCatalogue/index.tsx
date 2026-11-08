@@ -399,7 +399,11 @@ export const TopicCatalogue = ({
                         </span>
                     )}
                 </div>
-                <p className={styles.groupCount}>{t('topicCatalogue.count', { count })}</p>
+                <p className={styles.groupCount}>
+                    {t('topicCatalogue.count', { count })}
+                    {/* The disabled remove button cannot be focused and a title is out of reach on touch screens. */}
+                    {editing && count > 0 && ` · ${t('topicCatalogue.groupRemoveBlocked')}`}
+                </p>
                 <ul
                     className={classNames(styles.list, { [styles.listEditing]: editing })}
                     aria-labelledby={headingId}

@@ -265,6 +265,13 @@ describe('TopicCatalogue edit mode', () => {
         expect(screen.queryByText('Das Speichern hat nicht geklappt')).toBeNull();
     });
 
+    it('says in the open why a category with topics cannot be removed', async () => {
+        setup();
+        expect(screen.queryByText(/Nur eine leere Kategorie kann entfernt werden/)).toBeNull();
+        await startEditing();
+        expect(screen.getAllByText(/Nur eine leere Kategorie kann entfernt werden/)).toHaveLength(2);
+    });
+
     it('adds a category, renames one, and removes only an empty one', async () => {
         setup();
         const u = user();
