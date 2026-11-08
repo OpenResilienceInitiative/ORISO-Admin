@@ -23,7 +23,7 @@ export const useTopicActiveMutation = () => {
                 responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
             });
             // The PUT replaces the whole topic: without the stored record it would wipe the rest.
-            if (!stored) throw new Error(FETCH_ERRORS.NO_CONTENT);
+            if (!stored) throw new Error(FETCH_ERRORS.EMPTY);
             return fetchData({
                 url: `${topicAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.PUT,
