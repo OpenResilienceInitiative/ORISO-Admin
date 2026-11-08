@@ -479,8 +479,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     // A scroller is a keyboard stop (Chrome): it draws the shared ring too, inside its own edge so the
     // scrollport does not clip it.
     &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-        outline-offset: -2px;
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
@@ -616,8 +620,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     // M3 keyboard focus ring
     &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: 1px;
+
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-        outline-offset: 1px;
+        outline-offset: var(--admin-focus-ring-offset);
     }
 
     // Dropdown menu button: icon + small caret (heading / list)
@@ -1067,7 +1075,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
         animation: none;
     }
 
-    /* Dark in every scheme: the ring is the light rose of its action text (8.9:1 on #303031). */
+    /* Dark in every scheme: the ring is the light rose of its action text (7.8:1 on #303031). */
     --admin-focus-ring-color: #ffb4aa;
 
     display: flex;
@@ -1514,8 +1522,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-        outline-offset: -2px;
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
@@ -1540,8 +1552,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     // The phone layout below makes it a scroller, hence a keyboard stop: shared ring, inside its edge.
     &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-        outline-offset: -2px;
+        outline-offset: var(--admin-focus-ring-offset);
     }
 
     align-items: center;
@@ -1599,8 +1615,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: 1px;
+
         outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
-        outline-offset: 1px;
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 

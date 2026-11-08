@@ -396,7 +396,9 @@ body {
 /* THE keyboard focus ring: one rule, one token, every interactive element (native, MUI, antd, editors).
    `:is()` takes the specificity of its most specific argument (a class), so this also wins over MUI's
    `.MuiButtonBase-root { outline: 0 }` reset. Components must not draw their own ring (no per-component
-   outline colours); to change the colour on a surface, set `--admin-focus-ring-color` on that surface.
+   outline colours); to change the colour on a surface, set `--admin-focus-ring-color` on that surface, and to move
+   the ring (e.g. inside a clipping scroller) set `--admin-focus-ring-offset` on the element: a component's own
+   `outline-offset` loses against this rule.
    The rich-text node and the hidden switch input are excluded: their container (editor surface, whole switch)
    draws the one ring.
    Text inputs keep their field border as focus indication (M3 outlined fields). */

@@ -35,6 +35,15 @@ describe('shared focus ring', () => {
         },
     );
 
+    it('lets a component move the ring by setting the offset token, because the shared rule is more specific', () => {
+        // The shared rule (0,4,0) beats a component's own `outline-offset`; only the token survives it.
+        const editor = read('../components/FormPluginEditor/M3RichTextEditor.module.scss');
+        const cue = editor.slice(editor.indexOf('.functionBarScrollCue {'));
+        expect(cue.slice(0, cue.indexOf('}\n\n.functionBarScrollCueLeft'))).toMatch(
+            /--admin-focus-ring-offset:\s*-2px;/,
+        );
+    });
+
     it('lets surfaces that follow the colour scheme or stay dark set their own ring colour', () => {
         expect(read('../components/Card/styles.module.scss')).toMatch(/--admin-focus-ring-color:\s*var\(--m3-primary/);
         expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
