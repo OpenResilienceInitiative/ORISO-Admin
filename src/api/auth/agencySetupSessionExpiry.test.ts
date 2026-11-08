@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     apiLogout: vi.fn(),
     invalidate: vi.fn(),
     expiry: { accessTokenValidUntilTime: 0, refreshTokenValidUntilTime: 0 },
+    tokens: { access: 'access-token', refresh: 'refresh-token' },
 }));
 vi.mock('./authBffClient', () => ({
     bootstrapAuthSessionViaBff: vi.fn(),
@@ -13,16 +14,25 @@ vi.mock('./authBffClient', () => ({
     setAuthTokensViaBff: vi.fn(),
 }));
 vi.mock('./tokenSessionStore', () => ({
-    hasSessionTokens: () => true,
-    getSessionAccessToken: () => 'access-token',
-    getSessionRefreshToken: () => 'refresh-token',
-    setSessionTokens: vi.fn(),
+    hasSessionTokens: () => Boolean(mocks.tokens.access && mocks.tokens.refresh),
+    getSessionAccessToken: () => mocks.tokens.access,
+    getSessionRefreshToken: () => mocks.tokens.refresh,
+    setSessionTokens: (access: string | null, refresh: string | null) => {
+        mocks.tokens = { access: access || '', refresh: refresh || '' };
+    },
 }));
 vi.mock('./accessSessionLocalStorage', () => ({
     ACCESS_TOKEN_VALID_UNTIL_KEY: 'access-expiry',
     REFRESH_TOKEN_VALID_UNTIL_KEY: 'refresh-expiry',
     getTokenExpiryFromLocalStorage: () => mocks.expiry,
-    setTokenExpiryInLocalStorage: vi.fn(),
+    setTokenExpiryInLocalStorage: (key: 'access-expiry' | 'refresh-expiry', expiresIn = 0) => {
+        const expiry = Date.now() + expiresIn * 1000;
+        if (key === 'access-expiry') {
+            mocks.expiry.accessTokenValidUntilTime = expiry;
+        } else {
+            mocks.expiry.refreshTokenValidUntilTime = expiry;
+        }
+    },
     removeTokenExpiryFromLocalStorage: vi.fn(),
 }));
 vi.mock('./apiLogoutKeycloak', () => ({ default: mocks.apiLogout }));
@@ -49,12 +59,13 @@ describe('mounted centre setup session expiry', () => {
         mocks.refresh.mockReset().mockRejectedValue(new Error('session expired'));
         mocks.apiLogout.mockReset().mockResolvedValue(undefined);
         mocks.invalidate.mockReset().mockResolvedValue(undefined);
+        mocks.tokens = { access: 'access-token', refresh: 'refresh-token' };
         mocks.expiry = {
             accessTokenValidUntilTime: Date.now() + 60_000,
             refreshTokenValidUntilTime: Date.now() + 120_000,
         };
         location = { pathname: '/admin/agency/5/setup', href: '/admin/agency/5/setup' };
-        vi.stubGlobal('window', { location, setInterval, clearInterval, setTimeout });
+        vi.stubGlobal('window', { location, setInterval, clearInterval, setTimeout, clearTimeout });
         vi.stubGlobal('sessionStorage', { clear: vi.fn() });
     });
 
@@ -76,6 +87,98 @@ describe('mounted centre setup session expiry', () => {
         expect(location.href).toBe('/admin/login?agencySetupId=5');
         expect(mocks.apiLogout).toHaveBeenCalledTimes(1);
         expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('requires a new login after refresh expiry even when the mounted tab still has a valid access token', async () => {
+        const minute = 60_000;
+        const refreshLifetime = 30 * minute;
+        mocks.expiry.accessTokenValidUntilTime = Date.now() + 5 * 60 * minute;
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + refreshLifetime;
+        const { handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(refreshLifetime - 1);
+        expect(location.href).toBe('/admin/agency/5/setup');
+        expect(mocks.invalidate).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(101);
+        expect(mocks.expiry.accessTokenValidUntilTime).toBeGreaterThan(Date.now());
+        expect(location.href).toBe('/admin/login?agencySetupId=5');
+        expect(mocks.refresh).not.toHaveBeenCalled();
+        expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses the renewed shared refresh deadline instead of logging out at the original one', async () => {
+        mocks.expiry.accessTokenValidUntilTime = Date.now() + 60_000;
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + 20_000;
+        const { handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + 20_000;
+        await vi.advanceTimersByTimeAsync(10_100);
+        expect(location.href).toBe('/admin/agency/5/setup');
+        expect(mocks.invalidate).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(location.href).toBe('/admin/login?agencySetupId=5');
+        expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets an in-flight refresh finish before deciding whether the mounted session expired', async () => {
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + 20_000;
+        let finishRefresh!: () => void;
+        mocks.refresh.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finishRefresh = () =>
+                        resolve({
+                            access_token: 'renewed-access',
+                            expires_in: 60,
+                            refresh_token: 'renewed-refresh',
+                            refresh_expires_in: 20,
+                        });
+                }),
+        );
+        const { getAccessTokenForRequests, handleTokenRefresh, tryRefreshAccessToken } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(19_000);
+        const refresh = tryRefreshAccessToken();
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(mocks.apiLogout).not.toHaveBeenCalled();
+
+        finishRefresh();
+        await expect(refresh).resolves.toBe(true);
+        expect(getAccessTokenForRequests()).toBe('renewed-access');
+        await vi.advanceTimersByTimeAsync(19_999);
+        expect(location.href).toBe('/admin/agency/5/setup');
+
+        await vi.advanceTimersByTimeAsync(101);
+        expect(location.href).toBe('/admin/login?agencySetupId=5');
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops using the access token at refresh expiry while logout cleanup is still pending', async () => {
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + 20_000;
+        let finishLogout!: () => void;
+        mocks.apiLogout.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishLogout = resolve;
+                }),
+        );
+        const { getAccessTokenForRequests, handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(20_000);
+        expect(getAccessTokenForRequests()).toBe('');
+        expect(mocks.apiLogout).toHaveBeenCalledTimes(1);
+        expect(mocks.invalidate).not.toHaveBeenCalled();
+
+        finishLogout();
+        await vi.advanceTimersByTimeAsync(100);
+        expect(location.href).toBe('/admin/login?agencySetupId=5');
     });
 
     it('retains the setup when the renewal interval finds the refresh token expired', async () => {
