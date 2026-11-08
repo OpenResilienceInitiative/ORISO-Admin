@@ -3147,7 +3147,7 @@
     "tileHelp.backTo": "Back to: {{title}}",
     "tileHelp.example": "How it looks in the admin",
     "tileHelp.statistics.essence": "Platform admins set here how statistics work for the whole platform. You decide: when figures appear, how often they change, how far two charts look back, and whether sent messages are counted.",
-    "tileHelp.statistics.minimum.title": "Minimum: only with enough counsellors",
+    "tileHelp.statistics.minimum.title": "Minimum: figures only with enough counsellors",
     "tileHelp.statistics.minimum.body": "A counselling centre, an organisation or the platform shows reports only once at least this many counsellors are registered there: 2 to 10, default 5. Below that, the dashboard says \"Statistics suppressed\". This is meant to stop a figure being traced to one person. Counsellors' own figures are not affected.",
     "tileHelp.statistics.update.title": "Snapshot: figures change at fixed times",
     "tileHelp.statistics.update.body": "Each admin role has its own setting: daily at 6:00 German time (default), Mondays at 6:00, or live. Why not always live? If a figure jumps from 23 to 24 at 10:05, you know someone has just asked for help. A fixed snapshot makes that stand out less. A daily snapshot covers everything up to the day before the last 6:00 run, a weekly one up to the Sunday before.",
