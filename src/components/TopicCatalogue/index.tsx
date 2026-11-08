@@ -54,6 +54,7 @@ import {
     machineMark,
     mergeTranslations,
     textIn,
+    topicDescriptionKey,
     topicNameKey,
     type CatalogueLanguage,
     type LocalizedTopic,
@@ -78,6 +79,11 @@ export interface CatalogueChange {
     iconFiles: Record<number, File | null>;
     /** category id -> the new picture file; `null` means the picture was removed. */
     groupIconFiles: Record<string, File | null>;
+    /**
+     * Texts a machine filled in and nobody has checked since, as `language|key` (`de|topic:7`, `fr|group:health`,
+     * `fr|topicDescription:7`). The caller keeps them so the marker survives the save.
+     */
+    machineTranslated: string[];
 }
 
 export interface TranslateRequest {
@@ -180,6 +186,10 @@ export const TopicCatalogue = ({
     const [drop, setDrop] = useState<DropTarget | null>(null);
     const [focusKey, setFocusKey] = useState<string | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    // The translation answers later than the admin keeps typing: merge into what is on screen then, not into
+    // what was on screen when the request left. A new edit session (or leaving it) drops a late answer.
+    const latest = useRef({ draft, draftTopics, machine });
+    const editSession = useRef(0);
 
     const shownLayout = editing ? draft : layout;
     const shownTopics = editing ? draftTopics : topics;
@@ -188,10 +198,14 @@ export const TopicCatalogue = ({
     const multiLanguage = languages.length > 1;
     const editingOtherLanguage = editing && lang !== sourceLanguage;
     const changedTopics = editing
-        ? draftTopics.filter((topic, i) => topicSignature(topic) !== topicSignature(topics[i] ?? topic))
+        ? draftTopics.filter((topic) => {
+              const saved = topics.find((entry) => entry.id === topic.id);
+              return saved ? topicSignature(topic) !== topicSignature(saved) : false;
+          })
         : [];
     const dirty = editing && (!layoutsEqual(draft, layout) || changedTopics.length > 0);
     const hasEmptyName = draft.some((group) => group.name.trim() === '');
+    latest.current = { draft, draftTopics, machine };
 
     // Keyboard moves re-render the row, possibly inside another category: give the handle its focus back.
     useEffect(() => {
@@ -253,6 +267,7 @@ export const TopicCatalogue = ({
         setIconFiles({});
         setGroupIconFiles({});
         setMachine([]);
+        editSession.current += 1;
         setSaveFailed(false);
         setNote(null);
         setAnnouncement(t('topicCatalogue.announce.editStarted'));
@@ -260,6 +275,7 @@ export const TopicCatalogue = ({
     };
 
     const stopEditing = () => {
+        editSession.current += 1;
         setEditing(false);
         setDrag(null);
         setDrop(null);
@@ -281,7 +297,13 @@ export const TopicCatalogue = ({
         try {
             // Trim once at the save boundary: typing spaces stays possible, stored names stay clean.
             const layoutToSave = draft.map((group) => ({ ...group, name: group.name.trim() }));
-            await onSaveLayout({ layout: layoutToSave, topics: changedTopics, iconFiles, groupIconFiles });
+            await onSaveLayout({
+                layout: layoutToSave,
+                topics: changedTopics,
+                iconFiles,
+                groupIconFiles,
+                machineTranslated: machine,
+            });
             stopEditing();
             setAnnouncement(t('topicCatalogue.announce.saved'));
         } catch {
@@ -382,12 +404,16 @@ export const TopicCatalogue = ({
         }
         setTranslating(true);
         setNote(null);
+        const session = editSession.current;
         try {
             const translations = await onTranslate({ sourceLang: sourceLanguage, targetLangs, texts });
-            const merged = mergeTranslations(draftTopics, draft, translations, sourceLanguage);
+            // Left or restarted edit mode while waiting: the answer belongs to a draft that is gone.
+            if (session !== editSession.current) return;
+            const { draft: nowDraft, draftTopics: nowTopics, machine: nowMachine } = latest.current;
+            const merged = mergeTranslations(nowTopics, nowDraft, translations, sourceLanguage);
             setDraftTopics(merged.topics);
             setDraft(merged.layout);
-            setMachine((list) => [...list, ...merged.machine]);
+            setMachine([...nowMachine, ...merged.machine]);
             setNote({ kind: 'info', text: t('topicCatalogue.translateDone', { count: merged.machine.length }) });
             setAnnouncement(t('topicCatalogue.translateDone', { count: merged.machine.length }));
         } catch (error) {
@@ -504,10 +530,23 @@ export const TopicCatalogue = ({
         !topic.active && <span className={styles.chip}>{t('topicCatalogue.hidden')}</span>;
 
     const renderDescription = (topic: CatalogueTopic) => {
+        if (isBlank(topic.description)) return null;
         const text = textIn(topic.description ?? '', topic.descriptions, lang, sourceLanguage);
-        const shown = isBlank(text) ? topic.description : text;
-        return shown ? <span className={styles.description}>{shown}</span> : null;
+        return renderLabel(text, topic.description ?? '', topicDescriptionKey(topic.id), styles.description);
     };
+
+    /** The "machine made" sign next to an input whose text the machine wrote and nobody has checked yet. */
+    const machineBadge = (key: string, text: string) =>
+        lang !== sourceLanguage && !isBlank(text) && isMachine(key) ? (
+            <span
+                className={styles.marker}
+                role="img"
+                aria-label={t('topicCatalogue.machineTranslated')}
+                title={t('topicCatalogue.machineTranslated')}
+            >
+                <AutoAwesomeOutlinedIcon aria-hidden />
+            </span>
+        ) : null;
 
     const renderPlacement = (group: TopicGroup, topicId: number, rowIndex: number) => {
         const topic = topicsById.get(topicId);
@@ -624,6 +663,7 @@ export const TopicCatalogue = ({
             >
                 <TopicIconSlot
                     editable
+                    slotId={`topic-${topic.id}`}
                     icon={topic.icon}
                     topicName={label}
                     disabled={saving}
@@ -633,20 +673,23 @@ export const TopicCatalogue = ({
                 />
                 <div className={styles.text}>
                     {editingOtherLanguage ? (
-                        <input
-                            className={classNames(styles.nameInput, {
-                                [styles.missingInput]: isBlank(topicText(topic)),
-                            })}
-                            value={topicText(topic)}
-                            maxLength={120}
-                            aria-label={t('topicCatalogue.topicNameIn', {
-                                name: topic.name,
-                                language: languages.find((entry) => entry.code === lang)?.label ?? lang,
-                            })}
-                            placeholder={topic.name}
-                            disabled={saving}
-                            onChange={(event) => setTopicName(topic.id, event.target.value)}
-                        />
+                        <>
+                            <input
+                                className={classNames(styles.nameInput, {
+                                    [styles.missingInput]: isBlank(topicText(topic)),
+                                })}
+                                value={topicText(topic)}
+                                maxLength={120}
+                                aria-label={t('topicCatalogue.topicNameIn', {
+                                    name: topic.name,
+                                    language: languages.find((entry) => entry.code === lang)?.label ?? lang,
+                                })}
+                                placeholder={topic.name}
+                                disabled={saving}
+                                onChange={(event) => setTopicName(topic.id, event.target.value)}
+                            />
+                            {machineBadge(topicNameKey(topic.id), topicText(topic))}
+                        </>
                     ) : (
                         renderLabel(topicText(topic), topic.name, topicNameKey(topic.id), styles.name)
                     )}
@@ -712,6 +755,7 @@ export const TopicCatalogue = ({
                     />
                     <TopicIconSlot
                         editable={editing}
+                        slotId={`group-${group.id}`}
                         icon={group.icon}
                         topicName={groupLabel(group)}
                         placeholder={null}
@@ -721,19 +765,22 @@ export const TopicCatalogue = ({
                         onProblem={iconProblem}
                     />
                     {editing ? (
-                        <input
-                            id={headingId}
-                            className={classNames(styles.groupInput, { [styles.missingInput]: groupMissing })}
-                            value={text}
-                            maxLength={60}
-                            aria-label={t('topicCatalogue.groupName')}
-                            placeholder={
-                                lang === sourceLanguage ? t('topicCatalogue.groupNamePlaceholder') : group.name
-                            }
-                            aria-invalid={group.name.trim() === ''}
-                            disabled={saving}
-                            onChange={(event) => setGroupName(group, event.target.value)}
-                        />
+                        <>
+                            <input
+                                id={headingId}
+                                className={classNames(styles.groupInput, { [styles.missingInput]: groupMissing })}
+                                value={text}
+                                maxLength={60}
+                                aria-label={t('topicCatalogue.groupName')}
+                                placeholder={
+                                    lang === sourceLanguage ? t('topicCatalogue.groupNamePlaceholder') : group.name
+                                }
+                                aria-invalid={group.name.trim() === ''}
+                                disabled={saving}
+                                onChange={(event) => setGroupName(group, event.target.value)}
+                            />
+                            {machineBadge(groupNameKey(group.id), text)}
+                        </>
                     ) : (
                         <h3 id={headingId} className={styles.groupTitle}>
                             {renderLabel(text, group.name, groupNameKey(group.id), styles.groupTitleText)}
@@ -759,6 +806,7 @@ export const TopicCatalogue = ({
                                 disabled={saving}
                                 onClick={() => {
                                     setDraft(removeGroup(draft, group.id));
+                                    setGroupIconFiles(({ [group.id]: _removed, ...rest }) => rest);
                                     setAnnouncement(
                                         t('topicCatalogue.announce.groupRemoved', { group: groupLabel(group) }),
                                     );

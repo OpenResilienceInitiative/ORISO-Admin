@@ -267,7 +267,7 @@ export const UploadIcon: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
-        const input = await canvas.findByTestId('icon-input-Sucht');
+        const input = await canvas.findByTestId('icon-input-topic-18');
         const file = new File(
             [
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#a5000a"/></svg>',
@@ -290,7 +290,7 @@ export const UploadCategoryIcon: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
-        const input = await canvas.findByTestId('icon-input-Gesundheit und Leben');
+        const input = await canvas.findByTestId('icon-input-group-health');
         const file = new File(
             [
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="4" fill="#0b57d0"/></svg>',
@@ -313,7 +313,7 @@ export const UploadIconWrongType: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
-        const input = await canvas.findByTestId('icon-input-Sucht');
+        const input = await canvas.findByTestId('icon-input-topic-18');
         await userEvent.upload(input, new File(['x'], 'sucht.gif', { type: 'image/gif' }), { applyAccept: false });
         await expect(await canvas.findByRole('alert')).toHaveTextContent('SVG- oder PNG-Datei');
     },
@@ -357,9 +357,13 @@ export const AiTranslation: Story = {
 
 export const TwoColumnsMobile: Story = {
     args: base,
-    parameters: { viewport: { defaultViewport: 'mobile1' } },
+    // Storybook 10: the preset is picked through globals (see DpiaDocumentPage.stories); `defaultViewport` is ignored.
+    globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => <Stateful {...i18n} />,
     play: async ({ canvasElement }) => {
         await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Bearbeiten' }));
+        await expect(await within(canvasElement).findByRole('button', { name: 'Speichern' })).toBeInTheDocument();
+        // Nothing may push the page wider than the phone.
+        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
     },
 };

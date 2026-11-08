@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
@@ -194,6 +194,7 @@ describe('TopicCatalogue edit mode', () => {
             topics: [],
             iconFiles: {},
             groupIconFiles: {},
+            machineTranslated: [],
         });
         await waitFor(() => expect(screen.getByLabelText('Bearbeiten')).toBeInTheDocument());
     });
@@ -353,7 +354,7 @@ describe('TopicCatalogue icons', () => {
         const u = user();
         await u.click(label('Bearbeiten'));
         const file = svg();
-        await u.upload(screen.getByTestId('icon-input-Sucht'), file);
+        await u.upload(screen.getByTestId('icon-input-topic-1'), file);
 
         expect(await screen.findByLabelText('Icon von „Sucht“ ersetzen')).toBeInTheDocument();
         await u.click(textButton('Speichern'));
@@ -381,7 +382,7 @@ describe('TopicCatalogue icons', () => {
         const u = user();
         await u.click(label('Bearbeiten'));
         const file = svg();
-        await u.upload(screen.getByTestId('icon-input-Allgemein'), file);
+        await u.upload(screen.getByTestId('icon-input-group-a'), file);
 
         expect(await screen.findByLabelText('Icon von „Allgemein“ ersetzen')).toBeInTheDocument();
         await u.click(textButton('Speichern'));
@@ -406,15 +407,40 @@ describe('TopicCatalogue icons', () => {
         expect(onSaveLayout.mock.calls[0][0].groupIconFiles).toEqual({ a: null });
     });
 
+    it('refuses an SVG with a script in it, as the assistant icon does', async () => {
+        setup();
+        const u = userEvent.setup({ delay: null, applyAccept: false });
+        await u.click(label('Bearbeiten'));
+        const bad = new File(['<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'], 'bad.svg', {
+            type: 'image/svg+xml',
+        });
+        await u.upload(screen.getByTestId('icon-input-topic-1'), bad);
+        // The alert region is always mounted; wait for its text, not for the element.
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('SVG- oder PNG-Datei'));
+        expect(textButton('Speichern')).toBeDisabled();
+    });
+
+    it('forgets the picture of a category that is removed again before saving', async () => {
+        const { onSaveLayout } = setup();
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.upload(screen.getByTestId('icon-input-group-c'), svg());
+        expect(await screen.findByLabelText('Icon von „Leer“ ersetzen')).toBeInTheDocument();
+        await u.click(label('Kategorie „Leer“ entfernen'));
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].groupIconFiles).toEqual({});
+    });
+
     it('refuses other file types and files over 100 KB', async () => {
         setup();
         const u = userEvent.setup({ delay: null, applyAccept: false });
         await u.click(label('Bearbeiten'));
-        const input = screen.getByTestId('icon-input-Sucht');
+        const input = screen.getByTestId('icon-input-topic-1');
         await u.upload(input, new File(['x'], 'a.gif', { type: 'image/gif' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('SVG- oder PNG-Datei');
 
-        const big = new File([new Uint8Array(101 * 1024)], 'big.png', { type: 'image/png' });
+        const big = new File([new Uint8Array(101 * 1000)], 'big.png', { type: 'image/png' });
         await u.upload(input, big);
         await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('größer als 100 KB'));
         expect(textButton('Speichern')).toBeDisabled();
@@ -481,6 +507,64 @@ describe('TopicCatalogue languages', () => {
             en: 'Addiction',
             fr: 'Dépendance',
         });
+        // The marks travel with the save, but only for what the machine really filled in.
+        expect([...change.machineTranslated].sort()).toEqual(['en|group:a', 'en|topic:2', 'fr|topic:1']);
+    });
+
+    it('never overwrites text typed or moved while the translation is on its way', async () => {
+        let answer: (value: Record<string, Record<string, string>>) => void = () => undefined;
+        const onTranslate = vi.fn().mockReturnValue(
+            new Promise((resolve) => {
+                answer = resolve;
+            }),
+        );
+        const { onSaveLayout } = setup({ topics: translated, languages, onTranslate });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(textButton('Fehlende Texte mit KI übersetzen'));
+        // While the request runs: move a topic, then write the French name by hand.
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowDown}');
+        await u.click(langButton('fr'));
+        await u.type(label('Name von „Sucht“ auf Französisch'), 'Addiction');
+
+        await act(async () => answer({ fr: { 'topic:1': 'MASCHINE', 'topic:2': 'Dette' } }));
+
+        expect(label('Name von „Sucht“ auf Französisch')).toHaveValue('Addiction');
+        expect(label('Name von „Schulden“ auf Französisch')).toHaveValue('Dette');
+        // The moved topic stays where the admin put it.
+        await u.click(langButton('de'));
+        expect(groupItems('a')[0]).toContain('Schulden');
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        const change = onSaveLayout.mock.calls[0][0];
+        expect(change.layout[0].topicIds).toEqual([2, 1]);
+        expect(change.machineTranslated).toEqual(['fr|topic:2']);
+    });
+
+    it('drops an answer that arrives after the edit mode was left', async () => {
+        let answer: (value: Record<string, Record<string, string>>) => void = () => undefined;
+        const onTranslate = vi.fn().mockReturnValue(
+            new Promise((resolve) => {
+                answer = resolve;
+            }),
+        );
+        setup({ topics: translated, languages, onTranslate });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(textButton('Fehlende Texte mit KI übersetzen'));
+        await u.click(textButton('Abbrechen'));
+        await act(async () => answer({ en: { 'topic:2': 'Debt' } }));
+        expect(status()).not.toHaveTextContent('Texte übersetzt');
+        await u.click(langButton('en'));
+        expect(screen.queryByRole('img', { name: 'Maschinell übersetzt, noch nicht geprüft' })).toBeNull();
+    });
+
+    it('marks a missing description like a missing name', async () => {
+        setup({ topics: translated, languages });
+        await user().click(langButton('en'));
+        const row = document.querySelector('li[data-topic-id="2"]') as HTMLElement;
+        expect(within(row).getAllByRole('img', { name: 'Noch nicht übersetzt' })).toHaveLength(2);
     });
 
     it('says so when the translation fails', async () => {
