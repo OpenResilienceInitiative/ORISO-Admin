@@ -9,7 +9,9 @@
 .card {
     width: 100%;
     min-width: 0;
-    max-width: 960px;
+
+    /* Document tile: the whole tile width, like the Legal tab; the text boxes keep a page's line length. */
+    max-width: none;
     box-sizing: border-box;
 }
 

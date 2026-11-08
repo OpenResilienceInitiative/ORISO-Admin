@@ -18,6 +18,7 @@ import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslati
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import { TileHelpButton } from '../../../../TileHelp';
+import { LegalDocumentTile, type LegalDocumentTileStatus } from '../LegalDocumentTile';
 import { contractHelp } from './help';
 import styles from './styles.module.scss';
 
@@ -122,6 +123,13 @@ interface DataProcessingAgreementCardProps {
     onDiscardDraft?: () => void;
     /** Audit status rendered in the shared read-only footer. */
     readOnlyFooter?: React.ReactNode;
+    /**
+     * Folds the card up to a tile header (icon, title, state). The explanation button and the help text then
+     * sit at the top of the unfolded content, and the editor does not repeat the title.
+     */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
 }
 
 /**
@@ -154,6 +162,8 @@ export const DataProcessingAgreementCard = ({
     draftStale,
     onDiscardDraft,
     readOnlyFooter,
+    collapsible = false,
+    defaultOpen = false,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -231,16 +241,33 @@ export const DataProcessingAgreementCard = ({
         [versions, activeLanguage],
     );
 
-    return (
+    const title = t('tenants.legal.dataProcessingAgreement.title');
+    let tileStatus: LegalDocumentTileStatus = { label: t('legal.status.empty'), tone: 'attention' };
+    if (draftSavedAt) tileStatus = { label: t('legal.status.draft'), tone: 'attention' };
+    else if (versions.length > 0) tileStatus = { label: t('legal.status.published'), tone: 'neutral' };
+
+    const helpSlotContent = (
+        <>
+            <EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />
+            <DpaDeadlineInfo
+                signingDeadlineAt={signingDeadlineAt}
+                status={dpaStatus}
+                newCounsellingAllowed={newCounsellingAllowed}
+                renewalGraceActive={renewalGraceActive}
+            />
+        </>
+    );
+
+    const card = (
         <div className={styles.card}>
             {!readOnly && onDiscardDraft && (
                 <LegalDraftNotice savedAt={draftSavedAt} stale={draftStale} onDiscard={onDiscardDraft} />
             )}
             <M3RichTextEditor
-                title={t('tenants.legal.dataProcessingAgreement.title')}
-                headerAction={
-                    <TileHelpButton topic={contractHelp} tileTitle={t('tenants.legal.dataProcessingAgreement.title')} />
-                }
+                title={title}
+                // In a tile the header, the explanation button and the help text belong to the tile.
+                hideHeader={collapsible}
+                headerAction={collapsible ? undefined : <TileHelpButton topic={contractHelp} tileTitle={title} />}
                 icon={DpaIcon}
                 value={currentContent}
                 onChange={readOnly ? undefined : handleEditorChange}
@@ -262,17 +289,7 @@ export const DataProcessingAgreementCard = ({
                         />
                     ) : undefined
                 }
-                helpSlot={
-                    <>
-                        <EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />
-                        <DpaDeadlineInfo
-                            signingDeadlineAt={signingDeadlineAt}
-                            status={dpaStatus}
-                            newCounsellingAllowed={newCounsellingAllowed}
-                            renewalGraceActive={renewalGraceActive}
-                        />
-                    </>
-                }
+                helpSlot={collapsible ? undefined : helpSlotContent}
                 snackbarSlot={
                     <EditorSnackbarQueue
                         items={[
@@ -372,6 +389,21 @@ export const DataProcessingAgreementCard = ({
                 }
             />
         </div>
+    );
+
+    if (!collapsible) return card;
+
+    return (
+        <LegalDocumentTile
+            icon={DpaIcon}
+            title={title}
+            status={tileStatus}
+            help={contractHelp}
+            intro={helpSlotContent}
+            defaultOpen={defaultOpen}
+        >
+            {card}
+        </LegalDocumentTile>
     );
 };
 

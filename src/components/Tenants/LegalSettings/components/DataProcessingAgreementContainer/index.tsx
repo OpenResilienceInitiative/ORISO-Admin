@@ -30,6 +30,10 @@ interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
     /** Read-only view (agency page): the DPA is managed at tenant (Träger) level. */
     readOnly?: boolean;
+    /** Shows the agreement as a tile that folds up to its header. */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
 }
 
 /**
@@ -38,7 +42,12 @@ interface DataProcessingAgreementContainerProps {
  * the publish mutation. The card submits the complete merged map, so publishing in one UI
  * language never drops the other languages (or unknown keys) any more.
  */
-export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataProcessingAgreementContainerProps) => {
+export const DataProcessingAgreementContainer = ({
+    tenantId,
+    readOnly,
+    collapsible,
+    defaultOpen,
+}: DataProcessingAgreementContainerProps) => {
     const { t, i18n } = useTranslation();
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
@@ -302,6 +311,8 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 key={`${id}|${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
                 initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
+                collapsible={collapsible}
+                defaultOpen={defaultOpen}
                 versions={mapped}
                 onPublish={(contentByLanguage) => {
                     setPublishError(undefined);
