@@ -142,9 +142,20 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  */
 const STAGE_SURFACE = '#281715';
 const DARK_TEXT = '#141c25';
+/**
+ * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
+ * surface, this filter flips the strokes light (and turns the red accent back to red), so
+ * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` below.
+ */
+export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
+
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
+    // Pictures stay as drawn: tiles and dialogs keep their light surface in the inverted
+    // scheme (see the surface tokens), and the drawings are dark ink. A dark workspace sets
+    // PICTURE_FILTER_ON_DARK here together with its dark card surfaces, not before.
+    '--admin-picture-filter': 'none',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -225,14 +236,6 @@ const adminNavTokens = (navIndicator: string) => ({
     '--admin-nav-indicator-icon': readableOn(navIndicator),
 });
 
-/**
- * Tile pictures are dark pen drawings on a transparent ground. On a dark surface the
- * inverted scheme flips the strokes light (and turns the red accent back to red) with a
- * filter, so the same picture reads on both schemes. Light keeps the picture as drawn.
- */
-const PICTURE_FILTER_LIGHT = 'none';
-const PICTURE_FILTER_INVERTED = 'invert(1) hue-rotate(180deg)';
-
 const invertedTokens = (
     accentDark: string,
     accentLight: string,
@@ -258,7 +261,6 @@ const invertedTokens = (
         '--m3-primary-container': primaryContainer,
         '--m3-on-primary-container': readableOn(primaryContainer),
         '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
-        '--admin-picture-filter': PICTURE_FILTER_INVERTED,
         '--m3-primary-fixed': accentLight,
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
@@ -331,7 +333,6 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-primary-container': onAccentLight,
             // Brand-tinted text and icons ON the light container (mobile menu tiles).
             '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
-            '--admin-picture-filter': PICTURE_FILTER_LIGHT,
             '--m3-primary-fixed': accentLight,
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,

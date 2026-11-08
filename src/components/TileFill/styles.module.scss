@@ -3,7 +3,7 @@
     width: 100%;
     height: 100%;
 
-    /* Light on a dark scheme: the scheme sets the filter, see orisoScheme.ts. */
+    /* A dark workspace flips the dark ink light through this token, see orisoScheme.ts. */
     filter: var(--admin-picture-filter, none);
     object-fit: contain;
 }

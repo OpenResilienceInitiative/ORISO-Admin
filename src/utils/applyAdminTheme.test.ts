@@ -122,11 +122,12 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).not.toBe('#fcf9f9');
     });
 
-    it('flips tile pictures light on the dark surface and back to as-drawn on the light one', () => {
+    it('keeps tile pictures as drawn in both schemes, because tiles and dialogs stay light', () => {
         const root = document.createElement('div');
 
         applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
-        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('invert(1) hue-rotate(180deg)');
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+        expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
 
         applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
         expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
