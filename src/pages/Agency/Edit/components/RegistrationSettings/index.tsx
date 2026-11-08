@@ -1,9 +1,8 @@
-import { Alert, Divider, Form } from 'antd';
+import { Divider, Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef } from 'react';
 import { Card } from '../../../../../components/Card';
-import { M3Button } from '../../../../../components/M3Button';
 import { MuiRadioGroupField } from '../../../../../components/mui/MuiRadioGroupField';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
@@ -22,6 +21,8 @@ import { resolveAgencyTenantId } from '../../../../../api/agency/addAgencyData';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 import { assignableConsultants, isConsultantSectionVisible, mayBeVisibleInRegistration } from './consultantSection';
 import { AssignedConsultants } from './AssignedConsultants';
+import { Notify } from '../../../../../components/Notify';
+import { HintText } from '../../../../../components/HintText';
 
 interface RegistrationSettingsProps {
     asFields?: boolean;
@@ -162,15 +163,13 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
     const fields = (
         <>
             {needsConsultantAssignment && (
-                <Alert
-                    className={styles.warning}
-                    type="warning"
-                    description={t(
+                <HintText className={styles.warning}>
+                    {t(
                         showConsultantAssignment
                             ? 'agency.form.registrationSettings.assignmentWarning'
                             : 'agency.form.registrationSettings.onlineWarning',
                     )}
-                />
+                </HintText>
             )}
             {showConsultantAssignment && (
                 <>
@@ -188,16 +187,19 @@ export const RegistrationSettings = ({ asFields, editing }: RegistrationSettings
                         options={consultantOptions}
                     />
                     {consultantSearchFailed && !awaitingTenant && (
-                        <Alert
-                            className={styles.warning}
-                            type="error"
-                            description={t('agency.form.registrationSettings.consultants.loadError')}
-                            action={
-                                <M3Button variant="text" onClick={() => retryConsultantSearch()}>
-                                    {t('agency.form.registrationSettings.consultants.retry')}
-                                </M3Button>
-                            }
-                        />
+                        <Notify
+                            quietText={t('notify.tile.notLoaded')}
+                            title={t('notify.title.agency')}
+                            severity="error"
+                            actions={[
+                                {
+                                    label: t('agency.form.registrationSettings.consultants.retry'),
+                                    onClick: () => retryConsultantSearch(),
+                                },
+                            ]}
+                        >
+                            {t('agency.form.registrationSettings.consultants.loadError')}
+                        </Notify>
                     )}
                     <div className={styles.createConsultant}>
                         <CreateConsultantModal

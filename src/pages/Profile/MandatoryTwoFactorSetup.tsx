@@ -1,9 +1,10 @@
-import { Alert, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/Card';
 import { Page } from '../../components/Page';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
+import { HintText } from '../../components/HintText';
 
 /**
  * Enrolment screen shown in place of the admin area (#891).
@@ -26,17 +27,15 @@ export const MandatoryTwoFactorSetup = () => {
             <Page.Title />
             <Row gutter={[24, 24]}>
                 <Col xs={24} sm={24} md={16} lg={12} xl={12} xxl={10}>
-                    <Alert
-                        type={setupAvailable ? 'warning' : 'error'}
-                        showIcon
-                        message={t('twoFactorAuth.required.title')}
-                        description={
-                            setupAvailable
-                                ? t('twoFactorAuth.required.subtitle')
-                                : t('twoFactorAuth.required.unavailable')
-                        }
+                    <HintText
+                        tone={setupAvailable ? 'default' : 'error'}
+                        title={t('twoFactorAuth.required.title')}
                         className="mb-m"
-                    />
+                    >
+                        {setupAvailable
+                            ? t('twoFactorAuth.required.subtitle')
+                            : t('twoFactorAuth.required.unavailable')}
+                    </HintText>
                     <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
                         <TwoFactorSetup context="profile" required />
                     </Card>

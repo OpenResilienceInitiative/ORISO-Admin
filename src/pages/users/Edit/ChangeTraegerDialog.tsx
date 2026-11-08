@@ -1,4 +1,3 @@
-import { Alert } from 'antd';
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined';
 import { useTranslation } from 'react-i18next';
 import { DialogButton, Modal } from '../../../components/Modal';
@@ -8,6 +7,7 @@ import {
     type ChangeTenantErrorCode,
 } from '../../../api/counselor/changeConsultantTenant';
 import styles from './styles.module.scss';
+import { Notify } from '../../../components/Notify';
 
 /** A second try can succeed; for the others the admin has to change something first. */
 const RETRYABLE: ChangeTenantErrorCode[] = [
@@ -130,14 +130,11 @@ export const ChangeTraegerDialog = ({
             }
         >
             {error && (
-                <Alert
-                    className={styles.dialogError}
-                    type="error"
-                    showIcon
-                    message={t(`counselor.changeTenant.error.${error}`)}
-                />
+                <Notify title={t('notify.title.users')} severity="error">
+                    {t(`counselor.changeTenant.error.${error}`)}
+                </Notify>
             )}
-            <div className={styles.dialogNotice}>
+            <div className={styles.dialogConsequences}>
                 <p>{casesSentence(openCases)}</p>
                 <p>{t('counselor.changeTenant.accessLoss', values)}</p>
                 <p>{t('counselor.changeTenant.takeover', values)}</p>

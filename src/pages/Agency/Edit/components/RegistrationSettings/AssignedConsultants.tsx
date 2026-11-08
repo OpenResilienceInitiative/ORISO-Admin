@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { snackbar } from '../../../../../components/Snackbar';
+import { Notify } from '../../../../../components/Notify';
 import { InputChipPicker } from '../../../../../components/InputChipPicker';
 import { Modal } from '../../../../../components/Modal';
 import { X_REASON } from '../../../../../api/fetchData';
@@ -76,7 +77,17 @@ export const AssignedConsultants = ({ agencyId, editing }: AssignedConsultantsPr
     return (
         <div className={styles.assigned}>
             <p className={styles.assignedTitle}>{title}</p>
-            {isError && <p>{t('agency.form.registrationSettings.assigned.loadError')}</p>}
+            {isError && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.agency')}
+                    quietText={t('notify.tile.notLoaded')}
+                    causeKey={`agency:${agencyId}:consultants`}
+                    retry
+                >
+                    {t('agency.form.registrationSettings.assigned.loadError')}
+                </Notify>
+            )}
             {!isError && !isLoading && consultants.length === 0 && (
                 <p className={styles.assignedEmpty}>{t('agency.form.registrationSettings.assigned.empty')}</p>
             )}

@@ -5,6 +5,7 @@ import i18n from 'i18next';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../enums/UserRole';
+import { findPopup } from '../../../test/storyPopups';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { UserEditOrAdd } from '.';
 
@@ -310,7 +311,7 @@ const refusedBy = (answer: MoveAnswer, message: RegExp, extra: Partial<Story> = 
     play: async () => {
         const dialog = await reviewMove();
         await confirmMove(dialog);
-        await expect(await dialog.findByRole('alert')).toHaveTextContent(message);
+        await expect(await findPopup(document.body, message, 'error')).toHaveTextContent(message);
         await userEvent.click(
             dialog.getByRole('button', { name: wording('Zurück zum Bearbeiten', 'Back to editing') }),
         );
@@ -357,7 +358,9 @@ export const RefusalShownInTheDialog: Story = {
     play: async () => {
         const dialog = await reviewMove();
         await confirmMove(dialog);
-        await expect(await dialog.findByRole('alert')).toHaveTextContent(/letzte Beratungsperson/);
+        await expect(await findPopup(document.body, /letzte Beratungsperson/, 'error')).toHaveTextContent(
+            /letzte Beratungsperson/,
+        );
     },
 };
 
@@ -367,7 +370,9 @@ export const RefusalShownInTheDialogEnglish: Story = {
     play: async () => {
         const dialog = await reviewMove();
         await confirmMove(dialog);
-        await expect(await dialog.findByRole('alert')).toHaveTextContent(/last one of a counselling centre/);
+        await expect(await findPopup(document.body, /last one of a counselling centre/, 'error')).toHaveTextContent(
+            /last one of a counselling centre/,
+        );
     },
 };
 

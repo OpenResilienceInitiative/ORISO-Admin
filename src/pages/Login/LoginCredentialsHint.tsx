@@ -1,5 +1,5 @@
-import Alert from '@mui/material/Alert';
 import { useTranslation } from 'react-i18next';
+import { Notify } from '../../components/Notify';
 
 /**
  * TEN-INV-U10 (#572): the ONE combined, privacy-preserving hint for a failed
@@ -12,8 +12,14 @@ export const LoginCredentialsHint = () => {
     const { t } = useTranslation();
 
     return (
-        <Alert severity="error" role="alert" sx={{ mb: 2 }} data-testid="login-credentials-hint">
+        <Notify
+            title={t('notify.title.login')}
+            testId="login-credentials-hint"
+            severity="error"
+            // The hint has no height of its own; "Ansehen" goes to the field the person has to correct.
+            jump='input[autocomplete="username"]'
+        >
             {t('message.error.auth.credentialsOrInvite')}
-        </Alert>
+        </Notify>
     );
 };
