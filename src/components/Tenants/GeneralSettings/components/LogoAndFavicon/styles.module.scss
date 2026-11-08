@@ -1,6 +1,5 @@
-/* Each image sits in its own panel; the logo preview is the large one, the favicon and association logo keep their size cue. */
+/* Each image sits in its own panel. The preview box is the 128px square of the shared file uploader. */
 .assetUploader {
-    width: 112px;
     margin-bottom: 0;
 
     :global {

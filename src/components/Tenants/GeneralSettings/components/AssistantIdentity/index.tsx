@@ -26,6 +26,12 @@ const presets = [
     ['robot-5475944', Robot4],
 ] as const;
 
+/**
+ * antd renders the group as a plain div and its typings omit `role`, but it passes the attribute on. Without the
+ * role the group's label would not be announced.
+ */
+const RADIO_GROUP_ROLE = { role: 'radiogroup' } as const;
+
 const IconPicker = ({
     value,
     onChange,
@@ -46,6 +52,7 @@ const IconPicker = ({
             onChange={(event) => onChange?.(event.target.value)}
             disabled={disabled || componentDisabled}
             className={styles.presets}
+            {...RADIO_GROUP_ROLE}
             aria-label={label}
         >
             <Radio value="">{t('settings.assistant.inherit')}</Radio>
