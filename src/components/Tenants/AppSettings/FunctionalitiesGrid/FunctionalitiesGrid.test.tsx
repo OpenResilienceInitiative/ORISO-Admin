@@ -32,6 +32,19 @@ describe('FunctionalitiesGrid', () => {
         expect(container.querySelector('.ant-row')).toBeNull();
     });
 
+    it('keeps the tiles in reading order and gives the other-functions tile two columns', () => {
+        const { container } = render(<FunctionalitiesGrid tenantId="7" />);
+        const items = [...container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]')];
+
+        expect(items.map((item) => item.querySelector('[data-testid]')?.getAttribute('data-testid'))).toEqual([
+            'smtp',
+            'communication',
+            'other-functions',
+            'topics',
+        ]);
+        expect(items.map((item) => /span([23])/.exec(item.className)?.[1] ?? '1')).toEqual(['3', '1', '2', '1']);
+    });
+
     it('drops the tiles a level hides', () => {
         const { container } = render(<FunctionalitiesGrid tenantId="7" hideSmtp hideCommunication hideTopicsCard />);
 

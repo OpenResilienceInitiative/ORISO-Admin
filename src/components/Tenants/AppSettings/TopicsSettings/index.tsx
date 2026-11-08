@@ -1,8 +1,6 @@
 import { List, Space, Tag, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import LabelOutlinedIcon from '@mui/icons-material/LabelOutlined';
 import { Card } from '../../../Card';
-import styles from './styles.module.scss';
 import { DEFAULT_TOPICS, DefaultTopic } from './defaultTopics';
 
 const LANGUAGES = ['de', 'en', 'tr'] as const;
@@ -23,17 +21,12 @@ export const TopicsSettings = () => {
         <Card
             titleKey="tenants.appSettings.topics.title"
             subTitleKey="tenants.appSettings.topics.description"
-            className={styles.topicCard}
-            variant="dialog"
-            autoHeight
-            headerIcon={<LabelOutlinedIcon />}
             cardTitleChildren={<Tag color="default">{t('tenants.appSettings.topics.readOnly')}</Tag>}
         >
             <Typography.Paragraph type="secondary">
                 {t('tenants.appSettings.topics.visibilityNotice')}
             </Typography.Paragraph>
             <List
-                className={styles.topicList}
                 size="small"
                 dataSource={DEFAULT_TOPICS}
                 rowKey={(topic) => topic.slug}
