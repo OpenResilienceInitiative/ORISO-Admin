@@ -269,8 +269,9 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
             const queued = [...state.queued];
             const replaced = queued[queuedAt];
             queued[queuedAt] = item;
-            if (replaced.onClose && replaced.onClose !== item.onClose) finish(replaced, 'replaced');
+            // State first, callback second (as for a visible pop-up): onClose may call back into the store.
             setState(state.visible, queued);
+            if (replaced.onClose && replaced.onClose !== item.onClose) finish(replaced, 'replaced');
             return key;
         }
         const previous = lastRaised.get(key);
