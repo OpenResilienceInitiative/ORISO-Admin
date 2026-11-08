@@ -6,6 +6,7 @@ import { DataTable } from './DataTable';
 import { DataTableHeader, DataTableSort } from './DataTableHeader';
 
 const COLUMNS = [
+    { key: 'select', ariaLabel: 'Auswahl' },
     { key: 'name', label: 'Name', sortable: true },
     { key: 'invitedAt', label: 'Eingeladen am' },
 ];
@@ -50,6 +51,13 @@ describe('DataTableHeader', () => {
         const fromDesc = renderHeader({ key: 'name', direction: 'desc' });
         await user.click(screen.getByRole('button', { name: 'Name' }));
         expect(fromDesc).toHaveBeenCalledWith(null);
+    });
+
+    it('names a label-only column on its semantic header', () => {
+        renderHeader(null);
+
+        expect(screen.getByRole('columnheader', { name: 'Auswahl' })).toHaveAttribute('aria-label', 'Auswahl');
+        expect(screen.queryByRole('button', { name: 'Auswahl' })).not.toBeInTheDocument();
     });
 
     it('does not render a button for non-sortable columns', () => {
