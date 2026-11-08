@@ -4,12 +4,14 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { ChangeConsultantTenantError } from '../../../api/counselor/changeConsultantTenant';
 import { appURL } from '../../../appConfig';
+import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -47,6 +49,8 @@ const mocks = vi.hoisted(() => ({
     /** Swapped per test so the same harness can drive the create AND the edit form. */
     params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
     canUpdateAgency: true,
+    agencyAdminActions: [] as PermissionAction[],
+    useMountedRoute: false,
     addTopicsToAgency: vi.fn(),
     appSettings: {} as Record<string, unknown>,
 }));
@@ -133,6 +137,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -150,7 +155,10 @@ vi.mock('react-router-dom', async () => {
         // Defaults to the consultant *create* form (`id: 'add'`): nothing is read-only and the
         // save button is available without first unlocking the form. Tests that need the edit
         // form set `mocks.params.id` to a consultant id.
-        useParams: () => mocks.params,
+        useParams: function useEditorParams() {
+            const routeParams = actual.useParams();
+            return mocks.useMountedRoute ? routeParams : mocks.params;
+        },
     };
 });
 
@@ -201,9 +209,11 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({
         permissions: {},
-        // Grants only "update" on agencies, so a check for any other action cannot pass by accident.
-        can: (action: PermissionAction, resource: Resource) =>
-            resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency),
+        can: (action: PermissionAction, resource: Resource) => {
+            if (resource === Resource.AgencyAdminUser) return mocks.agencyAdminActions.includes(action);
+            // Grants only "update" on agencies, so another agency action cannot pass by accident.
+            return resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency);
+        },
     }),
 }));
 
@@ -215,8 +225,9 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
     // The page runs this hook twice: once searching for the edited consultant (`search: id`) and
     // once, unsearched, for the supervisor candidates. They have to be distinguishable, otherwise
     // a candidate-query failure cannot be simulated at all.
-    useConsultantsOrAdminsData: (args: { search?: string }) =>
+    useConsultantsOrAdminsData: vi.fn((args: { search?: string }) =>
         args?.search ? mocks.consultantsResult : mocks.supervisorCandidatesResult,
+    ),
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
@@ -346,9 +357,73 @@ beforeEach(() => {
     mocks.counselorResult = { data: undefined, isLoading: false };
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
     mocks.canUpdateAgency = true;
+    mocks.agencyAdminActions = [PermissionAction.Read, PermissionAction.Create, PermissionAction.Update];
+    mocks.useMountedRoute = false;
+    vi.mocked(useConsultantsOrAdminsData).mockClear();
     mocks.addTopicsToAgency.mockReset();
     mocks.addTopicsToAgency.mockResolvedValue(undefined);
     mocks.appSettings = {};
+});
+
+describe('user editor route access', () => {
+    const renderEditorRoute = (path: string) => {
+        mocks.useMountedRoute = true;
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        return render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[path]}>
+                    <Routes>
+                        <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+    };
+
+    it.each(['agency-admins/admin-42', 'agency-admins/add', 'unrecognized/admin-42'])(
+        'denies the restricted agency admin at %s before loading any record',
+        (path) => {
+            mocks.roles = [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin];
+            mocks.agencyAdminActions = [];
+
+            renderEditorRoute(`/admin/users/${path}`);
+
+            expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+            expect(screen.queryByLabelText('Vorname')).not.toBeInTheDocument();
+            expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+        },
+    );
+
+    it('requires update as well as read for an existing agency-admin editor', () => {
+        mocks.agencyAdminActions = [PermissionAction.Read];
+
+        renderEditorRoute('/admin/users/agency-admins/admin-42');
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+        expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['agency-admins', [PermissionAction.Read, PermissionAction.Update], UserRole.TenantAdmin],
+        ['consultants', [], UserRole.RestrictedAgencyAdmin],
+    ])('preserves the authorized %s editor', async (section, actions, role) => {
+        mocks.roles = [role, UserRole.UserAdmin];
+        mocks.agencyAdminActions = actions;
+        mocks.consultantsResult = {
+            data: { data: [{ id: 'account-42', firstname: 'Ada', lastname: 'Lovelace' }] },
+            isLoading: false,
+        };
+
+        renderEditorRoute(`/admin/users/${section}/account-42`);
+
+        expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+        expect(useConsultantsOrAdminsData).toHaveBeenCalledWith(
+            expect.objectContaining({ typeOfUser: section, search: 'account-42', enabled: true }),
+        );
+        await userEvent.click(pageButton('Bearbeiten'));
+        expect(pageButton('Speichern')).toBeEnabled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
