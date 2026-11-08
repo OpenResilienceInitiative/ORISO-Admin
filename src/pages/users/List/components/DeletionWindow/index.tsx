@@ -50,7 +50,7 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
 
     const onError = (error: unknown) => {
         const key = errorKeyFor(error);
-        if (key) message.error({ content: t(key), duration: 5 });
+        if (key) message.error({ content: t(key) });
     };
 
     const cancelMutation = useCancelConsultantDeletion();

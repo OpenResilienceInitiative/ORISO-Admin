@@ -39,7 +39,6 @@ const getAgencyDataById = (agencyId: string) => {
         const reason = error instanceof Response ? error.headers.get(FETCH_ERRORS.X_REASON) : null;
         snackbar.error({
             content: i18next.t([`message.error.${reason}`, 'message.error.default']) as string,
-            duration: 8,
         });
 
         throw error;

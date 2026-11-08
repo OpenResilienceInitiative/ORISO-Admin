@@ -46,12 +46,11 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
                 if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
                     snackbar.error({
                         message: t('editor.image.upload.unsupportedType'),
-                        duration: 5,
                     });
                     return;
                 }
                 if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-                    snackbar.error({ message: t('editor.image.upload.tooLarge'), duration: 5 });
+                    snackbar.error({ message: t('editor.image.upload.tooLarge') });
                     return;
                 }
                 try {
@@ -59,7 +58,7 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
                     restoreInsertionPoint();
                     getEditor()?.chain().focus().setImage({ src: media.url }).run();
                 } catch {
-                    snackbar.error({ message: t('editor.image.upload.failed'), duration: 5 });
+                    snackbar.error({ message: t('editor.image.upload.failed') });
                 }
             };
 

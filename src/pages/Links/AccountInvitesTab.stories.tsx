@@ -257,12 +257,15 @@ export const SmtpCredentialsMissing: Story = {
             { timeout: 10_000 },
         );
         await userEvent.click(enabledSendButton);
-        // The snackbar host renders in a portal outside canvasElement.
+        // The snackbar host renders in a portal outside canvasElement. Look at every pop-up, not the
+        // first one: an earlier message must not hide the one this story raised.
         await waitFor(
             () =>
-                expect(document.body.querySelector('[data-testid="snackbar"]')?.textContent ?? '').toContain(
-                    'SMTP-Zugangsdaten fehlen',
-                ),
+                expect(
+                    Array.from(document.body.querySelectorAll('[data-testid="snackbar"]')).map(
+                        (element) => element.textContent ?? '',
+                    ),
+                ).toEqual(expect.arrayContaining([expect.stringContaining('SMTP-Zugangsdaten fehlen')])),
             { timeout: 10_000 },
         );
     },

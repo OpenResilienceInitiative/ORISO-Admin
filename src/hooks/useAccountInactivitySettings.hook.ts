@@ -31,7 +31,7 @@ export const useAccountInactivitySettings = (enabled = true) => {
             snackbar.success({ content: t('globalSettings.accountInactivity.saveSuccess'), duration: 3 });
         },
         onError: async (error) => {
-            snackbar.error({ content: t(errorKey(error)), duration: 5 });
+            snackbar.error({ content: t(errorKey(error)) });
             if (error instanceof Error && error.message === FETCH_ERRORS.CONFLICT) {
                 await queryClient.refetchQueries({ queryKey: ACCOUNT_INACTIVITY_SETTINGS_QUERY_KEY, exact: true });
             }

@@ -93,7 +93,6 @@ const TenantAdminEditor = () => {
             const content = await extractApiErrorMessage(error);
             notification.error({
                 message: content,
-                duration: 8,
             });
         },
     });

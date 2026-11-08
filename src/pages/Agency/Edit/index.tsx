@@ -234,7 +234,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     if (response?.consultantAssignmentFailed) {
                         notification.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                     setSubmitted(false);
@@ -259,7 +258,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             notification.error({
                 message: t('agency.edit.form.validationFailed'),
                 description: fields || t('form.errors.required'),
-                duration: 8,
             });
         },
         [t],
@@ -280,7 +278,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 notification.error({
                     message: t('agency.edit.general.more_settings.tenant.title'),
                     description: t('form.errors.required'),
-                    duration: 5,
                 });
                 setSubmitted(false);
                 return;
@@ -318,14 +315,13 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         }
                         // The field lives on another card (the visibility switch is rejected for
                         // an incomplete data protection contact): say what is missing instead.
-                        notification.error({ message, duration: 8 });
+                        notification.error({ message });
                         return;
                     }
 
                     if (error instanceof Response && error.status === 400) {
                         notification.error({
                             message: t('message.error.default'),
-                            duration: 8,
                         });
                     }
                 },
@@ -340,7 +336,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     if (response?.consultantAssignmentFailed) {
                         notification.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                 },
@@ -409,7 +404,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 if (error instanceof Response && error.status === 400) {
                     notification.error({
                         message: t('message.error.default'),
-                        duration: 8,
                     });
                 }
                 throw error;

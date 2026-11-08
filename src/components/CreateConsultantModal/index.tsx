@@ -158,7 +158,7 @@ export const CreateConsultantModal = ({
             // The counsellor exists; only the set-up mail failed. Another submit would only hit
             // "username not available", so the dialog closes (#1144).
             if (await extractSmtpSendFailure(error)) {
-                snackbar.warning({ content: t('counselor.create.setupMailNotSent'), duration: 10 });
+                snackbar.warning({ content: t('counselor.create.setupMailNotSent') });
                 closeModal();
                 return;
             }
@@ -171,13 +171,13 @@ export const CreateConsultantModal = ({
                     reason === X_REASON.NUMBER_OF_LICENSES_EXCEEDED ||
                     reason === X_REASON.PASSWORD_NOT_VALID
                 ) {
-                    snackbar.error({ content: t(`message.error.${reason}`), duration: 8 });
+                    snackbar.error({ content: t(`message.error.${reason}`) });
                     return;
                 }
             }
 
             const content = await extractApiErrorMessage(error);
-            snackbar.error({ content, duration: 8 });
+            snackbar.error({ content });
         },
     });
 

@@ -30,7 +30,7 @@ export const useChatRecoverySettings = (enabled = true) => {
             queryClient.setQueryData(CHAT_RECOVERY_SETTINGS_QUERY_KEY, confirmed);
             snackbar.success({ content: t('globalSettings.chatRecovery.saveSuccess'), duration: 3 });
         },
-        onError: (error) => snackbar.error({ content: t(errorKey(error)), duration: 5 }),
+        onError: (error) => snackbar.error({ content: t(errorKey(error)) }),
     });
     return { ...query, save: mutation.mutate, isSaving: mutation.isPending };
 };

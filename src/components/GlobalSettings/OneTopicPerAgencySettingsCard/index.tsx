@@ -68,7 +68,6 @@ export const OneTopicPerAgencySettingsCardContainer = () => {
                         onError: () => {
                             snackbar.error({
                                 content: t('globalSettings.oneTopicPerAgency.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },

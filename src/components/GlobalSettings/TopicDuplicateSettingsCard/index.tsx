@@ -82,7 +82,6 @@ export const TopicDuplicateSettingsCardContainer = () => {
                         onError: () => {
                             snackbar.error({
                                 content: t('globalSettings.topicDuplicate.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },
