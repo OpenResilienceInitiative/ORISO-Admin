@@ -2,6 +2,9 @@
 
 /* The topic catalogue: one white panel per category inside a tile. M3 tokens only. */
 
+/* The app has no shared focus-ring token yet; every focus ring of this file comes from here. */
+$focus-ring: #273270;
+
 /* The card keeps 24px of padding on each side. The panels reach almost to its edge (8px), the
    panels themselves carry the air around their icons. */
 
@@ -141,7 +144,7 @@
 
     &:focus-visible {
         border-radius: 4px;
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 }
@@ -195,7 +198,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 
@@ -311,7 +314,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 
@@ -435,7 +438,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 
@@ -467,7 +470,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 }
@@ -500,7 +503,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid #273270;
+        outline: 2px solid $focus-ring;
         outline-offset: 2px;
     }
 }

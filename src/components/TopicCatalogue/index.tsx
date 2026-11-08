@@ -348,6 +348,8 @@ export const TopicCatalogue = ({
             return;
         }
         setDraft(result.layout);
+        // A topic that steps into a folded category must land where its handle exists, or focus is lost.
+        setCollapsed((list) => list.filter((id) => id !== result.groupId));
         setFocusKey(placementKey(result.groupId, topicId));
         announceAt(topicId, result.groupId, result.index, result.layout);
     };

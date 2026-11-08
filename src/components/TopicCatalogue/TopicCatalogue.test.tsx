@@ -166,6 +166,19 @@ describe('TopicCatalogue edit mode', () => {
         await waitFor(() => expect(status()).toHaveTextContent('Platz 1 von 2'));
     });
 
+    it('opens a folded category when a topic is moved into it by keyboard, so focus is not lost', async () => {
+        setup();
+        const u = user();
+        await startEditing();
+        await u.click(label('„Weitere“ zuklappen'));
+        expect(groupItems('b')).toHaveLength(0);
+
+        handle('Sucht').focus();
+        await u.keyboard('{ArrowRight}');
+        expect(groupItems('b').some((text) => text.includes('Sucht'))).toBe(true);
+        expect(handle('Sucht')).toHaveFocus();
+    });
+
     it('says when a topic cannot move further', async () => {
         setup();
         const u = user();
@@ -393,7 +406,7 @@ describe('TopicCatalogue icons', () => {
         expect(change.layout.find((group: { id: string }) => group.id === 'a')?.icon).toMatch(/^data:image\/svg\+xml/);
     });
 
-    it('removes a category picture again and shows none in view mode when there is none', async () => {
+    it('removes a category picture again', async () => {
         const { onSaveLayout } = setup({
             layout: layout.map((group) =>
                 group.id === 'a' ? { ...group, icon: 'data:image/png;base64,AA==' } : group,
@@ -401,7 +414,10 @@ describe('TopicCatalogue icons', () => {
         });
         const u = user();
         await u.click(label('Bearbeiten'));
+        expect(section('a').querySelector('img')).not.toBeNull();
         await u.click(label('Icon von „Allgemein“ entfernen'));
+        // Categories show no stand-in picture, so nothing is left once it is removed.
+        expect(section('a').querySelector('img')).toBeNull();
         await u.click(textButton('Speichern'));
         await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
         expect(onSaveLayout.mock.calls[0][0].groupIconFiles).toEqual({ a: null });
