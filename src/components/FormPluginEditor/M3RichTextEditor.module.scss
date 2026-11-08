@@ -366,6 +366,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
+.statusRow {
+    padding: 0 48px 12px;
+
+    @media (max-width: 599px) {
+        padding: 0 16px 12px;
+    }
+}
+
 .helpIcon {
     // width/height beat the MUI font-size class (emotion injects later).
     width: 16px;
@@ -395,6 +403,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
 .helpHint {
     font-weight: 600;
+}
+
+// "Nicht mehr anzeigen": a text link inside the tile's own hint, not a pop-up action.
+.helpHintDismiss {
+    display: inline;
+    min-height: 24px;
+    margin: 0;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--m3-primary, #b0001b);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+
+    &:hover {
+        text-decoration-thickness: 2px;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #b0001b);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
 }
 
 .languageRow {
@@ -1015,260 +1048,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
         flex: 1;
         overflow-y: auto;
     }
-}
-
-.snackbarStack {
-    display: flex;
-    // Let two long notices use the remaining surface height at narrow widths.
-    // If more notices exceed it, this stack scrolls instead of clipping actions.
-    max-height: 100%;
-    min-height: 0;
-    flex-shrink: 0;
-    flex-direction: column;
-    gap: 8px;
-    padding: 6px;
-    overflow-y: auto;
-}
-
-.snackbarStackItem {
-    flex-shrink: 0;
-    container-type: inline-size;
-}
-
-// M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
-// .hasSnackbar above reserves matching scroll space so text remains reachable.
-// A snackbar flips in from its lower edge; the stack slides when one closes.
-// Rotation only, no opacity: edge-on at -90deg the snackbar is already invisible, and an
-// opacity of 0 would make every "is the snackbar visible" check fail during the 240ms.
-@keyframes hintSnackbarFlipIn {
-    from {
-        transform: perspective(600px) rotateX(-90deg);
-    }
-
-    to {
-        transform: none;
-    }
-}
-
-.hintSnackbar {
-    position: relative;
-    z-index: 5;
-    transform-origin: 50% 100%;
-    animation: hintSnackbarFlipIn 240ms cubic-bezier(0.2, 0, 0, 1);
-
-    @media (prefers-reduced-motion: reduce) {
-        animation: none;
-    }
-
-    display: flex;
-    align-items: center;
-    padding: 4px 4px 4px 16px;
-    background: #303031;
-    border-radius: 4px;
-    box-shadow: 0 4px 4px rgb(0 0 0 / 15%), 0 1px 1.5px rgb(0 0 0 / 30%);
-    color: #f3f0f0;
-
-    @media (max-width: 599px) {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 40px;
-        padding-left: 16px;
-
-        .hintSnackbarText {
-            grid-column: 1 / -1;
-        }
-
-        .hintSnackbarActions {
-            justify-self: start;
-        }
-
-        &:not(.hintSnackbarLong) .hintSnackbarAction {
-            padding-left: 0;
-            white-space: normal;
-            text-align: left;
-        }
-
-        .hintSnackbarClose {
-            grid-column: 2;
-        }
-    }
-}
-
-/* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
-   dark text. Used when the message confirms something that happened rather than
-   blocking an action — e.g. the DPA was signed. */
-
-// Errors in the M3 error role (owner call 2026-09-23): a red snackbar instead of an alert box.
-.hintSnackbarError {
-    background: var(--m3-error, #b1005e);
-    color: var(--m3-on-error, #ffffff);
-
-    .hintSnackbarAction {
-        color: var(--m3-on-error, #ffffff);
-
-        &:hover {
-            background: rgb(255 255 255 / 16%);
-        }
-    }
-
-    .hintSnackbarClose {
-        color: var(--m3-on-error, #ffffff);
-    }
-}
-
-.hintSnackbarSuccess {
-    background: var(--m3-on-secondary-container, #e7effc);
-    color: #000000;
-
-    .hintSnackbarAction {
-        color: var(--m3-error, #b1005e);
-
-        &:hover {
-            background: rgb(177 0 94 / 12%);
-        }
-    }
-
-    .hintSnackbarClose {
-        color: #000000;
-    }
-}
-
-// In read mode the dismiss label may wrap onto two lines.
-// The same dock is used in reading and writing modes.
-.readMode .hintSnackbarAction {
-    max-width: 130px;
-    line-height: 14px;
-    text-align: center;
-    white-space: normal;
-}
-
-.hintSnackbarText {
-    flex: 1;
-    padding: 6px 4px 6px 0;
-    font-size: 14px;
-    letter-spacing: 0.25px;
-    line-height: 20px;
-}
-
-.hintSnackbarActions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.hintSnackbarAction {
-    flex-shrink: 0;
-    padding: 10px 12px;
-    border: 0;
-    background: transparent;
-    border-radius: 100px;
-    color: #ffb4aa;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-
-    &:hover {
-        background: rgb(255 180 170 / 12%);
-    }
-}
-
-.hintSnackbarClose {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    border-radius: 100px;
-    color: #f3f0f0;
-    cursor: pointer;
-
-    &:hover {
-        background: rgb(243 240 240 / 12%);
-    }
-}
-
-.hintSnackbarClose svg {
-    width: 20px;
-    height: 20px;
-}
-
-.hintSnackbarCloseIcon {
-    // Recolour the exact Figma close shape for pink error snackbars as well.
-    path {
-        fill: currentColor;
-    }
-}
-
-.hintSnackbarSuccessIcon {
-    width: 20px;
-    height: 20px;
-}
-
-// Figma 53977:34280, adapted to dynamic legal copy and a possible second action.
-// Two 20px text lines produce the reference's 112px overall height.
-.hintSnackbarLong {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 48px;
-    grid-template-rows: auto minmax(48px, auto);
-    align-items: start;
-    gap: 10px 0;
-    padding: 14px 0 0 16px;
-
-    .hintSnackbarText {
-        min-width: 0;
-        grid-column: 1 / -1;
-        grid-row: 1;
-        padding: 0 16px 0 0;
-        font-size: 14px;
-        line-height: 20px;
-        overflow-wrap: anywhere;
-    }
-
-    .hintSnackbarActions {
-        min-width: 0;
-        width: 100%;
-        grid-column: 1;
-        grid-row: 2;
-        justify-self: end;
-        justify-content: flex-end;
-        padding-left: 8px;
-        gap: 10px;
-    }
-
-    .hintSnackbarAction {
-        min-height: 40px;
-        max-width: 100%;
-        padding: 10px 12px;
-        font-size: 14px;
-        letter-spacing: 0.1px;
-        line-height: 20px;
-        white-space: normal;
-    }
-
-    .hintSnackbarCloseIcon {
-        width: 24px;
-        height: 24px;
-    }
-
-    .hintSnackbarClose {
-        width: 48px;
-        height: 48px;
-        grid-column: 2;
-        grid-row: 2;
-        align-self: end;
-    }
-}
-
-// Read mode's compact 130px limit must not squeeze long action labels.
-// Let each action take its natural width and wrap below its neighbour.
-.readMode .hintSnackbarLong .hintSnackbarAction {
-    max-width: 100%;
-    line-height: 20px;
-    white-space: normal;
 }
 
 // Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)

@@ -1,103 +1,88 @@
-import { Check, Close } from '@mui/icons-material';
+import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FigmaCloseIcon } from '../../resources/img/svg/oriso/snackbar_close_24px.svg';
-import styles from './M3RichTextEditor.module.scss';
+import { EditorJumpContext } from './EditorJumpContext';
+import { Notify, type MessageAction, type MessageSeverity, type NotifyProps } from '../Notify';
 
 export type EditorHintSnackbarTone = 'blocker' | 'success' | 'error';
 
 export type EditorHintSnackbarProps = {
     text: React.ReactNode;
-    /**
-     * `blocker` (default) is the dark inverse snackbar for "you cannot do X yet".
-     * `success` is the blue secondary-container variant for "X happened" — same
-     * shell, confirming rather than blocking (Figma Admin.ORISO 1261-51137).
-     * `error` is the M3 error-container variant for "this did not work" (owner
-     * call 2026-09-23: errors read better as a snackbar than as an alert box).
-     */
+    /** `blocker` (default) = info, "you cannot do X yet"; `success` = "X happened"; `error` = "this did not work". */
     tone?: EditorHintSnackbarTone;
-    /** Figma 53977:34280: text above a separate action and close row. */
+    /** Kept so existing call sites compile; compact and long are one design now. */
     layout?: 'compact' | 'long';
-    /** Hide for this session (the X / check affordance). */
+    /** Hide for this session (the close button). */
     onClose: () => void;
     /**
      * The text action. Defaults to hiding permanently ("nicht mehr anzeigen", the caller
      * persists the choice); a caller with a different action names it via `actionLabel`.
-     * Without a handler there is no action — only the close affordance.
+     * Without a handler there is no action — only the close button.
      */
     onDismiss?: () => void;
     actionLabel?: string;
     actionDisabled?: boolean;
     /** Optional second action, e.g. preview alongside "do not show again". */
     secondaryAction?: { label: string; onClick: () => void; disabled?: boolean };
-    /** Accessible name of the close affordance, when "close hint" is not the right word. */
+    /** Accessible name of the close button, when "close hint" is not the right word. */
     closeLabel?: string;
+    /** Short line saying what the pop-up is about. Default: legal texts, where the editor lives. */
+    title?: string;
+    /**
+     * Takes the person to the field or tile the notice is about ("Ansehen"). Default inside an editor:
+     * the editor's heading. `false` = nothing to go to.
+     */
+    jump?: NotifyProps['jump'];
+    /** `data-testid` of the pop-up, for tests. */
+    testId?: string;
+};
+
+const SEVERITY: Record<EditorHintSnackbarTone, MessageSeverity> = {
+    blocker: 'info',
+    success: 'success',
+    error: 'error',
 };
 
 /**
- * M3 snackbar inside the editor surface (Figma Admin.ORISO 1229-17864 blocker,
- * 1261-51137 success). Overlays the bottom of the editor; the editor reserves
- * scroll space for it so neither legal text nor controls become unreachable,
- * including on narrow viewports.
+ * Editor notice. It is a pop-up on the shared snackbar channel (one place, bottom of the screen),
+ * never a box inside the editor: the component renders nothing in the layout. Name kept for the
+ * many call sites and the "do not show again" persistence they own.
  */
 export const EditorHintSnackbar = ({
     text,
     tone = 'blocker',
-    layout = 'compact',
-    onClose,
     onDismiss,
+    onClose,
     actionLabel,
     actionDisabled = false,
     secondaryAction,
-    closeLabel,
+    title,
+    jump,
+    testId,
 }: EditorHintSnackbarProps) => {
     const { t } = useTranslation();
-    const isSuccess = tone === 'success';
-    const toneClass = `${isSuccess ? styles.hintSnackbarSuccess : ''} ${
-        tone === 'error' ? styles.hintSnackbarError : ''
-    }`;
-    let closeIcon = <Close />;
-    if (layout === 'long') closeIcon = <FigmaCloseIcon className={styles.hintSnackbarCloseIcon} aria-hidden="true" />;
-    if (isSuccess) closeIcon = <Check className={styles.hintSnackbarSuccessIcon} />;
+    const editorJump = useContext(EditorJumpContext);
+    const actions: MessageAction[] = [];
+    if (secondaryAction) actions.push(secondaryAction);
+    if (onDismiss) {
+        actions.push({
+            label: actionLabel ?? t('legal.help.snackbar.dismiss'),
+            onClick: onDismiss,
+            disabled: actionDisabled,
+        });
+    }
     return (
-        <div className={`${styles.hintSnackbar} ${layout === 'long' ? styles.hintSnackbarLong : ''} ${toneClass}`}>
-            <span className={styles.hintSnackbarText} role="status">
-                {text}
-            </span>
-            {(onDismiss || secondaryAction) && (
-                <div className={styles.hintSnackbarActions}>
-                    {secondaryAction && (
-                        <button
-                            type="button"
-                            className={styles.hintSnackbarAction}
-                            onClick={secondaryAction.onClick}
-                            disabled={secondaryAction.disabled}
-                        >
-                            {secondaryAction.label}
-                        </button>
-                    )}
-                    {onDismiss && (
-                        <button
-                            type="button"
-                            className={styles.hintSnackbarAction}
-                            onClick={onDismiss}
-                            disabled={actionDisabled}
-                        >
-                            {actionLabel ?? t('legal.help.snackbar.dismiss')}
-                        </button>
-                    )}
-                </div>
-            )}
-            <button
-                type="button"
-                className={styles.hintSnackbarClose}
-                aria-label={
-                    closeLabel ?? t(isSuccess ? 'legal.help.snackbar.acknowledge' : 'legal.help.snackbar.close')
-                }
-                onClick={onClose}
-            >
-                {closeIcon}
-            </button>
-        </div>
+        <Notify
+            title={title ?? t('notify.title.legal')}
+            jump={jump ?? editorJump}
+            testId={testId}
+            severity={SEVERITY[tone]}
+            onClose={onClose}
+            actions={
+                actions.length ? (actions.slice(0, 2) as [MessageAction] | [MessageAction, MessageAction]) : undefined
+            }
+        >
+            {text}
+        </Notify>
     );
 };
 

@@ -614,9 +614,9 @@ export const EditorErrorSnackbars: Story = {
     },
 };
 
-// Browser-level regression coverage for the narrow layout: the notice stack
-// reserves its own row, the chapter navigation remains available, and the first
-// function-bar control starts inside the viewport.
+// Browser-level regression coverage for the narrow layout: the notice is a pop-up outside the editor
+// (no layout row, no shift), the chapter navigation remains available, and the first function-bar
+// control starts inside the viewport.
 export const ResponsiveHintAndFunctionBar: Story = {
     render: (args) => <ResponsiveHintEditor {...args} />,
     args: {
@@ -637,19 +637,15 @@ export const ResponsiveHintAndFunctionBar: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await waitFor(() => expect(canvas.getByRole('status')).toBeInTheDocument());
+        const body = within(canvasElement.ownerDocument.body);
+        // The hint is a pop-up on the shared channel: it overlays the screen corner, outside the
+        // editor, and reserves no row in the layout.
+        const popup = await body.findByTestId('snackbar');
+        await expect(canvasElement.contains(popup)).toBe(false);
+        await expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument();
 
         const scrollContainer = canvasElement.querySelector<HTMLElement>('[class*="editorContentScroll"]');
         expect(scrollContainer).not.toBeNull();
-        // The snackbar now reserves a flex row below the text rather than
-        // borrowing padding inside the scrollport.
-        // Measure the stable dock, because the entering snackbar rotates above it.
-        const noticeStack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
-        await waitFor(() =>
-            expect(scrollContainer!.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-                noticeStack.getBoundingClientRect().top,
-            ),
-        );
         expect(canvas.getByRole('navigation')).toBeVisible();
 
         const languageControl = canvas.getByTitle('Sprache wählen');
@@ -657,8 +653,11 @@ export const ResponsiveHintAndFunctionBar: Story = {
             canvasElement.getBoundingClientRect().left,
         );
 
-        await userEvent.click(canvas.getByRole('button', { name: 'Hinweis ausblenden' }));
-        await waitFor(() => expect(canvas.queryByRole('status')).not.toBeInTheDocument());
+        // The editor does not move when the pop-up goes away.
+        const before = scrollContainer!.getBoundingClientRect().height;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Meldung schließen' }));
+        await waitFor(() => expect(body.queryByTestId('snackbar')).not.toBeInTheDocument());
+        expect(scrollContainer!.getBoundingClientRect().height).toBe(before);
     },
 };
 
