@@ -4,6 +4,20 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import type { TileHelpTopic } from '../../../../TileHelp';
 import { LegalDocumentTile } from './index';
 
+const helpButtonProps = vi.hoisted(() => ({ last: undefined as Record<string, unknown> | undefined }));
+
+// The real button, wrapped so the test can see what the tile hands to it.
+vi.mock('../../../../TileHelp', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../../TileHelp')>();
+    return {
+        ...actual,
+        TileHelpButton: (props: Parameters<typeof actual.TileHelpButton>[0]) => {
+            helpButtonProps.last = props as unknown as Record<string, unknown>;
+            return <actual.TileHelpButton {...props} />;
+        },
+    };
+});
+
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         t: (key: string, options?: { title?: string }) => (options?.title ? `${key} ${options.title}` : key),
@@ -18,7 +32,9 @@ const topic: TileHelpTopic = {
 };
 const Icon = () => <svg data-testid="tile-icon" />;
 
-const renderTile = (props: { help?: TileHelpTopic; defaultOpen?: boolean } = { help: topic }) =>
+const renderTile = (
+    props: { help?: TileHelpTopic; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void } = { help: topic },
+) =>
     render(
         <LegalDocumentTile
             icon={Icon}
@@ -33,7 +49,7 @@ const renderTile = (props: { help?: TileHelpTopic; defaultOpen?: boolean } = { h
 
 const helpButton = () => screen.queryByRole('button', { name: 'tileHelp.open Impressum' });
 
-/** Frank's decision (2026-11-08): the tile help (i) lives in the unfolded content only. */
+/** The tile help (i) lives in the unfolded content only, never in the folded header. */
 describe('LegalDocumentTile', () => {
     it('shows icon, title and state in the folded header, and nothing else', () => {
         renderTile();
@@ -69,5 +85,22 @@ describe('LegalDocumentTile', () => {
 
         expect(helpButton()).toBeNull();
         expect(screen.getByText('Wer darf was bearbeiten')).toBeVisible();
+    });
+
+    it('hands the tile icon to the explanation button, so the help dialog can show it', () => {
+        renderTile({ help: topic, defaultOpen: true });
+
+        const tileIcon = helpButtonProps.last?.tileIcon as React.ReactElement;
+        expect(tileIcon.type).toBe(Icon);
+        expect(helpButtonProps.last).toMatchObject({ topic, tileTitle: 'Impressum' });
+    });
+
+    it('reports a fold or unfold of the tile to its parent', async () => {
+        const onOpenChange = vi.fn();
+        renderTile({ help: topic, onOpenChange });
+
+        await userEvent.click(screen.getByRole('button', { name: /Impressum/ }));
+
+        expect(onOpenChange).toHaveBeenCalledWith(true);
     });
 });

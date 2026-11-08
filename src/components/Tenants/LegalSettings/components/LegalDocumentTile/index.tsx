@@ -1,12 +1,10 @@
 import type { ElementType, ReactNode } from 'react';
 import { CollapsibleTile } from '../../../../CollapsibleTile';
 import { TileHelpButton, type TileHelpTopic } from '../../../../TileHelp';
+import type { LegalDocumentTileStatus } from './legalDocumentStatus';
 import styles from './styles.module.scss';
 
-export interface LegalDocumentTileStatus {
-    label: string;
-    tone: 'neutral' | 'attention';
-}
+export type { LegalDocumentTileStatus } from './legalDocumentStatus';
 
 interface LegalDocumentTileProps {
     icon: ElementType;
@@ -18,6 +16,8 @@ interface LegalDocumentTileProps {
     /** Text above the editor, next to the explanation button: the publication state and the role-based help. */
     intro?: ReactNode;
     defaultOpen?: boolean;
+    /** Reports every toggle, so a parent that rebuilds the tile can keep it open. */
+    onOpenChange?: (open: boolean) => void;
     children: ReactNode;
 }
 
@@ -33,23 +33,30 @@ export const LegalDocumentTile = ({
     help,
     intro,
     defaultOpen,
+    onOpenChange,
     children,
-}: LegalDocumentTileProps) => (
-    <CollapsibleTile
-        icon={<Icon />}
-        title={title}
-        status={status?.label}
-        statusTone={status?.tone}
-        defaultOpen={defaultOpen}
-    >
-        <div className={styles.document}>
-            {(intro || help) && (
-                <div className={styles.intro}>
-                    <div className={styles.introText}>{intro}</div>
-                    {help && <TileHelpButton topic={help} tileTitle={title} />}
-                </div>
-            )}
-            {children}
-        </div>
-    </CollapsibleTile>
-);
+}: LegalDocumentTileProps) => {
+    // The help dialog shows the tile's own icon where it takes one; without it, it keeps the info icon.
+    const helpIcon = { tileIcon: <Icon /> };
+
+    return (
+        <CollapsibleTile
+            icon={<Icon />}
+            title={title}
+            status={status?.label}
+            statusTone={status?.tone}
+            defaultOpen={defaultOpen}
+            onOpenChange={onOpenChange}
+        >
+            <div className={styles.document}>
+                {(intro || help) && (
+                    <div className={styles.intro} data-legal-document-intro>
+                        <div className={styles.introText}>{intro}</div>
+                        {help && <TileHelpButton topic={help} tileTitle={title} {...helpIcon} />}
+                    </div>
+                )}
+                {children}
+            </div>
+        </CollapsibleTile>
+    );
+};

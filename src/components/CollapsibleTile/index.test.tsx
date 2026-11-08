@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CollapsibleTile } from './index';
@@ -27,6 +27,19 @@ describe('CollapsibleTile', () => {
         await userEvent.click(screen.getByRole('button', { name: /Impressum/ }));
         await userEvent.click(screen.getByRole('button', { name: /Impressum/ }));
         expect(screen.getByLabelText('Editor')).toHaveValue('Entwurf');
+    });
+
+    it('reports every toggle, so a parent that rebuilds the tile can keep it open', async () => {
+        const onOpenChange = vi.fn();
+        render(
+            <CollapsibleTile icon={<span />} title="Impressum" onOpenChange={onOpenChange}>
+                <input aria-label="Editor" />
+            </CollapsibleTile>,
+        );
+        const header = screen.getByRole('button', { name: /Impressum/ });
+        await userEvent.click(header);
+        await userEvent.click(header);
+        expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
     });
 
     it('names its state in the header', () => {

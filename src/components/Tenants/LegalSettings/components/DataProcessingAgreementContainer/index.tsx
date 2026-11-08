@@ -51,6 +51,8 @@ export const DataProcessingAgreementContainer = ({
     const { t, i18n } = useTranslation();
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
+    // The card below is rebuilt after a publish and when a stored draft appears; the tile keeps its fold state here.
+    const [tileOpen, setTileOpen] = useState(!!defaultOpen);
 
     const versionsEnabled = Number.isFinite(id) && id > 0;
     const {
@@ -312,7 +314,8 @@ export const DataProcessingAgreementContainer = ({
                 initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
                 collapsible={collapsible}
-                defaultOpen={defaultOpen}
+                defaultOpen={tileOpen}
+                onOpenChange={setTileOpen}
                 versions={mapped}
                 onPublish={(contentByLanguage) => {
                     setPublishError(undefined);

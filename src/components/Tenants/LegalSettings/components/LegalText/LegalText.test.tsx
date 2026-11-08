@@ -1470,3 +1470,81 @@ describe('LegalText — received platform template (#1070)', () => {
         expect(screen.queryByRole('button', { name: 'legal.proposal.adopt' })).toBeNull();
     });
 });
+
+describe('LegalText as a tile', () => {
+    const tileHelp = { id: 'imprint', titleKey: 'imprint.help.title', essenceKey: 'imprint.help.essence', slides: [] };
+    const renderTile = (props: Partial<React.ComponentProps<typeof LegalText>> = {}) =>
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                placeHolderKey="settings.imprint.placeholder"
+                legalType="imprint"
+                tileHelp={tileHelp}
+                collapsible
+                {...props}
+            />,
+        );
+    const header = () => screen.getByRole('button', { name: /imprint\.title/ });
+
+    it('folds up to a header with the title and the live state, and mounts no editor', () => {
+        renderTile();
+
+        expect(header()).toHaveAttribute('aria-expanded', 'false');
+        expect(header()).toHaveTextContent('legal.status.published');
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
+    });
+
+    it('moves the explanation button and the publication state out of the editor into the unfolded tile', () => {
+        renderTile({ defaultOpen: true });
+
+        const editor = screen.getByTestId('m3-editor');
+        expect(screen.getAllByRole('button', { name: 'tileHelp.open' })).toHaveLength(1);
+        expect(within(editor).queryByRole('button', { name: 'tileHelp.open' })).toBeNull();
+        expect(screen.getByTestId('legal-publication-status')).toBeInTheDocument();
+        expect(within(editor).queryByTestId('legal-publication-status')).toBeNull();
+    });
+
+    it('keeps the help slot in the editor when it is not a tile', () => {
+        renderTile({ collapsible: false });
+
+        expect(within(screen.getByTestId('m3-editor')).getByTestId('legal-publication-status')).toBeInTheDocument();
+        expect(document.querySelector('[data-collapsible-tile]')).toBeNull();
+    });
+
+    it('says draft in the header as soon as the text differs from the live one', async () => {
+        renderTile({ defaultOpen: true });
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('says still empty when nothing is live and nothing is written', () => {
+        mocks.imprint = {};
+        renderTile();
+
+        expect(header()).toHaveTextContent('legal.status.empty');
+    });
+
+    it('says draft, not published, while a draft conflict is open, although the screen equals the live text', () => {
+        mocks.serverHasConflict = true;
+        renderTile();
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('keeps the tile with its title while the card loads, without a state yet', () => {
+        mocks.serverDraftLoading = true;
+        const { container } = renderTile({ defaultOpen: true });
+
+        expect(header()).toHaveTextContent('imprint.title');
+        expect(header()).not.toHaveTextContent('legal.status');
+        expect(container.querySelector('.ant-spin')).not.toBeNull();
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
+    });
+});

@@ -30,7 +30,8 @@ import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppea
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { TileHelpButton, type TileHelpTopic } from '../../../../TileHelp';
 import { ImprintIcon } from '../../../../CustomIcons/LegalIcons';
-import { LegalDocumentTile, type LegalDocumentTileStatus } from '../LegalDocumentTile';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { legalDocumentStatus, legalTextState } from '../LegalDocumentTile/legalDocumentStatus';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -683,7 +684,7 @@ export const LegalText = ({
         (historyState === 'available' ? versions?.find((version) => !version.supersededAt)?.publishedAt : undefined);
     const publicationStatus = isPublished && (
         <div className={styles.publicationStatus}>
-            <Tag color="green" data-testid="legal-publication-status">
+            <Tag color="green" className={styles.publishedTag} data-testid="legal-publication-status">
                 {publishedAt ? (
                     <>
                         {t('legal.status.publishedAt')}{' '}
@@ -868,9 +869,10 @@ export const LegalText = ({
         );
 
     // The tile header says where this text stands: live, still a draft, or not written yet.
-    let tileStatus: LegalDocumentTileStatus = { label: t('legal.status.empty'), tone: 'attention' };
-    if (isPublished) tileStatus = { label: t('legal.status.published'), tone: 'neutral' };
-    else if (differsFromPublished) tileStatus = { label: t('legal.status.draft'), tone: 'attention' };
+    const tileStatus = legalDocumentStatus(
+        t,
+        legalTextState({ isPublished, differsFromPublished, hasConflict: serverDraft.hasConflict }),
+    );
 
     const helpSlotContent = legalType && (
         <>

@@ -18,7 +18,8 @@ import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslati
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import { TileHelpButton } from '../../../../TileHelp';
-import { LegalDocumentTile, type LegalDocumentTileStatus } from '../LegalDocumentTile';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { dpaState, legalDocumentStatus } from '../LegalDocumentTile/legalDocumentStatus';
 import { contractHelp } from './help';
 import styles from './styles.module.scss';
 
@@ -130,6 +131,8 @@ interface DataProcessingAgreementCardProps {
     collapsible?: boolean;
     /** With `collapsible`: the tile is unfolded on first render. */
     defaultOpen?: boolean;
+    /** With `collapsible`: reports every fold and unfold, so a parent that rebuilds the card can keep the state. */
+    onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -164,6 +167,7 @@ export const DataProcessingAgreementCard = ({
     readOnlyFooter,
     collapsible = false,
     defaultOpen = false,
+    onOpenChange,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
     const {
@@ -242,9 +246,7 @@ export const DataProcessingAgreementCard = ({
     );
 
     const title = t('tenants.legal.dataProcessingAgreement.title');
-    let tileStatus: LegalDocumentTileStatus = { label: t('legal.status.empty'), tone: 'attention' };
-    if (draftSavedAt) tileStatus = { label: t('legal.status.draft'), tone: 'attention' };
-    else if (versions.length > 0) tileStatus = { label: t('legal.status.published'), tone: 'neutral' };
+    const tileStatus = legalDocumentStatus(t, dpaState({ hasDraft: !!draftSavedAt, versionCount: versions.length }));
 
     const helpSlotContent = (
         <>
@@ -401,6 +403,7 @@ export const DataProcessingAgreementCard = ({
             help={contractHelp}
             intro={helpSlotContent}
             defaultOpen={defaultOpen}
+            onOpenChange={onOpenChange}
         >
             {card}
         </LegalDocumentTile>

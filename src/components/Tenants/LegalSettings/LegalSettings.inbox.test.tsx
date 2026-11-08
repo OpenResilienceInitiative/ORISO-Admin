@@ -19,12 +19,30 @@ vi.mock('./components/LegalText', () => ({
     ),
 }));
 vi.mock('./components/LegalText/TraegerLegalText', () => ({
-    TraegerLegalText: ({ legalType }: { legalType: string }) => <div data-testid={`traeger-${legalType}`} />,
+    TraegerLegalText: ({
+        legalType,
+        collapsible,
+        defaultOpen,
+    }: {
+        legalType: string;
+        collapsible?: boolean;
+        defaultOpen?: boolean;
+    }) => (
+        <div
+            data-testid={`traeger-${legalType}`}
+            data-collapsible={String(!!collapsible)}
+            data-default-open={String(!!defaultOpen)}
+        />
+    ),
 }));
 vi.mock('./components/DataProcessingAgreementContainer', () => ({
-    DataProcessingAgreementContainer: ({ collapsible }: { collapsible?: boolean }) => (
-        <div data-testid="dpa" data-collapsible={String(!!collapsible)} />
-    ),
+    DataProcessingAgreementContainer: ({
+        collapsible,
+        defaultOpen,
+    }: {
+        collapsible?: boolean;
+        defaultOpen?: boolean;
+    }) => <div data-testid="dpa" data-collapsible={String(!!collapsible)} data-default-open={String(!!defaultOpen)} />,
 }));
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => roleState }));
 
@@ -62,5 +80,16 @@ describe('LegalSettings received templates', () => {
         screen
             .getAllByTestId('plain-legal-text')
             .forEach((card) => expect(card).toHaveAttribute('data-collapsible', 'true'));
+    });
+
+    it('starts with the agreement unfolded and the imprint and the privacy statement folded', () => {
+        roleState.isSuperAdmin = true;
+        render(<LegalSettings tenantId={17} collapsible />);
+
+        expect(screen.getByTestId('dpa')).toHaveAttribute('data-default-open', 'true');
+        expect(screen.getByTestId('traeger-imprint')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('traeger-imprint')).toHaveAttribute('data-default-open', 'false');
+        expect(screen.getByTestId('traeger-privacy')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('traeger-privacy')).toHaveAttribute('data-default-open', 'false');
     });
 });
