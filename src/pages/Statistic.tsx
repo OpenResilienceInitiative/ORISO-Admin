@@ -90,6 +90,11 @@ import type {
     TrendBadgeDefinition,
 } from './Statistic/types';
 import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
+import { Notify } from '../components/Notify';
+import { HintText } from '../components/HintText';
+
+/** Visible anchor of the dashboard's load state: where "Ansehen" and the quiet text live. */
+const STATISTIC_STATE_ID = 'statistic-dashboard-state';
 
 const conversationSegmentBlueprint = [
     { label: 'Mail', color: 'var(--statistic-series-mail)' },
@@ -2347,13 +2352,22 @@ export const Statistic = () => {
 
                     <div key={activeScope} className="statisticDashboard__animatedContent">
                         {isStatisticUnavailable && (
-                            <p className="statisticDashboard__notice statisticDashboard__notice--error" role="alert">
-                                {translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.unavailable',
-                                    'Die Statistik ist vorübergehend nicht verfügbar. Es werden keine Zahlen angezeigt. Bitte versuchen Sie es später noch einmal.',
-                                )}
-                            </p>
+                            <div id={STATISTIC_STATE_ID}>
+                                <Notify
+                                    quietText={translate('notify.tile.notLoaded')}
+                                    title={translate('notify.title.statistics')}
+                                    severity="error"
+                                    causeKey="statistic:dashboard"
+                                    jump={STATISTIC_STATE_ID}
+                                    retry
+                                >
+                                    {translateDashboardKey(
+                                        translate,
+                                        'statistic.dashboard.unavailable',
+                                        'Die Statistik ist vorübergehend nicht verfügbar. Es werden keine Zahlen angezeigt. Bitte versuchen Sie es später noch einmal.',
+                                    )}
+                                </Notify>
+                            </div>
                         )}
                         {isStatisticLoading && (
                             <div className="statisticDashboard__loading" role="status" aria-live="polite">
@@ -2370,53 +2384,56 @@ export const Statistic = () => {
                         {!isStatisticLoading && !isStatisticUnavailable && (
                             <>
                                 {hasStatisticLoadError && (
-                                    <p
-                                        className="statisticDashboard__notice statisticDashboard__notice--error"
-                                        role="alert"
-                                    >
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.loadError',
-                                            'Statistikdaten konnten nicht geladen werden.',
-                                        )}
-                                    </p>
+                                    <div id={STATISTIC_STATE_ID}>
+                                        <Notify
+                                            quietText={translate('notify.tile.notLoaded')}
+                                            title={translate('notify.title.statistics')}
+                                            severity="error"
+                                            causeKey="statistic:dashboard"
+                                            jump={STATISTIC_STATE_ID}
+                                            retry
+                                        >
+                                            {translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.loadError',
+                                                'Statistikdaten konnten nicht geladen werden.',
+                                            )}
+                                        </Notify>
+                                    </div>
                                 )}
                                 {statisticData.generatedAt && !hasStatisticLoadError && (
                                     <StatisticStandNotice
-                                        className="statisticDashboard__notice statisticDashboard__notice--info"
+                                        className="statisticDashboard__caption"
                                         dataUntil={statisticData.dataUntil}
                                         snapshotInterval={statisticData.snapshotInterval}
                                     />
                                 )}
                                 {statisticData.suppressionDisabled && (
-                                    <p
-                                        className="statisticDashboard__notice statisticDashboard__notice--warning"
-                                        role="alert"
-                                    >
+                                    <HintText className="statisticDashboard__caption">
                                         {translateDashboardKey(
                                             translate,
                                             'statistic.dashboard.suppressionDisabledNotice',
                                             'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
                                         )}
-                                    </p>
+                                    </HintText>
                                 )}
                                 {hiddenRowShown && (
-                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
+                                    <HintText className="statisticDashboard__caption">
                                         {translateDashboardKey(
                                             translate,
                                             'statistic.dashboard.suppressedNotice',
                                             'Einige Bereiche zeigen aus Datenschutzgründen keine Zahlen. Das gilt für Bereiche mit weniger aktiven Beratenden als der festgelegten Mindestzahl. Es kann auch einen größeren Bereich treffen, wenn sich seine Zahlen sonst aus der Gesamtzahl ausrechnen ließen.',
                                         )}
-                                    </p>
+                                    </HintText>
                                 )}
                                 {hiddenTotalShown && (
-                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
+                                    <HintText className="statisticDashboard__caption">
                                         {translateDashboardKey(
                                             translate,
                                             'statistic.dashboard.suppressedTotalNotice',
                                             'Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt, weil sie auf zu wenigen aktiven Beratenden beruht oder die Zahlen eines kleinen Bereichs verraten würde.',
                                         )}
-                                    </p>
+                                    </HintText>
                                 )}
                                 {showEmptyHero && (
                                     <DashboardEmptyState

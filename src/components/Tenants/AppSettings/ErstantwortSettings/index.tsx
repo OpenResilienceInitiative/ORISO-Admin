@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Spin } from 'antd';
+import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../../M3Button';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
@@ -8,7 +8,7 @@ import { useErstantwortDefaults } from '../../../../hooks/useErstantwortDefaults
 import { useTranslateLegalContent } from '../../../../hooks/useTranslateLegalContent.hook';
 import { getTranslationErrorKey } from '../../LegalSettings/utils/translationErrors';
 import { TranslateOnPublishModal } from '../../LegalSettings/components/TranslateOnPublishModal';
-import { ERSTANTWORT_BAUSTEINE, germanVariantFor } from './erstantwortBausteine';
+import { ERSTANTWORT_BAUSTEINE, germanVariantFor, type ErstantwortBausteinKey } from './erstantwortBausteine';
 import { ErstantwortTextsCard, type ErstantwortContentMap } from './ErstantwortTextsCard';
 import {
     applyTranslations,
@@ -21,6 +21,10 @@ import {
 } from './erstantwortPublish';
 import { isEmptyHtml } from '../../LegalSettings/utils/legalContentLanguages';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
+import { Notify } from '../../../Notify';
+
+/** The one Baustein a Träger must fill; the missing-text pop-up takes the person to it. */
+const MANDATORY_KEY: ErstantwortBausteinKey = 'erstantwortWhoReadsAlong';
 
 interface ErstantwortSettingsProps {
     tenantId: string;
@@ -82,6 +86,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
     const [edits, setEdits] = useState<ErstantwortContentMap>({});
     const [deadlineEdit, setDeadlineEdit] = useState<{ days: number | undefined } | null>(null);
     const [publishError, setPublishError] = useState(false);
+    const [openRequest, setOpenRequest] = useState<{ key: ErstantwortBausteinKey; token: number }>();
     const [translatedRetry, setTranslatedRetry] = useState<{
         content: ErstantwortContentMap;
         source: string;
@@ -217,26 +222,43 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
         return <Spin />;
     }
     if (isError || !data) {
-        return <Alert type="error" showIcon message={t('message.error.default')} />;
+        return (
+            <div id="erstantwort-state">
+                <Notify
+                    title={t('notify.title.erstantwort')}
+                    severity="error"
+                    quietText={t('notify.tile.notLoaded')}
+                    causeKey={`erstantwort:load:${tenantId}`}
+                    jump="erstantwort-state"
+                    retry
+                >
+                    {t('message.error.default')}
+                </Notify>
+            </div>
+        );
     }
 
     return (
         <>
             {publishError && (
-                <Alert
-                    type="error"
-                    showIcon
-                    role="alert"
-                    message={`${t('tenants.erstantwort.whoReadsAlong.label')}: ${t(
-                        'tenants.erstantwort.whoReadsAlong.mandatory',
-                    )}`}
-                />
+                <Notify
+                    title={t('notify.title.erstantwort')}
+                    severity="error"
+                    jump={{
+                        target: `erstantwort-section-${MANDATORY_KEY}`,
+                        // The section must be open before the pop-up takes the person to it.
+                        onJump: () => setOpenRequest({ key: MANDATORY_KEY, token: Date.now() }),
+                    }}
+                >{`${t('tenants.erstantwort.whoReadsAlong.label')}: ${t(
+                    'tenants.erstantwort.whoReadsAlong.mandatory',
+                )}`}</Notify>
             )}
             <ErstantwortTextsCard
                 contentByBaustein={content}
                 responseDeadlineDays={deadlineDays}
                 languageFormal={languageFormal}
                 platformDefaults={platformDefaults}
+                openRequest={openRequest}
                 onChange={handleChange}
                 onDeadlineChange={handleDeadline}
                 disabled={readOnly}

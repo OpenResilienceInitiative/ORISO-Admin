@@ -2,6 +2,7 @@ import { Col, Row } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TenantPermissionsSettings } from '../../../../components/Tenants/AppSettings/PermissionsSettings/TenantPermissionsSettings';
+import { HintText } from '../../../../components/HintText';
 import styles from './styles.module.scss';
 
 export const TenantGlobalSettings = () => {
@@ -11,10 +12,10 @@ export const TenantGlobalSettings = () => {
     return (
         <Row gutter={[24, 24]}>
             <Col span={24}>
-                <div className={styles.warningCard}>
-                    <strong>{t('tenants.globalSettings.superAdminWarning.title')}</strong>
-                    <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>
-                </div>
+                {/* A permanent explanation: plain text, no fill and no border (never a box in the page). */}
+                <HintText title={t('tenants.globalSettings.superAdminWarning.title')}>
+                    {t('tenants.globalSettings.superAdminWarning.description')}
+                </HintText>
                 <div className={styles.permissionsCardWrap}>
                     {/* ORISO-Admin#989: this page edits THIS Träger — its stored values and its
                         policies — not the platform-wide controls, which live under /settings. */}

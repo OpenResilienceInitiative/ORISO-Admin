@@ -8,6 +8,7 @@ import { AssistantIdentity } from './index';
 import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { TENANT_DATA_KEY } from '../../../../../hooks/useTenantData.hook';
 import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../appConfig';
+import { findPopup, popupsOf } from '../../../../../test/storyPopups';
 
 const storageKey = 'storybook:assistant-1150';
 const defaultTenant = {
@@ -27,10 +28,10 @@ const tenant = () => {
         return defaultTenant;
     }
 };
-const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
+const Harness = ({ readOnly = false, seeded = true }: { readOnly?: boolean; seeded?: boolean }) => {
     const [client] = useState(() => {
         const query = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-        query.setQueryData([TENANT_DATA_KEY, 'no-tenant-claim'], tenant());
+        if (seeded) query.setQueryData([TENANT_DATA_KEY, 'no-tenant-claim'], tenant());
         return query;
     });
     return (
@@ -79,4 +80,39 @@ export const ReadOnly: Story = { args: { readOnly: true } };
 
 export const HelpSlideshow: Story = {
     play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
+};
+
+let tenantRequests = 0;
+let tenantRecovered = false;
+/**
+ * T6: the Träger's data cannot be read - one error pop-up titled "Assistent" with "Erneut versuchen"; the tile
+ * says "Dieser Bereich konnte nicht geladen werden." The retry asks again and the form appears.
+ */
+export const LoadErrorRetry: Story = {
+    args: { seeded: false },
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(`${baseTenantPublicEndpoint}/id/1`, () => HttpResponse.json(tenant())),
+                http.get(`${tenantAdminEndpoint}/1`, () => {
+                    tenantRequests += 1;
+                    return tenantRecovered ? HttpResponse.json(tenant()) : new HttpResponse(null, { status: 500 });
+                }),
+            ],
+        },
+    },
+    beforeEach: () => {
+        tenantRequests = 0;
+        tenantRecovered = false;
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Die Einstellungen konnten nicht geladen werden', 'error');
+        await expect(popup).toHaveTextContent('Assistent');
+        const before = tenantRequests;
+        tenantRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(tenantRequests).toBeGreaterThan(before));
+        await expect(await within(canvasElement).findByLabelText(/Anzeigename/)).toBeInTheDocument();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+    },
 };

@@ -1,4 +1,4 @@
-import { Alert, Button, Form } from 'antd';
+import { Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
@@ -24,6 +24,7 @@ import { TilePicture } from '../../../TileFill';
 import { TileSections } from '../../../TileSections';
 import mailServerPicture from '../../../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
+import { HintText } from '../../../HintText';
 
 const DEFAULT_SMTP_SETTINGS = {
     featureSystemNotificationEmailsEnabled: false,
@@ -238,11 +239,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             <TileSections.Section id="smtp-sending" title={t('tileHelp.mailPanels.sending')}>
                                 <div className={styles.fieldGrid}>
                                     {data?.settings?.smtpMode == null && (
-                                        <Alert
-                                            type="warning"
-                                            showIcon
-                                            message={t('tenants.appSettings.smtp.legacyModeMissing')}
-                                        />
+                                        <HintText>{t('tenants.appSettings.smtp.legacyModeMissing')}</HintText>
                                     )}
                                     <MuiSwitchField
                                         className={styles.smtpSwitch}
@@ -278,11 +275,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             <TileSections.Section id="smtp-server" title={t('tileHelp.mailPanels.server')}>
                                 <div className={styles.fieldGrid}>
                                     {ownServerSelected && needsTransportConfirmation(smtpPort, smtpSecure) && (
-                                        <Alert
-                                            type="warning"
-                                            showIcon
-                                            message={t('tenants.appSettings.smtp.transportMismatchHint')}
-                                        />
+                                        <HintText>{t('tenants.appSettings.smtp.transportMismatchHint')}</HintText>
                                     )}
 
                                     <MuiFormField
@@ -369,7 +362,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                         subTitleKey="tenants.appSettings.smtp.test.description"
                     >
                         {!canTestStoredOwnServer && (
-                            <Alert type="info" message={t('tenants.appSettings.smtp.test.saveOwnServerFirst')} />
+                            <HintText>{t('tenants.appSettings.smtp.test.saveOwnServerFirst')}</HintText>
                         )}
                         <Button loading={testSending} disabled={!canTestStoredOwnServer} onClick={sendTest}>
                             {t('tenants.appSettings.smtp.test.button')}

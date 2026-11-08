@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Form } from 'antd';
-import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -22,6 +21,8 @@ import {
     type ServiceNoticeDraftInput,
     type ServiceNoticeVariant,
 } from '../../../api/serviceNotices/serviceNotices';
+import { Notify } from '../../../components/Notify';
+import { HintText } from '../../../components/HintText';
 
 type DraftForm = ServiceNoticeDraftInput & { campaignKey: string };
 
@@ -64,7 +65,22 @@ export const ServiceNoticesPage = () => {
         }
     };
 
-    if (!allowed) return <Alert severity="error">{t('serviceNotices.errors.forbidden')}</Alert>;
+    if (!allowed)
+        return (
+            // A visible tile to point at: the pop-up is the event, the tile keeps the quiet text.
+            <div id="service-notices-denied">
+                <Card titleKey="serviceNotices.title" subTitleKey="serviceNotices.description" autoHeight>
+                    <Notify
+                        title={t('notify.title.serviceNotices')}
+                        severity="error"
+                        jump="service-notices-denied"
+                        quietText={t('serviceNotices.errors.forbidden')}
+                    >
+                        {t('serviceNotices.errors.forbidden')}
+                    </Notify>
+                </Card>
+            </div>
+        );
 
     const actualPreview = preview.data;
     const previewMatches = actualPreview?.variant === variant && actualPreview.campaignKey === draft?.campaignKey;
@@ -78,8 +94,12 @@ export const ServiceNoticesPage = () => {
                 help={serviceNoticesHelp}
             >
                 <Stack spacing={2}>
-                    <Alert severity="info">{t('serviceNotices.draftOnly')}</Alert>
-                    {operationError && <Alert severity="error">{t(operationError)}</Alert>}
+                    <HintText>{t('serviceNotices.draftOnly')}</HintText>
+                    {operationError && (
+                        <Notify title={t('notify.title.serviceNotices')} severity="error">
+                            {t(operationError)}
+                        </Notify>
+                    )}
                     <Form<DraftForm>
                         form={form}
                         layout="vertical"
@@ -149,7 +169,9 @@ export const ServiceNoticesPage = () => {
                         </Stack>
                     </Form>
                     {draft && (
-                        <Alert severity="success">{t('serviceNotices.saved', { reference: draft.campaignKey })}</Alert>
+                        <Notify title={t('notify.title.serviceNotices')} severity="success">
+                            {t('serviceNotices.saved', { reference: draft.campaignKey })}
+                        </Notify>
                     )}
                 </Stack>
             </Card>
@@ -180,9 +202,15 @@ export const ServiceNoticesPage = () => {
                         {preview.isFetching && (
                             <Typography role="status">{t('serviceNotices.loadingPreview')}</Typography>
                         )}
-                        {preview.isError && <Alert severity="error">{t(serviceNoticeErrorKey(preview.error))}</Alert>}
+                        {preview.isError && (
+                            <Notify title={t('notify.title.serviceNotices')} severity="error">
+                                {t(serviceNoticeErrorKey(preview.error))}
+                            </Notify>
+                        )}
                         {actualPreview && !previewMatches && (
-                            <Alert severity="error">{t('serviceNotices.errors.variantUnavailable')}</Alert>
+                            <Notify title={t('notify.title.serviceNotices')} severity="error">
+                                {t('serviceNotices.errors.variantUnavailable')}
+                            </Notify>
                         )}
                         {actualPreview && previewMatches && (
                             <>

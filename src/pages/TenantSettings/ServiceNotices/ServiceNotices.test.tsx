@@ -21,6 +21,21 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => mocks.r
 import { ServiceNoticesPage } from './index';
 import { SERVICE_NOTICE_VARIANTS } from '../../../api/serviceNotices/serviceNotices';
 
+// Notifications are pop-ups with a lead line before the text, so match the text inside.
+const inNotice = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+// Pop-ups share one channel and show one after the other. An earlier one (for example "saved") can
+// still be up; the person closes it and the queued one follows.
+const findNotice = async (text: string) => {
+    await waitFor(() => {
+        if (screen.queryByText(inNotice(text))) return;
+        const close = within(screen.getByTestId('snackbar-host')).queryByRole('button', { name: 'snackbar.close' });
+        if (close) fireEvent.click(close);
+        throw new Error(`notice not shown yet: ${text}`);
+    });
+    return screen.findByText(inNotice(text));
+};
+
 const draft: ServiceNoticeDraft = {
     campaignKey: 'planned-window',
     status: 'DRAFT',
@@ -126,7 +141,7 @@ describe('service-notice saved drafts', () => {
                 : Promise.resolve(url.includes('/preview?') ? previewFor('de-sie') : draft),
         );
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.save' }));
-        expect(await screen.findByText('serviceNotices.errors.conflict')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.errors.conflict')).toBeInTheDocument();
         expect(screen.getByLabelText('serviceNotices.start')).toHaveValue('11:00');
         expect(screen.getByLabelText('serviceNotices.reference')).toHaveValue(draft.campaignKey);
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
@@ -158,7 +173,7 @@ describe('service-notice saved drafts', () => {
         renderPage();
         setField('serviceNotices.reference', draft.campaignKey);
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.open' }));
-        expect(await screen.findByText('serviceNotices.errors.variantUnavailable')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.errors.variantUnavailable')).toBeInTheDocument();
         expect(screen.queryByTestId('service-notice-preview-frame')).not.toBeInTheDocument();
         expect(screen.queryByText('Actual subject de-du')).not.toBeInTheDocument();
     });
@@ -168,7 +183,7 @@ describe('service-notice saved drafts', () => {
         renderPage();
         fillDraft();
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.open' }));
-        await screen.findByText('serviceNotices.errors.unavailable');
+        await screen.findByText(inNotice('serviceNotices.errors.unavailable'));
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
         expect(screen.queryByText('remote-sensitive-marker')).not.toBeInTheDocument();
     });
@@ -176,7 +191,7 @@ describe('service-notice saved drafts', () => {
     it('self-guards a technical account even if it also carries platform roles', async () => {
         mocks.roles.isTechnicalAccount = true;
         renderPage();
-        expect(screen.getByRole('alert')).toHaveTextContent('serviceNotices.errors.forbidden');
+        expect(await screen.findByRole('alert')).toHaveTextContent('serviceNotices.errors.forbidden');
         await waitFor(() => expect(mocks.fetchData).not.toHaveBeenCalled());
     });
 });
@@ -244,7 +259,7 @@ describe('service-notice send decision', () => {
         expect(calls('/confirm')).toHaveLength(0);
         await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
 
-        expect(await screen.findByText('serviceNotices.send.done')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.send.done')).toBeInTheDocument();
         expect(calls('/confirm')).toHaveLength(1);
         expect(calls('/confirm')[0].method).toBe('POST');
         expect(JSON.parse(calls('/confirm')[0].bodyData)).toEqual({ expectedRecipients: 12 });
@@ -271,7 +286,7 @@ describe('service-notice send decision', () => {
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.open' }));
         await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
 
-        expect(await screen.findByText('serviceNotices.send.errors.conflict')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.send.errors.conflict')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'serviceNotices.send.count' })).toBeInTheDocument();
         expect(calls('/confirm')).toHaveLength(1);

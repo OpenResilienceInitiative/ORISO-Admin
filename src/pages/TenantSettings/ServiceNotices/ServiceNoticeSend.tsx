@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
@@ -13,6 +12,8 @@ import type {
     ServiceNoticeDraft,
     ServiceNoticeDryRun,
 } from '../../../api/serviceNotices/serviceNotices';
+import { Notify } from '../../../components/Notify';
+import { HintText } from '../../../components/HintText';
 
 const errorKey = (error: unknown): string => {
     if (error instanceof Response) {
@@ -68,12 +69,16 @@ export const ServiceNoticeSend = ({ draft }: { draft: ServiceNoticeDraft }) => {
     return (
         <Card titleKey="serviceNotices.send.title" subTitleKey="serviceNotices.send.description" autoHeight>
             <Stack spacing={2}>
-                {error && <Alert severity="error">{t(error)}</Alert>}
-                {confirmedBefore && <Alert severity="info">{t('serviceNotices.send.alreadyConfirmed')}</Alert>}
+                {error && (
+                    <Notify title={t('notify.title.serviceNotices')} severity="error">
+                        {t(error)}
+                    </Notify>
+                )}
+                {confirmedBefore && <HintText>{t('serviceNotices.send.alreadyConfirmed')}</HintText>}
                 {done && (
-                    <Alert severity="success">
+                    <Notify title={t('notify.title.serviceNotices')} severity="success">
                         {t('serviceNotices.send.done', { recipients: done.recipients, mail: done.mailQueued })}
-                    </Alert>
+                    </Notify>
                 )}
                 {!confirmedBefore && !done && (
                     <>
@@ -87,9 +92,7 @@ export const ServiceNoticeSend = ({ draft }: { draft: ServiceNoticeDraft }) => {
                                 })}
                             </Typography>
                         )}
-                        {counted && counted.recipients === 0 && (
-                            <Alert severity="warning">{t('serviceNotices.send.nobody')}</Alert>
-                        )}
+                        {counted && counted.recipients === 0 && <HintText>{t('serviceNotices.send.nobody')}</HintText>}
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                             <M3Button variant="outlined" disabled={busy} loading={count.isPending} onClick={onCount}>
                                 {t('serviceNotices.send.count')}

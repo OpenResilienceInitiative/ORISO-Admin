@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import ChatOutlined from '@mui/icons-material/ChatOutlined';
@@ -64,6 +64,8 @@ export interface ErstantwortTextsCardProps {
     disabled?: boolean;
     /** Bottom action row of the card (the publish button). */
     footer?: ReactNode;
+    /** Opens one section (for example when "Ansehen" of a pop-up points at it). A new token re-opens it. */
+    openRequest?: { key: ErstantwortBausteinKey; token: number };
     /**
      * What the advice seeker reads when a field is left empty, as plain text per Baustein, and the
      * fixed emergency-number sentence. Read-only. Loaded by the container from
@@ -104,12 +106,16 @@ export const ErstantwortTextsCard = ({
     disabled = false,
     footer,
     platformDefaults,
+    openRequest,
 }: ErstantwortTextsCardProps) => {
     const { t } = useTranslation();
     const variant = germanVariantFor(languageFormal);
     /* The first Baustein is open by default so the card never presents itself as
        an empty list of headings. */
     const [openKey, setOpenKey] = useState<ErstantwortBausteinKey>(ERSTANTWORT_BAUSTEINE[0].key);
+    useEffect(() => {
+        if (openRequest) setOpenKey(openRequest.key);
+    }, [openRequest]);
 
     const handleDeadline = (days: number | undefined) => {
         /* Empty means "fall back to the platform default", which is a different
@@ -189,7 +195,11 @@ export const ErstantwortTextsCard = ({
                             ? platformDefaults?.emergencyNumbers
                             : undefined;
                     return (
-                        <section key={baustein.key} className={styles.section}>
+                        <section
+                            key={baustein.key}
+                            id={`erstantwort-section-${baustein.key}`}
+                            className={styles.section}
+                        >
                             <button
                                 type="button"
                                 className={styles.sectionToggle}
