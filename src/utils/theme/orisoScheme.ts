@@ -142,13 +142,6 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  */
 const STAGE_SURFACE = '#281715';
 const DARK_TEXT = '#141c25';
-/**
- * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
- * surface, this filter flips the strokes light (and turns the red accent back to red), so
- * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` below.
- */
-export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
-
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
@@ -177,6 +170,13 @@ const ADMIN_TABLE_TOKENS = {
     '--admin-form-card-surface': '#eae7e8',
     '--admin-form-label-text': '#444748',
 };
+
+/**
+ * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
+ * surface, this filter flips the strokes light (and turns the red accent back to red), so
+ * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` above.
+ */
+export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
 
 /**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
