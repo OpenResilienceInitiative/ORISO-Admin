@@ -3,7 +3,7 @@ import { ConfigProvider, Form } from 'antd';
 import deDE from 'antd/es/locale/de_DE';
 import enGB from 'antd/es/locale/en_GB';
 import { createInstance } from 'i18next';
-import { I18nextProvider, initReactI18next } from 'react-i18next';
+import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import CheckCircleOutlined from '@mui/icons-material/CheckCircleOutlined';
 import AddRounded from '@mui/icons-material/AddRounded';
@@ -20,6 +20,7 @@ import translationEn from '../../../locales/en/translation.json';
 import { copy, copyFields, emptyFields, firstCentre, proposalTopics } from './fixtures';
 import type { CentreFields, CopyBlock, ProposalLocale, SavedCentre } from './fixtures';
 import styles from './styles.module.scss';
+import { Notify } from '../../../components/Notify';
 
 type Step = 'form' | 'saved' | 'copy' | 'finished';
 export interface CentreSetupProposalProps {
@@ -38,6 +39,7 @@ const CentreSetupExample = ({
     singleTopic = false,
     failNextSave = false,
 }: CentreSetupProposalProps & { locale: ProposalLocale; onLanguage: (next: ProposalLocale) => void }) => {
+    const { t } = useTranslation();
     const text = copy[locale];
     const controlId = useId();
     const [form] = Form.useForm<CentreFields>();
@@ -208,17 +210,18 @@ const CentreSetupExample = ({
                             }}
                         >
                             {creationDenied && (
-                                <div role="alert" className={styles.error}>
-                                    <p>{text.denied}</p>
-                                    <M3Button variant="outlined" onClick={() => setStep('saved')}>
-                                        {text.return}
-                                    </M3Button>
-                                </div>
+                                <Notify
+                                    title={t('notify.title.onboarding')}
+                                    severity="error"
+                                    actions={[{ label: text.return, onClick: () => setStep('saved') }]}
+                                >
+                                    {text.denied}
+                                </Notify>
                             )}
                             {failed && (
-                                <p role="alert" className={styles.error}>
+                                <Notify title={t('notify.title.onboarding')} severity="error">
                                     {text.error}
-                                </p>
+                                </Notify>
                             )}
                             <p className={styles.helper}>{copied ? text.copied : text.firstHint}</p>
                             <AgencyGeneralInformation asFields />

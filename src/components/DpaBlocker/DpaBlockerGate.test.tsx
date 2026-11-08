@@ -51,6 +51,13 @@ vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
     isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
 }));
 
+// A failed preview raises its own persistent pop-up, which would hold the one-at-a-time snackbar
+// channel and queue the pop-up under test behind it.
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+    getPublicDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+}));
+
 vi.mock('../../api/auth/logout', () => ({
     default: mocks.logout,
 }));

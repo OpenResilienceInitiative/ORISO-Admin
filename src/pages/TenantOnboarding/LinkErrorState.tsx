@@ -7,6 +7,7 @@ import { InviteLinkErrorReason } from '../../api/tenantOnboarding/tenantOnboardi
 import { M3Button } from '../../components/M3Button';
 import { OnboardingLeadArt } from '../../components/OnboardingDesign/OnboardingLeadArt';
 import { OnboardingPageHeader } from '../../components/OnboardingDesign/OnboardingPageHeader';
+import { HintText } from '../../components/HintText';
 
 const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: string }> = {
     CONSUMED: {
@@ -57,9 +58,9 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
         return (
             <div data-testid="link-error-consumed">
                 <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
-                <Typography role="alert" sx={{ mb: 2 }}>
+                <HintText tone="error" style={{ marginBottom: 16 }}>
                     {t(keys.description)}
-                </Typography>
+                </HintText>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
                     {t('tenantOnboarding.linkError.consumed.loginHint')}
                 </Typography>
@@ -77,9 +78,9 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
     return (
         <div data-testid={`link-error-${reason.toLowerCase()}`}>
             <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
-            <Typography role="alert" sx={{ mb: 2 }}>
+            <HintText tone="error" style={{ marginBottom: 16 }}>
                 {t(keys.description)}
-            </Typography>
+            </HintText>
             <Typography color="text.secondary">{t('tenantOnboarding.linkError.contactHint')}</Typography>
         </div>
     );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementCard } from './index';
 import { TranslationApiError } from '../../../../../api/tenant/translation';
@@ -687,7 +687,7 @@ describe('DataProcessingAgreementCard — local draft', () => {
         expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
     });
 
-    it('announces a restored draft and lets the admin discard it', async () => {
+    it('announces a restored draft as a pop-up and keeps it as tile text', async () => {
         const user = userEvent.setup();
         const onDiscardDraft = vi.fn();
         render(
@@ -701,14 +701,40 @@ describe('DataProcessingAgreementCard — local draft', () => {
             />,
         );
 
-        expect(screen.getByText('legal.draft.notice.title')).toBeInTheDocument();
-        expect(screen.queryByText('legal.draft.notice.stale')).not.toBeInTheDocument();
+        const popup = await screen.findByTestId('legal-draft-notice');
+        expect(within(popup).getByText('legal.draft.notice.title')).toBeInTheDocument();
+        expect(within(popup).queryByText(/legal\.draft\.notice\.stale/)).not.toBeInTheDocument();
+        // The state is also quiet text in the tile, so closing the pop-up does not lose it.
+        expect(screen.getByTestId('legal-draft-status')).toHaveTextContent(/legal\.draft\.status:.*2026/);
 
-        await user.click(screen.getByRole('button', { name: 'legal.draft.discard' }));
+        await user.click(within(popup).getByRole('button', { name: 'legal.draft.discard' }));
         expect(onDiscardDraft).toHaveBeenCalledTimes(1);
     });
 
-    it('warns when a newer version was published after the draft was saved', () => {
+    it('keeps the draft state in the tile after the pop-up was closed and can raise it again', async () => {
+        const user = userEvent.setup();
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>Entwurf</p>' }}
+                versions={[]}
+                onPublish={vi.fn()}
+                onSaveDraft={vi.fn()}
+                draftSavedAt="2026-08-12T08:30:00.000Z"
+                onDiscardDraft={vi.fn()}
+            />,
+        );
+
+        const popup = await screen.findByTestId('legal-draft-notice');
+        await user.click(within(popup).getByRole('button', { name: 'snackbar.close' }));
+        await waitFor(() => expect(screen.queryByTestId('legal-draft-notice')).not.toBeInTheDocument());
+        expect(screen.getByTestId('legal-draft-status')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'legal.draft.notice.show' }));
+        expect(await screen.findByTestId('legal-draft-notice')).toHaveTextContent('legal.draft.notice.title');
+        expect(screen.queryByRole('button', { name: 'legal.draft.notice.show' })).not.toBeInTheDocument();
+    });
+
+    it('warns when a newer version was published after the draft was saved', async () => {
         render(
             <DataProcessingAgreementCard
                 initialContentByLanguage={{ de: '<p>Entwurf</p>' }}
@@ -721,7 +747,8 @@ describe('DataProcessingAgreementCard — local draft', () => {
             />,
         );
 
-        expect(screen.getByText('legal.draft.notice.stale')).toBeInTheDocument();
+        expect(await screen.findByTestId('legal-draft-notice')).toHaveTextContent('legal.draft.notice.stale');
+        expect(screen.getByTestId('legal-draft-status')).toHaveTextContent('legal.draft.notice.stale');
     });
 
     it('shows no notice while there is no stored draft', () => {
@@ -736,5 +763,6 @@ describe('DataProcessingAgreementCard — local draft', () => {
         );
 
         expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('legal-draft-status')).not.toBeInTheDocument();
     });
 });
