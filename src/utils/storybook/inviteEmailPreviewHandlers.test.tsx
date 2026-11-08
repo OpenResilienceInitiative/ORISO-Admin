@@ -62,7 +62,7 @@ describe('backend-generated unsaved invite fixtures at the real API/consumer sea
     });
     it('shows a visible preview failure for an unrecorded draft', async () => {
         render(<EmailKitPreview subject="Unrecorded" body="No fixture" previewLabel="Preview" />);
-        expect(await screen.findByRole('status')).toHaveTextContent('Preview could not be rendered.');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('Preview could not be rendered.');
         expect(screen.queryByTitle('Preview')).not.toBeInTheDocument();
     });
 });

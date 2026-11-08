@@ -12,6 +12,7 @@ import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIde
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -160,11 +161,7 @@ export const GrantConsultantIdentityModal = ({
                                 options={topicOptions}
                             />
                         )}
-                        {hasNoTopics && (
-                            <p role="alert" className={styles.noTopics}>
-                                {t('grantConsultantIdentity.modal.noTopics')}
-                            </p>
-                        )}
+                        {hasNoTopics && <HintText tone="error">{t('grantConsultantIdentity.modal.noTopics')}</HintText>}
                     </Form>
                 </Modal>
             )}

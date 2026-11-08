@@ -127,14 +127,14 @@ describe('TwoFactorSetup (onboarding context)', () => {
         expect(onVerify).not.toHaveBeenCalled();
     });
 
-    it('surfaces the retryable invalid-code and service errors as alerts', () => {
+    it('surfaces the retryable invalid-code and service errors as alert pop-ups', async () => {
         const { rerender } = render(
             <TwoFactorSetup context="onboarding" appLink={APP_LINK} error="invalid-code" onVerify={() => {}} />,
         );
-        expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.otp.invalid');
+        expect(await screen.findByRole('alert')).toHaveTextContent('twoFactorSetup.otp.invalid');
 
         rerender(<TwoFactorSetup context="onboarding" appLink={APP_LINK} error="service" onVerify={() => {}} />);
-        expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.error.service');
+        await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.error.service'));
     });
 
     it('disables the primary action while the activation is in flight', () => {
@@ -232,7 +232,9 @@ describe('advertised onboarding method defaults and app availability', () => {
         render(<TwoFactorSetup context="onboarding" appLink={null} onVerify={() => {}} />);
         expect(screen.queryByLabelText('twoFactorSetup.otp.label')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'twoFactorSetup.submit' })).not.toBeInTheDocument();
-        expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.error.service');
+        // Unavailable state: plain error-toned text in the tile, not a pop-up.
+        expect(screen.getByText('twoFactorSetup.error.service')).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 });
 
