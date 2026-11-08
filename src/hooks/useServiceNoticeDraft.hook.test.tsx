@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { ServiceNoticePreview, ServiceNoticeVariant } from '../api/serviceNotices/serviceNotices';
 
 const api = vi.hoisted(() => ({ save: vi.fn(), read: vi.fn(), preview: vi.fn() }));

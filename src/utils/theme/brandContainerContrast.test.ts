@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // ORISO-Admin#1322: on a light Träger brand colour, `--m3-primary` is not
 // guaranteed to be readable on `--m3-primary-container`. Brand-tinted content

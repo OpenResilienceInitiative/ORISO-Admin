@@ -1,6 +1,6 @@
 import { render, renderHook } from '@testing-library/react';
 import { createElement, useEffect } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { useUserTableLayout } from './useUserTableLayout';
 
 const atWidth = (width: number) =>

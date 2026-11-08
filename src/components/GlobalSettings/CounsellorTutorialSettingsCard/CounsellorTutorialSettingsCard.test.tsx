@@ -1,7 +1,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard, CounsellorTutorialSettingsCardContainer } from '.';
 
@@ -168,7 +168,7 @@ describe('Counsellor tutorial settings preview', () => {
         render(<CounsellorTutorialSettingsCardContainer />);
         const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
         expect(tours).toBeChecked();
-        expect(tours).toBeDisabled();
+        expect(tours).toHaveAttribute('aria-disabled', 'true');
         await userEvent.click(tours.closest('label')!);
         expect(state.mutateSettings).not.toHaveBeenCalled();
     });

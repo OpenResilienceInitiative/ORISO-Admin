@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fetchData } from '../fetchData';
 import { putAgenciesForCounselor } from '../agency/putAgenciesForCounselor';
 import { addCounselorData } from './addCounselorData';

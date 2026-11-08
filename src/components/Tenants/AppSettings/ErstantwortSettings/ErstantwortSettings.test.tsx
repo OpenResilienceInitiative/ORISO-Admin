@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TranslationApiError } from '../../../../api/tenant/translation';
 
 const { useSingleTenantData, mutateAsync, translate, editorRender, useErstantwortDefaults } = vi.hoisted(() => ({

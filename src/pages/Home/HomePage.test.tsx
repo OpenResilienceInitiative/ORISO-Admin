@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import type { HomeFacts } from './homeModel';
 import { HomePage } from './HomePage';

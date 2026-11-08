@@ -4,7 +4,7 @@ import antdResetCss from 'antd/dist/reset.css?inline';
 import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { MuiSelectField } from '../MuiSelectField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 

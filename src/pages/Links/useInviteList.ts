@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { listAccountInvites, type AccountInviteDTO } from '../../api/accountInvites/accountInvites';
 import type { InviteViewerScope } from './inviteModel';
 import { listedOnTab, type InviteTab } from './inviteRules';
@@ -8,6 +8,7 @@ import { tileCountsFromServer, type LifecycleCounts } from './inviteProgress/der
 
 // The complete list, because the table searches and sorts client-side; only the newest load writes, as loads walk several pages.
 export const useInviteList = (tab: InviteTab, viewer: InviteViewerScope) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
     const [tileCounts, setTileCounts] = useState<LifecycleCounts | undefined>();

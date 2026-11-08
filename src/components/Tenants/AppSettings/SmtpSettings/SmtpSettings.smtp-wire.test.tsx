@@ -1,7 +1,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import React from 'react';
 import { transferableAbortController } from 'node:util';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { message, Modal, notification } from 'antd';

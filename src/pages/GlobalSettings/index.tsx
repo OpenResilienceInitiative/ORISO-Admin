@@ -1,9 +1,10 @@
-import { Button, Form, message } from 'antd';
+import { Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
@@ -129,6 +130,7 @@ export const GlobalLoginSettingsPage = () => {
 };
 
 export const GlobalSmtpSettingsPage = () => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [testForm] = Form.useForm();

@@ -1,6 +1,7 @@
-import { Alert, Button, notification, Skeleton } from 'antd';
+import { Alert, Button, Skeleton } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
 import { useDepartmentImprint } from '../../../../../hooks/useDepartmentImprint.hook';
 import { usePublishDepartmentDpp } from '../../../../../hooks/usePublishDepartmentDpp.hook';
@@ -72,6 +73,7 @@ export const AgencyLegalTextContainer = ({
     saving,
     templateInbox,
 }: AgencyLegalTextContainerProps) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     // #609: this editor used to have no permission check at all. It is the same

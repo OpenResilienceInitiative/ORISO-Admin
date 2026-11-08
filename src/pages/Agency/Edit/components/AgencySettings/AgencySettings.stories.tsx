@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Form } from 'antd';
+import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -17,6 +18,7 @@ const meta: Meta<typeof AgencySettings> = {
     title: 'Settings/Beratungsstellen/Stammdaten & Mehr/AgencySettings',
     id: 'organisms-agency-agencysettings',
     component: AgencySettings,
+    parameters: { msw: { handlers: [http.get('*/service/topic/', () => HttpResponse.json([]))] } },
     decorators: [
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>

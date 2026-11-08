@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { nextTenantSortState, tenantSortOf } from './tenantSort';
 
 const baseState: TableState = { current: 4, pageSize: 10, sortBy: undefined, order: undefined };

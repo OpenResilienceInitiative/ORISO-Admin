@@ -1,6 +1,6 @@
 // antd's static message API is a silent no-op under React 19 without this patch.
 import '@ant-design/v5-patch-for-react-19';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { message } from 'antd';
 import userEvent from '@testing-library/user-event';

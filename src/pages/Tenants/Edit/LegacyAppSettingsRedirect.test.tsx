@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { LegacyAppSettingsRedirect } from './LegacyAppSettingsRedirect';
 
 // The tab behind `app-settings` was labelled "Email Server". The functionality tiles moved to their

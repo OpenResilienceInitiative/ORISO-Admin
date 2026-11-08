@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
 import { expect, userEvent, within } from 'storybook/test';
+import { http, HttpResponse } from 'msw';
 import { M3Button } from '../../../M3Button';
 import { ErstantwortSettings } from './index';
 
@@ -10,7 +11,13 @@ const meta = {
     title: 'Settings/Einstellungen/Einführung Ratsuchende/PublishValidation',
     id: 'tenants-erstantwort-publishvalidation',
     component: ErstantwortSettings,
-    parameters: { layout: 'padded' },
+    parameters: {
+        layout: 'padded',
+        msw: {
+            // No platform defaults in these synthetic tenants, so the read-only previews stay hidden.
+            handlers: [http.get('*/service/useradmin/erstantwort/defaults', () => HttpResponse.json({ locale: 'de' }))],
+        },
+    },
 } satisfies Meta<typeof ErstantwortSettings>;
 export default meta;
 type Story = StoryObj<typeof meta>;

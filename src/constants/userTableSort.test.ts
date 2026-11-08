@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
     TENANT_ADMIN_ALLOWED_SORT_FIELDS,
     USER_TABLE_API_SAFE_ORDER,

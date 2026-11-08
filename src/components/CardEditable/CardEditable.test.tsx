@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { CardEditable } from './index';
 import { MuiFormField } from '../mui/MuiFormField';
 import { MuiSwitchField } from '../mui/MuiSwitchField';
+import { FormSwitchField } from '../FormSwitchField';
 
 /**
  * Read-only guarantee (#689/#735): a CardEditable that is not in edit mode
@@ -27,7 +28,44 @@ describe('CardEditable', () => {
         renderCard();
 
         expect(screen.getByLabelText('Name')).toBeDisabled();
-        expect(screen.getByRole('switch', { name: 'Enabled' })).toBeDisabled();
+        expect(screen.getByRole('switch', { name: 'Enabled' })).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('keeps a locked switch focusable and ignores keyboard and pointer changes', async () => {
+        const user = userEvent.setup();
+        renderCard();
+        const toggle = screen.getByRole('switch', { name: 'Enabled' });
+        toggle.focus();
+        expect(toggle).toHaveFocus();
+        await user.keyboard('[Space]');
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+        expect(toggle).toBeChecked();
+    });
+
+    it('uses the same locked switch for legacy form fields', async () => {
+        const user = userEvent.setup();
+        render(
+            <CardEditable titleKey="card.title" onSave={vi.fn()} initialValues={{ enabled: true }}>
+                <FormSwitchField name="enabled" label="Legacy" />
+            </CardEditable>,
+        );
+        const toggle = screen.getByRole('switch', { name: 'Legacy' });
+        expect(toggle).toHaveAttribute('aria-disabled', 'true');
+        toggle.focus();
+        expect(toggle).toHaveFocus();
+        await user.keyboard('[Space]');
+        expect(toggle).toBeChecked();
+    });
+
+    it('hides editing actions when editing is forbidden', () => {
+        render(
+            <CardEditable titleKey="card.title" onSave={vi.fn()} allowEdit={false} initialValues={{ enabled: true }}>
+                <MuiSwitchField name="enabled" label="Enabled" />
+            </CardEditable>,
+        );
+        expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'card.edit.save' })).not.toBeInTheDocument();
     });
 
     it('re-enables the fields once editing starts', async () => {

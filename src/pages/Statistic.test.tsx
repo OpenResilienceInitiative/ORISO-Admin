@@ -1,6 +1,6 @@
-// @vitest-environment jsdom
+// @vitest-environment oriso-jsdom
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -124,6 +124,21 @@ describe('Statistic page', () => {
         // legacy mock numbers must be gone
         expect(screen.queryByText('312')).toBeNull();
         expect(screen.queryByText('Caritas NRW')).toBeNull();
+    });
+
+    it('places metric and chart cards in the shared settings raster', async () => {
+        dashboardMock.mockResolvedValue(response);
+
+        const { container } = renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        const rasters = container.querySelectorAll('[data-admin-card-raster]');
+        expect(rasters).toHaveLength(3);
+        container
+            .querySelectorAll('.statisticDashboard__metricCard, .statisticDashboard__chartCard')
+            .forEach((card) => {
+                expect(card.parentElement).toHaveAttribute('data-admin-card-grid-item');
+            });
     });
 
     it('still renders dashboard data when a name lookup fails with 403', async () => {

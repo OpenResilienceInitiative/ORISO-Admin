@@ -1,7 +1,8 @@
-import { Alert, Button, notification, Skeleton } from 'antd';
+import { Alert, Button, Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Select } from '../../../../../components/M3Select';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { Card } from '../../../../../components/Card';
 import { M3Button } from '../../../../../components/M3Button';
 import { CardEditable } from '../../../../../components/CardEditable';
@@ -191,6 +192,7 @@ interface AgencyDepartmentDetailsProps {
  * cleared fields are stored as null so the department inherits the Beratungsstelle value again.
  */
 export const AgencyDepartmentDetails = ({ agencyData, onAddDepartment }: AgencyDepartmentDetailsProps) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const agencyId = Number(agencyData?.id);
 

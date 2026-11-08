@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { AGENCY_SORT_FIELD_BY_COLUMN, agencySortOf, nextAgencySortState } from './agencySort';
 
 const baseState: TableState = { current: 3, pageSize: 20, sortBy: undefined, order: undefined };

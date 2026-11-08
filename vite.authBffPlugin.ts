@@ -1,4 +1,4 @@
-import type { Plugin } from 'vite';
+import type { Plugin } from 'vite-plus';
 import { createAuthBffHandler, AUTH_BFF_ROUTE_PATTERN } from './scripts/auth-bff-handlers.mjs';
 
 export const authBffDevPlugin = (): Plugin => ({

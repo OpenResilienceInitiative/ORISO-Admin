@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { DeleteOutlined } from '@ant-design/icons';
-import { Button, Input, message, Tag, Tooltip } from 'antd';
+import { Button, Input, Tag, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -118,6 +119,7 @@ export const InviteCsvImportModal = ({
     onClose,
     onCreated,
 }: InviteCsvImportModalProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [rows, setRows] = useState<ImportRow[]>(() =>
         [

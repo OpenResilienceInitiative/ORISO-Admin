@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('react-router-dom', () => ({ useParams: () => ({ id: '7' }) }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({

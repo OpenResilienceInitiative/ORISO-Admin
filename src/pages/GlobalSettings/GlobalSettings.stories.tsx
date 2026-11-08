@@ -161,7 +161,7 @@ export const TenantAdmin: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const oneTopicSwitch = await canvas.findByRole('switch', { name: oneTopicSwitchName });
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(oneTopicCard(oneTopicSwitch).queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };

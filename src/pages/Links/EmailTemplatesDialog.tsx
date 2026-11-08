@@ -1,9 +1,10 @@
-import { Alert, Button, Input, message, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     createInviteEmailTemplate,
     InviteEmailTemplateDTO,
@@ -98,6 +99,7 @@ export const EmailTemplatesDialog = ({
     onSelect,
     selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const fieldId = useId();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);

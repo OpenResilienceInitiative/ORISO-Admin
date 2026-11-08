@@ -7,6 +7,7 @@ import { message } from 'antd';
 import { createRoot, type Root } from 'react-dom/client';
 import { AdminApp } from './AdminApp';
 import { initObservability } from './observability/initObservability';
+import { adminMessageConfig } from './constants/adminMessageConfig';
 
 // OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
 // to SigNoz as early as possible, before the app renders.
@@ -22,11 +23,7 @@ declare global {
  * ant design message config
  * @see {@link https://ant.design/components/message/#API}
  */
-message.config({
-    duration: 3,
-    maxCount: 3,
-    top: 100,
-});
+message.config(adminMessageConfig);
 
 const container = document.getElementById('root');
 if (!container) {

@@ -8,9 +8,13 @@ const profileUserData = {
     twoFactorAuth: { isEnabled: true, isActive: false, type: 'EMAIL' },
 };
 
+/** The tour overview tile reads its progress; no tour has been started in these stories. */
+export const tutorialProgressHandler = http.get('*/service/users/tutorials/progress', () => HttpResponse.json([]));
+
 /** Answers the user-data call every Mein Account tile reads. */
 export const profileUserDataHandlers = [
     http.get('*/service/users/data', () =>
         HttpResponse.json({ ...profileUserData, firstname: 'Erika', lastname: 'Beispiel' }),
     ),
+    tutorialProgressHandler,
 ];

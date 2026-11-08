@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { ReactNode } from 'react';
 
 const tenant = vi.hoisted(() => ({ current: { name: 'Alter Name' } as Record<string, unknown> }));

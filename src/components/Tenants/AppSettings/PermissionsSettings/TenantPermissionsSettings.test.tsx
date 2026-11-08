@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TenantPermissionsSettings } from './TenantPermissionsSettings';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
