@@ -34,7 +34,7 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
     const { data: tenantData } = useTenantData();
     const location = useLocation();
     const handleLogout = () => {
-        logout(true, routePathNames.login);
+        logout(true, routePathNames.login, 'explicit');
     };
     const { isEnabled, toggleFeature } = useFeatureContext();
     const isDesktopLayout = useIsDesktopLayout();

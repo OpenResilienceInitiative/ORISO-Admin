@@ -178,7 +178,9 @@ const meta = {
         // A platform admin sees all three levels; the token only drives the UI here, MSW answers.
         const claims = { tenantId: 0, realm_access: { roles: ['agency-admin', 'tenant-admin'] } };
         setSessionTokens(`${btoa('{}')}.${btoa(JSON.stringify(claims))}.fixture`, 'storybook-refresh-fixture');
-        return () => setSessionTokens(previousAccess, previousRefresh);
+        return () => {
+            setSessionTokens(previousAccess, previousRefresh);
+        };
     },
 } satisfies Meta<typeof Statistic>;
 export default meta;
