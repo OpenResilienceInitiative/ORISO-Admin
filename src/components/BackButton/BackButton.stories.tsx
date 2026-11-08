@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { BackButton, type BackButtonProps } from './index';
 import { Row, SchemeScope, type StoryScheme } from './storyFixtures';
 
@@ -160,9 +160,13 @@ export const LongGermanTitle: Story = {
         // The cut-off current page of the breadcrumb is reachable by keyboard and shows its full name.
         const current = within(canvasElement).getByText(LONG_CURRENT);
         await expect(current.scrollWidth).toBeGreaterThan(current.clientWidth);
-        current.focus();
+        // Start on the parent link and press Tab: the cut-off name must be the next tab stop, not only
+        // focusable by script.
+        const parent = within(canvasElement).getByRole('link', { name: 'Träger-Verwaltung für Beratungsstellen' });
+        parent.focus();
+        await userEvent.tab();
         await expect(current).toHaveFocus();
-        await expect(await within(document.body).findByRole('tooltip')).toHaveTextContent(LONG_CURRENT);
+        await waitFor(() => expect(within(document.body).getByRole('tooltip')).toHaveTextContent(LONG_CURRENT));
         current.blur();
     },
 };
