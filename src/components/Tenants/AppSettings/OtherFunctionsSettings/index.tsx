@@ -4,7 +4,7 @@ import { CardEditable } from '../../../CardEditable';
 import { TileSections } from '../../../TileSections';
 import { otherFunctionsHelp } from './help';
 import { FormSwitchField } from '../../../FormSwitchField';
-import { TEAM_FUNCTIONS, TeamFunctionSwitch } from '../../../TeamFunctions';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
@@ -112,7 +112,16 @@ export const OtherFunctionsSettings = ({
                         )}
                     </TileSections.Section>
                     <TileSections.Section id="other-team" title={t(TEAM_FUNCTIONS.chat.nameKey)}>
-                        <TeamFunctionSwitch fn="chat" />
+                        {/* Same row as its siblings in this tile; name and description come from the shared source. */}
+                        <div className={styles.checkGroup}>
+                            <FormSwitchField
+                                labelKey={TEAM_FUNCTIONS.chat.nameKey}
+                                name={TEAM_FUNCTIONS.chat.field}
+                                inline
+                                disableLabels
+                            />
+                            <p className={styles.checkInfo}>{t(TEAM_FUNCTIONS.chat.descriptionKey)}</p>
+                        </div>
                     </TileSections.Section>
                 </div>
                 <TileSections.Section id="other-supervision" title={t('tileHelp.otherFunctions.supervision.title')}>

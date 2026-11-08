@@ -9,9 +9,10 @@ interface TeamFunctionSwitchProps {
 }
 
 /**
- * The one setting row for a team function: switch, shared name, shared description.
- * Mounted wherever a team function can be set, so the same thing reads and looks the same
- * whichever way someone reaches it. Must sit inside an antd `Form`.
+ * The setting row for a team function in a form card: switch, shared name, shared description.
+ * Must sit inside an antd `Form`. The provider tile "Other functions" lays out its rows with
+ * `FormSwitchField` + `.checkInfo` like its siblings, but reads name, description and field from
+ * the same `TEAM_FUNCTIONS` entry, so the wording cannot drift.
  */
 export const TeamFunctionSwitch = ({ fn, className, disabled }: TeamFunctionSwitchProps) => {
     const { t } = useTranslation();

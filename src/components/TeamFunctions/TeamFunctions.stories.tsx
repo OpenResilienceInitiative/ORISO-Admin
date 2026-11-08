@@ -166,11 +166,8 @@ export const AllPlaces: Story = {
         const counselling = await canvas.findAllByRole('switch', { name: 'Teamberatung' });
         await expect(counselling).toHaveLength(2);
         await expect(await canvas.findAllByRole('switch', { name: 'Team-Chat' })).toHaveLength(1);
-        await expect(
-            canvas.getAllByText(
-                'Klassische Teamberatung: Alle Berater:innen der Beratungsstelle sehen alle Chats und können jederzeit einsteigen.',
-            ),
-        ).toHaveLength(2);
+        // Read from the locale, not typed again here: the check is "both places show the SAME text".
+        await expect(canvas.getAllByText(String(i18n.t('teamFunctions.counselling.description')))).toHaveLength(2);
     },
 };
 
