@@ -412,20 +412,25 @@ describe('SnackbarHost', () => {
             const { api } = setup();
             const opener = document.createElement('button');
             document.body.appendChild(opener);
-            opener.focus();
-            act(() => {
-                api.error({ title: 'Eins', key: 'one' });
-            });
-            act(() => {
-                screen.getByRole('button', { name: /Meldung schließen|Close message/ }).focus();
-            });
-            await userEvent.click(document.body);
-            act(() => {
-                api.error({ title: 'Zwei', key: 'two' });
-                api.dismiss('one');
-            });
-            expect(opener).not.toHaveFocus();
-            opener.remove();
+            try {
+                opener.focus();
+                act(() => {
+                    api.error({ title: 'Eins', key: 'one' });
+                });
+                act(() => {
+                    screen.getByRole('button', { name: /Meldung schließen|Close message/ }).focus();
+                });
+                // Focus really is inside the pop-up before the click; otherwise the test proves nothing.
+                expect(screen.getByRole('button', { name: /Meldung schließen|Close message/ })).toHaveFocus();
+                await userEvent.click(document.body);
+                act(() => {
+                    api.error({ title: 'Zwei', key: 'two' });
+                    api.dismiss('one');
+                });
+                expect(opener).not.toHaveFocus();
+            } finally {
+                opener.remove();
+            }
         });
 
         it('reaches the newest pop-up with Alt+T from anywhere on the page', async () => {
