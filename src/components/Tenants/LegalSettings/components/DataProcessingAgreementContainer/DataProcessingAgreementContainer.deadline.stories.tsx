@@ -187,7 +187,13 @@ export const FailedPublicationKeepsDraft: Story = {
             target: { value: '2099-10-30T15:30' },
         });
         await userEvent.click(within(dialog).getByRole('button', { name: 'Veröffentlichen' }));
-        await expect(await canvas.findByText(String(i18n.t('tenants.legal.version.publishError')))).toBeVisible();
+        await waitFor(async () =>
+            expect(
+                await within(canvasElement.ownerDocument.body).findByText(
+                    String(i18n.t('tenants.legal.version.publishError')),
+                ),
+            ).toBeVisible(),
+        );
         await expect(localStorage.getItem(DRAFT_KEY)).toBe(draftBefore);
         await expect(requests).toHaveLength(1);
         await expect(publishedContent).toEqual(content);

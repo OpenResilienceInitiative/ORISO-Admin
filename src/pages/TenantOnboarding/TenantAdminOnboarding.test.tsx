@@ -31,6 +31,13 @@ vi.mock('../../api/fetchData', async () => {
     };
 });
 
+// A failed mail preview raises its own persistent pop-up, which would hold the one-at-a-time
+// snackbar channel and queue the forward pop-ups under test behind it.
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+    getPublicDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+}));
+
 const INVITE: TenantAdminOnboardingInviteDTO = {
     recipientEmail: 'admin@tenant.example',
     firstName: 'Erika',
@@ -140,7 +147,7 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(description);
+        expect(await screen.findByTestId(`link-error-${reason.toLowerCase()}`)).toHaveTextContent(description);
         expect(screen.queryByRole('button', { name: 'accountSetup.submit' })).not.toBeInTheDocument();
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
         expect(mocks.fetchData.mock.calls.length - before).toBe(1);
@@ -244,7 +251,9 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
+        // A rejected password is field-level hint text under the password, not a pop-up.
+        expect(await screen.findByText('accountSetup.passwordUnchanged')).toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
 
         // The link stays usable: a different password on the same page completes the setup.
@@ -271,7 +280,7 @@ describe('TenantAdminOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByRole('alert');
+        await screen.findByTestId('snackbar');
         view.rerender(
             <MemoryRouter>
                 <TenantAdminOnboarding inviteToken="second" client={client} />
@@ -280,7 +289,7 @@ describe('TenantAdminOnboarding', () => {
         await screen.findByText('second@example.org');
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
         expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
@@ -345,7 +354,9 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('tenantOnboarding.dpa.acceptRequired');
+        expect(await screen.findByTestId('onboarding-submit-error')).toHaveTextContent(
+            'tenantOnboarding.dpa.acceptRequired',
+        );
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
     });
 
@@ -488,7 +499,7 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     };
 
-    it('reports a missing field next to the submit button, not only far above it', async () => {
+    it('reports a missing field in a pop-up, not only far above the button', async () => {
         const user = userEvent.setup();
         renderFlow(createClient());
 
@@ -498,12 +509,8 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
 
         const summary = await screen.findByTestId('onboarding-submit-error');
         expect(summary).toHaveTextContent('tenantOnboarding.validation.incomplete');
-        // Announced, not just visible — a silent div leaves SR users stranded.
-        expect(summary).toHaveAttribute('role', 'alert');
-        // ... and it sits between the form and the button the user just pressed.
-        const button = screen.getByRole('button', { name: 'tenantOnboarding.continue' });
-        // eslint-disable-next-line no-bitwise
-        expect(summary.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Announced, not just visible: an error pop-up lives in the assertive alert region.
+        expect(screen.getByRole('alert')).toContainElement(summary);
         // The offending field keeps its own inline message as well.
         expect(screen.getAllByText('tenantOnboarding.validation.required').length).toBeGreaterThan(0);
     });
@@ -569,7 +576,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 
         const summary = await screen.findByTestId('onboarding-submit-error');
-        expect(summary).toHaveAttribute('role', 'alert');
+        expect(screen.getByRole('alert')).toContainElement(summary);
         expect(summary).toHaveTextContent('tenantOnboarding.dpa.unavailableBlocked');
         // Still on step 1 — the account step never opens.
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();

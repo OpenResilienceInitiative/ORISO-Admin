@@ -102,12 +102,23 @@ export const MultipleTopics: Story = {
         await expect(await canvas.findByText('Allgemeine Sozialberatung · Eltern und Familie')).toBeVisible();
     },
 };
+/** Pop-ups live in the app-level host (outside the canvas): find the one carrying this text. */
+const findPopup = async (canvasElement: HTMLElement, text: string) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await waitFor(() =>
+        expect(body.queryAllByTestId('snackbar').some((popup) => popup.textContent?.includes(text))).toBe(true),
+    );
+    const popup = body.queryAllByTestId('snackbar').find((candidate) => candidate.textContent?.includes(text))!;
+    await expect(popup).toHaveAttribute('data-severity', 'error');
+    return popup;
+};
+
 export const SaveError: Story = {
     args: { failNextSave: true },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await expect(await canvas.findByRole('alert')).toHaveTextContent('Ihre Eingaben bleiben erhalten');
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten');
     },
 };
 export const SaveRetry: Story = {
@@ -115,7 +126,7 @@ export const SaveRetry: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await expect(await canvas.findByRole('alert')).toBeVisible();
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten');
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
         await expect(await canvas.findByRole('button', { name: 'Einrichtung abschließen' })).toBeVisible();
         await expect(canvas.getAllByRole('heading', { name: 'Beratung Mitte' })).toHaveLength(1);
@@ -160,9 +171,7 @@ export const PermissionDenied: Story = {
             canvas.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ }),
         ).not.toBeChecked();
         await expect(canvas.getByRole('button', { name: 'Beratungsstelle speichern' })).toBeDisabled();
-        await expect(canvas.getByRole('alert')).toHaveTextContent(
-            'Bereits gespeicherte Beratungsstellen bleiben erhalten',
-        );
+        await findPopup(canvasElement, 'Bereits gespeicherte Beratungsstellen bleiben erhalten');
     },
 };
 

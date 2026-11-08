@@ -1,6 +1,5 @@
 import { Form } from 'antd';
 import type { Rule } from 'antd/es/form';
-import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../components/M3Button';
@@ -15,6 +14,8 @@ import {
     TenantAdminOnboardingInviteDTO,
 } from '../../api/tenantOnboarding/tenantOnboarding';
 import styles from './styles.module.scss';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 const PASSWORD_REJECTION_KEYS: Record<AccountSetupPasswordRejection, string> = {
     UNCHANGED: 'accountSetup.passwordUnchanged',
@@ -114,11 +115,7 @@ export const AccountStep = ({
                     <LocalizedPasswordInput label={t('tenantOnboarding.account.password')} />
                 </Form.Item>
                 <LocalizedPasswordRuleChips password={password} />
-                {passwordRejection && (
-                    <Typography role="alert" color="error" variant="body2">
-                        {t(PASSWORD_REJECTION_KEYS[passwordRejection])}
-                    </Typography>
-                )}
+                {passwordRejection && <HintText tone="error">{t(PASSWORD_REJECTION_KEYS[passwordRejection])}</HintText>}
                 <Form.Item
                     name="repeatPassword"
                     style={{ marginBottom: 0 }}
@@ -138,13 +135,13 @@ export const AccountStep = ({
                 </Form.Item>
             </div>
             {showRegistrationError && (
-                <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                <Notify title={t('notify.title.onboarding')} severity="error">
                     {t(
                         existingAccountSetup
                             ? 'accountSetup.serviceError'
                             : 'tenantOnboarding.account.registrationError',
                     )}
-                </Typography>
+                </Notify>
             )}
             <div className={styles.actions}>
                 {onBack && (

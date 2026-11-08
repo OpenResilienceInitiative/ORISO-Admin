@@ -14,6 +14,12 @@ import { LanguageSelector } from '../../components/LanguageSelector';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
 import { CounsellorOnboarding } from './CounsellorOnboarding';
 
+/**
+ * Story-controlled outage of the localized topic names: the first read (the initial form) always
+ * answers, every later read fails while `down` is set (P5, topic-language error).
+ */
+const topicNamesOutage = { down: false, reads: 0 };
+
 /** An isolated locale instance keeps this language-switch story from changing other stories. */
 const LanguageExample = ({ twoFactor = false }: { twoFactor?: boolean }) => {
     const { locale: storyLocale, client: storyClient } = useMemo(() => {
@@ -42,6 +48,8 @@ const LanguageExample = ({ twoFactor = false }: { twoFactor?: boolean }) => {
         });
         const resolve = client.getOnboardingInvite;
         client.getOnboardingInvite = async (token) => {
+            topicNamesOutage.reads += 1;
+            if (topicNamesOutage.down && topicNamesOutage.reads > 1) throw new Error('Topic names unavailable');
             const invite = await resolve(token);
             const language = locale.resolvedLanguage === 'en' ? 'en' : 'de';
             const localized = topics.map((topic) => ({ id: topic.id, name: topic[language] }));
@@ -102,6 +110,60 @@ export const LanguageSwitch: Story = {
         await expect(await canvas.findByText('Schulden')).toBeVisible();
         await expect(canvas.getByLabelText('Anzeigename für Ratsuchende')).toHaveValue('Georgia');
         await expect(canvas.getByLabelText('Name der Beratungsstelle')).toHaveValue('Georgias Beratungsstelle');
+    },
+};
+
+/**
+ * The topic names cannot be loaded in the newly chosen language (P5): one error pop-up with
+ * "Try again" (the language and everything entered stay). Retry reads the names again for real;
+ * once they arrive the pop-up is gone and the topics show in English.
+ */
+export const TopicLanguageError: Story = {
+    name: 'Topic names fail in the new language, retry loads them',
+    beforeEach: () => {
+        topicNamesOutage.down = true;
+        topicNamesOutage.reads = 0;
+    },
+    play: async ({ canvas, canvasElement, userEvent }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        const languageCookie = document.cookie
+            .split('; ')
+            .find((cookie) => cookie.startsWith(`${LANGUAGE_COOKIE_KEY}=`));
+        try {
+            await expect(await canvas.findByText('Rechtliche Betreuung und Vorsorge')).toBeVisible();
+            await userEvent.type(canvas.getByLabelText('Anzeigename für Ratsuchende'), 'Georgia');
+            await userEvent.click(canvas.getByRole('combobox', { name: /Sprache|language/i }));
+            await userEvent.click(await body.findByText('(EN) Englisch'));
+
+            const errorText = 'The topic names could not be loaded in your language.';
+            const popupOf = () =>
+                body.queryAllByTestId('snackbar').find((candidate) => candidate.textContent?.includes(errorText));
+            await waitFor(() => expect(popupOf()).toBeDefined(), { timeout: 8000 });
+            const popup = popupOf() as HTMLElement;
+            await expect(popup).toHaveAttribute('data-severity', 'error');
+            await expect(popup.textContent).toContain('Set-up');
+            // Nothing the person entered is lost.
+            await expect(canvas.getByLabelText('Display name for advice seekers')).toHaveValue('Georgia');
+            const readsBeforeRetry = topicNamesOutage.reads;
+            topicNamesOutage.down = false;
+
+            await userEvent.click(within(popup).getByRole('button', { name: 'Try again' }));
+
+            await waitFor(() => expect(topicNamesOutage.reads).toBeGreaterThan(readsBeforeRetry));
+            await expect(await canvas.findByText('Legal guardianship and advance directives')).toBeVisible();
+            await waitFor(() => expect(popupOf()).toBeUndefined());
+        } finally {
+            topicNamesOutage.down = false;
+            if (storedLanguage === null) {
+                localStorage.removeItem(LANGUAGE_STORAGE_KEY);
+            } else {
+                localStorage.setItem(LANGUAGE_STORAGE_KEY, storedLanguage);
+            }
+            document.cookie = languageCookie
+                ? `${languageCookie};path=/;SameSite=Lax`
+                : `${LANGUAGE_COOKIE_KEY}=;path=/;Max-Age=0`;
+        }
     },
 };
 

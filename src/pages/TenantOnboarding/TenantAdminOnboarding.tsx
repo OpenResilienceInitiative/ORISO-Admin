@@ -18,6 +18,7 @@ import { AccountStep } from './AccountStep';
 import { TwoFactorStep } from './TwoFactorStep';
 import type { OnboardingFlowProps } from '../../components/OnboardingDesign/OnboardingFlow';
 import styles from './styles.module.scss';
+import { HintText } from '../../components/HintText';
 
 interface TenantAdminOnboardingProps {
     inviteToken: string;
@@ -85,9 +86,9 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                         {t('tenantOnboarding.loadError.title')}
                     </Typography>
-                    <Typography role="alert" sx={{ mb: 3 }}>
+                    <HintText tone="error" style={{ marginBottom: 24 }}>
                         {t('tenantOnboarding.loadError.description')}
-                    </Typography>
+                    </HintText>
                     <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>
                         {t('tenantOnboarding.loadError.retry')}
                     </M3Button>
