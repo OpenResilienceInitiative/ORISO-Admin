@@ -47,6 +47,9 @@ vi.mock('../../utils/generateCsrfToken', () => ({ default: () => 'csrf' }));
 vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { language: 'de', t: (key: string) => key } }));
 
+const accessTokenExpiringAt = (validUntilMs: number): string =>
+    `header.${btoa(JSON.stringify({ exp: Math.floor(validUntilMs / 1000) }))}.signature`;
+
 // These tests run the real expiry timer, 401 retry and logout cleanup together.
 // Only the BFF transport and session effects are replaced.
 describe('mounted centre setup session expiry', () => {
@@ -76,7 +79,7 @@ describe('mounted centre setup session expiry', () => {
     });
 
     it('returns to the same setup after the refresh-token expiry timer fires on an already mounted route', async () => {
-        // A lifetime below the renewal threshold isolates the refresh-expiry timeout.
+        // The near-expiry renewal fails; the refresh deadline still controls logout.
         mocks.expiry.accessTokenValidUntilTime = Date.now() + 5_000;
         mocks.expiry.refreshTokenValidUntilTime = Date.now() + 10_000;
         const { handleTokenRefresh } = await import('./auth');
@@ -181,7 +184,7 @@ describe('mounted centre setup session expiry', () => {
         expect(location.href).toBe('/admin/login?agencySetupId=5');
     });
 
-    it('retains the setup when the renewal interval finds the refresh token expired', async () => {
+    it('retains the setup when the renewal timer finds the refresh token expired', async () => {
         const { handleTokenRefresh } = await import('./auth');
         await handleTokenRefresh();
         mocks.expiry.refreshTokenValidUntilTime = Date.now() - 20_000;
@@ -189,6 +192,64 @@ describe('mounted centre setup session expiry', () => {
         expect(location.href).toBe('/admin/login?agencySetupId=5');
         expect(mocks.refresh).not.toHaveBeenCalled();
         expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('arms renewal for a near-expiry access token in this tab despite later shared access metadata', async () => {
+        mocks.tokens.access = accessTokenExpiringAt(Date.now() + 5_000);
+        const { handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(20_000);
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+        expect(location.href).toBe('/admin/agency/5/setup');
+    });
+
+    it('schedules the next renewal from the new token instead of repeating the first short delay', async () => {
+        const now = Date.now();
+        mocks.expiry.accessTokenValidUntilTime = now + 11_000;
+        mocks.tokens.access = accessTokenExpiringAt(mocks.expiry.accessTokenValidUntilTime);
+        mocks.refresh.mockResolvedValue({
+            access_token: accessTokenExpiringAt(now + 121_000),
+            expires_in: 120,
+            refresh_token: 'renewed-refresh',
+            refresh_expires_in: 300,
+        });
+        const { handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(109_999);
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(mocks.refresh).toHaveBeenCalledTimes(2);
+        await vi.advanceTimersByTimeAsync(20_000);
+        expect(mocks.refresh).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses bounded browser delays for long token lifetimes and rechecks the actual deadlines', async () => {
+        const browserDelayLimit = 2 ** 31 - 1;
+        mocks.expiry.accessTokenValidUntilTime = Date.now() + browserDelayLimit + 100_000;
+        mocks.expiry.refreshTokenValidUntilTime = Date.now() + browserDelayLimit + 200_000;
+        const timeout = vi.spyOn(window, 'setTimeout');
+        const { handleTokenRefresh } = await import('./auth');
+        await handleTokenRefresh();
+
+        expect(timeout.mock.calls.map(([, delay]) => delay)).toEqual([browserDelayLimit, browserDelayLimit]);
+        await vi.advanceTimersByTimeAsync(browserDelayLimit);
+        expect(mocks.refresh).not.toHaveBeenCalled();
+        expect(mocks.invalidate).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(90_000);
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+        await vi.advanceTimersByTimeAsync(109_999);
+        expect(location.href).toBe('/admin/agency/5/setup');
+        expect(mocks.refresh).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(101);
+        expect(location.href).toBe('/admin/login?agencySetupId=5');
     });
 
     it.each([false, true])(
