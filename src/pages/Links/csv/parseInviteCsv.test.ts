@@ -93,7 +93,7 @@ describe('parseInviteCsv', () => {
 
     it.each(['counselling-centre admin', 'agency admin'])('accepts the centre-admin role spelling %s', (role) => {
         const result = parseInviteCsv(
-            `Email,First Name,Name,Counselling centre ID,Target,Role,Template\nmaria@example.org,Maria,Huber,4,existing,${role},standard`,
+            `Email,First Name,Name,Target,Role,Counselling centre ID,Template\nmaria@example.org,Maria,Huber,existing,${role},4,standard`,
         );
         expect(result.rows[0]).toMatchObject({ id: 4, role: 'AGENCY_ADMIN' });
     });
