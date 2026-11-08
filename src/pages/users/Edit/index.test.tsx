@@ -403,6 +403,26 @@ describe('user editor route access', () => {
         expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
     });
 
+    it('allows agency-admin creation with Create alone and keeps the one-time password', () => {
+        mocks.agencyAdminActions = [PermissionAction.Create];
+
+        renderEditorRoute('/admin/users/agency-admins/add');
+
+        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
+        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
+        expect(pageButton('Speichern')).toBeEnabled();
+    });
+
+    it('denies agency-admin creation with only Read and Update', () => {
+        mocks.agencyAdminActions = [PermissionAction.Read, PermissionAction.Update];
+
+        renderEditorRoute('/admin/users/agency-admins/add');
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+        expect(screen.queryByLabelText('Vorname')).not.toBeInTheDocument();
+        expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+    });
+
     it.each([
         ['agency-admins', [PermissionAction.Read, PermissionAction.Update], UserRole.TenantAdmin],
         ['consultants', [], UserRole.RestrictedAgencyAdmin],
@@ -473,15 +493,6 @@ describe('a new counsellor chooses their own password (#1144)', () => {
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('password');
-    });
-
-    it('still asks for the one-time password when an agency admin is created', () => {
-        // Only counsellors are covered by the product decision; agency admins keep the field.
-        mocks.params = { id: 'add', typeOfUsers: 'agency-admins' };
-        renderForm();
-
-        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
-        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
     });
 });
 
