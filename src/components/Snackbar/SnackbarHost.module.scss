@@ -23,6 +23,16 @@
     }
 }
 
+// Below 768px the admin shows its floating bottom navigation (`data-admin-mobile-nav`: 72px tab bar,
+// 6px inset on every side, plus the home-indicator safe area). Lift the stack above it so a pop-up
+// never covers the tabs. Without the navigation (login, public pages, desktop) the placement above
+// stays as it is, and so do the framed stories (`.contained`).
+:global(body:has([data-admin-mobile-nav])) .host:not(.contained) {
+    @media (max-width: 767.98px) {
+        bottom: calc(8px + 84px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 // Stories showing the stack inside a frame instead of the viewport.
 .contained {
     position: absolute;

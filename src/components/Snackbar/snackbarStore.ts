@@ -66,7 +66,12 @@ interface SnackbarOptionsBase {
     causeKey?: string;
     /** `data-testid` of the rendered pop-up, so tests can address a specific notification. Default `snackbar`. */
     testId?: string;
-    /** Called once when the pop-up is gone, whatever the reason. */
+    /**
+     * Called once when the pop-up is gone, whatever the reason. A message raised again under the same
+     * key replaces the old one: the old callback gets `replaced` unless the new message carries the very
+     * same function (it then fires once, when the replacement goes). A message that is never shown
+     * (dropped by `causeKey` or the de-duplication window) does not call `onClose`.
+     */
     onClose?: (reason: SnackbarCloseReason) => void;
 }
 
@@ -262,9 +267,11 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
         if (queuedAt >= 0) {
             lastRaised.set(key, at);
             const queued = [...state.queued];
-            finish(queued[queuedAt], 'replaced');
+            const replaced = queued[queuedAt];
             queued[queuedAt] = item;
+            // State first, callback second (as for a visible pop-up): onClose may call back into the store.
             setState(state.visible, queued);
+            if (replaced.onClose && replaced.onClose !== item.onClose) finish(replaced, 'replaced');
             return key;
         }
         const previous = lastRaised.get(key);
