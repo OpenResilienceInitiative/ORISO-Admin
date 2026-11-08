@@ -32,8 +32,8 @@ describe('snackbar store: the stack', () => {
 
     it('lets the next waiting pop-up move up, as the newest, when one goes', () => {
         const { api, store } = setup();
-        ['one', 'two', 'three', 'four', 'five'].forEach((text) => api.success(text));
-        store.close('timeout', 'success:two|');
+        const keys = ['one', 'two', 'three', 'four', 'five'].map((text) => api.success(text));
+        store.close('timeout', keys[1]);
         expect(messages(store.getState().visible)).toEqual(['one', 'three', 'four', 'five']);
         expect(store.getState().queued).toHaveLength(0);
         store.close('dismiss');
@@ -80,8 +80,8 @@ describe('snackbar store: the stack', () => {
 
     it('dismisses a queued pop-up by key without touching the stack', () => {
         const { api, store } = setup();
-        ['a', 'b', 'c', 'd', 'e'].forEach((text) => api.info(text));
-        api.dismiss('info:e|');
+        const keys = ['a', 'b', 'c', 'd', 'e'].map((text) => api.info(text));
+        api.dismiss(keys[4]);
         expect(store.getState().queued).toHaveLength(0);
         expect(messages(store.getState().visible)).toEqual(['a', 'b', 'c', 'd']);
     });
@@ -155,11 +155,11 @@ describe('snackbar store: identity', () => {
 
     it('only closes the pop-up a stale timer was started for', () => {
         const { api, store } = setup();
-        api.info('one');
+        const one = api.info('one');
         api.info('two');
-        store.close('timeout', 'info:one|');
+        store.close('timeout', one);
         expect(messages(store.getState().visible)).toEqual(['two']);
-        store.close('timeout', 'info:one|');
+        store.close('timeout', one);
         expect(messages(store.getState().visible)).toEqual(['two']);
     });
 
@@ -169,6 +169,24 @@ describe('snackbar store: identity', () => {
         api.notify({ message: 'bye', onClose });
         store.close('action');
         expect(onClose).toHaveBeenCalledWith('action');
+    });
+
+    it.each([
+        ['visible', 0],
+        ['queued', 4],
+    ])('treats a shared onClose the same way when the replaced pop-up is %s', (_where, fillers) => {
+        const { api, store } = setup();
+        const onClose = vi.fn();
+        // Four fillers fill the stack, so the next message waits in the queue.
+        Array.from({ length: fillers }, (_, i) => api.info(`filler ${i}`));
+        api.notify({ message: 'same', key: 'same', onClose });
+        api.notify({ message: 'same, newer', key: 'same', onClose });
+        // The same function is carried over: it fires once, when the replacement goes.
+        expect(onClose).not.toHaveBeenCalled();
+        api.notify({ message: 'same, newest', key: 'same', onClose: vi.fn() });
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(onClose).toHaveBeenCalledWith('replaced');
+        expect(store.getState().visible.length + store.getState().queued.length).toBe(fillers + 1);
     });
 });
 
