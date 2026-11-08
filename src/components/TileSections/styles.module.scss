@@ -83,7 +83,7 @@
 
 /* With three columns the short topics would leave two thirds of a row empty, so they fill it. */
 @container (min-width: 752px) and (max-width: 1007px) {
-    .stack {
+    .stack:not(.stackColumn) {
         flex-direction: row;
         grid-column: 1 / -1;
 

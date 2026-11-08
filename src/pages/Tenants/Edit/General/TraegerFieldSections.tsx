@@ -138,7 +138,7 @@ export const TraegerFieldSections = ({ subdomain, requiredRule, sections, childr
         <TileSections>
             {shown.includes('general') && parts.general}
             {/* The short parts share one column, so a panel is not left with half of its height empty. */}
-            <TileSections.Stack>{stacked.map((key) => parts[key])}</TileSections.Stack>
+            <TileSections.Stack keepColumn>{stacked.map((key) => parts[key])}</TileSections.Stack>
             {shown.includes('dpo') && parts.dpo}
             {children}
         </TileSections>
