@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import routePathNames from '../../appConfig';
 import i18n from '../../i18n';
 import { searchNav } from '../AdminMobileNav/navSearch';

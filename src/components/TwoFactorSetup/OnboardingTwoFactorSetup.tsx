@@ -36,10 +36,14 @@ export interface OnboardingTwoFactorSetupProps {
     methods?: readonly OnboardingTwoFactorMethod[];
     /** The server-owned invitation address; never editable during public setup. */
     email?: string;
+    /** Explains where the email code goes; defaults to the invitation wording. */
+    emailDescriptionKey?: string;
     /** Present only when the onboarding server advertises EMAIL support. */
     onSendEmail?: () => Promise<void>;
     onVerifyEmail?: (otp: string) => void;
     onVerify: (otp: string) => void;
+    /** Optional setups (profile) can be dismissed; mandatory ones omit this. */
+    onCancel?: () => void;
 }
 
 /**
@@ -58,9 +62,11 @@ export const OnboardingTwoFactorSetup = ({
     defaultMethod,
     methods,
     email,
+    emailDescriptionKey = 'twoFactorSetup.email.description',
     onSendEmail,
     onVerifyEmail,
     onVerify,
+    onCancel,
 }: OnboardingTwoFactorSetupProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm<{ otp: string }>();
@@ -135,7 +141,7 @@ export const OnboardingTwoFactorSetup = ({
             {emailSelected ? (
                 <>
                     <Typography role={emailSent ? 'status' : undefined} sx={{ mb: 1 }}>
-                        {t(emailSent ? 'twoFactorSetup.email.sent' : 'twoFactorSetup.email.description')}
+                        {t(emailSent ? 'twoFactorSetup.email.sent' : emailDescriptionKey)}
                     </Typography>
                     <Typography sx={{ mb: 2, overflowWrap: 'anywhere' }}>{email}</Typography>
                     <M3Button
@@ -200,6 +206,13 @@ export const OnboardingTwoFactorSetup = ({
                         </M3Button>
                     </div>
                 </>
+            )}
+            {onCancel && (
+                <div className={styles.actions}>
+                    <M3Button type="button" variant="text" block disabled={pending} onClick={onCancel}>
+                        {t('twoFactorSetup.cancel')}
+                    </M3Button>
+                </div>
             )}
         </Form>
     );

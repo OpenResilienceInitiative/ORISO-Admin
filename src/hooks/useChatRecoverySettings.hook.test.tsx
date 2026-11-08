@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { getChatRecoverySettings, updateChatRecoverySettings } from '../api/tenant/chatRecoverySettings';
 import { CHAT_RECOVERY_SETTINGS_QUERY_KEY, useChatRecoverySettings } from './useChatRecoverySettings.hook';
 

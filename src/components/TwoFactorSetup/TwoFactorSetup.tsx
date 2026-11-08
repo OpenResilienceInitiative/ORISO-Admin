@@ -13,7 +13,7 @@ export type TwoFactorSetupProps =
  *
  * ONE component, started from different contexts:
  *  - `context="profile"` — authenticated admin/consultant profile: activation
- *    switch + stepped overlay wizard, backed by the real user-service hooks
+ *    switch + the onboarding setup form, backed by the real user-service hooks
  *    (`useUserTwoFactorAuth` & friends). `required` drives the mandatory-setup
  *    behavior used by `MandatoryTwoFactorSetup`.
  *  - `context="onboarding"` — public tenant-admin onboarding (no session yet):
@@ -28,8 +28,8 @@ export type TwoFactorSetupProps =
  * Shared-package extraction (future, do NOT do ad hoc): to publish this as a
  * real cross-repo package the following would have to move out first:
  *  1. `twoFactorSetupFlow.ts` + the constants — pure TS, extractable as-is.
- *  2. A headless state machine over the step contract (currently the profile
- *     variant drives steps through the Admin `Overlay` component, the Frontend
+ *  2. A headless state machine over the step contract (the Admin renders both
+ *     contexts through `OnboardingTwoFactorSetup`, the Frontend
  *     through `TwoFactorSetupDialog`) — both UIs would consume it.
  *  3. A client interface (`activateApp(otp, secret)`, `sendEmailCode(email)`,
  *     `activateEmail(otp)`, `deactivate()`) with per-layer adapters; error

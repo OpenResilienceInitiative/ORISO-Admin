@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { isReadOnlySetting } from './serverSettingsMeta';
 
 describe('isReadOnlySetting', () => {

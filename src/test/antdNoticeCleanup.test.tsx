@@ -5,7 +5,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import { message, notification } from 'antd';
 import { screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 describe('antd static notice cleanup between tests', () => {
     it('raises a message and a notification', async () => {

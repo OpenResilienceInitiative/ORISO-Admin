@@ -7,6 +7,7 @@ import Switch from '@mui/material/Switch';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import styles from './styles.module.scss';
 
 /**
@@ -28,8 +29,9 @@ const checkedThumb = (
 
 export interface MuiSwitchProps {
     checked: boolean;
-    onChange: (checked: boolean) => void;
+    onChange?: (checked: boolean) => void;
     disabled?: boolean;
+    readOnly?: boolean;
     /** Accessible name. Pass the id of an external <label> via `id` instead when one exists. */
     ariaLabel?: string;
     id?: string;
@@ -45,17 +47,23 @@ export interface MuiSwitchProps {
  * When there IS a Form.Item, use {@link MuiSwitchField} — it adds the binding,
  * validation status and helper text on top of this.
  */
-export const MuiSwitch = ({ checked, onChange, disabled, ariaLabel, id, className }: MuiSwitchProps) => (
+export const MuiSwitch = ({ checked, onChange, disabled, readOnly, ariaLabel, id, className }: MuiSwitchProps) => (
     <Switch
         checked={checked}
-        className={classNames(styles.switch, { [styles.switchDisabled]: disabled }, className)}
+        className={classNames(
+            styles.switch,
+            { [styles.switchDisabled]: disabled, [styles.switchReadOnly]: readOnly },
+            className,
+        )}
         checkedIcon={checkedThumb}
         disabled={disabled}
         disableRipple
         focusVisibleClassName=".Mui-focusVisible"
         icon={uncheckedThumb}
-        slotProps={{ input: { 'aria-label': ariaLabel, id } }}
-        onChange={(_event, next) => onChange(next)}
+        slotProps={{ input: { 'aria-label': ariaLabel, 'aria-disabled': readOnly || undefined, id } }}
+        onChange={(_event, next) => {
+            if (!readOnly) onChange?.(next);
+        }}
     />
 );
 
@@ -91,14 +99,17 @@ const MuiSwitchControl = ({
     confirmEnable,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
-    const isDisabled = componentDisabled || disabled || unavailable;
+    const inReadOnlyTile = React.useContext(ReadOnlyTileContext);
+    const isReadOnly = !!componentDisabled && inReadOnlyTile && !disabled && !unavailable;
+    const isDisabled = !!disabled || !!unavailable || (!!componentDisabled && !isReadOnly);
     const { status } = Form.Item.useStatus();
     const form = Form.useFormInstance();
     const isError = status === 'error';
     const errors = form?.getFieldError(fieldName as any) ?? [];
     const helperText = (isError && errors[0]) || helpText || undefined;
 
-    const handleChange = (_event: React.ChangeEvent<HTMLInputElement>, nextChecked: boolean) => {
+    const handleChange = (nextChecked: boolean) => {
+        if (isReadOnly || isDisabled) return;
         if (nextChecked && confirmEnable) {
             confirmEnable(() => onChange?.(true));
             return;
@@ -110,25 +121,19 @@ const MuiSwitchControl = ({
         <div className={styles.control}>
             <FormControlLabel
                 className={classNames(styles.formControlLabel, {
-                    [styles.formControlLabelDisabled]: isDisabled,
+                    [styles.formControlLabelDisabled]: isDisabled || isReadOnly,
                 })}
                 label={label ?? ''}
                 labelPlacement="start"
                 disabled={isDisabled}
                 control={
-                    <Switch
-                        className={classNames(styles.switch, {
-                            [styles.switchDisabled]: isDisabled,
-                            [styles.switchUnavailable]: unavailable,
-                        })}
-                        focusVisibleClassName=".Mui-focusVisible"
-                        disableRipple
-                        icon={uncheckedThumb}
-                        checkedIcon={checkedThumb}
+                    <MuiSwitch
                         checked={!!checked}
                         onChange={handleChange}
                         disabled={isDisabled}
-                        slotProps={{ input: { 'aria-label': switchLabel } }}
+                        readOnly={isReadOnly}
+                        ariaLabel={switchLabel}
+                        className={classNames({ [styles.switchUnavailable]: unavailable })}
                     />
                 }
             />

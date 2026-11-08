@@ -1,12 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { useLegalDraft } from './useLegalDraft';
 import { legalDraftKey, readLegalDraft, writeLegalDraft } from '../utils/legalDraftStorage';
 
 const successNotification = vi.fn();
 const errorNotification = vi.fn();
 
-vi.mock('antd', () => ({
+vi.mock('antd', async () => ({
+    ...(await vi.importActual<typeof import('antd')>('antd')),
     notification: {
         success: (...args: unknown[]) => successNotification(...args),
         error: (...args: unknown[]) => errorNotification(...args),

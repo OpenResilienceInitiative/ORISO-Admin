@@ -1,6 +1,6 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../../../i18n';
 import type { RecipientScopePolicy } from '../../../../../types/permissionPolicy';
 import { RecipientScopeControl } from './RecipientScopeControl';

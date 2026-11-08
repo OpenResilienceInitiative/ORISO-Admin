@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { updateTenantAdminControls } from './updateTenantAdminControls';
 
 describe('platform permission policy HTTP response', () => {

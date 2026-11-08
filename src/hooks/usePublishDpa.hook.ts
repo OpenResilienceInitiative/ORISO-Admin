@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAdminFeedback } from './useAdminFeedback';
 import { publishDpa } from '../api/tenant/publishDpa';
 import { DPA_VERSIONS_KEY } from './useDpaVersions.hook';
 import { DPA_GATE_KEY } from './useDpaGate.hook';
@@ -9,6 +9,7 @@ import { useDpaOperationScope } from './useDpaOperationScope.hook';
 
 /** Publish a dated version; the card owns errors so failed drafts remain editable. */
 export const usePublishDpa = (tenantId: number) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const queryClient = useQueryClient();
     const { scope, isCurrent } = useDpaOperationScope(tenantId);

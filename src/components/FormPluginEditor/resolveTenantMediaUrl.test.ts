@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { resolveTenantMediaUrl } from './resolveTenantMediaUrl';
 
 vi.mock('../../appConfig', () => ({ tenantServiceURL: 'https://api.oriso-dev.site' }));

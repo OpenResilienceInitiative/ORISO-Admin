@@ -2,6 +2,7 @@ import { Form, FormInstance } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReadOnlyTileContext } from './ReadOnlyTileContext';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
 import styles from './styles.module.scss';
@@ -161,21 +162,23 @@ export const CardEditable = ({
                 )
             }
         >
-            <Form
-                validateTrigger={['onSubmit', 'onChange']}
-                labelAlign="left"
-                labelWrap
-                layout="vertical"
-                form={form}
-                size="large"
-                onValuesChange={() => setHasChanges(true)}
-                onFinish={onFormSubmit}
-                disabled={!editing}
-                initialValues={initialValues}
-                className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
-            >
-                {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
-            </Form>
+            <ReadOnlyTileContext.Provider value={!editing}>
+                <Form
+                    validateTrigger={['onSubmit', 'onChange']}
+                    labelAlign="left"
+                    labelWrap
+                    layout="vertical"
+                    form={form}
+                    size="large"
+                    onValuesChange={() => setHasChanges(true)}
+                    onFinish={onFormSubmit}
+                    disabled={!editing}
+                    initialValues={initialValues}
+                    className={classNames({ [styles.dialogForm]: variant === 'dialog', [styles.formEditing]: editing })}
+                >
+                    {typeof children === 'function' ? children({ form, editing, startEditing }) : children}
+                </Form>
+            </ReadOnlyTileContext.Provider>
 
             {note && <TileNote icon={note.icon}>{note.text}</TileNote>}
             {canStartEditing && finalEditButtonPlacement === 'footer' && (

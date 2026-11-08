@@ -122,3 +122,26 @@ white falls back to the ORISO primary for the button (`OrisoEmailBrand#readableP
 SMTP setting `globalSmtpEmailThemeColor` is deliberately not read. The checked-in fixtures were last
 regenerated against that backend state — a fixture still showing the old navy `#0f3b8f` accent or a
 grey `#111827`/`#374151` ramp is stale and must be regenerated, never recoloured here.
+
+## Exact unsaved story recordings
+
+`src/utils/storybook/invitePreviewFixtures.json` records the seven exact requests in
+`invite-preview-requests.json`. The matching handler compares every request field;
+unsupported body/kind/language/subject or extra fields return 422, which the actual
+preview consumer displays as a failure. It never substitutes local text into HTML.
+
+`InvitePreviewStoryFixtureGenerator.java` drives the real backend preview service and
+renderer. For the recorded refresh, the service, substitution, dispatcher, renderer and
+its layout dependencies were freshly compiled into task state with an existing backend
+test classpath; backend source, build outputs and dependencies were untouched. Current
+catalogue resources were copied into that isolated classpath ahead of existing outputs.
+The adjacent `invitePreviewFixtures.manifest.json` records the backend revision, exact
+compiled-source hashes, catalogue digest, synthetic branding, requests and returned HTML/
+plain-text byte hashes. The generator takes the requests JSON and output JSON as its two
+arguments; no authentication or network service is used.
+
+The backend deliberately uses `firstNonBlank` defaults for an empty unsaved draft. Thus
+`InviteEmailEmpty` retains its export/story ID but its display name now describes the
+actual default invitation, rather than promising an empty-body shell. Unknown authored
+tokens remain in the actual generated HTML. All recipients, URLs and branding here are
+synthetic; `SAMPLE-PREVIEW-TOKEN` is not a usable invite token.

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18next from 'i18next';
 import translationDe from '../../locales/de/translation.json';
 import translationEn from '../../locales/en/translation.json';
@@ -16,7 +16,8 @@ vi.mock('../../utils/generateCsrfToken', () => ({ default: () => 'csrf-token' })
 vi.mock('../../utils/language', () => ({ DEFAULT_LANGUAGE: 'de', normalizeLanguage: (lang: string) => lang }));
 vi.mock('../../appConfig', () => ({ default: { login: '/admin/login' }, CSRF_WHITELIST_HEADER: 'X-CSRF-Token' }));
 const messageError = vi.hoisted(() => vi.fn());
-vi.mock('antd', () => ({ message: { error: messageError } }));
+// Node has no visual holder; observe the requested localized notice at the transport boundary.
+vi.mock('../transportFeedback', () => ({ captureTransportFeedback: () => messageError }));
 
 // eslint-disable-next-line import/first
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, X_REASON } from '../fetchData';
@@ -39,6 +40,9 @@ const saveAgency = (status = 409, reason = 'ONE_TOPIC_PER_AGENCY') => {
     });
 };
 
+beforeEach(() => messageError.mockReset());
+afterEach(() => vi.unstubAllGlobals());
+
 describe('agency save rejected by the one-topic-per-agency switch', () => {
     beforeAll(async () => {
         await i18next.init({
@@ -57,9 +61,11 @@ describe('agency save rejected by the one-topic-per-agency switch', () => {
     it('shows the German explanation instead of the generic error', async () => {
         await i18next.changeLanguage('de');
         await expect(saveAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenCalledTimes(1);
         expect(messageError).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 content: 'Diese Plattform erlaubt nur ein Thema (Fachbereich) pro Beratungsstelle.',
+                duration: 8,
             }),
         );
     });
@@ -67,8 +73,12 @@ describe('agency save rejected by the one-topic-per-agency switch', () => {
     it('shows the English explanation', async () => {
         await i18next.changeLanguage('en');
         await expect(saveAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenCalledTimes(1);
         expect(messageError).toHaveBeenLastCalledWith(
-            expect.objectContaining({ content: 'This platform allows only one topic per counselling centre.' }),
+            expect.objectContaining({
+                content: 'This platform allows only one topic per counselling centre.',
+                duration: 8,
+            }),
         );
     });
 
@@ -76,10 +86,12 @@ describe('agency save rejected by the one-topic-per-agency switch', () => {
     it('asks to try again when the server cannot read the switch', async () => {
         await i18next.changeLanguage('de');
         await expect(saveAgency(503, 'SETTINGS_UNAVAILABLE')).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
+        expect(messageError).toHaveBeenCalledTimes(1);
         expect(messageError).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 content:
                     'Die Einstellung „ein Thema (Fachbereich) pro Beratungsstelle“ ließ sich gerade nicht prüfen. Bitte versuchen Sie es in einem Moment erneut.',
+                duration: 8,
             }),
         );
     });

@@ -3,7 +3,7 @@ import { notification } from 'antd';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { GeneralSettings } from './index';
 import { getTenantAdminControls } from '../../../api/tenant/getTenantAdminControls';
 import { getTenantPermissionPolicies } from '../../../api/tenant/tenantPermissionPolicies';

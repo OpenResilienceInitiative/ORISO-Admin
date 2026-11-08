@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import { OneTopicPerAgencySettingsCard, OneTopicPerAgencySettingsCardContainer } from '.';
@@ -58,7 +58,7 @@ it('renders visible-but-not-editable when disabled', () => {
     render(<OneTopicPerAgencySettingsCard enabled isLoading={false} onSave={() => undefined} disabled />);
 
     expect(oneTopicSwitch()).toBeChecked();
-    expect(oneTopicSwitch()).toBeDisabled();
+    expect(oneTopicSwitch()).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
 });
 

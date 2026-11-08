@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { notification } from 'antd';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { useTenantAdminControlsMutation } from './useTenantAdminControlsMutation.hook';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
 import { updateTenantAdminControls } from '../api/tenant/updateTenantAdminControls';

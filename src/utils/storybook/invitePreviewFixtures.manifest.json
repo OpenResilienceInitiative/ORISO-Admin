@@ -1,0 +1,116 @@
+{
+    "backendRevision": "802b9d1fa062a80b73dfe8ecc407da6105b53ef0",
+    "generation": "Real InviteEmailPreviewService + AccountInviteService substitution + InviteMailDispatchService + InviteFrameMailRenderer/OrisoEmailRenderer, freshly compiled current sources into isolated task state. Only repository/access-policy/branding/SMTP boundaries are synthetic; no SMTP call is made. HTML/plainText are unmodified service output.",
+    "compiledSources": {
+        "src/main/java/de/caritas/cob/userservice/api/service/accountinvite/InviteEmailPreviewService.java": "8ebe6fc8497b2f5b7da4c4a4d919e6e4c464b08f1022aede7fcdeeecd9ea0b7c",
+        "src/main/java/de/caritas/cob/userservice/api/service/accountinvite/AccountInviteService.java": "e305c3910e252635d0424b87c3be6506ba8df3c74087e6d5d67193c5d2fef637",
+        "src/main/java/de/caritas/cob/userservice/api/service/accountinvite/InviteAcceptUrlBuilder.java": "4ed7b02a74a209b73cadd78af4f17d6cf0c754ac03753e6527dc56ef04962828",
+        "src/main/java/de/caritas/cob/userservice/api/service/accountinvite/mail/InviteMailDispatchService.java": "2c587f1af71cd3188fd9cd3a8591363caf0ece91cb429814b49bdec56a91f366",
+        "src/main/java/de/caritas/cob/userservice/api/service/accountinvite/mail/InviteFrameMailRenderer.java": "2d753bffd9c995281b3d570ad2c12b7e369b5711c6a5300ae693d9584d7ab499",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/OrisoEmailRenderer.java": "3ea9ed0cef151841f91ad4c1c5f542d64b60347ce7431addf4aeb0bbe6ceba25",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/TenantEmailBrandValues.java": "6de6f91f156718f3aa5fe82b6d0472c379922f9cbdc7267eb9c6091323ff5fd2",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/OrisoEmailBrand.java": "f75432ad0342c93469b13c7f1cefa28fe943c614f7053156641bda11181f7837",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/layout/EmailContentSanitizer.java": "58cd1a34aeac2a57ec8a14121c8858a7e0aeb9b6a69a6804eec74d4a1d306066",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/layout/EmailColors.java": "ba1dfea4ce26bbeb0553e426a64518bb77434ef715260e0cdb77152358cb7b30",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/layout/EmailBranding.java": "d50a501a35da7a8701e1ade71881de1e8071c13b9c99011abe8cca3340e4ff46",
+        "src/main/java/de/caritas/cob/userservice/api/service/email/layout/BrandedEmail.java": "bba05c0690f851b45b4e8042d3339eb062161b2c7aaa50157628e2242d9d9e58",
+        "src/main/java/de/caritas/cob/userservice/api/service/notification/AdminPanelUrl.java": "d87efcce06fde7be858e20af7b7c4d790e3447f84e54110a27e1f241a23e45b2",
+        "src/test/java/de/caritas/cob/userservice/api/service/accountinvite/mail/InviteFrameMailRendererFixture.java": "9838825af80e989ffd0aa061f36ff3abf307ba05459c7ed109fd37fbe2049efc",
+        "src/test/java/de/caritas/cob/userservice/api/service/email/layout/EmailBrandingFixture.java": "2fa9720365f7e40284d6989205a62d81568a7507b96c708e6db1b0ae46b2344f",
+        "src/test/java/de/caritas/cob/userservice/api/service/email/sender/SenderOrganisationFixture.java": "f99337b29cb29363ce9b5ff2836fd7bdeb553b6bad71947edae376aeaf08715b"
+    },
+    "catalogueResources": {
+        "files": 510,
+        "sha256": "25127942644278004c396667ad7b3fda6a46a55c98b41b2dac890a1e566e9ba0"
+    },
+    "syntheticBranding": {
+        "brandName": "Online-Beratung",
+        "logoUrl": null,
+        "accentColor": "#a5000a",
+        "imprintUrl": "https://app.example.org/impressum",
+        "privacyUrl": "https://app.example.org/datenschutz",
+        "sender": {
+            "name": "ORISO",
+            "address": "Betreiberweg 1, 10115 Berlin",
+            "email": "info@betreiber.example"
+        }
+    },
+    "input": "scripts/email-fixtures/invite-preview-requests.json",
+    "generator": "scripts/email-fixtures/InvitePreviewStoryFixtureGenerator.java",
+    "emptyDraftContract": "firstNonBlank selects SAMPLE_SUBJECT and SAMPLE_BODY; it does not render an empty body shell.",
+    "fixtures": [
+        {
+            "id": "standard",
+            "request": {
+                "subject": "Ihre Einladung zur Beratungsplattform, {{firstName}}",
+                "body": "Hallo {{firstName}} {{lastName}},\n\nSie wurden mit der Adresse {{email}} zur Beratungsplattform eingeladen.\nÜber diesen Link richten Sie Ihren Zugang ein:\n\n{{inviteLink}}\n\nViele Grüße\nIhr Team (Träger {{tenantId}})",
+                "language": "de"
+            },
+            "htmlSHA256": "2846875580cbb70a04ae218d367723adf95afb4e96f2db035dce8570a002bb98",
+            "plainTextSHA256": "1d02e9cb90804d19a4691eff3be4b9d4e0e2be9086282305857e3630ca9cbc56"
+        },
+        {
+            "id": "short",
+            "request": {
+                "subject": "Ihr Zugang",
+                "body": "Hallo {{firstName}},\nhier ist Ihr Einladungslink: {{inviteLink}}",
+                "language": "de"
+            },
+            "htmlSHA256": "3372df82b4813850ed8cc3f965ad97d990103c031eccb611ea9f62e9121fa1e2",
+            "plainTextSHA256": "bba8d8cd465835bd7f158251fb6c67d83da1f430214a1cb5310a045178e7129f"
+        },
+        {
+            "id": "unknown",
+            "request": {
+                "subject": "Einladung für {{firstName}}",
+                "body": "Hallo {{firstName}},\ndieser Platzhalter existiert nicht: {{unbekannterPlatzhalter}}",
+                "language": "de"
+            },
+            "htmlSHA256": "5a2fe39094eda069cdf97d94be34e58cbf66b19e31b7efff9c3dad5aea1def0f",
+            "plainTextSHA256": "890411190fd577a19b574a8dff79513d60f2e070e7b86493781e0b5ad85c7539"
+        },
+        {
+            "id": "empty",
+            "request": {
+                "subject": "",
+                "body": "",
+                "language": "de"
+            },
+            "htmlSHA256": "9f61f12244cbf3723582ff1bbb5deacff3a12d2ecf96b630a8e24a1de6671f92",
+            "plainTextSHA256": "c35215b898dcaf8738aae98630e9d33b504aff16c304bad606f08bb9cda99c2e"
+        },
+        {
+            "id": "create-empty",
+            "request": {
+                "subject": "",
+                "body": "",
+                "kind": "TENANT_INVITE",
+                "language": "de"
+            },
+            "htmlSHA256": "9f61f12244cbf3723582ff1bbb5deacff3a12d2ecf96b630a8e24a1de6671f92",
+            "plainTextSHA256": "c35215b898dcaf8738aae98630e9d33b504aff16c304bad606f08bb9cda99c2e"
+        },
+        {
+            "id": "create-subject",
+            "request": {
+                "subject": "Willkommen",
+                "body": "",
+                "kind": "TENANT_INVITE",
+                "language": "de"
+            },
+            "htmlSHA256": "85070208c2df40ce0d5df490816b5940209884901ea1c284d20c65491aeaa334",
+            "plainTextSHA256": "e2f8f437493f46ae8968b6e81008a43acded1c3bdb4d79d196685c20ee7b1bd5"
+        },
+        {
+            "id": "create-complete",
+            "request": {
+                "subject": "Willkommen",
+                "body": "Ihr Zugang zur Beratung",
+                "kind": "TENANT_INVITE",
+                "language": "de"
+            },
+            "htmlSHA256": "d4054a89e9abc3334351ed7106fab56faa055c7d8f7443c5cd1a352cdca22052",
+            "plainTextSHA256": "8cf61178c1c41c53d24336051a719a38440e5af00ea46f1295959e677bef642c"
+        }
+    ]
+}

@@ -320,6 +320,7 @@ export const SendToSelectedTraeger: Story = {
         await userEvent.click(send);
         await waitFor(() => expect(sent).toHaveLength(1));
         await expect(sent[0]).toMatchObject({ audience: 'SELECTED', tenantIds: [21], sourceRevision: '9:2' });
+        await expect(await page.findByText(/an 1 Träger gesendet|sent to 1 Träger/, {}, LOAD)).toBeInTheDocument();
     },
 };
 
@@ -449,6 +450,7 @@ export const TypingShowsSaveAndSendingSavesFirst: Story = {
         await userEvent.click(within(dialog).getByRole('button', { name: /^(Senden|Send)$/ }));
         await waitFor(() => expect(sent).toHaveLength(1));
         await expect(sent[0]).toMatchObject({ sourceRevision: '9:3' });
+        await expect(await page.findByText(/an 3 Träger gesendet|sent to 3 Träger/, {}, LOAD)).toBeInTheDocument();
     },
 };
 

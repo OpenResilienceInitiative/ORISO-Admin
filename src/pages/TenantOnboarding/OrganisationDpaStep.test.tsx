@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
 import type { TenantAdminOnboardingInviteDTO } from '../../api/tenantOnboarding/tenantOnboarding';

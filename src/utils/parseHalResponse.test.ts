@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { parseHalResponse } from './parseHalResponse';
 
 const jsonResponse = (body: string, contentType = 'application/hal+json', status = 200) =>

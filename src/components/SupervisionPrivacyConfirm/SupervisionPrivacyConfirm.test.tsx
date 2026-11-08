@@ -1,7 +1,7 @@
 import { Form } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { MuiSwitchField } from '../mui/MuiSwitchField';
 import { MuiSelectField } from '../mui/MuiSelectField';
 import { FormSwitchField } from '../FormSwitchField';
