@@ -22,6 +22,8 @@ export const useTopicActiveMutation = () => {
                 // whole page to the access-denied screen either, the switch just says it failed.
                 responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
             });
+            // The PUT replaces the whole topic: without the stored record it would wipe the rest.
+            if (!stored) throw new Error(FETCH_ERRORS.NO_CONTENT);
             return fetchData({
                 url: `${topicAdminEndpoint}/${id}`,
                 method: FETCH_METHODS.PUT,
