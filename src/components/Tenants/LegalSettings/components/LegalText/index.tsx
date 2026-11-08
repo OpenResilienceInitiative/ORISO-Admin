@@ -1,6 +1,6 @@
 import set from 'lodash.set';
 import { Spin, Tag } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { Modal, ModalProps } from '../../../../Modal';
@@ -13,8 +13,9 @@ import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useLegalTextReadOnlyReason } from '../../hooks/useLegalTextReadOnlyReason';
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { LegalConsentField } from '../LegalConsentField';
-import { LegalDraftNotice } from '../LegalDraftNotice';
+import { LegalDraftNotice, LegalDraftStatus, useLegalDraftNoticeState } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { TenantLegalDraftStatus, useDraftDecision } from '../TenantLegalDraftStatus';
 import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
 import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
@@ -84,14 +85,6 @@ const persistHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
     }
 };
 
-const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string) => {
-    try {
-        window.sessionStorage.setItem(scopedKey(hintSessionKey(type), scope), 'true');
-    } catch {
-        // Private mode / storage disabled: the close still works for this mount.
-    }
-};
-
 interface LegalTextProps {
     /** The tile's explanation (slideshow) behind the info button in the editor's title row. */
     tileHelp?: TileHelpTopic;
@@ -155,6 +148,7 @@ export const LegalText = ({
 }: LegalTextProps) => {
     const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
+    const cardId = useId();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
@@ -458,7 +452,13 @@ export const LegalText = ({
         setHintHidden(legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false);
     }, [legalType, dismissalScope]);
 
-    const showHintSnackbar = !!legalType && !hintHidden;
+    // The role/state tip is permanent help: plain text in the tile with a "Nicht mehr anzeigen" link,
+    // never a pop-up (Frank, 2026-11-07).
+    const showHint = !!legalType && !hintHidden && !!help.hint;
+    const dismissHint = () => {
+        if (legalType && dismissalScope) persistHintDismissed(legalType, dismissalScope);
+        setHintHidden(true);
+    };
 
     const publishSavedDraft = useCallback(
         async (formData: Record<string, unknown>, revision: string, operationIdentity: string) => {
@@ -600,6 +600,15 @@ export const LegalText = ({
                 if (editorIdentityRef.current === editorIdentity) setDraftActionPending(false);
             });
     }, [editorIdentity, saveCurrentDraft, t]);
+
+    // The draft pop-ups can be closed without losing the state: it stays as quiet text in the tile.
+    const decisionState = {
+        unavailable: canEditLegalText && !!legalType && serverDraft.isError,
+        conflict: canEditLegalText && !!legalType && serverDraft.hasConflict,
+        collision: canEditLegalText && !!legalType && draftCollision && !sourceChosen,
+    };
+    const draftDecision = useDraftDecision(decisionState);
+    const localDraftNotice = useLegalDraftNoticeState({ savedAt });
 
     // Wait for the opaque user id too, but only where a draft is possible: mounting the
     // editor first and letting the draft arrive later would remount it mid-edit and offer
@@ -850,9 +859,12 @@ export const LegalText = ({
         );
 
     return (
-        <div className={styles.card}>
+        <div id={cardId} className={styles.card}>
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
+                    jumpTarget={cardId}
+                    dismissed={draftDecision.dismissed}
+                    onDismiss={draftDecision.dismiss}
                     savedAt={serverBase.draft?.updatedAt}
                     localSavedAt={draftSource === 'server' ? undefined : savedAt}
                     collision={draftCollision && !sourceChosen}
@@ -896,7 +908,15 @@ export const LegalText = ({
                     pending={draftActionPending}
                 />
             ) : (
-                canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
+                canEditLegalText && (
+                    <LegalDraftNotice
+                        savedAt={savedAt}
+                        jump={cardId}
+                        dismissed={localDraftNotice.dismissed}
+                        onDismiss={localDraftNotice.dismiss}
+                        onDiscard={discardDraftAndEdits}
+                    />
+                )
             )}
             {wrapEditor(
                 <M3RichTextEditor
@@ -938,7 +958,16 @@ export const LegalText = ({
                         legalType && (
                             <>
                                 {publicationStatus}
-                                <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
+                                <EditorHelpText
+                                    text={helpText}
+                                    hint={showHint ? help.hint : undefined}
+                                    onDismissHint={showHint ? dismissHint : undefined}
+                                />
+                                <TenantLegalDraftStatus
+                                    kind={draftDecision.kind}
+                                    dismissed={draftDecision.dismissed}
+                                    onReopen={draftDecision.reopen}
+                                />
                             </>
                         )
                     }
@@ -948,8 +977,7 @@ export const LegalText = ({
                         (editorError ||
                             (versionsUnavailable && !historyNoticeClosed) ||
                             (blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
-                            showDraftSnackbar ||
-                            showHintSnackbar) && (
+                            showDraftSnackbar) && (
                             <EditorSnackbarQueue
                                 items={[
                                     editorError && {
@@ -1007,31 +1035,24 @@ export const LegalText = ({
                                             />
                                         ),
                                     },
-                                    showHintSnackbar && {
-                                        key: 'help-hint',
-                                        node: (
-                                            <EditorHintSnackbar
-                                                layout="long"
-                                                text={help.hint}
-                                                onClose={() => {
-                                                    if (legalType && dismissalScope)
-                                                        persistHintClosedForSession(legalType, dismissalScope);
-                                                    setHintHidden(true);
-                                                }}
-                                                onDismiss={() => {
-                                                    if (legalType && dismissalScope)
-                                                        persistHintDismissed(legalType, dismissalScope);
-                                                    setHintHidden(true);
-                                                }}
-                                            />
-                                        ),
-                                    },
                                 ]}
                             />
                         )
                     }
                     aboveEditorSlot={
-                        !legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined
+                        !legalType && (subTitle || (canEditLegalText && savedAt)) ? (
+                            <>
+                                {subTitle ? <p className={styles.description}>{subTitle}</p> : null}
+                                {canEditLegalText ? (
+                                    <LegalDraftStatus
+                                        savedAt={savedAt}
+                                        dismissed={localDraftNotice.dismissed}
+                                        onReopen={localDraftNotice.reopen}
+                                        onDiscard={discardDraftAndEdits}
+                                    />
+                                ) : null}
+                            </>
+                        ) : undefined
                     }
                     placeholder={t(placeHolderKey)}
                     textTokens={legalTextTokens}
