@@ -73,7 +73,7 @@ export const TopicList = () => {
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    message.error({ content });
+                    message.error({ content, duration: 8 });
                 },
             },
         );

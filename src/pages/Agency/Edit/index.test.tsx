@@ -406,6 +406,7 @@ describe('AgencyPageEdit create flow', () => {
                     message:
                         'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
                     description: 'Trägerzuordnung',
+                    duration: 8,
                 }),
             { timeout: 5000 },
         );
@@ -539,7 +540,7 @@ describe('AgencyPageEdit create flow', () => {
         await expect(
             mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
         ).rejects.toBe(rejection);
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
         notificationSpy.mockRestore();
     });
 
@@ -593,7 +594,7 @@ describe('AgencyPageEdit create flow', () => {
             }),
         );
 
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
         notificationSpy.mockRestore();
     });
 });
@@ -1186,7 +1187,7 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         await user.click(toggle);
         fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
 
-        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED }));
+        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED, duration: 8 }));
         expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         notificationSpy.mockRestore();
