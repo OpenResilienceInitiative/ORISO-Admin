@@ -673,7 +673,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
                         onRevoke={onRevoke}
-                        onInviteCta={focusComposer}
+                        onInviteCta={isTenantInvite && isAgencyViewer ? undefined : focusComposer}
                         onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                         topicPermissionSavingIds={topicSavingIds}
                         viewerScope={viewerScope}
