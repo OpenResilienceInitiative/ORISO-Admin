@@ -1,0 +1,30 @@
+import { Meta, Canvas } from '@storybook/addon-docs/blocks';
+import * as Stories from './Notify.stories';
+
+<Meta title="Foundations/Messages — which one when" />
+
+# Which message for which situation
+
+**Notifications are pop-ups, never boxes in the page.** One message design everywhere: the
+shared snackbar (Figma `Design-System-M3_ORISO`, Snackbar). Nothing is inserted above, between or
+below cards, so nothing pushes content or sits flush against a card edge.
+
+| Situation                                                                                 | Use                              |
+| ----------------------------------------------------------------------------------------- | -------------------------------- |
+| Event: load failed, save result, warning, conflict that needs a choice                    | `<Notify>` / `snackbar.*`        |
+| Permanent explanation or read-only hint, field validation, "cannot continue" screen state | `<HintText>`, plain text in tile |
+| The user must decide before going on (delete, leave with unsaved changes, sign)           | Dialog (`Modal`)                 |
+| One-line explanation of an icon or a disabled control                                     | `M3Tooltip`                      |
+
+## Rules
+
+1. `<Notify>` renders nothing itself; the channel shows the pop-up with a close control.
+2. Errors, warnings and anything with an action stay until dismissed or acted on. Success and info time out.
+3. Give a pop-up a **title** when several tiles could be meant; an action such as "Ansehen" can take the
+   person to the tile. At most two actions (a choice such as two drafts).
+4. Text is an i18n key, never a raw server string.
+5. Never stack boxes in the page. Several pop-ups wait in the channel's queue.
+
+<Canvas of={Stories.TwoDraftsConflict} />
+<Canvas of={Stories.ErrorWithRetry} />
+<Canvas of={Stories.PermanentHintIsPlainText} />

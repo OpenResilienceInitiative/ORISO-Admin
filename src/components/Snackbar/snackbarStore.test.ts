@@ -269,7 +269,7 @@ describe('resolveDuration', () => {
         expect(resolveDuration({ message: 'ok', severity: 'success', durationMs: 60_000 })).toBe(6000);
     });
 
-    it('never times out an error, a warning or anything with an action or a jump', () => {
+    it('never times out an error, a warning or anything with an action', () => {
         const action = { label: 'Undo', onClick: () => undefined };
         expect(resolveDuration({ message: 'ok', severity: 'error' })).toBeNull();
         expect(resolveDuration({ message: 'ok', severity: 'error', durationMs: 4000 })).toBeNull();
@@ -278,7 +278,12 @@ describe('resolveDuration', () => {
         expect(resolveDuration({ message: 'ok', severity: 'success', action })).toBeNull();
         expect(resolveDuration({ message: 'ok', action })).toBeNull();
         expect(resolveDuration({ message: 'ok', secondaryAction: action })).toBeNull();
-        expect(resolveDuration({ message: 'ok', severity: 'success', jump: 'tile' })).toBeNull();
+    });
+
+    it('times out a success or info with a jump: the jump is a link, not an action', () => {
+        expect(resolveDuration({ message: 'ok', severity: 'success', jump: 'tile' })).toBe(4000);
+        expect(resolveDuration({ message: 'ok', severity: 'info', jump: 'tile' })).toBe(4000);
+        expect(resolveDuration({ message: 'ok', severity: 'error', jump: 'tile' })).toBeNull();
     });
 
     it('stays when asked for, success and info included', () => {
@@ -355,5 +360,31 @@ describe('jump and actions', () => {
             testId: 'draft-choice',
             durationMs: null,
         });
+    });
+});
+
+describe('generic transport errors', () => {
+    it('drops a generic error raised right after a specific one', () => {
+        const store = createSnackbarStore(() => 0);
+        store.notify({ title: 'Statistik', description: 'nicht geladen', severity: 'error' });
+        store.notify({ title: 'Anfrage fehlgeschlagen', description: 'Fehler', severity: 'error', generic: true });
+        expect(store.getState().visible).toHaveLength(1);
+        expect(store.getState().visible[0].title).toBe('Statistik');
+    });
+
+    it('replaces a generic error by the specific one raised right after it', () => {
+        const store = createSnackbarStore(() => 0);
+        store.notify({ title: 'Anfrage fehlgeschlagen', description: 'Fehler', severity: 'error', generic: true });
+        store.notify({ title: 'Beratungsstelle', description: 'nicht gespeichert', severity: 'error' });
+        expect(store.getState().visible.map((item) => item.title)).toEqual(['Beratungsstelle']);
+    });
+
+    it('keeps a generic error when no specific one is near in time', () => {
+        let at = 0;
+        const store = createSnackbarStore(() => at);
+        store.notify({ title: 'Statistik', description: 'nicht geladen', severity: 'error' });
+        at = 10_000;
+        store.notify({ title: 'Anfrage fehlgeschlagen', description: 'Fehler', severity: 'error', generic: true });
+        expect(store.getState().visible).toHaveLength(2);
     });
 });

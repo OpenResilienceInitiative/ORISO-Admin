@@ -21,6 +21,11 @@ export interface SnackbarProps {
     action?: SnackbarAction;
     /** Second text action, shown before `action`. Forces the stacked layout. */
     secondaryAction?: SnackbarAction;
+    /**
+     * "Ansehen": a text link under the message, never one of the action slots, so it can stay next to
+     * two real actions. Stays out of the way of the live-region text (it is a button after it).
+     */
+    jump?: SnackbarAction;
     /** Shows the close affordance. */
     dismissible?: boolean;
     /**
@@ -89,6 +94,7 @@ export const Snackbar = ({
     severity = 'info',
     action,
     secondaryAction,
+    jump,
     dismissible = false,
     layout = 'auto',
     onClose,
@@ -128,16 +134,23 @@ export const Snackbar = ({
         <SnackbarCloseButton label={closeLabel ?? t('snackbar.close')} onClick={onClose} />
     );
     const text = (
-        <p className={styles.text}>
-            {description ? (
-                <>
-                    <span className={styles.title}>{message}</span>{' '}
-                    <span className={styles.description}>{description}</span>
-                </>
-            ) : (
-                message
+        <div className={styles.body}>
+            <p className={styles.text}>
+                {description ? (
+                    <>
+                        <span className={styles.title}>{message}</span>{' '}
+                        <span className={styles.description}>{description}</span>
+                    </>
+                ) : (
+                    message
+                )}
+            </p>
+            {jump && (
+                <button type="button" className={styles.jump} onClick={jump.onClick}>
+                    {jump.label}
+                </button>
             )}
-        </p>
+        </div>
     );
 
     const classNames = [
@@ -155,8 +168,10 @@ export const Snackbar = ({
             <div className={classNames} data-severity={severity} data-layout="stacked" data-testid={testId}>
                 {text}
                 <div className={styles.controls}>
-                    {secondaryButton}
-                    {actionButton}
+                    <div className={styles.actions}>
+                        {secondaryButton}
+                        {actionButton}
+                    </div>
                     {closeButton}
                 </div>
             </div>

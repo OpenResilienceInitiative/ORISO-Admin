@@ -14,6 +14,8 @@ const meta = {
     title: 'Molecules/Snackbar',
     component: Snackbar,
     parameters: {
+        // These stories bring their own (contained) host.
+        ownSnackbarHost: true,
         layout: 'padded',
         design: { type: 'figma', url: FIGMA },
         docs: {
@@ -569,7 +571,7 @@ export const StackOfThree: Story = {
 
 /**
  * "Ansehen": the pop-up belongs to a card. The jump scrolls to it and focuses it (here the card;
- * with an editor `onJump` opens or enlarges it first), then the pop-up goes away.
+ * with an editor `onJump` opens or enlarges it first), the pop-up stays.
  */
 export const JumpAction: Story = {
     render: () => <TilesDemo />,
@@ -578,8 +580,9 @@ export const JumpAction: Story = {
         await userEvent.click(within(card).getByRole('button', { name: 'Entry missing' }));
         const popup = await within(canvasElement).findByTestId('snackbar');
         await userEvent.click(within(popup).getByRole('button', { name: /Ansehen|View/ }));
-        await waitFor(() => expect(within(card).getByRole('button', { name: 'Load fails' })).toHaveFocus());
-        await waitFor(() => expect(canvasElement.querySelector('[data-testid="snackbar"]')).toBeNull());
+        // The card's heading takes the focus. The pop-up stays.
+        await waitFor(() => expect(within(card).getByRole('heading')).toHaveFocus());
+        await expect(canvasElement.querySelector('[data-testid="snackbar"]')).not.toBeNull();
     },
 };
 
