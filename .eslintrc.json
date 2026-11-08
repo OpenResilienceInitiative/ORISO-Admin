@@ -45,6 +45,26 @@
                         "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
                     },
                     {
+                        "name": "antd/es/message",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/lib/message",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/es/notification",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/lib/notification",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
                         "name": "antd",
                         "importNames": ["Select"],
                         "message": "Use M3Select for a shared select arrow."

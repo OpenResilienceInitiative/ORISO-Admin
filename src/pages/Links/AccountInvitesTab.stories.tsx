@@ -260,9 +260,11 @@ export const SmtpCredentialsMissing: Story = {
         // The snackbar host renders in a portal outside canvasElement.
         await waitFor(
             () =>
-                expect(document.body.querySelector('[data-testid="snackbar"]')?.textContent ?? '').toContain(
-                    'SMTP-Zugangsdaten fehlen',
-                ),
+                expect(
+                    Array.from(document.body.querySelectorAll('[data-testid="snackbar"]'))
+                        .map((popup) => popup.textContent ?? '')
+                        .join(' '),
+                ).toContain('SMTP-Zugangsdaten fehlen'),
             { timeout: 10_000 },
         );
     },
