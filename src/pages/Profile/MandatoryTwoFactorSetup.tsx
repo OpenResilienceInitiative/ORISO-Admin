@@ -31,6 +31,8 @@ export const MandatoryTwoFactorSetup = () => {
                         tone={setupAvailable ? 'default' : 'error'}
                         title={t('twoFactorAuth.required.title')}
                         className="mb-m"
+                        // An unavailable setup blocks the admin: announce it. The ordinary prompt is not an alert.
+                        role={setupAvailable ? undefined : 'alert'}
                     >
                         {setupAvailable
                             ? t('twoFactorAuth.required.subtitle')

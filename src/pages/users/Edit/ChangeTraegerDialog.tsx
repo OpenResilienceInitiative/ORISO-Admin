@@ -130,7 +130,12 @@ export const ChangeTraegerDialog = ({
             }
         >
             {error && (
-                <Notify title={t('notify.title.users')} severity="error">
+                <Notify
+                    title={t('notify.title.users')}
+                    severity="error"
+                    // The reason stays in the dialog after the pop-up is closed, until the error clears.
+                    quietText={t(`counselor.changeTenant.error.${error}`)}
+                >
                     {t(`counselor.changeTenant.error.${error}`)}
                 </Notify>
             )}
