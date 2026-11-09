@@ -11,8 +11,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { getWorker, initialize, mswLoader } from 'msw-storybook-addon';
-import { adminMessageConfig } from '../src/constants/adminMessageConfig';
-import { TransportFeedbackBridge } from '../src/components/TransportFeedbackBridge';
+import { SnackbarHost, snackbar } from '../src/components/Snackbar';
 import { beginStoryVerification, recordUnexpectedRequest } from './verification';
 import { isProductRequest } from './verificationIntegrity';
 import { a11yVerification } from './a11yVerification';
@@ -120,6 +119,13 @@ const preview: Preview = {
                 errors.push(error);
             }
             try {
+                // The snackbar channel is module-level state: without this the persistent messages of one
+                // story keep the four visible slots and the next story's toast waits in the queue.
+                snackbar.clear();
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
                 await clearStoryQueryClients();
             } catch (error) {
                 errors.push(error);
@@ -141,8 +147,8 @@ const preview: Preview = {
         (Story) => (
             <StoryProviders>
                 <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <AntdApp component={false} message={adminMessageConfig}>
-                        <TransportFeedbackBridge />
+                    <AntdApp component={false}>
+                        <SnackbarHost />
                         <MemoryRouter>
                             <Story />
                         </MemoryRouter>

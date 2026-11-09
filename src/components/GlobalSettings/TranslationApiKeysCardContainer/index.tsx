@@ -1,5 +1,5 @@
-import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { useTranslationKeys } from '../../../hooks/useTranslationKeys.hook';
 import { useSetTranslationKey } from '../../../hooks/useSetTranslationKey.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -21,8 +21,8 @@ export const TranslationApiKeysCardContainer = () => {
         mutate(
             { provider, apiKey },
             {
-                onSuccess: () => message.success(t('legal.translation.settings.saved')),
-                onError: () => message.error(t('legal.translation.settings.saveError')),
+                onSuccess: () => snackbar.success(t('legal.translation.settings.saved')),
+                onError: () => snackbar.error(t('legal.translation.settings.saveError')),
             },
         );
 

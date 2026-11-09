@@ -109,7 +109,7 @@ export const SaveFailed: Story = {
             <CounsellorTutorialSettingsCard
                 {...args}
                 onToursChange={() => {
-                    message.error({ content: String(i18n.t('globalSettings.tutorials.error.generic')), duration: 5 });
+                    message.error({ content: String(i18n.t('globalSettings.tutorials.error.generic')) });
                     setAttempts((attempts) => attempts + 1);
                 }}
             />
