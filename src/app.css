@@ -179,6 +179,14 @@
        surface-container-high, exactly like the M3 dialog over its light scrim. */
     --admin-workspace-background: #fcf9f9;
 
+    /* ONE keyboard focus ring for every control (one token, not three looks). The default colour is the
+       fixed brand accent: the workspace and the tiles are light in every scheme (7.7:1 on #fcf9f9).
+       Surfaces that DO follow the scheme (the dialog-variant card, the dark hint box) set only the colour
+       locally, to a light tone, so the ring stays >= 3:1 on them too. */
+    --admin-focus-ring-width: 2px;
+    --admin-focus-ring-offset: 2px;
+    --admin-focus-ring-color: var(--oriso-app-accent-dark, #a5000a);
+
     /* One surface for every tile, container and dialog. A later "light" mode remaps only this. */
     --admin-form-card-surface: #eae7e8;
     --admin-card-outline: transparent;
@@ -383,4 +391,45 @@ body {
 .ant-table-wrapper .ant-table-ping-left .ant-table-cell-fix-left-last:after,
 .ant-table-wrapper .ant-table-ping-right .ant-table-cell-fix-right-first:after {
     box-shadow: none !important;
+}
+
+/* THE keyboard focus ring: one rule, one token, every interactive element (native, MUI, antd, editors).
+   `:is()` takes the specificity of its most specific argument (a class), so this also wins over MUI's
+   `.MuiButtonBase-root { outline: 0 }` reset. Components must not draw their own ring (no per-component
+   outline colours); to change the colour on a surface, set `--admin-focus-ring-color` on that surface, and to move
+   the ring (e.g. inside a clipping scroller) set `--admin-focus-ring-offset` on the element: a component's own
+   `outline-offset` loses against this rule.
+   The rich-text node and the hidden switch input are excluded: their container (editor surface, whole switch)
+   draws the one ring.
+   Text inputs keep their field border as focus indication (M3 outlined fields). */
+
+:is(
+        button,
+        a[href],
+        [role='button'],
+        [role='tab'],
+        [role='switch'],
+        [role='checkbox'],
+        [role='radio'],
+        summary,
+        [tabindex]:not([tabindex='-1']),
+        [contenteditable='true'],
+        .MuiButtonBase-root,
+        .ant-btn
+    ):not(.ProseMirror, .PrivateSwitchBase-input):focus-visible {
+    outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
+    outline-offset: var(--admin-focus-ring-offset);
+}
+
+/* MUI radios and checkboxes: the focus lands on the hidden input, so the root carries the shared ring and the
+   default pulsating halo (a 16% tint, 1.8:1) is switched off. */
+
+:is(.MuiRadio-root, .MuiCheckbox-root).Mui-focusVisible {
+    border-radius: 50%;
+    outline: var(--admin-focus-ring-width) solid var(--admin-focus-ring-color);
+    outline-offset: var(--admin-focus-ring-offset);
+}
+
+:is(.MuiRadio-root, .MuiCheckbox-root).Mui-focusVisible .MuiTouchRipple-root {
+    display: none;
 }
