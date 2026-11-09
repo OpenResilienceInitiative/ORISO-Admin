@@ -42,7 +42,7 @@ export const SortPill = <T extends SortPillValue = NameSortField>({
     const label = (key: SortPillValue) =>
         t(`userTable.sortPill.${key}`, fields.find((field) => field.key === key)?.fallback ?? key);
     const byDate = value === 'lastUpdated';
-    const selectedLabel = byDate && dateDirection ? t(`userTable.sortPill.lastUpdated.${dateDirection}`) : label(value);
+    const activeDateDirection = byDate && dateDirection;
 
     return (
         <>
@@ -59,7 +59,10 @@ export const SortPill = <T extends SortPillValue = NameSortField>({
                         ? t('userTable.sortPill.prefixAny', 'Sortiert nach')
                         : t('userTable.sortPill.prefix', 'Name nach')}
                 </span>
-                <strong className={styles.value}>{selectedLabel}</strong>
+                <strong className={activeDateDirection ? styles.dateValue : styles.value}>
+                    {label(value)}
+                    {activeDateDirection && <span>{t(`userTable.sortPill.lastUpdated.${activeDateDirection}`)}</span>}
+                </strong>
                 <ExpandMoreIcon className={styles.chevron} aria-hidden />
             </button>
             <Menu
