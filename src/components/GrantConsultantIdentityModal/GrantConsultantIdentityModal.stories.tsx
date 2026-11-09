@@ -194,6 +194,11 @@ export const NoTopicAtAgency: Story = {
     },
     play: async (context) => {
         await pickAgency('Familienhilfe West')(context);
-        await expect(await screen.findByRole('alert')).toBeInTheDocument();
+        // The preview's snackbar host keeps an empty alert region in the DOM: match the one with the text.
+        await expect(
+            await screen.findByText(
+                /Die gewählte Beratungsstelle hat noch kein Thema|The selected advice centre has no topic yet/,
+            ),
+        ).toBeInTheDocument();
     },
 };
