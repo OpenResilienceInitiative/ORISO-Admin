@@ -3,9 +3,9 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined';
-import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import {
     buildTopicInviteLinkUrl,
     createTopicInviteLink,
@@ -86,7 +86,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
             setLinks(response.content ?? []);
             setTotal(response.totalElements ?? 0);
         } catch {
-            message.error(t('links.error.loadFailed', 'Could not load links'));
+            snackbar.error(t('links.error.loadFailed', 'Could not load links'));
         } finally {
             setLoadingLinks(false);
         }
@@ -100,8 +100,8 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const url = buildTopicInviteLinkUrl(link.token, resolveTopicName(link));
         navigator.clipboard
             .writeText(url)
-            .then(() => message.success(t('links.copied', 'Link copied')))
-            .catch(() => message.error(t('links.copyFailed', 'Copy failed')));
+            .then(() => snackbar.success(t('links.copied', 'Link copied')))
+            .catch(() => snackbar.error(t('links.copyFailed', 'Copy failed')));
     };
 
     const onCreate = async () => {
@@ -116,12 +116,12 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
                 chatType: CHAT_TYPE,
                 anonymity: DEFAULT_ANONYMITY,
             });
-            message.success(t('links.created', 'Link created'));
+            snackbar.success(t('links.created', 'Link created'));
             setTopicId(undefined);
             setCreatedCount((count) => count + 1);
             await loadLinks();
         } catch {
-            message.error(t('links.error.createFailed', 'Could not create link'));
+            snackbar.error(t('links.error.createFailed', 'Could not create link'));
         } finally {
             setSubmitting(false);
         }
@@ -135,9 +135,9 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         setLinkToDeactivate(null);
         try {
             await deactivateTopicInviteLink(id);
-            message.success(t('links.deactivated', 'Link deactivated'));
+            snackbar.success(t('links.deactivated', 'Link deactivated'));
         } catch {
-            message.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
+            snackbar.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
         }
         // Reload either way: a failed call is most often a link that changed state meanwhile.
         await loadLinks();
@@ -146,9 +146,9 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
     const onReactivate = async ({ id }: TopicInviteLinkDTO) => {
         try {
             await reactivateTopicInviteLink(id);
-            message.success(t('liveChatLinks.reactivated'));
+            snackbar.success(t('liveChatLinks.reactivated'));
         } catch {
-            message.error(t('liveChatLinks.reactivateFailed'));
+            snackbar.error(t('liveChatLinks.reactivateFailed'));
         }
         await loadLinks();
     };
@@ -161,9 +161,9 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         setLinkToDelete(null);
         try {
             await deleteTopicInviteLink(id);
-            message.success(t('liveChatLinks.deleted'));
+            snackbar.success(t('liveChatLinks.deleted'));
         } catch {
-            message.error(t('liveChatLinks.deleteFailed'));
+            snackbar.error(t('liveChatLinks.deleteFailed'));
         }
         await loadLinks();
     };

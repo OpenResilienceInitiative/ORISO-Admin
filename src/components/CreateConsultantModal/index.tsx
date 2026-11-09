@@ -1,9 +1,10 @@
-import { Button, Form, message, Tooltip } from 'antd';
+import { Button, Form, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { ConsultantPersonalFields, ConsultantSettingsFields, type ConsultantFieldName } from '../ConsultantFields';
@@ -129,7 +130,7 @@ export const CreateConsultantModal = ({
         typeOfUser: TypeOfUser.Consultants,
         onSuccess: (consultant) => {
             isSaving.current = false;
-            message.success({ content: t('message.counselor.add'), duration: 3 });
+            snackbar.success({ content: t('message.counselor.add'), duration: 3 });
             const createAnother = keepOpenAfterSave.current;
             keepOpenAfterSave.current = false;
 
@@ -157,7 +158,7 @@ export const CreateConsultantModal = ({
             // The counsellor exists; only the set-up mail failed. Another submit would only hit
             // "username not available", so the dialog closes (#1144).
             if (await extractSmtpSendFailure(error)) {
-                message.warning({ content: t('counselor.create.setupMailNotSent'), duration: 10 });
+                snackbar.warning({ content: t('counselor.create.setupMailNotSent') });
                 closeModal();
                 return;
             }
@@ -170,13 +171,13 @@ export const CreateConsultantModal = ({
                     reason === X_REASON.NUMBER_OF_LICENSES_EXCEEDED ||
                     reason === X_REASON.PASSWORD_NOT_VALID
                 ) {
-                    message.error({ content: t(`message.error.${reason}`), duration: 8 });
+                    snackbar.error({ content: t(`message.error.${reason}`) });
                     return;
                 }
             }
 
             const content = await extractApiErrorMessage(error);
-            message.error({ content, duration: 8 });
+            snackbar.error({ content });
         },
     });
 
