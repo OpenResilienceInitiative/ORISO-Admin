@@ -150,7 +150,7 @@ export const Snackbar = ({
                 )}
             </p>
             {jump && (
-                <button type="button" className={styles.jump} onClick={jump.onClick}>
+                <button type="button" className={styles.jump} onClick={jump.onClick} disabled={jump.disabled}>
                     {jump.label}
                 </button>
             )}
