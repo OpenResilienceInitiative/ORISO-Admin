@@ -174,6 +174,7 @@ export const UserDataTable = ({
                         }
                         compact={narrow}
                         withDate={dateInPill}
+                        dateDirection={sort?.direction}
                     />
                 </span>
             ),
