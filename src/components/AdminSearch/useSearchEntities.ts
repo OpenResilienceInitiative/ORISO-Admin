@@ -89,6 +89,8 @@ export const useSearchEntities = (query: string) => {
     const canEditTopics = can([PermissionAction.Update, PermissionAction.Create], Resource.Topic);
     const queries = [tenants, agencies, topics, consultants, agencyAdmins, tenantAdmins];
     const isFetching = enabled && queries.some((result) => result.isFetching);
+    // A list that failed (403, 500) drops out of the results; without this it reads as "nothing found".
+    const hasError = enabled && queries.some((result) => result.isError);
     const stamp = queries.map((result) => result.dataUpdatedAt).join('|');
 
     const docs = useMemo<SearchDoc[]>(() => {
@@ -116,5 +118,5 @@ export const useSearchEntities = (query: string) => {
     }, [enabled, labels, search, stamp, canEditTopics]);
 
     // `search` trails the typed text by the debounce; the rows belong to `search`, not to what is typed now.
-    return { docs, isFetching, forQuery: search };
+    return { docs, isFetching, hasError, forQuery: search };
 };

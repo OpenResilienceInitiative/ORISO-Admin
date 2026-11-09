@@ -19,6 +19,15 @@ describe('search shortcuts', () => {
         expect(isSearchShortcut(key({ key: 'k', ctrlKey: true, altKey: true }))).toBe(false);
     });
 
+    // Found in review: Chrome fires a keydown without `key` when an autofill entry is picked.
+    it('does not throw on a keydown without a key', () => {
+        const autofill = { ...key({ key: 'k', ctrlKey: true }), key: undefined } as unknown as KeyboardEvent;
+
+        expect(() => isSearchShortcut(autofill)).not.toThrow();
+        expect(isSearchShortcut(autofill)).toBe(false);
+        expect(isSlashShortcut(autofill)).toBe(false);
+    });
+
     // Found in review: with reduced motion the open view closed at once, and the same key event then
     // reached the window listener, which opened it again.
     it('ignores Ctrl+K that the open view has already handled', () => {

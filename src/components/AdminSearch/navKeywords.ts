@@ -94,7 +94,6 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'two factor',
         'language',
     ],
-    logout: ['abmelden', 'ausloggen', 'verlassen', 'logout', 'log out', 'sign out', 'exit'],
 
     // Settings
     'settings:global-config': [

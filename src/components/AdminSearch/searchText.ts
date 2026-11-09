@@ -42,9 +42,29 @@ export const editDistance = (a: string, b: string, max: number): number => {
     return rows[a.length][b.length];
 };
 
-const FOLD_REPLACEMENTS: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss', æ: 'ae', œ: 'oe' };
+/**
+ * Letters that do not decompose into a base letter plus a mark, folded to the Latin spelling people type
+ * without them. Everything else keeps its own letter (see `foldWithMap`).
+ */
+const FOLD_REPLACEMENTS: Record<string, string> = {
+    ä: 'ae',
+    ö: 'oe',
+    ü: 'ue',
+    ß: 'ss',
+    æ: 'ae',
+    œ: 'oe',
+    ø: 'o',
+    ł: 'l',
+    đ: 'd',
+    ð: 'd',
+    ħ: 'h',
+    ı: 'i',
+    þ: 'th',
+};
 
 const COMBINING_MARKS = /[̀-ͯ]/g;
+const MARK = /\p{M}/u;
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
 
 /**
  * British and American spellings meet in the UI ("Counselors" the list, "Counsellor tutorials" the
@@ -90,8 +110,10 @@ const unifySpelling = (folded: string, map: number[]): { folded: string; map: nu
     );
 
 /**
- * Folds `value` to lowercase ASCII words separated by single spaces and returns,
- * for every folded character, the index of the original character it came from.
+ * Folds `value` to lowercase words separated by single spaces and returns, for every folded
+ * character, the index of the original character it came from. Latin letters lose their accents
+ * ("Café" is "cafe", "Søren" is "soren"); letters of other scripts (Cyrillic, Arabic, Ge'ez ...) stay
+ * as they are, so names written in them can be found too.
  */
 export const foldWithMap = (value: string): { folded: string; map: number[] } => {
     let folded = '';
@@ -103,7 +125,12 @@ export const foldWithMap = (value: string): { folded: string; map: number[] } =>
         const replaced = FOLD_REPLACEMENTS[lower] ?? lower.normalize('NFD').replace(COMBINING_MARKS, '');
 
         Array.from(replaced).forEach((piece) => {
-            if (/[a-z0-9]/.test(piece)) {
+            if (MARK.test(piece)) {
+                // A mark left over after decomposing belongs to the letter before it, not between words.
+                return;
+            }
+
+            if (LETTER_OR_DIGIT.test(piece)) {
                 folded += piece;
                 map.push(index);
                 lastWasSpace = false;

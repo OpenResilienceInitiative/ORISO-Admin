@@ -93,14 +93,16 @@ describe('buildSearchIndex: what each role may find', () => {
     });
 });
 
-describe('buildSearchIndex: single domain gate', () => {
-    it('offers the legal text settings only on the single domain', () => {
-        const single = ids({ role: 'tenant', singleDomain: true });
-        const multi = ids({ role: 'tenant', singleDomain: false });
-        const legalText = (list: string[]) => list.filter((id) => id.startsWith('legal:text'));
+describe('buildSearchIndex: single and multi-tenant domain gates', () => {
+    // Found in review: the first version asserted `>= 0` on a prefix no tile has, so it could not fail.
+    it('offers the legal settings tile only on the single domain', () => {
+        expect(has(ids({ role: 'tenant', singleDomain: true }), 'legal:settings@')).toBe(true);
+        expect(has(ids({ role: 'tenant', singleDomain: false }), 'legal:settings@')).toBe(false);
+    });
 
-        expect(legalText(single).length + legalText(multi).length).toBeGreaterThanOrEqual(0);
-        expect(single).not.toEqual(multi);
+    it.each(['app:communication@', 'app:topics@'])('offers %s only on the multi-tenant domain', (prefix) => {
+        expect(has(ids({ role: 'tenant', singleDomain: false }), prefix)).toBe(true);
+        expect(has(ids({ role: 'tenant', singleDomain: true }), prefix)).toBe(false);
     });
 });
 

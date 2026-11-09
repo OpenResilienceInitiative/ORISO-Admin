@@ -3461,6 +3461,7 @@
     "adminSearch.empty.title": "Nothing found for “{{query}}”",
     "adminSearch.empty.text": "Check the spelling or try another word. German and English both work.",
     "adminSearch.empty.filtered": "No results with these filters.",
+    "adminSearch.error.entities": "Part of the search could not be loaded, so people and organisations may be missing. Pages and settings are still included.",
     "adminSearch.count_one": "{{count}} result",
     "adminSearch.count_other": "{{count}} results",
     "adminSearch.readOnly": "Read only",
