@@ -74,6 +74,21 @@ const handlers = [
     http.get(tenantAdminsSearchEndpoint, () => list([])),
 ];
 
+const FIXTURE_REFRESH_TOKEN = 'storybook-refresh-fixture';
+
+/**
+ * The tokens that were in the session store before the first story replaced them. Kept outside the
+ * component and taken only once: a second render, or a change of language, must not mistake the
+ * fixture token for the original, or the fixture would leak into the next story.
+ */
+let originalTokens:
+    | { access: ReturnType<typeof getSessionAccessToken>; refresh: ReturnType<typeof getSessionRefreshToken> }
+    | undefined;
+
+const rememberOriginalTokens = () => {
+    originalTokens ??= { access: getSessionAccessToken(), refresh: getSessionRefreshToken() };
+};
+
 const WithSession = ({
     token,
     language,
@@ -83,17 +98,30 @@ const WithSession = ({
     language: 'de' | 'en';
     children: ReactElement;
 }) => {
-    // Set before the first render of the children, restored on unmount.
-    const previous = { access: getSessionAccessToken(), refresh: getSessionRefreshToken() };
+    // Set before the first render of the children.
+    rememberOriginalTokens();
+    setSessionTokens(token, FIXTURE_REFRESH_TOKEN);
 
-    setSessionTokens(token, 'storybook-refresh-fixture');
+    useEffect(() => {
+        // Also here: React may unmount and mount again (Strict Mode), and the cleanup below restores.
+        rememberOriginalTokens();
+        setSessionTokens(token, FIXTURE_REFRESH_TOKEN);
+    }, [token]);
 
     useEffect(() => {
         i18n.changeLanguage(language).catch(() => undefined);
-
-        return () => setSessionTokens(previous.access, previous.refresh);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [language]);
+
+    // Restored on unmount only, not on every change of language.
+    useEffect(
+        () => () => {
+            if (originalTokens) {
+                setSessionTokens(originalTokens.access, originalTokens.refresh);
+                originalTokens = undefined;
+            }
+        },
+        [],
+    );
 
     return children;
 };
@@ -213,6 +241,16 @@ export const ShortcutOpensSearchAndResultNavigates: Story = {
         await userEvent.keyboard('{Enter}');
 
         await waitFor(() => expect(canvas.getByTestId('current-route').textContent).toContain('#tile='));
+
+        // The page the result opened shows the tile the hash names, highlighted.
+        const route = canvas.getByTestId('current-route').textContent ?? '';
+        const tileKey = decodeURIComponent(route.split('#tile=')[1] ?? '');
+        const tile = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-search-tile]')).find(
+            (element) => element.dataset.searchTile === tileKey,
+        );
+
+        await expect(tile).toBeDefined();
+        await waitFor(() => expect(tile).toHaveAttribute('data-search-highlight', 'true'));
     },
 };
 
@@ -242,12 +280,55 @@ export const SlashOpensSearch: Story = {
     },
 };
 
+const openSearch = async (canvasElement: HTMLElement, buttonName: RegExp) => {
+    await waitFor(() => expect(within(canvasElement).getByRole('button', { name: buttonName })).toBeInTheDocument());
+    await userEvent.keyboard('{Control>}k{/Control}');
+
+    const dialog = await within(document.body).findByRole('dialog');
+
+    return { dialog, field: within(dialog).getByRole('combobox') };
+};
+
+/** The platform admin finds the platform-only "translation" setting; the two stories below must not. */
+export const PlatformAdminFindsTranslation: Story = {
+    play: async ({ canvasElement }) => {
+        const { dialog, field } = await openSearch(canvasElement, /search/i);
+
+        await userEvent.type(field, 'translation');
+        await waitFor(() => expect(within(dialog).getAllByRole('option').length).toBeGreaterThan(0));
+    },
+};
+
 /** A Träger admin sees fewer results than the platform admin (roles and permissions are respected). */
 export const TraegerAdmin: Story = {
     args: { token: TENANT_ADMIN },
+    play: async ({ canvasElement }) => {
+        const { dialog, field } = await openSearch(canvasElement, /search/i);
+
+        // What this role may open is found ...
+        await userEvent.type(field, 'languages');
+        await waitFor(() => expect(within(dialog).getAllByRole('option').length).toBeGreaterThan(0));
+
+        // ... a platform-only setting is not offered, although the platform admin finds it.
+        await userEvent.clear(field);
+        await userEvent.type(field, 'translation');
+        await within(dialog).findByText(/Nothing found/);
+        await expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    },
 };
 
 /** A Beratungsstellen admin: only what that role may open. */
 export const AgencyAdmin: Story = {
     args: { token: AGENCY_ADMIN, language: 'de' },
+    play: async ({ canvasElement }) => {
+        const { dialog, field } = await openSearch(canvasElement, /such/i);
+
+        await userEvent.type(field, 'Berater');
+        await waitFor(() => expect(within(dialog).getAllByRole('option').length).toBeGreaterThan(0));
+
+        await userEvent.clear(field);
+        await userEvent.type(field, 'translation');
+        await within(dialog).findByText(/Nichts gefunden/);
+        await expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
+    },
 };
