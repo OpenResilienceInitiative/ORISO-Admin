@@ -384,6 +384,7 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 <>
                     <Alert
                         type="warning"
+                        className={styles.signAlert}
                         showIcon
                         message={t('legal.dpa.sign.required')}
                         description={
