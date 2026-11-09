@@ -1,0 +1,58 @@
+/* Supporting text (M3 body-medium, on-surface-variant). Plain text in its tile: no surface, no border. */
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family, inherit);
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    hyphens: auto;
+    overflow-wrap: break-word;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.error {
+    color: var(--m3-error, #b1005e);
+}
+
+.title {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-weight: 500;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
+    margin: 4px -16px 0;
+}
+
+.action {
+    min-height: 40px;
+    max-width: 100%;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 100px;
+    background: transparent;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+
+    &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.38;
+    }
+}
