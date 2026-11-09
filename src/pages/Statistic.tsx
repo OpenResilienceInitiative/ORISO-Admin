@@ -1847,7 +1847,7 @@ const StatisticFilterBar = ({
             >
                 <GlobalSearchBar
                     defaultExpanded
-                    expandedWidth={320}
+                    expandedWidth={400}
                     className="statisticDashboard__filterSearch"
                     ariaLabel={translateDashboardKey(
                         translate,

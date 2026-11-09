@@ -694,7 +694,7 @@
 }
 
 .statisticDashboard__emptyHero {
-    margin-bottom: 12px;
+    margin: 24px 0 0;
 }
 
 // While the whole dashboard is empty the metric grids step back behind the
@@ -1556,14 +1556,15 @@
 
     .statisticDashboard__filterBar {
         min-width: 0;
-        flex: 0 1 320px;
+        flex: 0 1 400px;
         padding: 0 0 8px;
         margin: 0;
-        grid-template-columns: minmax(0, 320px);
+        grid-template-columns: minmax(0, 400px);
     }
 }
 
-.statisticDashboard__metricCard {
+.statisticDashboard__metricCard,
+.statisticDashboard__chartCard {
     --admin-form-card-surface: var(--m3-surface-container-lowest);
 }
 
@@ -1579,11 +1580,6 @@
         stroke-width: 2;
         vector-effect: non-scaling-stroke;
     }
-}
-
-// The preview now sits where the charts would be, below the tiles.
-.statisticDashboard__summaryGrid + .statisticDashboard__emptyHero {
-    margin-top: 24px;
 }
 
 @media screen and (max-width: 840px) {
