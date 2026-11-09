@@ -109,7 +109,7 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            message.error({ content: t('message.grantConsultantIdentity.error'), duration: 8 });
+            message.error({ content: t('message.grantConsultantIdentity.error') });
         } finally {
             setIsSubmitting(false);
         }

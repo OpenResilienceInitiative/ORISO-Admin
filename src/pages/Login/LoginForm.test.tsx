@@ -5,6 +5,7 @@ import less from 'less';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
 import { FETCH_ERRORS } from '../../api/fetchData';
@@ -104,17 +105,6 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        message: {
-            ...actual.message,
-            error: mocks.messageError,
-        },
-    };
-});
-
 vi.mock('../../observability/loginFailureTracker', () => ({
     recordLoginFailure: mocks.recordLoginFailure,
 }));
@@ -159,6 +149,7 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
+        vi.spyOn(snackbar, 'error').mockImplementation(mocks.messageError);
         mocks.navigate.mockReset();
         mocks.search = '';
         mocks.recordLoginFailure.mockReset();

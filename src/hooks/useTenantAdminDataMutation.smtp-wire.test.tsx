@@ -8,11 +8,6 @@ import { useTenantAdminDataMutation } from './useTenantAdminDataMutation.hook';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('i18next', () => ({ default: { language: 'de', resolvedLanguage: 'de' } }));
-vi.mock('antd', async () => ({
-    ...(await vi.importActual<typeof import('antd')>('antd')),
-    notification: { success: vi.fn(), error: vi.fn() },
-    message: { error: vi.fn() },
-}));
 vi.mock('../api/auth/auth', () => ({
     getAccessTokenForRequests: () => 'SYNTHETIC-TEST-ACCESS-TOKEN',
     tryRefreshAccessToken: vi.fn(),
