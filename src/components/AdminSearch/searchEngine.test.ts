@@ -247,7 +247,8 @@ const CASES: Case[] = [
     { options: PLATFORM_DE, query: 'Fallübergabe', top: ['access:case-handover', 'logs:case-handover'] },
     { options: PLATFORM_EN, query: 'api key', top: 'global:translation' },
     { options: PLATFORM_DE, query: 'PLZ', top: 'global:postcode' },
-    { options: PLATFORM_DE, query: 'Videoberatung', top: 'app:communication' },
+    // A Träger setting that only exists on the multi-tenant domain.
+    { options: TENANT_DE, query: 'Videoberatung', top: 'app:communication' },
 ];
 
 describe('real queries against the index of a role', () => {
@@ -272,9 +273,7 @@ describe('real queries against the index of a role', () => {
                 [`${testCase.options.role}/${testCase.options.language} "${testCase.query}"`, testCase] as const,
         ),
     )('%s', (_name, { options, query, top, within = [], topN = 3 }) => {
-        // "Videoberatung" is a Träger setting that only exists on the multi-tenant domain.
-        const role = query === 'Videoberatung' ? { ...options, role: 'tenant' as const } : options;
-        const hits = searchIndex(indexFor(role), query);
+        const hits = searchIndex(indexFor(options), query);
         const ids = hits.map((hit) => hit.doc.id);
         const accepted = Array.isArray(top) ? top : [top];
 

@@ -14,6 +14,23 @@ describe('fold', () => {
         expect(fold('Träger-Admins / Beratende')).toBe('traeger admins beratende');
     });
 
+    // Found in review: only a-z and 0-9 survived, so names in other scripts folded to nothing.
+    it('keeps letters that have no Latin base, and letters of other scripts', () => {
+        expect(fold('Søren')).toBe('soren');
+        expect(fold('Łukasz')).toBe('lukasz');
+        expect(fold('Karışık')).toBe('karisik');
+        expect(fold('Александр Иванов')).toBe('александр иванов');
+        expect(fold('محمد أحمد')).toBe('محمد احمد');
+        expect(tokenize('Søren-Łukasz')).toEqual(['soren', 'lukasz']);
+        expect(queryWords('Иванов')).toEqual(['иванов']);
+    });
+
+    it('does not split a word at the marks of its letters', () => {
+        // "й" decomposes to "и" plus a breve; the Arabic vowel mark (fatha) is not a separator either.
+        expect(fold('Йован')).toBe('иован');
+        expect(fold('مُحَمَّد')).toBe('محمد');
+    });
+
     it('unifies British and American spellings so both find each other', () => {
         expect(fold('Counsellors')).toBe(fold('Counselors'));
         expect(fold('colour')).toBe(fold('color'));
