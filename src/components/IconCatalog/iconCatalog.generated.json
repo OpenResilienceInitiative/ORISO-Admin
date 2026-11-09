@@ -2174,7 +2174,10 @@
         "fileName": "snackbar_close_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/snackbar_close_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/FormPluginEditor/EditorHintSnackbar.tsx"],
+        "usageFiles": [
+            "src/components/FormPluginEditor/EditorHintSnackbar.tsx",
+            "src/components/Snackbar/Snackbar.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -3100,6 +3103,7 @@
             "src/components/overlay/Overlay.tsx",
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
+            "src/components/Snackbar/Snackbar.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",
             "src/pages/Links/InvitePanel.tsx",
