@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { message } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../components/Snackbar';
 import { deleteTopicData } from '../../../api/topic/deleteTopicData';
 import { Modal } from '../../../components/Modal';
 
@@ -9,7 +9,7 @@ export const TopicDeletionModal = ({ id, onClose }: { id: number; onClose: () =>
     const { t } = useTranslation();
     const handleOnDelete = useCallback(() => {
         deleteTopicData(id).then(() => {
-            message.success({
+            snackbar.success({
                 content: t('message.topic.delete'),
                 duration: 3,
             });

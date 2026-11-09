@@ -28,10 +28,6 @@ vi.mock('../../../FormPluginEditor/M3RichTextEditor', () => ({
         </label>
     ),
 }));
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return { ...actual, notification: { success: vi.fn(), error: vi.fn() } };
-});
 
 afterEach(cleanup);
 
