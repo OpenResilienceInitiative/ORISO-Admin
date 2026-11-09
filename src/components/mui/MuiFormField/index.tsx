@@ -23,8 +23,6 @@ interface MuiControlProps {
      * no-op (#594.6). It also gives the MUI label its `for` target.
      */
     id?: string;
-    /** The field name, used to look up the active error message. */
-    fieldName: FieldName;
     label?: React.ReactNode;
     placeholder?: string;
     type?: string;
@@ -41,17 +39,14 @@ interface MuiControlProps {
 }
 
 /**
- * Inner MUI control. Reads validation status from the surrounding
- * `Form.Item` (via `Form.Item.useStatus()`) and the active error message from
- * the form instance (`getFieldError`) — antd 4.23's `useStatus()` only exposes
- * `status`, not the message text, so we look the message up by field name.
+ * Inner MUI control. Reads the registered field's status and errors from
+ * its surrounding Form.Item, including fields nested inside Form.List.
  */
 const MuiControl = ({
     id,
     value,
     onChange,
     onBlur,
-    fieldName,
     label,
     placeholder,
     type,
@@ -68,10 +63,8 @@ const MuiControl = ({
 }: MuiControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
-    const { status } = Form.Item.useStatus();
-    const form = Form.useFormInstance();
+    const { status, errors } = Form.Item.useStatus();
     const isError = status === 'error';
-    const errors = form?.getFieldError(fieldName as any) ?? [];
     const inputSurface = variant === 'outlined' ? 'transparent' : 'var(--input-bg)';
     const autofillSurface =
         variant === 'outlined'
@@ -341,7 +334,7 @@ export const MuiFormField = ({ name, label, rules, required, dependencies, norma
         normalize={normalize}
         noStyle
     >
-        <MuiControl fieldName={name} label={label} {...rest} />
+        <MuiControl label={label} {...rest} />
     </Form.Item>
 );
 
