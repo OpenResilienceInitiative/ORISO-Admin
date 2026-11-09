@@ -460,9 +460,11 @@
     gap: 12px;
 }
 
+// The invite tile is framed, not focused: an inset ring keeps the outline free
+// for the shared keyboard focus ring (src/styles/focusRing.test.ts).
 .tileItem[data-tile='invite'] .tile {
-    outline: 2px solid var(--m3-primary-fixed-dim, #ffb4aa);
-    outline-offset: -2px;
+    box-shadow: inset 0 0 0 2px var(--m3-primary-fixed-dim, #ffb4aa),
+        var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%));
 }
 
 .tileLink {
