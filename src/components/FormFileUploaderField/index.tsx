@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react';
 import classNames from 'classnames';
 import { ConfigProvider, Form, message, Upload } from 'antd';
+import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { useTranslation } from 'react-i18next';
 import { UploadFileProps, UploadValidationPolicy } from '../../types/uploadFiles';
 import decodeHTML from '../../utils/decodeHTML';
@@ -9,6 +12,11 @@ import styles from './styles.module.scss';
 
 interface FormFileUploaderFieldProps {
     className?: string;
+    /**
+     * Shows the field as one row of an image list (preview, name, size, purpose, add/replace action)
+     * instead of the clickable picture card.
+     */
+    row?: ImageRowDetails;
     labelKey?: string;
     name?: string | string[];
     allowIcon?: boolean;
@@ -44,7 +52,21 @@ const isAcceptedFile = (file: UploadFileProps, allowIcon: boolean) => {
 const acceptedFormats = (allowIcon: boolean) =>
     allowIcon ? '.jpg,.jpeg,.png,.ico,image/jpeg,image/png,image/x-icon' : '.jpg,.jpeg,.png,image/jpeg,image/png';
 
-const FormFileUploaderLocal = ({ onChange, value, allowIcon, uploadPolicy, disabled }: FormRichTextEditorProps) => {
+/**
+ * The checks every picked file passes before it lands in the form: type, size and, for the assistant
+ * icon, the passive-SVG policy. Shared by the picture-card uploader and the image list row.
+ */
+const useCheckedUpload = ({
+    onChange,
+    allowIcon,
+    uploadPolicy,
+    disabled,
+}: {
+    onChange?: (value: string) => void;
+    allowIcon: boolean;
+    uploadPolicy?: UploadValidationPolicy;
+    disabled?: boolean;
+}) => {
     const { t } = useTranslation();
     // CardEditable disables its <Form> while the card is in view mode, which antd
     // publishes as `componentDisabled`. antd merges `customDisabled ?? contextDisabled`,
@@ -91,12 +113,23 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, uploadPolicy, disab
         return false;
     };
 
+    return {
+        beforeUpload,
+        isDisabled,
+        accept: uploadPolicy ? uploadPolicy.accept : acceptedFormats(allowIcon),
+    };
+};
+
+const FormFileUploaderLocal = ({ onChange, value, allowIcon, uploadPolicy, disabled }: FormRichTextEditorProps) => {
+    const { t } = useTranslation();
+    const { beforeUpload, isDisabled, accept } = useCheckedUpload({ onChange, allowIcon, uploadPolicy, disabled });
+
     return (
         <Upload
             name="upload"
             listType="picture-card"
             className="fileUploader"
-            accept={uploadPolicy ? uploadPolicy.accept : acceptedFormats(allowIcon)}
+            accept={accept}
             showUploadList={false}
             beforeUpload={beforeUpload}
             disabled={isDisabled}
@@ -110,6 +143,70 @@ const FormFileUploaderLocal = ({ onChange, value, allowIcon, uploadPolicy, disab
     );
 };
 
+export interface ImageRowDetails {
+    /** The image's name, also used in the add/replace action ("Logo ersetzen"). */
+    title: string;
+    /** Recommended size, e.g. "512 × 512 px". */
+    size: string;
+    /** Where the image appears and what may be uploaded, one short line. */
+    description: ReactNode;
+    /** Extra class for the preview box, e.g. to show a favicon at its real size. */
+    previewClassName?: string;
+}
+
+const ImageRowLocal = ({
+    onChange,
+    value,
+    allowIcon,
+    uploadPolicy,
+    disabled,
+    title,
+    size,
+    description,
+    previewClassName,
+}: FormRichTextEditorProps & ImageRowDetails) => {
+    const { t } = useTranslation();
+    const { beforeUpload, isDisabled, accept } = useCheckedUpload({ onChange, allowIcon, uploadPolicy, disabled });
+    // A field may also hold something that is not an image (the assistant's preset id): no preview then.
+    const decoded = value ? decodeHTML(value) : undefined;
+    const src = decoded && (!uploadPolicy || uploadPolicy.canPreview(decoded)) ? decoded : undefined;
+
+    return (
+        // The host measures the row's own width, so it stacks in a narrow tile on a wide screen too.
+        <div className={styles.imageRowHost}>
+            <div className={styles.imageRow}>
+                <span className={classNames(styles.rowPreview, previewClassName, { [styles.rowPreviewEmpty]: !src })}>
+                    {src ? <img src={src} alt={title} /> : <ImageOutlinedIcon aria-hidden="true" />}
+                </span>
+                <span className={styles.rowText}>
+                    <span className={styles.rowTitle}>
+                        {title}
+                        <span className={styles.rowSize}>{size}</span>
+                    </span>
+                    <span className={styles.rowDescription}>{description}</span>
+                    {!src && <span className={styles.rowEmpty}>{t('settings.images.empty')}</span>}
+                </span>
+                {/* Only while editing: in read mode the row is a plain record, a press on it points at "Bearbeiten". */}
+                {!isDisabled && (
+                    <Upload
+                        name="upload"
+                        className={styles.rowAction}
+                        accept={accept}
+                        showUploadList={false}
+                        beforeUpload={beforeUpload}
+                    >
+                        {/* antd's text-type Upload expects its own control inside and opens the picker on its click. */}
+                        <button type="button" className={styles.rowActionButton}>
+                            <FileUploadOutlinedIcon aria-hidden="true" />
+                            {t(src ? 'settings.images.replace' : 'settings.images.add', { name: title })}
+                        </button>
+                    </Upload>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const FormFileUploaderField = ({
     name,
     labelKey,
@@ -118,16 +215,22 @@ export const FormFileUploaderField = ({
     uploadPolicy,
     tooltip,
     disabled,
+    row,
 }: FormFileUploaderFieldProps) => {
     const { t } = useTranslation();
     return (
         <Form.Item
             name={name}
-            label={t(labelKey)}
+            // A row names the image itself; a label above it would say it twice.
+            label={row ? undefined : t(labelKey)}
             className={classNames(className, styles.richEditor)}
             tooltip={tooltip}
         >
-            <FormFileUploaderLocal allowIcon={allowIcon} uploadPolicy={uploadPolicy} disabled={disabled} />
+            {row ? (
+                <ImageRowLocal allowIcon={allowIcon} uploadPolicy={uploadPolicy} disabled={disabled} {...row} />
+            ) : (
+                <FormFileUploaderLocal allowIcon={allowIcon} uploadPolicy={uploadPolicy} disabled={disabled} />
+            )}
         </Form.Item>
     );
 };

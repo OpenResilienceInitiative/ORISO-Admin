@@ -1,6 +1,8 @@
 import { Checkbox, Form } from 'antd';
 import LanguageOutlinedIcon from '@mui/icons-material/LanguageOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supportedLanguages } from '../../../../../appConfig';
@@ -11,10 +13,13 @@ import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppea
 import translationPicture from '../../../../../resources/img/tile-help/translation.webp';
 import styles from './styles.module.scss';
 
+/** Always on and never removable: the language every text exists in. */
+const BASE_LANGUAGE = 'de';
+
 const ensureDefaultLanguage = (languages: string[]) => {
     const languageSet = new Set(languages);
 
-    languageSet.add('de');
+    languageSet.add(BASE_LANGUAGE);
 
     return supportedLanguages.filter((language) => languageSet.has(language));
 };
@@ -31,7 +36,10 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
     const [modal, setModal] = useState(false);
     const { data, isLoading, mutate } = useTenantAppearanceFormData(tenantId);
     const options = supportedLanguages.map((language) => ({ value: language, label: t(`language.${language}`) }));
-    const activeLanguages = data?.settings?.activeLanguages?.length ? data.settings.activeLanguages : ['de'];
+    const activeLanguages = data?.settings?.activeLanguages?.length ? data.settings.activeLanguages : [BASE_LANGUAGE];
+    // The base language leads the list, so the one that cannot be removed is seen first.
+    const shownLanguages = [BASE_LANGUAGE, ...activeLanguages.filter((language) => language !== BASE_LANGUAGE)];
+    const baseLanguageNote = <span className={styles.srOnly}>{`, ${t('organisations.languageBase')}`}</span>;
     const initialValues = {
         ...data,
         settings: {
@@ -87,23 +95,34 @@ export const Languages = ({ tenantId, readOnly = false }: { tenantId: string; re
                             rules={[{ required: true, message: t('form.errors.required.multiSelect') }]}
                         >
                             <Checkbox.Group className={styles.languageToggleGroup}>
-                                {options.map((option) => (
-                                    <Checkbox
-                                        className={styles.languageToggle}
-                                        disabled={option.value === 'de'}
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </Checkbox>
-                                ))}
+                                {options.map((option) => {
+                                    const isBase = option.value === BASE_LANGUAGE;
+                                    return (
+                                        <Checkbox
+                                            className={styles.languageToggle}
+                                            disabled={isBase}
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {isBase && <LockOutlinedIcon aria-hidden="true" />}
+                                            {option.label}
+                                            {isBase && baseLanguageNote}
+                                        </Checkbox>
+                                    );
+                                })}
                             </Checkbox.Group>
                         </Form.Item>
                     ) : (
                         <div className={styles.languageChips}>
-                            {activeLanguages.map((language) => (
-                                <span className={styles.languageChip} key={language}>
+                            {shownLanguages.map((language) => (
+                                <span
+                                    className={classNames(styles.languageChip, {
+                                        [styles.baseLanguageChip]: language === BASE_LANGUAGE,
+                                    })}
+                                    key={language}
+                                >
                                     {t(`language.${language}`)}
+                                    {language === BASE_LANGUAGE && baseLanguageNote}
                                 </span>
                             ))}
                         </div>

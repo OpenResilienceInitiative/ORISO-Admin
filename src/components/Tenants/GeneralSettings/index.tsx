@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardGrid } from '../../CardGrid';
+import { ReadOnlyHintContext } from '../../CardEditable/ReadOnlyHintContext';
 import { useAppearanceEditingRights } from '../../../hooks/useAppearanceEditingRights.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
@@ -39,6 +41,7 @@ interface GeneralSettingsProps {
 }
 
 export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: GeneralSettingsProps) => {
+    const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = resolveTenantId(tenantId, data?.id);
     const { can } = useUserPermissions();
@@ -54,52 +57,56 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
     ) => {
         save(formData.tenantAdminControls?.allowedPermissionToggles?.appearance !== false, options);
     };
+    // A locked tile names who can release it: the platform admins' switch on the master data tab.
+    const readOnlyHint = readOnly ? t('settings.masterData.editable.readOnlyHint') : undefined;
     return (
         <div className={styles.appearancePage}>
-            <CardGrid raster>
-                {showAppearance && (
-                    <CardGrid.Item span={2}>
-                        <LogoAndFavicon tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && (
-                    <CardGrid.Item>
-                        <AssistantIdentity tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && can(PermissionAction.Update, Resource.Language) && (
-                    <CardGrid.Item>
-                        <Languages tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && (
-                    <CardGrid.Item span={2}>
-                        <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && leadingTiles}
-                {showMasterData && (
-                    <CardGrid.Item>
-                        <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardGrid.Item>
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && (
-                    <CardGrid.Item>
-                        <EditingRightsCard
-                            allowEdit={isSuperAdmin && editable !== undefined}
-                            readOnlyAccess={!isSuperAdmin}
-                            editable={editable}
-                            isLoading={rightsLoading}
-                            onSave={onSaveTenantAdminControls}
-                        />
-                    </CardGrid.Item>
-                )}
-            </CardGrid>
+            <ReadOnlyHintContext.Provider value={readOnlyHint}>
+                <CardGrid raster>
+                    {showAppearance && (
+                        <CardGrid.Item span={2}>
+                            <LogoAndFavicon tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showAppearance && (
+                        <CardGrid.Item>
+                            <AssistantIdentity tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showAppearance && can(PermissionAction.Update, Resource.Language) && (
+                        <CardGrid.Item>
+                            <Languages tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showAppearance && (
+                        <CardGrid.Item span={2}>
+                            <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showMasterData && leadingTiles}
+                    {showMasterData && (
+                        <CardGrid.Item>
+                            <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showMasterData && can(PermissionAction.Update, Resource.Language) && (
+                        <CardGrid.Item>
+                            <TypeOfLanguage tenantId={finalTenantId} readOnly={readOnly} />
+                        </CardGrid.Item>
+                    )}
+                    {showMasterData && (
+                        <CardGrid.Item>
+                            <EditingRightsCard
+                                allowEdit={isSuperAdmin && editable !== undefined}
+                                readOnlyAccess={!isSuperAdmin}
+                                editable={editable}
+                                isLoading={rightsLoading}
+                                onSave={onSaveTenantAdminControls}
+                            />
+                        </CardGrid.Item>
+                    )}
+                </CardGrid>
+            </ReadOnlyHintContext.Provider>
         </div>
     );
 };

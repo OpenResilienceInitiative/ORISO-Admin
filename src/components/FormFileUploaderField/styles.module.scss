@@ -8,3 +8,129 @@
     align-items: center;
     justify-self: center;
 }
+
+/* One row of an image list: preview, name and size, purpose and formats, the add/replace action. */
+.imageRowHost {
+    container-type: inline-size;
+}
+
+.imageRow {
+    display: grid;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: var(--m3-surface, #fcf9f9);
+    column-gap: 16px;
+    grid-template-areas: 'preview text action';
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    row-gap: 8px;
+}
+
+.rowPreview {
+    display: flex;
+    width: 64px;
+    height: 64px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 12px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface-variant, #444748);
+    grid-area: preview;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.rowPreviewEmpty {
+    border-style: dashed;
+    border-color: var(--m3-outline, #747878);
+    background: transparent;
+}
+
+.rowText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    grid-area: text;
+}
+
+.rowTitle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    color: var(--m3-on-surface, #1b1b1c);
+    column-gap: 8px;
+    font: 500 16px/24px var(--m3-body-font-family);
+    letter-spacing: 0.15px;
+}
+
+.rowSize,
+.rowDescription,
+.rowEmpty {
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+}
+
+.rowAction {
+    grid-area: action;
+}
+
+/* M3 outlined button, as the other tile actions. */
+.rowActionButton {
+    display: inline-flex;
+    height: 40px;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 100px;
+    color: var(--m3-primary, #a5000a);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+    appearance: none;
+    background: transparent;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+/* A phone-wide tile: the action moves under the text instead of squeezing it. */
+@container (max-width: 440px) {
+    .imageRow {
+        grid-template-areas:
+            'preview text'
+            'action action';
+        grid-template-columns: 64px minmax(0, 1fr);
+    }
+
+    .rowAction {
+        justify-self: start;
+    }
+}

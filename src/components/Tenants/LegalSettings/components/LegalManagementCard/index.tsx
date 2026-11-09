@@ -21,6 +21,7 @@ export const LegalManagementCard = ({
             allowEdit={allowEdit}
             // Only platform admins edit this: everyone else sees why the switch is locked.
             readOnlyAccess={!allowEdit}
+            readOnlyHint={t('card.edit.readOnly.platformAdmin')}
             initialValues={{ legalContentChangesBySingleTenantAdminsAllowed: allowed }}
             titleKey="tenants.legal.singleTenantsManageLegal.title"
             variant="dialog"

@@ -1,7 +1,9 @@
 import { Form, FormInstance } from 'antd';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import classNames from 'classnames';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReadOnlyHintContext } from './ReadOnlyHintContext';
 import { ReadOnlyTileContext } from './ReadOnlyTileContext';
 import { Button, ButtonItem, BUTTON_TYPES } from '../button/Button';
 import { UnsavedChangesModal } from './components/UnsavedChanges';
@@ -58,6 +60,12 @@ interface CardEditableProps {
      * permissions only, not for a value that is still loading or saving.
      */
     readOnlyAccess?: boolean;
+    /**
+     * Who can change a read-only tile, as concretely as the caller knows it (which role, where).
+     * Without it the page's `ReadOnlyHintContext` applies, then a sentence that only says someone
+     * with write access can.
+     */
+    readOnlyHint?: string;
 }
 
 /** Three pulses of 1.1 s (see `.editNudge`); with reduced motion a static outline for 2 s. */
@@ -131,6 +139,7 @@ export const CardEditable = ({
     headerIcon,
     allowEdit = true,
     readOnlyAccess = false,
+    readOnlyHint,
 }: CardEditableProps) => {
     const [form] = Form.useForm(formProp);
     const { t } = useTranslation();
@@ -223,15 +232,30 @@ export const CardEditable = ({
             {nudging ? t('card.edit.nudge') : ''}
         </p>
     );
+    const pageReadOnlyHint = useContext(ReadOnlyHintContext);
+    const readOnlyText = readOnlyHint || pageReadOnlyHint || t('card.edit.readOnly');
     const lockedEditButton = (showLabel: boolean) => (
-        <M3Tooltip portal text={t('card.edit.readOnly')}>
+        <M3Tooltip portal text={readOnlyText}>
             <EditButton locked labelKey={editLabelKey} showLabel={showLabel} />
+        </M3Tooltip>
+    );
+    // Says "you can look, not change" before anything is pressed. Not a tab stop of its own: the
+    // locked edit button right below carries the same sentence for keyboard and screen readers.
+    const readOnlyChip = showLockedEdit && (
+        <M3Tooltip portal text={readOnlyText}>
+            <span className={styles.readOnlyChip}>
+                <LockOutlinedIcon aria-hidden="true" />
+                {t('card.edit.readOnlyChip')}
+            </span>
         </M3Tooltip>
     );
 
     return (
         <Card
-            className={classNames(styles.card, className, { [styles.fullHeight]: fullHeight })}
+            className={classNames(styles.card, className, {
+                [styles.fullHeight]: fullHeight,
+                [styles.readOnlyTile]: showLockedEdit,
+            })}
             variant={variant}
             headerIcon={headerIcon}
             titleKey={titleKey}
@@ -244,17 +268,20 @@ export const CardEditable = ({
             isLoading={isLoading}
             cardTitleClassName={styles.cardTitleClassName}
             cardTitleChildren={
-                finalEditButtonPlacement === 'header' &&
-                (canStartEditing ? (
-                    <EditButton
-                        className={editNudgeClassName}
-                        showLabel={false}
-                        icon={editButton}
-                        onClick={startEditing}
-                    />
-                ) : (
-                    showLockedEdit && lockedEditButton(false)
-                ))
+                <>
+                    {readOnlyChip}
+                    {finalEditButtonPlacement === 'header' &&
+                        (canStartEditing ? (
+                            <EditButton
+                                className={editNudgeClassName}
+                                showLabel={false}
+                                icon={editButton}
+                                onClick={startEditing}
+                            />
+                        ) : (
+                            showLockedEdit && lockedEditButton(false)
+                        ))}
+                </>
             }
         >
             <ReadOnlyTileContext.Provider value={!editing}>

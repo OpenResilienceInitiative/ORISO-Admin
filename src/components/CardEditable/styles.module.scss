@@ -131,6 +131,32 @@
     min-height: 31.5px;
 }
 
+/* Read access only: dashed outline and "Nur lesen" chip. Doubled class to beat the Card's border. */
+.readOnlyTile.readOnlyTile {
+    border: 1px dashed var(--m3-outline, #747878);
+}
+
+.readOnlyChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: default;
+    font: 600 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+
+    svg {
+        width: 14px;
+        height: 14px;
+        flex: 0 0 auto;
+    }
+}
+
 /* In the raster, rows stretch every tile to the tallest one. The content stays on top, the
    action row stays on the bottom and the calm graphic (TileFill) takes the space between. */
 

@@ -10,7 +10,11 @@ const fixtures = vi.hoisted(() => ({
     readError: false,
     inherited: undefined as undefined | { id?: number; theming: { assistantName: string; assistantIcon: string } },
 }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key),
+    }),
+}));
 vi.mock('../../../../../hooks/useTenantAppearanceFormData', () => ({
     useTenantAppearanceFormData: () => ({
         data: fixtures.readError
@@ -88,7 +92,7 @@ describe('tenant assistant Appearance', () => {
         render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
         expect(screen.getByLabelText('settings.assistant.name')).toHaveValue('');
-        expect(screen.getByLabelText('settings.assistant.inherit')).toBeChecked();
+        expect(screen.getByLabelText('settings.assistant.inheritShort')).toBeChecked();
         expect(screen.getByRole('img', { name: 'settings.assistant.inheritedIcon' })).toBeVisible();
         fireEvent.change(screen.getByLabelText('settings.assistant.name'), { target: { value: 'Own helper' } });
         fireEvent.click(screen.getByText('card.edit.save'));
@@ -98,7 +102,7 @@ describe('tenant assistant Appearance', () => {
     it('saves the default identity without a broken upload preview', async () => {
         const { container } = render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
-        expect(container.querySelector('.ant-upload img')).toBeNull();
+        expect(container.querySelector('img[alt="settings.assistant.ownIcon"]')).toBeNull();
         fireEvent.click(screen.getByText('card.edit.save'));
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
         expect(save.mock.calls[0][0]).toEqual({ theming: {} });
@@ -125,7 +129,11 @@ describe('tenant assistant Appearance', () => {
         const input = container.querySelector('input[type="file"]');
         expect(input).toBeTruthy();
         fireEvent.change(input!, { target: { files: [new File([artwork], name, { type })] } });
-        await waitFor(() => expect(container.querySelector('.ant-upload img')?.getAttribute('src')).toMatch(prefix));
+        await waitFor(() =>
+            expect(container.querySelector('img[alt="settings.assistant.ownIcon"]')?.getAttribute('src')).toMatch(
+                prefix,
+            ),
+        );
         fireEvent.click(screen.getByText('card.edit.save'));
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
         expect(save.mock.calls[0][0].theming.assistantIcon).toMatch(prefix);
@@ -134,7 +142,7 @@ describe('tenant assistant Appearance', () => {
         render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
         fireEvent.change(screen.getByLabelText('settings.assistant.name'), { target: { value: '' } });
-        fireEvent.click(screen.getByLabelText('settings.assistant.inherit'));
+        fireEvent.click(screen.getByLabelText('settings.assistant.inheritShort'));
         fireEvent.click(screen.getByText('card.edit.save'));
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
         expect(save.mock.calls[0][0]).toEqual({ theming: { assistantName: null, assistantIcon: null } });
@@ -148,8 +156,11 @@ describe('tenant assistant Appearance', () => {
     });
     it('keeps a restricted Appearance card read-only', () => {
         const { container } = render(<AssistantIdentity tenantId="1" readOnly />);
-        // Read access only: the edit action stays visible but locked (#1374).
+        // Read access only: the edit action stays visible but locked, the tile says so (#1374).
         expect(screen.getByRole('button', { name: 'edit' })).toHaveAttribute('aria-disabled', 'true');
-        expect(container.querySelector('input[type="file"]')).toBeDisabled();
+        expect(screen.getByText('card.edit.readOnlyChip')).toBeVisible();
+        // No file picker is offered at all, not even a disabled one.
+        expect(container.querySelector('input[type="file"]')).toBeNull();
+        expect(screen.getByLabelText('settings.assistant.inheritShort')).toBeDisabled();
     });
 });

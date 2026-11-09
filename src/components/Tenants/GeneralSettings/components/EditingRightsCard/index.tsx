@@ -32,6 +32,7 @@ export const EditingRightsCard = ({
             key={`tenant-master-data-editable-${editable}`}
             allowEdit={allowEdit}
             readOnlyAccess={readOnlyAccess}
+            readOnlyHint={t('card.edit.readOnly.platformAdmin')}
             isLoading={isLoading}
             initialValues={{ tenantAdminControls: { allowedPermissionToggles: { appearance: editable } } }}
             titleKey="settings.masterData.editable.title"

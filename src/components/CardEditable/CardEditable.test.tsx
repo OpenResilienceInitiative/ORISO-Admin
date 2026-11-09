@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { CardEditable } from './index';
+import { ReadOnlyHintContext } from './ReadOnlyHintContext';
 import { MuiFormField } from '../mui/MuiFormField';
 import { MuiSwitchField } from '../mui/MuiSwitchField';
 import { FormSwitchField } from '../FormSwitchField';
@@ -280,6 +281,45 @@ describe('CardEditable', () => {
             renderReadOnly('footer');
             fireEvent.pointerDown(screen.getByLabelText('Name'));
             expect(screen.queryByText('card.edit.nudge')).not.toBeInTheDocument();
+        });
+
+        it('marks the tile itself: a "Nur lesen" chip with the same hint and a dashed outline', async () => {
+            const user = userEvent.setup();
+            const { container } = renderReadOnly('footer');
+            const chip = screen.getByText('card.edit.readOnlyChip');
+            // Not a tab stop of its own: the locked edit button carries the hint for the keyboard.
+            await user.tab();
+            expect(screen.getByRole('button', { name: 'edit' })).toHaveFocus();
+            await user.tab({ shift: true });
+
+            await user.hover(chip);
+            expect(await screen.findByRole('tooltip')).toHaveTextContent('card.edit.readOnly');
+            expect(container.firstElementChild?.className).toMatch(/readOnlyTile/);
+        });
+
+        it('names who can change it: the tile hint before the page hint before the generic sentence', async () => {
+            const user = userEvent.setup();
+            const tile = (hint?: string) => (
+                <ReadOnlyHintContext.Provider value="page hint">
+                    <CardEditable titleKey="card.title" readOnlyAccess readOnlyHint={hint}>
+                        <MuiFormField name="name" label="Name" />
+                    </CardEditable>
+                </ReadOnlyHintContext.Provider>
+            );
+            const { rerender } = render(tile('tile hint'));
+            await user.hover(screen.getByRole('button', { name: 'edit' }));
+            expect(await screen.findByRole('tooltip')).toHaveTextContent('tile hint');
+            await user.unhover(screen.getByRole('button', { name: 'edit' }));
+
+            rerender(tile());
+            await user.hover(screen.getByRole('button', { name: 'edit' }));
+            expect(await screen.findByRole('tooltip')).toHaveTextContent('page hint');
+        });
+
+        it('shows neither chip nor dashed outline on a tile the viewer may edit', () => {
+            const { container } = renderCard();
+            expect(screen.queryByText('card.edit.readOnlyChip')).not.toBeInTheDocument();
+            expect(container.firstElementChild?.className).not.toMatch(/readOnlyTile/);
         });
     });
 });

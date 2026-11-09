@@ -1,6 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import ArrowCircleLeftOutlinedIcon from '@mui/icons-material/ArrowCircleLeftOutlined';
-import ArrowCircleUpOutlinedIcon from '@mui/icons-material/ArrowCircleUpOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
@@ -65,55 +63,43 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
             editButtonPlacement="footer"
             headerIcon={<ImageOutlinedIcon />}
         >
-            <div className={styles.assetsLayout}>
+            <div className={styles.imageList}>
                 <FormFileUploaderField
-                    className={`${styles.assetUploader} ${styles.logoUploader}`}
-                    labelKey="organisation.logo"
+                    className={styles.imageField}
                     name={['theming', 'logo']}
-                    tooltip={t('settings.images.tooltip.logo')}
                     disabled={logoReadOnly}
+                    row={{
+                        title: t('organisation.logo'),
+                        size: '512 × 512 px',
+                        description: `${t('settings.images.purpose.logo')} · ${t('settings.images.formats.photo')}`,
+                    }}
                 />
-                <div className={styles.assetMetaColumn}>
-                    <div className={styles.assetMeta}>
-                        <span className={styles.assetLabel}>
-                            <ArrowCircleLeftOutlinedIcon />
-                            {t('organisation.logo')}
-                        </span>
-                        <span className={styles.assetSize}>512x512px</span>
-                    </div>
-                    <div className={styles.faviconBlock}>
-                        <FormFileUploaderField
-                            className={`${styles.assetUploader} ${styles.faviconUploader}`}
-                            allowIcon
-                            labelKey="organisation.favicon"
-                            name={['theming', 'favicon']}
-                            tooltip={t('settings.images.tooltip.favicon')}
-                            disabled={faviconReadOnly}
-                        />
-                        <div className={styles.assetMetaEnd}>
-                            <span className={styles.assetLabel}>
-                                {t('organisation.favicon')}
-                                <ArrowCircleUpOutlinedIcon />
-                            </span>
-                            <span className={styles.assetSize}>32x32px</span>
-                        </div>
-                    </div>
-                    {!settings.multitenancyWithSingleDomainEnabled && (
-                        <div className={styles.faviconBlock}>
-                            <FormFileUploaderField
-                                className={`${styles.assetUploader} ${styles.associationLogoUploader}`}
-                                labelKey="organisation.associationLogo"
-                                name={['theming', 'associationLogo']}
-                                tooltip={t('settings.images.tooltip.associationLogo')}
-                                disabled={associationLogoReadOnly}
-                            />
-                            <div className={styles.assetMetaEnd}>
-                                <span className={styles.assetLabel}>{t('organisation.associationLogo')}</span>
-                                <span className={styles.assetSize}>512x512px</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <FormFileUploaderField
+                    className={styles.imageField}
+                    allowIcon
+                    name={['theming', 'favicon']}
+                    disabled={faviconReadOnly}
+                    row={{
+                        title: t('organisation.favicon'),
+                        size: '32 × 32 px',
+                        description: `${t('settings.images.purpose.favicon')} · ${t('settings.images.formats.icon')}`,
+                        previewClassName: styles.faviconPreview,
+                    }}
+                />
+                {!settings.multitenancyWithSingleDomainEnabled && (
+                    <FormFileUploaderField
+                        className={styles.imageField}
+                        name={['theming', 'associationLogo']}
+                        disabled={associationLogoReadOnly}
+                        row={{
+                            title: t('organisation.associationLogo'),
+                            size: '512 × 512 px',
+                            description: `${t('settings.images.purpose.associationLogo')} · ${t(
+                                'settings.images.formats.photo',
+                            )}`,
+                        }}
+                    />
+                )}
             </div>
         </CardEditable>
     );
