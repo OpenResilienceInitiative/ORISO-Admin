@@ -1719,6 +1719,8 @@
     "topicCatalogue.announce.moved": "“{{name}}” is now at position {{position}} of {{total}} in “{{group}}”.",
     "topicCatalogue.announce.edge": "“{{name}}” cannot move further in that direction.",
     "topicCatalogue.announce.groupAdded": "Category “{{group}}” added.",
+    "topicCatalogue.announce.groupMoved": "Category “{{group}}” moved to position {{position}} of {{total}}.",
+    "topicCatalogue.announce.groupRemoved": "Category “{{group}}” removed.",
     "twoFactorAuth.subtitle": "Use an additional app to sign in to your Online Counseling & Help account. This makes your account more secure against unauthorized access.",
     "twoFactorAuth.title": "Two-factor authentication",
     "twoFactorAuth.required.title": "Secure your administrator account",
