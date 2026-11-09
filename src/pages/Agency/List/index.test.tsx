@@ -28,7 +28,7 @@ const translations: Record<string, string> = {
     'agency.noTopics': 'No topics assigned',
     'agency.status.online': 'Visible',
     'agency.status.offline': 'Hidden',
-    'agency.teamAgency': 'Team centre',
+    'teamFunctions.counselling.name': 'Team counselling',
     'agency.list.id': 'ID',
     'agency.list.address': 'Address',
     'agency.list.contact': 'Contact',
@@ -230,7 +230,7 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         render(<AgencyList />);
 
         const row = rowOf('Team Süd');
-        expect(within(row).getByText('Team centre')).toBeInTheDocument();
+        expect(within(row).getByText('Team counselling')).toBeInTheDocument();
         expect(within(row).getByText('Hidden')).toBeInTheDocument();
     });
 
