@@ -89,7 +89,11 @@ export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
         appearanceComplete: masterDataComplete && hasText(tenant.theming?.logo),
         masterDataComplete,
         smtpMode: tenant.settings?.smtpMode ?? null,
-        smtpComplete: smtp ? hasText(smtp.host) && hasText(smtp.from) && smtp.passwordSet === true : undefined,
+        // Same reading as the SMTP editor: `passwordSet` from the write-only API, else an
+        // older backend's stored `password`.
+        smtpComplete: smtp
+            ? hasText(smtp.host) && hasText(smtp.from) && Boolean(smtp.passwordSet ?? hasText(smtp.password))
+            : undefined,
     };
 };
 

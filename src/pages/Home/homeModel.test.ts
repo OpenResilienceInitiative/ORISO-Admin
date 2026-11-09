@@ -356,6 +356,21 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
                 settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', passwordSet: true } },
             })?.smtpComplete,
         ).toBe(true);
+        // Older backends send the stored password instead of `passwordSet` (as the SMTP editor reads it).
+        const legacy = (password: string) =>
+            summariseOwnTenant({
+                ...base,
+                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', password } },
+            })?.smtpComplete;
+        expect(legacy('secret')).toBe(true);
+        expect(legacy('  ')).toBe(false);
+        // An explicit `passwordSet: false` wins over a leftover password value.
+        expect(
+            summariseOwnTenant({
+                ...base,
+                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', passwordSet: false, password: 'x' } },
+            })?.smtpComplete,
+        ).toBe(false);
     });
 
     it('counts a centre complete with postcode and topics', () => {
