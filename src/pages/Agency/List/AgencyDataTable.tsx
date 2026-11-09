@@ -27,6 +27,7 @@ import { RowMenu, type RowMenuItem } from '../../../components/UserTable/RowMenu
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
 import { ToneBadge } from '../../../components/UserTable/StatusBadge';
 import { UserCard } from '../../../components/UserTable/UserCard';
+import { TEAM_FUNCTIONS } from '../../../components/TeamFunctions';
 import type { AgencyData } from '../../../types/agency';
 import { useAgencyTableLayout } from './useAgencyTableLayout';
 import styles from './agencyDataTable.module.scss';
@@ -226,7 +227,7 @@ export const AgencyDataTable = ({
     const teamBadge = (row: AgencyData) =>
         isTeam(row) ? (
             <ToneBadge tone="ended" Icon={GroupsOutlinedIcon}>
-                {t('agency.teamAgency')}
+                {t(TEAM_FUNCTIONS.counselling.nameKey)}
             </ToneBadge>
         ) : null;
 
@@ -263,7 +264,7 @@ export const AgencyDataTable = ({
                           [streetLine(row), placeLine(row)].filter(Boolean).join(', ') || null,
                       ],
                       [t('tenantName'), showTenant ? tenantChip(row) : null],
-                      [t('agency.teamAgency'), isTeam(row) ? t('yes') : null],
+                      [t(TEAM_FUNCTIONS.counselling.nameKey), isTeam(row) ? t('yes') : null],
                   ] as [string, ReactNode][])
                 : []),
             [
