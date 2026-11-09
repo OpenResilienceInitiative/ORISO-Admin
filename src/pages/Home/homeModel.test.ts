@@ -371,6 +371,9 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
         expect(agencyPageComplete([complete, complete], 2)).toBe(true);
         expect(agencyPageComplete([complete, complete], 25)).toBeNull();
         expect(agencyPageComplete([], 0)).toBe(false);
+        // No total in the answer: unknown, neither open nor done.
+        expect(agencyPageComplete([], undefined)).toBeNull();
+        expect(agencyPageComplete([complete, complete])).toBeNull();
     });
 });
 

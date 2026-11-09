@@ -7,11 +7,12 @@ import { UserRole } from '../../enums/UserRole';
 import { USER_DATA_KEY } from '../../hooks/useUserData.hook';
 import { setStoryAuth, withSeededAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { HomePage } from './HomePage';
+import { homeFactKey } from './useHomeFacts';
 
-/** Counts as `useHomeFacts` caches them; a story needs no network. */
-const seedFacts = (facts: Record<string, unknown>) => (client: QueryClient) => {
+/** Counts as `useHomeFacts` caches them for the story's tenant; a story needs no network. */
+const seedFacts = (tenantId: number, facts: Record<string, unknown>) => (client: QueryClient) => {
     client.setQueryData([USER_DATA_KEY], { firstName: 'Kim' });
-    Object.entries(facts).forEach(([key, value]) => client.setQueryData(['HOME_FACT', key], value));
+    Object.entries(facts).forEach(([key, value]) => client.setQueryData(homeFactKey(tenantId, key), value));
 };
 
 /** Requests the page and its providers make on mount; without them the global error toast covers the greeting. */
@@ -55,7 +56,7 @@ export const PlatformAdminFirstLogin: Story = {
             setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
             return withSeededAdminProviders(
                 Story,
-                seedFacts({
+                seedFacts(0, {
                     'own-tenant': { appearanceComplete: true, smtpMode: 'PLATFORM' },
                     tenants: 0,
                     agencies: 0,
@@ -94,7 +95,7 @@ export const TraegerAdmin: Story = {
             setStoryAuth(TRAEGER_ROLES, 7);
             return withSeededAdminProviders(
                 Story,
-                seedFacts({
+                seedFacts(7, {
                     // Own mail server not finished (#1374); the AVV is still unsigned (handler below).
                     'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: false },
                     agencies: 1,
@@ -132,7 +133,7 @@ export const BeratungsstellenAdmin: Story = {
             setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 7);
             return withSeededAdminProviders(
                 Story,
-                seedFacts({
+                seedFacts(7, {
                     'agency-complete': false,
                     agencies: 1,
                     consultants: 4,
@@ -163,7 +164,7 @@ export const AllStepsDone: Story = {
             setStoryAuth(TRAEGER_ROLES, 7);
             return withSeededAdminProviders(
                 Story,
-                seedFacts({
+                seedFacts(7, {
                     'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: true },
                     agencies: 3,
                     consultants: 12,
@@ -201,7 +202,7 @@ export const UnknownFacts: Story = {
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
-            return withSeededAdminProviders(Story, seedFacts({ 'own-tenant': null }));
+            return withSeededAdminProviders(Story, seedFacts(7, { 'own-tenant': null }));
         },
     ],
     play: async ({ canvas }) => {

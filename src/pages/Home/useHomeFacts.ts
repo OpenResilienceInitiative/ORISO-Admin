@@ -46,13 +46,16 @@ const getInvitePhases = async (tab: AccountInviteListTab) => {
 
 const OPEN_PHASES = ['PREPARED', 'INVITED', 'ACCOUNT_CREATED'] as const;
 
+/** Cache key of one Home fact. Scoped by tenant, so a later sign-in never reads another tenant's facts. */
+export const homeFactKey = (tenantId: number | null, key: string) => ['HOME_FACT', tenantId ?? 'none', key];
+
 /**
  * A fact that could not be read is cached as `null`: React Query rejects `undefined`
  * as query data (and logs an error for it). Home itself reads both as "unknown".
  */
-const useFact = <T>(key: string, enabled: boolean, load: () => Promise<T | undefined>) =>
+const useFact = <T>(tenantId: number | null, key: string, enabled: boolean, load: () => Promise<T | undefined>) =>
     useQuery({
-        queryKey: ['HOME_FACT', key],
+        queryKey: homeFactKey(tenantId, key),
         queryFn: async () => (await load()) ?? null,
         enabled,
         retry: false,
@@ -92,11 +95,13 @@ export const isAgencyComplete = (agency: any): boolean =>
 
 /**
  * Complete only when every centre was inspected: with more centres than one
- * page holds, the state stays unknown instead of claiming "done".
+ * page holds, or no total to compare with, the state stays unknown instead of
+ * claiming "done" or "open".
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, only two fields read
 export const agencyPageComplete = (agencies: any[], total?: number): boolean | null => {
-    if (typeof total === 'number' && total > agencies.length) return null;
+    // Without a numeric total the page cannot prove it holds every centre.
+    if (typeof total !== 'number' || total > agencies.length) return null;
     return agencies.length > 0 && agencies.every(isAgencyComplete);
 };
 
@@ -114,53 +119,63 @@ export interface HomeFactAccess {
 export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
     const { settings } = useAppConfigContext();
     const tenantId = access.tenantId ?? null;
-    const ownTenant = useFact('own-tenant', access.role === 'platform' || access.role === 'tenant', async () => {
-        // The admin endpoint carries the SMTP block; fall back to the public
-        // tenant (always reachable) for name, claim and logo.
-        const adminRecord =
-            access.role === 'tenant' && tenantId != null
-                ? await getSingleTenantData(tenantId, { silent: true }).catch(() => undefined)
+    const ownTenant = useFact(
+        tenantId,
+        'own-tenant',
+        access.role === 'platform' || access.role === 'tenant',
+        async () => {
+            // The admin endpoint carries the SMTP block; fall back to the public
+            // tenant (always reachable) for name, claim and logo.
+            const adminRecord =
+                access.role === 'tenant' && tenantId != null
+                    ? await getSingleTenantData(tenantId, { silent: true }).catch(() => undefined)
+                    : undefined;
+            const summary = summariseOwnTenant(adminRecord);
+            if (summary) return summary;
+            const publicTenant = await getPublicTenantData(settings).catch(() => undefined);
+            const record = publicTenant
+                ? await getTenantData(publicTenant, settings.multitenancyWithSingleDomainEnabled).catch(() => undefined)
                 : undefined;
-        const summary = summariseOwnTenant(adminRecord);
-        if (summary) return summary;
-        const publicTenant = await getPublicTenantData(settings).catch(() => undefined);
-        const record = publicTenant
-            ? await getTenantData(publicTenant, settings.multitenancyWithSingleDomainEnabled).catch(() => undefined)
-            : undefined;
-        // Same normalisation as the settings editor (claim may come top-level).
-        return (record ? summariseOwnTenant(mapTenantDataToTenantAdminData(record)) : undefined) ?? null;
-    });
+            // Same normalisation as the settings editor (claim may come top-level).
+            return (record ? summariseOwnTenant(mapTenantDataToTenantAdminData(record)) : undefined) ?? null;
+        },
+    );
     // Observe the DPA gate's own query (no second cache): a signature the gate
     // sees — e.g. by the forwarded signatory — updates the checklist too.
     const { data: dpaInfo } = useDpaStatus(tenantId ?? 0, access.role === 'tenant' && tenantId != null, {
         dropCacheOnMount: false,
     });
     const dpaStatus = dpaInfo?.status as DpaStatusFact | undefined;
-    const agencyComplete = useFact('agency-complete', access.role === 'agency' && access.canReadAgencies, async () => {
-        const result = await fetchData({
-            url: `${agencyEndpointBase}?q=*&page=1&perPage=20&order=ASC&field=NAME`,
-            method: FETCH_METHODS.GET,
-            skipAuth: false,
-            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
-        }).catch(() => undefined);
-        const page = result ? removeEmbedded(result) : undefined;
-        const agencies = page?.data;
-        if (!Array.isArray(agencies)) return null;
-        return agencyPageComplete(agencies, page?.total);
-    });
-    const tenants = useFact('tenants', access.role === 'platform' && access.canReadTenants, () =>
+    const agencyComplete = useFact(
+        tenantId,
+        'agency-complete',
+        access.role === 'agency' && access.canReadAgencies,
+        async () => {
+            const result = await fetchData({
+                url: `${agencyEndpointBase}?q=*&page=1&perPage=20&order=ASC&field=NAME`,
+                method: FETCH_METHODS.GET,
+                skipAuth: false,
+                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+            }).catch(() => undefined);
+            const page = result ? removeEmbedded(result) : undefined;
+            const agencies = page?.data;
+            if (!Array.isArray(agencies)) return null;
+            return agencyPageComplete(agencies, page?.total);
+        },
+    );
+    const tenants = useFact(tenantId, 'tenants', access.role === 'platform' && access.canReadTenants, () =>
         getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),
     );
-    const agencies = useFact('agencies', access.canReadAgencies, () =>
+    const agencies = useFact(tenantId, 'agencies', access.canReadAgencies, () =>
         getTotal(`${agencyEndpointBase}?q=*&page=1&perPage=1&order=ASC&field=NAME`),
     );
-    const consultants = useFact('consultants', access.canReadConsultants, () =>
+    const consultants = useFact(tenantId, 'consultants', access.canReadConsultants, () =>
         getTotal(
             `${usersConsultantsSearchEndpoint}?query=*&page=1&perPage=1&order=ASC&field=${USER_TABLE_API_SAFE_SORT}`,
         ),
     );
-    const tenantInvites = useFact('invites-tenant', access.canInviteTenants, () => getInvitePhases('TENANT'));
-    const unitInvites = useFact('invites-unit', access.canInviteCounsellors, () => getInvitePhases('UNIT'));
+    const tenantInvites = useFact(tenantId, 'invites-tenant', access.canInviteTenants, () => getInvitePhases('TENANT'));
+    const unitInvites = useFact(tenantId, 'invites-unit', access.canInviteCounsellors, () => getInvitePhases('UNIT'));
 
     const sum = (phases: Array<string>, ...counts: Array<Partial<Record<string, number>> | undefined>) =>
         counts.every((count) => count === undefined)
