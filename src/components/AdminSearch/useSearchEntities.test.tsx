@@ -223,3 +223,59 @@ describe('useSearchEntities: a failed list is reported', () => {
         expect(result.current.forQuery).toBe('anna');
     });
 });
+
+describe('useSearchEntities: the documents it builds', () => {
+    // The topic list has no server search, so the hook narrows it itself and keeps only the best few.
+    const topic = (id: number, name: string, extra: { description?: string; internalIdentifier?: string } = {}) => ({
+        id,
+        name,
+        ...extra,
+    });
+    const topicIds = (docs: Array<{ kind: string; id: string }>) =>
+        docs.filter((doc) => doc.kind === 'topic').map((doc) => doc.id);
+
+    it('keeps only the topics whose name, description or internal identifier contain the query', async () => {
+        mocks.topics.mockReturnValue({
+            ...quiet,
+            data: {
+                data: [
+                    topic(1, 'Alpha topic'),
+                    topic(2, 'Beta topic', { description: 'All about ALPHA things' }),
+                    topic(3, 'Gamma topic', { internalIdentifier: 'x-alpha-1' }),
+                    topic(4, 'Delta topic', { description: 'Something else' }),
+                ],
+            },
+        });
+
+        const { result } = await typed('  alpha ');
+
+        expect(topicIds(result.current.docs)).toEqual(['topic:1', 'topic:2', 'topic:3']);
+    });
+
+    it('cuts the matching topics to five, in list order', async () => {
+        mocks.topics.mockReturnValue({
+            ...quiet,
+            data: { data: Array.from({ length: 8 }, (_, index) => topic(index + 1, `Alpha topic ${index + 1}`)) },
+        });
+
+        const { result } = await typed('alpha');
+
+        expect(topicIds(result.current.docs)).toEqual(['topic:1', 'topic:2', 'topic:3', 'topic:4', 'topic:5']);
+    });
+
+    it('builds no documents below the minimum length, even when a list has rows', async () => {
+        mocks.topics.mockReturnValue({ ...quiet, data: { data: [topic(1, 'Alpha topic')] } });
+
+        const { result } = await typed('a');
+
+        expect(result.current.docs).toEqual([]);
+    });
+
+    it('builds no documents for a query nothing matches', async () => {
+        mocks.topics.mockReturnValue({ ...quiet, data: { data: [topic(1, 'Alpha topic')] } });
+
+        const { result } = await typed('zzz');
+
+        expect(result.current.docs).toEqual([]);
+    });
+});
