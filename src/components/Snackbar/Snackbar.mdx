@@ -2,25 +2,26 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 <Meta title="Molecules/Snackbar guide" />
 
-# Which message for which situation
+# Which pop-up for which situation
 
 The Admin shows feedback in two ways. Pick by what the person has to do with it.
 
-| Situation                                                                                                                  | Use                                                      | Stays on screen                          |
-| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
-| "Done": saved, copied, sent, published                                                                                     | **Snackbar**, `success`                                  | 4 to 6 s, then gone, with a close button |
-| Neutral news: `info`                                                                                                       | **Snackbar**, `info`                                     | 4 to 6 s, then gone, with a close button |
-| A request failed                                                                                                           | **Snackbar**, `error`                                    | **until closed** or acted on             |
-| A side effect that is not an error: "setup mail was not sent"                                                              | **Snackbar**, `warning`                                  | **until closed** or acted on             |
-| Something happened that they may want to undo or retry right now                                                           | **Snackbar** with an action ("Rückgängig")               | **until acted on** or closed             |
-| The page itself is in a state the person has to act on: missing consent, blocked form, read-only reason, an empty template | **Inline message box** (next to the content it is about) | as long as the state lasts               |
+| Situation                                                                                                                  | Use                                                                        | Stays on screen                          |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------- |
+| "Done": saved, copied, sent, published                                                                                     | **Snackbar**, `success`                                                    | 4 to 6 s, then gone, with a close button |
+| Neutral news: `info`                                                                                                       | **Snackbar**, `info`                                                       | 4 to 6 s, then gone, with a close button |
+| A request failed                                                                                                           | **Snackbar**, `error`                                                      | **until closed** or acted on             |
+| A side effect that is not an error: "setup mail was not sent"                                                              | **Snackbar**, `warning`                                                    | **until closed** or acted on             |
+| Something happened that they may want to undo or retry right now                                                           | **Snackbar** with an action ("Rückgängig")                                 | **until acted on** or closed             |
+| The page itself is in a state the person has to act on: missing consent, blocked form, read-only reason, an empty template | **`<HintText>`** (plain text in the tile, next to the content it is about) | as long as the state lasts               |
 
-The line between the two: **a snackbar is an event, an inline box is a state.** If the message is
-still true after ten seconds and the person still has to deal with it, it does not belong in a
-snackbar. If it reports something that just happened, it never belongs in a box on the page.
+The line between the two: **a snackbar is an event, hint text is a state.** If the message is
+still true after ten seconds and the person still has to deal with it, it is hint text in the tile
+(see "Which message for which situation" in the Messages guide). If it reports something that just
+happened, it is a pop-up and never a box in the page.
 
-Inline boxes are built and documented separately (tooltip and message-box designs). This guide
-only covers what is transient, dismissible or "must click".
+`<Notify>` raises the pop-up declaratively; `<HintText>` is documented in the Messages guide. This guide
+only covers the pop-up channel itself.
 
 ## How to raise one
 
