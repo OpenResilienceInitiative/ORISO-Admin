@@ -46,8 +46,10 @@ describe('shared focus ring', () => {
 
     it('lets surfaces that follow the colour scheme or stay dark set their own ring colour', () => {
         expect(read('../components/Card/styles.module.scss')).toMatch(/--admin-focus-ring-color:\s*var\(--m3-primary/);
-        expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
-            /--admin-focus-ring-color:\s*#ffb4aa/,
+        // The editor hints are the shared pop-up now: it stays dark in every scheme and takes its ring from the
+        // text colour of its own tone, a pair built to be readable on the container.
+        expect(read('../components/Snackbar/Snackbar.module.scss')).toMatch(
+            /--snackbar-focus:\s*var\(--snackbar-on-container\)/,
         );
     });
 });
