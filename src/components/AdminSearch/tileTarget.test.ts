@@ -38,6 +38,9 @@ describe('a link that was edited by hand', () => {
 });
 
 describe('revealTile', () => {
+    // jsdom has no scrollIntoView; the stub must not leak into other tests of the same worker.
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+
     beforeEach(() => {
         vi.useFakeTimers();
         document.body.innerHTML = '';
@@ -46,6 +49,12 @@ describe('revealTile', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+
+        if (originalScrollIntoView) {
+            Element.prototype.scrollIntoView = originalScrollIntoView;
+        } else {
+            Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+        }
     });
 
     it('highlights a tile that is already there and removes the mark again', () => {
@@ -69,6 +78,31 @@ describe('revealTile', () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect((findTile(document, 'late.tile') as HTMLElement).getAttribute(HIGHLIGHT_ATTRIBUTE)).toBe('true');
+    });
+
+    // Found in review: nothing covered the cancel of a highlight that is showing (the page was left).
+    it('takes the mark off and stops the timer when cancelled while it shows', () => {
+        document.body.innerHTML = '<div data-search-tile="a.b"></div>';
+        const cancel = revealTile('a.b');
+        const element = findTile(document, 'a.b') as HTMLElement;
+
+        expect(element.getAttribute(HIGHLIGHT_ATTRIBUTE)).toBe('true');
+
+        cancel();
+
+        expect(element.hasAttribute(HIGHLIGHT_ATTRIBUTE)).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not reveal a tile that renders after it was cancelled', async () => {
+        const cancel = revealTile('late.tile');
+
+        cancel();
+        document.body.innerHTML = '<div data-search-tile="late.tile"></div>';
+        await Promise.resolve();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect((findTile(document, 'late.tile') as HTMLElement).hasAttribute(HIGHLIGHT_ATTRIBUTE)).toBe(false);
     });
 
     it('gives up quietly and can be cancelled', () => {
