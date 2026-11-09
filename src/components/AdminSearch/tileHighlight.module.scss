@@ -7,7 +7,7 @@
 :global([data-search-highlight='true']) {
     // 2.6s: keep in step with HIGHLIGHT_MS in tileTarget.ts, which removes the mark when the glow ends.
     animation: admin-search-tile-glow 2.6s ease-out 1;
-    outline: 3px solid var(--m3-primary, #a5000a);
+    outline: 3px solid var(--admin-focus-ring-color);
     outline-offset: 4px;
 }
 
