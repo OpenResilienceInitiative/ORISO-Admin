@@ -494,7 +494,7 @@ export const SEARCH_TILES: RegistryTile[] = [
             fieldKeys: [
                 'tenants.appSettings.otherFunctions.statistics.title',
                 'tenants.appSettings.otherFunctions.groupChat.title',
-                'tenants.appSettings.otherFunctions.teamDiscussion.title',
+                'teamFunctions.chat.name',
                 'tenants.appSettings.otherFunctions.supervision.title',
                 'tileHelp.otherFunctions.general.title',
             ],
@@ -547,7 +547,7 @@ export const SEARCH_TILES: RegistryTile[] = [
         'src/pages/Agency/Edit/index.tsx',
         {
             fieldKeys: [
-                'agency.form.settings.teamAdviceCenter.title',
+                'teamFunctions.counselling.name',
                 'agency.edit.general.more_settings.tenant.title',
                 'agency.edit.settings.departments',
                 'agency.form.settings.counsellorTopicPermission.title',
