@@ -32,6 +32,7 @@ export const findTile = (root: ParentNode, tileKey: string): HTMLElement | null 
     ) ?? null;
 
 export const HIGHLIGHT_ATTRIBUTE = 'data-search-highlight';
+// Keep in step with the 2.6s glow in tileHighlight.module.scss: the mark stays as long as the animation runs.
 const HIGHLIGHT_MS = 2600;
 
 /**

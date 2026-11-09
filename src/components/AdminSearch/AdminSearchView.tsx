@@ -110,6 +110,12 @@ type NavRow = { kind: 'hit'; hit: SearchHit } | { kind: 'more'; group: SearchGro
 const toggle = <T,>(list: T[] | undefined, value: T): T[] =>
     list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value];
 
+/**
+ * The view counts and groups what it is given ("Show n more", the chip numbers), so the engine's
+ * default cap of 60 would cut a broad query short and hide a whole type behind the best 60.
+ */
+const NO_LIMIT = Number.POSITIVE_INFINITY;
+
 /** One shared empty list: a fresh `[]` default would rebuild the prepared index on every render. */
 const NO_ENTITY_DOCS: SearchDoc[] = [];
 
@@ -144,7 +150,10 @@ export const AdminSearchView = ({
     const listId = useId();
     const trimmed = query.trim();
 
-    const prepared = useMemo(() => prepareIndex([...index, ...entityDocs]), [index, entityDocs]);
+    // The big static part is folded once; only the few entity rows are folded again when they change.
+    const preparedStatic = useMemo(() => prepareIndex(index), [index]);
+    const preparedEntities = useMemo(() => prepareIndex(entityDocs), [entityDocs]);
+    const prepared = useMemo(() => [...preparedStatic, ...preparedEntities], [preparedStatic, preparedEntities]);
     const entityIds = useMemo(() => new Set(entityDocs.map((doc) => doc.id)), [entityDocs]);
     // The server matched these by something the index does not hold (email, id): keep them, rank low.
     const withPassthrough = (found: SearchHit[], active: SearchFilters): SearchHit[] => {
@@ -167,7 +176,7 @@ export const AdminSearchView = ({
     const baseHits = useMemo(
         () =>
             trimmed
-                ? withPassthrough(searchIndex(prepared, trimmed, { levels: filters.levels }), {
+                ? withPassthrough(searchIndex(prepared, trimmed, { levels: filters.levels }, NO_LIMIT), {
                       levels: filters.levels,
                   })
                 : [],
@@ -176,7 +185,7 @@ export const AdminSearchView = ({
     );
 
     const hits = useMemo(
-        () => (trimmed ? withPassthrough(searchIndex(prepared, trimmed, filters), filters) : []),
+        () => (trimmed ? withPassthrough(searchIndex(prepared, trimmed, filters, NO_LIMIT), filters) : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [prepared, trimmed, filters, entityDocs, entityQuery],
     );
