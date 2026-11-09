@@ -1,9 +1,10 @@
-import { Alert, Button, Form, notification } from 'antd';
+import { Alert, Button, Form } from 'antd';
 import { ReactElement, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
 import { ThemeProvider } from '@mui/material/styles';
+import { snackbar } from '../../../components/Snackbar';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
@@ -227,14 +228,13 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onSuccess: (response) => {
                     navigate(routePathNames.agency);
 
-                    notification.success({
+                    snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
                     if (response?.consultantAssignmentFailed) {
-                        notification.warning({
+                        snackbar.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                     setSubmitted(false);
@@ -256,10 +256,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ({ errorFields }: { errorFields?: ValidationErrorField[] }) => {
             const fields = describeAgencyValidationErrors(errorFields, t);
 
-            notification.error({
+            snackbar.error({
                 message: t('agency.edit.form.validationFailed'),
                 description: fields || t('form.errors.required'),
-                duration: 8,
             });
         },
         [t],
@@ -277,10 +276,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         errors: [t('form.errors.required')],
                     },
                 ]);
-                notification.error({
+                snackbar.error({
                     message: t('agency.edit.general.more_settings.tenant.title'),
                     description: t('form.errors.required'),
-                    duration: 5,
                 });
                 setSubmitted(false);
                 return;
@@ -318,19 +316,18 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         }
                         // The field lives on another card (the visibility switch is rejected for
                         // an incomplete data protection contact): say what is missing instead.
-                        notification.error({ message, duration: 8 });
+                        snackbar.error({ message });
                         return;
                     }
 
                     if (error instanceof Response && error.status === 400) {
-                        notification.error({
+                        snackbar.error({
                             message: t('message.error.default'),
-                            duration: 8,
                         });
                     }
                 },
                 onSuccess: (response) => {
-                    notification.success({
+                    snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
@@ -338,9 +335,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     // persistAgency shows belongs here. Without it the card reports
                     // success while the counsellor silently stayed unassigned.
                     if (response?.consultantAssignmentFailed) {
-                        notification.warning({
+                        snackbar.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                 },
@@ -401,15 +397,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         async <T,>(formData: T) => {
             try {
                 await mutateAsync(formData as Partial<AgencyData>);
-                notification.success({
+                snackbar.success({
                     message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                     duration: 3,
                 });
             } catch (error) {
                 if (error instanceof Response && error.status === 400) {
-                    notification.error({
+                    snackbar.error({
                         message: t('message.error.default'),
-                        duration: 8,
                     });
                 }
                 throw error;

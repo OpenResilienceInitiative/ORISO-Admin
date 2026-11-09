@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { snackbar } from '../../components/Snackbar';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -257,12 +257,13 @@ export const SmtpCredentialsMissing: Story = {
             { timeout: 10_000 },
         );
         await userEvent.click(enabledSendButton);
-        // antd renders toasts in a portal outside canvasElement.
+        // The snackbar host renders in a portal outside canvasElement.
         await waitFor(
-            () =>
-                expect(document.body.querySelector('.ant-message')?.textContent ?? '').toContain(
-                    'SMTP-Zugangsdaten fehlen',
-                ),
+            () => {
+                const popups = document.body.querySelectorAll('[data-testid="snackbar"]');
+                expect(popups).toHaveLength(1);
+                expect(popups[0].textContent ?? '').toContain('SMTP-Zugangsdaten fehlen');
+            },
             { timeout: 10_000 },
         );
     },
@@ -311,7 +312,7 @@ let setupListReads = 0;
 /** Existing setup recovery must work before an ordinary invitation template exists. */
 export const SetupResendWithoutTemplates: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         setupResendRequests.length = 0;
         setupListReads = 0;
     },
@@ -358,7 +359,7 @@ const ordinaryResendRequests: unknown[] = [];
 /** The setup exemption must not remove the existing ordinary invitation guard. */
 export const OrdinaryResendStillRequiresTemplate: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         ordinaryResendRequests.length = 0;
     },
     parameters: {

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
+import { SnackbarHost } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import type { TemporaryAccountSettings } from '../../../types/TemporaryAccountSettings';
@@ -34,6 +35,8 @@ const signInAs = (tenantId: number) =>
         null,
     );
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     signInAs(0);
     await i18n.changeLanguage('de');
 });

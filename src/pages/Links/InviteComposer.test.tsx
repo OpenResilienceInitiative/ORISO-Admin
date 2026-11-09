@@ -5,6 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost } from '../../components/Snackbar';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 // Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
 // below is hoisted above this line, so the mocks still apply, while a dynamic
@@ -136,6 +137,8 @@ const findSendButton = (name: string) => screen.findByRole('button', { name });
 
 describe('InviteComposer (via TenantInvitesTab)', () => {
     beforeEach(() => {
+        // Feedback is a snackbar: mount the host the app mounts once.
+        render(<SnackbarHost />);
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.parseUserAuthInfo.mockReturnValue({});

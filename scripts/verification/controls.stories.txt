@@ -57,7 +57,7 @@ export const ContextualFeedback = {
         document.body.append(expectedColor);
         expect(getComputedStyle(content).color).toBe(getComputedStyle(expectedColor).color);
         expectedColor.remove();
-        expect(content.closest('.ant-message')).not.toBeNull();
+        expect(content.closest('[data-testid="snackbar"]')).not.toBeNull();
     },
 };
 

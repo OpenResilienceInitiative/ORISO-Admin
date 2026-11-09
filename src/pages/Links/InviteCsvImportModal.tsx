@@ -341,21 +341,24 @@ export const InviteCsvImportModal = ({
         }
 
         setRunning(false);
-        if (firstStop) message.error(firstStop);
         // After an SMTP stop the invite may exist without a success reply: reload to find out.
         if (created > 0 || firstStop) {
             onCreated();
         }
-        if (failed === 0 && created > 0) {
+        const partialSummary = t(
+            'links.csvImport.summaryPartial',
+            '{{created}} Empfänger angelegt, {{failed}} fehlgeschlagen',
+            { created, failed },
+        );
+        if (firstStop) {
+            // One event, one snackbar: the batch-wide cause and the count belong together, so the
+            // channel does not stack two pop-ups for one import.
+            message.error(failed > 0 ? { message: firstStop, description: partialSummary } : firstStop);
+        } else if (failed === 0 && created > 0) {
             message.success(t('links.csvImport.summaryAllCreated', '{{count}} Empfänger angelegt', { count: created }));
             onClose();
         } else if (failed > 0) {
-            message.warning(
-                t('links.csvImport.summaryPartial', '{{created}} Empfänger angelegt, {{failed}} fehlgeschlagen', {
-                    created,
-                    failed,
-                }),
-            );
+            message.warning(partialSummary);
         }
     };
 
