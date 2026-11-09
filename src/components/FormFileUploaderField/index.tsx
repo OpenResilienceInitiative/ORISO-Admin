@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import classNames from 'classnames';
-import { ConfigProvider, Form, message, Upload } from 'antd';
+import { ConfigProvider, Form, Upload } from 'antd';
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { UploadFileProps, UploadValidationPolicy } from '../../types/uploadFiles';
 import decodeHTML from '../../utils/decodeHTML';
 import getBase64 from '../../utils/getBase64';
@@ -81,13 +82,13 @@ const useCheckedUpload = ({
             return false;
         }
         if (!(uploadPolicy ? uploadPolicy.mimeTypes.includes(file.type) : isAcceptedFile(file, allowIcon))) {
-            message.error(t(uploadPolicy ? uploadPolicy.invalidMessageKey : 'message.error.upload.filetype'));
+            snackbar.error(t(uploadPolicy ? uploadPolicy.invalidMessageKey : 'message.error.upload.filetype'));
             return false;
         }
         const isLarger500kb = file.size / 1024 > 512;
 
         if (isLarger500kb) {
-            message.error(t('message.error.upload.filesize'));
+            snackbar.error(t('message.error.upload.filesize'));
             return false;
         }
 
@@ -100,14 +101,14 @@ const useCheckedUpload = ({
                 if (uploadPolicy) {
                     const safe = uploadPolicy.validate(result, file);
                     if (!safe) {
-                        message.error(t(uploadPolicy.invalidMessageKey));
+                        snackbar.error(t(uploadPolicy.invalidMessageKey));
                         return;
                     }
                 }
                 onChange(normalizeIconDataUrl(result, file.name));
             },
             () => {
-                message.error(t(uploadPolicy?.invalidMessageKey ?? 'message.error.upload.filetype'));
+                snackbar.error(t(uploadPolicy?.invalidMessageKey ?? 'message.error.upload.filetype'));
             },
         );
         return false;

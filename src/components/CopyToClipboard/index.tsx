@@ -1,7 +1,7 @@
-import { notification } from 'antd';
 import classNames from 'classnames';
 import { CopyToClipboard as LibCopyToClipboard } from 'react-copy-to-clipboard';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { ReactComponent as CopyIcon } from '../../resources/img/svg/copy.svg';
 import styles from './styles.module.scss';
 
@@ -19,7 +19,7 @@ export const CopyToClipboard = ({ className, children, copiedKey }: CopyToClipbo
             {children}
             <LibCopyToClipboard
                 text={children}
-                onCopy={() => notification.success({ message: t(copiedKey || 'notification.copy.success') })}
+                onCopy={() => snackbar.success({ message: t(copiedKey || 'notification.copy.success') })}
             >
                 <CopyIcon className={styles.icon} />
             </LibCopyToClipboard>
