@@ -23,6 +23,8 @@ export interface SnackbarAction {
     /** Already translated, e.g. `t('snackbar.retry')`. */
     label: string;
     onClick: () => void;
+    /** Not clickable while true (for example while the operation it starts is still running). */
+    disabled?: boolean;
 }
 
 /** What a jump action scrolls to: an element id, a CSS selector, an element or a ref to one. */
@@ -314,7 +316,10 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
             // first, and an error only makes room for a newer error.
             while (queued.length > MAX_QUEUE) {
                 const drop = queued.findIndex((waiting) => waiting.severity !== 'error');
-                finish(queued.splice(drop < 0 ? 0 : drop, 1)[0], 'replaced');
+                const [gone] = queued.splice(drop < 0 ? 0 : drop, 1);
+                // Never shown: a repeat of it must not be swallowed as "already on screen".
+                forget(gone);
+                finish(gone, 'replaced');
             }
             setState(state.visible, queued);
         }

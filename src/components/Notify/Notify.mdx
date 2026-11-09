@@ -22,7 +22,7 @@ below cards, so nothing pushes content or sits flush against a card edge.
 2. Errors, warnings and anything with an action stay until dismissed or acted on. Success and info time out.
 3. Give a pop-up a **title** when several tiles could be meant; an action such as "Ansehen" can take the
    person to the tile. At most two actions (a choice such as two drafts).
-4. Text is an i18n key, never a raw server string.
+4. Pass already-translated text (from an i18n key), never a raw server string. `Notify` does not translate.
 5. Never stack boxes in the page. Several pop-ups wait in the channel's queue.
 
 <Canvas of={Stories.TwoDraftsConflict} />

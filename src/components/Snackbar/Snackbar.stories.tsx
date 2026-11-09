@@ -22,7 +22,7 @@ const meta = {
             description: {
                 component:
                     'M3 snackbar from the ORISO Figma (Design-System-M3_ORISO, node 53977:33575): ten variants plus the action and close building blocks. ' +
-                    'Application code never renders it directly. It raises messages through `snackbar.notify()` / `useSnackbar()`, and `<SnackbarHost>` shows them one at a time.',
+                    'Application code never renders it directly. It raises messages through `snackbar.notify()` / `useSnackbar()`, and `<SnackbarHost>` shows up to four at once and queues the rest.',
             },
         },
     },

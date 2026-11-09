@@ -219,7 +219,7 @@ const CentreSetupExample = ({
                                 </Notify>
                             )}
                             {failed && (
-                                <Notify title={t('notify.title.onboarding')} severity="error">
+                                <Notify title={t('notify.title.onboarding')} severity="error" quietText={text.error}>
                                     {text.error}
                                 </Notify>
                             )}

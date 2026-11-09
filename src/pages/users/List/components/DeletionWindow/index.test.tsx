@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { snackbar } from '../../../../../components/Snackbar';
 import { DeletionWindowModal } from './index';
 
@@ -55,10 +55,15 @@ vi.mock('../../../../../components/Modal', () => ({
 
 describe('DeletionWindowModal', () => {
     beforeEach(() => {
+        vi.clearAllMocks();
         vi.spyOn(snackbar, 'success').mockImplementation(mutations.toast as never);
         vi.spyOn(snackbar, 'error').mockImplementation(mutations.toast as never);
-        vi.clearAllMocks();
         mutations.pending = false;
+    });
+
+    // The spies sit on the shared snackbar object: put it back so they never stack across tests.
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     describe('cancel', () => {

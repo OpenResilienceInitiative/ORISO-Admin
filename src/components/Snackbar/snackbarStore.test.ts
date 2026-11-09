@@ -71,6 +71,17 @@ describe('snackbar store: the stack', () => {
         expect(store.getState().queued[0].message).toBe('m10');
     });
 
+    it('lets a message that was dropped from a full queue come back at once, because nobody saw it', () => {
+        const { api, store } = setup();
+        for (let i = 0; i < 4; i += 1) api.info(`shown${i}`);
+        for (let i = 0; i < 11; i += 1) api.info(`waiting${i}`);
+        expect(messages(store.getState().queued)).not.toContain('waiting0');
+        // Free a slot, then raise the dropped text again inside the dedupe window.
+        api.dismiss(store.getState().visible[0].key);
+        api.info('waiting0');
+        expect(messages(store.getState().visible).concat(messages(store.getState().queued))).toContain('waiting0');
+    });
+
     it('clears everything, visible and queued', () => {
         const { api, store } = setup();
         for (let i = 0; i < 6; i += 1) api.info(`m${i}`);

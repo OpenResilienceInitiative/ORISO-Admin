@@ -115,7 +115,11 @@ export const AccountStep = ({
                     <LocalizedPasswordInput label={t('tenantOnboarding.account.password')} />
                 </Form.Item>
                 <LocalizedPasswordRuleChips password={password} />
-                {passwordRejection && <HintText tone="error">{t(PASSWORD_REJECTION_KEYS[passwordRejection])}</HintText>}
+                {passwordRejection && (
+                    <HintText tone="error" role="alert">
+                        {t(PASSWORD_REJECTION_KEYS[passwordRejection])}
+                    </HintText>
+                )}
                 <Form.Item
                     name="repeatPassword"
                     style={{ marginBottom: 0 }}
