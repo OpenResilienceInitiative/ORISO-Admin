@@ -7,11 +7,8 @@ import BusinessCenterOutlinedIcon from '@mui/icons-material/BusinessCenterOutlin
 import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { ThemeProvider } from '@mui/material/styles';
-<<<<<<< HEAD
 import { GdprIcon, ImprintIcon } from '../../../components/CustomIcons/LegalIcons';
-=======
 import { snackbar } from '../../../components/Snackbar';
->>>>>>> 8e52bd276212ca87bcf84944d104341af51210f0
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
