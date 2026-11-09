@@ -70,14 +70,19 @@ export const Phone: Story = {
         await noSidewaysScroll(context);
         const { canvasElement } = context;
         const host = canvasElement.querySelector<HTMLElement>('[data-testid="phone-host"]');
-        const hostWidth = host?.getBoundingClientRect().width ?? 0;
+        const hostRect = host?.getBoundingClientRect() ?? new DOMRect();
+        const hostWidth = hostRect.width;
         const tiles = [...canvasElement.querySelectorAll('[data-admin-card-grid-item]')].map((item) =>
             item.getBoundingClientRect(),
         );
 
         await expect(hostWidth).toBe(PHONE_WIDTH);
+        await expect(tiles.length).toBeGreaterThanOrEqual(2);
         tiles.forEach((tile, index) => {
             expect(Math.abs(tile.width - hostWidth)).toBeLessThanOrEqual(1);
+            // A tile that is as wide as the host but shifted sideways would still reach outside it.
+            expect(Math.abs(tile.left - hostRect.left)).toBeLessThanOrEqual(1);
+            expect(Math.abs(tile.right - hostRect.right)).toBeLessThanOrEqual(1);
             if (index > 0) expect(tile.top).toBeGreaterThanOrEqual(tiles[index - 1].bottom);
         });
     },
