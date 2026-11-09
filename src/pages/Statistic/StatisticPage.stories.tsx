@@ -353,7 +353,7 @@ export const DailyStandPhone: Story = {
     globals: { viewport: { value: 'phone390', isRotated: false } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await waitFor(async () => expect(await canvas.findByText('Anfragen gesamt')).toBeVisible());
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
         await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
     },
 };

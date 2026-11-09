@@ -1886,7 +1886,7 @@
     "statistic.dashboard.filter.allAssignedUnits": "All assigned units",
     "statistic.dashboard.filter.aria": "Narrow down statistics",
     "statistic.dashboard.filter.noFilters": "No filters available",
-    "statistic.dashboard.filter.placeholder": "Organisation or centre",
+    "statistic.dashboard.filter.placeholder": "Organisation or counselling centre",
     "statistic.dashboard.filter.removeTarget": "Remove {{target}}",
     "statistic.dashboard.filter.searchAria": "Search counseling centers or tenants",
     "statistic.dashboard.menu.filterByChatType": "Filter {{title}} by chat type",

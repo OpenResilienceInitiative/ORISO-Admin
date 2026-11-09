@@ -1,3 +1,6 @@
+// One width for the Träger/Beratungsstelle filter; keep in sync with expandedWidth in Statistic.tsx.
+@statistic-filter-width: 400px;
+
 .statisticDashboardPage {
     width: 100%;
     box-sizing: border-box;
@@ -35,7 +38,7 @@
     margin-bottom: 16px;
     padding: 0 0 12px;
     gap: 10px 12px;
-    grid-template-columns: minmax(0, 499px);
+    grid-template-columns: minmax(0, @statistic-filter-width);
 }
 
 .statisticDashboard__filterSearchWrap {
@@ -47,7 +50,7 @@
 
 .statisticDashboard__filterSearch {
     width: 100%;
-    max-width: 499px;
+    max-width: @statistic-filter-width;
 }
 
 .statisticDashboard__filterSuggestions {
@@ -56,7 +59,7 @@
     top: calc(100% + 8px);
     left: 0;
     display: grid;
-    width: min(100%, 499px);
+    width: min(100%, @statistic-filter-width);
     box-sizing: border-box;
     max-height: min(320px, calc(100vh - 220px));
     padding: 8px;
@@ -361,6 +364,9 @@
 }
 
 .statisticDashboard__metricCard {
+    // White tiles (ORISO-Admin#1374); the notTracked variant overrides this.
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     position: relative;
     display: flex;
     min-width: 0;
@@ -757,6 +763,8 @@
 }
 
 .statisticDashboard__chartCard {
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     min-height: 322px;
     padding: 25px 24px 24px;
 }
@@ -1292,7 +1300,7 @@
 
 @media screen and (max-width: 1200px) {
     .statisticDashboard__filterBar {
-        grid-template-columns: minmax(0, 499px);
+        grid-template-columns: minmax(0, @statistic-filter-width);
     }
 }
 
@@ -1555,16 +1563,11 @@
 
     .statisticDashboard__filterBar {
         min-width: 0;
-        flex: 0 1 400px;
+        flex: 0 1 @statistic-filter-width;
         padding: 0 0 8px;
         margin: 0;
-        grid-template-columns: minmax(0, 400px);
+        grid-template-columns: minmax(0, @statistic-filter-width);
     }
-}
-
-.statisticDashboard__metricCard,
-.statisticDashboard__chartCard {
-    --admin-form-card-surface: var(--m3-surface-container-lowest);
 }
 
 .statisticDashboard__cardSparkline {

@@ -1853,7 +1853,7 @@ const StatisticFilterBar = ({
             >
                 <GlobalSearchBar
                     defaultExpanded
-                    expandedWidth={400}
+                    expandedWidth={400 /* = @statistic-filter-width in statistic.less */}
                     className="statisticDashboard__filterSearch"
                     ariaLabel={translateDashboardKey(
                         translate,
@@ -2141,32 +2141,43 @@ export const Statistic = () => {
         !isStatisticUnavailable &&
         !allTargetsSuppressed;
     const showPreviewPanel = showEmptyHero || allTargetsSuppressed;
-    const previewHighlights = [
-        {
-            title: translateDashboardKey(translate, 'statistic.dashboard.preview.timeline.title', 'Verlauf über Zeit'),
-            text: translateDashboardKey(
-                translate,
-                'statistic.dashboard.preview.timeline.text',
-                'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
-            ),
-        },
-        {
-            title: translateDashboardKey(translate, 'statistic.dashboard.preview.compare.title', 'Träger im Vergleich'),
-            text: translateDashboardKey(
-                translate,
-                'statistic.dashboard.preview.compare.text',
-                'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
-            ),
-        },
-        {
-            title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
-            text: translateDashboardKey(
-                translate,
-                'statistic.dashboard.preview.topics.text',
-                'Welche Themen am häufigsten angefragt werden.',
-            ),
-        },
-    ];
+    const previewHighlights = useMemo(
+        () => [
+            {
+                title: translateDashboardKey(
+                    translate,
+                    'statistic.dashboard.preview.timeline.title',
+                    'Verlauf über Zeit',
+                ),
+                text: translateDashboardKey(
+                    translate,
+                    'statistic.dashboard.preview.timeline.text',
+                    'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
+                ),
+            },
+            {
+                title: translateDashboardKey(
+                    translate,
+                    'statistic.dashboard.preview.compare.title',
+                    'Träger im Vergleich',
+                ),
+                text: translateDashboardKey(
+                    translate,
+                    'statistic.dashboard.preview.compare.text',
+                    'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
+                ),
+            },
+            {
+                title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
+                text: translateDashboardKey(
+                    translate,
+                    'statistic.dashboard.preview.topics.text',
+                    'Welche Themen am häufigsten angefragt werden.',
+                ),
+            },
+        ],
+        [translate],
+    );
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
