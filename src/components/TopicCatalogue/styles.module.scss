@@ -69,7 +69,7 @@
 
     &:focus-visible {
         border-color: var(--m3-primary, #a5000a);
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: -1px;
     }
 
@@ -541,7 +541,7 @@
 
     &:focus-visible {
         border-color: var(--m3-primary, #a5000a);
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: -1px;
     }
 }
@@ -604,7 +604,7 @@
 }
 
 .groupDropActive {
-    outline: 2px dashed var(--m3-primary, #a5000a);
+    outline: 2px dashed var(--admin-focus-ring-color);
     outline-offset: -2px;
 }
 
