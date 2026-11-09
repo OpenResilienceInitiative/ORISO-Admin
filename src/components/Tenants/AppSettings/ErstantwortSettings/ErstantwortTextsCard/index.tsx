@@ -161,6 +161,7 @@ export const ErstantwortTextsCard = ({
         <Card
             headerIcon={<ChatOutlined />}
             titleKey="tenants.erstantwort.title"
+            variant="dialog"
             autoHeight
             className={styles.card}
             footer={footer}

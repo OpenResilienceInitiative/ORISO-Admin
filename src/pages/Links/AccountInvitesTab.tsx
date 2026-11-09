@@ -457,6 +457,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [activeTemplates, explain, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
+    // The role-change pop-up outlives this render: its "Erneut senden" must use the template picked later.
+    const onResendRef = useRef(onResend);
+    onResendRef.current = onResend;
+
     const onRevoke = useCallback(
         async (invite: AccountInviteDTO) => {
             try {
@@ -502,14 +506,14 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         ),
                         action: {
                             label: t('links.accountInvites.resendAfterRoleChange', 'Erneut senden'),
-                            onClick: () => onResend(updated ?? invite),
+                            onClick: () => onResendRef.current(updated ?? invite),
                         },
                     });
                 } catch (error) {
                     message.error((await explain(error, 'roleChange', role)).message);
                 }
             }),
-        [explain, loadInvites, onResend, t, withRoleSaving],
+        [explain, loadInvites, t, withRoleSaving],
     );
 
     const onRoleAdd = useCallback(

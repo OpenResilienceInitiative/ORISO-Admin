@@ -23,6 +23,11 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [succeeded, setSucceeded] = useState(false);
+    const requestNewLink = (
+        <Link to={routePathNames.passwordReset} className="forgotPW">
+            {t('passwordReset.requestNewLink')}
+        </Link>
+    );
 
     const onFinish = async ({ newPassword }: { newPassword: string }) => {
         setLoading(true);
@@ -45,9 +50,7 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                     title={t('passwordReset.invalidTitle')}
                     intro={t('passwordReset.invalidDescription')}
                 />
-                <Link to={routePathNames.passwordReset} className="forgotPW">
-                    {t('passwordReset.requestNewLink')}
-                </Link>
+                {requestNewLink}
             </div>
         );
     }
@@ -110,9 +113,12 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                     <LocalizedPasswordInput label={t('passwordReset.repeatPassword')} />
                 </Form.Item>
                 {failed && (
-                    <Notify title={t('notify.title.passwordReset')} severity="error">
-                        {t('passwordReset.confirmError')}
-                    </Notify>
+                    <>
+                        <Notify title={t('notify.title.passwordReset')} severity="error">
+                            {t('passwordReset.confirmError')}
+                        </Notify>
+                        {requestNewLink}
+                    </>
                 )}
                 <div style={{ marginTop: 24 }}>
                     <M3Button
