@@ -114,7 +114,13 @@
 
 // Text action (Figma Building Blocks/Snackbar-action). The state layer is the action colour at
 // 8% (hover) and 10% (focus, press): M3/state-layers/light/inversePrimary.
+// The app-wide :focus-visible ring (app.css) outranks a component's own outline, so the snackbar's
+// ring is set through the shared tokens: 3px in the variant's text colour (see below).
 .action {
+    --admin-focus-ring-width: 3px;
+    --admin-focus-ring-color: var(--snackbar-focus);
+    --admin-focus-ring-offset: -1px;
+
     overflow: hidden;
     padding: 0;
     border: 0;
@@ -168,6 +174,10 @@
 // Close affordance (Figma Building Blocks/Snackbar-close-affordance): 48px target, 40px circle,
 // 24px icon, state layer inverse-on-surface at 8% / 10%.
 .close {
+    --admin-focus-ring-width: 3px;
+    --admin-focus-ring-color: var(--snackbar-focus);
+    --admin-focus-ring-offset: -5px;
+
     display: flex;
     width: 48px;
     height: 48px;
