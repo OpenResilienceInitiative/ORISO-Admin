@@ -34,10 +34,10 @@
         padding: 0;
     }
 
-    /* Keyboard focus only: a click already shows the choice with the frame. */
+    /* The input is hidden, so the tile carries the shared ring; keyboard focus only, a click shows the frame. */
     &:has(input:focus-visible) {
-        outline: 2px solid var(--m3-primary, #a5000a);
-        outline-offset: 2px;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset, 2px);
     }
 
     &:global(.ant-radio-wrapper-checked) {
@@ -72,14 +72,15 @@
     object-fit: contain;
 }
 
+/* In a panel the picker and the texts use the panel's own rhythm. */
+.iconPicker {
+    margin-bottom: 0;
+}
+
 /* Says what an empty name means, and what it currently resolves to. */
-.inheritedNote {
-    margin: -16px 0 16px;
+.sectionText {
+    margin: 0;
     color: var(--m3-on-surface-variant, #444748);
     font: 400 12px/16px var(--m3-body-font-family);
     letter-spacing: 0.4px;
-}
-
-.ownIcon {
-    margin-bottom: 0;
 }

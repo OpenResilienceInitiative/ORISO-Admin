@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { CardEditable } from '../../../../CardEditable';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
+import { TileSections } from '../../../../TileSections';
 import { usePublicTenantData } from '../../../../../hooks/usePublicTenantData.hook';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
@@ -63,44 +64,53 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
             editButtonPlacement="footer"
             headerIcon={<ImageOutlinedIcon />}
         >
-            <div className={styles.imageList}>
-                <FormFileUploaderField
-                    className={styles.imageField}
-                    name={['theming', 'logo']}
-                    disabled={logoReadOnly}
-                    row={{
-                        title: t('organisation.logo'),
-                        size: '512 × 512 px',
-                        description: `${t('settings.images.purpose.logo')} · ${t('settings.images.formats.photo')}`,
-                    }}
-                />
-                <FormFileUploaderField
-                    className={styles.imageField}
-                    allowIcon
-                    name={['theming', 'favicon']}
-                    disabled={faviconReadOnly}
-                    row={{
-                        title: t('organisation.favicon'),
-                        size: '32 × 32 px',
-                        description: `${t('settings.images.purpose.favicon')} · ${t('settings.images.formats.icon')}`,
-                        previewClassName: styles.faviconPreview,
-                    }}
-                />
-                {!settings.multitenancyWithSingleDomainEnabled && (
+            <TileSections>
+                <TileSections.Section id="images-logo" title={t('organisation.logo')} note="512 × 512 px">
                     <FormFileUploaderField
-                        className={styles.imageField}
-                        name={['theming', 'associationLogo']}
-                        disabled={associationLogoReadOnly}
+                        name={['theming', 'logo']}
+                        disabled={logoReadOnly}
                         row={{
-                            title: t('organisation.associationLogo'),
-                            size: '512 × 512 px',
-                            description: `${t('settings.images.purpose.associationLogo')} · ${t(
-                                'settings.images.formats.photo',
-                            )}`,
+                            inSection: true,
+                            title: t('organisation.logo'),
+                            description: `${t('settings.images.purpose.logo')} · ${t('settings.images.formats.photo')}`,
                         }}
                     />
+                </TileSections.Section>
+                <TileSections.Section id="images-favicon" title={t('organisation.favicon')} note="32 × 32 px">
+                    <FormFileUploaderField
+                        allowIcon
+                        name={['theming', 'favicon']}
+                        disabled={faviconReadOnly}
+                        row={{
+                            inSection: true,
+                            title: t('organisation.favicon'),
+                            description: `${t('settings.images.purpose.favicon')} · ${t(
+                                'settings.images.formats.icon',
+                            )}`,
+                            previewClassName: styles.faviconPreview,
+                        }}
+                    />
+                </TileSections.Section>
+                {!settings.multitenancyWithSingleDomainEnabled && (
+                    <TileSections.Section
+                        id="images-association-logo"
+                        title={t('organisation.associationLogo')}
+                        note="512 × 512 px"
+                    >
+                        <FormFileUploaderField
+                            name={['theming', 'associationLogo']}
+                            disabled={associationLogoReadOnly}
+                            row={{
+                                inSection: true,
+                                title: t('organisation.associationLogo'),
+                                description: `${t('settings.images.purpose.associationLogo')} · ${t(
+                                    'settings.images.formats.photo',
+                                )}`,
+                            }}
+                        />
+                    </TileSections.Section>
                 )}
-            </div>
+            </TileSections>
         </CardEditable>
     );
 };

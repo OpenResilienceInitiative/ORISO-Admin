@@ -1,23 +1,8 @@
-/* One row per image (#1374): preview, name and size, where it appears, what may be uploaded. */
-.imageList {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    gap: 8px;
-}
+/* Each image sits in its own panel: the section names it and its size, the row shows the rest. The
+   favicon shows at its real size, so a blurry or cut-off icon is noticed; the doubled class wins
+   over the row's own "fill the preview" rule whatever order the CSS loads in. */
 
-.imageField {
-    margin-bottom: 0;
-
-    :global {
-        .ant-form-item-control-input {
-            min-height: 0;
-        }
-    }
-}
-
-/* The favicon shows at its real size, so a blurry or cut-off icon is noticed here. */
-.faviconPreview img {
+.faviconPreview.faviconPreview img {
     width: 32px;
     height: 32px;
 }

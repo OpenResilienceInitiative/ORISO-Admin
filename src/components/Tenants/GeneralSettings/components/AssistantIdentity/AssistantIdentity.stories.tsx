@@ -46,7 +46,8 @@ const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
 const meta = {
     title: 'Organisms/Tenants/AssistantIdentity',
     component: Harness,
-    decorators: [(Story, { parameters }) => inTheRaster(Story, 1, parameters.rasterWidth)],
+    // The tile spans the whole row of the raster, as on the Appearance tab.
+    decorators: [(Story, { parameters }) => inTheRaster(Story, 3, parameters.rasterWidth)],
     beforeEach: () => {
         localStorage.removeItem(storageKey);
     },
@@ -130,7 +131,7 @@ export const EditingTiles: Story = {
         const chosen = canvas.getByRole('radio', { name: /Robot 2|Roboter 2/ });
         await expect(chosen).toBeChecked();
         await expect(getComputedStyle(chosen.closest('label') as HTMLElement).borderTopWidth).toBe('2px');
-        await expect(canvas.getByRole('button', { name: /Eigenes Icon hinzufügen|Add Custom icon/ })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Eigenes Icon hinzufügen|Add Own icon/ })).toBeVisible();
     },
 };
 

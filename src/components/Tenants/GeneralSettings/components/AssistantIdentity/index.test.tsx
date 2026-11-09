@@ -49,6 +49,13 @@ afterEach(() => {
 });
 
 describe('tenant assistant Appearance', () => {
+    it('names the icon choices as a radio group, so the label is announced', () => {
+        render(<AssistantIdentity tenantId="1" />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(screen.getByRole('radiogroup', { name: 'settings.assistant.icon' })).toBeInTheDocument();
+    });
+
     it('saves only the chosen identity so the existing mutation preserves fresh tenant branding', async () => {
         const { container: dialog } = render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
@@ -102,7 +109,7 @@ describe('tenant assistant Appearance', () => {
     it('saves the default identity without a broken upload preview', async () => {
         const { container } = render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
-        expect(container.querySelector('img[alt="settings.assistant.ownIcon"]')).toBeNull();
+        expect(container.querySelector('img[alt="settings.assistant.section.upload"]')).toBeNull();
         fireEvent.click(screen.getByText('card.edit.save'));
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
         expect(save.mock.calls[0][0]).toEqual({ theming: {} });
@@ -130,9 +137,9 @@ describe('tenant assistant Appearance', () => {
         expect(input).toBeTruthy();
         fireEvent.change(input!, { target: { files: [new File([artwork], name, { type })] } });
         await waitFor(() =>
-            expect(container.querySelector('img[alt="settings.assistant.ownIcon"]')?.getAttribute('src')).toMatch(
-                prefix,
-            ),
+            expect(
+                container.querySelector('img[alt="settings.assistant.section.upload"]')?.getAttribute('src'),
+            ).toMatch(prefix),
         );
         fireEvent.click(screen.getByText('card.edit.save'));
         await waitFor(() => expect(save).toHaveBeenCalledTimes(1));

@@ -4,6 +4,7 @@ import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DefaultRobot } from '../../../../../resources/img/assistant/default.svg';
 import { CardEditable } from '../../../../CardEditable';
+import { TileSections } from '../../../../TileSections';
 import { assistantHelp } from './help';
 import { FormInputField } from '../../../../FormInputField';
 import { FormFileUploaderField } from '../../../../FormFileUploaderField';
@@ -26,6 +27,12 @@ const presets = [
     ['robot-5475944', Robot4],
 ] as const;
 
+/**
+ * antd renders the group as a plain div and its typings omit `role`, but it passes the attribute on. Without the
+ * role the group's label would not be announced.
+ */
+const RADIO_GROUP_ROLE = { role: 'radiogroup' } as const;
+
 /** What "Übernehmen" would show: the icon of the level above, once the read for this tenant has answered. */
 const InheritedIcon = ({ icon }: { icon?: string }) => {
     const { t } = useTranslation();
@@ -46,10 +53,13 @@ const IconPicker = ({
     onChange,
     disabled,
     inheritedIcon,
+    label,
 }: {
     value?: string;
     onChange?: (value: string) => void;
     disabled?: boolean;
+    /** Names the group for screen readers; the section title above it says the same in words. */
+    label?: string;
     /** `undefined` while the level above is not known. */
     inheritedIcon?: string;
 }) => {
@@ -61,6 +71,8 @@ const IconPicker = ({
             onChange={(event) => onChange?.(event.target.value)}
             disabled={disabled || componentDisabled}
             className={styles.presets}
+            {...RADIO_GROUP_ROLE}
+            aria-label={label}
         >
             <Radio value="" className={styles.presetTile}>
                 <span className={styles.preset}>
@@ -137,35 +149,46 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             help={assistantHelp}
         >
             {isError && <Alert type="error" message={t('settings.assistant.loadError')} showIcon />}
-            <FormInputField
-                name={['theming', 'assistantName']}
-                labelKey="settings.assistant.name"
-                maxLength={80}
-                disabled={locked}
-            />
-            {!hasOwnName && (
-                <p className={styles.inheritedNote}>
-                    {inherited
-                        ? t('settings.assistant.inheritedName', {
-                              name: inherited.theming?.assistantName || 'Carimat',
-                          })
-                        : t('settings.assistant.inheritedNameUnknown')}
-                </p>
-            )}
-            <Form.Item name={['theming', 'assistantIcon']} label={t('settings.assistant.icon')}>
-                <IconPicker disabled={locked} inheritedIcon={inheritedIcon} />
-            </Form.Item>
-            <FormFileUploaderField
-                className={styles.ownIcon}
-                name={['theming', 'assistantIcon']}
-                uploadPolicy={assistantIconUploadPolicy}
-                disabled={locked}
-                row={{
-                    title: t('settings.assistant.ownIcon'),
-                    size: '512 × 512 px',
-                    description: t('settings.assistant.formats'),
-                }}
-            />
+            <TileSections>
+                <TileSections.Section id="assistant-name" title={t('settings.assistant.section.name')}>
+                    <FormInputField
+                        name={['theming', 'assistantName']}
+                        labelKey="settings.assistant.name"
+                        maxLength={80}
+                        disabled={locked}
+                    />
+                    {!hasOwnName && (
+                        <p className={styles.sectionText}>
+                            {inherited
+                                ? t('settings.assistant.inheritedName', {
+                                      name: inherited.theming?.assistantName || 'Carimat',
+                                  })
+                                : t('settings.assistant.inheritedNameUnknown')}
+                        </p>
+                    )}
+                </TileSections.Section>
+                <TileSections.Section id="assistant-icon" title={t('settings.assistant.section.icon')}>
+                    <Form.Item name={['theming', 'assistantIcon']} className={styles.iconPicker}>
+                        <IconPicker
+                            disabled={locked}
+                            inheritedIcon={inheritedIcon}
+                            label={t('settings.assistant.icon')}
+                        />
+                    </Form.Item>
+                </TileSections.Section>
+                <TileSections.Section id="assistant-upload" title={t('settings.assistant.section.upload')}>
+                    <FormFileUploaderField
+                        name={['theming', 'assistantIcon']}
+                        uploadPolicy={assistantIconUploadPolicy}
+                        disabled={locked}
+                        row={{
+                            title: t('settings.assistant.section.upload'),
+                            description: t('settings.assistant.formats'),
+                            inSection: true,
+                        }}
+                    />
+                </TileSections.Section>
+            </TileSections>
         </CardEditable>
     );
 };

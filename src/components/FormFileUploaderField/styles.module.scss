@@ -26,6 +26,11 @@
     row-gap: 8px;
 }
 
+.imageRowInSection {
+    padding: 0;
+    background: transparent;
+}
+
 .rowPreview {
     display: flex;
     width: 64px;
@@ -113,11 +118,6 @@
 
     &:hover {
         background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
-        outline-offset: 2px;
     }
 }
 

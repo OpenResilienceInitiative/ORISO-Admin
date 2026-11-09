@@ -58,7 +58,7 @@ export const withAppearanceData = withAppearanceTenant(tenant);
  * The tile as the raster places it, beside a taller neighbour, so unused space shows. A story
  * sets `parameters.rasterWidth` to see the raster at a phone's width (the gutter included).
  */
-export const inTheRaster = (Story: () => ReactElement, span: 1 | 2 = 1, width?: number) =>
+export const inTheRaster = (Story: () => ReactElement, span: 1 | 2 | 3 = 1, width?: number) =>
     width ? (
         <div style={{ width, maxWidth: '100%', boxSizing: 'border-box', padding: 16 }}>
             <CardGrid raster>

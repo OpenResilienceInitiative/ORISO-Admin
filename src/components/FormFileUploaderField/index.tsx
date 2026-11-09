@@ -147,7 +147,12 @@ export interface ImageRowDetails {
     /** The image's name, also used in the add/replace action ("Logo ersetzen"). */
     title: string;
     /** Recommended size, e.g. "512 × 512 px". */
-    size: string;
+    size?: string;
+    /**
+     * The row sits in a `TileSections` panel that already names the image (and its size) and draws
+     * the surface: no title line and no background of its own.
+     */
+    inSection?: boolean;
     /** Where the image appears and what may be uploaded, one short line. */
     description: ReactNode;
     /** Extra class for the preview box, e.g. to show a favicon at its real size. */
@@ -164,6 +169,7 @@ const ImageRowLocal = ({
     size,
     description,
     previewClassName,
+    inSection = false,
 }: FormRichTextEditorProps & ImageRowDetails) => {
     const { t } = useTranslation();
     const { beforeUpload, isDisabled, accept } = useCheckedUpload({ onChange, allowIcon, uploadPolicy, disabled });
@@ -174,15 +180,17 @@ const ImageRowLocal = ({
     return (
         // The host measures the row's own width, so it stacks in a narrow tile on a wide screen too.
         <div className={styles.imageRowHost}>
-            <div className={styles.imageRow}>
+            <div className={classNames(styles.imageRow, { [styles.imageRowInSection]: inSection })}>
                 <span className={classNames(styles.rowPreview, previewClassName, { [styles.rowPreviewEmpty]: !src })}>
                     {src ? <img src={src} alt={title} /> : <ImageOutlinedIcon aria-hidden="true" />}
                 </span>
                 <span className={styles.rowText}>
-                    <span className={styles.rowTitle}>
-                        {title}
-                        <span className={styles.rowSize}>{size}</span>
-                    </span>
+                    {!inSection && (
+                        <span className={styles.rowTitle}>
+                            {title}
+                            {size && <span className={styles.rowSize}>{size}</span>}
+                        </span>
+                    )}
                     <span className={styles.rowDescription}>{description}</span>
                     {!src && <span className={styles.rowEmpty}>{t('settings.images.empty')}</span>}
                 </span>
