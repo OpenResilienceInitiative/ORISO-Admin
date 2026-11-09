@@ -94,6 +94,7 @@ describe('Notify actions', () => {
             <>
                 <SnackbarHost />
                 <section data-testid="owner" tabIndex={-1}>
+                    <h2>Owner heading</h2>
                     <Notify severity="error" title="Data">
                         Could not save
                     </Notify>
@@ -101,6 +102,8 @@ describe('Notify actions', () => {
             </>,
         );
         await userEvent.click(await screen.findByRole('button', { name: /ansehen|view|snackbar\.jump/i }));
-        await waitFor(() => expect(screen.getByTestId('owner').contains(document.activeElement)).toBe(true));
+        await waitFor(() => expect(screen.getByRole('heading', { name: 'Owner heading' })).toHaveFocus());
+        // Looking at the tile does not dismiss the pop-up: the error is still true.
+        expect(screen.getByRole('button', { name: /ansehen|view|snackbar\.jump/i })).toBeInTheDocument();
     });
 });
