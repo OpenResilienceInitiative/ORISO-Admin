@@ -8,8 +8,8 @@ import { TwoFactorSetup } from './TwoFactorSetup';
 
 /**
  * Canonical 2FA setup (release blocker #569): ONE component started from two
- * contexts — the authenticated profile (switch + overlay wizard on the real
- * user hooks, here mocked via MSW) and the public tenant-admin onboarding
+ * contexts — the authenticated profile (switch + the same inline setup form on
+ * the real user hooks, here mocked via MSW) and the public tenant-admin onboarding
  * (inline app-TOTP linking on the injected backend seam). Flow contract shared
  * with the app layer (`twoFactorSetupFlow.ts`).
  */
@@ -19,12 +19,6 @@ const meta = {
     parameters: { layout: 'centered' },
     decorators: [
         (Story) => {
-            // The profile overlay renders through a portal into #overlay.
-            if (!document.getElementById('overlay')) {
-                const overlayRoot = document.createElement('div');
-                overlayRoot.id = 'overlay';
-                document.body.appendChild(overlayRoot);
-            }
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
                     {/* Both real consumers render on a white surface (public
@@ -64,7 +58,7 @@ const APP_LINK = {
     qrCodeBase64: null,
 };
 
-/** Profile context, 2FA not yet active: the activation switch opens the stepped overlay wizard. */
+/** Profile context, 2FA not yet active: the activation switch opens the inline setup form (with cancel). */
 export const ProfileInactive: Story = {
     render: () => <TwoFactorSetup context="profile" />,
     parameters: {
@@ -89,26 +83,20 @@ export const ProfileInactive: Story = {
 
 /**
  * Mandatory setup (#891/#1068): what a new Träger or Beratungsstelle admin sees
- * on first login — the stepped overlay opens by itself. M3 primary steps and
- * button, admin font on the step labels.
+ * on first login — the inline setup form from the public onboarding, open by
+ * itself, without switch and without cancel. No legacy step overlay.
  */
-export const ProfileMandatoryOverlay: Story = {
+export const ProfileMandatory: Story = {
     render: () => <TwoFactorSetup context="profile" required />,
-    play: async () => {
-        // The overlay portals into #overlay, outside the story canvas.
-        const next = await waitFor(() => {
-            const button = document.querySelector<HTMLElement>('.twoFactorAuth__overlay .button__primary');
-            if (!button) throw new Error('2FA overlay not open yet');
-            return button;
+    play: async ({ canvasElement }) => {
+        const form = await waitFor(() => {
+            const element = canvasElement.querySelector<HTMLElement>('form');
+            if (!element) throw new Error('2FA setup form not rendered yet');
+            return element;
         });
-        const stepIcon = document.querySelector<HTMLElement>('.overlay__step--active .overlay__stepIcon');
-        const stepLabel = document.querySelector<HTMLElement>('.overlay__step .text');
-        const navy = 'rgb(39, 50, 112)';
-        const slate = 'rgb(76, 85, 95)';
-        await expect(getComputedStyle(next).backgroundColor).not.toBe(slate);
-        await expect(getComputedStyle(next).backgroundColor).toBe('rgb(165, 0, 10)');
-        await expect(getComputedStyle(stepIcon!).backgroundColor).not.toBe(navy);
-        await expect(getComputedStyle(stepLabel!).fontFamily).not.toMatch(/RobotoSlab/);
+        await expect(form).toBeVisible();
+        await expect(document.querySelector('.twoFactorAuth__overlay')).toBeNull();
+        await expect(canvasElement.querySelector('[role="switch"]')).toBeNull();
     },
     parameters: {
         msw: {
