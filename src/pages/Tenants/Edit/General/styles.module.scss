@@ -63,11 +63,17 @@
     flex-direction: column;
 }
 
-/* Every field is one row of the same height: the field itself already reserves its helper line. */
+// Every field is one row of the same height: the field itself already reserves its helper line.
+// A shown error is real text, not that line, and the next field's label sits 9px above its box, so an error
+// gets 12px below it (measured without: a two-line error's last line overlapped the next label by 6px).
 .fieldGroup {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+
+    &:has(:global(.Mui-error)) {
+        padding-bottom: 12px;
+    }
 }
 
 .domainSuffix {

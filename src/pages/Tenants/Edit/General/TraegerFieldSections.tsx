@@ -1,3 +1,4 @@
+import type { Rule } from 'antd/es/form';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDomain } from '../../../../utils/getDomain';
@@ -15,8 +16,8 @@ const wrapInFieldGroup = (field: ReactNode, name: string) => (
 );
 
 /**
- * The sections of the Träger tile, in the order the fields have always had. Moving a part to another
- * section is a change of this list only.
+ * The sections of the Träger tile. The list names the parts and the order of the short ones in their column;
+ * the general panel, the data protection officer and extra children keep their place in the page.
  */
 export const TRAEGER_SECTION_ORDER = ['general', 'sender', 'description', 'dpo', 'topic'] as const;
 export type TraegerSectionKey = (typeof TRAEGER_SECTION_ORDER)[number];
@@ -25,8 +26,8 @@ const STACKED: readonly TraegerSectionKey[] = ['sender', 'description', 'topic']
 
 interface TraegerFieldSectionsProps {
     /** The subdomain is hidden on a single-domain platform; it is read-only once the Träger exists. */
-    subdomain: { visible: boolean; editable: boolean; rules?: object[] };
-    requiredRule: object;
+    subdomain: { visible: boolean; editable: boolean; rules?: Rule[] };
+    requiredRule: Rule;
     /** Which sections to show; the edit tile has the data protection officer, the create dialog the topic. */
     sections: readonly TraegerSectionKey[];
     /** Extra sections after the Träger's own ones, e.g. the first admin in the create dialog. */

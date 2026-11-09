@@ -1,4 +1,5 @@
 import { Form } from 'antd';
+import type { Rule } from 'antd/es/form';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
@@ -18,7 +19,7 @@ const renderSections = ({
     onFinish = vi.fn(),
 }: {
     sections?: readonly TraegerSectionKey[];
-    subdomain?: { visible: boolean; editable: boolean };
+    subdomain?: { visible: boolean; editable: boolean; rules?: Rule[] };
     onFinish?: (values: unknown) => void;
 } = {}) => {
     const Harness = () => {
@@ -38,7 +39,7 @@ const panelNames = () => screen.getAllByRole('group').map((panel) => panel.getAt
 
 /** ORISO-Admin#1314: the Träger tile and the create dialog share these white panels. */
 describe('TraegerFieldSections', () => {
-    it('shows the edit tile in the order of the list: general, then the short parts, then the data protection officer', () => {
+    it('shows the edit tile as general, then the short parts, then the data protection officer', () => {
         renderSections({ sections: ['general', 'sender', 'description', 'dpo'] });
 
         expect(panelNames()).toEqual([
@@ -67,6 +68,35 @@ describe('TraegerFieldSections', () => {
             'tile-section-traeger-description',
             'tile-section-traeger-topic',
         ]);
+    });
+
+    it('puts the short parts into one column element of their own, apart from the general panel and the officer', () => {
+        renderSections();
+
+        const panel = (name: string) => screen.getByRole('group', { name }).parentElement as HTMLElement;
+        const column = panel('tenants.form.section.sender');
+        expect(panel('tenants.add.form.description.label')).toBe(column);
+        expect(panel('tenants.add.form.topic.label')).toBe(column);
+        expect(panel('tenants.form.section.general')).not.toBe(column);
+        expect(panel('tenants.form.dpo.title')).not.toBe(column);
+        expect(column.className).toMatch(/stackColumn/);
+    });
+
+    it('names the data protection officer once, in the panel heading', () => {
+        renderSections({ sections: ['dpo'] });
+
+        expect(screen.getAllByText('tenants.form.dpo.title')).toHaveLength(1);
+    });
+
+    it('applies the rules of the create dialog to the subdomain', async () => {
+        const rules = [{ pattern: /^[a-z]+$/, message: 'subdomain format' }];
+        renderSections({ sections: ['general'], subdomain: { visible: true, editable: true, rules } });
+        const general = screen.getByRole('group', { name: 'tenants.form.section.general' });
+
+        await userEvent.type(within(general).getByLabelText(/tenants.add.form.subdomain.placeholder/), 'Bad_Domain');
+        await userEvent.click(screen.getByRole('button', { name: 'save' }));
+
+        expect(await screen.findByText('subdomain format')).toBeInTheDocument();
     });
 
     it('hides the subdomain on a single-domain platform', () => {
