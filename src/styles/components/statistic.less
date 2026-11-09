@@ -1587,3 +1587,17 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+// One calm icon style for every figure: a monochrome outlined glyph in the same
+// neutral circle, whatever tone the card definition asks for (ORISO-Admin#1374).
+.statisticDashboard .statisticDashboard__metricIcon,
+.statisticDashboard .statisticDashboard__metricIcon--muted,
+.statisticDashboard .statisticDashboard__metricIcon--coral,
+.statisticDashboard .statisticDashboard__metricIcon--danger {
+    --statistic-dashboard-icon-glyph-size: 22px;
+    --statistic-dashboard-icon-size: 40px;
+
+    flex-basis: 40px;
+    background: var(--m3-surface-container-high);
+    color: var(--m3-on-surface);
+}

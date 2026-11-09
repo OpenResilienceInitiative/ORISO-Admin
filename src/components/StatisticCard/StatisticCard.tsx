@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { ArrowDownward, ArrowUpward, LockOutlined, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
 import cardStyles from '../Card/styles.module.scss';
-import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
-import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
 import { useAnimatedDisplayValue } from '../../pages/Statistic/useAnimatedDisplayValue';
 import type {
     CardMenuKey,
@@ -103,24 +101,13 @@ const getTrendIcon = (direction: TrendDirection) => {
     }
 };
 
-const getEffectiveIconTone = (icon: SvgIcon, tone?: IconTone) => {
-    if (icon === RequestsIcon) {
-        return tone || 'muted';
-    }
-
-    if (icon === ConversationsIcon && tone === 'muted') {
-        return undefined;
-    }
-
-    return tone;
-};
-
 export const AnimatedValue = ({ locale = 'de-DE', value }: { locale?: string; value: string }) => (
     <>{useAnimatedDisplayValue(value, 480, locale)}</>
 );
 
 const MetricIcon = ({ icon: Icon, tone }: { icon: SvgIcon; tone?: IconTone }) => (
-    <span className={getIconClassName(getEffectiveIconTone(Icon, tone))} aria-hidden="true">
+    // Every glyph sits monochrome in the same neutral circle (ORISO-Admin#1374).
+    <span className={getIconClassName(tone)} aria-hidden="true">
         <Icon />
     </span>
 );

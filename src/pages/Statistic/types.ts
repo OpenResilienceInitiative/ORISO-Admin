@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from 'react';
+import type { ComponentType, SVGProps, ElementType } from 'react';
 
 export type ScopeKey = 'platform' | 'tenant' | 'agency';
 export type TrendTone = 'blue' | 'red' | 'dark';
@@ -42,7 +42,8 @@ export type CardMenuKey =
  */
 export type StatisticEmptyKind = 'protected' | 'notTracked' | 'pending';
 
-export type SvgIcon = ComponentType<SVGProps<SVGSVGElement>>;
+/** Card glyph: an SVG component or an MUI outlined icon (monochrome, ORISO-Admin#1374). */
+export type SvgIcon = ComponentType<SVGProps<SVGSVGElement>> | ElementType;
 
 export interface ScopeDefinition {
     key: ScopeKey;

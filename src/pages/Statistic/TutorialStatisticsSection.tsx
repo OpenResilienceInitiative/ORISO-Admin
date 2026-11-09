@@ -108,7 +108,16 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                 align: 'right',
                 width: 140,
                 onCell: hiddenCell(false),
-                render: (unusedValue, row) => (row.completionPercent === null ? null : `${row.completionPercent}%`),
+                // A short bar next to the number reads faster than the number alone (#1374).
+                render: (unusedValue, row) =>
+                    row.completionPercent === null ? null : (
+                        <span className="tutorialStatistics__rate">
+                            <span className="tutorialStatistics__rateBar" aria-hidden="true">
+                                <span style={{ width: `${Math.min(100, Math.max(0, row.completionPercent))}%` }} />
+                            </span>
+                            {`${row.completionPercent}%`}
+                        </span>
+                    ),
             },
         ] as ColumnType<TutorialStatisticRow>[];
     }, [isPlatformScope, smallCellMinimum, t]);

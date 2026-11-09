@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import ConversationsIcon from '@mui/icons-material/QuestionAnswerOutlined';
+import RequestsIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import TopicIcon from '@mui/icons-material/CategoryOutlined';
+import VideoCallsIcon from '@mui/icons-material/VideocamOutlined';
 import { StatisticCard } from './StatisticCard';
-import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
-import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
-import { ReactComponent as TopicIcon } from '../../resources/img/svg/statistics-dashboard/topic.svg';
-import { ReactComponent as VideoCallsIcon } from '../../resources/img/svg/statistics-dashboard/video-calls.svg';
 import type { StatisticCardDefinition } from '../../pages/Statistic/types';
 
 // The dashboard translates German seed labels via i18n; in isolation we just echo

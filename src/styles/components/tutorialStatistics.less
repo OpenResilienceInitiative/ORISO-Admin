@@ -38,3 +38,55 @@
         }
     }
 }
+
+// A calm table like the figures above (ORISO-Admin#1374): no header fill, no column
+// separators, thin row lines.
+.tutorialStatistics .ant-table {
+    background: transparent;
+}
+
+.tutorialStatistics .ant-table-thead > tr > th {
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    font-weight: 500;
+
+    &:before {
+        display: none;
+    }
+}
+
+.tutorialStatistics .ant-table-tbody > tr > td {
+    border-bottom: 1px solid var(--m3-surface-container-high, #eae7e8);
+}
+
+.tutorialStatistics .ant-table-tbody > tr.ant-table-placeholder > td,
+.tutorialStatistics .ant-table-tbody > tr.ant-table-placeholder:hover > td {
+    background: transparent;
+}
+
+.tutorialStatistics__rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tutorialStatistics__rateBar {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    width: 72px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--m3-surface-container-high, #eae7e8);
+
+    > span {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        border-radius: 3px;
+        background: var(--m3-primary, #a5000a);
+    }
+}
