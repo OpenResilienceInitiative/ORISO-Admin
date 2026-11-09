@@ -2074,7 +2074,7 @@
     "statistic.dashboard.filter.allAssignedUnits": "Alle zugeordneten Einheiten",
     "statistic.dashboard.filter.aria": "Statistik eingrenzen",
     "statistic.dashboard.filter.noFilters": "Keine Filter verfügbar",
-    "statistic.dashboard.filter.placeholder": "Träger oder Beratungsstelle suchen",
+    "statistic.dashboard.filter.placeholder": "Träger oder Beratungsstelle",
     "statistic.dashboard.filter.removeTarget": "{{target}} entfernen",
     "statistic.dashboard.filter.searchAria": "Beratungsstellen oder Träger suchen",
     "statistic.dashboard.menu.filterByChatType": "{{title}} nach Chattyp filtern",

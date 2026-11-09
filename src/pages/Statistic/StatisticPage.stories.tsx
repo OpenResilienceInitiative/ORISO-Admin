@@ -367,8 +367,15 @@ export const Loading: Story = {
         },
     },
 };
+// The request failed: say so, and draw no chart of zeros that would read as "nothing happened".
 export const LoadError: Story = {
     parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 500 })) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Statistikdaten konnten nicht geladen werden.')).toBeVisible();
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
 };
 // The settings behind the statistics cannot be read (UserService#1568): no figures, not even old ones.
 export const TemporarilyUnavailable: Story = {

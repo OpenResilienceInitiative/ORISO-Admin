@@ -2467,8 +2467,8 @@ export const Statistic = () => {
                                             : []),
                                     ]}
                                 />
-                                {/* a file of "Keine Daten" would look like "not tracked" */}
-                                {!allTargetsSuppressed && (
+                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error there is nothing to export */}
+                                {!allTargetsSuppressed && !hasStatisticLoadError && (
                                     <div className="statisticDashboard__export">
                                         <CSVLink
                                             className="statisticDashboard__exportLink"
@@ -2587,8 +2587,8 @@ export const Statistic = () => {
                                         }
                                     />
                                 )}
-                                {/* hidden figures: no chart, a chart of zeros would read as "nothing happened" */}
-                                {!showPreviewPanel && (
+                                {/* hidden figures or a failed load: no chart, a chart of zeros would read as "nothing happened" */}
+                                {!showPreviewPanel && !hasStatisticLoadError && (
                                     <CardGrid
                                         raster
                                         fillers={false}

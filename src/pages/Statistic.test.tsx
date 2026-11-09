@@ -345,6 +345,9 @@ describe('Statistic page', () => {
         await waitFor(() =>
             expect(screen.getByText('Statistikdaten konnten nicht geladen werden.')).toBeInTheDocument(),
         );
+        // no chart of zeros and no export after a failed load (#1374)
+        expect(document.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();
     });
 
     it('shows a loading state instead of "Keine Daten"/0 while the dashboard request is in flight', async () => {
