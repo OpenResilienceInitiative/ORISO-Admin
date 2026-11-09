@@ -25,7 +25,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   ref: ${{ github.sha }}
                   persist-credentials: false
@@ -59,13 +59,13 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   ref: ${{ github.sha }}
                   persist-credentials: false
 
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version-file: .nvmrc
                   cache: npm
@@ -104,7 +104,7 @@ jobs:
             - name: Upload unit file timings
               if: always()
               continue-on-error: true
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: unit-file-timings-${{ matrix.shard }}
                   path: ${{ runner.temp }}/unit-file-timings.json
@@ -113,7 +113,7 @@ jobs:
 
             - name: Upload unit verification inventory
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: unit-verification-${{ matrix.shard }}
                   path: verification-artifacts/
@@ -128,13 +128,13 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   ref: ${{ github.sha }}
                   persist-credentials: false
 
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version-file: .nvmrc
                   cache: npm
@@ -171,7 +171,7 @@ jobs:
 
             - name: Upload Storybook verification evidence
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: storybook-functional-verification
                   path: |
@@ -186,9 +186,9 @@ jobs:
         timeout-minutes: 20
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version-file: .nvmrc
                   cache: npm
@@ -204,7 +204,7 @@ jobs:
               run: npm run test:verification-controls
             - name: Upload separate strict diagnostic evidence
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: storybook-strict20-diagnostic
                   path: verification-artifacts/
@@ -216,9 +216,9 @@ jobs:
         timeout-minutes: 45
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version-file: .nvmrc
                   cache: npm
@@ -236,7 +236,7 @@ jobs:
               run: npm run test:storybook:functional -- --no-file-parallelism --isolate
             - name: Upload separate serial-file comparison evidence
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: storybook-functional-serial-comparison
                   path: |
