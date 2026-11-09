@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { AssistantIdentity } from './index';
 import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
+import { inTheRaster } from '../appearanceStoryHarness.matrix';
 import { TENANT_DATA_KEY } from '../../../../../hooks/useTenantData.hook';
 import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../appConfig';
 
@@ -42,6 +43,8 @@ const Harness = ({ readOnly = false }: { readOnly?: boolean }) => {
 const meta = {
     title: 'Organisms/Tenants/AssistantIdentity',
     component: Harness,
+    // The tile spans the whole row of the raster, as on the Appearance tab.
+    decorators: [(Story) => inTheRaster(Story, 3)],
     beforeEach: () => {
         localStorage.removeItem(storageKey);
     },

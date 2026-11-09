@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
@@ -22,6 +22,32 @@ import styles from './styles.module.scss';
  * half; `all` keeps the combined deck for embedders like the per-tenant theme-settings page.
  */
 export type GeneralSettingsSection = 'all' | 'appearance' | 'masterData';
+
+type GeneralSettingsTile =
+    | 'logoAndFavicon'
+    | 'assistantIdentity'
+    | 'languages'
+    | 'themeBuilder'
+    | 'leadingTiles'
+    | 'nameAndSlogan'
+    | 'typeOfLanguage'
+    | 'editingRights';
+
+/** The tiles of the appearance tab, top to bottom, left to right. Moving a tile is moving its name. */
+export const APPEARANCE_TILE_ORDER: GeneralSettingsTile[] = [
+    'logoAndFavicon',
+    'assistantIdentity',
+    'languages',
+    'themeBuilder',
+];
+
+/** The tiles of the master data tab; `leadingTiles` are the ones the embedding page brings along. */
+export const MASTER_DATA_TILE_ORDER: GeneralSettingsTile[] = [
+    'leadingTiles',
+    'nameAndSlogan',
+    'typeOfLanguage',
+    'editingRights',
+];
 
 interface AppearanceSwitchFormData {
     tenantAdminControls?: { allowedPermissionToggles?: { appearance?: boolean } };
@@ -54,50 +80,57 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
     ) => {
         save(formData.tenantAdminControls?.allowedPermissionToggles?.appearance !== false, options);
     };
+    const tiles: Record<GeneralSettingsTile, ReactNode> = {
+        logoAndFavicon: (
+            <CardGrid.Item span={3}>
+                <LogoAndFavicon tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        assistantIdentity: (
+            <CardGrid.Item span={3}>
+                <AssistantIdentity tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        languages: can(PermissionAction.Update, Resource.Language) && (
+            <CardGrid.Item>
+                <Languages tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        themeBuilder: (
+            <CardGrid.Item span={2}>
+                <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        leadingTiles,
+        nameAndSlogan: (
+            <CardGrid.Item>
+                <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        typeOfLanguage: can(PermissionAction.Update, Resource.Language) && (
+            <CardGrid.Item>
+                <TypeOfLanguage tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        editingRights: (
+            <CardGrid.Item>
+                <EditingRightsCard
+                    allowEdit={isSuperAdmin && editable !== undefined}
+                    editable={editable}
+                    isLoading={rightsLoading}
+                    onSave={onSaveTenantAdminControls}
+                />
+            </CardGrid.Item>
+        ),
+    };
+    const order = [...(showAppearance ? APPEARANCE_TILE_ORDER : []), ...(showMasterData ? MASTER_DATA_TILE_ORDER : [])];
+
     return (
         <div className={styles.appearancePage}>
             <CardGrid raster>
-                {showAppearance && (
-                    <CardGrid.Item span={2}>
-                        <LogoAndFavicon tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && (
-                    <CardGrid.Item>
-                        <AssistantIdentity tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && can(PermissionAction.Update, Resource.Language) && (
-                    <CardGrid.Item>
-                        <Languages tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showAppearance && (
-                    <CardGrid.Item span={2}>
-                        <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && leadingTiles}
-                {showMasterData && (
-                    <CardGrid.Item>
-                        <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardGrid.Item>
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={readOnly} />
-                    </CardGrid.Item>
-                )}
-                {showMasterData && (
-                    <CardGrid.Item>
-                        <EditingRightsCard
-                            allowEdit={isSuperAdmin && editable !== undefined}
-                            editable={editable}
-                            isLoading={rightsLoading}
-                            onSave={onSaveTenantAdminControls}
-                        />
-                    </CardGrid.Item>
-                )}
+                {order.map((tile) => (
+                    <Fragment key={tile}>{tiles[tile]}</Fragment>
+                ))}
             </CardGrid>
         </div>
     );
