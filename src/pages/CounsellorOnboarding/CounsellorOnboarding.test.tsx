@@ -542,7 +542,14 @@ describe('CounsellorOnboarding', () => {
         await screen.findByLabelText('cards.advisorAccount.username');
         await addTopic(user, 'Familienberatung');
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeDisabled();
-        await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+        // antd keeps a closed dropdown mounted and marks it `ant-dropdown-hidden`. The unit setup
+        // injects no antd CSS, so that class, not computed style, is what says the menu is closed.
+        await waitFor(() => {
+            const menu = screen.queryByRole('menu');
+            if (menu) {
+                expect(menu.closest('.ant-dropdown')).toHaveClass('ant-dropdown-hidden');
+            }
+        });
         await user.click(within(screen.getAllByTestId('input-chip')[0]).getByRole('button'));
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeEnabled();
         await addTopic(user, 'Schuldnerberatung');
