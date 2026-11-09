@@ -2,7 +2,7 @@ import { QueryClientContext } from '@tanstack/react-query';
 import { isValidElement, useContext, useEffect, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HintText } from '../HintText';
-import { snackbar, type SnackbarAction, type SnackbarJump, type SnackbarJumpTarget } from '../Snackbar';
+import { snackbar, snackbarStore, type SnackbarAction, type SnackbarJump, type SnackbarJumpTarget } from '../Snackbar';
 
 /**
  * Event notifications are pop-ups, never boxes in the page flow (Frank, 2026-11-07).
@@ -104,39 +104,61 @@ export const Notify = ({
     const text = `${signatureOf(title)}|${signatureOf(children)}`;
     const labels = (allActions ?? []).map((action) => action.label).join('|');
 
+    const raise = useRef<(() => void) | undefined>(undefined);
+    const disabledSignature = (allActions ?? []).map((action) => (action.disabled ? '1' : '0')).join('');
+    const shownDisabled = useRef(disabledSignature);
+
     useEffect(() => {
         owner.current.current = marker.current?.parentElement ?? null;
         let mounted = true;
-        const { title: leadLine, children: body, actions: choices } = latest.current;
         const toAction = (index: number): SnackbarAction | undefined => {
-            const choice = choices?.[index];
+            const choice = latest.current.actions?.[index];
             if (!choice) return undefined;
-            return { label: choice.label, onClick: () => latest.current.actions?.[index]?.onClick() };
+            return {
+                label: choice.label,
+                disabled: choice.disabled,
+                onClick: () => latest.current.actions?.[index]?.onClick(),
+            };
         };
-        const stays = persistent ?? (severity !== 'success' && severity !== 'info' ? true : !!choices?.length);
-        snackbar.notify({
-            key,
-            severity,
-            // The title says which thing the pop-up is about; the text under it says what happened.
-            title: leadLine ?? body,
-            description: leadLine ? body : undefined,
-            causeKey,
-            jump: jump === false ? undefined : jump ?? owner.current,
-            // The first choice is the primary one (right-most); the second sits before it.
-            action: toAction(0),
-            secondaryAction: toAction(1),
-            persistent: stays,
-            dismissible: true,
-            testId,
-            onClose: (reason) => {
-                if (mounted && reason === 'dismiss') latest.current.onClose?.();
-            },
-        });
+        raise.current = () => {
+            shownDisabled.current = (latest.current.actions ?? [])
+                .map((action) => (action.disabled ? '1' : '0'))
+                .join('');
+            const { title: leadLine, children: body, actions: choices } = latest.current;
+            const stays = persistent ?? (severity !== 'success' && severity !== 'info' ? true : !!choices?.length);
+            snackbar.notify({
+                key,
+                severity,
+                // The title says which thing the pop-up is about; the text under it says what happened.
+                title: leadLine ?? body,
+                description: leadLine ? body : undefined,
+                causeKey,
+                jump: jump === false ? undefined : jump ?? owner.current,
+                // The first choice is the primary one (right-most); the second sits before it.
+                action: toAction(0),
+                secondaryAction: toAction(1),
+                persistent: stays,
+                dismissible: true,
+                testId,
+                onClose: (reason) => {
+                    if (mounted && reason === 'dismiss') latest.current.onClose?.();
+                },
+            });
+        };
+        raise.current();
         return () => {
             mounted = false;
             snackbar.dismiss(key);
         };
     }, [key, severity, text, labels, persistent, testId, causeKey]);
+
+    // A choice that is disabled while its operation runs: update the pop-up in place, but never bring
+    // back one the person has already closed.
+    useEffect(() => {
+        if (shownDisabled.current === disabledSignature) return;
+        const { visible, queued } = snackbarStore.getState();
+        if ([...visible, ...queued].some((item) => item.key === key)) raise.current?.();
+    }, [key, disabledSignature]);
 
     return (
         <>
