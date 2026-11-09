@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { snackbar } from '../components/Snackbar';
 import { getTenantPermissionPolicies, updateTenantPermissionPolicies } from '../api/tenant/tenantPermissionPolicies';
 import type { TenantPermissionPolicies } from '../types/permissionPolicy';
 
@@ -32,7 +32,7 @@ export const useTenantPermissionPoliciesMutation = (tenantId: string) => {
         },
         onError: (_error, _next, context) => {
             queryClient.setQueryData(tenantPermissionPoliciesKey(tenantId), context?.previous);
-            notification.error({ message: t('tenants.permissions.policy.saveError') });
+            snackbar.error({ message: t('tenants.permissions.policy.saveError') });
         },
         onSuccess: async (saved) => {
             await queryClient.cancelQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) });
