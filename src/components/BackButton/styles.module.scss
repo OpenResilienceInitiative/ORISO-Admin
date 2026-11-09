@@ -42,7 +42,7 @@
     /* Same ring as the other buttons (M3Button, IconButton). */
     &:focus-visible,
     &:global(.pseudo-focus-visible) {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 2px;
     }
 }
@@ -240,7 +240,7 @@
     /* Only focusable while the name is cut off; same ring as the link. */
     &:focus-visible {
         border-radius: 4px;
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 2px;
     }
 }
