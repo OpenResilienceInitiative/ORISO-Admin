@@ -27,6 +27,34 @@ const dpaStatus = (status: string | null) =>
         status ? HttpResponse.json({ status }) : new HttpResponse(null, { status: 500 }),
     );
 
+type SmtpState = 'platform' | 'own-incomplete' | 'own-complete';
+
+/**
+ * The own tenant as the tenant service returns it. Home re-reads it on every visit,
+ * so stories answer the endpoints instead of seeding the fact; `null` = unreachable.
+ */
+const ownTenant = (smtp: SmtpState | null) => {
+    const record = smtp && {
+        id: 7,
+        name: 'Caritas Süd',
+        content: { claim: 'Wir sind für Sie da' },
+        theming: { logo: 'data:image/png;base64,AA==' },
+        settings:
+            smtp === 'platform'
+                ? { smtpMode: 'PLATFORM' }
+                : {
+                      smtpMode: 'OWN',
+                      smtp: {
+                          host: 'mail.caritas-sued.example',
+                          from: 'beratung@caritas-sued.example',
+                          passwordSet: smtp === 'own-complete',
+                      },
+                  },
+    };
+    const answer = () => (record ? HttpResponse.json(record) : new HttpResponse(null, { status: 500 }));
+    return [http.get('*/service/tenantadmin/:tenantId', answer), http.get('*/service/tenant/:tenantId', answer)];
+};
+
 const TRAEGER_ROLES = [UserRole.TenantAdmin, UserRole.AgencyAdmin, UserRole.UserAdmin];
 
 /** The page fades in; wait until an element is really visible before asserting on the rest. */
@@ -51,13 +79,13 @@ type Story = StoryObj<typeof meta>;
 
 /** Platform admin at the very start: no Träger yet, so the checklist leads. */
 export const PlatformAdminFirstLogin: Story = {
+    parameters: { msw: { handlers: [...BASE_HANDLERS, ...ownTenant('platform')] } },
     decorators: [
         (Story) => {
             setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
             return withSeededAdminProviders(
                 Story,
                 seedFacts(0, {
-                    'own-tenant': { appearanceComplete: true, smtpMode: 'PLATFORM' },
                     tenants: 0,
                     agencies: 0,
                     consultants: 0,
@@ -89,7 +117,7 @@ export const PlatformAdminFirstLogin: Story = {
 
 /** Träger admin (usual role bundle) halfway through: one Beratungsstelle, invitations out, one stuck. */
 export const TraegerAdmin: Story = {
-    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('UNSIGNED')] } },
+    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('UNSIGNED'), ...ownTenant('own-incomplete')] } },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
@@ -97,7 +125,6 @@ export const TraegerAdmin: Story = {
                 Story,
                 seedFacts(7, {
                     // Own mail server not finished (#1374); the AVV is still unsigned (handler below).
-                    'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: false },
                     agencies: 1,
                     consultants: 0,
                     'invites-unit': { INVITED: 3, NEEDS_ACTION: 1, DONE: 0 },
@@ -158,14 +185,13 @@ export const BeratungsstellenAdmin: Story = {
 
 /** Träger admin with everything set up: the checklist is gone, the own mail server reads "set up". */
 export const AllStepsDone: Story = {
-    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('VALID')] } },
+    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('VALID'), ...ownTenant('own-complete')] } },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
             return withSeededAdminProviders(
                 Story,
                 seedFacts(7, {
-                    'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: true },
                     agencies: 3,
                     consultants: 12,
                     'invites-unit': { INVITED: 1, DONE: 12 },
@@ -192,6 +218,7 @@ export const UnknownFacts: Story = {
             handlers: [
                 ...BASE_HANDLERS,
                 dpaStatus(null),
+                ...ownTenant(null),
                 // Answers without a total: Home must show "unknown", not zero.
                 http.get('*/service/agencyadmin/agencies', () => HttpResponse.json({})),
                 http.get('*/service/users/consultants/search', () => HttpResponse.json({})),
@@ -202,7 +229,7 @@ export const UnknownFacts: Story = {
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
-            return withSeededAdminProviders(Story, seedFacts(7, { 'own-tenant': null }));
+            return withSeededAdminProviders(Story, seedFacts(7, {}));
         },
     ],
     play: async ({ canvas }) => {
