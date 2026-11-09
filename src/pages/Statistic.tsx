@@ -161,6 +161,7 @@ const dashboardTextKeyByValue: Record<string, string> = {
     'Keine Daten': 'statistic.dashboard.text.noData',
     'wird noch nicht erfasst': 'statistic.dashboard.empty.notTracked',
     'noch keine Daten': 'statistic.dashboard.empty.noDataYet',
+    'konnte nicht geladen werden': 'statistic.dashboard.empty.loadFailed',
     'zeigt sich ab dem ersten Gespräch': 'statistic.dashboard.empty.topicPending',
     'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
     'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
@@ -1019,6 +1020,8 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
 const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
+/** After a failed load the figure is unknown, not absent (#1374). */
+const LOAD_FAILED_HINT = 'konnte nicht geladen werden';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
 
 type EmptyState = Pick<CardMenuOption, 'emptyHint' | 'emptyKind'>;
@@ -1045,6 +1048,7 @@ const notTrackedOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'tr
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
     allTargetsSuppressed = false,
+    loadFailed = false,
 ): Record<CardMenuKey, Partial<CardMenuOption>> => {
     const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
     const requestDetail =
@@ -1053,8 +1057,10 @@ const buildMetricOverridesFromFilterStats = (
             : undefined;
     // null = withheld (all targets KDG-suppressed) or simply not there yet.
     const emptyKind: StatisticEmptyKind = allTargetsSuppressed ? 'protected' : 'pending';
-    const emptyMetricHint = allTargetsSuppressed ? PROTECTED_HINT : NO_DATA_YET_HINT;
-    const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : TOPIC_PENDING_HINT;
+    const pendingHint = loadFailed ? LOAD_FAILED_HINT : NO_DATA_YET_HINT;
+    const pendingTopicHint = loadFailed ? LOAD_FAILED_HINT : TOPIC_PENDING_HINT;
+    const emptyMetricHint = allTargetsSuppressed ? PROTECTED_HINT : pendingHint;
+    const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : pendingTopicHint;
     const metricEmptyState = (value: MetricValue): EmptyState =>
         value === null ? { emptyHint: emptyMetricHint, emptyKind } : noEmptyState;
     const topicEmptyState = (topic: TopicStatistic): EmptyState =>
@@ -2121,8 +2127,8 @@ export const Statistic = () => {
     const allTargetsSuppressed =
         effectiveStatisticTargetIds.length > 0 && suppressedSelectedTargetCount === effectiveStatisticTargetIds.length;
     const metricOverrides = useMemo(
-        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed),
-        [allTargetsSuppressed, filteredStats],
+        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed, hasStatisticLoadError),
+        [allTargetsSuppressed, filteredStats, hasStatisticLoadError],
     );
     const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
     // A stand with zeros is a real statement, so it shows them like any other value. A level without

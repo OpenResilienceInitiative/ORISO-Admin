@@ -2347,6 +2347,7 @@
     "statistic.dashboard.csvExport.filename": "Statistik",
     "statistic.dashboard.csvExport.metricColumn": "Kennzahl",
     "statistic.dashboard.csvExport.valueColumn": "Wert",
+    "statistic.dashboard.empty.loadFailed": "konnte nicht geladen werden",
     "statistic.dashboard.empty.notTracked": "Wird noch nicht erfasst. Kommt mit dem Ausbau der Kanäle.",
     "statistic.dashboard.empty.noDataYet": "noch keine Daten",
     "statistic.dashboard.empty.topicPending": "zeigt sich ab dem ersten Gespräch",
