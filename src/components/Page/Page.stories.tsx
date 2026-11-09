@@ -127,7 +127,7 @@ const SETTINGS_TABS = [
 
 /**
  * Seven tabs, the most a settings page has, in the shared underline tab bar (ORISO-Admin#1374).
- * When the bar is narrower than its tabs it scrolls inside itself; the page never scrolls sideways.
+ * When the bar is narrower than its tabs, the trailing ones move behind „Mehr (n)“; nothing scrolls sideways.
  */
 export const SevenSettingsTabs: Story = {
     render: () => (
@@ -147,7 +147,7 @@ export const SevenSettingsTabs: Story = {
     play: async ({ canvasElement }) => {
         const tabs = canvasElement.querySelector<HTMLElement>('[data-admin-page-tabs]');
         await expect(tabs).not.toBeNull();
-        // The bar may scroll inside itself, but it never widens the page.
+        // Overflow goes behind „Mehr“: the bar never scrolls and never widens the page.
         await expect(tabs!.scrollWidth).toBeLessThanOrEqual(tabs!.clientWidth);
         await expect(canvasElement.ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(
             canvasElement.ownerDocument.documentElement.clientWidth,

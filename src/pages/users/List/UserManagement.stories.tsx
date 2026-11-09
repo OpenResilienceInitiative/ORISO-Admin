@@ -731,17 +731,25 @@ export const ConsultantsTabAt960: Story = {
             await noSideScroll(canvasElement);
         });
 
-        await step('account types scroll inside the tab bar; the active tab starts in view', async () => {
-            // #1374: the shared tab bar scrolls itself instead of arrow buttons.
+        await step('account types never scroll: the active tab is in the bar, the rest behind „Mehr“', async () => {
+            // #1374: tabs that do not fit move behind „Mehr (n)“ instead of scrolling.
             const active = canvas.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true');
             await expect(active).toBeDefined();
-            const bar = active!.closest('[role="tablist"]') as HTMLElement;
+            const tablist = active!.closest('[role="tablist"]') as HTMLElement;
+            const bar = tablist.closest('[data-admin-subnav]') as HTMLElement;
             await waitFor(() => {
                 const barRect = bar.getBoundingClientRect();
                 const tabRect = active!.getBoundingClientRect();
+                expect(tablist.scrollWidth).toBeLessThanOrEqual(tablist.clientWidth + 1);
                 expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
                 expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
             });
+            // 664px of bar: Beratende, the selected last tab, takes the place of Beratungsstellen Admins.
+            await expect(active).toHaveTextContent('Beratende');
+            await expect(canvas.queryByRole('tab', { name: 'Beratungsstellen Admins' })).toBeNull();
+            const more = within(bar).getByRole('button', { name: 'Mehr (1)' });
+            await expect(tablist).not.toContainElement(more);
+            await expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(bar.getBoundingClientRect().right + 1);
             await noSideScroll(canvasElement);
         });
 

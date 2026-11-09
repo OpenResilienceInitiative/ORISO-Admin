@@ -15,20 +15,17 @@
     box-shadow: inset 0 -1px 0 0 var(--m3-outline-variant, #c4c7c8);
 }
 
-/* Overflow: never wrap, never truncate — the bar scrolls horizontally inside
-   itself. A thin scrollbar keeps the overflow discoverable for mouse users. */
+/* Overflow: never wrap, never truncate, never scroll. Tabs that do not fit
+   are hidden and listed behind „Mehr (n)“; the list only clips for the one
+   frame between a resize and the next split. */
 
-.scroll {
+.list {
     display: flex;
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     align-items: stretch;
     gap: 4px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
-    scrollbar-color: var(--m3-outline-variant, #c4c7c8) transparent;
-    scrollbar-width: thin;
+    overflow: hidden;
 }
 
 .item {
@@ -77,11 +74,16 @@
         color: var(--m3-on-surface, #1b1b1c);
     }
 
-    /* Inset ring: the scrollport clips anything drawn outside the tab. */
+    /* Inset ring: the list clips anything drawn outside the tab. */
     &:focus-visible {
         outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: -2px;
     }
+}
+
+/* `.item` sets `display`, which would override the UA style of `hidden`. */
+.item[hidden] {
+    display: none;
 }
 
 .itemActive,
@@ -99,6 +101,23 @@
 
     &:disabled {
         pointer-events: none;
+    }
+}
+
+/* „Mehr (n)“: tab-styled, at the end of the bar, outside the tablist. */
+.more {
+    flex: 0 0 auto;
+    padding: 0 14px;
+    margin-inline-start: auto;
+    gap: 6px;
+
+    &[aria-expanded='true'] {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &[aria-expanded='true'] .moreChevron {
+        transform: rotate(180deg);
     }
 }
 

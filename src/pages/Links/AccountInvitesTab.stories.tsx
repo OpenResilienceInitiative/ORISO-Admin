@@ -179,7 +179,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * The Träger-Invites tab in its everyday state: invites listed, templates available in
+ * The Träger-Einladungen tab in its everyday state: invites listed, templates available in
  * the select, "Vorlagen verwalten" opens the template dialog. The Träger-ID field
  * pre-fills with the smallest free id (tenants occupy 1+3, the active invite holds 2 → 4).
  */

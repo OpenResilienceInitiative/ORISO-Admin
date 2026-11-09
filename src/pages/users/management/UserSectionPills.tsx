@@ -74,6 +74,6 @@ export const UserSectionPills = () => {
         activeIcon: <AllUsersFilledIcon />,
     }));
 
-    // The bar scrolls itself when the sections do not fit (ORISO-Admin#1374).
+    // Sections that do not fit move behind „Mehr (n)“ (ORISO-Admin#1374).
     return <AdminSegmentedTabs items={tabItems} ariaLabel={t('users.allUsers')} />;
 };

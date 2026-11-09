@@ -18,16 +18,22 @@ const block = (source: string, selector: string, until: string) =>
  */
 describe('desktop sub-navigation tab bar (#1374)', () => {
     it('draws a full-width outline-variant divider under the tabs', () => {
-        expect(block(desktopTabs, '.container {', '.scroll {')).toMatch(
+        expect(block(desktopTabs, '.container {', '.list {')).toMatch(
             /box-shadow:\s*inset 0 -1px 0 0 var\(--m3-outline-variant,\s*#c4c7c8\)/,
         );
     });
 
-    it('spaces the tabs with a fixed 4px gap and scrolls instead of wrapping', () => {
-        const scroll = block(desktopTabs, '.scroll {', '.item {');
-        expect(scroll).toMatch(/gap:\s*4px/);
-        expect(scroll).toMatch(/overflow-x:\s*auto/);
-        expect(scroll).not.toMatch(/flex-wrap:\s*wrap/);
+    it('spaces the tabs with a fixed 4px gap and neither wraps nor scrolls (overflow goes behind „Mehr“)', () => {
+        const list = block(desktopTabs, '.list {', '.item {');
+        expect(list).toMatch(/gap:\s*4px/);
+        expect(list).toMatch(/overflow:\s*hidden/);
+        expect(list).not.toMatch(/overflow-x:\s*auto/);
+        expect(list).not.toMatch(/flex-wrap:\s*wrap/);
+    });
+
+    it('keeps tabs hidden behind „Mehr“ out of the layout, and „Mehr“ at the end of the bar', () => {
+        expect(desktopTabs).toMatch(/\.item\[hidden\]\s*\{\s*display:\s*none;/);
+        expect(block(desktopTabs, '.more {', '/* Icons')).toMatch(/margin-inline-start:\s*auto/);
     });
 
     it('sizes each tab at 48px with 0 16px padding and 14/20 medium labels that never truncate', () => {
@@ -55,7 +61,7 @@ describe('desktop sub-navigation tab bar (#1374)', () => {
         expect(active).toMatch(/background:\s*var\(--m3-primary,\s*#a5000a\)/);
     });
 
-    it('keeps a visible focus ring inside the scrollport', () => {
+    it('keeps a visible focus ring inside the clipped list', () => {
         expect(desktopTabs).toMatch(
             /&:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--m3-primary[^}]*outline-offset:\s*-2px/s,
         );

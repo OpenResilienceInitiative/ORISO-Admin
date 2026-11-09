@@ -153,8 +153,8 @@ export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
         description: 'Personen per E-Mail einladen, Fortschritt sehen',
         icon: <NavGlyph name="links" />,
         subsections: [
-            { key: 'tenants', label: 'Träger-Invites' },
-            { key: 'counsellor', label: 'Berater-Invites' },
+            { key: 'tenants', label: 'Träger-Einladungen' },
+            { key: 'counsellor', label: 'Beratende-Einladungen' },
         ],
     },
     {

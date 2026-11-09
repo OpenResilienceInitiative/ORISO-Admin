@@ -645,7 +645,7 @@ describe('InviteCsvImportModal', () => {
             renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }));
             expect(
                 rowCells('anna@x.de').getByText(
-                    'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
+                    'Die Rolle „Berater:in“ wird im Tab „Beratende-Einladungen“ eingeladen, nicht hier (Zeile 2).',
                 ),
             ).toBeInTheDocument();
         });
