@@ -731,8 +731,6 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
             id: 282,
             name: 'Bestehende Stelle',
             // The tile saves all three topics together, so its required address fields must be filled.
-            postcode: '10115',
-            city: 'Berlin',
             postcode: '86161',
             city: 'Augsburg',
             offline: false,
