@@ -40,6 +40,7 @@
 }
 
 .media {
+    position: relative;
     display: flex;
     height: 232px;
     flex: none;
@@ -67,6 +68,55 @@
 
     @media (prefers-reduced-motion: reduce) {
         animation: none;
+    }
+}
+
+/* The red band (Tutorial canvas): a thin primary arc over the picture that draws itself,
+   pulls back a little and settles — one back-and-forth, each pass under 480ms. Reduced
+   motion shows it drawn and still. */
+.band {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    path {
+        fill: none;
+        stroke: var(--m3-primary, #a5000a);
+        stroke-dasharray: 1;
+        stroke-dashoffset: 0;
+        stroke-linecap: round;
+        stroke-width: 2.2;
+        animation: tile-help-band 880ms ease-in-out both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        path {
+            animation: none;
+        }
+    }
+}
+
+@keyframes tile-help-band {
+    /* 396ms: draw in. */
+    0% {
+        stroke-dashoffset: 1;
+    }
+
+    45% {
+        stroke-dashoffset: 0;
+    }
+
+    /* 220ms: pull back by a third. */
+    70% {
+        stroke-dashoffset: 0.35;
+    }
+
+    /* 264ms: settle, fully drawn. */
+    100% {
+        stroke-dashoffset: 0;
     }
 }
 

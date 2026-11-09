@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { CardGrid } from '../../CardGrid';
@@ -110,12 +110,94 @@ export const HelpKeepsItsGeometry: Story = {
             // eslint-disable-next-line no-await-in-loop -- the slides follow one another.
             await userEvent.click(within(dialog).getByRole('button', { name: /^(weiter|next)$/i }));
             // eslint-disable-next-line no-await-in-loop
-            await expect(dialog.querySelector('[data-tile-help-media="placeholder"] svg')).not.toBeNull();
+            await expect(
+                dialog.querySelector('[data-tile-help-media="placeholder"] [data-tile-help-placeholder] svg'),
+            ).not.toBeNull();
             const current = measure();
             // eslint-disable-next-line no-await-in-loop
             await expect(current.media).toBe(first.media);
             // eslint-disable-next-line no-await-in-loop
             await expect(Math.abs(current.next - first.next)).toBeLessThan(1);
         }
+    },
+};
+
+/** The stylesheet rules that apply under „Bewegung reduzieren“ to elements with this class. */
+const reducedMotionRules = (doc: Document, className: string) =>
+    Array.from(doc.styleSheets).flatMap((sheet) => {
+        let rules: CSSRule[] = [];
+        try {
+            rules = Array.from(sheet.cssRules);
+        } catch {
+            return [];
+        }
+        return rules
+            .filter(
+                (rule): rule is CSSMediaRule =>
+                    rule instanceof CSSMediaRule && /prefers-reduced-motion:\s*reduce/.test(rule.media.mediaText),
+            )
+            .flatMap((rule) => Array.from(rule.cssRules))
+            .filter(
+                (rule): rule is CSSStyleRule =>
+                    rule instanceof CSSStyleRule && rule.selectorText.includes(`.${className}`),
+            );
+    });
+
+/**
+ * The red band of the Tutorial canvas: a thin primary arc over the picture box draws itself when a
+ * step appears, pulls back a little and settles drawn — one back-and-forth, every pass under 480ms.
+ * Each step starts it again. Under „Bewegung reduzieren“ it does not move: it is simply there.
+ */
+export const HelpRedBand: Story = {
+    ...InTheRaster,
+    play: async ({ canvasElement, step }) => {
+        const canvas = within(canvasElement);
+        const doc = canvasElement.ownerDocument;
+        const body = within(doc.body);
+        await userEvent.click(canvas.getByRole('button', { name: /erklärung öffnen|open explanation/i }));
+        const dialog = await body.findByRole('dialog');
+        const band = () => dialog.querySelector<SVGSVGElement>('[data-tile-help-media] [data-tile-help-band]');
+        const first = band();
+        const reduced = doc.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches ?? false;
+
+        await step('the band sits in the picture box, in the primary colour', async () => {
+            await expect(first).not.toBeNull();
+            const path = first!.querySelector('path') as SVGPathElement;
+            const style = getComputedStyle(path);
+            // The colour comes from the token, not a fixed red.
+            const probe = doc.createElement('span');
+            probe.style.color = 'var(--m3-primary, #a5000a)';
+            dialog.appendChild(probe);
+            const primary = getComputedStyle(probe).color;
+            probe.remove();
+            await expect(style.stroke).toBe(primary);
+            await expect(style.fill).toBe('none');
+            if (!reduced) {
+                await expect(style.animationName).not.toBe('none');
+                await expect(parseFloat(style.animationDuration)).toBeLessThanOrEqual(0.96);
+                await expect(style.animationIterationCount).toBe('1');
+            }
+            // Either way it ends drawn.
+            await waitFor(() => expect(parseFloat(getComputedStyle(path).strokeDashoffset)).toBe(0), {
+                timeout: 3000,
+            });
+        });
+
+        await step('„Bewegung reduzieren“ stops it', async () => {
+            const className = Array.from(first!.classList).find((name) => /band/.test(name));
+            await expect(className).toBeDefined();
+            const rules = reducedMotionRules(doc, className!);
+            await expect(rules.length).toBeGreaterThan(0);
+            await expect(rules.some((rule) => rule.style.animationName === 'none')).toBe(true);
+            if (reduced) {
+                await expect(getComputedStyle(first!.querySelector('path')!).animationName).toBe('none');
+            }
+        });
+
+        await step('the next step starts it again', async () => {
+            await userEvent.click(within(dialog).getByRole('button', { name: /^(weiter|next)$/i }));
+            await waitFor(() => expect(band()).not.toBe(first));
+            await expect(band()).not.toBeNull();
+        });
     },
 };
