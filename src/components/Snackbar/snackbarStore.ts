@@ -23,6 +23,8 @@ export interface SnackbarAction {
     /** Already translated, e.g. `t('snackbar.retry')`. */
     label: string;
     onClick: () => void;
+    /** Not clickable while true (for example while the operation it starts is still running). */
+    disabled?: boolean;
 }
 
 /** What a jump action scrolls to: an element id, a CSS selector, an element or a ref to one. */
