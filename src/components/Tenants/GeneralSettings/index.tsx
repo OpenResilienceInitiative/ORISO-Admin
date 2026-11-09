@@ -11,6 +11,7 @@ import { EditingRightsCard } from './components/EditingRightsCard';
 import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
+import { OwnTenantInformation } from '../OwnTenantInformation';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
@@ -101,7 +102,15 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
                 <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
             </CardGrid.Item>
         ),
-        leadingTiles,
+        // The platform admin's Träger page brings its own editable card; a Träger admin on their own
+        // settings page gets the same information read-only (ORISO-Admin#1466).
+        leadingTiles:
+            leadingTiles ??
+            (!isSuperAdmin && (
+                <CardGrid.Item>
+                    <OwnTenantInformation />
+                </CardGrid.Item>
+            )),
         nameAndSlogan: (
             <CardGrid.Item>
                 <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
