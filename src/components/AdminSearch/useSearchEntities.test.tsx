@@ -148,6 +148,29 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
 });
 
 describe('useSearchEntities: a failed list is reported', () => {
+    // Without the opt-in the account lists resolve a failed request to an empty list and `isError` stays false.
+    it.each([TypeOfUser.Consultants, TypeOfUser.AgencyAdmins, TypeOfUser.TenantAdmins])(
+        'asks the %s list to reject when its request fails',
+        async (typeOfUser) => {
+            await typed('anna');
+
+            const calls = mocks.accounts.mock.calls
+                .map((call) => call[0])
+                .filter((args) => args.typeOfUser === typeOfUser);
+
+            expect(calls.length).toBeGreaterThan(0);
+            expect(calls.every((args) => args.rethrowOnFailure === true)).toBe(true);
+        },
+    );
+
+    it('flags an error of an account list', async () => {
+        mocks.accounts.mockReturnValue({ ...quiet, isError: true });
+
+        const { result } = await typed('anna');
+
+        expect(result.current.hasError).toBe(true);
+    });
+
     it('flags an error of a list that was asked for', async () => {
         mocks.agencies.mockReturnValue({ ...quiet, isError: true });
 

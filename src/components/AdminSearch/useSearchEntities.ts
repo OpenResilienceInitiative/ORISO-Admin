@@ -51,22 +51,27 @@ export const useSearchEntities = (query: string) => {
     const tenants = useTenantsData({ search, perPage: PER_LIST, enabled: enabled && canTenants });
     const agencies = useAgenciesData({ search, pageSize: PER_LIST, enabled: enabled && canAgencies });
     const topics = useTopicList({ current: 1, search, pageSize: 50, enabled: enabled && canTopics });
+    // The account lists swallow a failed request into an empty list unless told to reject; without
+    // `rethrowOnFailure` their `isError` never turns true and an outage reads as "nothing found".
     const consultants = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.Consultants,
         search,
         pageSize: PER_LIST,
+        rethrowOnFailure: true,
         enabled: enabled && canConsultants,
     });
     const agencyAdmins = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.AgencyAdmins,
         search,
         pageSize: PER_LIST,
+        rethrowOnFailure: true,
         enabled: enabled && canAgencyAdmins,
     });
     const tenantAdmins = useConsultantsOrAdminsData({
         typeOfUser: TypeOfUser.TenantAdmins,
         search,
         pageSize: PER_LIST,
+        rethrowOnFailure: true,
         enabled: enabled && canTenantAdmins,
     });
 
