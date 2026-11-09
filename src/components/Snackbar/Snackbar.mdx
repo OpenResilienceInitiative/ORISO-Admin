@@ -2,25 +2,26 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 <Meta title="Molecules/Snackbar guide" />
 
-# Which message for which situation
+# Which pop-up for which situation
 
 The Admin shows feedback in two ways. Pick by what the person has to do with it.
 
-| Situation                                                                                                                  | Use                                                      | Stays on screen                          |
-| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
-| "Done": saved, copied, sent, published                                                                                     | **Snackbar**, `success`                                  | 4 to 6 s, then gone, with a close button |
-| Neutral news: `info`                                                                                                       | **Snackbar**, `info`                                     | 4 to 6 s, then gone, with a close button |
-| A request failed                                                                                                           | **Snackbar**, `error`                                    | **until closed** or acted on             |
-| A side effect that is not an error: "setup mail was not sent"                                                              | **Snackbar**, `warning`                                  | **until closed** or acted on             |
-| Something happened that they may want to undo or retry right now                                                           | **Snackbar** with an action ("Rückgängig")               | **until acted on** or closed             |
-| The page itself is in a state the person has to act on: missing consent, blocked form, read-only reason, an empty template | **Inline message box** (next to the content it is about) | as long as the state lasts               |
+| Situation                                                                                                                  | Use                                                                        | Stays on screen                          |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------- |
+| "Done": saved, copied, sent, published                                                                                     | **Snackbar**, `success`                                                    | 4 to 6 s, then gone, with a close button |
+| Neutral news: `info`                                                                                                       | **Snackbar**, `info`                                                       | 4 to 6 s, then gone, with a close button |
+| A request failed                                                                                                           | **Snackbar**, `error`                                                      | **until closed** or acted on             |
+| A side effect that is not an error: "setup mail was not sent"                                                              | **Snackbar**, `warning`                                                    | **until closed** or acted on             |
+| Something happened that they may want to undo or retry right now                                                           | **Snackbar** with an action ("Rückgängig")                                 | **until acted on** or closed             |
+| The page itself is in a state the person has to act on: missing consent, blocked form, read-only reason, an empty template | **`<HintText>`** (plain text in the tile, next to the content it is about) | as long as the state lasts               |
 
-The line between the two: **a snackbar is an event, an inline box is a state.** If the message is
-still true after ten seconds and the person still has to deal with it, it does not belong in a
-snackbar. If it reports something that just happened, it never belongs in a box on the page.
+The line between the two: **a snackbar is an event, hint text is a state.** If the message is
+still true after ten seconds and the person still has to deal with it, it is hint text in the tile
+(see "Which message for which situation" in the Messages guide). If it reports something that just
+happened, it is a pop-up and never a box in the page.
 
-Inline boxes are built and documented separately (tooltip and message-box designs). This guide
-only covers what is transient, dismissible or "must click".
+`<Notify>` raises the pop-up declaratively; `<HintText>` is documented in the Messages guide. This guide
+only covers the pop-up channel itself.
 
 ## How to raise one
 
@@ -54,9 +55,10 @@ move layout, never sit in a card and never touch a card edge.
 Every pop-up has a **title** (what it is about, a few words), an optional **description** (one or
 two sentences) and a close button. When the event belongs to a tile or a field, give it a `jump`:
 it adds the "Ansehen" / "View" button, which first runs `onJump` (open or enlarge the editor,
-expand the tile), then scrolls the target to the middle of the screen and focuses it (or its first
-button, field or link). The pop-up is dismissed afterwards, because the person has been taken to
-the owner.
+expand the tile), then scrolls to the target and focuses it: a field or button is centred on the
+screen; a tile goes to the top, just below the page header, and its heading takes focus (the tile
+itself when it has none). The pop-up stays afterwards: the person can read it again at the tile and
+close it when done.
 
 ```ts
 snackbar.error({
@@ -68,8 +70,8 @@ snackbar.error({
 snackbar.warning({ title, jump: 'tile-legal' }); // a bare target works too
 ```
 
-Two outcomes to choose between (two drafts): one pop-up with `action` and `secondaryAction`. With
-both set, an extra `jump` is left out; three actions do not fit.
+Two outcomes to choose between (two drafts): one pop-up with `action` and `secondaryAction`. A
+`jump` is its own link under the text, so it stays next to two real actions.
 
 ## Rules the channel enforces
 
