@@ -424,7 +424,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #b0001b);
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
         border-radius: 4px;
     }
