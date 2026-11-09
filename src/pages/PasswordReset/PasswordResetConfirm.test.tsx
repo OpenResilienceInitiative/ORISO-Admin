@@ -3,10 +3,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PasswordResetConfirmForm } from './PasswordResetConfirm';
-import { confirmAdminPasswordReset } from '../../api/passwordReset/passwordReset';
+import { PasswordResetRequestPage } from './PasswordResetRequestPage';
+import { confirmAdminPasswordReset, requestAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 
 vi.mock('../../api/passwordReset/passwordReset', () => ({
     confirmAdminPasswordReset: vi.fn(),
+    requestAdminPasswordReset: vi.fn(),
+}));
+
+vi.mock('./PasswordResetPageLayout', () => ({
+    PasswordResetPageLayout: ({ children }: React.PropsWithChildren) => children,
 }));
 
 vi.mock('react-i18next', () => ({
@@ -45,7 +51,7 @@ describe('PasswordResetConfirmForm', () => {
             <MemoryRouter initialEntries={['/admin/password-reset/confirm?token=one-time-token']}>
                 <Routes>
                     <Route path="/admin/password-reset/confirm" element={<PasswordResetConfirmForm />} />
-                    <Route path="/admin/password-reset" element={<h1>Request a reset link</h1>} />
+                    <Route path="/admin/password-reset" element={<PasswordResetRequestPage />} />
                 </Routes>
             </MemoryRouter>,
         );
@@ -63,7 +69,9 @@ describe('PasswordResetConfirmForm', () => {
         await user.tab({ shift: true });
         expect(recovery).toHaveFocus();
         await user.keyboard('{Enter}');
-        expect(await screen.findByRole('heading', { name: 'Request a reset link' })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'passwordReset.requestTitle' })).toBeInTheDocument();
+        expect(screen.getByLabelText('passwordReset.identityLabel')).toHaveValue('');
+        expect(requestAdminPasswordReset).not.toHaveBeenCalled();
         expect(confirmAdminPasswordReset).toHaveBeenCalledTimes(1);
     });
 
