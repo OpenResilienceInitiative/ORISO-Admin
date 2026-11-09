@@ -496,9 +496,10 @@
     box-shadow: 0 0 0 3px var(--m3-surface-container-lowest, #ffffff), 0 0 0 5px var(--m3-on-surface, #1b1b1c);
 }
 
+// The radio itself is transparent, so the circle carries the shared focus ring, just outside the selected ring.
 .presetInput:focus-visible + .presetCircle {
-    outline: 2px solid #273270;
-    outline-offset: 6px;
+    outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+    outline-offset: calc(var(--admin-focus-ring-offset, 2px) + 5px);
 }
 
 .presetsDisabled {

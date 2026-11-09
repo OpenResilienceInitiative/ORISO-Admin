@@ -63,6 +63,14 @@
  * tiles do not use `disabled`, so they keep full contrast.
  */
 
+// The shared ring goes around the WHOLE switch (track included), 2px off its outer edge, so its contrast is
+// measured against the tile or panel, never against the track it would otherwise sit on.
+.switch:has(:global(.Mui-focusVisible)) {
+    border-radius: 16px;
+    outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+    outline-offset: var(--admin-focus-ring-offset, 2px);
+}
+
 .switch {
     // Doubled class (0,2,0) so the geometry beats the single-class emotion
     // defaults on .MuiSwitch-root regardless of style-tag injection order,
@@ -103,11 +111,6 @@
                     color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
                 }
             }
-        }
-
-        // Custom icon thumbs replace .MuiSwitch-thumb, so target the local class.
-        &:global(.Mui-focusVisible) .thumb {
-            box-shadow: 0 0 0 3px var(--admin-control-selected, var(--m3-primary, #a5000a));
         }
 
         &:global(.Mui-disabled) {
