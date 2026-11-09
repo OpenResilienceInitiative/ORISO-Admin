@@ -475,16 +475,20 @@ export const ThemeEditorModal = ({
                             />
                         </section>
                         {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
-                        <SideScrollerFooter
-                            className={styles.themePreviewScrollerFooter}
-                            ariaLabel={t('theme.builder.preview.scroll')}
-                            previousLabel={t('theme.builder.preview.previous')}
-                            nextLabel={t('theme.builder.preview.next')}
-                            canScrollBackward={previewScrollState.canScrollBackward}
-                            canScrollForward={previewScrollState.canScrollForward}
-                            onScrollBackward={() => scrollPreview(-1)}
-                            onScrollForward={() => scrollPreview(1)}
-                        />
+                        {/* Only while the phones overflow: two disabled arrows on top of
+                            phones that already fit read as broken controls. */}
+                        {(previewScrollState.canScrollBackward || previewScrollState.canScrollForward) && (
+                            <SideScrollerFooter
+                                className={styles.themePreviewScrollerFooter}
+                                ariaLabel={t('theme.builder.preview.scroll')}
+                                previousLabel={t('theme.builder.preview.previous')}
+                                nextLabel={t('theme.builder.preview.next')}
+                                canScrollBackward={previewScrollState.canScrollBackward}
+                                canScrollForward={previewScrollState.canScrollForward}
+                                onScrollBackward={() => scrollPreview(-1)}
+                                onScrollForward={() => scrollPreview(1)}
+                            />
+                        )}
                     </div>
                 </div>
             </Form>
