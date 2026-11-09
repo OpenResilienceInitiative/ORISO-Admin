@@ -28,7 +28,7 @@
 .segment:focus-visible {
     /* Lift the focused segment above its siblings so the ring is never clipped. */
     z-index: 1;
-    outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+    outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
     outline-offset: 2px;
 }
 
