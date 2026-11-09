@@ -61,6 +61,8 @@ const headerOffset = (): number => {
     return Math.round(header.getBoundingClientRect().height) + TOP_GAP_PX;
 };
 
+const pendingMargin = new WeakMap<HTMLElement, { original: string; timer: number }>();
+
 const focusQuietly = (element: HTMLElement) => {
     if (!element.matches(FIELD) && !element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1');
     element.focus({ preventScroll: true });
@@ -91,12 +93,19 @@ export const jumpTo = ({ target, onJump }: SnackbarJump) => {
         const anchor = heading && (!hasLayout() || !isEmpty(heading)) ? heading : element;
         // The tile's top, not its heading, goes to the top: the whole tile is then in view.
         const scrolled = element;
-        const previous = scrolled.style.scrollMarginTop;
+        // A second jump within the second must restore the value from before the first one, not the temporary offset.
+        const pending = pendingMargin.get(scrolled);
+        if (pending) window.clearTimeout(pending.timer);
+        const original = pending ? pending.original : scrolled.style.scrollMarginTop;
         scrolled.style.scrollMarginTop = `${headerOffset()}px`;
         scrolled.scrollIntoView?.({ block: 'start', behavior });
-        window.setTimeout(() => {
-            scrolled.style.scrollMarginTop = previous;
-        }, 1000);
+        pendingMargin.set(scrolled, {
+            original,
+            timer: window.setTimeout(() => {
+                scrolled.style.scrollMarginTop = original;
+                pendingMargin.delete(scrolled);
+            }, 1000),
+        });
         focusQuietly(anchor);
     };
     if (typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(run);
