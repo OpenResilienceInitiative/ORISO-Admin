@@ -58,7 +58,7 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
         return (
             <div data-testid="link-error-consumed">
                 <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
-                <HintText tone="error" style={{ marginBottom: 16 }}>
+                <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
                     {t(keys.description)}
                 </HintText>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
@@ -78,7 +78,7 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
     return (
         <div data-testid={`link-error-${reason.toLowerCase()}`}>
             <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
-            <HintText tone="error" style={{ marginBottom: 16 }}>
+            <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
                 {t(keys.description)}
             </HintText>
             <Typography color="text.secondary">{t('tenantOnboarding.linkError.contactHint')}</Typography>

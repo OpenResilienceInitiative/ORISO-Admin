@@ -285,6 +285,7 @@ export const OrganisationDpaStep = ({
                         <>
                             <HintText
                                 title={t('tenantOnboarding.dpa.confirmed.title')}
+                                role="status"
                                 data-testid="dpa-confirmed-notice"
                                 style={{ marginBottom: 16 }}
                             >
@@ -299,7 +300,7 @@ export const OrganisationDpaStep = ({
                                 valid completion of this step; the agreement stays
                                 readable while the signer fields and the consent
                                 act are withdrawn. */}
-                            <HintText data-testid="dpa-forwarded-notice" style={{ marginBottom: 16 }}>
+                            <HintText role="status" data-testid="dpa-forwarded-notice" style={{ marginBottom: 16 }}>
                                 {t('tenantOnboarding.dpa.forwarded.notice')}
                             </HintText>
                             {!dpaUnavailable && (

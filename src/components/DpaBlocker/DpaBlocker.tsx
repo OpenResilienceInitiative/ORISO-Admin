@@ -20,6 +20,7 @@ import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwa
 import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
 import { Notify } from '../Notify';
+import { jumpTo } from '../Snackbar';
 import { HintText } from '../HintText';
 
 export interface DpaBlockerSignData {
@@ -104,7 +105,7 @@ export const DpaBlocker = ({
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
     const [forwardOpen, setForwardOpen] = useState(false);
-    // Why the last submit did not go through — surfaced AT the button (#594.6).
+    // Why the last submit did not go through — shown at the button, inside the dialog (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
     // "Ansehen" of a failed sign or submit lands on what has to be fixed: the sign button, the missing
     // consent box or the first invalid field, never on the card's first focusable (a far-away control).
@@ -253,22 +254,32 @@ export const DpaBlocker = ({
                                 )}
 
                                 {submitBlocker && (
-                                    <Notify
+                                    // Field validation stays in the dialog: a pop-up renders outside this modal, where a
+                                    // keyboard user cannot Tab to it.
+                                    <HintText
+                                        tone="error"
+                                        role="alert"
+                                        data-testid="dpa-blocker-submit-error"
                                         title={t('notify.title.dpa')}
-                                        testId="dpa-blocker-submit-error"
-                                        severity="error"
-                                        jump={
-                                            submitBlocker === 'consent'
-                                                ? DPA_CONSENT_ANCHOR_ID
-                                                : '[aria-invalid="true"]'
-                                        }
+                                        actions={[
+                                            {
+                                                label: t('snackbar.jump'),
+                                                onClick: () =>
+                                                    jumpTo({
+                                                        target:
+                                                            submitBlocker === 'consent'
+                                                                ? DPA_CONSENT_ANCHOR_ID
+                                                                : '[aria-invalid="true"]',
+                                                    }),
+                                            },
+                                        ]}
                                     >
                                         {t(
                                             submitBlocker === 'consent'
                                                 ? 'tenantOnboarding.dpa.acceptRequired'
                                                 : 'tenantOnboarding.validation.incomplete',
                                         )}
-                                    </Notify>
+                                    </HintText>
                                 )}
 
                                 <div id={signActionsId} className={styles.actions}>

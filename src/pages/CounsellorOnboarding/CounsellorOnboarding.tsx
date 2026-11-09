@@ -618,12 +618,22 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
             <div className={styles.submitRow}>
                 {submitError === 'topic-policy' && (
-                    <Notify title={t('notify.title.onboarding')} testId="wizard-topic-policy-error" severity="error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-topic-policy-error"
+                        severity="error"
+                        quietText={t('message.error.ONE_TOPIC_PER_AGENCY')}
+                    >
                         {t('message.error.ONE_TOPIC_PER_AGENCY')}
                     </Notify>
                 )}
                 {submitError === 'registration' && (
-                    <Notify title={t('notify.title.onboarding')} testId="wizard-registration-error" severity="error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-registration-error"
+                        severity="error"
+                        quietText={t('counsellorOnboarding.registrationError')}
+                    >
                         {t('counsellorOnboarding.registrationError')}
                     </Notify>
                 )}

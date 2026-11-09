@@ -278,19 +278,22 @@ export const DepartmentDataProtectionCard = ({
     const [consentBlockedClosed, setConsentBlockedClosed] = useState(false);
     const [versionsNoticeClosed, setVersionsNoticeClosed] = useState(false);
     const consentBlockedSnackbar =
-        blockedLanguages.length > 0 && !consentBlockedClosed ? (
-            <span data-testid="consent-publish-blocked">
-                {/* The pop-up is not in the tree: keep the reason as the consent trigger's description. */}
+        blockedLanguages.length > 0 ? (
+            <span data-testid={consentBlockedClosed ? undefined : 'consent-publish-blocked'}>
+                {/* The pop-up is not in the tree: keep the reason as the consent trigger's description. It stays
+                    after the pop-up is closed, because the publication is still blocked. */}
                 <span id={consentBlockedId} hidden>
                     {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
                 </span>
-                <EditorHintSnackbar
-                    tone="error"
-                    text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
-                    // "Ansehen" lands on the consent action that must be fixed, not on an empty wrapper.
-                    jump={`[id="${rootId}"] [data-testid="consent-edit-trigger"]`}
-                    onClose={() => setConsentBlockedClosed(true)}
-                />
+                {!consentBlockedClosed && (
+                    <EditorHintSnackbar
+                        tone="error"
+                        text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                        // "Ansehen" lands on the consent action that must be fixed, not on an empty wrapper.
+                        jump={`[id="${rootId}"] [data-testid="consent-edit-trigger"]`}
+                        onClose={() => setConsentBlockedClosed(true)}
+                    />
+                )}
             </span>
         ) : undefined;
     const editorNotices = [
