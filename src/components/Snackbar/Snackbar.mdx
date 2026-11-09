@@ -1,0 +1,115 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Molecules/Snackbar guide" />
+
+# Which message for which situation
+
+The Admin shows feedback in two ways. Pick by what the person has to do with it.
+
+| Situation                                                                                                                  | Use                                                      | Stays on screen                          |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------- |
+| "Done": saved, copied, sent, published                                                                                     | **Snackbar**, `success`                                  | 4 to 6 s, then gone, with a close button |
+| Neutral news: `info`                                                                                                       | **Snackbar**, `info`                                     | 4 to 6 s, then gone, with a close button |
+| A request failed                                                                                                           | **Snackbar**, `error`                                    | **until closed** or acted on             |
+| A side effect that is not an error: "setup mail was not sent"                                                              | **Snackbar**, `warning`                                  | **until closed** or acted on             |
+| Something happened that they may want to undo or retry right now                                                           | **Snackbar** with an action ("Rückgängig")               | **until acted on** or closed             |
+| The page itself is in a state the person has to act on: missing consent, blocked form, read-only reason, an empty template | **Inline message box** (next to the content it is about) | as long as the state lasts               |
+
+The line between the two: **a snackbar is an event, an inline box is a state.** If the message is
+still true after ten seconds and the person still has to deal with it, it does not belong in a
+snackbar. If it reports something that just happened, it never belongs in a box on the page.
+
+Inline boxes are built and documented separately (tooltip and message-box designs). This guide
+only covers what is transient, dismissible or "must click".
+
+## How to raise one
+
+Never import `message` or `notification` from antd. One channel serves everything, the API layer
+included:
+
+```ts
+import { snackbar, useSnackbar } from '../components/Snackbar';
+
+snackbar.success(t('legal.draft.saved')); // outside React: fetchData, hooks, utils
+snackbar.error(t('message.error.default')); // stays until closed
+
+const { notify } = useSnackbar(); // inside a component, identical behaviour
+notify({
+    message: t('legal.draft.discarded'),
+    action: { label: t('legal.draft.undo'), onClick: undo }, // text action, stays until acted on
+});
+```
+
+`notify` options: `title` (or its old name `message`; required), `description`, `severity`
+(`info` | `success` | `warning` | `error`), `action`, `secondaryAction`, `jump`, `persistent`,
+`durationMs`, `key`, `causeKey`, `testId`, `onClose`.
+
+## Where it shows, and "Ansehen"
+
+Notifications are a classic toast stack at the **bottom right of the screen** (on phones along the
+bottom, with the M3 side margin). Up to four are visible at once, the newest nearest the corner,
+with a gap between them; the rest wait and move up as pop-ups go. They overlay the page: they never
+move layout, never sit in a card and never touch a card edge.
+
+Every pop-up has a **title** (what it is about, a few words), an optional **description** (one or
+two sentences) and a close button. When the event belongs to a tile or a field, give it a `jump`:
+it adds the "Ansehen" / "View" button, which first runs `onJump` (open or enlarge the editor,
+expand the tile), then scrolls the target to the middle of the screen and focuses it (or its first
+button, field or link). The pop-up is dismissed afterwards, because the person has been taken to
+the owner.
+
+```ts
+snackbar.error({
+    title: t('legal.draft.missing'),
+    description: t('legal.draft.missingHint'),
+    jump: { target: 'tile-legal', onJump: () => setEditorOpen(true) }, // id, CSS selector, element or ref
+    causeKey: 'tenant-api-down',
+});
+snackbar.warning({ title, jump: 'tile-legal' }); // a bare target works too
+```
+
+Two outcomes to choose between (two drafts): one pop-up with `action` and `secondaryAction`. With
+both set, an extra `jump` is left out; three actions do not fit.
+
+## Rules the channel enforces
+
+-   **Errors, warnings and anything with an action never time out.** They stay until the person
+    closes them or acts on them. Only `success` and `info` leave on their own, after 4 to 6 seconds
+    (a little more for long text). `durationMs` is read for those two only and clamped to that
+    range; `persistent: true` keeps even a success until closed.
+-   **Every snackbar has a close button.** No message is a dead end, and none needs a timer to get
+    out of the way.
+-   **A stack of four.** Up to four pop-ups are visible; the rest wait in the queue (at most ten)
+    and move up in order.
+-   **No duplicates, ever.** The same text and severity while it is visible or queued is one
+    pop-up. After a timeout, the same text within four seconds is the same event.
+    After a person closed it, a repeat is news and shows again. Give a `key` when the text changes
+    but the meaning does not ("session ends in 60 s" → "session ended").
+-   **One cause, one pop-up.** `causeKey` (any text, e.g. `'tenant-api-down'`) collapses messages
+    from different places: one backend outage that makes six cards fail shows one pop-up. Give
+    every card's load error the same `causeKey`.
+-   **The timer stops** while the pointer is over the snackbar or focus is inside it.
+-   **Texts are i18n keys you resolved, never raw server strings.** "No access" is not "wrong
+    credentials" is not "server unreachable": each gets its own `message.error.*` key (see
+    `CLAUDE.md`, error-handling conventions).
+
+## Accessibility
+
+-   Confirmations are announced politely (`role="status"`), errors assertively (`role="alert"`).
+    Both regions exist before the first message, which is what makes screen readers read it.
+-   Focus is never moved to a snackbar by the channel itself. The action and the close button are
+    ordinary buttons in the tab order, and the host sits at the end of the page, so **Alt+T** moves
+    focus to the newest one from anywhere. **Escape** closes the snackbar when focus is inside it, and
+    closing it (Escape, close button, action or timeout while it has focus) returns focus to where it was.
+-   The focus ring takes the text colour of the tone, so it is at least 3:1 against the snackbar in
+    every tone and both schemes (the `FocusRing` story measures it).
+-   `prefers-reduced-motion` turns the 150 ms rise-and-fade off.
+-   Action and close targets are 40 and 48 px high, as in Figma.
+
+## Variants
+
+Ten variants and the two building blocks come straight from the Figma page "Snackbar"
+(Design-System-M3_ORISO, 53977:33575): single line, two lines, text action, close affordance,
+"longer action" (action on its own row, chosen automatically for labels over 12 characters or
+text over 72). All of them are in the stories of this component, in light and dark. The channel
+always shows the variants with the close affordance.
