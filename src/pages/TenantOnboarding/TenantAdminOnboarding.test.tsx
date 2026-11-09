@@ -280,7 +280,10 @@ describe('TenantAdminOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByTestId('snackbar');
+        // The 502 raises the service-error pop-up, not some other notification.
+        const serviceError = await screen.findByTestId('snackbar');
+        expect(serviceError).toHaveAttribute('data-severity', 'error');
+        expect(serviceError).toHaveTextContent('accountSetup.serviceError');
         view.rerender(
             <MemoryRouter>
                 <TenantAdminOnboarding inviteToken="second" client={client} />

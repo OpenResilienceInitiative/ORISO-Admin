@@ -86,7 +86,7 @@ export const TenantAdminOnboarding = ({ inviteToken, client, forwardClient }: Te
                     <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                         {t('tenantOnboarding.loadError.title')}
                     </Typography>
-                    <HintText tone="error" style={{ marginBottom: 24 }}>
+                    <HintText tone="error" role="alert" style={{ marginBottom: 24 }}>
                         {t('tenantOnboarding.loadError.description')}
                     </HintText>
                     <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>
