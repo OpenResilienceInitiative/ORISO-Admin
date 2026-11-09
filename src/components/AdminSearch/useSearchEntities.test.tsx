@@ -139,6 +139,36 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
         expect(asked(Resource.TenantAdminUser)).toContain(PermissionAction.Read);
     });
 
+    // The lists are fetched for the released text only: a query that is replaced within the debounce
+    // window must never reach a server list.
+    it('asks no list for a query that is replaced before the debounce has run out', async () => {
+        const view = renderHook(({ query }) => useSearchEntities(query), { initialProps: { query: '' } });
+
+        view.rerender({ query: 'ann' });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(100);
+        });
+        view.rerender({ query: 'anna' });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(100);
+        });
+
+        expect(Object.values(enabledFlags()).every((flag) => flag === false)).toBe(true);
+        expect(view.result.current.forQuery).toBe('');
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(200);
+        });
+
+        const searchesAsked = mocks.agencies.mock.calls
+            .map((call) => call[0])
+            .filter((args) => args.enabled)
+            .map((args) => args.search);
+
+        expect(new Set(searchesAsked)).toEqual(new Set(['anna']));
+        expect(view.result.current.forQuery).toBe('anna');
+    });
+
     it('hands the released search text to the lists', async () => {
         await typed('anna');
 
