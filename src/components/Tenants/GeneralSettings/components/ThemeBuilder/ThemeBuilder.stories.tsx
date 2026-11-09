@@ -135,7 +135,8 @@ export const WeakContrastWarning: Story = {
     },
     play: async ({ canvasElement }) => {
         const body = modalBody(canvasElement);
-        await waitFor(() => expect(body.getByRole('status')).toBeVisible());
+        // The app-wide snackbar region is a (still empty) status too; the notice is the one with text.
+        await waitFor(() => expect(body.getAllByRole('status').find((node) => node.textContent?.trim())).toBeVisible());
         // A grey error colour is weak, but not "close to the brand": only the contrast notice shows.
         await expect(body.queryByText(SIGNAL_TOO_CLOSE)).not.toBeInTheDocument();
         await expect(canvasElement.ownerDocument.querySelector('[data-contrast-level="fail"]')).not.toBeNull();
