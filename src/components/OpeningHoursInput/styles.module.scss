@@ -1,5 +1,4 @@
 /* Opening hours editor. Surfaces follow the admin tiers; colours are M3 tokens only. */
-
 .root {
     display: flex;
     flex-direction: column;
@@ -124,6 +123,7 @@
 
 /* Read-only (disabled) values stay at full contrast: the day switches show what is set,
    so grey values next to a red "on" switch read as broken. Only the border stays tonal. */
+
 .range .time :global(.Mui-disabled) {
     -webkit-text-fill-color: var(--m3-on-surface, #1d1b20);
     color: var(--m3-on-surface, #1d1b20);
