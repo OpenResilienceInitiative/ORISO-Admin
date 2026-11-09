@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar } from '../../../../Snackbar';
 
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
@@ -29,14 +30,6 @@ vi.mock('../../hooks/useAgencyLegalDraft', () => ({
         clearConflict: vi.fn(),
     }),
 }));
-vi.mock('antd', async () => {
-    const antd = await vi.importActual<typeof import('antd')>('antd');
-
-    return {
-        ...antd,
-        notification: { ...antd.notification, success: h.notifySuccess, error: h.notifyError },
-    };
-});
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -109,6 +102,8 @@ const mutationCallbacks = () => h.publishDpp.mock.calls.at(-1)?.[1];
  */
 describe('AgencyLegalTextContainer — the Fachbereich save says what happened', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'success').mockImplementation(h.notifySuccess as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(h.notifyError as never);
         h.useDepartmentDpp.mockReset().mockReturnValue({
             data: { content: '{"de":"<p>own</p>"}', publicationStatus: 'PUBLISHED' },
             isLoading: false,
