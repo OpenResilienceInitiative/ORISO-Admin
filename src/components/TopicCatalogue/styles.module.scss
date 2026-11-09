@@ -2,9 +2,6 @@
 
 /* The topic catalogue: one white panel per category inside a tile. M3 tokens only. */
 
-/* The app has no shared focus-ring token yet; every focus ring of this file comes from here. */
-$focus-ring: #273270;
-
 /* The card keeps 24px of padding on each side. The panels reach almost to its edge (8px), the
    panels themselves carry the air around their icons. */
 
@@ -142,10 +139,9 @@ $focus-ring: #273270;
         text-decoration: underline;
     }
 
+    /* The ring itself comes from the shared :focus-visible rule in app.css. */
     &:focus-visible {
         border-radius: 4px;
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
     }
 }
 
@@ -195,11 +191,6 @@ $focus-ring: #273270;
 
     &:hover:not(:disabled) {
         background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
     }
 
     &:disabled {
@@ -311,11 +302,6 @@ $focus-ring: #273270;
 
     &:hover:not(:disabled) {
         background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
     }
 
     &:disabled {
@@ -437,11 +423,6 @@ $focus-ring: #273270;
         background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
     }
 
-    &:focus-visible {
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
-    }
-
     &:disabled {
         cursor: default;
         opacity: 0.38;
@@ -467,11 +448,6 @@ $focus-ring: #273270;
     svg {
         width: 14px;
         height: 14px;
-    }
-
-    &:focus-visible {
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
     }
 }
 
@@ -500,11 +476,6 @@ $focus-ring: #273270;
 
     &:hover {
         background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid $focus-ring;
-        outline-offset: 2px;
     }
 }
 
