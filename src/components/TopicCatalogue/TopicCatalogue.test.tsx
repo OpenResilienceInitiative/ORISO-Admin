@@ -340,6 +340,17 @@ describe('TopicCatalogue edit mode', () => {
         expect(poolRow(1)).toHaveTextContent('In keiner Kategorie');
     });
 
+    it('announces a category move and removal, and puts the focus on the add button after a removal', async () => {
+        setup();
+        const u = user();
+        await startEditing();
+        await u.click(label('Kategorie „Allgemein“ nach hinten'));
+        expect(status()).toHaveTextContent('Kategorie „Allgemein“ steht jetzt auf Platz 2 von 3.');
+        await u.click(label('Kategorie „Leer“ entfernen'));
+        expect(status()).toHaveTextContent('Kategorie „Leer“ entfernt.');
+        expect(document.activeElement).toBe(textButton('Kategorie hinzufügen'));
+    });
+
     it('adds a category, renames one, and removes one without losing its topics', async () => {
         setup();
         const u = user();

@@ -202,6 +202,7 @@ export const TopicCatalogue = ({
     const [drop, setDrop] = useState<DropTarget | null>(null);
     const [focusKey, setFocusKey] = useState<string | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    const addGroupRef = useRef<HTMLButtonElement>(null);
     // The translation answers later than the admin keeps typing: merge into what is on screen then, not into
     // what was on screen when the request left. A new edit session (or leaving it) drops a late answer.
     const latest = useRef({ draft, draftTopics, machine });
@@ -749,6 +750,18 @@ export const TopicCatalogue = ({
     const toggleCollapsed = (groupId: string) =>
         setCollapsed((list) => (list.includes(groupId) ? list.filter((id) => id !== groupId) : [...list, groupId]));
 
+    const shiftGroup = (group: TopicGroup, delta: -1 | 1) => {
+        const position = draft.findIndex((entry) => entry.id === group.id) + delta;
+        setDraft(moveGroup(draft, group.id, delta));
+        setAnnouncement(
+            t('topicCatalogue.announce.groupMoved', {
+                group: groupLabel(group),
+                position: position + 1,
+                total: draft.length,
+            }),
+        );
+    };
+
     const renderGroup = (group: TopicGroup, groupIndex: number) => {
         const headingId = `topic-group-${group.id}`;
         const listId = `topic-list-${group.id}`;
@@ -818,13 +831,13 @@ export const TopicCatalogue = ({
                                 icon={<ChevronLeftIcon />}
                                 ariaLabel={t('topicCatalogue.groupEarlier', { name: groupLabel(group) })}
                                 disabled={saving || groupIndex === 0}
-                                onClick={() => setDraft(moveGroup(draft, group.id, -1))}
+                                onClick={() => shiftGroup(group, -1)}
                             />
                             <IconButton
                                 icon={<ChevronRightIcon />}
                                 ariaLabel={t('topicCatalogue.groupLater', { name: groupLabel(group) })}
                                 disabled={saving || groupIndex === draft.length - 1}
-                                onClick={() => setDraft(moveGroup(draft, group.id, 1))}
+                                onClick={() => shiftGroup(group, 1)}
                             />
                             <IconButton
                                 icon={<DeleteOutlinedIcon />}
@@ -836,6 +849,8 @@ export const TopicCatalogue = ({
                                     setAnnouncement(
                                         t('topicCatalogue.announce.groupRemoved', { group: groupLabel(group) }),
                                     );
+                                    // The remove button unmounts with its category; the add button is a stable landing place.
+                                    addGroupRef.current?.focus();
                                 }}
                             />
                         </span>
@@ -931,7 +946,13 @@ export const TopicCatalogue = ({
                     <h3 className={styles.columnTitle}>{t('topicCatalogue.categoriesTitle')}</h3>
                     <div className={styles.categories}>
                         {draft.map((group, groupIndex) => renderGroup(group, groupIndex))}
-                        <button type="button" className={styles.addGroup} disabled={saving} onClick={addNewGroup}>
+                        <button
+                            ref={addGroupRef}
+                            type="button"
+                            className={styles.addGroup}
+                            disabled={saving}
+                            onClick={addNewGroup}
+                        >
                             <AddOutlinedIcon aria-hidden />
                             {t('topicCatalogue.addGroup')}
                         </button>

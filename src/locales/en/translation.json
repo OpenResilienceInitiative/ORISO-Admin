@@ -1717,6 +1717,7 @@
     "topicCatalogue.announce.moved": "“{{name}}” is now at position {{position}} of {{total}} in “{{group}}”.",
     "topicCatalogue.announce.edge": "“{{name}}” cannot move further in that direction.",
     "topicCatalogue.announce.groupAdded": "Category “{{group}}” added.",
+    "topicCatalogue.announce.groupMoved": "Category “{{group}}” moved to position {{position}} of {{total}}.",
     "topicCatalogue.categoriesTitle": "Categories",
     "topicCatalogue.topicsTitle": "Topics ({{count}})",
     "topicCatalogue.topicsHint": "Drag a topic into a category. A topic may sit in several categories.",

@@ -2241,6 +2241,7 @@
     "topicCatalogue.announce.moved": "„{{name}}“ steht jetzt auf Platz {{position}} von {{total}} in „{{group}}“.",
     "topicCatalogue.announce.edge": "„{{name}}“ kann nicht weiter in diese Richtung.",
     "topicCatalogue.announce.groupAdded": "Kategorie „{{group}}“ hinzugefügt.",
+    "topicCatalogue.announce.groupMoved": "Kategorie „{{group}}“ steht jetzt auf Platz {{position}} von {{total}}.",
     "topicCatalogue.categoriesTitle": "Kategorien",
     "topicCatalogue.topicsTitle": "Themen ({{count}})",
     "topicCatalogue.topicsHint": "Ziehen Sie ein Thema in eine Kategorie. Ein Thema darf in mehreren Kategorien stehen.",
