@@ -82,6 +82,14 @@ describe('snackbar store: the stack', () => {
         expect(messages(store.getState().visible).concat(messages(store.getState().queued))).toContain('waiting0');
     });
 
+    it('updates a pop-up in place when the same key and cause are raised again with a new text', () => {
+        const { api, store } = setup();
+        api.error({ key: 'k', title: 'first', causeKey: 'down' });
+        api.info('other');
+        api.error({ key: 'k', title: 'second', causeKey: 'down' });
+        expect(messages(store.getState().visible)).toEqual(['second', 'other']);
+    });
+
     it('clears everything, visible and queued', () => {
         const { api, store } = setup();
         for (let i = 0; i < 6; i += 1) api.info(`m${i}`);
