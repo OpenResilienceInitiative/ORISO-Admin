@@ -2,11 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar } from '../components/Snackbar';
 import { getChatRecoverySettings, updateChatRecoverySettings } from '../api/tenant/chatRecoverySettings';
 import { CHAT_RECOVERY_SETTINGS_QUERY_KEY, useChatRecoverySettings } from './useChatRecoverySettings.hook';
 
 const notices = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
-vi.mock('antd', async () => ({ ...(await vi.importActual('antd')), message: notices }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../api/tenant/chatRecoverySettings', () => ({
     getChatRecoverySettings: vi.fn(),
@@ -21,6 +21,8 @@ describe('useChatRecoverySettings', () => {
     );
 
     beforeEach(() => {
+        vi.spyOn(snackbar, 'success').mockImplementation(notices.success);
+        vi.spyOn(snackbar, 'error').mockImplementation(notices.error);
         vi.clearAllMocks();
         client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
         vi.mocked(getChatRecoverySettings).mockResolvedValue(confirmed);

@@ -416,6 +416,14 @@ const ChannelButtons = ({ frameRef }: { frameRef: (element: HTMLDivElement | nul
     );
 };
 
+// The Storybook preview mounts its own host, whose assertive region is always in the DOM and empty.
+// Pick the region that holds a pop-up of this story instead of the first alert in the page.
+const snackbarAlert = (body: ReturnType<typeof within>): HTMLElement => {
+    const region = body.getAllByRole('alert').find((el) => el.querySelector('[data-testid="snackbar"]'));
+    if (!region) throw new Error('No assertive region holds a snackbar yet');
+    return region;
+};
+
 const ChannelDemo = () => {
     const store = useMemo(() => createSnackbarStore(), []);
     const [frame, setFrame] = useState<HTMLDivElement | null>(null);
@@ -435,7 +443,7 @@ export const ChannelQueueAndDedupe: Story = {
         await waitFor(() => expect(body.getAllByTestId('snackbar')).toHaveLength(1));
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Burst of 5 identical errors' }));
         await expect(body.getAllByTestId('snackbar')).toHaveLength(1);
-        await expect(body.getByRole('alert')).toHaveTextContent('Es ist ein Fehler aufgetreten.');
+        await expect(snackbarAlert(body)).toHaveTextContent('Es ist ein Fehler aufgetreten.');
     },
 };
 
@@ -445,7 +453,7 @@ export const ErrorIsAnAlert: Story = {
     play: async ({ canvasElement, userEvent }) => {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Error (stays until closed)' }));
-        const alert = await body.findByRole('alert');
+        const alert = await waitFor(() => snackbarAlert(body));
         // The pop-up fades in over 150 ms; an element at opacity 0 is not visible yet.
         await waitFor(() => expect(within(alert).getByRole('button', { name: 'Meldung schließen' })).toBeVisible());
         await userEvent.click(within(alert).getByRole('button', { name: 'Meldung schließen' }));
@@ -581,7 +589,7 @@ export const ErrorThatStays: Story = {
     play: async ({ canvasElement, userEvent }) => {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Error (stays until closed)' }));
-        const alert = await body.findByRole('alert');
+        const alert = await waitFor(() => snackbarAlert(body));
         // The pop-up fades in over 150 ms; an element at opacity 0 is not visible yet.
         await waitFor(() => expect(within(alert).getByRole('button', { name: 'Meldung schließen' })).toBeVisible());
     },

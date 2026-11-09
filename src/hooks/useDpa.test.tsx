@@ -2,19 +2,13 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { snackbar } from '../components/Snackbar';
 
 vi.mock('../api/tenant/publishDpa', () => ({ publishDpa: vi.fn() }));
 vi.mock('../api/tenant/getDpaVersions', () => ({ getDpaVersions: vi.fn() }));
 
 const notificationSuccess = vi.fn();
 const notificationError = vi.fn();
-vi.mock('antd', async () => ({
-    ...(await vi.importActual<typeof import('antd')>('antd')),
-    notification: {
-        success: (args: unknown) => notificationSuccess(args),
-        error: (args: unknown) => notificationError(args),
-    },
-}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -32,6 +26,8 @@ const publishMock = vi.mocked(publishDpa);
 const versionsMock = vi.mocked(getDpaVersions);
 
 beforeEach(() => {
+    vi.spyOn(snackbar, 'success').mockImplementation(notificationSuccess as never);
+    vi.spyOn(snackbar, 'error').mockImplementation(notificationError as never);
     publishMock.mockReset();
     versionsMock.mockReset();
     notificationSuccess.mockReset();

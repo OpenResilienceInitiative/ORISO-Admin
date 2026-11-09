@@ -144,7 +144,7 @@ export const Desktop1440: Story = {
     play: async (context) => {
         const canvas = await settle(context.canvasElement, 'wide');
         await meta.play?.(context);
-        await expect(canvas.getByText('Teamberatungsstelle')).toBeVisible();
+        await expect(canvas.getByText('Teamberatung')).toBeVisible();
         await userEvent.click(
             canvas.getByRole('button', { name: 'Details zu Caritas Beratungsstelle Mitte anzeigen' }),
         );
