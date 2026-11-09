@@ -25,6 +25,24 @@ describe('applyAdminTheme', () => {
             });
     });
 
+    // #1168: the dialog card draws its focus ring in the scheme colour (--m3-primary); a pale Träger seed
+    // must not take the ring below 3:1 on the card surface.
+    it.each(['#b4ddee', '#f2d16b', '#1e88e5'])('keeps the card focus ring at 3:1 for the seed %s', (seed) => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: seed }, root);
+        const ring = root.style.getPropertyValue('--admin-focus-ring-on-surface');
+        const surface = root.style.getPropertyValue('--admin-form-card-surface');
+
+        expect(contrastRatio(ring, surface)).toBeGreaterThanOrEqual(3);
+    });
+
+    it('keeps the tenant colour as card focus ring when it reads, so the default look is unchanged', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        expect(root.style.getPropertyValue('--admin-focus-ring-on-surface')).toBe(BENCHMARK_SEED);
+    });
+
     it('renders a light surface with a light on-primary switch thumb', () => {
         const root = document.createElement('div');
         applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
