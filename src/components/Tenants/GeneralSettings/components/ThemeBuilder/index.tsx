@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { coloursHelp } from './help';
+import { ColorPresets } from './ColorPresets';
 import { ContrastBadge, ContrastNotice } from '../../../../ContrastBadge';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
@@ -71,26 +73,27 @@ const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string
     {
         color: tokens['--oriso-app-accent-dark'],
         label: t('theme.builder.accentDarkColor'),
-        description: t('theme.builder.summary.accentDark'),
+        description: t('theme.builder.purpose.accentDark'),
     },
     {
         color: tokens['--oriso-app-accent-light'],
         label: t('theme.builder.accentLightColor'),
-        description: t('theme.builder.summary.accentLight'),
+        description: t('theme.builder.purpose.accentLight'),
     },
     {
         color: tokens['--m3-error'],
-        label: t('theme.builder.summary.errorLabel'),
-        description: t('theme.builder.summary.error'),
+        label: t('theme.builder.signalColor'),
+        description: t('theme.builder.purpose.signal'),
     },
 ];
 
+/** Name, then one line on what the colour is used for, then hex and contrast on the right (#1374). */
 const ColorSummaryRow = ({ color, label, description }: { color: string; label: string; description: string }) => (
     <div className={styles.colorSummaryRow}>
         <span className={styles.colorSwatch} style={{ backgroundColor: color }} />
         <span className={styles.colorText}>
-            <span className={styles.colorDescription}>{description}</span>
             <span className={styles.colorLabel}>{label}</span>
+            <span className={styles.colorDescription}>{description}</span>
         </span>
         <span className={styles.colorValue}>
             <span className={styles.colorHex}>{color ? color.toUpperCase() : '–'}</span>
@@ -136,8 +139,9 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
         <>
             <div className={styles.colorEditor}>
                 <MuiColorField
-                    className={styles.colorField}
+                    className={classNames(styles.colorField, styles.colorFieldWithPresets)}
                     labelKey="theme.builder.accentDarkColor"
+                    descriptionKey="theme.builder.purpose.accentDark"
                     showContrast
                     name={['theming', 'primaryColor']}
                     required
@@ -153,9 +157,18 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                         },
                     ]}
                 />
+                <ColorPresets
+                    value={accentDark ?? getAccentDark(storedSeeds)}
+                    disabled={locks.accentDark}
+                    onChange={(hex) =>
+                        // A preset is always usable, so it also clears an error left by an earlier own colour.
+                        form.setFields([{ name: ['theming', 'primaryColor'], value: hex, errors: [] }])
+                    }
+                />
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentLightColor"
+                    descriptionKey="theme.builder.purpose.accentLight"
                     showContrast
                     name={['theming', 'accent']}
                     disabled={locks.accentLight}
@@ -163,6 +176,7 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.signalColor"
+                    descriptionKey="theme.builder.purpose.signal"
                     showContrast
                     name={['theming', 'signal']}
                     disabled={locks.signal}

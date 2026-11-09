@@ -207,3 +207,11 @@
         background: transparent;
     }
 }
+
+// Optional „An“/„Aus“ next to the switch (#1374); the word itself is `SwitchStateLabel`.
+.withState {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+}

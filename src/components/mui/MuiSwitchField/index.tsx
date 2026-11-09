@@ -8,6 +8,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
+import { SwitchStateLabel } from '../../M3Switch/SwitchStateLabel';
 import styles from './styles.module.scss';
 
 /**
@@ -38,6 +39,11 @@ export interface MuiSwitchProps {
     ariaLabel?: string;
     id?: string;
     className?: string;
+    /**
+     * Shows the state as a word next to the switch („An“/„Aus“, #1374), so the
+     * state does not depend on reading the knob alone. Off by default.
+     */
+    showStateLabel?: boolean;
 }
 
 /**
@@ -49,25 +55,47 @@ export interface MuiSwitchProps {
  * When there IS a Form.Item, use {@link MuiSwitchField} — it adds the binding,
  * validation status and helper text on top of this.
  */
-export const MuiSwitch = ({ checked, onChange, disabled, readOnly, ariaLabel, id, className }: MuiSwitchProps) => (
-    <Switch
-        checked={checked}
-        className={classNames(
-            styles.switch,
-            { [styles.switchDisabled]: disabled, [styles.switchReadOnly]: readOnly },
-            className,
-        )}
-        checkedIcon={checkedThumb}
-        disabled={disabled}
-        disableRipple
-        focusVisibleClassName=".Mui-focusVisible"
-        icon={uncheckedThumb}
-        slotProps={{ input: { 'aria-label': ariaLabel, 'aria-disabled': readOnly || undefined, id } }}
-        onChange={(_event, next) => {
-            if (!readOnly) onChange?.(next);
-        }}
-    />
-);
+export const MuiSwitch = ({
+    checked,
+    onChange,
+    disabled,
+    readOnly,
+    ariaLabel,
+    id,
+    className,
+    showStateLabel = false,
+}: MuiSwitchProps) => {
+    const control = (
+        <Switch
+            checked={checked}
+            className={classNames(
+                styles.switch,
+                { [styles.switchDisabled]: disabled, [styles.switchReadOnly]: readOnly },
+                className,
+            )}
+            checkedIcon={checkedThumb}
+            disabled={disabled}
+            disableRipple
+            focusVisibleClassName=".Mui-focusVisible"
+            icon={uncheckedThumb}
+            slotProps={{ input: { 'aria-label': ariaLabel, 'aria-disabled': readOnly || undefined, id } }}
+            onChange={(_event, next) => {
+                if (!readOnly) onChange?.(next);
+            }}
+        />
+    );
+
+    if (!showStateLabel) {
+        return control;
+    }
+
+    return (
+        <span className={styles.withState}>
+            {control}
+            <SwitchStateLabel checked={checked} disabled={disabled} />
+        </span>
+    );
+};
 
 type FieldName = string | Array<string | number>;
 
@@ -82,6 +110,7 @@ interface MuiSwitchControlProps {
     helpText?: string;
     switchLabel: string;
     confirmEnable?: (proceed: () => void) => void;
+    showStateLabel?: boolean;
 }
 
 /**
@@ -99,6 +128,7 @@ const MuiSwitchControl = ({
     helpText,
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const inReadOnlyTile = React.useContext(ReadOnlyTileContext);
@@ -136,6 +166,7 @@ const MuiSwitchControl = ({
                         readOnly={isReadOnly}
                         ariaLabel={switchLabel}
                         className={classNames({ [styles.switchUnavailable]: unavailable })}
+                        showStateLabel={showStateLabel}
                     />
                 }
             />
@@ -172,6 +203,8 @@ export interface MuiSwitchFieldProps {
      * (e.g. the supervision privacy-policy confirmation). Turning it off never asks.
      */
     confirmEnable?: (proceed: () => void) => void;
+    /** Shows „An“/„Aus“ next to the switch (#1374). Off by default. */
+    showStateLabel?: boolean;
 }
 
 /**
@@ -189,6 +222,7 @@ export const MuiSwitchField = ({
     className,
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: MuiSwitchFieldProps) => {
     let accessibleSwitchLabel = switchLabel;
     if (!accessibleSwitchLabel) {
@@ -212,6 +246,7 @@ export const MuiSwitchField = ({
                     helpText={helpText}
                     switchLabel={accessibleSwitchLabel}
                     confirmEnable={confirmEnable}
+                    showStateLabel={showStateLabel}
                 />
             </Form.Item>
         </div>

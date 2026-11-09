@@ -93,4 +93,23 @@ describe('ColorSelector (#1374)', () => {
 
         expect(onSet).toHaveBeenLastCalledWith('#0033ff');
     });
+
+    it('shows what the colour is used for under its name (#1374)', () => {
+        render(
+            <ColorSelector
+                isLoading={false}
+                label="Dunkle Akzentfarbe"
+                description="Aktive Aktionen und markante Akzente"
+                tenantColor="#a5000a"
+                field="primaryColor"
+                setColorValue={() => undefined}
+            />,
+        );
+
+        const purpose = screen.getByText('Aktive Aktionen und markante Akzente');
+        expect(purpose.tagName).toBe('P');
+        expect(screen.getByText('Dunkle Akzentfarbe').compareDocumentPosition(purpose)).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+    });
 });

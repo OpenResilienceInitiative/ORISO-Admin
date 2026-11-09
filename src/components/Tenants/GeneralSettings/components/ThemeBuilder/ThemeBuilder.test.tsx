@@ -114,6 +114,84 @@ describe('ThemeBuilder colour summary (#1374)', () => {
     });
 });
 
+describe('ThemeBuilder colour purposes (#1374)', () => {
+    it('names each colour and says in one line what it is used for', () => {
+        render(<ThemeBuilder tenantId="1" />);
+
+        ['accentDark', 'accentLight', 'signal'].forEach((role) => {
+            expect(screen.getByText(`theme.builder.purpose.${role}`)).toBeInTheDocument();
+        });
+        expect(screen.getByText('theme.builder.signalColor')).toBeInTheDocument();
+    });
+});
+
+describe('ThemeEditorModal presets (#1374)', () => {
+    const renderEditor = (props: Partial<React.ComponentProps<typeof ThemeEditorModal>> = {}) =>
+        render(
+            <ThemeEditorModal
+                open
+                initialValues={usableInitialValues}
+                storedSeeds={{ accentDark: '#a5000a', accentLight: '#ffe2de', signal: '#b1005e' }}
+                locks={locks}
+                onCancel={() => undefined}
+                onSubmit={() => undefined}
+                {...props}
+            />,
+        );
+
+    it('starts on Caritas-Rot without a warning for the shipped colours', () => {
+        renderEditor();
+
+        expect(screen.getByRole('radio', { name: 'theme.builder.presets.caritasRed' })).toBeChecked();
+        expect(screen.queryByText('theme.builder.signalTooClose')).not.toBeInTheDocument();
+        ['accentDark', 'accentLight', 'signal'].forEach((role) => {
+            expect(screen.getByText(`theme.builder.purpose.${role}`)).toBeInTheDocument();
+        });
+    });
+
+    it('sets only the dark accent when a preset is tapped', async () => {
+        const user = userEvent.setup({ delay: null });
+        const onSubmit = vi.fn();
+        renderEditor({ onSubmit });
+
+        await user.click(screen.getByRole('radio', { name: 'theme.builder.presets.blue' }));
+        expect(screen.getByText('HEX #00639B')).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0]).toEqual({
+            theming: { primaryColor: '#00639b', accent: '#ffe2de', signal: '#b1005e' },
+        });
+    });
+
+    it('clears the unusable-colour error when a preset replaces the own colour', async () => {
+        const user = userEvent.setup({ delay: null });
+        const onSubmit = vi.fn();
+        renderEditor({
+            onSubmit,
+            initialValues: unusableInitialValues,
+            storedSeeds: { accentDark: '#000000', accentLight: '#ffe2de', signal: '#b1005e' },
+        });
+
+        expect(screen.getByTestId('preset-status')).toHaveTextContent('theme.builder.presets.custom · #000000');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        expect((await screen.findAllByText('theme.builder.seedUnusable')).length).toBeGreaterThan(0);
+
+        await user.click(screen.getByRole('radio', { name: 'theme.builder.presets.orange' }));
+        await waitFor(() => expect(screen.queryByText('theme.builder.seedUnusable')).not.toBeInTheDocument());
+
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0].theming.primaryColor).toBe('#c25e00');
+    });
+
+    it('locks the presets together with the dark accent', () => {
+        renderEditor({ locks: { accentDark: true, accentLight: false, signal: false } });
+
+        screen.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
+    });
+});
+
 describe('ThemeEditorModal', () => {
     it('shows a contrast badge next to each colour field and a notice for a weak colour', () => {
         render(

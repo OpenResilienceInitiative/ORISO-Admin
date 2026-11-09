@@ -67,3 +67,13 @@
     font-size: 12px;
     line-height: 16px;
 }
+
+// What the colour is used for, one line under the label (#1374).
+.description {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}

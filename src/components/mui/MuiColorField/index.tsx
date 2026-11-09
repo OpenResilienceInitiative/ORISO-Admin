@@ -17,6 +17,7 @@ interface MuiColorControlProps {
     helpText?: string;
     disabled?: boolean;
     showContrast?: boolean;
+    description?: string;
 }
 
 const MuiColorControl = ({
@@ -27,6 +28,7 @@ const MuiColorControl = ({
     helpText,
     disabled,
     showContrast,
+    description,
 }: MuiColorControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
@@ -45,6 +47,7 @@ const MuiColorControl = ({
                 setColorValue={(_field, color: string) => onChange?.(color)}
                 field="primaryColor"
                 showContrast={showContrast}
+                description={description}
             />
             {helperText ? <FormHelperText error={isError}>{helperText}</FormHelperText> : null}
         </>
@@ -63,6 +66,8 @@ export interface MuiColorFieldProps {
     className?: string;
     /** Show the WCAG contrast badge next to the hex code (theme colours, #1374). */
     showContrast?: boolean;
+    /** i18n key for one line under the label saying what the colour is used for (#1374). */
+    descriptionKey?: string;
 }
 
 /**
@@ -83,6 +88,7 @@ export const MuiColorField = ({
     rules = [],
     className,
     showContrast,
+    descriptionKey,
 }: MuiColorFieldProps) => {
     const { t } = useTranslation();
 
@@ -99,6 +105,7 @@ export const MuiColorField = ({
                     helpText={help ? t(help) : undefined}
                     disabled={disabled}
                     showContrast={showContrast}
+                    description={descriptionKey ? t(descriptionKey) : undefined}
                 />
             </Form.Item>
         </div>

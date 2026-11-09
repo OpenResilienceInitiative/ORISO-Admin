@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 
 import { HexColorInput, HexColorPicker } from 'react-colorful';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import useComponentVisible from '../../hooks/useComponentVisible';
 import { ContrastBadge } from '../ContrastBadge';
@@ -15,12 +16,22 @@ interface ColorSelectorProps {
     setColorValue: (field: string, color: string) => void;
     /** Show the WCAG contrast badge next to the hex code (#1374). */
     showContrast?: boolean;
+    /** One line under the label saying what the colour is used for (#1374). */
+    description?: string;
 }
 
 /** Hex digits typed so far, without `#` or anything `HexColorInput` would strip. */
 const hexDigits = (value: string) => value.replace(/[^0-9a-f]/gi, '');
 
-const ColorSelector = ({ isLoading, label, tenantColor, setColorValue, field, showContrast }: ColorSelectorProps) => {
+const ColorSelector = ({
+    isLoading,
+    label,
+    tenantColor,
+    setColorValue,
+    field,
+    showContrast,
+    description,
+}: ColorSelectorProps) => {
     const { t } = useTranslation();
     const [selectedColor, setSelectedColor] = useState(tenantColor);
     const [hexInvalid, setHexInvalid] = useState(false);
@@ -67,6 +78,10 @@ const ColorSelector = ({ isLoading, label, tenantColor, setColorValue, field, sh
             />
             <div>
                 <span>{label}</span>
+                {/* A <p>, not a <span>: the field stylesheets restyle `.colorSelector span`. */}
+                {description && (
+                    <p className={classNames('colorSelector__description', styles.description)}>{description}</p>
+                )}
                 <div className={styles.valueRow}>
                     {/* Plain `h4` — it used to be antd's `Title level={4}`, and the
                         surrounding stylesheets hook it as `.colorSelector h4`.

@@ -278,7 +278,6 @@
 
 .colorField {
     width: 100%;
-    max-width: none;
     padding: 4px 0;
     margin-bottom: 0 !important;
     border-bottom: 1px solid #d3d0d1;
@@ -304,20 +303,23 @@
             gap: 2px;
         }
 
+        // The colour's name; the purpose line under it is a <p> with its own style.
         .colorSelector span {
-            color: #444748;
-            font-size: 10px;
+            color: #1b1b1c;
+            font-size: 14px;
             font-weight: 500;
-            line-height: 12px;
+            line-height: 20px;
         }
 
         .colorSelector h4 {
             overflow: hidden;
             margin: 0;
             color: #1b1b1c;
-            font-size: 14px;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
             font-weight: 400;
-            line-height: 18px;
+            letter-spacing: 0.4px;
+            line-height: 16px;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
@@ -402,18 +404,133 @@
     gap: 2px;
 }
 
-.colorDescription {
-    color: #444748;
-    font-size: 10px;
-    font-weight: 500;
-    line-height: 12px;
-}
-
 .colorLabel {
     color: #1b1b1c;
     font-size: 14px;
-    font-weight: 400;
-    line-height: 18px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+// What the colour is used for, one line under its name (#1374).
+.colorDescription {
+    color: #444748;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+// Doubled class: MuiColorField's own `max-width: 270px` has the same specificity, and which
+// sheet wins depends on injection order (Storybook ≠ app). The rows span the panel (#1374).
+.colorField.colorField {
+    max-width: none;
+}
+
+// Preset circles under the dark accent field (#1374). They line up with the field's text
+// column: 36px swatch column plus the 12px grid gap.
+.colorField.colorFieldWithPresets {
+    border-bottom: 0;
+}
+
+.presets {
+    min-width: 0;
+    padding: 4px 0 12px 48px;
+    border: 0;
+    border-bottom: 1px solid #d3d0d1;
+    margin: 0;
+}
+
+// Floated so the legend lays out like a block instead of sitting on the fieldset border.
+// Nested to beat antd's `.ant-form legend` reset (16px, grey, bottom border).
+.presets .presetsLegend {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    margin: 0 0 10px;
+    color: #444748;
+    float: left;
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.presetOptions {
+    display: flex;
+    flex-wrap: wrap;
+    clear: both;
+    gap: 12px;
+}
+
+.presetOption {
+    position: relative;
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+// The radio stays in the layer above the circle: it takes the click and the keyboard focus.
+.presetInput {
+    position: absolute;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: inherit;
+    inset: 0;
+    opacity: 0;
+}
+
+.presetCircle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--m3-surface-container-lowest, #ffffff), 0 0 0 3px var(--m3-outline-variant, #c4c7c8);
+    transition: box-shadow 150ms;
+}
+
+// Selected: a dark ring outside a white gap, visible on every preset colour.
+.presetInput:checked + .presetCircle {
+    box-shadow: 0 0 0 3px var(--m3-surface-container-lowest, #ffffff), 0 0 0 5px var(--m3-on-surface, #1b1b1c);
+}
+
+.presetInput:focus-visible + .presetCircle {
+    outline: 2px solid #273270;
+    outline-offset: 6px;
+}
+
+.presetsDisabled {
+    .presetOption {
+        cursor: not-allowed;
+    }
+
+    .presetCircle {
+        opacity: 0.38;
+    }
+}
+
+.presetName {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    margin: -1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.presetStatus {
+    margin: 10px 0 0;
+    color: #444748;
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.4px;
+    line-height: 16px;
 }
 
 @media (max-width: 1100px) {

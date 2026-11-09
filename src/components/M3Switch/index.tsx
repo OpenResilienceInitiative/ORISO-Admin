@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { SwitchStateLabel } from './SwitchStateLabel';
 import styles from './styles.module.scss';
 
 interface M3SwitchProps {
@@ -9,6 +10,11 @@ interface M3SwitchProps {
     label: string;
     className?: string;
     onChange?: (value: boolean) => void;
+    /**
+     * Shows the state as a word next to the switch („An“/„Aus“, #1374), so the
+     * state does not depend on reading the knob alone. Off by default.
+     */
+    showStateLabel?: boolean;
 }
 
 const SELECTED_FILL = 'var(--admin-control-selected, var(--m3-primary, #A5000A))';
@@ -77,7 +83,15 @@ const switchIcon = (checked: boolean, disabled: boolean) => {
     return checked ? <OnEnabledIcon /> : <OffIcon />;
 };
 
-export const M3Switch = ({ id, checked = false, disabled = false, label, className, onChange }: M3SwitchProps) => {
+export const M3Switch = ({
+    id,
+    checked = false,
+    disabled = false,
+    label,
+    className,
+    onChange,
+    showStateLabel = false,
+}: M3SwitchProps) => {
     const handleToggle = () => {
         if (disabled) {
             return;
@@ -86,7 +100,7 @@ export const M3Switch = ({ id, checked = false, disabled = false, label, classNa
         onChange?.(!checked);
     };
 
-    return (
+    const control = (
         <button
             id={id}
             type="button"
@@ -99,5 +113,16 @@ export const M3Switch = ({ id, checked = false, disabled = false, label, classNa
         >
             {switchIcon(checked, disabled)}
         </button>
+    );
+
+    if (!showStateLabel) {
+        return control;
+    }
+
+    return (
+        <span className={styles.withState}>
+            {control}
+            <SwitchStateLabel checked={checked} disabled={disabled} />
+        </span>
     );
 };

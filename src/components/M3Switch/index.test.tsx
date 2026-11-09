@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import i18n from '../../i18n';
 import { M3Switch } from './index';
 
 describe('M3Switch', () => {
@@ -93,6 +94,37 @@ describe('M3Switch', () => {
 
             expect(thumbMid).toBe(trackMid);
             unmount();
+        });
+    });
+
+    describe('state word („An“/„Aus“, #1374)', () => {
+        it('is off by default', () => {
+            const { container } = render(<M3Switch checked label="Enable calls" />);
+
+            expect(container.querySelector('[data-switch-state]')).not.toBeInTheDocument();
+        });
+
+        it('names the state next to the switch and follows it', async () => {
+            await i18n.changeLanguage('de');
+            const { container, rerender } = render(<M3Switch checked={false} label="Rundgänge" showStateLabel />);
+
+            const word = container.querySelector('[data-switch-state]');
+            expect(word).toHaveTextContent('Aus');
+            expect(word).toHaveAttribute('aria-hidden', 'true');
+            // The switch keeps its own name; the word does not leak into it.
+            expect(screen.getByRole('switch', { name: 'Rundgänge' })).toBeInTheDocument();
+
+            rerender(<M3Switch checked label="Rundgänge" showStateLabel />);
+            expect(container.querySelector('[data-switch-state]')).toHaveTextContent('An');
+        });
+
+        it('speaks English when the admin uses English', async () => {
+            await i18n.changeLanguage('en');
+            const { container, unmount } = render(<M3Switch checked label="Tours" showStateLabel disabled />);
+
+            expect(container.querySelector('[data-switch-state="on"]')).toHaveTextContent('On');
+            unmount();
+            await i18n.changeLanguage('de');
         });
     });
 });
