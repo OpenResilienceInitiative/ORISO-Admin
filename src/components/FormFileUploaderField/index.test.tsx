@@ -1,6 +1,7 @@
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar as message } from '../Snackbar';
 import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
 import { FormFileUploaderField } from './index';
 import { getSafeFaviconUrl } from '../../utils/getSafeFaviconUrl';
