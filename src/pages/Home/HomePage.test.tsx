@@ -177,7 +177,7 @@ describe('HomePage (ORISO-Admin#1323)', () => {
         renderHome();
 
         expect(screen.getByRole('link', { name: /^Rechtliches\s*Impressum, Datenschutz und Verträge$/ })).toBeTruthy();
-        expect(screen.getByRole('link', { name: /^Email Server.*Unvollständig$/ })).toBeTruthy();
+        expect(screen.getByRole('link', { name: /^E-?mail[ -]server.*Unvollständig$/i })).toBeTruthy();
     });
 
     it('shows no mail server status for the platform mail server', () => {

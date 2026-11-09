@@ -144,7 +144,7 @@ export const TraegerAdmin: Story = {
             canvas.getByRole('link', { name: /^(Einladen|Invite)\s*(1 braucht Aktion|1 needs action)$/ }),
         ).toBeVisible();
         await expect(
-            canvas.getByRole('link', { name: /^(Email Server|E-?mail server).*(Unvollständig|Incomplete)$/i }),
+            canvas.getByRole('link', { name: /^E-?mail[ -]server.*(Unvollständig|Incomplete)$/i }),
         ).toBeVisible();
         await expect(
             canvas.getByRole('link', { name: /^(Beratungsstellen-Admin einladen|Invite counselling centre admins)$/ }),
@@ -204,9 +204,7 @@ export const AllStepsDone: Story = {
         await waitFor(() =>
             expect(canvas.queryByRole('region', { name: /^(Erste Schritte|First steps)$/ })).toBeNull(),
         );
-        await expect(
-            canvas.getByRole('link', { name: /^(Email Server|E-?mail server).*(Eingerichtet|Set up)$/i }),
-        ).toBeVisible();
+        await expect(canvas.getByRole('link', { name: /^E-?mail[ -]server.*(Eingerichtet|Set up)$/i })).toBeVisible();
         await expect(canvas.queryByText(/braucht Aktion|brauchen Aktion|need(s)? action/)).toBeNull();
     },
 };
