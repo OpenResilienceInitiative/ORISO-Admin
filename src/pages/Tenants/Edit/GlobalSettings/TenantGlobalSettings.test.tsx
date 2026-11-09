@@ -40,10 +40,10 @@ import { TenantGlobalSettings } from './index';
 const CONVERSATION_CIRCLE = 'featureSelfHelpGroupsEnabled';
 const GROUP_VIDEO = 'featureVideoCallsGroupChatsEnabled';
 
-const renderPage = () =>
+const renderPage = (id = '7') =>
     rtlRender(
         <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-            <MemoryRouter initialEntries={['/admin/tenants/7/global-settings']}>
+            <MemoryRouter initialEntries={[`/admin/tenants/${id}/global-settings`]}>
                 <Routes>
                     <Route path="/admin/tenants/:id/global-settings" element={<TenantGlobalSettings />} />
                 </Routes>
@@ -144,6 +144,16 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
 });
 
 describe('Live-chat links for the selected Träger (ORISO-Admin#1321)', () => {
+    it.each(['abc', '0'])('does not mount or request live-chat links for invalid tenant ID %s', (id) => {
+        renderPage(id);
+
+        expect(screen.getByText(i18n.t('tenants.globalSettings.superAdminWarning.title'))).toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Live chat links' })).not.toBeInTheDocument();
+        expect(
+            mocks.requests.filter(({ url }) => /\/service\/useradmin\/invitelinks(?:[/?]|$)/.test(url)),
+        ).toHaveLength(0);
+    });
+
     it('uses the selected Träger for both topics and live-chat links', async () => {
         serve({ traegerSettings: {} });
         mocks.routes.set('GET /service/useradmin/invitelinks/topics', () => [

@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
     messageError: vi.fn(),
     messageSuccess: vi.fn(),
 }));
+const topicQuery = vi.hoisted(() => vi.fn());
+const topic = { id: 5, name: 'Sozialberatung' };
 
 vi.mock('../../api/invitelinks/topicInviteLinks', async () => {
     const actual = await vi.importActual<typeof import('../../api/invitelinks/topicInviteLinks')>(
@@ -30,8 +32,12 @@ vi.mock('../../api/invitelinks/topicInviteLinks', async () => {
 });
 
 vi.mock('../../hooks/useLiveChatLinkTopics', () => ({
-    useLiveChatLinkTopics: () => ({ data: [{ id: 5, name: 'Sozialberatung' }], isLoading: false }),
+    useLiveChatLinkTopics: topicQuery,
 }));
+
+beforeEach(() => {
+    topicQuery.mockReset().mockReturnValue({ data: [topic], isLoading: false, isError: false });
+});
 
 vi.mock('antd', async () => {
     const actual = await vi.importActual<typeof import('antd')>('antd');
@@ -145,6 +151,23 @@ describe('LiveChatLinks — manage (platform admin)', () => {
             ),
         );
         expect(await screen.findByRole('button', { name: 'Copy' })).toBeTruthy();
+    });
+
+    it('disables creation and shows an alert when a selected topic can no longer be loaded', async () => {
+        mocks.listTopicInviteLinks.mockResolvedValue(page([]));
+        const user = userEvent.setup();
+        const { rerender } = render(<LiveChatLinks mode="manage" tenantId={7} />);
+        await screen.findByText(translations['liveChatLinks.manage.empty']);
+        await user.click(screen.getByRole('combobox'));
+        await user.click(await screen.findByTitle(topic.name));
+        expect(screen.getByRole('button', { name: 'Create link' })).toBeEnabled();
+
+        topicQuery.mockReturnValue({ data: [topic], isLoading: false, isError: true });
+        rerender(<LiveChatLinks mode="manage" tenantId={7} />);
+
+        expect(screen.getByRole('alert')).toHaveTextContent(translations['liveChatLinks.topicsFailed']);
+        expect(screen.getByRole('button', { name: 'Create link' })).toBeDisabled();
+        expect(mocks.createTopicInviteLink).not.toHaveBeenCalled();
     });
 
     it('asks first, then deactivates and reloads the list', async () => {
