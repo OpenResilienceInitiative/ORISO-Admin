@@ -53,14 +53,20 @@ export const homeFactKey = (tenantId: number | null, key: string) => ['HOME_FACT
  * A fact that could not be read is cached as `null`: React Query rejects `undefined`
  * as query data (and logs an error for it). Home itself reads both as "unknown".
  */
-const useFact = <T>(tenantId: number | null, key: string, enabled: boolean, load: () => Promise<T | undefined>) =>
+const useFact = <T>(
+    tenantId: number | null,
+    key: string,
+    enabled: boolean,
+    load: () => Promise<T | undefined>,
+    { staleTime = 60_000 }: { staleTime?: number } = {},
+) =>
     useQuery({
         queryKey: homeFactKey(tenantId, key),
         queryFn: async () => (await load()) ?? null,
         enabled,
         retry: false,
         refetchOnWindowFocus: false,
-        staleTime: 60_000,
+        staleTime,
     }).data ?? undefined;
 
 const hasText = (value: unknown): boolean => {
@@ -107,7 +113,7 @@ export const agencyPageComplete = (agencies: any[], total?: number): boolean | n
 
 export interface HomeFactAccess {
     role: HomeRole;
-    /** From the token; null for the platform admin or an unreadable token. */
+    /** From the token: 0 for the platform admin, null for an unreadable or missing claim. */
     tenantId?: number | null;
     canReadTenants: boolean;
     canReadAgencies: boolean;
@@ -139,6 +145,9 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
             // Same normalisation as the settings editor (claim may come top-level).
             return (record ? summariseOwnTenant(mapTenantDataToTenantAdminData(record)) : undefined) ?? null;
         },
+        // Re-read on every visit: settings are edited on other pages, and the
+        // checklist must show a save as soon as the admin comes back.
+        { staleTime: 0 },
     );
     // Observe the DPA gate's own query (no second cache): a signature the gate
     // sees — e.g. by the forwarded signatory — updates the checklist too.
