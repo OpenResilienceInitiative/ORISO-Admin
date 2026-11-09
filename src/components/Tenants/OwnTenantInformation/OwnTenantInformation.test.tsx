@@ -1,13 +1,24 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vite-plus/test';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { OwnTenantInformation } from './index';
 
+const mocks = vi.hoisted(() => ({ canUpdateTenant: true, mutate: vi.fn() }));
+
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({ can: () => mocks.canUpdateTenant }),
+}));
+vi.mock('../../../hooks/useTenantAdminDataMutation.hook', () => ({
+    useTenantAdminDataMutation: () => ({ mutate: mocks.mutate }),
+}));
 vi.mock('../../../hooks/useTenantData.hook', () => ({
     useTenantData: () => ({
         isLoading: false,
         data: {
             id: 7,
             name: 'Caritas Springfield',
+            subdomain: 'springfield',
+            licensing: { allowedNumberOfUsers: 5 },
             address: 'Evergreen Terrace 742, 12345 Springfield',
             legalName: 'Caritas Springfield e. V.',
             contactEmail: 'kontakt@springfield.example',
@@ -19,7 +30,12 @@ vi.mock('../../../hooks/useTenantData.hook', () => ({
 }));
 
 describe('OwnTenantInformation', () => {
-    it('shows what is stored for the Träger, read-only', () => {
+    beforeEach(() => {
+        mocks.canUpdateTenant = true;
+        mocks.mutate.mockReset();
+    });
+
+    it('shows what is stored for the Träger', () => {
         render(<OwnTenantInformation />);
 
         expect(screen.getByText('tenants.add.mainTenantTitle')).toBeInTheDocument();
@@ -30,8 +46,6 @@ describe('OwnTenantInformation', () => {
         expect(screen.getByDisplayValue('+49 30 123456')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Beratung für die ganze Familie')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Datenschutz GmbH')).toBeInTheDocument();
-        expect(screen.getByDisplayValue('Caritas Springfield')).toBeDisabled();
-        expect(screen.queryByRole('button', { name: /bearbeiten|edit/i })).toBeNull();
     });
 
     it('never offers the licence number or subdomain, which belong to the platform admin', () => {
@@ -39,5 +53,34 @@ describe('OwnTenantInformation', () => {
 
         expect(screen.queryByText('tenants.add.form.allowedConsultantsLicense.placeholder')).toBeNull();
         expect(screen.queryByText('tenants.add.form.subdomain.placeholder')).toBeNull();
+    });
+
+    it('lets a user who may update the Träger change the address and saves only this card’s fields', async () => {
+        const user = userEvent.setup();
+        render(<OwnTenantInformation />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const address = screen.getByDisplayValue('Evergreen Terrace 742, 12345 Springfield');
+        await user.clear(address);
+        await user.type(address, 'Ahornweg 1, 10115 Berlin');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        const [sent] = mocks.mutate.mock.calls[0];
+        expect(sent.address).toBe('Ahornweg 1, 10115 Berlin');
+        expect(sent.description).toBe('Beratung für die ganze Familie');
+        expect(sent.dataProtectionOfficer).toMatchObject({ nameAndLegalForm: 'Datenschutz GmbH' });
+        // The name is edited in its own tile; licence and subdomain are the platform admin's.
+        expect(sent).not.toHaveProperty('name');
+        expect(sent).not.toHaveProperty('licensing');
+        expect(sent).not.toHaveProperty('subdomain');
+    });
+
+    it('offers no edit button to a user who may not update the Träger', () => {
+        mocks.canUpdateTenant = false;
+        render(<OwnTenantInformation />);
+
+        expect(screen.queryByRole('button', { name: 'edit' })).toBeNull();
+        expect(screen.getByDisplayValue('Evergreen Terrace 742, 12345 Springfield')).toBeDisabled();
     });
 });
