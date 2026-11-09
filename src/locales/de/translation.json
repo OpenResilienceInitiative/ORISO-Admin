@@ -2409,7 +2409,7 @@
     "teamFunctions.counselling.name": "Teamberatung",
     "teamFunctions.counselling.description": "Klassische Teamberatung: Alle Berater:innen der Beratungsstelle sehen alle Chats und können jederzeit einsteigen.",
     "teamFunctions.chat.name": "Team-Chat",
-    "teamFunctions.chat.description": "Interne Teamberatung während der Anfrage: Berater:innen stimmen sich in einem Raum nur fürs Team ab. Der Raum schließt, sobald die Anfrage angenommen wird.",
+    "teamFunctions.chat.description": "Abstimmung im Team während der Anfrage: Berater:innen stimmen sich in einem Raum nur fürs Team ab. Der Raum schließt, sobald die Anfrage angenommen wird.",
     "agency.legal.department.all": "Alle Fachbereiche",
     "agency.legal.department.ownText": "eigener Text",
     "agency.legal.department.notInheriting_one": "{{count}} mit eigenem Text",

@@ -35,6 +35,20 @@ describe('team function names', () => {
         });
     });
 
+    it('never explains one function with the name of the other', () => {
+        // An admin who reads "Team chat: internal team counselling ..." thinks of the centre setting.
+        const otherName: Record<string, Record<'counselling' | 'chat', RegExp>> = {
+            de: { counselling: /team-?chat/i, chat: /team-?beratung/i },
+            en: { counselling: /team chat/i, chat: /team counsell?ing/i },
+        };
+        locales.forEach(([lang, strings]) => {
+            (['counselling', 'chat'] as const).forEach((fn) => {
+                const description = strings[`teamFunctions.${fn}.description`] as string;
+                expect(description, `${lang} ${fn} description`).not.toMatch(otherName[lang][fn]);
+            });
+        });
+    });
+
     it('keeps retired names out of every other string', () => {
         const retired: Record<string, RegExp> = {
             de: /Teamchat|Team-Besprechung|Teamberatungsstelle/i,
