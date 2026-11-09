@@ -76,8 +76,10 @@
 
     /* Inset ring: the list clips anything drawn outside the tab. */
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
-        outline-offset: -2px;
+        --admin-focus-ring-offset: -2px;
+
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
