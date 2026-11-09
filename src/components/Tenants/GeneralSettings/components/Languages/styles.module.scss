@@ -96,7 +96,7 @@
 
     &:focus-within {
         > span:last-child {
-            outline: 2px solid #6ba6ff;
+            outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
             outline-offset: 2px;
         }
     }

@@ -7,7 +7,7 @@ const meta = {
     component: LogoAndFavicon,
     args: { tenantId: '1' },
     parameters: { layout: 'padded', msw: { handlers: appearanceHandlers } },
-    decorators: [(Story) => inTheRaster(Story, 2), withAppearanceData],
+    decorators: [(Story) => inTheRaster(Story, 3), withAppearanceData],
 } satisfies Meta<typeof LogoAndFavicon>;
 
 export default meta;
