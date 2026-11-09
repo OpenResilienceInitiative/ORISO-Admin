@@ -61,10 +61,12 @@ describe('desktop sub-navigation tab bar (#1374)', () => {
         expect(active).toMatch(/background:\s*var\(--m3-primary,\s*#a5000a\)/);
     });
 
-    it('keeps a visible focus ring inside the clipped list', () => {
-        expect(desktopTabs).toMatch(
-            /&:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--m3-primary[^}]*outline-offset:\s*-2px/s,
-        );
+    it('keeps the shared focus ring inside the clipped list', () => {
+        // The app-wide ring (app.css) reads the offset token, so the token itself must move the ring inside.
+        const focus = block(desktopTabs, '&:focus-visible {', '}');
+        expect(focus).toMatch(/--admin-focus-ring-offset:\s*-2px/);
+        expect(focus).toMatch(/outline:\s*2px solid var\(--admin-focus-ring-color\)/);
+        expect(focus).not.toMatch(/var\(--m3-primary/);
     });
 
     it('renders 18px monochrome icons in currentColor', () => {
