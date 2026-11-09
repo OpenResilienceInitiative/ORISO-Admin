@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import i18next from 'i18next';
 import { snackbar } from '../components/Snackbar/snackbarStore';
 
 /** What `fetchData` reports when a request fails in a way the person should hear about. */
@@ -24,6 +25,14 @@ const ignore: TransportFeedback = () => undefined;
 export const captureTransportFeedback = (): TransportFeedback => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return ignore;
     return (notice) => {
-        snackbar.error(notice);
+        // A failed request names itself ("Anfrage fehlgeschlagen") and is `generic`: when a component raises
+        // its own, specific pop-up for the same failure, only that one shows.
+        snackbar.error({
+            title: i18next.t('snackbar.transport.title') as string,
+            description: notice.content,
+            duration: notice.duration,
+            key: notice.key,
+            generic: !notice.key,
+        });
     };
 };
