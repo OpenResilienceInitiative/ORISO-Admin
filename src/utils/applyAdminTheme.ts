@@ -1,7 +1,25 @@
 import { computeOrisoPalette, type OrisoSchemeName } from './theme/orisoScheme';
 import { readSeeds, ThemingSeedFields } from './themeSeeds';
+import { contrastRatio } from './contrastRatio';
 
 export const DEFAULT_ADMIN_SEED = '#A5000A';
+
+/** WCAG 2.2 non-text contrast for a focus indicator. */
+const FOCUS_RING_MIN_CONTRAST = 3;
+
+/**
+ * The dialog card draws its focus ring in the scheme colour (`--m3-primary`, the Träger seed), and a pale
+ * seed takes it below 3:1 on the card (#b4ddee: 1.18:1). Keep the Träger colour where it reads, otherwise
+ * use the fixed ORISO accent the shared ring uses (#1168).
+ */
+const cardFocusRing = (tokens: Record<string, string>): string => {
+    const ring = tokens['--m3-primary'];
+    const surface = tokens['--admin-form-card-surface'];
+
+    return ring && surface && contrastRatio(ring, surface) >= FOCUS_RING_MIN_CONTRAST
+        ? ring
+        : DEFAULT_ADMIN_SEED.toLowerCase();
+};
 const ADMIN_THEME_TOKEN_PREFIX = '--m3-';
 const ADMIN_SURFACE_TOKEN_PREFIX = '--admin-';
 
@@ -64,6 +82,10 @@ const applyAdminSchemeTheme = (
             .forEach(([name, value]) => {
                 root.style.setProperty(name, value);
             });
+        // Only the light admin shell; the inverted scheme is the theme-builder preview.
+        if (scheme === 'light') {
+            root.style.setProperty('--admin-focus-ring-on-surface', cardFocusRing(tokens));
+        }
 
         return true;
     } catch (error) {

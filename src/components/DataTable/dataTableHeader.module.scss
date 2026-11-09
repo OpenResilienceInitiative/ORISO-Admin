@@ -17,14 +17,14 @@
     letter-spacing: inherit;
 }
 
-/* Focus geometry stays literal on purpose: `outline: 2px solid var(--m3-primary)`
-   with a 2px offset is the repo-wide focus pattern (12+ sites, no token or mixin
-   behind it), and expressing 1–2px rings as fractions of the 8px spacing unit
-   would read worse and diverge from every other control. */
+/* Focus geometry stays literal on purpose: a 2px ring with a 2px offset is the
+   repo-wide focus pattern, and expressing 1–2px rings as fractions of the 8px
+   spacing unit would read worse. The colour is the shared ring token, never the
+   raw Träger colour (#1168). */
 
 .sortButton:focus-visible {
     border-radius: 4px;
-    outline: 2px solid var(--m3-primary, #a5000a);
+    outline: 2px solid var(--admin-focus-ring-color);
     outline-offset: 2px;
 }
 
