@@ -197,9 +197,10 @@ export const FailedPublicationKeepsDraft: Story = {
         await expect(localStorage.getItem(DRAFT_KEY)).toBe(draftBefore);
         await expect(requests).toHaveLength(1);
         await expect(publishedContent).toEqual(content);
+        // The failure is reported once, as the one pop-up: not twice (no second toast next to it).
         await expect(
-            canvasElement.ownerDocument.querySelector('[data-testid="snackbar"][data-severity="error"]'),
-        ).toBeNull();
+            canvasElement.ownerDocument.querySelectorAll('[data-testid="snackbar"][data-severity="error"]'),
+        ).toHaveLength(1);
     },
 };
 export const AgencyRecipientAfterExpiry: Story = {
