@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from 'use-debounce';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { TypeOfUser } from '../../enums/TypeOfUser';
@@ -17,18 +18,6 @@ const PER_LIST = 5;
 const MIN_LENGTH = 2;
 const DEBOUNCE_MS = 250;
 
-const useDebounced = (value: string, delay: number) => {
-    const [debounced, setDebounced] = useState(value);
-
-    useEffect(() => {
-        const timer = window.setTimeout(() => setDebounced(value), delay);
-
-        return () => window.clearTimeout(timer);
-    }, [value, delay]);
-
-    return debounced;
-};
-
 /**
  * Tenants, agencies (and their departments), topics and accounts that match `query`, through
  * the same list endpoints the pages use and only for what the admin may read. The server
@@ -38,7 +27,7 @@ export const useSearchEntities = (query: string) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
-    const search = useDebounced(query.trim(), DEBOUNCE_MS);
+    const [search] = useDebounce(query.trim(), DEBOUNCE_MS);
     const enabled = search.length >= MIN_LENGTH;
 
     const canTenants = isSuperAdmin && can(PermissionAction.Create, Resource.Tenant);
