@@ -18,3 +18,12 @@
     height: 40px;
     object-fit: contain;
 }
+
+/* In a panel the picker and the texts use the panel's own rhythm. */
+.iconPicker {
+    margin-bottom: 0;
+}
+
+.sectionText {
+    margin: 0;
+}
