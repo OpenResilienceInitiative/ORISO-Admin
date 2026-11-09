@@ -9,6 +9,7 @@ const mutations = vi.hoisted(() => ({
     cancel: vi.fn(),
     pause: vi.fn(),
     toast: vi.fn(),
+    errorToast: vi.fn(),
     pending: false,
 }));
 
@@ -57,7 +58,7 @@ describe('DeletionWindowModal', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.spyOn(snackbar, 'success').mockImplementation(mutations.toast as never);
-        vi.spyOn(snackbar, 'error').mockImplementation(mutations.toast as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(mutations.errorToast as never);
         mutations.pending = false;
     });
 
@@ -129,9 +130,9 @@ describe('DeletionWindowModal', () => {
             await userEvent.click(screen.getByRole('button', { name: 'deletionWindow.cancel.confirm' }));
 
             await vi.waitFor(() =>
-                expect(mutations.toast).toHaveBeenCalledWith(expect.objectContaining({ content: key })),
+                expect(mutations.errorToast).toHaveBeenCalledWith(expect.objectContaining({ content: key })),
             );
-            expect(JSON.stringify(mutations.toast.mock.calls)).not.toContain('RAW SERVER TEXT');
+            expect(JSON.stringify(mutations.errorToast.mock.calls)).not.toContain('RAW SERVER TEXT');
             expect(onClose).not.toHaveBeenCalled();
         });
 
@@ -142,7 +143,7 @@ describe('DeletionWindowModal', () => {
             await userEvent.click(screen.getByRole('button', { name: 'deletionWindow.cancel.confirm' }));
 
             await vi.waitFor(() =>
-                expect(mutations.toast).toHaveBeenCalledWith(
+                expect(mutations.errorToast).toHaveBeenCalledWith(
                     expect.objectContaining({ content: 'deletionWindow.error.forbidden' }),
                 ),
             );

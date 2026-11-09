@@ -539,6 +539,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                         <Notify
                             title={t('notify.title.onboarding')}
                             severity="error"
+                            quietText={t('counsellorOnboarding.topics.languageError')}
                             actions={[{ label: t('counsellorOnboarding.loadError.retry'), onClick: retryTopicNames }]}
                         >
                             {t('counsellorOnboarding.topics.languageError')}

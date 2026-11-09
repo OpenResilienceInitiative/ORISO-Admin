@@ -19,7 +19,6 @@ import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
 import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
-import { Notify } from '../Notify';
 import { jumpTo } from '../Snackbar';
 import { HintText } from '../HintText';
 
@@ -248,9 +247,11 @@ export const DpaBlocker = ({
                                 />
 
                                 {signFailed && (
-                                    <Notify title={t('notify.title.dpa')} severity="error" jump={signActionsId}>
+                                    // Inside the dialog, like the submit blocker: a pop-up renders outside this modal, so a
+                                    // screen-reader user could miss why signing failed (or why the button is disabled).
+                                    <HintText tone="error" role="alert" title={t('notify.title.dpa')}>
                                         {t(signStale ? 'dpaBlocker.sign.staleVersion' : 'dpaBlocker.sign.error')}
-                                    </Notify>
+                                    </HintText>
                                 )}
 
                                 {submitBlocker && (
