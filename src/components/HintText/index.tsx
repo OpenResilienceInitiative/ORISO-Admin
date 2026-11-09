@@ -30,9 +30,11 @@ export const HintText = ({ children, tone = 'default', title, actions, className
         <div>{children}</div>
         {actions?.length ? (
             <div className={styles.actions}>
-                {actions.map((action) => (
+                {actions.map((action, index) => (
                     <button
-                        key={action.label}
+                        // Two actions may share a label; the list is static per render, so the index is a stable key.
+                        // eslint-disable-next-line react/no-array-index-key
+                        key={`${index}-${action.label}`}
                         type="button"
                         className={styles.action}
                         disabled={action.disabled}

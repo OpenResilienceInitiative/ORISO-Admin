@@ -54,12 +54,14 @@ export const SnackbarTextButton = ({
     children,
     onClick,
     state = 'enabled',
+    disabled = false,
 }: {
     children: ReactNode;
     onClick?: () => void;
     state?: SnackbarBlockState;
+    disabled?: boolean;
 }) => (
-    <button type="button" className={styles.action} data-state={state} onClick={onClick}>
+    <button type="button" className={styles.action} data-state={state} onClick={onClick} disabled={disabled}>
         <span className={styles.stateLayer}>{children}</span>
     </button>
 );
@@ -112,6 +114,7 @@ export const Snackbar = ({
             (layout === 'auto' && ((action?.label.length ?? 0) > SNACKBAR_LONG_ACTION_LENGTH || longText)));
     const actionButton = action && (
         <SnackbarTextButton
+            disabled={action.disabled}
             onClick={() => {
                 action.onClick();
                 onActionDone?.();
@@ -122,6 +125,7 @@ export const Snackbar = ({
     );
     const secondaryButton = secondaryAction && (
         <SnackbarTextButton
+            disabled={secondaryAction.disabled}
             onClick={() => {
                 secondaryAction.onClick();
                 onActionDone?.();
