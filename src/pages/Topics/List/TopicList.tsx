@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { message } from 'antd';
 import { InterestsOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CardGrid } from '../../../components/CardGrid';
 import { Card } from '../../../components/Card';
+import { snackbar } from '../../../components/Snackbar';
 import { M3Switch } from '../../../components/M3Switch';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
@@ -93,7 +93,7 @@ export const TopicList = () => {
             try {
                 await setActive({ id: topicId, active });
             } catch {
-                message.error({ content: t('topicCatalogue.changeError', { name }), duration: 8 });
+                snackbar.error({ content: t('topicCatalogue.changeError', { name }) });
             } finally {
                 setPendingTopicIds((ids) => ids.filter((id) => id !== topicId));
             }
@@ -113,7 +113,7 @@ export const TopicList = () => {
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    message.error({ content, duration: 8 });
+                    snackbar.error({ content });
                 },
             },
         );
