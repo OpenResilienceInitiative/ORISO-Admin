@@ -106,6 +106,7 @@ export const TopicCatalogue = ({
     const [drop, setDrop] = useState<DropTarget | null>(null);
     const [focusTopicId, setFocusTopicId] = useState<number | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    const addGroupRef = useRef<HTMLButtonElement>(null);
 
     const topicsById = new Map(topics.map((topic) => [topic.id, topic]));
     const shown = editing ? draft : layout;
@@ -349,6 +350,21 @@ export const TopicCatalogue = ({
         );
     };
 
+    const shiftGroup = (groupId: string, groupLabel: string, delta: -1 | 1) => {
+        const position = draft.findIndex((group) => group.id === groupId) + delta;
+        setDraft(moveGroup(draft, groupId, delta));
+        setAnnouncement(
+            t('topicCatalogue.announce.groupMoved', { group: groupLabel, position: position + 1, total: draft.length }),
+        );
+    };
+
+    // The remove button unmounts with its category; the add button is the stable place for the focus to land.
+    const dropGroup = (groupId: string, groupLabel: string) => {
+        setDraft(removeGroup(draft, groupId));
+        setAnnouncement(t('topicCatalogue.announce.groupRemoved', { group: groupLabel }));
+        addGroupRef.current?.focus();
+    };
+
     const renderGroup = (group: TopicLayout[number], groupIndex: number) => {
         const groupLabel = group.name || t('topicCatalogue.unnamedGroup');
         const headingId = `topic-group-${group.id}`;
@@ -381,20 +397,20 @@ export const TopicCatalogue = ({
                                 icon={<ChevronLeftIcon />}
                                 ariaLabel={t('topicCatalogue.groupEarlier', { name: groupLabel })}
                                 disabled={saving || groupIndex === 0}
-                                onClick={() => setDraft(moveGroup(draft, group.id, -1))}
+                                onClick={() => shiftGroup(group.id, groupLabel, -1)}
                             />
                             <IconButton
                                 icon={<ChevronRightIcon />}
                                 ariaLabel={t('topicCatalogue.groupLater', { name: groupLabel })}
                                 disabled={saving || groupIndex === draft.length - 1}
-                                onClick={() => setDraft(moveGroup(draft, group.id, 1))}
+                                onClick={() => shiftGroup(group.id, groupLabel, 1)}
                             />
                             <IconButton
                                 icon={<DeleteOutlinedIcon />}
                                 ariaLabel={t('topicCatalogue.groupRemove', { name: groupLabel })}
                                 disabled={saving || count > 0}
                                 title={count > 0 ? t('topicCatalogue.groupRemoveBlocked') : undefined}
-                                onClick={() => setDraft(removeGroup(draft, group.id))}
+                                onClick={() => dropGroup(group.id, groupLabel)}
                             />
                         </span>
                     )}
@@ -457,7 +473,13 @@ export const TopicCatalogue = ({
             <TileSections className={styles.groups}>
                 {shown.map((group, groupIndex) => renderGroup(group, groupIndex))}
                 {editing && (
-                    <button type="button" className={styles.addGroup} disabled={saving} onClick={addNewGroup}>
+                    <button
+                        ref={addGroupRef}
+                        type="button"
+                        className={styles.addGroup}
+                        disabled={saving}
+                        onClick={addNewGroup}
+                    >
                         <AddOutlinedIcon aria-hidden />
                         {t('topicCatalogue.addGroup')}
                     </button>
