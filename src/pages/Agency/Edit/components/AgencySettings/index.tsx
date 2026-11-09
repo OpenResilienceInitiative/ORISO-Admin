@@ -8,7 +8,7 @@ import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
-import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
+import { TEAM_FUNCTIONS, TeamFunctionSwitch } from '../../../../../components/TeamFunctions';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
@@ -82,14 +82,12 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
 
     const fields = (
         <>
-            <MuiSwitchField
-                name="teamAgency"
-                label={t('agency.form.settings.teamAdviceCenter.title')}
-                helpText={t('agency.form.settings.teamAdviceCenter.description')}
-            />
+            <TeamFunctionSwitch fn="counselling" className={styles.teamFunction} />
             {showTeamToSingleWarning && (
                 <HintText className={styles.warning}>
-                    {t('agency.form.settings.teamAdviceCenter.changeWarning')}
+                    {t('agency.form.settings.teamAdviceCenter.changeWarning', {
+                        name: t(TEAM_FUNCTIONS.counselling.nameKey),
+                    })}
                 </HintText>
             )}
 
