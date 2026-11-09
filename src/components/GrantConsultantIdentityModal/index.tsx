@@ -161,7 +161,12 @@ export const GrantConsultantIdentityModal = ({
                                 options={topicOptions}
                             />
                         )}
-                        {hasNoTopics && <HintText tone="error">{t('grantConsultantIdentity.modal.noTopics')}</HintText>}
+                        {hasNoTopics && (
+                            // Appears after an agency is chosen and disables the confirm button: announce it.
+                            <HintText tone="error" role="alert">
+                                {t('grantConsultantIdentity.modal.noTopics')}
+                            </HintText>
+                        )}
                     </Form>
                 </Modal>
             )}

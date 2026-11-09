@@ -65,7 +65,11 @@ export const CreateAgencyModal = ({ tenantId, disabled, onSuccess }: CreateAgenc
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    snackbar.error({ title: t('notify.title.agency') as string, content });
+                    snackbar.notify({
+                        severity: 'error',
+                        title: t('notify.title.agency') as string,
+                        description: content,
+                    });
                 },
             },
         );
