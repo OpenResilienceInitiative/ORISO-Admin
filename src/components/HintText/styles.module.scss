@@ -2,7 +2,7 @@
 .hint {
     margin: 0;
     color: var(--m3-on-surface-variant, #444748);
-    font-family: var(--m3-body-medium-font-family, inherit);
+    font-family: var(--m3-body-font-family, inherit);
     font-size: 14px;
     line-height: 20px;
     letter-spacing: 0.25px;
@@ -14,7 +14,7 @@
 }
 
 .error {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 }
 
 .title {
@@ -36,18 +36,18 @@
     border: 0;
     border-radius: 100px;
     background: transparent;
-    color: var(--m3-primary, #b0001b);
+    color: var(--m3-primary, #a5000a);
     cursor: pointer;
     font: inherit;
     font-weight: 500;
     letter-spacing: 0.1px;
 
     &:hover:not(:disabled) {
-        background: color-mix(in srgb, var(--m3-primary, #b0001b) 8%, transparent);
+        background: color-mix(in srgb, var(--m3-primary, #a5000a) 8%, transparent);
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #b0001b);
+        outline: 2px solid var(--m3-primary, #a5000a);
         outline-offset: 2px;
     }
 

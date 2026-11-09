@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { snackbar, SnackbarHost } from '../Snackbar';
+import { snackbar, SnackbarHost, snackbarStore } from '../Snackbar';
 import { Notify } from './index';
 
 const Harness = ({ disabled, onClick }: { disabled: boolean; onClick: () => void }) => (
@@ -40,5 +40,28 @@ describe('Notify actions', () => {
 
         rerender(<Harness disabled={false} onClick={vi.fn()} />);
         expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
+    });
+
+    it('replaces the pop-up where it is when the text changes, and removes it on unmount', async () => {
+        const Text = ({ text, shown = true }: { text: string; shown?: boolean }) => (
+            <>
+                <SnackbarHost />
+                <Notify severity="error" title="Draft" causeKey="draft">
+                    {shown ? text : null}
+                </Notify>
+            </>
+        );
+        const { rerender, unmount } = render(<Text text="first" />);
+        await screen.findByText('first');
+        act(() => {
+            snackbar.info('later');
+        });
+        rerender(<Text text="second" />);
+        expect(await screen.findByText('second')).toBeInTheDocument();
+        expect(screen.getAllByTestId('snackbar')).toHaveLength(2);
+        // Still first in the stack: no dismiss and re-raise in between.
+        expect(snackbarStore.getState().visible.map((item) => item.severity)).toEqual(['error', 'info']);
+        unmount();
+        expect(snackbarStore.getState().visible.map((item) => item.severity)).toEqual(['info']);
     });
 });
