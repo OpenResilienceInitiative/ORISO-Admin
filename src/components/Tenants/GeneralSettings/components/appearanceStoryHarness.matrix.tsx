@@ -29,7 +29,7 @@ export const withAppearanceData = (Story: () => ReactElement) =>
     });
 
 /** The tile as the raster places it, beside a taller neighbour, so unused space shows. */
-export const inTheRaster = (Story: () => ReactElement, span: 1 | 2 = 1) => (
+export const inTheRaster = (Story: () => ReactElement, span: 1 | 2 | 3 = 1) => (
     <CardGrid raster>
         <CardGrid.Item span={span}>
             <Story />
