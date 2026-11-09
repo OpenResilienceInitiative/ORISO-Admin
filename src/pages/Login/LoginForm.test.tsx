@@ -63,6 +63,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
     return translations[key] || key;
 };
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let snackbarErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
 
@@ -149,7 +150,12 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
-        vi.spyOn(snackbar, 'error').mockImplementation(mocks.messageError);
+        // Records the call and still raises the pop-up, so a test can see what the person sees.
+        const raise = snackbar.error.bind(snackbar);
+        snackbarErrorSpy = vi.spyOn(snackbar, 'error').mockImplementation(((...args: Parameters<typeof raise>) => {
+            mocks.messageError(...args);
+            return raise(...args);
+        }) as never);
         mocks.navigate.mockReset();
         mocks.search = '';
         mocks.recordLoginFailure.mockReset();
@@ -158,6 +164,7 @@ describe('LoginForm', () => {
 
     afterEach(() => {
         consoleWarnSpy.mockRestore();
+        snackbarErrorSpy.mockRestore();
     });
 
     it('keeps the first-centre continuation through the password and OTP challenge', async () => {
@@ -517,6 +524,8 @@ describe('LoginForm', () => {
                 'Too many attempts. Please wait about 7 minutes before trying again.',
             );
         });
+        // The pop-up reaches the host: an error, with the sign-in lead line.
+        expect(await screen.findByTestId('snackbar')).toHaveAttribute('data-severity', 'error');
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
             outcome: 'rate_limited',
             transport: 'too_many_requests',
