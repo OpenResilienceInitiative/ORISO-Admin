@@ -359,8 +359,10 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
     });
 
     it('counts a centre complete with postcode and topics', () => {
-        expect(isAgencyComplete({ postcode: '10115', topics: [{ id: 1 }] })).toBe(true);
-        expect(isAgencyComplete({ postcode: '10115', topics: [] })).toBe(false);
+        expect(isAgencyComplete({ postcode: '10115', topics: [{ id: 1 }] }, true)).toBe(true);
+        expect(isAgencyComplete({ postcode: '10115', topics: [] }, true)).toBe(false);
+        // Topics switched off ("topicsInRegistration"): the editor offers none, so none are required.
+        expect(isAgencyComplete({ postcode: '10115', topics: [] })).toBe(true);
         expect(isAgencyComplete({ postcode: '', topics: [{ id: 1 }] })).toBe(false);
         expect(isAgencyComplete({ postcode: '10115' })).toBe(true);
     });

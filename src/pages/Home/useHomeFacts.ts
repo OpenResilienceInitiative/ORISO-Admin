@@ -13,6 +13,8 @@ import getTenantData from '../../api/tenant/getTenantData';
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useDpaStatus } from '../../hooks/useDpaStatus.hook';
+import { useFeatureContext } from '../../context/FeatureContext';
+import { FeatureFlag } from '../../enums/FeatureFlag';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
@@ -92,12 +94,13 @@ export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
 };
 
 /**
- * A Beratungsstelle counts as complete with a postcode and — when the list
- * carries topics at all — at least one topic.
+ * A Beratungsstelle counts as complete with a postcode and — only where topics
+ * apply (feature "topicsInRegistration", the same switch that makes the agency
+ * list mark missing topics) and the list carries them — at least one topic.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, only two fields read
-export const isAgencyComplete = (agency: any): boolean =>
-    hasText(agency?.postcode) && (!Array.isArray(agency?.topics) || agency.topics.length > 0);
+export const isAgencyComplete = (agency: any, topicsRequired = false): boolean =>
+    hasText(agency?.postcode) && (!topicsRequired || !Array.isArray(agency?.topics) || agency.topics.length > 0);
 
 /**
  * Complete only when every centre was inspected: with more centres than one
@@ -105,10 +108,10 @@ export const isAgencyComplete = (agency: any): boolean =>
  * claiming "done" or "open".
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, only two fields read
-export const agencyPageComplete = (agencies: any[], total?: number): boolean | null => {
+export const agencyPageComplete = (agencies: any[], total?: number, topicsRequired = false): boolean | null => {
     // Without a numeric total the page cannot prove it holds every centre.
     if (typeof total !== 'number' || total > agencies.length) return null;
-    return agencies.length > 0 && agencies.every(isAgencyComplete);
+    return agencies.length > 0 && agencies.every((agency) => isAgencyComplete(agency, topicsRequired));
 };
 
 export interface HomeFactAccess {
@@ -124,6 +127,7 @@ export interface HomeFactAccess {
 
 export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
     const { settings } = useAppConfigContext();
+    const { isEnabled } = useFeatureContext();
     const tenantId = access.tenantId ?? null;
     const ownTenant = useFact(
         tenantId,
@@ -155,9 +159,10 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
         dropCacheOnMount: false,
     });
     const dpaStatus = dpaInfo?.status as DpaStatusFact | undefined;
+    const topicsRequired = isEnabled(FeatureFlag.TopicsInRegistration);
     const agencyComplete = useFact(
         tenantId,
-        'agency-complete',
+        `agency-complete:${topicsRequired ? 'topics' : 'no-topics'}`,
         access.role === 'agency' && access.canReadAgencies,
         async () => {
             const result = await fetchData({
@@ -169,7 +174,7 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
             const page = result ? removeEmbedded(result) : undefined;
             const agencies = page?.data;
             if (!Array.isArray(agencies)) return null;
-            return agencyPageComplete(agencies, page?.total);
+            return agencyPageComplete(agencies, page?.total, topicsRequired);
         },
         // Same as the own tenant: the step links to the agency editor, so a save
         // there must show as soon as the admin comes back to Home.
