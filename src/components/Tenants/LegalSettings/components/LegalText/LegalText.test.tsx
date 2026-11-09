@@ -1530,6 +1530,48 @@ describe('LegalText as a tile', () => {
         expect(header()).not.toHaveTextContent('legal.status.published');
     });
 
+    it('mounts the editor only when the header is opened', async () => {
+        renderTile();
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
+
+        await userEvent.click(header());
+
+        expect(header()).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByTestId('m3-editor')).toBeInTheDocument();
+    });
+
+    it('shows a read-only viewer the same header state and a read-only editor', async () => {
+        mocks.canEdit = false;
+        renderTile();
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(header());
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-readonly', 'true');
+    });
+
+    it('says draft while a browser draft and a server draft wait for a choice', () => {
+        const localKey = 'oriso-admin.legal.draft.imprint.1:user-1';
+        window.localStorage.setItem(
+            localKey,
+            JSON.stringify({ content: { de: '<p>local</p>' }, savedAt: '2026-09-16T10:00:00Z' }),
+        );
+        mocks.serverDrafts.IMPRINT = {
+            kind: 'IMPRINT',
+            content: { de: '<p>server</p>' },
+            revision: 'server:2',
+            updatedAt: '2026-09-17T10:00:00Z',
+        };
+        try {
+            renderTile();
+
+            expect(header()).toHaveTextContent('legal.status.draft');
+            expect(header()).not.toHaveTextContent('legal.status.published');
+        } finally {
+            window.localStorage.removeItem(localKey);
+        }
+    });
+
     it('says still empty when nothing is live and nothing is written', () => {
         mocks.imprint = {};
         renderTile();

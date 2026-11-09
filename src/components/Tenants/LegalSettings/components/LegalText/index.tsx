@@ -871,7 +871,12 @@ export const LegalText = ({
     // The tile header says where this text stands: live, still a draft, or not written yet.
     const tileStatus = legalDocumentStatus(
         t,
-        legalTextState({ isPublished, differsFromPublished, hasConflict: serverDraft.hasConflict }),
+        legalTextState({
+            isPublished,
+            differsFromPublished,
+            // Two drafts and no choice yet: the screen shows the live text, but a decision is pending.
+            hasConflict: serverDraft.hasConflict || !sourceChosen,
+        }),
     );
 
     const helpSlotContent = legalType && (

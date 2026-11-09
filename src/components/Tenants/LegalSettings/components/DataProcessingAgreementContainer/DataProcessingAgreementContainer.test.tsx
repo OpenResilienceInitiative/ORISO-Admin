@@ -112,6 +112,7 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         onDiscardDraft,
         readOnlyFooter,
         errorMessage,
+        collapsible,
         defaultOpen,
         onOpenChange,
     }: any) => {
@@ -130,6 +131,7 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 data-draft-saved-at={draftSavedAt ?? ''}
                 data-draft-stale={draftStale ? 'true' : 'false'}
                 data-has-draft-action={onSaveDraft ? 'true' : 'false'}
+                data-collapsible={String(!!collapsible)}
                 data-default-open={String(!!defaultOpen)}
             >
                 <div data-testid="card-readonly-footer">{readOnlyFooter}</div>
@@ -184,10 +186,12 @@ beforeEach(() => {
 describe('DataProcessingAgreementContainer', () => {
     it('hands the tile settings to the card and starts unfolded only when asked to', () => {
         const { unmount } = render(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
         expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'false');
         unmount();
 
         render(<DataProcessingAgreementContainer tenantId={1} collapsible defaultOpen />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
         expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'true');
     });
 

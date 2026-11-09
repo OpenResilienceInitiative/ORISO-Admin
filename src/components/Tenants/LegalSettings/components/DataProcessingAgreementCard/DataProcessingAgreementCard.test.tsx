@@ -806,12 +806,23 @@ describe('DataProcessingAgreementCard as a tile', () => {
         expect(header()).not.toHaveTextContent('legal.status.published');
     });
 
-    it('reports a fold or unfold to the parent, which keeps the state across a rebuild', async () => {
+    it('says draft as soon as the text is edited, before anything is saved', async () => {
+        renderTile({ versions: published, defaultOpen: true });
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('reports every fold and unfold to the parent', async () => {
         const onOpenChange = vi.fn();
         renderTile({ onOpenChange });
 
         await userEvent.click(header());
+        await userEvent.click(header());
 
-        expect(onOpenChange).toHaveBeenCalledWith(true);
+        expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
     });
 });

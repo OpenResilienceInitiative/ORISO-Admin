@@ -118,9 +118,11 @@ export const Tiles: Story = {
 
         // One explanation button, in the unfolded agreement, and none inside any heading.
         await expect(canvas.getAllByRole('button', { name: EXPLANATION })).toHaveLength(1);
-        canvasElement.querySelectorAll('h3').forEach((heading) => {
-            expect(within(heading as HTMLElement).queryByRole('button', { name: EXPLANATION })).toBeNull();
-        });
+        await Promise.all(
+            [...canvasElement.querySelectorAll<HTMLElement>('h3')].map((heading) =>
+                expect(within(heading).queryByRole('button', { name: EXPLANATION })).toBeNull(),
+            ),
+        );
         await expect(within(tileOf(agreement)).getByRole('button', { name: EXPLANATION })).toBeVisible();
     },
 };

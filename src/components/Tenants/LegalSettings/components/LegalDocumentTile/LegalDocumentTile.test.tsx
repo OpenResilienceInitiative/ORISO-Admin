@@ -87,7 +87,7 @@ describe('LegalDocumentTile', () => {
         expect(screen.getByText('Wer darf was bearbeiten')).toBeVisible();
     });
 
-    it('hands the tile icon to the explanation button, so the help dialog can show it', () => {
+    it('hands the tile icon over to the explanation button (shown once TileHelpButton takes it)', () => {
         renderTile({ help: topic, defaultOpen: true });
 
         const tileIcon = helpButtonProps.last?.tileIcon as React.ReactElement;

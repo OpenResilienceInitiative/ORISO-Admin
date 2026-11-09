@@ -36,7 +36,8 @@ export const LegalDocumentTile = ({
     onOpenChange,
     children,
 }: LegalDocumentTileProps) => {
-    // The help dialog shows the tile's own icon where it takes one; without it, it keeps the info icon.
+    // The help dialog shows the tile's own icon once TileHelpButton takes `tileIcon` (open: #1376, #1408). Until then
+    // the button ignores it and keeps the info icon; handing it over now means this file needs no change later.
     const helpIcon = { tileIcon: <Icon /> };
 
     return (

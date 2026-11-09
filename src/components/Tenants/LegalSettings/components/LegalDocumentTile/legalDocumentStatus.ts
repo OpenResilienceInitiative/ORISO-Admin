@@ -22,7 +22,8 @@ export const legalDocumentStatus = (t: TFunction, state: LegalDocumentState): Le
 
 /**
  * Imprint and privacy statement: the text on screen against the live text. An open draft conflict is a draft even
- * when the screen holds exactly the live text, because another saved draft exists that is not resolved yet.
+ * when the screen holds exactly the live text, because another saved draft exists that is not resolved yet. That
+ * includes a browser draft and a server draft that nobody has chosen between.
  */
 export const legalTextState = ({
     isPublished,

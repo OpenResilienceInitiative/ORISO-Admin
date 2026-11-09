@@ -246,7 +246,16 @@ export const DataProcessingAgreementCard = ({
     );
 
     const title = t('tenants.legal.dataProcessingAgreement.title');
-    const tileStatus = legalDocumentStatus(t, dpaState({ hasDraft: !!draftSavedAt, versionCount: versions.length }));
+    // Typed but not saved yet is a draft too, as it is for the imprint and the privacy statement.
+    const hasUnsavedEdits =
+        !readOnly &&
+        languages.some(
+            (language) => (contentMapWithEdits[language] ?? '') !== (initialContentByLanguage[language] ?? ''),
+        );
+    const tileStatus = legalDocumentStatus(
+        t,
+        dpaState({ hasDraft: !!draftSavedAt || hasUnsavedEdits, versionCount: versions.length }),
+    );
 
     const helpSlotContent = (
         <>
