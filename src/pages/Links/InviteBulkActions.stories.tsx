@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { message } from 'antd';
+import { snackbar } from '../../components/Snackbar';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type {
@@ -178,7 +178,7 @@ const rowsResponse = (rows: AccountInviteDTO[]) =>
 /** Real checkbox → toolbar → protected HTTP POST, including a never-sent setup row. */
 export const SetupOnlyWithoutTemplates: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         bulkSetupRequests.length = 0;
         bulkOrdinaryRequests.length = 0;
         bulkListReads = 0;
@@ -248,7 +248,7 @@ export const SetupOnlyWithoutTemplates: Story = {
 /** Adding one ordinary row retains its template guard and sends no part of the batch. */
 export const MixedSelectionRequiresTemplate: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         bulkSetupRequests.length = 0;
         bulkOrdinaryRequests.length = 0;
     },

@@ -1272,7 +1272,9 @@ export const SortSaveFails: Story = {
         await new Promise((resolve) => {
             setTimeout(resolve, 300);
         });
-        await expect(canvasElement.ownerDocument.querySelector('.ant-message-error')).toBeNull();
+        await expect(
+            canvasElement.ownerDocument.querySelector('[data-testid="snackbar"][data-severity="error"]'),
+        ).toBeNull();
     },
 };
 

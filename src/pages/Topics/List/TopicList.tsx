@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { ColumnProps } from 'antd/lib/table';
 import { InterestsOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
+import { snackbar } from '../../../components/Snackbar';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { M3Switch } from '../../../components/M3Switch';
 import { TopicData } from '../../../types/topic';
@@ -73,7 +74,7 @@ export const TopicList = () => {
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    message.error({ content, duration: 8 });
+                    snackbar.error({ content });
                 },
             },
         );
