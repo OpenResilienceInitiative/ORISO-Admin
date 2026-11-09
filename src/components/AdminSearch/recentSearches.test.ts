@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { clearAdminLocalStorage } from '../../api/auth/clearAdminWebStorage';
 import { clearRecentSearches, forgetSearch, getRecentSearches, rememberSearch } from './recentSearches';
 
 afterEach(() => {
@@ -31,6 +32,18 @@ describe('recent searches', () => {
         clearRecentSearches();
 
         expect(getRecentSearches()).toEqual([]);
+    });
+
+    // Raised in review: queries can hold names and e-mail addresses, and a shared computer must not show them
+    // to the next admin. The logout already empties every Admin key; this keeps the search inside that rule.
+    it('is emptied by the logout, like every other Admin key', () => {
+        rememberSearch('anna@example.org');
+        window.localStorage.setItem('matrix_device_id', 'kept');
+
+        clearAdminLocalStorage();
+
+        expect(getRecentSearches()).toEqual([]);
+        expect(window.localStorage.getItem('matrix_device_id')).toBe('kept');
     });
 
     it('survives broken or blocked storage', () => {

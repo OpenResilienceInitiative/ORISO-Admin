@@ -331,7 +331,7 @@ export const searchIndex = (
         return [];
     }
 
-    const run = (minWords: number) =>
+    const run = (minWords: number): Array<Omit<SearchHit, 'titleRanges'>> =>
         index
             .filter(({ doc }) => passesFilters(doc, filters))
             .flatMap((prepared) => {
@@ -342,15 +342,15 @@ export const searchIndex = (
                 }
 
                 const score = (scored.score + titleBonus(prepared, words)) * KIND_BIAS[prepared.doc.kind];
-                const hit: SearchHit = {
-                    doc: prepared.doc,
-                    score,
-                    matchedField: scored.field,
-                    matchedText: scored.text?.text,
-                    titleRanges: highlightRanges(prepared.doc.title, words),
-                };
 
-                return [hit];
+                return [
+                    {
+                        doc: prepared.doc,
+                        score,
+                        matchedField: scored.field,
+                        matchedText: scored.text?.text,
+                    },
+                ];
             });
 
     let hits = run(words.length);
@@ -359,7 +359,11 @@ export const searchIndex = (
         hits = run(words.length - 1);
     }
 
-    return hits.sort((a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title)).slice(0, limit);
+    // Highlight ranges are only needed for what is returned, not for every document that matched.
+    return hits
+        .sort((a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title))
+        .slice(0, limit)
+        .map((hit) => ({ ...hit, titleRanges: highlightRanges(hit.doc.title, words) }));
 };
 
 export interface HitGroup {

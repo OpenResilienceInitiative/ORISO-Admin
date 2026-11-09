@@ -14,7 +14,9 @@ import {
     SELF_COUNSEL_ROLES,
     TENANT_TABS,
 } from './searchRegistry';
+import { NAV_KEYWORDS } from './navKeywords';
 import { SEARCH_KEYWORDS } from './searchKeywords';
+import { buildFixtureContext, buildFixtureIndex, type FixtureOptions } from './searchFixtures';
 
 const en = { ...enTranslation, ...enAssistant } as Record<string, string>;
 const de = { ...deTranslation, ...deAssistant } as Record<string, string>;
@@ -97,6 +99,25 @@ describe('search registry drift', () => {
         expect(profile).toMatch(/settings\.documentationEnabled\s*&&/);
     });
 
+    // Every combination in which a tile can be offered: role, domain mode, and an entity in context or not.
+    const VARIANTS: FixtureOptions[] = (['platform', 'tenant', 'agency', 'tenantReadOnly'] as const).flatMap((role) =>
+        [true, false].flatMap((singleDomain) =>
+            [undefined, { id: '1', name: 'Springfield' }].flatMap((entity) => [
+                { role, singleDomain, tenant: entity, agency: entity },
+            ]),
+        ),
+    );
+
+    // Found in review: a tile whose `parents` name a tab that does not exist is dropped without a sound.
+    it('puts every tile into the index for at least one role and context', () => {
+        const indexed = new Set(
+            VARIANTS.flatMap((options) => buildFixtureIndex(options).map((entry) => entry.id.split('@')[0])),
+        );
+        const missing = SEARCH_TILES.filter((tile) => !indexed.has(tile.id)).map((tile) => tile.id);
+
+        expect(missing).toEqual([]);
+    });
+
     it('only has synonyms for ids that exist', () => {
         const known = new Set<string>([...SEARCH_TILES.map((tile) => tile.id), ...EXTRA_PAGES.map((page) => page.id)]);
         const strangers = Object.keys(SEARCH_KEYWORDS).filter((id) => !known.has(id));
@@ -104,7 +125,24 @@ describe('search registry drift', () => {
         expect(strangers).toEqual([]);
     });
 
-    it('gives every tile some synonyms or at least a title that is worth searching', () => {
-        expect(SEARCH_TILES.every((tile) => en[tile.titleKey].length > 2)).toBe(true);
+    it('only has navigation synonyms for sections and tabs that exist', () => {
+        const known = new Set<string>(
+            VARIANTS.flatMap((options) => {
+                const { context } = buildFixtureContext(options);
+
+                return [...Object.keys(context.navTo), ...Object.keys(context.subTo)];
+            }),
+        );
+        const strangers = Object.keys(NAV_KEYWORDS).filter((id) => !known.has(id));
+
+        expect(strangers).toEqual([]);
+    });
+
+    it('lets an admin find every tile by more than its title: synonyms or searchable fields', () => {
+        const bare = SEARCH_TILES.filter((tile) => !SEARCH_KEYWORDS[tile.id]?.length && !tile.fieldKeys?.length).map(
+            (tile) => tile.id,
+        );
+
+        expect(bare).toEqual([]);
     });
 });
