@@ -80,53 +80,47 @@
     }
 }
 
-/* The red band (Tutorial canvas): a thin primary arc over the picture that draws itself,
-   pulls back a little and settles — one back-and-forth, each pass under 480ms. Reduced
-   motion shows it drawn and still. */
+/* The red band (Tutorial canvas): a thin primary line in the bottom padding of the picture
+   box that grows from the middle, pulls back a little and settles — one back-and-forth,
+   each pass under 480ms. It stays out of the picture: the drawings are raster images with
+   their own thread, and a line across them would cut through the figures. Reduced motion
+   shows it still, at full width. */
 
 .band {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    right: 24px;
+    bottom: 4px;
+    left: 24px;
+    height: 2px;
+    border-radius: 2px;
+    animation: tile-help-band 880ms ease-in-out both;
+    background: var(--m3-primary, #a5000a);
     pointer-events: none;
-
-    path {
-        animation: tile-help-band 880ms ease-in-out both;
-        fill: none;
-        stroke: var(--m3-primary, #a5000a);
-        stroke-dasharray: 1;
-        stroke-dashoffset: 0;
-        stroke-linecap: round;
-        stroke-width: 2.2;
-    }
+    transform-origin: center;
 
     @media (prefers-reduced-motion: reduce) {
-        path {
-            animation: none;
-        }
+        animation: none;
     }
 }
 
 @keyframes tile-help-band {
-    /* 396ms: draw in. */
+    /* 396ms: grow. */
     0% {
-        stroke-dashoffset: 1;
+        transform: scaleX(0);
     }
 
     45% {
-        stroke-dashoffset: 0;
+        transform: scaleX(1);
     }
 
     /* 220ms: pull back by a third. */
     70% {
-        stroke-dashoffset: 0.35;
+        transform: scaleX(0.65);
     }
 
-    /* 264ms: settle, fully drawn. */
+    /* 264ms: settle at full width. */
     100% {
-        stroke-dashoffset: 0;
+        transform: scaleX(1);
     }
 }
 

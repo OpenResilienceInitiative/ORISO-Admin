@@ -144,9 +144,10 @@ const reducedMotionRules = (doc: Document, className: string) =>
     });
 
 /**
- * The red band of the Tutorial canvas: a thin primary arc over the picture box draws itself when a
- * step appears, pulls back a little and settles drawn — one back-and-forth, every pass under 480ms.
- * Each step starts it again. Under „Bewegung reduzieren“ it does not move: it is simply there.
+ * The red band of the Tutorial canvas: a thin primary line at the foot of the picture box grows
+ * when a step appears, pulls back a little and settles — one back-and-forth, every pass under
+ * 480ms. Each step starts it again. It never covers the drawing, and under „Bewegung reduzieren“
+ * it does not move: it is simply there.
  */
 export const HelpRedBand: Story = {
     ...InTheRaster,
@@ -156,31 +157,34 @@ export const HelpRedBand: Story = {
         const body = within(doc.body);
         await userEvent.click(canvas.getByRole('button', { name: /erklärung öffnen|open explanation/i }));
         const dialog = await body.findByRole('dialog');
-        const band = () => dialog.querySelector<SVGSVGElement>('[data-tile-help-media] [data-tile-help-band]');
+        const band = () => dialog.querySelector<HTMLElement>('[data-tile-help-media] [data-tile-help-band]');
         const first = band();
         const reduced = doc.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches ?? false;
 
-        await step('the band sits in the picture box, in the primary colour', async () => {
+        await step('the band sits in the picture box, in the primary colour, below the drawing', async () => {
             await expect(first).not.toBeNull();
-            const path = first!.querySelector('path') as SVGPathElement;
-            const style = getComputedStyle(path);
+            const style = getComputedStyle(first!);
             // The colour comes from the token, not a fixed red.
             const probe = doc.createElement('span');
             probe.style.color = 'var(--m3-primary, #a5000a)';
             dialog.appendChild(probe);
             const primary = getComputedStyle(probe).color;
             probe.remove();
-            await expect(style.stroke).toBe(primary);
-            await expect(style.fill).toBe('none');
+            await expect(style.backgroundColor).toBe(primary);
+            await expect(parseFloat(style.height)).toBeLessThanOrEqual(3);
             if (!reduced) {
                 await expect(style.animationName).not.toBe('none');
                 await expect(parseFloat(style.animationDuration)).toBeLessThanOrEqual(0.96);
                 await expect(style.animationIterationCount).toBe('1');
             }
-            // Either way it ends drawn.
-            await waitFor(() => expect(parseFloat(getComputedStyle(path).strokeDashoffset)).toBe(0), {
+            // Either way it ends at full width, under the picture (same zoom for both boxes).
+            await waitFor(() => expect(new DOMMatrix(getComputedStyle(first!).transform).a).toBe(1), {
                 timeout: 3000,
             });
+            const picture = dialog.querySelector('[data-tile-help-media="visual"] img') as HTMLElement;
+            await expect(first!.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+                picture.getBoundingClientRect().bottom - 0.5,
+            );
         });
 
         await step('„Bewegung reduzieren“ stops it', async () => {
@@ -190,7 +194,7 @@ export const HelpRedBand: Story = {
             await expect(rules.length).toBeGreaterThan(0);
             await expect(rules.some((rule) => rule.style.animationName === 'none')).toBe(true);
             if (reduced) {
-                await expect(getComputedStyle(first!.querySelector('path')!).animationName).toBe('none');
+                await expect(getComputedStyle(first!).animationName).toBe('none');
             }
         });
 

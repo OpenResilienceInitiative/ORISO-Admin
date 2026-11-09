@@ -114,17 +114,10 @@ const TileHelpDialog = ({ topic: firstTopic, tileIcon, onClose }: TileHelpDialog
                             {tileIcon ?? <InfoOutlinedIcon />}
                         </span>
                     )}
-                    {/* The red band: drawn once, pulled back a little and settled whenever a step
-                        appears (the box is re-keyed per step). Still under „Bewegung reduzieren“. */}
-                    <svg
-                        className={styles.band}
-                        viewBox="0 0 400 220"
-                        preserveAspectRatio="none"
-                        focusable="false"
-                        data-tile-help-band
-                    >
-                        <path d="M60 70 C 140 10, 260 10, 340 70" pathLength={1} />
-                    </svg>
+                    {/* The red band: grows once, pulls back a little and settles whenever a step
+                        appears (the box is re-keyed per step). It sits in the box's padding, under
+                        the picture, so it never covers a drawing. Still under „Bewegung reduzieren“. */}
+                    <span className={styles.band} data-tile-help-band />
                 </div>
                 <div className={styles.content}>
                     {slide && <h3 className={styles.slideTitle}>{t(slide.titleKey)}</h3>}
