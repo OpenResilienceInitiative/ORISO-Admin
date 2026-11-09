@@ -2254,6 +2254,8 @@
     "topicCatalogue.announce.moved": "„{{name}}“ steht jetzt auf Platz {{position}} von {{total}} in „{{group}}“.",
     "topicCatalogue.announce.edge": "„{{name}}“ kann nicht weiter in diese Richtung.",
     "topicCatalogue.announce.groupAdded": "Kategorie „{{group}}“ hinzugefügt.",
+    "topicCatalogue.announce.groupMoved": "Kategorie „{{group}}“ steht jetzt auf Platz {{position}} von {{total}}.",
+    "topicCatalogue.announce.groupRemoved": "Kategorie „{{group}}“ entfernt.",
     "twoFactorAuth.activate.app.step2.copy": "Installieren Sie sich FreeOTP oder Google Authentificator auf Ihrem Smartphone oder Tablet. Beide Apps sind im Google Play oder Apple App Store verfügbar.",
     "twoFactorAuth.activate.app.step2.download.apple": "Download im Apple App Store",
     "twoFactorAuth.activate.app.step2.download.google": "Download im Google Play Store",
