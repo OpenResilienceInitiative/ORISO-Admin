@@ -459,8 +459,11 @@ $reveal-duration: 300ms;
 .recentLabel {
     min-width: 0;
     flex: 1 1 auto;
+    padding: 0;
     overflow: hidden;
+    color: inherit;
     font-size: 16px;
+    text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -477,6 +480,15 @@ $reveal-duration: 300ms;
     margin: 0;
     padding: 12px 24px 4px;
     color: var(--search-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.notice {
+    margin: 0;
+    padding: 8px 24px;
+    background: var(--search-hover);
+    color: var(--search-text);
     font-size: 14px;
     line-height: 20px;
 }

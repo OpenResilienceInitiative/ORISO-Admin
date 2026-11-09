@@ -36,7 +36,8 @@ export const AdminSearchButton = ({ className, variant = 'icon', onClick }: Admi
             type="button"
             className={classNames(variant === 'bar' ? styles.bar : styles.button, className)}
             onClick={handleClick}
-            aria-label={label}
+            // The bar shows its own text; a shorter aria-label would not contain it (WCAG 2.5.3, Label in Name).
+            aria-label={variant === 'icon' ? label : undefined}
             aria-keyshortcuts="Control+K Meta+K /"
             title={t('adminSearch.shortcut', { keys: shortcut })}
             data-admin-search-button

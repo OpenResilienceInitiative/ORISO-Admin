@@ -44,6 +44,8 @@ export interface AdminSearchViewProps {
     entityQuery?: string;
     /** An entity request is still running. */
     loadingEntities?: boolean;
+    /** An entity request failed: the results may lack people or organisations, which is not "nothing found". */
+    entitiesFailed?: boolean;
     /** Called with every query change; the container debounces it into the list requests. */
     onQueryChange?: (query: string) => void;
     onOpen: (doc: SearchDoc, query: string) => void;
@@ -108,11 +110,15 @@ type NavRow = { kind: 'hit'; hit: SearchHit } | { kind: 'more'; group: SearchGro
 const toggle = <T,>(list: T[] | undefined, value: T): T[] =>
     list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value];
 
+/** One shared empty list: a fresh `[]` default would rebuild the prepared index on every render. */
+const NO_ENTITY_DOCS: SearchDoc[] = [];
+
 export const AdminSearchView = ({
     index,
-    entityDocs = [],
+    entityDocs = NO_ENTITY_DOCS,
     entityQuery,
     loadingEntities = false,
+    entitiesFailed = false,
     onQueryChange,
     onOpen,
     onClose,
@@ -239,6 +245,11 @@ export const AdminSearchView = ({
     };
 
     const open = (hit: SearchHit) => {
+        // A second Enter or click while the layer shrinks away must not open (and navigate) twice.
+        if (closing) {
+            return;
+        }
+
         // The page behind changes while the layer shrinks away.
         onOpen(hit.doc, trimmed);
         requestClose();
@@ -292,6 +303,10 @@ export const AdminSearchView = ({
             }
         }
     };
+
+    // The entity rows trail the typing (debounce, then the request). Until they have caught up, an empty
+    // list only means "not here yet", so the view must neither say "Nothing found" nor announce 0 results.
+    const entitiesPending = loadingEntities || (entityQuery !== undefined && entityQuery !== trimmed);
 
     const typeChips = SEARCH_GROUPS.filter(
         (group) => !trimmed || countsByGroup.has(group) || filters.kinds?.includes(group),
@@ -399,7 +414,7 @@ export const AdminSearchView = ({
                         showKeyHints && <kbd className={styles.escHint}>Esc</kbd>
                     )}
                 </div>
-                {loadingEntities ? (
+                {entitiesPending ? (
                     <div className={styles.progress} role="progressbar" aria-label={t('adminSearch.loading')} />
                 ) : (
                     <div className={styles.progressIdle} />
@@ -438,7 +453,7 @@ export const AdminSearchView = ({
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
                 <div className={styles.body} role="region" aria-label={t('adminSearch.results')} tabIndex={0}>
                     <p className={styles.srOnly} role="status" aria-live="polite">
-                        {trimmed ? t('adminSearch.count', { count: flat.length }) : ''}
+                        {trimmed && !entitiesPending ? t('adminSearch.count', { count: flat.length }) : ''}
                     </p>
 
                     {!trimmed && (
@@ -465,7 +480,6 @@ export const AdminSearchView = ({
                                             <button
                                                 type="button"
                                                 className={classNames(styles.recentLabel, styles.textButton)}
-                                                style={{ color: 'inherit', textAlign: 'left', padding: 0 }}
                                                 onClick={() => applyQuery(item)}
                                             >
                                                 {item}
@@ -493,7 +507,13 @@ export const AdminSearchView = ({
                         </>
                     )}
 
-                    {trimmed && flat.length === 0 && (
+                    {trimmed && entitiesFailed && !entitiesPending && (
+                        <p className={styles.notice} role="status">
+                            {t('adminSearch.error.entities')}
+                        </p>
+                    )}
+
+                    {trimmed && flat.length === 0 && !entitiesPending && (
                         <div className={styles.empty}>
                             <p className={styles.emptyTitle}>{t('adminSearch.empty.title', { query: trimmed })}</p>
                             <p className={styles.emptyText}>

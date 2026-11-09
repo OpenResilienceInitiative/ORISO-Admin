@@ -36,9 +36,10 @@ export const useAdminSearch = () => useContext(AdminSearchContext);
  * would bubble up to the window and open the view again (at once when motion is reduced).
  */
 export const isSearchShortcut = (
-    event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'defaultPrevented'>,
+    event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'defaultPrevented'> & { key?: string },
 ): boolean =>
-    event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.defaultPrevented;
+    // `key` is missing on the keydown Chrome fires when a browser autofill entry is picked.
+    event.key?.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.defaultPrevented;
 
 const isTypingTarget = (target: EventTarget | null): boolean =>
     target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
@@ -85,7 +86,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
     const navigate = useNavigate();
     const index = useAdminSearchIndex({ navItems, account, tree });
     const [query, setQuery] = useState('');
-    const { docs, isFetching, forQuery } = useSearchEntities(query);
+    const { docs, isFetching, hasError, forQuery } = useSearchEntities(query);
 
     const onOpen = useCallback(
         (doc: SearchDoc, typed: string) => {
@@ -102,6 +103,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
             entityDocs={docs}
             entityQuery={forQuery}
             loadingEntities={isFetching}
+            entitiesFailed={hasError}
             onQueryChange={setQuery}
             onOpen={onOpen}
             onClose={onClose}

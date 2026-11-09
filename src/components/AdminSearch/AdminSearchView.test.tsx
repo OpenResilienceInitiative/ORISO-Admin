@@ -174,6 +174,57 @@ describe('AdminSearchView', () => {
         });
     });
 
+    // Found in review: the entity rows trail the typing, and "Nothing found" flashed up meanwhile.
+    describe('while the entity rows have not caught up with the typing', () => {
+        it('neither says "Nothing found" nor announces zero results', async () => {
+            const { user, input } = setup({ entityDocs: [], entityQuery: 'old' });
+
+            await user.type(input, 'xqzvwk');
+
+            expect(screen.queryByText(/Nothing found/)).toBeNull();
+            expect(screen.getByRole('progressbar')).toBeTruthy();
+            expect(screen.getByRole('status').textContent).toBe('');
+        });
+
+        it('says so once the rows belong to the typed query', async () => {
+            const { user, input } = setup({ entityDocs: [], entityQuery: 'xqzvwk' });
+
+            await user.type(input, 'xqzvwk');
+
+            await waitFor(() => expect(screen.getByText(/Nothing found/)).toBeTruthy());
+            expect(screen.queryByRole('progressbar')).toBeNull();
+        });
+
+        it('says so while a request is running too', async () => {
+            const { user, input } = setup({ loadingEntities: true });
+
+            await user.type(input, 'xqzvwk');
+
+            expect(screen.queryByText(/Nothing found/)).toBeNull();
+        });
+    });
+
+    // Found in review: a failed list dropped out silently and read as "nothing found".
+    it('tells the person when a list could not be loaded', async () => {
+        const { user, input } = setup({ entitiesFailed: true });
+
+        await user.type(input, 'xqzvwk');
+
+        await waitFor(() => expect(screen.getByText(i18n.t('adminSearch.error.entities'))).toBeTruthy());
+    });
+
+    it('does not open a result twice while the layer is shrinking away', async () => {
+        const { user, input, onOpen } = setup({ variant: 'overlay', origin: { x: 10, y: 10 } });
+
+        await user.type(input, 'Impressum');
+        await waitFor(() => expect(screen.getAllByRole('option').length).toBeGreaterThan(0));
+        await user.keyboard('{Enter}');
+        await user.keyboard('{Enter}');
+        await user.click(screen.getAllByRole('option')[0]);
+
+        expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+
     it('narrows by type with a filter chip', async () => {
         const { user, input } = setup();
 
