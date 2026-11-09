@@ -348,6 +348,8 @@ describe('Statistic page', () => {
         // the tiles say the figure is unknown, not absent (#1374)
         expect(screen.getAllByText('konnte nicht geladen werden').length).toBeGreaterThan(0);
         expect(screen.queryByText('noch keine Daten')).toBeNull();
+        // no "not enough data yet" preview either: the request failed (#1374)
+        expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
         // no chart of zeros and no export after a failed load (#1374)
         expect(document.querySelector('.statisticDashboard__chartGrid')).toBeNull();
         expect(screen.queryByText('Statistik als CSV herunterladen')).toBeNull();

@@ -1020,6 +1020,8 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
 const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
+/** Width of the Träger/Beratungsstelle filter; the stylesheet reads it as --statistic-filter-width. */
+const STATISTIC_FILTER_WIDTH = 400;
 /** After a failed load the figure is unknown, not absent (#1374). */
 const LOAD_FAILED_HINT = 'konnte nicht geladen werden';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
@@ -1853,7 +1855,7 @@ const StatisticFilterBar = ({
             >
                 <GlobalSearchBar
                     defaultExpanded
-                    expandedWidth={400 /* = @statistic-filter-width in statistic.less */}
+                    expandedWidth={STATISTIC_FILTER_WIDTH}
                     className="statisticDashboard__filterSearch"
                     ariaLabel={translateDashboardKey(
                         translate,
@@ -2140,44 +2142,34 @@ export const Statistic = () => {
         !hasStatisticLoadError &&
         !isStatisticUnavailable &&
         !allTargetsSuppressed;
-    const showPreviewPanel = showEmptyHero || allTargetsSuppressed;
-    const previewHighlights = useMemo(
-        () => [
-            {
-                title: translateDashboardKey(
-                    translate,
-                    'statistic.dashboard.preview.timeline.title',
-                    'Verlauf über Zeit',
-                ),
-                text: translateDashboardKey(
-                    translate,
-                    'statistic.dashboard.preview.timeline.text',
-                    'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
-                ),
-            },
-            {
-                title: translateDashboardKey(
-                    translate,
-                    'statistic.dashboard.preview.compare.title',
-                    'Träger im Vergleich',
-                ),
-                text: translateDashboardKey(
-                    translate,
-                    'statistic.dashboard.preview.compare.text',
-                    'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
-                ),
-            },
-            {
-                title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
-                text: translateDashboardKey(
-                    translate,
-                    'statistic.dashboard.preview.topics.text',
-                    'Welche Themen am häufigsten angefragt werden.',
-                ),
-            },
-        ],
-        [translate],
-    );
+    // After a failed load the page says so; a preview would read as "not enough data yet".
+    const showPreviewPanel = (showEmptyHero || allTargetsSuppressed) && !hasStatisticLoadError;
+    const previewHighlights = [
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.timeline.title', 'Verlauf über Zeit'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.timeline.text',
+                'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.compare.title', 'Träger im Vergleich'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.compare.text',
+                'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.topics.text',
+                'Welche Themen am häufigsten angefragt werden.',
+            ),
+        },
+    ];
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
@@ -2378,7 +2370,10 @@ export const Statistic = () => {
             <Page.Title>
                 {/* Levels left, the Träger/Beratungsstelle filter right, one divider under
                     both (ORISO-Admin#1374). */}
-                <div className="statisticDashboard__headerRow">
+                <div
+                    className="statisticDashboard__headerRow"
+                    style={{ '--statistic-filter-width': `${STATISTIC_FILTER_WIDTH}px` } as CSSProperties}
+                >
                     <AdminSegmentedTabs
                         className="statisticDashboard__scopeTabs"
                         activeId={activeScope}

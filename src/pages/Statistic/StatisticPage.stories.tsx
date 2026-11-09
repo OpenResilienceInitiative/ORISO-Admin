@@ -372,7 +372,9 @@ export const LoadError: Story = {
     parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 500 })) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Statistikdaten konnten nicht geladen werden.')).toBeVisible();
+        const notice = await canvas.findByText('Statistikdaten konnten nicht geladen werden.');
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
     },

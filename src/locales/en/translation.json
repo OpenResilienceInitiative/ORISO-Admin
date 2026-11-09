@@ -2348,7 +2348,7 @@
     "statistic.dashboard.csvExport.metricColumn": "Metric",
     "statistic.dashboard.csvExport.valueColumn": "Value",
     "statistic.dashboard.empty.loadFailed": "could not be loaded",
-    "statistic.dashboard.empty.notTracked": "Not tracked yet. Comes with the expansion of the channels.",
+    "statistic.dashboard.empty.notTracked": "Not tracked yet. Tracking follows as the channels are expanded.",
     "statistic.dashboard.empty.noDataYet": "no data yet",
     "statistic.dashboard.empty.topicPending": "appears with the first conversation",
     "statistic.dashboard.empty.heroTitle": "Your dashboard fills up with the first counselling session",

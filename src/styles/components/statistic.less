@@ -1,6 +1,3 @@
-// One width for the Träger/Beratungsstelle filter; keep in sync with expandedWidth in Statistic.tsx.
-@statistic-filter-width: 400px;
-
 .statisticDashboardPage {
     width: 100%;
     box-sizing: border-box;
@@ -38,7 +35,7 @@
     margin-bottom: 16px;
     padding: 0 0 12px;
     gap: 10px 12px;
-    grid-template-columns: minmax(0, @statistic-filter-width);
+    grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
 }
 
 .statisticDashboard__filterSearchWrap {
@@ -50,7 +47,7 @@
 
 .statisticDashboard__filterSearch {
     width: 100%;
-    max-width: @statistic-filter-width;
+    max-width: var(--statistic-filter-width, 400px);
 }
 
 .statisticDashboard__filterSuggestions {
@@ -59,7 +56,7 @@
     top: calc(100% + 8px);
     left: 0;
     display: grid;
-    width: min(100%, @statistic-filter-width);
+    width: min(100%, var(--statistic-filter-width, 400px));
     box-sizing: border-box;
     max-height: min(320px, calc(100vh - 220px));
     padding: 8px;
@@ -1300,7 +1297,7 @@
 
 @media screen and (max-width: 1200px) {
     .statisticDashboard__filterBar {
-        grid-template-columns: minmax(0, @statistic-filter-width);
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
     }
 }
 
@@ -1563,10 +1560,10 @@
 
     .statisticDashboard__filterBar {
         min-width: 0;
-        flex: 0 1 @statistic-filter-width;
+        flex: 0 1 var(--statistic-filter-width, 400px);
         padding: 0 0 8px;
         margin: 0;
-        grid-template-columns: minmax(0, @statistic-filter-width);
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
     }
 }
 
