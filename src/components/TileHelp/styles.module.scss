@@ -83,6 +83,7 @@
 /* The red band (Tutorial canvas): a thin primary arc over the picture that draws itself,
    pulls back a little and settles — one back-and-forth, each pass under 480ms. Reduced
    motion shows it drawn and still. */
+
 .band {
     position: absolute;
     top: 0;
@@ -92,13 +93,13 @@
     pointer-events: none;
 
     path {
+        animation: tile-help-band 880ms ease-in-out both;
         fill: none;
         stroke: var(--m3-primary, #a5000a);
         stroke-dasharray: 1;
         stroke-dashoffset: 0;
         stroke-linecap: round;
         stroke-width: 2.2;
-        animation: tile-help-band 880ms ease-in-out both;
     }
 
     @media (prefers-reduced-motion: reduce) {
