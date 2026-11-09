@@ -198,7 +198,9 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             // Everything the tenant editor passes beyond the props modelled above.
             // Read by the "consent chooser stays off this level" test below.
             data-extra-props={Object.keys(rest).sort().join(',')}
+            data-hide-header={String(rest.hideHeader)}
         >
+            {rest.headerAction as React.ReactNode}
             {helpSlot}
             {snackbarSlot}
             {comparison?.open && (
@@ -1500,6 +1502,7 @@ describe('LegalText as a tile', () => {
         renderTile({ defaultOpen: true });
 
         const editor = screen.getByTestId('m3-editor');
+        expect(editor).toHaveAttribute('data-hide-header', 'true');
         expect(screen.getAllByRole('button', { name: 'tileHelp.open' })).toHaveLength(1);
         expect(within(editor).queryByRole('button', { name: 'tileHelp.open' })).toBeNull();
         expect(screen.getByTestId('legal-publication-status')).toBeInTheDocument();
@@ -1509,7 +1512,11 @@ describe('LegalText as a tile', () => {
     it('keeps the help slot in the editor when it is not a tile', () => {
         renderTile({ collapsible: false });
 
-        expect(within(screen.getByTestId('m3-editor')).getByTestId('legal-publication-status')).toBeInTheDocument();
+        const editor = screen.getByTestId('m3-editor');
+        expect(within(editor).getByTestId('legal-publication-status')).toBeInTheDocument();
+        // Without a tile the explanation button stays in the editor header, where it always was.
+        expect(editor).toHaveAttribute('data-hide-header', 'false');
+        expect(within(editor).getByRole('button', { name: 'tileHelp.open' })).toBeInTheDocument();
         expect(document.querySelector('[data-collapsible-tile]')).toBeNull();
     });
 

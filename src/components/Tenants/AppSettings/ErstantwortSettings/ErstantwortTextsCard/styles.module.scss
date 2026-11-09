@@ -16,7 +16,8 @@
     width: 100%;
     min-width: 0;
 
-    /* Document tile: the whole tile width, like the Legal tab; the text boxes keep a page's line length. */
+    /* The introduction card takes the whole width of its tile, like the legal documents; the text boxes keep a page's
+       line length. */
     max-width: none;
     box-sizing: border-box;
 }

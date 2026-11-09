@@ -35,6 +35,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onSaveDraft,
         languageSlot,
         helpSlot,
+        headerAction,
         snackbarSlot,
         aboveEditorSlot,
         belowSlot,
@@ -50,6 +51,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onSaveDraft?: (html: string) => void;
         languageSlot?: React.ReactNode;
         helpSlot?: React.ReactNode;
+        headerAction?: React.ReactNode;
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
@@ -65,6 +67,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             data-has-language-slot={languageSlot ? 'true' : 'false'}
         >
             {languageSlot}
+            {headerAction}
             {helpSlot}
             {snackbarSlot}
             {aboveEditorSlot}
@@ -762,6 +765,10 @@ describe('DataProcessingAgreementCard as a tile', () => {
 
         expect(document.querySelector('[data-collapsible-tile]')).toBeNull();
         expect(screen.getByTestId('editor')).toHaveAttribute('data-hide-header', 'false');
+        // Without a tile the explanation button stays in the editor header, where it always was.
+        expect(
+            within(screen.getByTestId('editor')).getByRole('button', { name: /tileHelp\.open/ }),
+        ).toBeInTheDocument();
     });
 
     it('folds up to a header and mounts no editor until it is unfolded', async () => {
