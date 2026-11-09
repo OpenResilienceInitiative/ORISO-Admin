@@ -199,7 +199,7 @@ export const EmailTemplatesDialog = ({
             // one, and the create deep link must open in both cases.
             setLoadCompleted(true);
         }
-    }, [t, visibleKinds]);
+    }, [visibleKinds]);
 
     useEffect(() => {
         loadTemplates();

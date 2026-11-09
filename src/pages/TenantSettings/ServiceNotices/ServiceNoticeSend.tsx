@@ -76,7 +76,15 @@ export const ServiceNoticeSend = ({ draft }: { draft: ServiceNoticeDraft }) => {
                 )}
                 {confirmedBefore && <HintText>{t('serviceNotices.send.alreadyConfirmed')}</HintText>}
                 {done && (
-                    <Notify title={t('notify.title.serviceNotices')} severity="success">
+                    <Notify
+                        title={t('notify.title.serviceNotices')}
+                        severity="success"
+                        // The result stays in the tile after the success pop-up has timed out.
+                        quietText={t('serviceNotices.send.done', {
+                            recipients: done.recipients,
+                            mail: done.mailQueued,
+                        })}
+                    >
                         {t('serviceNotices.send.done', { recipients: done.recipients, mail: done.mailQueued })}
                     </Notify>
                 )}

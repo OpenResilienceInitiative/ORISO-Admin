@@ -244,6 +244,8 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
                 <Notify
                     title={t('notify.title.erstantwort')}
                     severity="error"
+                    // Closed by the person: the next failed publish must raise it again.
+                    onClose={() => setPublishError(false)}
                     jump={{
                         target: `erstantwort-section-${MANDATORY_KEY}`,
                         // The section must be open before the pop-up takes the person to it.

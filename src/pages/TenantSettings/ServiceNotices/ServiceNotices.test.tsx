@@ -24,16 +24,20 @@ import { SERVICE_NOTICE_VARIANTS } from '../../../api/serviceNotices/serviceNoti
 // Notifications are pop-ups with a lead line before the text, so match the text inside.
 const inNotice = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
-// Pop-ups share one channel and show one after the other. An earlier one (for example "saved") can
-// still be up; the person closes it and the queued one follows.
-const findNotice = async (text: string) => {
-    await waitFor(() => {
-        if (screen.queryByText(inNotice(text))) return;
-        const close = within(screen.getByTestId('snackbar-host')).queryByRole('button', { name: 'snackbar.close' });
-        if (close) fireEvent.click(close);
-        throw new Error(`notice not shown yet: ${text}`);
+// Pop-ups share one channel and stack. Only the host is searched, so a notice rendered as tile text instead
+// of a pop-up cannot satisfy these assertions. An earlier pop-up (for example "saved") may still be up; it
+// is left alone.
+const findNotice = async (text: string, severity: 'error' | 'success' = 'error') => {
+    const host = () => within(screen.getByTestId('snackbar-host'));
+    const popup = await waitFor(() => {
+        const match = host()
+            .getAllByTestId('snackbar')
+            .find((candidate) => inNotice(text).test(candidate.textContent ?? ''));
+        if (!match) throw new Error(`notice not shown yet: ${text}`);
+        return match;
     });
-    return screen.findByText(inNotice(text));
+    expect(popup).toHaveAttribute('data-severity', severity);
+    return popup;
 };
 
 const draft: ServiceNoticeDraft = {
@@ -183,7 +187,7 @@ describe('service-notice saved drafts', () => {
         renderPage();
         fillDraft();
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.open' }));
-        await screen.findByText(inNotice('serviceNotices.errors.unavailable'));
+        await findNotice('serviceNotices.errors.unavailable');
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
         expect(screen.queryByText('remote-sensitive-marker')).not.toBeInTheDocument();
     });
@@ -259,7 +263,7 @@ describe('service-notice send decision', () => {
         expect(calls('/confirm')).toHaveLength(0);
         await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
 
-        expect(await findNotice('serviceNotices.send.done')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.send.done', 'success')).toBeInTheDocument();
         expect(calls('/confirm')).toHaveLength(1);
         expect(calls('/confirm')[0].method).toBe('POST');
         expect(JSON.parse(calls('/confirm')[0].bodyData)).toEqual({ expectedRecipients: 12 });
