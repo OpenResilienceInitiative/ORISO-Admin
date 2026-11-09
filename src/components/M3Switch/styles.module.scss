@@ -26,7 +26,7 @@
 
     &:focus-visible {
         border-radius: 24px;
-        outline: 2px solid #273270;
-        outline-offset: 2px;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset, 2px);
     }
 }
