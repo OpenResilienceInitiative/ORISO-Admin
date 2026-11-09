@@ -93,6 +93,15 @@ describe('tenant assistant Appearance', () => {
         expect(screen.queryByText(/Wrong helper|Main helper|Carimat/)).toBeNull();
         expect(screen.queryByRole('img', { name: 'settings.assistant.inheritedIcon' })).toBeNull();
     });
+    it('does not present its own override as the inherited icon or name', () => {
+        // The effective read of a tenant with overrides returns those overrides, not the parent's values.
+        fixtures.own = { assistantName: 'Own helper', assistantIcon: 'robot-1184077' };
+        fixtures.inherited = { id: 1, theming: { assistantName: 'Own helper', assistantIcon: 'robot-1184077' } };
+        render(<AssistantIdentity tenantId="1" />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        expect(screen.queryByRole('img', { name: 'settings.assistant.inheritedIcon' })).toBeNull();
+        expect(screen.queryByText(/settings\.assistant\.inheritedName \{/)).toBeNull();
+    });
     it('treats blank own values as inherited without freezing the inherited icon', async () => {
         fixtures.own = { assistantName: '   ', assistantIcon: '  ' };
         fixtures.inherited = { id: 1, theming: { assistantName: 'Platform helper', assistantIcon: 'robot-1184077' } };

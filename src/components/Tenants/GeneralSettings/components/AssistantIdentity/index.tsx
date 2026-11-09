@@ -107,7 +107,10 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
     const ownIcon = data?.theming?.assistantIcon;
     const hasOwnName = !!ownName?.trim();
     const hasOwnIcon = !!ownIcon?.trim();
-    const inheritedIcon = inherited ? inherited.theming?.assistantIcon || 'default' : undefined;
+    // The effective read already contains this tenant's own override, so it only tells the
+    // inherited value while there is no override; otherwise the hint stays neutral.
+    const inheritedIcon = inherited && !hasOwnIcon ? inherited.theming?.assistantIcon || 'default' : undefined;
+    const inheritedName = inherited && !hasOwnName ? inherited.theming?.assistantName || 'Carimat' : undefined;
     const locked =
         readOnly ||
         isError ||
@@ -159,9 +162,9 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
                     />
                     {!hasOwnName && (
                         <p className={styles.sectionText}>
-                            {inherited
+                            {inheritedName
                                 ? t('settings.assistant.inheritedName', {
-                                      name: inherited.theming?.assistantName || 'Carimat',
+                                      name: inheritedName,
                                   })
                                 : t('settings.assistant.inheritedNameUnknown')}
                         </p>
