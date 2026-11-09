@@ -524,7 +524,6 @@ export const UserEditOrAdd = () => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -532,11 +531,11 @@ export const UserEditOrAdd = () => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
             onAccountCreatedWithoutMail: (content) => {
-                message.warning({ content, duration: 10 });
+                message.warning({ content });
                 navigate(`/admin/users/${typeOfUsers}`);
             },
         }),
@@ -740,7 +739,6 @@ export const UserEditOrAdd = () => {
             };
             message.error({
                 content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
-                duration: 8,
             });
             return;
         } finally {
@@ -755,7 +753,6 @@ export const UserEditOrAdd = () => {
         persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
             message.warning({
                 content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
-                duration: 8,
             }),
         );
         setPendingMove(null);

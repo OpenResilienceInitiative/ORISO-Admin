@@ -1,4 +1,5 @@
 import type { TileHelpTopic } from '../../../TileHelp';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 
 export const otherFunctionsHelp: TileHelpTopic = {
     id: 'otherFunctions',
@@ -17,8 +18,8 @@ export const otherFunctionsHelp: TileHelpTopic = {
         },
         {
             id: 'team',
-            titleKey: 'tileHelp.otherFunctions.team.title',
-            bodyKey: 'tileHelp.otherFunctions.team.body',
+            titleKey: TEAM_FUNCTIONS.chat.nameKey,
+            bodyKey: TEAM_FUNCTIONS.chat.descriptionKey,
         },
     ],
 };

@@ -294,8 +294,8 @@ const fetchWithFeedback = async (props: FetchDataProps, report: TransportFeedbac
             // a dead session ended an in-progress action (e.g. sending a Träger-admin
             // invite) with nothing but a spinner and a silent redirect.
             // Stable key: concurrent 401s (a page with many active queries) all reach
-            // this fallback once the shared refresh has failed — antd collapses repeats
-            // with the same key into ONE toast instead of stacking identical ones.
+            // this fallback once the shared refresh has failed — the snackbar channel collapses
+            // repeats with the same key into ONE snackbar instead of stacking identical ones.
             report({
                 content: i18next.t('message.error.sessionExpired') as string,
                 duration: 8,

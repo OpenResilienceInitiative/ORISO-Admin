@@ -26,6 +26,7 @@ vi.mock('../../api/settings/sendGlobalSmtpTestEmail', () => ({
     sendGlobalSmtpTestEmail: mocks.sendGlobalSmtpTestEmail,
 }));
 
+import { SnackbarHost } from '../../components/Snackbar';
 import { GlobalSmtpSettingsPage } from './index';
 import {
     globalSmtpPlatformSettingsEndpoint,
@@ -142,6 +143,8 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
             return Promise.resolve({});
         });
         const user = userEvent.setup();
+        // The host has permanent live regions, so only the test that reads a snackbar mounts it.
+        render(<SnackbarHost />);
         renderPage();
         await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'edit' }));
@@ -392,6 +395,7 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
             }),
         );
         const user = userEvent.setup();
+        render(<SnackbarHost />);
         renderPage();
         await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' }));
