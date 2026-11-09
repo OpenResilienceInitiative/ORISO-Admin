@@ -45,6 +45,13 @@ afterEach(() => {
 });
 
 describe('tenant assistant Appearance', () => {
+    it('names the icon choices as a radio group, so the label is announced', () => {
+        render(<AssistantIdentity tenantId="1" />);
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(screen.getByRole('radiogroup', { name: 'settings.assistant.icon' })).toBeInTheDocument();
+    });
+
     it('saves only the chosen identity so the existing mutation preserves fresh tenant branding', async () => {
         const { container: dialog } = render(<AssistantIdentity tenantId="1" />);
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
