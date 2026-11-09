@@ -16,6 +16,7 @@ import { AnimatedValue, StatisticCard } from '../components/StatisticCard/Statis
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
 import { ReactComponent as DownloadIcon } from '../resources/img/svg/download.svg';
+import statisticsPreviewIllustration from '../resources/img/tile-help/statistics/tracking.webp';
 import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
@@ -1846,7 +1847,7 @@ const StatisticFilterBar = ({
             >
                 <GlobalSearchBar
                     defaultExpanded
-                    expandedWidth={499}
+                    expandedWidth={320}
                     className="statisticDashboard__filterSearch"
                     ariaLabel={translateDashboardKey(
                         translate,
@@ -2133,6 +2134,33 @@ export const Statistic = () => {
         !hasStatisticLoadError &&
         !isStatisticUnavailable &&
         !allTargetsSuppressed;
+    const showPreviewPanel = showEmptyHero || allTargetsSuppressed;
+    const previewHighlights = [
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.timeline.title', 'Verlauf über Zeit'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.timeline.text',
+                'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.compare.title', 'Träger im Vergleich'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.compare.text',
+                'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.topics.text',
+                'Welche Themen am häufigsten angefragt werden.',
+            ),
+        },
+    ];
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
@@ -2331,16 +2359,16 @@ export const Statistic = () => {
     return (
         <Page>
             <Page.Title>
-                <AdminSegmentedTabs
-                    className="statisticDashboard__scopeTabs"
-                    activeId={activeScope}
-                    ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                    items={scopeTabItems}
-                    onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
-                />
-            </Page.Title>
-            <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
-                <div className="statisticDashboard">
+                {/* Levels left, the Träger/Beratungsstelle filter right, one divider under
+                    both (ORISO-Admin#1374). */}
+                <div className="statisticDashboard__headerRow">
+                    <AdminSegmentedTabs
+                        className="statisticDashboard__scopeTabs"
+                        activeId={activeScope}
+                        ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
+                        items={scopeTabItems}
+                        onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
+                    />
                     {activeScope !== 'agency' && (
                         <StatisticFilterBar
                             availableTargets={availableFilterTargets}
@@ -2355,7 +2383,10 @@ export const Statistic = () => {
                             translate={translate}
                         />
                     )}
-
+                </div>
+            </Page.Title>
+            <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
+                <div className="statisticDashboard">
                     <div key={activeScope} className="statisticDashboard__animatedContent">
                         {isStatisticUnavailable && (
                             <p className="statisticDashboard__notice statisticDashboard__notice--error" role="alert">
@@ -2436,30 +2467,6 @@ export const Statistic = () => {
                                             : []),
                                     ]}
                                 />
-                                {showEmptyHero && (
-                                    <DashboardEmptyState
-                                        className="statisticDashboard__emptyHero"
-                                        icon={<ConversationsIcon />}
-                                        title={translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.empty.heroTitle',
-                                            'Ihr Dashboard füllt sich mit der ersten Beratung',
-                                        )}
-                                        description={translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.empty.heroDescription',
-                                            'Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.',
-                                        )}
-                                        action={{
-                                            label: translateDashboardKey(
-                                                translate,
-                                                'statistic.dashboard.empty.heroAction',
-                                                'Beratende verwalten',
-                                            ),
-                                            onClick: () => navigate(routePathNames.consultants),
-                                        }}
-                                    />
-                                )}
                                 {/* a file of "Keine Daten" would look like "not tracked" */}
                                 {!allTargetsSuppressed && (
                                     <div className="statisticDashboard__export">
@@ -2500,9 +2507,12 @@ export const Statistic = () => {
                                         </CSVLink>
                                     </div>
                                 )}
+                                {/* All eight figures in one raster: four per row on a desktop, so the
+                                    channel tiles line up under the key figures (ORISO-Admin#1374). */}
                                 <CardGrid
                                     raster
                                     fluid
+                                    minCardWidth={280}
                                     className={`statisticDashboard__summaryGrid${
                                         showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
                                     }`}
@@ -2528,18 +2538,6 @@ export const Statistic = () => {
                                             />
                                         </CardGrid.Item>
                                     ))}
-                                </CardGrid>
-
-                                {/* Five channel tiles: narrower minimum so they share one row on a desktop
-                                    instead of leaving one tile alone next to an empty gap (#1374). */}
-                                <CardGrid
-                                    raster
-                                    fluid
-                                    minCardWidth={224}
-                                    className={`statisticDashboard__communicationGrid${
-                                        showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
-                                    }`}
-                                >
                                     {dashboard.communicationCards.map((card) => (
                                         <CardGrid.Item key={card.key}>
                                             <StatisticCard
@@ -2555,8 +2553,42 @@ export const Statistic = () => {
                                     ))}
                                 </CardGrid>
 
+                                {/* Nothing to chart yet (no data, or every figure protected): say what will
+                                    appear here instead of drawing empty charts (ORISO-Admin#1374). */}
+                                {showPreviewPanel && (
+                                    <DashboardEmptyState
+                                        className="statisticDashboard__emptyHero"
+                                        illustration={statisticsPreviewIllustration}
+                                        title={
+                                            showEmptyHero
+                                                ? translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.empty.heroTitle',
+                                                      'Ihr Dashboard füllt sich mit der ersten Beratung',
+                                                  )
+                                                : translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.preview.title',
+                                                      'Das sehen Sie hier, sobald genug Daten da sind',
+                                                  )
+                                        }
+                                        highlights={previewHighlights}
+                                        action={
+                                            showEmptyHero
+                                                ? {
+                                                      label: translateDashboardKey(
+                                                          translate,
+                                                          'statistic.dashboard.empty.heroAction',
+                                                          'Beratende verwalten',
+                                                      ),
+                                                      onClick: () => navigate(routePathNames.consultants),
+                                                  }
+                                                : undefined
+                                        }
+                                    />
+                                )}
                                 {/* hidden figures: no chart, a chart of zeros would read as "nothing happened" */}
-                                {!allTargetsSuppressed && (
+                                {!showPreviewPanel && (
                                     <CardGrid
                                         raster
                                         fillers={false}

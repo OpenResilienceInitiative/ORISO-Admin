@@ -119,7 +119,7 @@ describe('Statistic page', () => {
         expect(screen.getAllByText(/Vormonat gesamt 10/).length).toBeGreaterThan(0);
         // metrics without an application-layer source render a lighter "not tracked yet"
         // card that says so in words, instead of a shouty "Keine Daten" value or a bare dash
-        expect(screen.getAllByText('Wird noch nicht erfasst').length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/^Wird noch nicht erfasst/).length).toBeGreaterThan(0);
         const notTrackedCards = document.querySelectorAll('.statisticDashboard__metricCard--notTracked');
         expect(notTrackedCards.length).toBeGreaterThan(0);
         notTrackedCards.forEach((card) => expect(card.textContent).not.toContain('–'));
@@ -134,8 +134,9 @@ describe('Statistic page', () => {
         const { container } = renderStatistic();
 
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+        // One raster for all eight figures, one for the charts (#1374).
         const rasters = container.querySelectorAll('[data-admin-card-raster]');
-        expect(rasters).toHaveLength(3);
+        expect(rasters).toHaveLength(2);
         container
             .querySelectorAll('.statisticDashboard__metricCard, .statisticDashboard__chartCard')
             .forEach((card) => {
@@ -252,7 +253,7 @@ describe('Statistic page', () => {
             await screen.findByText(/^Stand 03\.11\.2026/);
             expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
 
-            fireEvent.click(screen.getByRole('tab', { name: 'Auf Beratungsstellenebene' }));
+            fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
 
             await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
         });
@@ -530,7 +531,7 @@ describe('Statistic page', () => {
                 groupChatCountsByPeriod: null,
             });
         const tenantResponse = (targets: AdminDashboardStatisticsResponse['targets']) => ({ ...response, targets });
-        const openAgencyLevel = () => fireEvent.click(screen.getByText('Auf Beratungsstellenebene'));
+        const openAgencyLevel = () => fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
         const rowNotice = /kann auch einen größeren Bereich treffen/;
         const totalNotice = /Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/;
 

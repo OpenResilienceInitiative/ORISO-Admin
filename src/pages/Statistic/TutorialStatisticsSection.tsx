@@ -120,10 +120,7 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
             {isLoading && <p className="tutorialStatistics__notice">{t('statistic.tutorials.loading')}</p>}
             {isForbidden && <Alert type="info" showIcon message={t('statistic.tutorials.forbidden')} />}
             {isError && <Alert type="error" showIcon role="alert" message={t('statistic.tutorials.loadError')} />}
-            {isLoaded && rows.length === 0 && (
-                <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
-            )}
-            {isLoaded && rows.length > 0 && (
+            {isLoaded && (
                 <>
                     {/* Focusable scroll region: keyboard users must be able to reach and
                         scroll a wide table (axe: scrollable-region-focusable). */}
@@ -137,11 +134,17 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                         {/* Deliberately not ListingTable: its viewport-height scroll
                             container is unreachable by keyboard; the wrapper above is
                             the single scrollable region of this embedded section. */}
+                        {/* Empty: the columns stay, so the admin sees what will be counted (#1374). */}
                         <Table<TutorialStatisticRow>
                             columns={columns}
                             dataSource={rows}
                             rowKey="key"
                             pagination={false}
+                            locale={{
+                                emptyText: (
+                                    <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
+                                ),
+                            }}
                         />
                     </div>
                     {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}

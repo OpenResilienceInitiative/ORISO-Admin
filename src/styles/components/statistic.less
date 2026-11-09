@@ -1530,3 +1530,65 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+// ORISO-Admin#1374 — statistics as designed: levels and filter in one header row,
+// white key-figure tiles, a dashed trend placeholder for protected figures.
+
+.statisticDashboard__headerRow {
+    display: flex;
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-inline-start: var(--admin-subnav-inset, 0%);
+    box-shadow: inset 0 -1px 0 0 var(--m3-outline-variant);
+    gap: 8px 16px;
+
+    // The divider belongs to the whole row, not to the tab bar alone.
+    .statisticDashboard__scopeTabs {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        flex: 1 1 auto;
+        margin-inline-start: 0;
+        box-shadow: none;
+    }
+
+    .statisticDashboard__filterBar {
+        min-width: 0;
+        flex: 0 1 320px;
+        padding: 0 0 8px;
+        margin: 0;
+        grid-template-columns: minmax(0, 320px);
+    }
+}
+
+.statisticDashboard__metricCard {
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+}
+
+.statisticDashboard__cardSparkline {
+    display: block;
+    width: 100%;
+    height: 36px;
+
+    path {
+        fill: none;
+        stroke: var(--m3-outline-variant);
+        stroke-dasharray: 4 5;
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+    }
+}
+
+// The preview now sits where the charts would be, below the tiles.
+.statisticDashboard__summaryGrid + .statisticDashboard__emptyHero {
+    margin-top: 24px;
+}
+
+@media screen and (max-width: 840px) {
+    .statisticDashboard__headerRow .statisticDashboard__filterBar {
+        flex: 1 1 100%;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

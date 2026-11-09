@@ -180,6 +180,18 @@ const CardValueRow = ({
         // No dash: the hint itself says why there is no figure, so the card does not look broken.
         return (
             <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                {/* A dashed trend line marks where the figure will appear once it may be shown. */}
+                {emptyKind === 'protected' && (
+                    <svg
+                        className="statisticDashboard__cardSparkline"
+                        viewBox="0 0 240 36"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <path d="M0 28 L30 24 L60 26 L90 18 L120 20 L150 12 L180 16 L210 8 L240 10" />
+                    </svg>
+                )}
                 <p className="statisticDashboard__cardEmptyState">
                     {emptyKind === 'protected' && (
                         <LockOutlined

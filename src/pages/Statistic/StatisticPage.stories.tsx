@@ -260,7 +260,7 @@ export const HiddenRowNextToShownRow: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        fireEvent.click(await canvas.findByText('Auf Beratungsstellenebene'));
+        fireEvent.click(await canvas.findByRole('tab', { name: 'Beratungsstellen' }));
         const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
         // The long reason waits behind "Warum?" in the one info row.
         await expect(notice).not.toBeVisible();
@@ -292,8 +292,12 @@ export const HiddenTotal: Story = {
         // The page fades in, so the notice is only visible once that has settled.
         await waitFor(() => expect(notice).toBeVisible());
         await expect(canvas.getAllByText('Geschützt – zu wenige aktive Beratende').length).toBeGreaterThan(0);
-        // a chart of zeros would read as "nothing happened"
+        // a chart of zeros would read as "nothing happened": the preview says what will appear instead (#1374)
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(canvas.getByText('Das sehen Sie hier, sobald genug Daten da sind')).toBeVisible();
+        await expect(canvas.getByText('Träger im Vergleich')).toBeVisible();
+        // a dashed trend line marks where each protected figure will appear
+        await expect(canvasElement.querySelectorAll('.statisticDashboard__cardSparkline').length).toBeGreaterThan(0);
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
     },
 };
@@ -331,8 +335,27 @@ export const StandWithoutCases: Story = {
         await expect(canvas.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
     },
 };
+// Nothing counted yet: the tiles stay quiet, the preview names what will appear and offers the next step.
 export const NoData: Story = {
     parameters: { msw: { handlers: handlers(() => HttpResponse.json(statistics('DAILY', []))) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Beratende verwalten' })).toBeVisible();
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        // all eight figures share one raster (#1374)
+        await expect(canvasElement.querySelectorAll('[data-admin-card-raster]')).toHaveLength(1);
+    },
+};
+
+// The filled page on a phone: one column, filter below the level tabs, nothing scrolls sideways.
+export const DailyStandPhone: Story = {
+    globals: { viewport: { value: 'phone390', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(async () => expect(await canvas.findByText('Anfragen gesamt')).toBeVisible());
+        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+    },
 };
 export const Loading: Story = {
     parameters: {
