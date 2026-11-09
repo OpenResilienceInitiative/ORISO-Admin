@@ -93,7 +93,7 @@
 
     &:focus-visible {
         border-radius: 2px;
-        outline: 3px solid var(--m3-secondary);
+        outline: 3px solid var(--snackbar-focus);
         outline-offset: 2px;
     }
 }

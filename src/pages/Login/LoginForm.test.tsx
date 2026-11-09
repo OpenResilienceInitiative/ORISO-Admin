@@ -63,6 +63,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
     return translations[key] || key;
 };
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let snackbarErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
 
@@ -149,7 +150,7 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
-        vi.spyOn(snackbar, 'error').mockImplementation(mocks.messageError);
+        snackbarErrorSpy = vi.spyOn(snackbar, 'error').mockImplementation(mocks.messageError);
         mocks.navigate.mockReset();
         mocks.search = '';
         mocks.recordLoginFailure.mockReset();
@@ -158,6 +159,7 @@ describe('LoginForm', () => {
 
     afterEach(() => {
         consoleWarnSpy.mockRestore();
+        snackbarErrorSpy.mockRestore();
     });
 
     it('keeps the first-centre continuation through the password and OTP challenge', async () => {

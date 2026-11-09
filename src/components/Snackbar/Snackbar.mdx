@@ -55,8 +55,8 @@ Every pop-up has a **title** (what it is about, a few words), an optional **desc
 two sentences) and a close button. When the event belongs to a tile or a field, give it a `jump`:
 it adds the "Ansehen" / "View" button, which first runs `onJump` (open or enlarge the editor,
 expand the tile), then scrolls the target to the middle of the screen and focuses it (or its first
-button, field or link). The pop-up is dismissed afterwards, because the person has been taken to
-the owner.
+button, field or link). The pop-up stays afterwards: the person can read it again at the tile and
+close it when done.
 
 ```ts
 snackbar.error({

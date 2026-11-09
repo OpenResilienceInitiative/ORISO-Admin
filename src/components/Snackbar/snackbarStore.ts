@@ -314,7 +314,10 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
             // first, and an error only makes room for a newer error.
             while (queued.length > MAX_QUEUE) {
                 const drop = queued.findIndex((waiting) => waiting.severity !== 'error');
-                finish(queued.splice(drop < 0 ? 0 : drop, 1)[0], 'replaced');
+                const [gone] = queued.splice(drop < 0 ? 0 : drop, 1);
+                // Never shown: a repeat of it must not be swallowed as "already on screen".
+                forget(gone);
+                finish(gone, 'replaced');
             }
             setState(state.visible, queued);
         }
