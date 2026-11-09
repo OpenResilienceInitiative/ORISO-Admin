@@ -273,9 +273,11 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
         // One cause, one pop-up: while it is visible, queued or just gone.
         if (options.causeKey) {
             const existing = [...state.visible, ...state.queued].find((other) => other.causeKey === options.causeKey);
-            if (existing) return existing.key;
+            // One cause, one pop-up: the first wins. Only the same pop-up raised again under its own explicit key
+            // is an update, handled below: it takes the newer text.
+            if (existing && (existing.key !== key || !options.key)) return existing.key;
             const lastSeen = lastCause.get(options.causeKey);
-            if (lastSeen !== undefined && at - lastSeen < SNACKBAR_DEDUPE_WINDOW_MS) return key;
+            if (!existing && lastSeen !== undefined && at - lastSeen < SNACKBAR_DEDUPE_WINDOW_MS) return key;
             lastCause.set(options.causeKey, at);
         }
 

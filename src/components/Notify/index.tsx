@@ -99,8 +99,9 @@ export const Notify = ({
     // A hidden marker lets the pop-up find the element it belongs to: its parent in the layout.
     const marker = useRef<HTMLSpanElement>(null);
     const owner = useRef<{ current: HTMLElement | null }>({ current: null });
-    const latest = useRef({ title, children, actions: allActions, onClose });
-    latest.current = { title, children, actions: allActions, onClose };
+    const latest = useRef({ title, children, actions: allActions, onClose, jump });
+    latest.current = { title, children, actions: allActions, onClose, jump };
+    const unmounted = useRef(false);
     const text = `${signatureOf(title)}|${signatureOf(children)}`;
     const labels = (allActions ?? []).map((action) => action.label).join('|');
 
@@ -110,7 +111,7 @@ export const Notify = ({
 
     useEffect(() => {
         owner.current.current = marker.current?.parentElement ?? null;
-        let mounted = true;
+        unmounted.current = false;
         const toAction = (index: number): SnackbarAction | undefined => {
             const choice = latest.current.actions?.[index];
             if (!choice) return undefined;
@@ -124,7 +125,7 @@ export const Notify = ({
             shownDisabled.current = (latest.current.actions ?? [])
                 .map((action) => (action.disabled ? '1' : '0'))
                 .join('');
-            const { title: leadLine, children: body, actions: choices } = latest.current;
+            const { title: leadLine, children: body, actions: choices, jump: jumpTarget } = latest.current;
             const stays = persistent ?? (severity !== 'success' && severity !== 'info' ? true : !!choices?.length);
             snackbar.notify({
                 key,
@@ -133,7 +134,7 @@ export const Notify = ({
                 title: leadLine ?? body,
                 description: leadLine ? body : undefined,
                 causeKey,
-                jump: jump === false ? undefined : jump ?? owner.current,
+                jump: jumpTarget === false ? undefined : jumpTarget ?? owner.current,
                 // The first choice is the primary one (right-most); the second sits before it.
                 action: toAction(0),
                 secondaryAction: toAction(1),
@@ -141,16 +142,23 @@ export const Notify = ({
                 dismissible: true,
                 testId,
                 onClose: (reason) => {
-                    if (mounted && reason === 'dismiss') latest.current.onClose?.();
+                    if (!unmounted.current && reason === 'dismiss') latest.current.onClose?.();
                 },
             });
         };
+        // A changed text or choice replaces the pop-up where it is (same key): no dismiss in between, so it
+        // keeps its place in the stack and a focused button keeps its focus.
         raise.current();
-        return () => {
-            mounted = false;
-            snackbar.dismiss(key);
-        };
     }, [key, severity, text, labels, persistent, testId, causeKey]);
+
+    // The pop-up goes with the element that raised it.
+    useEffect(
+        () => () => {
+            unmounted.current = true;
+            snackbar.dismiss(key);
+        },
+        [key],
+    );
 
     // A choice that is disabled while its operation runs: update the pop-up in place, but never bring
     // back one the person has already closed.
